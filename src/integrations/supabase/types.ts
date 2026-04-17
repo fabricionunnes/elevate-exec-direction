@@ -32058,6 +32058,7 @@ export type Database = {
           price_yearly: number | null
           slug: string
           sort_order: number
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -32075,6 +32076,7 @@ export type Database = {
           price_yearly?: number | null
           slug: string
           sort_order?: number
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -32092,9 +32094,18 @@ export type Database = {
           price_yearly?: number | null
           slug?: string
           sort_order?: number
+          tenant_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "whitelabel_plans_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       whitelabel_signups: {
         Row: {
@@ -32215,6 +32226,59 @@ export type Database = {
             foreignKeyName: "whitelabel_subscriptions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: true
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whitelabel_tenant_plan_history: {
+        Row: {
+          changed_by: string | null
+          changed_by_name: string | null
+          created_at: string
+          id: string
+          new_max_projects: number | null
+          new_max_users: number | null
+          new_plan_slug: string
+          previous_max_projects: number | null
+          previous_max_users: number | null
+          previous_plan_slug: string | null
+          reason: string | null
+          tenant_id: string
+        }
+        Insert: {
+          changed_by?: string | null
+          changed_by_name?: string | null
+          created_at?: string
+          id?: string
+          new_max_projects?: number | null
+          new_max_users?: number | null
+          new_plan_slug: string
+          previous_max_projects?: number | null
+          previous_max_users?: number | null
+          previous_plan_slug?: string | null
+          reason?: string | null
+          tenant_id: string
+        }
+        Update: {
+          changed_by?: string | null
+          changed_by_name?: string | null
+          created_at?: string
+          id?: string
+          new_max_projects?: number | null
+          new_max_users?: number | null
+          new_plan_slug?: string
+          previous_max_projects?: number | null
+          previous_max_users?: number | null
+          previous_plan_slug?: string | null
+          reason?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whitelabel_tenant_plan_history_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
             referencedRelation: "whitelabel_tenants"
             referencedColumns: ["id"]
           },
@@ -32535,6 +32599,7 @@ export type Database = {
         Args: { check_project_id: string }
         Returns: boolean
       }
+      is_platform_master: { Args: never; Returns: boolean }
       is_portal_admin_unv: { Args: { check_user_id: string }; Returns: boolean }
       is_portal_company_admin: {
         Args: { check_company_id: string; check_user_id: string }
