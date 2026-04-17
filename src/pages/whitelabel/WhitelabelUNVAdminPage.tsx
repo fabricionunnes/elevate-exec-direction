@@ -442,7 +442,36 @@ function TenantForm({
   );
   const [status, setStatus] = useState(tenant?.status || "trial");
   const [logoUrl, setLogoUrl] = useState(tenant?.logo_url || "");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const handleLogoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Arquivo muito grande (máx. 5MB)");
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const folder = tenant?.id || "_pending";
+      const filePath = `whitelabel/${folder}/logo-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("whitelabel-assets")
+        .upload(filePath, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage
+        .from("whitelabel-assets")
+        .getPublicUrl(filePath);
+      setLogoUrl(data.publicUrl);
+      toast.success("Logo carregada");
+    } catch (err: any) {
+      toast.error("Erro no upload: " + (err.message || "tente novamente"));
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   // Provisionamento (somente novo tenant)
   const [planSlug, setPlanSlug] = useState<"starter" | "pro" | "enterprise">(
