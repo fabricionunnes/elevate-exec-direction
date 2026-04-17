@@ -545,7 +545,16 @@ function TenantForm({
   const [trialDays, setTrialDays] = useState(7);
   const [adminEmail, setAdminEmail] = useState("");
   const [adminName, setAdminName] = useState("");
-  const [resultInfo, setResultInfo] = useState<{ url: string; email: string; password: string | null } | null>(null);
+  const [adminPhone, setAdminPhone] = useState("");
+  const [adminCpfCnpj, setAdminCpfCnpj] = useState("");
+  const [requirePayment, setRequirePayment] = useState(true);
+  const [resultInfo, setResultInfo] = useState<{
+    url: string;
+    email: string;
+    password: string | null;
+    payment_link?: string | null;
+    due_date?: string | null;
+  } | null>(null);
 
   // Plans are needed both for new tenants and edit mode
   const { data: plans } = useQuery({
@@ -624,16 +633,26 @@ function TenantForm({
           trial_days: trialDays,
           admin_email: adminEmail.trim(),
           admin_name: adminName.trim(),
+          admin_phone: adminPhone.trim() || undefined,
+          admin_cpf_cnpj: adminCpfCnpj.trim() || undefined,
+          require_payment: requirePayment && !enableTrial,
+          notify_admin: true,
         },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast.success("Tenant provisionado com sucesso!");
+      toast.success(
+        requirePayment && !enableTrial
+          ? "Tenant criado! Link de pagamento enviado ao admin."
+          : "Tenant provisionado com sucesso!"
+      );
       setResultInfo({
         url: data.access_url,
         email: data.admin.email,
         password: data.admin.temp_password,
+        payment_link: data.payment?.link ?? null,
+        due_date: data.payment?.due_date ?? null,
       });
     } catch (err: any) {
       toast.error("Erro: " + (err.message || "falha ao provisionar"));
@@ -664,6 +683,25 @@ function TenantForm({
               </p>
             )}
           </div>
+          {resultInfo.payment_link && (
+            <div className="mt-3 pt-3 border-t border-primary/20 space-y-2">
+              <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                ⏳ Acesso bloqueado até pagamento da 1ª fatura
+              </p>
+              <p className="text-xs text-muted-foreground">Link de pagamento (boleto + PIX + cartão):</p>
+              <a
+                href={resultInfo.payment_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-xs text-primary underline break-all"
+              >
+                {resultInfo.payment_link}
+              </a>
+              <p className="text-xs text-muted-foreground">
+                ✅ Já enviado por WhatsApp e Email para o admin. Acesso libera automaticamente após confirmação.
+              </p>
+            </div>
+          )}
         </div>
         <Button onClick={onSuccess} className="w-full">Concluir</Button>
       </div>
