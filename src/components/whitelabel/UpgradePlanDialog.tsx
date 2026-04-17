@@ -103,13 +103,6 @@ export function UpgradePlanDialog({
         return;
       }
       throw new Error("Link de pagamento não retornado");
-      if (data?.invoice_url) {
-        window.open(data.invoice_url, "_blank");
-        toast.success("Link de pagamento gerado! Conclua o pagamento para ativar o novo plano.");
-        onOpenChange(false);
-      } else {
-        throw new Error("Link de pagamento não retornado");
-      }
     } catch (err: any) {
       toast.error("Erro ao gerar pagamento: " + (err?.message || "tente novamente"));
     } finally {
