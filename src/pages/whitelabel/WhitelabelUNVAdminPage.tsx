@@ -279,6 +279,24 @@ export default function WhitelabelUNVAdminPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          onClick={() => setPlanTenant(tenant)}
+                          title="Mudar plano"
+                        >
+                          <CreditCard className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setHistoryTenant(tenant)}
+                          title="Histórico de planos"
+                        >
+                          <History className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={() => setEditTenant(tenant)}
                           title="Editar dados do tenant"
                         >
@@ -334,6 +352,12 @@ export default function WhitelabelUNVAdminPage() {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="plans">
+            <PlansManagement />
+          </TabsContent>
+        </Tabs>
 
         {/* Edit Dialog */}
         <Dialog open={!!editTenant} onOpenChange={open => !open && setEditTenant(null)}>
@@ -441,6 +465,24 @@ export default function WhitelabelUNVAdminPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <ChangeTenantPlanDialog
+          open={!!planTenant}
+          onOpenChange={(o) => !o && setPlanTenant(null)}
+          tenant={planTenant}
+          onShowHistory={() => {
+            const t = planTenant;
+            setPlanTenant(null);
+            setHistoryTenant(t);
+          }}
+        />
+
+        <TenantPlanHistoryDialog
+          open={!!historyTenant}
+          onOpenChange={(o) => !o && setHistoryTenant(null)}
+          tenantId={historyTenant?.id || null}
+          tenantName={historyTenant?.name}
+        />
       </div>
     </div>
   );
