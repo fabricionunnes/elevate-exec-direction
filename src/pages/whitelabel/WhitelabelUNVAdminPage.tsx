@@ -278,6 +278,28 @@ export default function WhitelabelUNVAdminPage() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation */}
+        <AlertDialog open={!!deleteTenant} onOpenChange={open => !open && setDeleteTenant(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir tenant "{deleteTenant?.name}"?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação é irreversível. O tenant e seus dados vinculados (assinatura, pipelines criados pelo provisionamento, etc.) serão removidos permanentemente. O usuário admin no Auth NÃO será excluído automaticamente.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                disabled={deletingId === deleteTenant?.id}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deletingId === deleteTenant?.id ? "Excluindo..." : "Excluir definitivamente"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
