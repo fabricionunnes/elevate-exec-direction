@@ -207,3 +207,7 @@ project_id = "czmyjgdixwhpfasfugkm"
     verify_jwt = true
   [functions.whatsapp-official-webhook]
     verify_jwt = false
+  [functions.whitelabel-checkout]
+    verify_jwt = false
+  [functions.whitelabel-asaas-webhook]
+    verify_jwt = false

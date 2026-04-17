@@ -32053,6 +32053,83 @@ export type Database = {
         }
         Relationships: []
       }
+      whitelabel_signups: {
+        Row: {
+          admin_email: string
+          admin_name: string
+          admin_phone: string | null
+          asaas_customer_id: string | null
+          asaas_payment_id: string | null
+          asaas_subscription_id: string | null
+          billing_cycle: string
+          company_name: string
+          cpf_cnpj: string
+          created_at: string
+          id: string
+          paid_at: string | null
+          payment_link: string | null
+          plan_slug: string
+          provisioned_at: string | null
+          provisioned_tenant_id: string | null
+          provisioning_error: string | null
+          slug: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_email: string
+          admin_name: string
+          admin_phone?: string | null
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
+          billing_cycle?: string
+          company_name: string
+          cpf_cnpj: string
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          payment_link?: string | null
+          plan_slug: string
+          provisioned_at?: string | null
+          provisioned_tenant_id?: string | null
+          provisioning_error?: string | null
+          slug: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_email?: string
+          admin_name?: string
+          admin_phone?: string | null
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
+          billing_cycle?: string
+          company_name?: string
+          cpf_cnpj?: string
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          payment_link?: string | null
+          plan_slug?: string
+          provisioned_at?: string | null
+          provisioned_tenant_id?: string | null
+          provisioning_error?: string | null
+          slug?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whitelabel_signups_provisioned_tenant_id_fkey"
+            columns: ["provisioned_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whitelabel_subscriptions: {
         Row: {
           active_projects_count: number
