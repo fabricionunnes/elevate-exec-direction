@@ -500,6 +500,7 @@ function TenantForm({
             custom_domain: customDomain.trim() || null,
             max_active_projects: maxProjects,
             max_users: parsedMaxUsers,
+            plan_slug: planSlug,
             status,
             logo_url: logoUrl.trim() || null,
             updated_at: new Date().toISOString(),
