@@ -273,6 +273,8 @@ const WhitelabelAdminPage = lazy(() => import("./pages/whitelabel/WhitelabelAdmi
 const WhitelabelUNVAdminPage = lazy(() => import("./pages/whitelabel/WhitelabelUNVAdminPage"));
 const WhitelabelSignupPage = lazy(() => import("./pages/whitelabel/WhitelabelSignupPage"));
 
+import { ModuleGuard } from "./components/whitelabel/ModuleGuard";
+
 // OnboardingStaffLayout needs to be lazy too
 const OnboardingStaffLayout = lazy(() => import("./components/onboarding-tasks/OnboardingStaffLayout").then(m => ({ default: m.OnboardingStaffLayout })));
 
@@ -391,9 +393,9 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/companies-report" element={<OnboardingCompaniesReportPage />} />
               <Route path="/sales-report" element={<SalesReportPage />} />
               <Route path="/onboarding-tasks/results" element={<OnboardingResultsPage />} />
-              <Route path="/onboarding-tasks/financeiro" element={<FinancialModulePage />} />
+              <Route path="/onboarding-tasks/financeiro" element={<ModuleGuard module="financial" label="Financeiro"><FinancialModulePage /></ModuleGuard>} />
               <Route path="/onboarding-tasks/api-docs" element={<ApiDocsPage />} />
-              <Route path="/onboarding-tasks/financeiro/recorrencias" element={<AllRecurringChargesPage />} />
+              <Route path="/onboarding-tasks/financeiro/recorrencias" element={<ModuleGuard module="financial" label="Financeiro"><AllRecurringChargesPage /></ModuleGuard>} />
               <Route path="/onboarding-tasks/whatsapp" element={<WhatsAppAdminPage />} />
               <Route path="/onboarding-tasks/whatsapp-hub" element={<WhatsAppHubPage />} />
               <Route path="/onboarding-tasks/churn-prediction" element={<ChurnPredictionPage />} />
@@ -405,7 +407,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/hotseat" element={<HotseatAdminPage />} />
               <Route path="/onboarding-tasks/consultorias" element={<ConsultoriasAdminPage />} />
               <Route path="/onboarding-tasks/client-access" element={<ClientAccessReportPage />} />
-              <Route path="/onboarding-tasks/billing-rules" element={<BillingRulesPage />} />
+              <Route path="/onboarding-tasks/billing-rules" element={<ModuleGuard module="financial" label="Financeiro"><BillingRulesPage /></ModuleGuard>} />
               <Route path="/onboarding-tasks/survey-send-config" element={<SurveySendConfigPage />} />
               <Route path="/onboarding-tasks/segments" element={<SegmentsAnalysisPage />} />
               <Route path="/onboarding-tasks/nota-fiscal" element={<StaffInvoicePage />} />
