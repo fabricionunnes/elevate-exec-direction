@@ -169,6 +169,8 @@ export const ScheduleLeadMeetingDialog = ({
     try {
       const startDateTime = `${formData.date}T${formData.startTime}:00`;
       const endDateTime = `${formData.date}T${formData.endTime}:00`;
+      // ISO com offset Brasil (-03:00) para persistir corretamente em timestamptz
+      const startDateTimeISO = `${startDateTime}-03:00`;
 
       const attendees = formData.attendees
         .split(",")
@@ -227,7 +229,7 @@ export const ScheduleLeadMeetingDialog = ({
           type: "meeting",
           title: formData.title,
           description: formData.description || null,
-          scheduled_at: startDateTime,
+          scheduled_at: startDateTimeISO,
           responsible_staff_id: staffData?.id,
           status: "pending",
           meeting_link: data.event?.meetingLink || null,
@@ -245,7 +247,7 @@ export const ScheduleLeadMeetingDialog = ({
             leadName,
             activityTitle: formData.title,
             activityType: "meeting",
-            scheduledAt: startDateTime,
+            scheduledAt: startDateTimeISO,
           });
         }
 
@@ -265,7 +267,7 @@ export const ScheduleLeadMeetingDialog = ({
             lead_id: leadId,
             action: "scheduled",
             performed_by_staff_id: staffData?.id,
-            new_scheduled_at: startDateTime,
+            new_scheduled_at: startDateTimeISO,
             notes: `Agendado por ${staffData?.id ? "staff" : "sistema"} - ${formData.title}`,
           } as any);
         }
