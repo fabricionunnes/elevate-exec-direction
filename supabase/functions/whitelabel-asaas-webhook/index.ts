@@ -47,7 +47,57 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Buscar signup
+    // ===== Caminho A: tenant criado manualmente pelo Master (pending_payment) =====
+    // Procura por subscription_id OU por payment_id no whitelabel_tenants
+    const { data: pendingTenant } = await supabase
+      .from("whitelabel_tenants")
+      .select("*")
+      .or(`asaas_subscription_id.eq.${subscriptionId},asaas_first_payment_id.eq.${paymentId || "__none__"}`)
+      .eq("payment_status", "pending")
+      .maybeSingle();
+
+    if (pendingTenant) {
+      console.log("[wl-webhook] ativando tenant manual:", pendingTenant.slug);
+      const { error: actErr } = await supabase
+        .from("whitelabel_tenants")
+        .update({
+          status: "active",
+          payment_status: "active",
+          first_paid_at: new Date().toISOString(),
+          asaas_first_payment_id: paymentId || pendingTenant.asaas_first_payment_id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", pendingTenant.id);
+      if (actErr) console.error("[wl-webhook] erro ao ativar tenant:", actErr);
+
+      // Notifica admin (best-effort)
+      try {
+        const { data: ownerStaff } = await supabase
+          .from("onboarding_staff")
+          .select("name, email, phone")
+          .eq("user_id", pendingTenant.owner_user_id)
+          .maybeSingle();
+
+        if (ownerStaff?.phone) {
+          await supabase.functions.invoke("evolution-api", {
+            body: {
+              action: "send-text",
+              instanceName: "Fabricio Nunnes",
+              number: ownerStaff.phone.replace(/\D/g, ""),
+              text: `✅ Pagamento confirmado!\n\nO acesso à *${pendingTenant.name}* foi liberado. Faça login normalmente em: ${pendingTenant.custom_domain ? `https://${pendingTenant.custom_domain}` : `https://${pendingTenant.slug}.nexus.com.br`}`,
+            },
+          });
+        }
+      } catch (e) {
+        console.warn("[wl-webhook] notify activation failed:", (e as Error).message);
+      }
+
+      return new Response(JSON.stringify({ ok: true, activated_tenant: pendingTenant.id }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ===== Caminho B: signup público via /assine (whitelabel-checkout) =====
     const { data: signup, error: sErr } = await supabase
       .from("whitelabel_signups")
       .select("*")
@@ -55,8 +105,8 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (sErr) throw sErr;
     if (!signup) {
-      console.warn("[wl-webhook] signup não encontrado para assinatura", subscriptionId);
-      return new Response(JSON.stringify({ ok: true, reason: "signup not found" }), {
+      console.warn("[wl-webhook] signup/tenant não encontrado para assinatura", subscriptionId);
+      return new Response(JSON.stringify({ ok: true, reason: "not found" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
