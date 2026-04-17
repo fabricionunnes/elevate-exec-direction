@@ -69,10 +69,25 @@ Deno.serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+    const callerUserId = claimsData.claims.sub as string | undefined;
     const callerEmail = (claimsData.claims.email as string | undefined)?.toLowerCase();
-    if (callerEmail !== "fabricio@universidadevendas.com.br") {
+
+    // Autorizado: CEO (email fixo) OU master da plataforma (staff role=master sem tenant_id)
+    let authorized = callerEmail === "fabricio@universidadevendas.com.br";
+    if (!authorized && callerUserId) {
+      const adminClient = createClient(supabaseUrl, serviceKey);
+      const { data: staffRow } = await adminClient
+        .from("onboarding_staff")
+        .select("role, is_active, tenant_id")
+        .eq("user_id", callerUserId)
+        .maybeSingle();
+      if (staffRow?.is_active && staffRow.role === "master" && !staffRow.tenant_id) {
+        authorized = true;
+      }
+    }
+    if (!authorized) {
       return new Response(
-        JSON.stringify({ error: "Forbidden — apenas o usuário master pode provisionar tenants" }),
+        JSON.stringify({ error: "Forbidden — apenas masters da plataforma podem provisionar tenants" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
