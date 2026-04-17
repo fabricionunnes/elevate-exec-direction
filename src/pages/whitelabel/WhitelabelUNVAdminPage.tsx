@@ -14,12 +14,13 @@ import { toast } from "sonner";
 import {
   Building2, Plus, Edit, Trash2, Users, Eye, CheckCircle,
   AlertTriangle, Pause, BarChart3, Globe, Search, Power, PowerOff,
-  KeyRound, Copy
+  KeyRound, Copy, SlidersHorizontal,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TenantModulesManager } from "@/components/whitelabel/TenantModulesManager";
 
 interface TenantRow {
   id: string;
@@ -33,6 +34,7 @@ interface TenantRow {
   is_dark_mode: boolean;
   created_at: string;
   updated_at: string;
+  enabled_modules: Record<string, boolean> | null;
 }
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }> = {
