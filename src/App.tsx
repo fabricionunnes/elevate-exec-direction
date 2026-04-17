@@ -584,6 +584,7 @@ const AppShell = () => {
             {/* White-Label Admin */}
             <Route path="/whitelabel-admin" element={<WhitelabelAdminPage />} />
             <Route path="/whitelabel-gestao" element={<WhitelabelUNVAdminPage />} />
+            <Route path="/assine" element={<WhitelabelSignupPage />} />
             
               <Route path="*" element={<NotFound />} />
             </Routes>
