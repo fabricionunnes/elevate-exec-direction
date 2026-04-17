@@ -329,6 +329,29 @@ export default function WhitelabelUNVAdminPage() {
           </DialogContent>
         </Dialog>
 
+        {/* Modules / Permissions Dialog */}
+        <Dialog open={!!modulesTenant} onOpenChange={open => !open && setModulesTenant(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <SlidersHorizontal className="h-5 w-5 text-primary" />
+                Permissões de Módulos: {modulesTenant?.name}
+              </DialogTitle>
+            </DialogHeader>
+            {modulesTenant && (
+              <TenantModulesManager
+                tenantId={modulesTenant.id}
+                tenantName={modulesTenant.name}
+                initialModules={modulesTenant.enabled_modules}
+                onSaved={() => {
+                  setModulesTenant(null);
+                  queryClient.invalidateQueries({ queryKey: ["unv-whitelabel-tenants"] });
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
         {/* Reset Password Result */}
         <Dialog open={!!resetResult} onOpenChange={open => !open && setResetResult(null)}>
           <DialogContent className="max-w-md">
