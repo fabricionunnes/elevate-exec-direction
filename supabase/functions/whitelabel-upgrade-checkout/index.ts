@@ -1,6 +1,5 @@
 // Edge Function: whitelabel-upgrade-checkout
 // Gera uma cobrança avulsa no Asaas para upgrade de plano de um tenant existente.
-// Retorna o link de pagamento para o cliente WL pagar e ativar o novo plano.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -14,6 +13,12 @@ const ASAAS_BASE = "https://api.asaas.com/v3";
 interface Payload {
   tenant_id: string;
   target_plan_slug: string;
+  customer?: {
+    name?: string;
+    email?: string;
+    cpf_cnpj?: string;
+    phone?: string;
+  };
 }
 
 Deno.serve(async (req) => {
@@ -35,7 +40,7 @@ Deno.serve(async (req) => {
     // Buscar tenant
     const { data: tenant, error: tErr } = await supabase
       .from("whitelabel_tenants")
-      .select("id, name, slug, plan_slug, asaas_customer_id, max_active_projects")
+      .select("id, name, slug, plan_slug, asaas_customer_id, max_active_projects, owner_user_id")
       .eq("id", body.tenant_id)
       .maybeSingle();
     if (tErr || !tenant) throw new Error("Tenant não encontrado");
@@ -49,24 +54,37 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (pErr || !plan) throw new Error("Plano de destino não encontrado");
 
-    // Buscar dono para identificação no Asaas
-    const { data: owner } = await supabase
-      .from("whitelabel_tenant_users")
-      .select("user_id, name, email, phone, cpf_cnpj")
-      .eq("tenant_id", tenant.id)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
+    // Coletar dados do owner — primeiro do payload, depois do auth.users
+    let ownerName = body.customer?.name || tenant.name;
+    let ownerEmail = body.customer?.email || "";
+    let ownerPhone = (body.customer?.phone || "").replace(/\D/g, "");
+    let ownerDoc = (body.customer?.cpf_cnpj || "").replace(/\D/g, "");
+
+    if (tenant.owner_user_id && (!ownerEmail || !ownerDoc)) {
+      const { data: u } = await supabase.auth.admin.getUserById(tenant.owner_user_id);
+      const meta: any = u?.user?.user_metadata || {};
+      if (!ownerEmail) ownerEmail = u?.user?.email || "";
+      if (!ownerName || ownerName === tenant.name) ownerName = meta.name || meta.full_name || ownerName;
+      if (!ownerPhone) ownerPhone = String(meta.phone || "").replace(/\D/g, "");
+      if (!ownerDoc) ownerDoc = String(meta.cpf_cnpj || meta.cpf || meta.cnpj || "").replace(/\D/g, "");
+    }
 
     let customerId = tenant.asaas_customer_id;
 
-    // Garantir customer no Asaas
+    // Garantir customer no Asaas — se já existe, segue. Se não, exige CPF/CNPJ.
     if (!customerId) {
+      if (!ownerDoc) {
+        return new Response(JSON.stringify({
+          error: "missing_customer_data",
+          message: "Para gerar a cobrança precisamos do CPF/CNPJ do responsável pelo tenant.",
+          required_fields: ["cpf_cnpj", "name", "email", "phone"],
+        }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       const custBody: any = {
-        name: owner?.name || tenant.name,
-        email: owner?.email,
-        mobilePhone: (owner?.phone || "").replace(/\D/g, ""),
-        cpfCnpj: (owner?.cpf_cnpj || "").replace(/\D/g, ""),
+        name: ownerName,
+        email: ownerEmail,
+        mobilePhone: ownerPhone,
+        cpfCnpj: ownerDoc,
         externalReference: `tenant:${tenant.id}`,
       };
       const custRes = await fetch(`${ASAAS_BASE}/customers`, {
@@ -78,14 +96,28 @@ Deno.serve(async (req) => {
       if (!custRes.ok) throw new Error("Erro Asaas customer: " + JSON.stringify(custData));
       customerId = custData.id;
       await supabase.from("whitelabel_tenants").update({ asaas_customer_id: customerId }).eq("id", tenant.id);
+    } else if (ownerDoc) {
+      // Atualiza customer existente com doc/dados se fornecidos (idempotente)
+      try {
+        await fetch(`${ASAAS_BASE}/customers/${customerId}`, {
+          method: "POST",
+          headers: { "access_token": asaasKey, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: ownerName,
+            email: ownerEmail || undefined,
+            mobilePhone: ownerPhone || undefined,
+            cpfCnpj: ownerDoc,
+          }),
+        });
+      } catch (_e) { /* ignore */ }
     }
 
-    // Cria cobrança da primeira mensalidade do novo plano (PIX + Boleto)
+    // Cria cobrança da primeira mensalidade do novo plano
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 3);
     const paymentBody = {
       customer: customerId,
-      billingType: "UNDEFINED", // permite escolher pix/boleto/cartão
+      billingType: "UNDEFINED",
       value: Number(plan.price_monthly),
       dueDate: dueDate.toISOString().slice(0, 10),
       description: `Upgrade WL ${tenant.name} → Plano ${plan.name}`,
@@ -97,9 +129,19 @@ Deno.serve(async (req) => {
       body: JSON.stringify(paymentBody),
     });
     const payData = await payRes.json();
-    if (!payRes.ok) throw new Error("Erro Asaas cobrança: " + JSON.stringify(payData));
+    if (!payRes.ok) {
+      // Se o erro for de doc faltando no customer existente, sinaliza para coletar
+      const desc = payData?.errors?.[0]?.description || "";
+      if (/CPF|CNPJ/i.test(desc)) {
+        return new Response(JSON.stringify({
+          error: "missing_customer_data",
+          message: "O cliente no Asaas precisa de CPF/CNPJ. Informe abaixo para continuar.",
+          required_fields: ["cpf_cnpj", "name", "email", "phone"],
+        }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      throw new Error("Erro Asaas cobrança: " + JSON.stringify(payData));
+    }
 
-    // Registra solicitação no histórico (status pending)
     await supabase.from("whitelabel_tenant_plan_history").insert({
       tenant_id: tenant.id,
       previous_plan_slug: tenant.plan_slug,
@@ -108,7 +150,7 @@ Deno.serve(async (req) => {
       new_max_projects: plan.max_projects,
       previous_max_users: null,
       new_max_users: plan.max_users,
-      changed_by_name: owner?.name || "Self-service WL",
+      changed_by_name: ownerName || "Self-service WL",
       reason: `Upgrade self-service. Cobrança Asaas: ${payData.id}`,
     });
 
