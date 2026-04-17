@@ -15,6 +15,9 @@ export interface TenantData {
   status: string;
   max_active_projects: number;
   enabled_modules: Record<string, boolean>;
+  payment_status?: string;
+  first_payment_link?: string | null;
+  first_payment_due_at?: string | null;
 }
 
 interface TenantContextType {
@@ -48,30 +51,29 @@ async function resolveTenant(): Promise<TenantData | null> {
   const unvDomains = ["localhost", "lovable.app", "unvholdings.com.br", "www.unvholdings.com.br"];
   const isUnvDomain = unvDomains.some(d => hostname === d || hostname.endsWith(`.${d}`));
 
-  if (!isUnvDomain) {
-    // Try custom domain first
-    const { data: byDomain } = await supabase
-      .from("whitelabel_tenants")
-      .select("*")
-      .eq("custom_domain", hostname)
-      .in("status", ["active", "trial"])
-      .maybeSingle();
-
-    if (byDomain) return mapTenant(byDomain);
-
-    // Try slug from subdomain (e.g., tenant-slug.nexus.com.br)
-    const slugMatch = hostname.match(/^([a-z0-9-]+)\./);
-    if (slugMatch) {
-      const { data: bySlug } = await supabase
+    const ALLOWED = ["active", "trial", "pending_payment"];
+    if (!isUnvDomain) {
+      const { data: byDomain } = await supabase
         .from("whitelabel_tenants")
         .select("*")
-        .eq("slug", slugMatch[1])
-        .in("status", ["active", "trial"])
+        .eq("custom_domain", hostname)
+        .in("status", ALLOWED)
         .maybeSingle();
 
-      if (bySlug) return mapTenant(bySlug);
+      if (byDomain) return mapTenant(byDomain);
+
+      const slugMatch = hostname.match(/^([a-z0-9-]+)\./);
+      if (slugMatch) {
+        const { data: bySlug } = await supabase
+          .from("whitelabel_tenants")
+          .select("*")
+          .eq("slug", slugMatch[1])
+          .in("status", ALLOWED)
+          .maybeSingle();
+
+        if (bySlug) return mapTenant(bySlug);
+      }
     }
-  }
 
   // Fallback: resolve from the logged-in staff user (admin de tenant white-label
   // acessando pela URL principal). Master da plataforma tem tenant_id IS NULL → ignorado.
@@ -90,7 +92,7 @@ async function resolveTenant(): Promise<TenantData | null> {
           .from("whitelabel_tenants")
           .select("*")
           .eq("id", staff.tenant_id)
-          .in("status", ["active", "trial"])
+          .in("status", ["active", "trial", "pending_payment"])
           .maybeSingle();
         if (byStaff) return mapTenant(byStaff);
       }
@@ -116,6 +118,9 @@ function mapTenant(row: any): TenantData {
     status: row.status,
     max_active_projects: row.max_active_projects ?? 5,
     enabled_modules: (row.enabled_modules as Record<string, boolean>) || {},
+    payment_status: row.payment_status,
+    first_payment_link: row.first_payment_link,
+    first_payment_due_at: row.first_payment_due_at,
   };
 }
 

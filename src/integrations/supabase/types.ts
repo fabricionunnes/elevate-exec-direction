@@ -32319,11 +32319,15 @@ export type Database = {
       whitelabel_tenants: {
         Row: {
           asaas_customer_id: string | null
+          asaas_first_payment_id: string | null
           asaas_subscription_id: string | null
           created_at: string
           custom_domain: string | null
           enabled_modules: Json
           favicon_url: string | null
+          first_paid_at: string | null
+          first_payment_due_at: string | null
+          first_payment_link: string | null
           id: string
           is_dark_mode: boolean
           logo_url: string | null
@@ -32331,6 +32335,7 @@ export type Database = {
           max_users: number | null
           name: string
           owner_user_id: string | null
+          payment_status: string
           plan_slug: string | null
           platform_name: string
           slug: string
@@ -32343,11 +32348,15 @@ export type Database = {
         }
         Insert: {
           asaas_customer_id?: string | null
+          asaas_first_payment_id?: string | null
           asaas_subscription_id?: string | null
           created_at?: string
           custom_domain?: string | null
           enabled_modules?: Json
           favicon_url?: string | null
+          first_paid_at?: string | null
+          first_payment_due_at?: string | null
+          first_payment_link?: string | null
           id?: string
           is_dark_mode?: boolean
           logo_url?: string | null
@@ -32355,6 +32364,7 @@ export type Database = {
           max_users?: number | null
           name: string
           owner_user_id?: string | null
+          payment_status?: string
           plan_slug?: string | null
           platform_name?: string
           slug: string
@@ -32367,11 +32377,15 @@ export type Database = {
         }
         Update: {
           asaas_customer_id?: string | null
+          asaas_first_payment_id?: string | null
           asaas_subscription_id?: string | null
           created_at?: string
           custom_domain?: string | null
           enabled_modules?: Json
           favicon_url?: string | null
+          first_paid_at?: string | null
+          first_payment_due_at?: string | null
+          first_payment_link?: string | null
           id?: string
           is_dark_mode?: boolean
           logo_url?: string | null
@@ -32379,6 +32393,7 @@ export type Database = {
           max_users?: number | null
           name?: string
           owner_user_id?: string | null
+          payment_status?: string
           plan_slug?: string | null
           platform_name?: string
           slug?: string
