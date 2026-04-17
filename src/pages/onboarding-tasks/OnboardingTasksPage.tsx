@@ -1722,9 +1722,13 @@ const OnboardingTasksPage = () => {
   const canCreateCompany = isAdmin || isCS;
   const canAccessAnalytics = isAdmin || isCS || isConsultant;
   // Permission helper: master has all, others check staff_menu_permissions
-  const hasMenuPerm = (key: string) => isMaster || staffMenuPermissions.includes(key);
-  const canAccessCRM = hasCRMPermission;
-  const canAccessFinancial = isAdmin || hasFinancialPermission;
+  // Tenant white-label gate: se o módulo estiver desabilitado no tenant, ninguém vê (nem admin do tenant).
+  const hasMenuPerm = (key: string) => {
+    if (!isModuleEnabled(key)) return false;
+    return isMaster || staffMenuPermissions.includes(key);
+  };
+  const canAccessCRM = hasCRMPermission && isModuleEnabled("crm");
+  const canAccessFinancial = (isAdmin || hasFinancialPermission) && isModuleEnabled("financial");
   const canAccessResults = hasMenuPerm("results");
   const canAccessCircle = hasMenuPerm("circle");
   const canAccessCalendar = hasMenuPerm("calendar");
