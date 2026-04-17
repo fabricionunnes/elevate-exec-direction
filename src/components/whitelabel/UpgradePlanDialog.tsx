@@ -77,12 +77,32 @@ export function UpgradePlanDialog({
       const payload: any = { tenant_id: tenantId, target_plan_slug: plan.slug };
       if (customerOverride) payload.customer = customerOverride;
       const { data, error } = await supabase.functions.invoke("whitelabel-upgrade-checkout", { body: payload });
-      if (data?.error === "missing_customer_data") {
+
+      // Tenta ler corpo do erro mesmo quando supabase-js marca como erro (status != 2xx)
+      let payloadOut: any = data;
+      if (error && (error as any).context?.body) {
+        try {
+          const txt = await (error as any).context.text();
+          payloadOut = JSON.parse(txt);
+        } catch { /* noop */ }
+      }
+
+      if (payloadOut?.error === "missing_customer_data") {
         setNeedsCustomerData(plan);
-        toast.message(data.message || "Informe seus dados para gerar a cobrança.");
+        toast.message(payloadOut.message || "Informe seus dados para gerar a cobrança.");
         return;
       }
-      if (error) throw error;
+      if (error && !payloadOut?.invoice_url) {
+        throw new Error(payloadOut?.message || payloadOut?.error || error.message);
+      }
+      const data2 = payloadOut;
+      if (data2?.invoice_url) {
+        window.open(data2.invoice_url, "_blank");
+        toast.success("Link de pagamento gerado! Conclua o pagamento para ativar o novo plano.");
+        onOpenChange(false);
+        return;
+      }
+      throw new Error("Link de pagamento não retornado");
       if (data?.invoice_url) {
         window.open(data.invoice_url, "_blank");
         toast.success("Link de pagamento gerado! Conclua o pagamento para ativar o novo plano.");
