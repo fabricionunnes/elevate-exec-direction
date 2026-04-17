@@ -17,6 +17,12 @@ export const CRMOfficePage = () => {
 
   const checkConnection = async () => {
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.access_token) {
+        console.warn("No active session — skipping Google Calendar check");
+        setIsConnected(false);
+        return;
+      }
       const { data, error } = await supabase.functions.invoke("google-calendar?action=check-connection");
       if (error) throw error;
       setIsConnected(data?.connected ?? false);
