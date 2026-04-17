@@ -22,19 +22,34 @@ serve(async (req) => {
       return json({ error: "Não autorizado. Envie Authorization: Bearer <token> ou x-api-key: <chave>" }, 401);
     }
 
+    let callerTenantId: string | null = null; // null = master UNV
+
     if (authHeader && !apiKey) {
       const token = authHeader.replace("Bearer ", "");
       const { data: { user }, error } = await supabase.auth.getUser(token);
       if (error || !user) return json({ error: "Token inválido" }, 401);
-      const { data: staff } = await supabase.from("onboarding_staff").select("id, role").eq("user_id", user.id).eq("is_active", true).maybeSingle();
+      const { data: staff } = await supabase.from("onboarding_staff").select("id, role, tenant_id").eq("user_id", user.id).eq("is_active", true).maybeSingle();
       if (!staff) return json({ error: "Acesso restrito a membros da equipe" }, 403);
+      callerTenantId = (staff as any).tenant_id ?? null;
     }
 
     if (apiKey && !authHeader) {
-      const { data: keyRecord } = await supabase.from("api_keys").select("id, is_active").eq("key", apiKey).eq("is_active", true).maybeSingle();
+      const { data: keyRecord } = await supabase.from("api_keys").select("id, is_active, tenant_id").eq("key", apiKey).eq("is_active", true).maybeSingle();
       if (!keyRecord) return json({ error: "API Key inválida" }, 401);
       // Update last_used_at
       await supabase.from("api_keys").update({ last_used_at: new Date().toISOString() } as any).eq("id", keyRecord.id);
+      callerTenantId = (keyRecord as any).tenant_id ?? null;
+    }
+
+    // Isolamento por tenant: a Financial API ainda não filtra dados por tenant_id.
+    // Por segurança, apenas o tenant master UNV (tenant_id = NULL) pode usar esta API.
+    // Tenants White-Label devem usar a UI; o acesso programático será liberado quando o filtro
+    // por tenant for aplicado em cada endpoint.
+    if (callerTenantId !== null) {
+      return json({
+        error: "Acesso à API indisponível para este tenant. Esta API ainda não está liberada para tenants White-Label.",
+        code: "TENANT_API_DISABLED",
+      }, 403);
     }
 
     const url = new URL(req.url);

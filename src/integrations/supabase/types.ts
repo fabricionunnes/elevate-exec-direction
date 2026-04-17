@@ -892,6 +892,7 @@ export type Database = {
           key: string
           last_used_at: string | null
           name: string
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -902,6 +903,7 @@ export type Database = {
           key?: string
           last_used_at?: string | null
           name: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -912,9 +914,18 @@ export type Database = {
           key?: string
           last_used_at?: string | null
           name?: string
+          tenant_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       appointment_clients: {
         Row: {
