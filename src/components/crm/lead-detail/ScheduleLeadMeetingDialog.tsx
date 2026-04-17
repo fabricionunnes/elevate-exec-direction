@@ -169,6 +169,8 @@ export const ScheduleLeadMeetingDialog = ({
     try {
       const startDateTime = `${formData.date}T${formData.startTime}:00`;
       const endDateTime = `${formData.date}T${formData.endTime}:00`;
+      // ISO com offset Brasil (-03:00) para persistir corretamente em timestamptz
+      const startDateTimeISO = `${startDateTime}-03:00`;
 
       const attendees = formData.attendees
         .split(",")
