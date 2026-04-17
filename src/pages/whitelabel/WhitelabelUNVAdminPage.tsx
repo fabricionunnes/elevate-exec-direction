@@ -26,6 +26,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { TenantModulesManager } from "@/components/whitelabel/TenantModulesManager";
+import { TenantAllowedMenusManager, AllowedMenusConfig } from "@/components/whitelabel/TenantAllowedMenusManager";
 import { PlansManagement } from "@/components/whitelabel/PlansManagement";
 import { ChangeTenantPlanDialog } from "@/components/whitelabel/ChangeTenantPlanDialog";
 import { TenantPlanHistoryDialog } from "@/components/whitelabel/TenantPlanHistoryDialog";
@@ -45,6 +46,7 @@ interface TenantRow {
   created_at: string;
   updated_at: string;
   enabled_modules: Record<string, boolean> | null;
+  allowed_menus: AllowedMenusConfig | null;
 }
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }> = {
@@ -60,6 +62,7 @@ export default function WhitelabelUNVAdminPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTenant, setEditTenant] = useState<TenantRow | null>(null);
   const [modulesTenant, setModulesTenant] = useState<TenantRow | null>(null);
+  const [menusTenant, setMenusTenant] = useState<TenantRow | null>(null);
   const [deleteTenant, setDeleteTenant] = useState<TenantRow | null>(null);
   const [planTenant, setPlanTenant] = useState<TenantRow | null>(null);
   const [historyTenant, setHistoryTenant] = useState<TenantRow | null>(null);
