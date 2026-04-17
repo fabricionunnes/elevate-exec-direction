@@ -44,6 +44,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ReferralsPanel } from "@/components/onboarding-tasks/ReferralsPanel";
+import { useTenant } from "@/contexts/TenantContext";
 import { MyTasksPanel } from "@/components/onboarding-tasks/MyTasksPanel";
 import { MeetingsPanel } from "@/components/onboarding-tasks/DashboardMeetingsTab";
 import { UnassignedTasksDialog } from "@/components/onboarding-tasks/UnassignedTasksDialog";
@@ -104,6 +105,7 @@ interface Company {
 
 const OnboardingTasksPage = () => {
   const navigate = useNavigate();
+  const { tenant, isWhiteLabel } = useTenant();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -2339,6 +2341,13 @@ const OnboardingTasksPage = () => {
                         White-Label
                       </DropdownMenuItem>
                     </>
+                  )}
+                  {/* Painel White-Label para admin de tenant (branding, integrações, usuários) */}
+                  {isWhiteLabel && isAdmin && currentUserEmail !== "fabricio@universidadevendas.com.br" && (
+                    <DropdownMenuItem onClick={() => navigate("/whitelabel-admin")}>
+                      <Building2 className="h-4 w-4 mr-2" />
+                      Painel White-Label
+                    </DropdownMenuItem>
                   )}
                   {canAccessFinancial && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro/recorrencias")}>
