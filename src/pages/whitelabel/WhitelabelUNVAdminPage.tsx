@@ -422,6 +422,29 @@ export default function WhitelabelUNVAdminPage() {
           </DialogContent>
         </Dialog>
 
+        {/* Allowed Menus Dialog (granular whitelist por menu) */}
+        <Dialog open={!!menusTenant} onOpenChange={open => !open && setMenusTenant(null)}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-primary" />
+                Menus liberados ao WL: {menusTenant?.name}
+              </DialogTitle>
+            </DialogHeader>
+            {menusTenant && (
+              <TenantAllowedMenusManager
+                tenantId={menusTenant.id}
+                tenantName={menusTenant.name}
+                initialAllowed={menusTenant.allowed_menus}
+                onSaved={() => {
+                  setMenusTenant(null);
+                  queryClient.invalidateQueries({ queryKey: ["unv-whitelabel-tenants"] });
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
         {/* Reset Password Result */}
         <Dialog open={!!resetResult} onOpenChange={open => !open && setResetResult(null)}>
           <DialogContent className="max-w-md">
