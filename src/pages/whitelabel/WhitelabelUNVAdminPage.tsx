@@ -145,7 +145,7 @@ export default function WhitelabelUNVAdminPage() {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as TenantRow[];
+      return (data || []) as unknown as TenantRow[];
     },
   });
 
