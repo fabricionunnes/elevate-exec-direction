@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { productDetails } from "@/data/productDetails";
+import { UpgradePlanDialog } from "@/components/whitelabel/UpgradePlanDialog";
 
 interface ServiceProduct {
   id: string;
@@ -48,6 +49,14 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
   const [loading, setLoading] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [serviceProducts, setServiceProducts] = useState<ServiceProduct[]>([]);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeInfo, setUpgradeInfo] = useState<{
+    tenantId: string;
+    tenantName: string;
+    planSlug: string | null;
+    maxProjects: number;
+    activeCount: number;
+  } | null>(null);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("");
   const [newCompanyName, setNewCompanyName] = useState("");
@@ -118,7 +127,7 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
         if (staff?.tenant_id) {
           const { data: tenantRow } = await supabase
             .from("whitelabel_tenants")
-            .select("max_active_projects, name")
+            .select("id, max_active_projects, name, plan_slug")
             .eq("id", staff.tenant_id)
             .maybeSingle();
 
@@ -129,10 +138,15 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
             .eq("status", "active");
 
           const max = tenantRow?.max_active_projects ?? 0;
-          if ((activeCount ?? 0) >= max) {
-            toast.error(
-              `Limite do plano atingido: ${activeCount}/${max} projetos ativos. Faça upgrade para adicionar mais.`
-            );
+          if (tenantRow && (activeCount ?? 0) >= max) {
+            setUpgradeInfo({
+              tenantId: tenantRow.id,
+              tenantName: tenantRow.name,
+              planSlug: tenantRow.plan_slug,
+              maxProjects: max,
+              activeCount: activeCount ?? 0,
+            });
+            setUpgradeOpen(true);
             setLoading(false);
             return;
           }
@@ -351,6 +365,18 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
           </div>
         </div>
       </DialogContent>
+
+      {upgradeInfo && (
+        <UpgradePlanDialog
+          open={upgradeOpen}
+          onOpenChange={setUpgradeOpen}
+          tenantId={upgradeInfo.tenantId}
+          tenantName={upgradeInfo.tenantName}
+          currentPlanSlug={upgradeInfo.planSlug}
+          currentMaxProjects={upgradeInfo.maxProjects}
+          activeProjectsCount={upgradeInfo.activeCount}
+        />
+      )}
     </Dialog>
   );
 });
