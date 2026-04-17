@@ -13,7 +13,8 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import {
   Building2, Plus, Edit, Trash2, Users, Eye, CheckCircle,
-  AlertTriangle, Pause, BarChart3, Globe, Search, Power, PowerOff
+  AlertTriangle, Pause, BarChart3, Globe, Search, Power, PowerOff,
+  KeyRound, Copy
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -49,6 +50,32 @@ export default function WhitelabelUNVAdminPage() {
   const [deleteTenant, setDeleteTenant] = useState<TenantRow | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [resettingId, setResettingId] = useState<string | null>(null);
+  const [resetResult, setResetResult] = useState<{
+    tenantName: string; email: string | null; password: string;
+  } | null>(null);
+
+  const handleResetPassword = async (t: TenantRow) => {
+    setResettingId(t.id);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "whitelabel-reset-admin-password",
+        { body: { tenant_id: t.id } },
+      );
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setResetResult({
+        tenantName: t.name,
+        email: data.admin.email,
+        password: data.admin.new_password,
+      });
+      toast.success("Senha resetada com sucesso");
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || "falha ao resetar senha"));
+    } finally {
+      setResettingId(null);
+    }
+  };
 
   const handleToggleStatus = async (t: TenantRow) => {
     const newStatus = t.status === "inactive" || t.status === "suspended" ? "active" : "inactive";
@@ -233,6 +260,16 @@ export default function WhitelabelUNVAdminPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          disabled={resettingId === tenant.id}
+                          onClick={() => handleResetPassword(tenant)}
+                          title="Resetar senha do admin"
+                        >
+                          <KeyRound className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
                           disabled={togglingId === tenant.id}
                           onClick={() => handleToggleStatus(tenant)}
                           title={tenant.status === "active" || tenant.status === "trial" ? "Inativar" : "Reativar"}
@@ -275,6 +312,50 @@ export default function WhitelabelUNVAdminPage() {
                   queryClient.invalidateQueries({ queryKey: ["unv-whitelabel-tenants"] });
                 }}
               />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Reset Password Result */}
+        <Dialog open={!!resetResult} onOpenChange={open => !open && setResetResult(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Nova senha gerada</DialogTitle>
+            </DialogHeader>
+            {resetResult && (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2">
+                  <p className="text-sm">
+                    <span className="text-muted-foreground">Tenant:</span>{" "}
+                    <span className="font-medium text-foreground">{resetResult.tenantName}</span>
+                  </p>
+                  <p className="text-sm">
+                    <span className="text-muted-foreground">Email:</span>{" "}
+                    <code className="text-foreground">{resetResult.email || "—"}</code>
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Nova senha:</span>
+                    <code className="text-foreground bg-muted px-2 py-1 rounded font-mono text-sm flex-1">
+                      {resetResult.password}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => {
+                        navigator.clipboard.writeText(resetResult.password);
+                        toast.success("Senha copiada");
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Anote ou copie agora — esta senha não será exibida novamente.
+                </p>
+                <Button onClick={() => setResetResult(null)} className="w-full">Fechar</Button>
+              </div>
             )}
           </DialogContent>
         </Dialog>
