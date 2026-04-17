@@ -14,12 +14,13 @@ import { toast } from "sonner";
 import {
   Building2, Plus, Edit, Trash2, Users, Eye, CheckCircle,
   AlertTriangle, Pause, BarChart3, Globe, Search, Power, PowerOff,
-  KeyRound, Copy
+  KeyRound, Copy, SlidersHorizontal,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TenantModulesManager } from "@/components/whitelabel/TenantModulesManager";
 
 interface TenantRow {
   id: string;
@@ -33,6 +34,7 @@ interface TenantRow {
   is_dark_mode: boolean;
   created_at: string;
   updated_at: string;
+  enabled_modules: Record<string, boolean> | null;
 }
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }> = {
@@ -47,6 +49,7 @@ export default function WhitelabelUNVAdminPage() {
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editTenant, setEditTenant] = useState<TenantRow | null>(null);
+  const [modulesTenant, setModulesTenant] = useState<TenantRow | null>(null);
   const [deleteTenant, setDeleteTenant] = useState<TenantRow | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -253,8 +256,18 @@ export default function WhitelabelUNVAdminPage() {
                           size="icon"
                           className="h-8 w-8"
                           onClick={() => setEditTenant(tenant)}
+                          title="Editar dados do tenant"
                         >
                           <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setModulesTenant(tenant)}
+                          title="Permissões de módulos"
+                        >
+                          <SlidersHorizontal className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -309,6 +322,29 @@ export default function WhitelabelUNVAdminPage() {
                 tenant={editTenant}
                 onSuccess={() => {
                   setEditTenant(null);
+                  queryClient.invalidateQueries({ queryKey: ["unv-whitelabel-tenants"] });
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Modules / Permissions Dialog */}
+        <Dialog open={!!modulesTenant} onOpenChange={open => !open && setModulesTenant(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <SlidersHorizontal className="h-5 w-5 text-primary" />
+                Permissões de Módulos: {modulesTenant?.name}
+              </DialogTitle>
+            </DialogHeader>
+            {modulesTenant && (
+              <TenantModulesManager
+                tenantId={modulesTenant.id}
+                tenantName={modulesTenant.name}
+                initialModules={modulesTenant.enabled_modules}
+                onSaved={() => {
+                  setModulesTenant(null);
                   queryClient.invalidateQueries({ queryKey: ["unv-whitelabel-tenants"] });
                 }}
               />
