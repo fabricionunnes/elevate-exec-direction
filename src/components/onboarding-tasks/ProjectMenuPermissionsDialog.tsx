@@ -10,8 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, LayoutGrid } from "lucide-react";
+import { Loader2, LayoutGrid, Lock } from "lucide-react";
 import { CLIENT_MENU_STRUCTURE } from "@/types/onboarding";
+import { useTenant } from "@/contexts/TenantContext";
+import { isMenuAllowedByTenant, MENU_TO_MODULE } from "@/components/whitelabel/menuToModuleMap";
 
 interface ProjectMenuPermissionsDialogProps {
   open: boolean;
