@@ -31747,6 +31747,7 @@ export type Database = {
           qr_code: string | null
           sector_id: string | null
           status: string | null
+          tenant_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -31763,6 +31764,7 @@ export type Database = {
           qr_code?: string | null
           sector_id?: string | null
           status?: string | null
+          tenant_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -31779,6 +31781,7 @@ export type Database = {
           qr_code?: string | null
           sector_id?: string | null
           status?: string | null
+          tenant_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -31801,6 +31804,13 @@ export type Database = {
             columns: ["sector_id"]
             isOneToOne: false
             referencedRelation: "crm_service_sectors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_instances_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
             referencedColumns: ["id"]
           },
         ]
