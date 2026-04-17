@@ -31,6 +31,8 @@ interface TenantRow {
   platform_name: string;
   status: string;
   max_active_projects: number;
+  max_users: number | null;
+  plan_slug: string | null;
   is_dark_mode: boolean;
   created_at: string;
   updated_at: string;
@@ -435,6 +437,9 @@ function TenantForm({
   const [platformName, setPlatformName] = useState(tenant?.platform_name || "");
   const [customDomain, setCustomDomain] = useState(tenant?.custom_domain || "");
   const [maxProjects, setMaxProjects] = useState(tenant?.max_active_projects || 5);
+  const [maxUsers, setMaxUsers] = useState<string>(
+    tenant?.max_users != null ? String(tenant.max_users) : ""
+  );
   const [status, setStatus] = useState(tenant?.status || "trial");
   const [logoUrl, setLogoUrl] = useState(tenant?.logo_url || "");
   const [saving, setSaving] = useState(false);
@@ -447,6 +452,7 @@ function TenantForm({
   const [adminName, setAdminName] = useState("");
   const [resultInfo, setResultInfo] = useState<{ url: string; email: string; password: string | null } | null>(null);
 
+  // Plans are needed both for new tenants (selector) and edit mode (placeholder do limite)
   const { data: plans } = useQuery({
     queryKey: ["whitelabel-plans"],
     queryFn: async () => {
@@ -458,8 +464,14 @@ function TenantForm({
       if (error) throw error;
       return data;
     },
-    enabled: !isEdit,
   });
+
+  const planUserLimit = (() => {
+    const slug = tenant?.plan_slug;
+    if (!slug) return null;
+    const p = plans?.find((x: any) => x.slug === slug);
+    return p?.max_users ?? null;
+  })();
 
   const handleSlugify = (val: string) => {
     setSlug(val.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, ""));
@@ -474,6 +486,12 @@ function TenantForm({
     setSaving(true);
     try {
       if (isEdit) {
+        const parsedMaxUsers = maxUsers.trim() === "" ? null : Number(maxUsers);
+        if (parsedMaxUsers !== null && (!Number.isFinite(parsedMaxUsers) || parsedMaxUsers < 1)) {
+          toast.error("Máx. usuários deve ser um número maior que 0 ou vazio");
+          setSaving(false);
+          return;
+        }
         const { error } = await supabase
           .from("whitelabel_tenants")
           .update({
@@ -482,6 +500,7 @@ function TenantForm({
             platform_name: platformName.trim() || name.trim(),
             custom_domain: customDomain.trim() || null,
             max_active_projects: maxProjects,
+            max_users: parsedMaxUsers,
             status,
             logo_url: logoUrl.trim() || null,
             updated_at: new Date().toISOString(),
@@ -673,15 +692,35 @@ function TenantForm({
       )}
 
       {isEdit && (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Máx. Projetos Ativos</Label>
-            <Input
-              type="number"
-              min={1}
-              value={maxProjects}
-              onChange={e => setMaxProjects(Number(e.target.value))}
-            />
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Máx. Projetos Ativos</Label>
+              <Input
+                type="number"
+                min={1}
+                value={maxProjects}
+                onChange={e => setMaxProjects(Number(e.target.value))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Máx. Usuários</Label>
+              <Input
+                type="number"
+                min={1}
+                value={maxUsers}
+                onChange={e => setMaxUsers(e.target.value)}
+                placeholder={
+                  planUserLimit != null
+                    ? `Plano: ${planUserLimit}`
+                    : "Ilimitado (plano)"
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Deixe em branco para usar o limite do plano
+                {tenant?.plan_slug ? ` (${tenant.plan_slug})` : ""}.
+              </p>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Status</Label>

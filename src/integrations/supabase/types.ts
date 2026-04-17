@@ -32253,6 +32253,7 @@ export type Database = {
           is_dark_mode: boolean
           logo_url: string | null
           max_active_projects: number
+          max_users: number | null
           name: string
           owner_user_id: string | null
           plan_slug: string | null
@@ -32276,6 +32277,7 @@ export type Database = {
           is_dark_mode?: boolean
           logo_url?: string | null
           max_active_projects?: number
+          max_users?: number | null
           name: string
           owner_user_id?: string | null
           plan_slug?: string | null
@@ -32299,6 +32301,7 @@ export type Database = {
           is_dark_mode?: boolean
           logo_url?: string | null
           max_active_projects?: number
+          max_users?: number | null
           name?: string
           owner_user_id?: string | null
           plan_slug?: string | null
