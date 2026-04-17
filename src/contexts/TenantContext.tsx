@@ -14,6 +14,7 @@ export interface TenantData {
   is_dark_mode: boolean;
   status: string;
   max_active_projects: number;
+  enabled_modules: Record<string, boolean>;
 }
 
 interface TenantContextType {
@@ -24,6 +25,7 @@ interface TenantContextType {
   logoUrl: string | null;
   faviconUrl: string | null;
   refetchTenant: () => Promise<void>;
+  isModuleEnabled: (moduleKey: string) => boolean;
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
