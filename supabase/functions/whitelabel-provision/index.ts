@@ -198,6 +198,24 @@ Deno.serve(async (req) => {
       .single();
     if (tenantErr) throw tenantErr;
 
+    // 5.1) Criar registro de Staff Master vinculado ao tenant (acesso completo, isolado por tenant_id)
+    try {
+      const { error: staffErr } = await supabase.from("onboarding_staff").upsert(
+        {
+          user_id: adminUserId,
+          name: body.admin_name.trim(),
+          email: body.admin_email.toLowerCase().trim(),
+          role: "master",
+          tenant_id: tenant.id,
+          is_active: true,
+        },
+        { onConflict: "email" },
+      );
+      if (staffErr) console.warn("[whitelabel-provision] staff upsert warning:", staffErr.message);
+    } catch (e) {
+      console.warn("[whitelabel-provision] staff seed skipped:", (e as Error).message);
+    }
+
     // 6) Criar registro de assinatura interna (uso/billing)
     await supabase.from("whitelabel_subscriptions").upsert(
       {
