@@ -223,9 +223,14 @@ const StaffInvoicePage = () => {
 
   const loadAdminInvoices = async () => {
     if (!hasManagePermission) return;
+    // Tenant isolation: limit to staff visible to current admin
+    const tenantStaffIds = allStaff.map((s) => s.id);
+    if (tenantStaffIds.length === 0) { setAllInvoices([]); return; }
+
     let query = supabase
       .from("staff_invoices")
       .select("*, onboarding_staff!staff_invoices_staff_id_fkey(name, email)")
+      .in("staff_id", tenantStaffIds)
       .order("submitted_at", { ascending: false });
     
     if (adminFilterMonth !== "all") query = query.eq("month", adminFilterMonth);
@@ -240,9 +245,14 @@ const StaffInvoicePage = () => {
 
   const loadAllSalaries = async () => {
     if (!hasManagePermission) return;
+    // Tenant isolation: limit to staff visible to current admin
+    const tenantStaffIds = allStaff.map((s) => s.id);
+    if (tenantStaffIds.length === 0) { setAllSalaries([]); return; }
+
     const { data } = await supabase
       .from("staff_salaries")
       .select("*")
+      .in("staff_id", tenantStaffIds)
       .order("year", { ascending: false })
       .order("month", { ascending: false });
     setAllSalaries(data || []);
