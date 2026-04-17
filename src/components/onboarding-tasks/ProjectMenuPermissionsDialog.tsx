@@ -10,8 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, LayoutGrid } from "lucide-react";
+import { Loader2, LayoutGrid, Lock } from "lucide-react";
 import { CLIENT_MENU_STRUCTURE } from "@/types/onboarding";
+import { useTenant } from "@/contexts/TenantContext";
+import { isMenuAllowedByTenant, MENU_TO_MODULE } from "@/components/whitelabel/menuToModuleMap";
 
 interface ProjectMenuPermissionsDialogProps {
   open: boolean;
@@ -28,6 +30,14 @@ export const ProjectMenuPermissionsDialog = ({
   const [saving, setSaving] = useState(false);
   const [enabledMenus, setEnabledMenus] = useState<Set<string>>(new Set());
   const [hasExistingConfig, setHasExistingConfig] = useState(false);
+  const { tenant } = useTenant();
+
+  // Filtra menus pelos módulos habilitados no tenant white-label.
+  // Master UNV (sem tenant) vê todos os menus.
+  const visibleMenus = CLIENT_MENU_STRUCTURE.filter((m) =>
+    isMenuAllowedByTenant(m.key, tenant?.enabled_modules),
+  );
+  const blockedCount = CLIENT_MENU_STRUCTURE.length - visibleMenus.length;
 
   useEffect(() => {
     if (open && projectId) {
@@ -77,7 +87,7 @@ export const ProjectMenuPermissionsDialog = ({
   };
 
   const handleSelectAll = () => {
-    setEnabledMenus(new Set(CLIENT_MENU_STRUCTURE.map((m) => m.key)));
+    setEnabledMenus(new Set(visibleMenus.map((m) => m.key)));
   };
 
   const handleClearAll = () => {
@@ -93,8 +103,8 @@ export const ProjectMenuPermissionsDialog = ({
         .delete()
         .eq("project_id", projectId);
 
-      // Insert all menu keys with their enabled state
-      const rows = CLIENT_MENU_STRUCTURE.map((menu) => ({
+      // Insert apenas menus visíveis ao tenant; bloqueados nunca são liberados.
+      const rows = visibleMenus.map((menu) => ({
         project_id: projectId,
         menu_key: menu.key,
         is_enabled: enabledMenus.has(menu.key),
@@ -116,8 +126,8 @@ export const ProjectMenuPermissionsDialog = ({
     }
   };
 
-  // Group menus
-  const groupedMenus = CLIENT_MENU_STRUCTURE.reduce((acc, menu) => {
+  // Group menus (somente os visíveis ao tenant)
+  const groupedMenus = visibleMenus.reduce((acc, menu) => {
     const group = menu.group || "Outros";
     if (!acc[group]) acc[group] = [];
     acc[group].push(menu);
@@ -151,7 +161,7 @@ export const ProjectMenuPermissionsDialog = ({
             {/* Quick actions */}
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">
-                {enabledMenus.size} de {CLIENT_MENU_STRUCTURE.length} menus habilitados
+                {enabledMenus.size} de {visibleMenus.length} menus habilitados
               </span>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={handleSelectAll}>
@@ -162,6 +172,16 @@ export const ProjectMenuPermissionsDialog = ({
                 </Button>
               </div>
             </div>
+
+            {blockedCount > 0 && (
+              <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground flex items-start gap-2">
+                <Lock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <div>
+                  <strong className="text-foreground">{blockedCount} menus indisponíveis</strong> — os módulos correspondentes
+                  não estão contratados no seu plano white-label. Fale com o suporte UNV para liberar.
+                </div>
+              </div>
+            )}
 
             {/* Menus by group */}
             {Object.entries(groupedMenus).map(([groupName, menus]) => (

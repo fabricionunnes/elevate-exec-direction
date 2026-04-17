@@ -2,13 +2,14 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Building2, Palette, Users, CreditCard, Globe, Plug, ArrowLeft } from "lucide-react";
+import { Building2, Palette, Users, CreditCard, Globe, Plug, ArrowLeft, Boxes } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
 import { TenantBrandingSettings } from "@/components/whitelabel/TenantBrandingSettings";
 import { TenantUsersManagement } from "@/components/whitelabel/TenantUsersManagement";
 import { TenantUsageDashboard } from "@/components/whitelabel/TenantUsageDashboard";
 import { TenantDomainSettings } from "@/components/whitelabel/TenantDomainSettings";
 import { TenantIntegrationsSettings } from "@/components/whitelabel/TenantIntegrationsSettings";
+import { TenantModulesView } from "@/components/whitelabel/TenantModulesView";
 
 export default function WhitelabelAdminPage() {
   const { tenant, isWhiteLabel } = useTenant();
@@ -38,10 +39,14 @@ export default function WhitelabelAdminPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto">
             <TabsTrigger value="usage" className="flex items-center gap-1.5 text-xs sm:text-sm">
               <CreditCard className="h-4 w-4" />
               <span className="hidden sm:inline">Uso &</span> Billing
+            </TabsTrigger>
+            <TabsTrigger value="modules" className="flex items-center gap-1.5 text-xs sm:text-sm">
+              <Boxes className="h-4 w-4" />
+              Módulos
             </TabsTrigger>
             <TabsTrigger value="branding" className="flex items-center gap-1.5 text-xs sm:text-sm">
               <Palette className="h-4 w-4" />
@@ -63,6 +68,9 @@ export default function WhitelabelAdminPage() {
 
           <TabsContent value="usage">
             <TenantUsageDashboard />
+          </TabsContent>
+          <TabsContent value="modules">
+            <TenantModulesView />
           </TabsContent>
           <TabsContent value="branding">
             <TenantBrandingSettings />
