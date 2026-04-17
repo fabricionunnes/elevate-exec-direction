@@ -365,6 +365,18 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
           </div>
         </div>
       </DialogContent>
+
+      {upgradeInfo && (
+        <UpgradePlanDialog
+          open={upgradeOpen}
+          onOpenChange={setUpgradeOpen}
+          tenantId={upgradeInfo.tenantId}
+          tenantName={upgradeInfo.tenantName}
+          currentPlanSlug={upgradeInfo.planSlug}
+          currentMaxProjects={upgradeInfo.maxProjects}
+          activeProjectsCount={upgradeInfo.activeCount}
+        />
+      )}
     </Dialog>
   );
 });
