@@ -32329,6 +32329,7 @@ export type Database = {
       }
       whitelabel_tenants: {
         Row: {
+          allowed_menus: Json | null
           asaas_customer_id: string | null
           asaas_first_payment_id: string | null
           asaas_subscription_id: string | null
@@ -32358,6 +32359,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allowed_menus?: Json | null
           asaas_customer_id?: string | null
           asaas_first_payment_id?: string | null
           asaas_subscription_id?: string | null
@@ -32387,6 +32389,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allowed_menus?: Json | null
           asaas_customer_id?: string | null
           asaas_first_payment_id?: string | null
           asaas_subscription_id?: string | null
