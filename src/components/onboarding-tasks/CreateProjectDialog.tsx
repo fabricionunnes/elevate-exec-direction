@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { productDetails } from "@/data/productDetails";
+import { UpgradePlanDialog } from "@/components/whitelabel/UpgradePlanDialog";
 
 interface ServiceProduct {
   id: string;
@@ -48,6 +49,14 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
   const [loading, setLoading] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [serviceProducts, setServiceProducts] = useState<ServiceProduct[]>([]);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeInfo, setUpgradeInfo] = useState<{
+    tenantId: string;
+    tenantName: string;
+    planSlug: string | null;
+    maxProjects: number;
+    activeCount: number;
+  } | null>(null);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("");
   const [newCompanyName, setNewCompanyName] = useState("");
