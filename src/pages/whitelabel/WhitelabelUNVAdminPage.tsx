@@ -13,8 +13,12 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import {
   Building2, Plus, Edit, Trash2, Users, Eye, CheckCircle,
-  AlertTriangle, Pause, BarChart3, Globe, Search
+  AlertTriangle, Pause, BarChart3, Globe, Search, Power, PowerOff
 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface TenantRow {
   id: string;
@@ -42,6 +46,46 @@ export default function WhitelabelUNVAdminPage() {
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editTenant, setEditTenant] = useState<TenantRow | null>(null);
+  const [deleteTenant, setDeleteTenant] = useState<TenantRow | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleToggleStatus = async (t: TenantRow) => {
+    const newStatus = t.status === "inactive" || t.status === "suspended" ? "active" : "inactive";
+    setTogglingId(t.id);
+    try {
+      const { error } = await supabase
+        .from("whitelabel_tenants")
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq("id", t.id);
+      if (error) throw error;
+      toast.success(newStatus === "active" ? "Tenant reativado" : "Tenant inativado");
+      queryClient.invalidateQueries({ queryKey: ["unv-whitelabel-tenants"] });
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || "falha ao atualizar"));
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTenant) return;
+    setDeletingId(deleteTenant.id);
+    try {
+      const { error } = await supabase
+        .from("whitelabel_tenants")
+        .delete()
+        .eq("id", deleteTenant.id);
+      if (error) throw error;
+      toast.success(`Tenant "${deleteTenant.name}" excluído`);
+      setDeleteTenant(null);
+      queryClient.invalidateQueries({ queryKey: ["unv-whitelabel-tenants"] });
+    } catch (err: any) {
+      toast.error("Erro ao excluir: " + (err.message || "verifique dependências"));
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const { data: tenants, isLoading } = useQuery({
     queryKey: ["unv-whitelabel-tenants"],
@@ -185,6 +229,29 @@ export default function WhitelabelUNVAdminPage() {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          disabled={togglingId === tenant.id}
+                          onClick={() => handleToggleStatus(tenant)}
+                          title={tenant.status === "active" || tenant.status === "trial" ? "Inativar" : "Reativar"}
+                        >
+                          {tenant.status === "active" || tenant.status === "trial" ? (
+                            <PowerOff className="h-4 w-4" />
+                          ) : (
+                            <Power className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTenant(tenant)}
+                          title="Excluir"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   );
@@ -211,6 +278,28 @@ export default function WhitelabelUNVAdminPage() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation */}
+        <AlertDialog open={!!deleteTenant} onOpenChange={open => !open && setDeleteTenant(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir tenant "{deleteTenant?.name}"?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação é irreversível. O tenant e seus dados vinculados (assinatura, pipelines criados pelo provisionamento, etc.) serão removidos permanentemente. O usuário admin no Auth NÃO será excluído automaticamente.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                disabled={deletingId === deleteTenant?.id}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deletingId === deleteTenant?.id ? "Excluindo..." : "Excluir definitivamente"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
