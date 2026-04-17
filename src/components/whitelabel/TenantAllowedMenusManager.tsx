@@ -53,17 +53,26 @@ export function TenantAllowedMenusManager({
     setSaving(true);
     try {
       const payload = { staff: [...staff], client: [...client] };
-      const { error } = await supabase
+      console.log("[TenantAllowedMenusManager] Salvando menus:", { tenantId, payload });
+      const { data, error } = await supabase
         .from("whitelabel_tenants")
         .update({
           allowed_menus: payload as any,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", tenantId);
+        .eq("id", tenantId)
+        .select("id, allowed_menus");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error(
+          "Você não tem permissão para alterar este tenant (RLS). Faça login como master/admin UNV.",
+        );
+      }
+      console.log("[TenantAllowedMenusManager] Salvo:", data);
       toast.success(`Menus liberados atualizados para "${tenantName}"`);
       onSaved?.();
     } catch (err: any) {
+      console.error("[TenantAllowedMenusManager] Erro:", err);
       toast.error("Erro ao salvar: " + (err.message || ""));
     } finally {
       setSaving(false);
