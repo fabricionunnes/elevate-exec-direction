@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,8 +58,11 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 };
 
 export default function WhitelabelUNVAdminPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [editTenant, setEditTenant] = useState<TenantRow | null>(null);
   const [modulesTenant, setModulesTenant] = useState<TenantRow | null>(null);
@@ -73,6 +77,40 @@ export default function WhitelabelUNVAdminPage() {
   const [resetResult, setResetResult] = useState<{
     tenantName: string; email: string | null; password: string;
   } | null>(null);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          toast.error("Faça login para acessar a gestão white-label.");
+          navigate("/onboarding-tasks/login");
+          return;
+        }
+
+        const { data: staffData } = await supabase
+          .from("onboarding_staff")
+          .select("role, tenant_id, is_active")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .single();
+
+        const isPlatformAdmin = !!staffData && (staffData.role === "admin" || staffData.role === "master") && !staffData.tenant_id;
+
+        if (!isPlatformAdmin) {
+          toast.error("Acesso negado. Apenas admin/master da UNV podem alterar tenants.");
+          navigate("/onboarding-tasks");
+          return;
+        }
+
+        setIsAuthorized(true);
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
 
   const handleResetPassword = async (t: TenantRow) => {
     setResettingId(t.id);
@@ -139,6 +177,7 @@ export default function WhitelabelUNVAdminPage() {
 
   const { data: tenants, isLoading } = useQuery({
     queryKey: ["unv-whitelabel-tenants"],
+    enabled: isAuthorized,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("whitelabel_tenants")
@@ -154,6 +193,16 @@ export default function WhitelabelUNVAdminPage() {
     t.slug.toLowerCase().includes(search.toLowerCase()) ||
     (t.custom_domain || "").toLowerCase().includes(search.toLowerCase())
   );
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Validando acesso...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) return null;
 
   return (
     <div className="min-h-screen bg-background">
