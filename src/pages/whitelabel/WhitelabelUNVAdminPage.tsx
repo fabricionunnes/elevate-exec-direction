@@ -614,12 +614,40 @@ function TenantForm({
           />
         </div>
         <div className="space-y-2">
-          <Label>URL do Logo</Label>
-          <Input
-            value={logoUrl}
-            onChange={e => setLogoUrl(e.target.value)}
-            placeholder="https://..."
-          />
+          <Label>Logomarca</Label>
+          <div className="flex items-center gap-3">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt="Logo"
+                className="h-12 w-12 rounded-lg object-contain bg-muted p-1 border border-border"
+              />
+            ) : (
+              <div className="h-12 w-12 rounded-lg bg-muted/40 border border-dashed border-border flex items-center justify-center text-[10px] text-muted-foreground">
+                Sem logo
+              </div>
+            )}
+            <div className="flex-1 space-y-1">
+              <Input
+                type="file"
+                accept="image/*"
+                disabled={uploadingLogo}
+                onChange={handleLogoFile}
+                className="text-xs"
+              />
+              <p className="text-xs text-muted-foreground">
+                {uploadingLogo ? "Enviando..." : "PNG, JPG ou SVG. Fundo transparente recomendado."}
+              </p>
+            </div>
+          </div>
+          {logoUrl && (
+            <Input
+              value={logoUrl}
+              onChange={e => setLogoUrl(e.target.value)}
+              placeholder="Ou cole uma URL"
+              className="text-xs"
+            />
+          )}
         </div>
       </div>
 
