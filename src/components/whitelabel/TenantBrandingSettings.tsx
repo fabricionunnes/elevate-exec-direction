@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
@@ -21,6 +21,16 @@ export function TenantBrandingSettings() {
   const [faviconUrl, setFaviconUrl] = useState(tenant?.favicon_url || "");
   const [isDarkMode, setIsDarkMode] = useState(tenant?.is_dark_mode || false);
   const [saving, setSaving] = useState(false);
+
+  // Sync local state when tenant loads/changes (initial state runs before tenant is fetched)
+  useEffect(() => {
+    if (tenant) {
+      setPlatformName(tenant.platform_name || "");
+      setLogoUrl(tenant.logo_url || "");
+      setFaviconUrl(tenant.favicon_url || "");
+      setIsDarkMode(tenant.is_dark_mode || false);
+    }
+  }, [tenant?.id, tenant?.platform_name, tenant?.logo_url, tenant?.favicon_url, tenant?.is_dark_mode]);
 
   const handleSave = async () => {
     if (!tenant) {
