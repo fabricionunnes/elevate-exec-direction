@@ -181,8 +181,20 @@ export default function WhitelabelUNVAdminPage() {
           </Dialog>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-4">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "tenants" | "plans")} className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="tenants" className="gap-1.5">
+              <Building2 className="h-4 w-4" />
+              Tenants
+            </TabsTrigger>
+            <TabsTrigger value="plans" className="gap-1.5">
+              <Package className="h-4 w-4" />
+              Planos
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="tenants" className="space-y-4">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por nome, slug ou domínio..."
