@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Palette, Users, CreditCard, Globe } from "lucide-react";
+import { Building2, Palette, Users, CreditCard, Globe, Plug } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
 import { TenantBrandingSettings } from "@/components/whitelabel/TenantBrandingSettings";
 import { TenantUsersManagement } from "@/components/whitelabel/TenantUsersManagement";
 import { TenantUsageDashboard } from "@/components/whitelabel/TenantUsageDashboard";
 import { TenantDomainSettings } from "@/components/whitelabel/TenantDomainSettings";
+import { TenantIntegrationsSettings } from "@/components/whitelabel/TenantIntegrationsSettings";
 
 export default function WhitelabelAdminPage() {
   const { tenant, isWhiteLabel } = useTenant();
@@ -25,7 +26,7 @@ export default function WhitelabelAdminPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto">
             <TabsTrigger value="usage" className="flex items-center gap-1.5 text-xs sm:text-sm">
               <CreditCard className="h-4 w-4" />
               <span className="hidden sm:inline">Uso &</span> Billing
@@ -37,6 +38,10 @@ export default function WhitelabelAdminPage() {
             <TabsTrigger value="users" className="flex items-center gap-1.5 text-xs sm:text-sm">
               <Users className="h-4 w-4" />
               Usuários
+            </TabsTrigger>
+            <TabsTrigger value="integrations" className="flex items-center gap-1.5 text-xs sm:text-sm">
+              <Plug className="h-4 w-4" />
+              Integrações
             </TabsTrigger>
             <TabsTrigger value="domain" className="flex items-center gap-1.5 text-xs sm:text-sm">
               <Globe className="h-4 w-4" />
@@ -52,6 +57,9 @@ export default function WhitelabelAdminPage() {
           </TabsContent>
           <TabsContent value="users">
             <TenantUsersManagement />
+          </TabsContent>
+          <TabsContent value="integrations">
+            <TenantIntegrationsSettings />
           </TabsContent>
           <TabsContent value="domain">
             <TenantDomainSettings />
