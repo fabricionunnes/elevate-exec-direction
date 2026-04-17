@@ -30,12 +30,14 @@ export const ProjectMenuPermissionsDialog = ({
   const [saving, setSaving] = useState(false);
   const [enabledMenus, setEnabledMenus] = useState<Set<string>>(new Set());
   const [hasExistingConfig, setHasExistingConfig] = useState(false);
-  const { tenant } = useTenant();
+  const { tenant, isClientMenuAllowed } = useTenant();
 
-  // Filtra menus pelos módulos habilitados no tenant white-label.
+  // Filtra menus pelo whitelist do tenant (allowed_menus.client) E pelos módulos habilitados.
   // Master UNV (sem tenant) vê todos os menus.
-  const visibleMenus = CLIENT_MENU_STRUCTURE.filter((m) =>
-    isMenuAllowedByTenant(m.key, tenant?.enabled_modules),
+  const visibleMenus = CLIENT_MENU_STRUCTURE.filter(
+    (m) =>
+      isMenuAllowedByTenant(m.key, tenant?.enabled_modules) &&
+      isClientMenuAllowed(m.key),
   );
   const blockedCount = CLIENT_MENU_STRUCTURE.length - visibleMenus.length;
 

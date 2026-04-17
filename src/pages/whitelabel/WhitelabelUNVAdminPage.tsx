@@ -26,6 +26,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { TenantModulesManager } from "@/components/whitelabel/TenantModulesManager";
+import { TenantAllowedMenusManager, AllowedMenusConfig } from "@/components/whitelabel/TenantAllowedMenusManager";
 import { PlansManagement } from "@/components/whitelabel/PlansManagement";
 import { ChangeTenantPlanDialog } from "@/components/whitelabel/ChangeTenantPlanDialog";
 import { TenantPlanHistoryDialog } from "@/components/whitelabel/TenantPlanHistoryDialog";
@@ -45,6 +46,7 @@ interface TenantRow {
   created_at: string;
   updated_at: string;
   enabled_modules: Record<string, boolean> | null;
+  allowed_menus: AllowedMenusConfig | null;
 }
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }> = {
@@ -60,6 +62,7 @@ export default function WhitelabelUNVAdminPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTenant, setEditTenant] = useState<TenantRow | null>(null);
   const [modulesTenant, setModulesTenant] = useState<TenantRow | null>(null);
+  const [menusTenant, setMenusTenant] = useState<TenantRow | null>(null);
   const [deleteTenant, setDeleteTenant] = useState<TenantRow | null>(null);
   const [planTenant, setPlanTenant] = useState<TenantRow | null>(null);
   const [historyTenant, setHistoryTenant] = useState<TenantRow | null>(null);
@@ -142,7 +145,7 @@ export default function WhitelabelUNVAdminPage() {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as TenantRow[];
+      return (data || []) as unknown as TenantRow[];
     },
   });
 
@@ -322,6 +325,10 @@ export default function WhitelabelUNVAdminPage() {
                               <SlidersHorizontal className="h-4 w-4 mr-2" />
                               Módulos liberados ao WL
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setMenusTenant(tenant)}>
+                              <Package className="h-4 w-4 mr-2" />
+                              Menus liberados (granular)
+                            </DropdownMenuItem>
 
                             <DropdownMenuSeparator />
                             <DropdownMenuLabel>Acesso do admin WL</DropdownMenuLabel>
@@ -408,6 +415,29 @@ export default function WhitelabelUNVAdminPage() {
                 initialModules={modulesTenant.enabled_modules}
                 onSaved={() => {
                   setModulesTenant(null);
+                  queryClient.invalidateQueries({ queryKey: ["unv-whitelabel-tenants"] });
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Allowed Menus Dialog (granular whitelist por menu) */}
+        <Dialog open={!!menusTenant} onOpenChange={open => !open && setMenusTenant(null)}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-primary" />
+                Menus liberados ao WL: {menusTenant?.name}
+              </DialogTitle>
+            </DialogHeader>
+            {menusTenant && (
+              <TenantAllowedMenusManager
+                tenantId={menusTenant.id}
+                tenantName={menusTenant.name}
+                initialAllowed={menusTenant.allowed_menus}
+                onSaved={() => {
+                  setMenusTenant(null);
                   queryClient.invalidateQueries({ queryKey: ["unv-whitelabel-tenants"] });
                 }}
               />

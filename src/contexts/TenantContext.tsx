@@ -16,6 +16,7 @@ export interface TenantData {
   status: string;
   max_active_projects: number;
   enabled_modules: Record<string, boolean>;
+  allowed_menus: { staff: string[] | null; client: string[] | null } | null;
   payment_status?: string;
   first_payment_link?: string | null;
   first_payment_due_at?: string | null;
@@ -30,6 +31,8 @@ interface TenantContextType {
   faviconUrl: string | null;
   refetchTenant: () => Promise<void>;
   isModuleEnabled: (moduleKey: string) => boolean;
+  isStaffMenuAllowed: (menuKey: string) => boolean;
+  isClientMenuAllowed: (menuKey: string) => boolean;
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
@@ -119,6 +122,7 @@ function mapTenant(row: any): TenantData {
     status: row.status,
     max_active_projects: row.max_active_projects ?? 5,
     enabled_modules: (row.enabled_modules as Record<string, boolean>) || {},
+    allowed_menus: (row.allowed_menus as TenantData["allowed_menus"]) || null,
     payment_status: row.payment_status,
     first_payment_link: row.first_payment_link,
     first_payment_due_at: row.first_payment_due_at,
@@ -208,6 +212,20 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     return Boolean(tenant.enabled_modules?.[moduleKey]);
   };
 
+  const isStaffMenuAllowed = (menuKey: string): boolean => {
+    if (!tenant) return true; // master UNV vê tudo
+    const list = tenant.allowed_menus?.staff;
+    if (list == null) return true; // não configurado = tudo liberado
+    return list.includes(menuKey);
+  };
+
+  const isClientMenuAllowed = (menuKey: string): boolean => {
+    if (!tenant) return true;
+    const list = tenant.allowed_menus?.client;
+    if (list == null) return true;
+    return list.includes(menuKey);
+  };
+
   // Gate: block access for suspended/inactive/payment-pending tenants
   if (tenant && isTenantBlocked(tenant)) {
     return (
@@ -231,6 +249,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         faviconUrl,
         refetchTenant: fetchTenant,
         isModuleEnabled,
+        isStaffMenuAllowed,
+        isClientMenuAllowed,
       }}
     >
       {children}

@@ -105,7 +105,7 @@ interface Company {
 
 const OnboardingTasksPage = () => {
   const navigate = useNavigate();
-  const { tenant, isWhiteLabel, isModuleEnabled } = useTenant();
+  const { tenant, isWhiteLabel, isModuleEnabled, isStaffMenuAllowed } = useTenant();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -1725,10 +1725,11 @@ const OnboardingTasksPage = () => {
   // Tenant white-label gate: se o módulo estiver desabilitado no tenant, ninguém vê (nem admin do tenant).
   const hasMenuPerm = (key: string) => {
     if (!isModuleEnabled(key)) return false;
+    if (!isStaffMenuAllowed(key)) return false; // whitelist por menu (master define no /whitelabel-gestao)
     return isMaster || staffMenuPermissions.includes(key);
   };
-  const canAccessCRM = hasCRMPermission && isModuleEnabled("crm");
-  const canAccessFinancial = (isAdmin || hasFinancialPermission) && isModuleEnabled("financial");
+  const canAccessCRM = hasCRMPermission && isModuleEnabled("crm") && isStaffMenuAllowed("crm");
+  const canAccessFinancial = (isAdmin || hasFinancialPermission) && isModuleEnabled("financial") && isStaffMenuAllowed("financial");
   const canAccessResults = hasMenuPerm("results");
   const canAccessCircle = hasMenuPerm("circle");
   const canAccessCalendar = hasMenuPerm("calendar");
