@@ -71,17 +71,27 @@ export function TenantModulesManager({ tenantId, tenantName, initialModules, onS
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
+      console.log("[TenantModulesManager] Salvando módulos:", { tenantId, modules });
+      const { data, error } = await supabase
         .from("whitelabel_tenants")
         .update({
           enabled_modules: modules,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", tenantId);
+        .eq("id", tenantId)
+        .select("id, enabled_modules");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        // RLS bloqueou silenciosamente — UPDATE não retornou linhas
+        throw new Error(
+          "Você não tem permissão para alterar este tenant (RLS). Verifique se está logado como master/admin UNV.",
+        );
+      }
+      console.log("[TenantModulesManager] Salvo com sucesso. Retorno:", data);
       toast.success(`Módulos atualizados para "${tenantName}"`);
       onSaved?.();
     } catch (err: any) {
+      console.error("[TenantModulesManager] Erro ao salvar:", err);
       toast.error("Erro ao salvar: " + (err.message || "tente novamente"));
     } finally {
       setSaving(false);
