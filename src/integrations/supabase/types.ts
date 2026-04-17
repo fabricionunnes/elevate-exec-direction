@@ -27186,6 +27186,7 @@ export type Database = {
           price: number
           slug: string | null
           sort_order: number
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -27201,6 +27202,7 @@ export type Database = {
           price?: number
           slug?: string | null
           sort_order?: number
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -27216,9 +27218,18 @@ export type Database = {
           price?: number
           slug?: string | null
           sort_order?: number
+          tenant_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "service_catalog_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_purchases: {
         Row: {
