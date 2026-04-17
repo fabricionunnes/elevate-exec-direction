@@ -44,6 +44,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ReferralsPanel } from "@/components/onboarding-tasks/ReferralsPanel";
+import { useTenant } from "@/contexts/TenantContext";
 import { MyTasksPanel } from "@/components/onboarding-tasks/MyTasksPanel";
 import { MeetingsPanel } from "@/components/onboarding-tasks/DashboardMeetingsTab";
 import { UnassignedTasksDialog } from "@/components/onboarding-tasks/UnassignedTasksDialog";
