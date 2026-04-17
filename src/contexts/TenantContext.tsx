@@ -115,6 +115,7 @@ function mapTenant(row: any): TenantData {
     is_dark_mode: row.is_dark_mode ?? false,
     status: row.status,
     max_active_projects: row.max_active_projects ?? 5,
+    enabled_modules: (row.enabled_modules as Record<string, boolean>) || {},
   };
 }
 
