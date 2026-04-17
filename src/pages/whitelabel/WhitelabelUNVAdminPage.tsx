@@ -229,6 +229,29 @@ export default function WhitelabelUNVAdminPage() {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          disabled={togglingId === tenant.id}
+                          onClick={() => handleToggleStatus(tenant)}
+                          title={tenant.status === "active" || tenant.status === "trial" ? "Inativar" : "Reativar"}
+                        >
+                          {tenant.status === "active" || tenant.status === "trial" ? (
+                            <PowerOff className="h-4 w-4" />
+                          ) : (
+                            <Power className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTenant(tenant)}
+                          title="Excluir"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   );
