@@ -14,13 +14,16 @@ import { toast } from "sonner";
 import {
   Building2, Plus, Edit, Trash2, Users, Eye, CheckCircle,
   AlertTriangle, Pause, BarChart3, Globe, Search, Power, PowerOff,
-  KeyRound, Copy, SlidersHorizontal,
+  KeyRound, Copy, SlidersHorizontal, Package, History, CreditCard,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { TenantModulesManager } from "@/components/whitelabel/TenantModulesManager";
+import { PlansManagement } from "@/components/whitelabel/PlansManagement";
+import { ChangeTenantPlanDialog } from "@/components/whitelabel/ChangeTenantPlanDialog";
+import { TenantPlanHistoryDialog } from "@/components/whitelabel/TenantPlanHistoryDialog";
 
 interface TenantRow {
   id: string;
@@ -53,6 +56,9 @@ export default function WhitelabelUNVAdminPage() {
   const [editTenant, setEditTenant] = useState<TenantRow | null>(null);
   const [modulesTenant, setModulesTenant] = useState<TenantRow | null>(null);
   const [deleteTenant, setDeleteTenant] = useState<TenantRow | null>(null);
+  const [planTenant, setPlanTenant] = useState<TenantRow | null>(null);
+  const [historyTenant, setHistoryTenant] = useState<TenantRow | null>(null);
+  const [activeTab, setActiveTab] = useState<"tenants" | "plans">("tenants");
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
