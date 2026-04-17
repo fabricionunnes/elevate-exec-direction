@@ -1471,6 +1471,7 @@ export type Database = {
           is_active: boolean
           is_default: boolean
           name: string
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1480,6 +1481,7 @@ export type Database = {
           is_active?: boolean
           is_default?: boolean
           name: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1489,9 +1491,18 @@ export type Database = {
           is_active?: boolean
           is_default?: boolean
           name?: string
+          tenant_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "asaas_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       assessment_360_evaluations: {
         Row: {
@@ -32333,6 +32344,7 @@ export type Database = {
         Args: { p_board_id: string }
         Returns: undefined
       }
+      current_user_is_tenant: { Args: never; Returns: boolean }
       current_user_tenant_id: { Args: never; Returns: string }
       delete_email: {
         Args: { message_id: number; queue_name: string }
