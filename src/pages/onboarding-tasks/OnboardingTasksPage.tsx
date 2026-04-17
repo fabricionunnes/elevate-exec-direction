@@ -2342,6 +2342,13 @@ const OnboardingTasksPage = () => {
                       </DropdownMenuItem>
                     </>
                   )}
+                  {/* Painel White-Label para admin de tenant (branding, integrações, usuários) */}
+                  {isWhiteLabel && isAdmin && currentUserEmail !== "fabricio@universidadevendas.com.br" && (
+                    <DropdownMenuItem onClick={() => navigate("/whitelabel-admin")}>
+                      <Building2 className="h-4 w-4 mr-2" />
+                      Painel White-Label
+                    </DropdownMenuItem>
+                  )}
                   {canAccessFinancial && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro/recorrencias")}>
                       <Calculator className="h-4 w-4 mr-2" />
