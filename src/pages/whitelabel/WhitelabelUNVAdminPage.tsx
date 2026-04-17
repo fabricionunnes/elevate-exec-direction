@@ -445,14 +445,16 @@ function TenantForm({
   const [saving, setSaving] = useState(false);
 
   // Provisionamento (somente novo tenant)
-  const [planSlug, setPlanSlug] = useState<"starter" | "pro" | "enterprise">("pro");
+  const [planSlug, setPlanSlug] = useState<"starter" | "pro" | "enterprise">(
+    (tenant?.plan_slug as "starter" | "pro" | "enterprise") || "pro"
+  );
   const [enableTrial, setEnableTrial] = useState(false);
   const [trialDays, setTrialDays] = useState(7);
   const [adminEmail, setAdminEmail] = useState("");
   const [adminName, setAdminName] = useState("");
   const [resultInfo, setResultInfo] = useState<{ url: string; email: string; password: string | null } | null>(null);
 
-  // Plans are needed both for new tenants (selector) and edit mode (placeholder do limite)
+  // Plans are needed both for new tenants and edit mode
   const { data: plans } = useQuery({
     queryKey: ["whitelabel-plans"],
     queryFn: async () => {
@@ -466,12 +468,9 @@ function TenantForm({
     },
   });
 
-  const planUserLimit = (() => {
-    const slug = tenant?.plan_slug;
-    if (!slug) return null;
-    const p = plans?.find((x: any) => x.slug === slug);
-    return p?.max_users ?? null;
-  })();
+  const selectedPlan = plans?.find((x: any) => x.slug === planSlug);
+  const planUserLimit = selectedPlan?.max_users ?? null;
+  const planProjectLimit = selectedPlan?.max_projects ?? null;
 
   const handleSlugify = (val: string) => {
     setSlug(val.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, ""));
