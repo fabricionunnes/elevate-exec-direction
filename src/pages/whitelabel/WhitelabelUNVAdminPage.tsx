@@ -442,7 +442,36 @@ function TenantForm({
   );
   const [status, setStatus] = useState(tenant?.status || "trial");
   const [logoUrl, setLogoUrl] = useState(tenant?.logo_url || "");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const handleLogoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Arquivo muito grande (máx. 5MB)");
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const folder = tenant?.id || "_pending";
+      const filePath = `whitelabel/${folder}/logo-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("whitelabel-assets")
+        .upload(filePath, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage
+        .from("whitelabel-assets")
+        .getPublicUrl(filePath);
+      setLogoUrl(data.publicUrl);
+      toast.success("Logo carregada");
+    } catch (err: any) {
+      toast.error("Erro no upload: " + (err.message || "tente novamente"));
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   // Provisionamento (somente novo tenant)
   const [planSlug, setPlanSlug] = useState<"starter" | "pro" | "enterprise">(
@@ -614,12 +643,40 @@ function TenantForm({
           />
         </div>
         <div className="space-y-2">
-          <Label>URL do Logo</Label>
-          <Input
-            value={logoUrl}
-            onChange={e => setLogoUrl(e.target.value)}
-            placeholder="https://..."
-          />
+          <Label>Logomarca</Label>
+          <div className="flex items-center gap-3">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt="Logo"
+                className="h-12 w-12 rounded-lg object-contain bg-muted p-1 border border-border"
+              />
+            ) : (
+              <div className="h-12 w-12 rounded-lg bg-muted/40 border border-dashed border-border flex items-center justify-center text-[10px] text-muted-foreground">
+                Sem logo
+              </div>
+            )}
+            <div className="flex-1 space-y-1">
+              <Input
+                type="file"
+                accept="image/*"
+                disabled={uploadingLogo}
+                onChange={handleLogoFile}
+                className="text-xs"
+              />
+              <p className="text-xs text-muted-foreground">
+                {uploadingLogo ? "Enviando..." : "PNG, JPG ou SVG. Fundo transparente recomendado."}
+              </p>
+            </div>
+          </div>
+          {logoUrl && (
+            <Input
+              value={logoUrl}
+              onChange={e => setLogoUrl(e.target.value)}
+              placeholder="Ou cole uma URL"
+              className="text-xs"
+            />
+          )}
         </div>
       </div>
 
