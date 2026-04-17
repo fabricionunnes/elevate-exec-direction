@@ -104,11 +104,15 @@ export default function WhitelabelUNVAdminPage() {
     if (!deleteTenant) return;
     setDeletingId(deleteTenant.id);
     try {
-      const { error } = await supabase
+      const { data: deleted, error } = await supabase
         .from("whitelabel_tenants")
         .delete()
-        .eq("id", deleteTenant.id);
+        .eq("id", deleteTenant.id)
+        .select("id");
       if (error) throw error;
+      if (!deleted || deleted.length === 0) {
+        throw new Error("Você não tem permissão para excluir este tenant (apenas o CEO pode excluir).");
+      }
       toast.success(`Tenant "${deleteTenant.name}" excluído`);
       setDeleteTenant(null);
       queryClient.invalidateQueries({ queryKey: ["unv-whitelabel-tenants"] });
