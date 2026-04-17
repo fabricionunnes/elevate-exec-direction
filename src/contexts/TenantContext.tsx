@@ -169,6 +169,16 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const logoUrl = tenant?.logo_url || null;
   const faviconUrl = tenant?.favicon_url || null;
 
+  /**
+   * Verifica se um módulo está habilitado para o tenant atual.
+   * - Sem tenant (master/UNV): TODOS os módulos habilitados.
+   * - Com tenant: respeita o JSONB `enabled_modules` (default false p/ chave ausente).
+   */
+  const isModuleEnabled = (moduleKey: string): boolean => {
+    if (!tenant) return true;
+    return Boolean(tenant.enabled_modules?.[moduleKey]);
+  };
+
   return (
     <TenantContext.Provider
       value={{
@@ -179,6 +189,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         logoUrl,
         faviconUrl,
         refetchTenant: fetchTenant,
+        isModuleEnabled,
       }}
     >
       {children}
