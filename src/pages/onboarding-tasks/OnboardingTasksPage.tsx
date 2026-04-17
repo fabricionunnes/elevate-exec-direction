@@ -2334,6 +2334,10 @@ const OnboardingTasksPage = () => {
                         <Crown className="h-4 w-4 mr-2" />
                         Painel do CEO
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/whitelabel-gestao")}>
+                        <Building2 className="h-4 w-4 mr-2" />
+                        White-Label
+                      </DropdownMenuItem>
                     </>
                   )}
                   {canAccessFinancial && (
