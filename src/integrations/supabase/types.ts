@@ -32333,6 +32333,7 @@ export type Database = {
         Args: { p_board_id: string }
         Returns: undefined
       }
+      current_user_tenant_id: { Args: never; Returns: string }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -32562,6 +32563,7 @@ export type Database = {
         Args: { check_menu_key: string; check_staff_id: string }
         Returns: boolean
       }
+      tenant_matches: { Args: { _row_tenant: string }; Returns: boolean }
       track_circle_pixel_event: {
         Args: {
           p_event_data?: Json
