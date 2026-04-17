@@ -105,6 +105,40 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
 
     setLoading(true);
     try {
+      // Bloquear criação se tenant white-label estiver no limite de projetos ativos
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: staff } = await supabase
+          .from("onboarding_staff")
+          .select("tenant_id")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (staff?.tenant_id) {
+          const { data: tenantRow } = await supabase
+            .from("whitelabel_tenants")
+            .select("max_active_projects, name")
+            .eq("id", staff.tenant_id)
+            .maybeSingle();
+
+          const { count: activeCount } = await supabase
+            .from("onboarding_projects")
+            .select("id", { count: "exact", head: true })
+            .eq("tenant_id", staff.tenant_id)
+            .eq("status", "active");
+
+          const max = tenantRow?.max_active_projects ?? 0;
+          if ((activeCount ?? 0) >= max) {
+            toast.error(
+              `Limite do plano atingido: ${activeCount}/${max} projetos ativos. Faça upgrade para adicionar mais.`
+            );
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
       let companyId = selectedCompany;
 
       // Create new company if needed
