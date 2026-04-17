@@ -256,8 +256,18 @@ export default function WhitelabelUNVAdminPage() {
                           size="icon"
                           className="h-8 w-8"
                           onClick={() => setEditTenant(tenant)}
+                          title="Editar dados do tenant"
                         >
                           <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setModulesTenant(tenant)}
+                          title="Permissões de módulos"
+                        >
+                          <SlidersHorizontal className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
