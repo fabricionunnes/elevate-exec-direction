@@ -206,6 +206,48 @@ export function UpgradePlanDialog({
           </div>
         )}
 
+        {needsCustomerData && (
+          <div className="mt-4 p-4 rounded-lg border bg-muted/30 space-y-3">
+            <div>
+              <h4 className="font-semibold text-sm">Dados do responsável</h4>
+              <p className="text-xs text-muted-foreground">
+                Precisamos desses dados para gerar a cobrança no Asaas (plano <strong>{needsCustomerData.name}</strong>).
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="cust-name" className="text-xs">Nome completo *</Label>
+                <Input id="cust-name" value={customerForm.name}
+                  onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="cust-email" className="text-xs">Email *</Label>
+                <Input id="cust-email" type="email" value={customerForm.email}
+                  onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="cust-doc" className="text-xs">CPF ou CNPJ *</Label>
+                <Input id="cust-doc" value={customerForm.cpf_cnpj}
+                  onChange={(e) => setCustomerForm({ ...customerForm, cpf_cnpj: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="cust-phone" className="text-xs">Telefone (com DDD)</Label>
+                <Input id="cust-phone" value={customerForm.phone}
+                  onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setNeedsCustomerData(null)}>
+                Cancelar
+              </Button>
+              <Button size="sm" onClick={submitCustomerData} disabled={processingSlug !== null}>
+                {processingSlug ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ArrowRight className="h-4 w-4 mr-2" />}
+                Gerar pagamento
+              </Button>
+            </div>
+          </div>
+        )}
+
         <p className="text-xs text-muted-foreground text-center mt-4">
           O pagamento abre em nova aba via Pix ou Boleto. Após confirmação, o plano é ativado
           automaticamente.
