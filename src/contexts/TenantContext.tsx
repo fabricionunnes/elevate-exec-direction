@@ -16,6 +16,7 @@ export interface TenantData {
   status: string;
   max_active_projects: number;
   enabled_modules: Record<string, boolean>;
+  allowed_menus: { staff: string[] | null; client: string[] | null } | null;
   payment_status?: string;
   first_payment_link?: string | null;
   first_payment_due_at?: string | null;
@@ -30,6 +31,8 @@ interface TenantContextType {
   faviconUrl: string | null;
   refetchTenant: () => Promise<void>;
   isModuleEnabled: (moduleKey: string) => boolean;
+  isStaffMenuAllowed: (menuKey: string) => boolean;
+  isClientMenuAllowed: (menuKey: string) => boolean;
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
@@ -119,6 +122,7 @@ function mapTenant(row: any): TenantData {
     status: row.status,
     max_active_projects: row.max_active_projects ?? 5,
     enabled_modules: (row.enabled_modules as Record<string, boolean>) || {},
+    allowed_menus: (row.allowed_menus as TenantData["allowed_menus"]) || null,
     payment_status: row.payment_status,
     first_payment_link: row.first_payment_link,
     first_payment_due_at: row.first_payment_due_at,
