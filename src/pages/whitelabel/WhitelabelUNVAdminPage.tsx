@@ -13,8 +13,12 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import {
   Building2, Plus, Edit, Trash2, Users, Eye, CheckCircle,
-  AlertTriangle, Pause, BarChart3, Globe, Search
+  AlertTriangle, Pause, BarChart3, Globe, Search, Power, PowerOff
 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface TenantRow {
   id: string;
