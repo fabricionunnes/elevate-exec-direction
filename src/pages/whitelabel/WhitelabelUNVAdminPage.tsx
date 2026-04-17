@@ -842,9 +842,42 @@ function TenantForm({
                   placeholder="admin@empresa.com.br"
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Telefone (WhatsApp)</Label>
+                <Input
+                  value={adminPhone}
+                  onChange={e => setAdminPhone(e.target.value)}
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>CPF / CNPJ</Label>
+                <Input
+                  value={adminCpfCnpj}
+                  onChange={e => setAdminCpfCnpj(e.target.value)}
+                  placeholder="000.000.000-00"
+                />
+              </div>
             </div>
+          </div>
+
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+            <Label className="flex items-center justify-between cursor-pointer">
+              <span className="text-sm font-medium text-foreground">
+                💳 Exigir pagamento da 1ª fatura para liberar acesso
+              </span>
+              <Switch
+                checked={requirePayment && !enableTrial}
+                disabled={enableTrial}
+                onCheckedChange={setRequirePayment}
+              />
+            </Label>
             <p className="text-xs text-muted-foreground">
-              Geramos uma senha temporária automaticamente. Ela aparece após a criação.
+              {enableTrial
+                ? "Desativado durante o trial gratuito."
+                : requirePayment
+                ? "O sistema cria cobrança no Asaas, envia o link por WhatsApp+Email e libera o acesso automaticamente após confirmação. Telefone e CPF/CNPJ são obrigatórios."
+                : "O acesso será liberado imediatamente, sem cobrança vinculada."}
             </p>
           </div>
         </>
