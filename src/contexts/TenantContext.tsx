@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useThemeCustomization, ThemeColors } from "@/contexts/ThemeCustomizationContext";
+import { TenantBlockedScreen } from "@/components/whitelabel/TenantBlockedScreen";
 
 export interface TenantData {
   id: string;
@@ -35,48 +36,48 @@ const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 const DEFAULT_PLATFORM_NAME = "UNV Nexus";
 
+// Status that grant normal access
+const ACTIVE_STATUSES = ["active", "trial"];
+// Status that resolve the tenant but BLOCK access (show gate screen)
+const BLOCKED_STATUSES = ["pending_payment", "suspended", "inactive"];
+const RESOLVABLE_STATUSES = [...ACTIVE_STATUSES, ...BLOCKED_STATUSES];
+
 /**
  * Resolve the current tenant based on hostname OR on the logged-in staff user.
- * The hostname check matches custom_domain or slug-based subdomains. When the
- * hostname is a UNV domain (or no match is found), we fall back to the staff
- * user's tenant_id so a white-label admin logging in via the main URL still
- * gets isolated branding/data.
+ * Returns the tenant even when blocked, so the UI can show a gate screen
+ * instead of silently falling back to the master view.
  */
 async function resolveTenant(): Promise<TenantData | null> {
   if (typeof window === "undefined") return null;
 
   const hostname = window.location.hostname.toLowerCase();
-
-  // Skip hostname-based tenant resolution for known UNV domains and localhost
   const unvDomains = ["localhost", "lovable.app", "unvholdings.com.br", "www.unvholdings.com.br"];
   const isUnvDomain = unvDomains.some(d => hostname === d || hostname.endsWith(`.${d}`));
 
-    const ALLOWED = ["active", "trial", "pending_payment"];
-    if (!isUnvDomain) {
-      const { data: byDomain } = await supabase
+  if (!isUnvDomain) {
+    const { data: byDomain } = await supabase
+      .from("whitelabel_tenants")
+      .select("*")
+      .eq("custom_domain", hostname)
+      .in("status", RESOLVABLE_STATUSES)
+      .maybeSingle();
+
+    if (byDomain) return mapTenant(byDomain);
+
+    const slugMatch = hostname.match(/^([a-z0-9-]+)\./);
+    if (slugMatch) {
+      const { data: bySlug } = await supabase
         .from("whitelabel_tenants")
         .select("*")
-        .eq("custom_domain", hostname)
-        .in("status", ALLOWED)
+        .eq("slug", slugMatch[1])
+        .in("status", RESOLVABLE_STATUSES)
         .maybeSingle();
 
-      if (byDomain) return mapTenant(byDomain);
-
-      const slugMatch = hostname.match(/^([a-z0-9-]+)\./);
-      if (slugMatch) {
-        const { data: bySlug } = await supabase
-          .from("whitelabel_tenants")
-          .select("*")
-          .eq("slug", slugMatch[1])
-          .in("status", ALLOWED)
-          .maybeSingle();
-
-        if (bySlug) return mapTenant(bySlug);
-      }
+      if (bySlug) return mapTenant(bySlug);
     }
+  }
 
-  // Fallback: resolve from the logged-in staff user (admin de tenant white-label
-  // acessando pela URL principal). Master da plataforma tem tenant_id IS NULL → ignorado.
+  // Fallback: logged-in white-label staff accessing via main URL
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -92,7 +93,7 @@ async function resolveTenant(): Promise<TenantData | null> {
           .from("whitelabel_tenants")
           .select("*")
           .eq("id", staff.tenant_id)
-          .in("status", ["active", "trial", "pending_payment"])
+          .in("status", RESOLVABLE_STATUSES)
           .maybeSingle();
         if (byStaff) return mapTenant(byStaff);
       }
@@ -124,6 +125,19 @@ function mapTenant(row: any): TenantData {
   };
 }
 
+function isTenantBlocked(t: TenantData): boolean {
+  if (BLOCKED_STATUSES.includes(t.status)) return true;
+  // Active but with payment pending and not exempt
+  if (
+    t.status === "active" &&
+    t.payment_status &&
+    !["paid", "not_required"].includes(t.payment_status)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function TenantProvider({ children }: { children: ReactNode }) {
   const [tenant, setTenant] = useState<TenantData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -135,18 +149,13 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       setTenant(resolved);
 
       if (resolved) {
-        // Apply tenant branding
         if (resolved.theme_colors) {
           applyTheme(resolved.theme_colors, resolved.is_dark_mode);
         }
-
-        // Update favicon
         if (resolved.favicon_url) {
           const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
           if (link) link.href = resolved.favicon_url;
         }
-
-        // Update document title
         document.title = resolved.platform_name;
       }
     } catch (err) {
@@ -158,9 +167,6 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchTenant();
-
-    // React to login/logout so a white-label admin gets their tenant resolved
-    // immediately after authenticating via the main URL.
     const { data: sub } = supabase.auth.onAuthStateChange((_event) => {
       fetchTenant();
     });
@@ -174,15 +180,22 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const logoUrl = tenant?.logo_url || null;
   const faviconUrl = tenant?.favicon_url || null;
 
-  /**
-   * Verifica se um módulo está habilitado para o tenant atual.
-   * - Sem tenant (master/UNV): TODOS os módulos habilitados.
-   * - Com tenant: respeita o JSONB `enabled_modules` (default false p/ chave ausente).
-   */
   const isModuleEnabled = (moduleKey: string): boolean => {
     if (!tenant) return true;
     return Boolean(tenant.enabled_modules?.[moduleKey]);
   };
+
+  // Gate: block access for suspended/inactive/payment-pending tenants
+  if (tenant && isTenantBlocked(tenant)) {
+    return (
+      <TenantBlockedScreen
+        tenantName={tenant.name}
+        status={tenant.status}
+        paymentStatus={tenant.payment_status}
+        paymentLink={tenant.first_payment_link}
+      />
+    );
+  }
 
   return (
     <TenantContext.Provider

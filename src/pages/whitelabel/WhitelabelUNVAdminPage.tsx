@@ -505,6 +505,9 @@ function TenantForm({
     tenant?.max_users != null ? String(tenant.max_users) : ""
   );
   const [status, setStatus] = useState(tenant?.status || "trial");
+  const [paymentExempt, setPaymentExempt] = useState(
+    (tenant as any)?.payment_status === "not_required"
+  );
   const [logoUrl, setLogoUrl] = useState(tenant?.logo_url || "");
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -604,6 +607,7 @@ function TenantForm({
             max_users: parsedMaxUsers,
             plan_slug: planSlug,
             status,
+            payment_status: paymentExempt ? "not_required" : "pending",
             logo_url: logoUrl.trim() || null,
             updated_at: new Date().toISOString(),
           })
