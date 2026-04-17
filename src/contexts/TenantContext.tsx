@@ -212,6 +212,20 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     return Boolean(tenant.enabled_modules?.[moduleKey]);
   };
 
+  const isStaffMenuAllowed = (menuKey: string): boolean => {
+    if (!tenant) return true; // master UNV vê tudo
+    const list = tenant.allowed_menus?.staff;
+    if (list == null) return true; // não configurado = tudo liberado
+    return list.includes(menuKey);
+  };
+
+  const isClientMenuAllowed = (menuKey: string): boolean => {
+    if (!tenant) return true;
+    const list = tenant.allowed_menus?.client;
+    if (list == null) return true;
+    return list.includes(menuKey);
+  };
+
   // Gate: block access for suspended/inactive/payment-pending tenants
   if (tenant && isTenantBlocked(tenant)) {
     return (
@@ -235,6 +249,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         faviconUrl,
         refetchTenant: fetchTenant,
         isModuleEnabled,
+        isStaffMenuAllowed,
+        isClientMenuAllowed,
       }}
     >
       {children}
