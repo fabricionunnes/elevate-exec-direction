@@ -325,6 +325,10 @@ export default function WhitelabelUNVAdminPage() {
                               <SlidersHorizontal className="h-4 w-4 mr-2" />
                               Módulos liberados ao WL
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setMenusTenant(tenant)}>
+                              <Package className="h-4 w-4 mr-2" />
+                              Menus liberados (granular)
+                            </DropdownMenuItem>
 
                             <DropdownMenuSeparator />
                             <DropdownMenuLabel>Acesso do admin WL</DropdownMenuLabel>
