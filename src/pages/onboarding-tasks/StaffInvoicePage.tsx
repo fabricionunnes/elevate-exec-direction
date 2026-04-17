@@ -118,11 +118,11 @@ const StaffInvoicePage = () => {
   }, [currentStaff, selectedMonth, selectedYear]);
 
   useEffect(() => {
-    if (hasManagePermission) {
+    if (hasManagePermission && allStaff.length > 0) {
       loadAdminInvoices();
       loadAllSalaries();
     }
-  }, [hasManagePermission, adminFilterMonth, adminFilterYear]);
+  }, [hasManagePermission, allStaff, adminFilterMonth, adminFilterYear]);
 
   const loadInitialData = async () => {
     try {
