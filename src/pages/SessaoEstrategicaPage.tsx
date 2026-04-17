@@ -242,7 +242,7 @@ const SessaoEstrategicaPage = () => {
                 </span>
               </div>
 
-              <h1 className="text-[1.85rem] sm:text-4xl lg:text-[3.25rem] font-black leading-[1.05] tracking-tight">
+              <h1 className="text-[1.75rem] sm:text-4xl lg:text-[2.85rem] font-black leading-[1.15] sm:leading-[1.12] tracking-[-0.01em]">
                 <span className="text-slate-900">Tenha um </span>
                 <span className="text-red-600">Diretor Comercial</span>
                 <span className="text-slate-900"> dedicado fazendo seu time </span>
