@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
@@ -21,6 +21,16 @@ export function TenantBrandingSettings() {
   const [faviconUrl, setFaviconUrl] = useState(tenant?.favicon_url || "");
   const [isDarkMode, setIsDarkMode] = useState(tenant?.is_dark_mode || false);
   const [saving, setSaving] = useState(false);
+
+  // Sync local state when tenant loads/changes (initial state runs before tenant is fetched)
+  useEffect(() => {
+    if (tenant) {
+      setPlatformName(tenant.platform_name || "");
+      setLogoUrl(tenant.logo_url || "");
+      setFaviconUrl(tenant.favicon_url || "");
+      setIsDarkMode(tenant.is_dark_mode || false);
+    }
+  }, [tenant?.id, tenant?.platform_name, tenant?.logo_url, tenant?.favicon_url, tenant?.is_dark_mode]);
 
   const handleSave = async () => {
     if (!tenant) {
@@ -57,7 +67,7 @@ export function TenantBrandingSettings() {
     if (!file || !tenant) return;
 
     const fileExt = file.name.split(".").pop();
-    const filePath = `whitelabel/${tenant.id}/logo.${fileExt}`;
+    const filePath = `whitelabel/${tenant.id}/logo-${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabase.storage
       .from("whitelabel-assets")
@@ -73,7 +83,20 @@ export function TenantBrandingSettings() {
       .getPublicUrl(filePath);
 
     setLogoUrl(data.publicUrl);
-    toast.success("Logo enviado!");
+
+    // Auto-persist so the header updates even if user forgets to click "Salvar Branding"
+    const { error: updateError } = await supabase
+      .from("whitelabel_tenants")
+      .update({ logo_url: data.publicUrl, updated_at: new Date().toISOString() })
+      .eq("id", tenant.id);
+
+    if (updateError) {
+      toast.error("Logo enviado, mas falhou ao salvar: " + updateError.message);
+      return;
+    }
+
+    await refetchTenant();
+    toast.success("Logo atualizado!");
   };
 
   const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,7 +104,7 @@ export function TenantBrandingSettings() {
     if (!file || !tenant) return;
 
     const fileExt = file.name.split(".").pop();
-    const filePath = `whitelabel/${tenant.id}/favicon.${fileExt}`;
+    const filePath = `whitelabel/${tenant.id}/favicon-${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabase.storage
       .from("whitelabel-assets")
@@ -97,7 +120,19 @@ export function TenantBrandingSettings() {
       .getPublicUrl(filePath);
 
     setFaviconUrl(data.publicUrl);
-    toast.success("Favicon enviado!");
+
+    const { error: updateError } = await supabase
+      .from("whitelabel_tenants")
+      .update({ favicon_url: data.publicUrl, updated_at: new Date().toISOString() })
+      .eq("id", tenant.id);
+
+    if (updateError) {
+      toast.error("Favicon enviado, mas falhou ao salvar: " + updateError.message);
+      return;
+    }
+
+    await refetchTenant();
+    toast.success("Favicon atualizado!");
   };
 
   if (!tenant) {
