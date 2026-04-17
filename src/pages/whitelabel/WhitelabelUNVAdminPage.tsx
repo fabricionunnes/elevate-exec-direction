@@ -10,11 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import {
   Building2, Plus, Edit, Trash2, Users, Eye, CheckCircle,
   AlertTriangle, Pause, BarChart3, Globe, Search, Power, PowerOff,
   KeyRound, Copy, SlidersHorizontal, Package, History, CreditCard,
+  Settings, ChevronDown,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -275,75 +280,85 @@ export default function WhitelabelUNVAdminPage() {
                         <span className="text-xs text-muted-foreground">
                           {tenant.max_active_projects} proj
                         </span>
+
+                        {/* Ação principal: módulos liberados ao WL */}
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setPlanTenant(tenant)}
-                          title="Mudar plano"
-                        >
-                          <CreditCard className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setHistoryTenant(tenant)}
-                          title="Histórico de planos"
-                        >
-                          <History className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setEditTenant(tenant)}
-                          title="Editar dados do tenant"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
+                          variant="default"
+                          size="sm"
                           onClick={() => setModulesTenant(tenant)}
-                          title="Permissões de módulos"
+                          className="gap-1.5"
                         >
                           <SlidersHorizontal className="h-4 w-4" />
+                          Módulos liberados
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          disabled={resettingId === tenant.id}
-                          onClick={() => handleResetPassword(tenant)}
-                          title="Resetar senha do admin"
-                        >
-                          <KeyRound className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          disabled={togglingId === tenant.id}
-                          onClick={() => handleToggleStatus(tenant)}
-                          title={tenant.status === "active" || tenant.status === "trial" ? "Inativar" : "Reativar"}
-                        >
-                          {tenant.status === "active" || tenant.status === "trial" ? (
-                            <PowerOff className="h-4 w-4" />
-                          ) : (
-                            <Power className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => setDeleteTenant(tenant)}
-                          title="Excluir"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+
+                        {/* Demais ações em menu único */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="gap-1">
+                              <Settings className="h-4 w-4" />
+                              Gerenciar
+                              <ChevronDown className="h-3 w-3 opacity-60" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-60 bg-popover">
+                            <DropdownMenuLabel>Plano e cobrança</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => setPlanTenant(tenant)}>
+                              <CreditCard className="h-4 w-4 mr-2" />
+                              Mudar plano
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setHistoryTenant(tenant)}>
+                              <History className="h-4 w-4 mr-2" />
+                              Histórico de planos
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel>Tenant</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => setEditTenant(tenant)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Editar dados (logo, domínio, plano)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setModulesTenant(tenant)}>
+                              <SlidersHorizontal className="h-4 w-4 mr-2" />
+                              Módulos liberados ao WL
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel>Acesso do admin WL</DropdownMenuLabel>
+                            <DropdownMenuItem
+                              disabled={resettingId === tenant.id}
+                              onClick={() => handleResetPassword(tenant)}
+                            >
+                              <KeyRound className="h-4 w-4 mr-2" />
+                              Resetar senha do admin
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={togglingId === tenant.id}
+                              onClick={() => handleToggleStatus(tenant)}
+                            >
+                              {tenant.status === "active" || tenant.status === "trial" ? (
+                                <>
+                                  <PowerOff className="h-4 w-4 mr-2" />
+                                  Inativar tenant
+                                </>
+                              ) : (
+                                <>
+                                  <Power className="h-4 w-4 mr-2" />
+                                  Reativar tenant
+                                </>
+                              )}
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => setDeleteTenant(tenant)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Excluir tenant
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   );
