@@ -118,11 +118,11 @@ const StaffInvoicePage = () => {
   }, [currentStaff, selectedMonth, selectedYear]);
 
   useEffect(() => {
-    if (hasManagePermission) {
+    if (hasManagePermission && allStaff.length > 0) {
       loadAdminInvoices();
       loadAllSalaries();
     }
-  }, [hasManagePermission, adminFilterMonth, adminFilterYear]);
+  }, [hasManagePermission, allStaff, adminFilterMonth, adminFilterYear]);
 
   const loadInitialData = async () => {
     try {
@@ -136,43 +136,59 @@ const StaffInvoicePage = () => {
         .eq("is_active", true)
         .maybeSingle();
 
-      if (!staff) { navigate("/onboarding-tasks"); return; }
-      setCurrentStaff(staff);
+      // Get full staff record (including tenant_id) for tenant isolation
+      const { data: fullStaff } = await supabase
+        .from("onboarding_staff")
+        .select("id, name, email, role, user_id, tenant_id")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (!fullStaff) { navigate("/onboarding-tasks"); return; }
+      setCurrentStaff(fullStaff as any);
+      const currentTenantId = (fullStaff as any).tenant_id ?? null;
 
       // Check nf_manage permission - only master has automatic access
-      const isMaster = staff.role === "master";
+      const isMaster = fullStaff.role === "master";
       if (isMaster) {
         setHasManagePermission(true);
       } else {
         const { data: perms } = await supabase
           .from("staff_menu_permissions")
           .select("menu_key")
-          .eq("staff_id", staff.id)
+          .eq("staff_id", fullStaff.id)
           .eq("menu_key", "nf_manage");
         setHasManagePermission((perms && perms.length > 0) || false);
       }
 
-      // Load all staff for users with manage permission
-      if (isMaster) {
-        const { data: staffList } = await supabase
+      // Load all staff for users with manage permission - SCOPED BY TENANT
+      // Master (tenant_id NULL) sees only platform staff (tenant_id NULL)
+      // White-label admin sees only their tenant's staff
+      const loadStaffList = async () => {
+        let q = supabase
           .from("onboarding_staff")
-          .select("id, name, email, role, user_id")
+          .select("id, name, email, role, user_id, tenant_id")
           .eq("is_active", true)
           .order("name");
-        setAllStaff(staffList || []);
+        if (currentTenantId === null) {
+          q = q.is("tenant_id", null);
+        } else {
+          q = q.eq("tenant_id", currentTenantId);
+        }
+        const { data: staffList } = await q;
+        setAllStaff((staffList || []) as any);
+      };
+
+      if (isMaster) {
+        await loadStaffList();
       } else {
         const { data: perms } = await supabase
           .from("staff_menu_permissions")
           .select("menu_key")
-          .eq("staff_id", staff.id)
+          .eq("staff_id", fullStaff.id)
           .eq("menu_key", "nf_manage");
         if (perms && perms.length > 0) {
-          const { data: staffList } = await supabase
-            .from("onboarding_staff")
-            .select("id, name, email, role, user_id")
-            .eq("is_active", true)
-            .order("name");
-          setAllStaff(staffList || []);
+          await loadStaffList();
         }
       }
     } catch (err) {
@@ -207,9 +223,14 @@ const StaffInvoicePage = () => {
 
   const loadAdminInvoices = async () => {
     if (!hasManagePermission) return;
+    // Tenant isolation: limit to staff visible to current admin
+    const tenantStaffIds = allStaff.map((s) => s.id);
+    if (tenantStaffIds.length === 0) { setAllInvoices([]); return; }
+
     let query = supabase
       .from("staff_invoices")
       .select("*, onboarding_staff!staff_invoices_staff_id_fkey(name, email)")
+      .in("staff_id", tenantStaffIds)
       .order("submitted_at", { ascending: false });
     
     if (adminFilterMonth !== "all") query = query.eq("month", adminFilterMonth);
@@ -224,9 +245,14 @@ const StaffInvoicePage = () => {
 
   const loadAllSalaries = async () => {
     if (!hasManagePermission) return;
+    // Tenant isolation: limit to staff visible to current admin
+    const tenantStaffIds = allStaff.map((s) => s.id);
+    if (tenantStaffIds.length === 0) { setAllSalaries([]); return; }
+
     const { data } = await supabase
       .from("staff_salaries")
       .select("*")
+      .in("staff_id", tenantStaffIds)
       .order("year", { ascending: false })
       .order("month", { ascending: false });
     setAllSalaries(data || []);
