@@ -105,7 +105,7 @@ interface Company {
 
 const OnboardingTasksPage = () => {
   const navigate = useNavigate();
-  const { tenant, isWhiteLabel } = useTenant();
+  const { tenant, isWhiteLabel, isModuleEnabled } = useTenant();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
