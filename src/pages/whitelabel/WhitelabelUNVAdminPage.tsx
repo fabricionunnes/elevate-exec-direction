@@ -14,13 +14,16 @@ import { toast } from "sonner";
 import {
   Building2, Plus, Edit, Trash2, Users, Eye, CheckCircle,
   AlertTriangle, Pause, BarChart3, Globe, Search, Power, PowerOff,
-  KeyRound, Copy, SlidersHorizontal,
+  KeyRound, Copy, SlidersHorizontal, Package, History, CreditCard,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { TenantModulesManager } from "@/components/whitelabel/TenantModulesManager";
+import { PlansManagement } from "@/components/whitelabel/PlansManagement";
+import { ChangeTenantPlanDialog } from "@/components/whitelabel/ChangeTenantPlanDialog";
+import { TenantPlanHistoryDialog } from "@/components/whitelabel/TenantPlanHistoryDialog";
 
 interface TenantRow {
   id: string;
@@ -53,6 +56,9 @@ export default function WhitelabelUNVAdminPage() {
   const [editTenant, setEditTenant] = useState<TenantRow | null>(null);
   const [modulesTenant, setModulesTenant] = useState<TenantRow | null>(null);
   const [deleteTenant, setDeleteTenant] = useState<TenantRow | null>(null);
+  const [planTenant, setPlanTenant] = useState<TenantRow | null>(null);
+  const [historyTenant, setHistoryTenant] = useState<TenantRow | null>(null);
+  const [activeTab, setActiveTab] = useState<"tenants" | "plans">("tenants");
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
@@ -175,8 +181,20 @@ export default function WhitelabelUNVAdminPage() {
           </Dialog>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-4">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "tenants" | "plans")} className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="tenants" className="gap-1.5">
+              <Building2 className="h-4 w-4" />
+              Tenants
+            </TabsTrigger>
+            <TabsTrigger value="plans" className="gap-1.5">
+              <Package className="h-4 w-4" />
+              Planos
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="tenants" className="space-y-4">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por nome, slug ou domínio..."
@@ -261,6 +279,24 @@ export default function WhitelabelUNVAdminPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          onClick={() => setPlanTenant(tenant)}
+                          title="Mudar plano"
+                        >
+                          <CreditCard className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setHistoryTenant(tenant)}
+                          title="Histórico de planos"
+                        >
+                          <History className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={() => setEditTenant(tenant)}
                           title="Editar dados do tenant"
                         >
@@ -316,6 +352,12 @@ export default function WhitelabelUNVAdminPage() {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="plans">
+            <PlansManagement />
+          </TabsContent>
+        </Tabs>
 
         {/* Edit Dialog */}
         <Dialog open={!!editTenant} onOpenChange={open => !open && setEditTenant(null)}>
@@ -423,6 +465,24 @@ export default function WhitelabelUNVAdminPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <ChangeTenantPlanDialog
+          open={!!planTenant}
+          onOpenChange={(o) => !o && setPlanTenant(null)}
+          tenant={planTenant}
+          onShowHistory={() => {
+            const t = planTenant;
+            setPlanTenant(null);
+            setHistoryTenant(t);
+          }}
+        />
+
+        <TenantPlanHistoryDialog
+          open={!!historyTenant}
+          onOpenChange={(o) => !o && setHistoryTenant(null)}
+          tenantId={historyTenant?.id || null}
+          tenantName={historyTenant?.name}
+        />
       </div>
     </div>
   );
