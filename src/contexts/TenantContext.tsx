@@ -175,6 +175,29 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Reage em tempo real a mudanças no tenant atual (ex.: master altera enabled_modules)
+  useEffect(() => {
+    if (!tenant?.id) return;
+    const channel = supabase
+      .channel(`tenant-${tenant.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "whitelabel_tenants",
+          filter: `id=eq.${tenant.id}`,
+        },
+        () => {
+          fetchTenant();
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tenant?.id]);
+
   const isWhiteLabel = tenant !== null;
   const platformName = tenant?.platform_name || DEFAULT_PLATFORM_NAME;
   const logoUrl = tenant?.logo_url || null;
