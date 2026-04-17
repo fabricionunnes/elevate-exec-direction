@@ -32709,6 +32709,10 @@ export type Database = {
         Args: { p_company_id: string; p_segment: string }
         Returns: undefined
       }
+      user_can_see_tenant_row: {
+        Args: { _row_tenant_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "user"
