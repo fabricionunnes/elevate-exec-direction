@@ -127,7 +127,7 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
         if (staff?.tenant_id) {
           const { data: tenantRow } = await supabase
             .from("whitelabel_tenants")
-            .select("max_active_projects, name")
+            .select("id, max_active_projects, name, plan_slug")
             .eq("id", staff.tenant_id)
             .maybeSingle();
 
@@ -138,10 +138,15 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
             .eq("status", "active");
 
           const max = tenantRow?.max_active_projects ?? 0;
-          if ((activeCount ?? 0) >= max) {
-            toast.error(
-              `Limite do plano atingido: ${activeCount}/${max} projetos ativos. Faça upgrade para adicionar mais.`
-            );
+          if (tenantRow && (activeCount ?? 0) >= max) {
+            setUpgradeInfo({
+              tenantId: tenantRow.id,
+              tenantName: tenantRow.name,
+              planSlug: tenantRow.plan_slug,
+              maxProjects: max,
+              activeCount: activeCount ?? 0,
+            });
+            setUpgradeOpen(true);
             setLoading(false);
             return;
           }
