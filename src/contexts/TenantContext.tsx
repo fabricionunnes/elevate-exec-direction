@@ -31,41 +31,70 @@ const TenantContext = createContext<TenantContextType | undefined>(undefined);
 const DEFAULT_PLATFORM_NAME = "UNV Nexus";
 
 /**
- * Resolve the current tenant based on hostname.
- * Matches against custom_domain or slug-based subdomains.
+ * Resolve the current tenant based on hostname OR on the logged-in staff user.
+ * The hostname check matches custom_domain or slug-based subdomains. When the
+ * hostname is a UNV domain (or no match is found), we fall back to the staff
+ * user's tenant_id so a white-label admin logging in via the main URL still
+ * gets isolated branding/data.
  */
-async function resolveTenantByDomain(): Promise<TenantData | null> {
+async function resolveTenant(): Promise<TenantData | null> {
   if (typeof window === "undefined") return null;
 
   const hostname = window.location.hostname.toLowerCase();
 
-  // Skip tenant resolution for known UNV domains and localhost
+  // Skip hostname-based tenant resolution for known UNV domains and localhost
   const unvDomains = ["localhost", "lovable.app", "unvholdings.com.br", "www.unvholdings.com.br"];
-  if (unvDomains.some(d => hostname === d || hostname.endsWith(`.${d}`))) {
-    return null;
-  }
+  const isUnvDomain = unvDomains.some(d => hostname === d || hostname.endsWith(`.${d}`));
 
-  // Try custom domain first
-  const { data: byDomain } = await supabase
-    .from("whitelabel_tenants")
-    .select("*")
-    .eq("custom_domain", hostname)
-    .in("status", ["active", "trial"])
-    .maybeSingle();
-
-  if (byDomain) return mapTenant(byDomain);
-
-  // Try slug from subdomain (e.g., tenant-slug.nexus.com.br)
-  const slugMatch = hostname.match(/^([a-z0-9-]+)\./);
-  if (slugMatch) {
-    const { data: bySlug } = await supabase
+  if (!isUnvDomain) {
+    // Try custom domain first
+    const { data: byDomain } = await supabase
       .from("whitelabel_tenants")
       .select("*")
-      .eq("slug", slugMatch[1])
+      .eq("custom_domain", hostname)
       .in("status", ["active", "trial"])
       .maybeSingle();
 
-    if (bySlug) return mapTenant(bySlug);
+    if (byDomain) return mapTenant(byDomain);
+
+    // Try slug from subdomain (e.g., tenant-slug.nexus.com.br)
+    const slugMatch = hostname.match(/^([a-z0-9-]+)\./);
+    if (slugMatch) {
+      const { data: bySlug } = await supabase
+        .from("whitelabel_tenants")
+        .select("*")
+        .eq("slug", slugMatch[1])
+        .in("status", ["active", "trial"])
+        .maybeSingle();
+
+      if (bySlug) return mapTenant(bySlug);
+    }
+  }
+
+  // Fallback: resolve from the logged-in staff user (admin de tenant white-label
+  // acessando pela URL principal). Master da plataforma tem tenant_id IS NULL → ignorado.
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: staff } = await supabase
+        .from("onboarding_staff")
+        .select("tenant_id")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (staff?.tenant_id) {
+        const { data: byStaff } = await supabase
+          .from("whitelabel_tenants")
+          .select("*")
+          .eq("id", staff.tenant_id)
+          .in("status", ["active", "trial"])
+          .maybeSingle();
+        if (byStaff) return mapTenant(byStaff);
+      }
+    }
+  } catch (e) {
+    console.warn("[TenantContext] staff fallback failed:", (e as Error).message);
   }
 
   return null;
@@ -94,7 +123,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   const fetchTenant = async () => {
     try {
-      const resolved = await resolveTenantByDomain();
+      const resolved = await resolveTenant();
       setTenant(resolved);
 
       if (resolved) {
@@ -121,6 +150,15 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchTenant();
+
+    // React to login/logout so a white-label admin gets their tenant resolved
+    // immediately after authenticating via the main URL.
+    const { data: sub } = supabase.auth.onAuthStateChange((_event) => {
+      fetchTenant();
+    });
+    return () => {
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const isWhiteLabel = tenant !== null;
