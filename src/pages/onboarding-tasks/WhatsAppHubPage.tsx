@@ -78,11 +78,29 @@ const WhatsAppHubPage = () => {
     setLoadingInstances(true);
 
     try {
+      // Resolve tenant_id do staff atual para isolar instâncias por tenant white-label
+      const { data: staffRow } = await supabase
+        .from("onboarding_staff")
+        .select("tenant_id")
+        .eq("id", currentStaff.id)
+        .maybeSingle();
+      const tenantId = staffRow?.tenant_id ?? null;
+
       if (isMaster) {
-        const { data } = await supabase
+        let query = supabase
           .from("whatsapp_instances")
-          .select("id, instance_name, display_name, phone_number, status, qr_code")
+          .select("id, instance_name, display_name, phone_number, status, qr_code, tenant_id")
           .order("display_name");
+
+        // Master de tenant white-label vê apenas as próprias instâncias.
+        // Master da plataforma (tenant_id null) vê apenas instâncias globais (tenant_id null).
+        if (tenantId) {
+          query = query.eq("tenant_id", tenantId);
+        } else {
+          query = query.is("tenant_id", null);
+        }
+
+        const { data } = await query;
 
         setInstances(
           (data || []).map((item) => ({
