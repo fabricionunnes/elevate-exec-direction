@@ -23869,6 +23869,7 @@ export type Database = {
           logo_url: string | null
           name: string
           slug: string
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -23879,6 +23880,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           slug: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -23889,9 +23891,18 @@ export type Database = {
           logo_url?: string | null
           name?: string
           slug?: string
+          tenant_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_services_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       onboarding_staff: {
         Row: {
