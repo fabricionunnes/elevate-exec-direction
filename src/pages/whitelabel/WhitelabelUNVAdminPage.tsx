@@ -233,6 +233,28 @@ function TenantForm({
   const [logoUrl, setLogoUrl] = useState(tenant?.logo_url || "");
   const [saving, setSaving] = useState(false);
 
+  // Provisionamento (somente novo tenant)
+  const [planSlug, setPlanSlug] = useState<"starter" | "pro" | "enterprise">("pro");
+  const [enableTrial, setEnableTrial] = useState(false);
+  const [trialDays, setTrialDays] = useState(7);
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminName, setAdminName] = useState("");
+  const [resultInfo, setResultInfo] = useState<{ url: string; email: string; password: string | null } | null>(null);
+
+  const { data: plans } = useQuery({
+    queryKey: ["whitelabel-plans"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("whitelabel_plans")
+        .select("slug,name,price_monthly,max_projects,max_users")
+        .eq("is_active", true)
+        .order("sort_order");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !isEdit,
+  });
+
   const handleSlugify = (val: string) => {
     setSlug(val.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, ""));
   };
@@ -245,41 +267,93 @@ function TenantForm({
 
     setSaving(true);
     try {
-      const payload = {
-        name: name.trim(),
-        slug: slug.trim(),
-        platform_name: platformName.trim() || name.trim(),
-        custom_domain: customDomain.trim() || null,
-        max_active_projects: maxProjects,
-        status,
-        logo_url: logoUrl.trim() || null,
-        updated_at: new Date().toISOString(),
-      };
-
       if (isEdit) {
         const { error } = await supabase
           .from("whitelabel_tenants")
-          .update(payload)
-          .eq("id", tenant.id);
+          .update({
+            name: name.trim(),
+            slug: slug.trim(),
+            platform_name: platformName.trim() || name.trim(),
+            custom_domain: customDomain.trim() || null,
+            max_active_projects: maxProjects,
+            status,
+            logo_url: logoUrl.trim() || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", tenant!.id);
         if (error) throw error;
         toast.success("Tenant atualizado!");
-      } else {
-        const { error } = await supabase
-          .from("whitelabel_tenants")
-          .insert(payload);
-        if (error) throw error;
-        toast.success("Tenant criado com sucesso!");
+        onSuccess();
+        return;
       }
-      onSuccess();
+
+      // Novo tenant via Edge Function (cria admin + plano + estrutura padrão)
+      if (!adminEmail.trim() || !adminName.trim()) {
+        toast.error("Email e nome do administrador são obrigatórios");
+        setSaving(false);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("whitelabel-provision", {
+        body: {
+          name: name.trim(),
+          slug: slug.trim(),
+          platform_name: platformName.trim() || name.trim(),
+          custom_domain: customDomain.trim() || null,
+          logo_url: logoUrl.trim() || null,
+          plan_slug: planSlug,
+          enable_trial: enableTrial,
+          trial_days: trialDays,
+          admin_email: adminEmail.trim(),
+          admin_name: adminName.trim(),
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success("Tenant provisionado com sucesso!");
+      setResultInfo({
+        url: data.access_url,
+        email: data.admin.email,
+        password: data.admin.temp_password,
+      });
     } catch (err: any) {
-      toast.error("Erro: " + err.message);
+      toast.error("Erro: " + (err.message || "falha ao provisionar"));
     } finally {
       setSaving(false);
     }
   };
 
+  if (resultInfo) {
+    return (
+      <div className="space-y-4 py-2">
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2">
+          <p className="font-medium text-foreground flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-primary" />
+            Tenant criado com sucesso
+          </p>
+          <div className="text-sm space-y-1">
+            <p><span className="text-muted-foreground">URL de acesso:</span> <code className="text-foreground">{resultInfo.url}</code></p>
+            <p><span className="text-muted-foreground">Email admin:</span> <code className="text-foreground">{resultInfo.email}</code></p>
+            {resultInfo.password ? (
+              <p>
+                <span className="text-muted-foreground">Senha temporária:</span>{" "}
+                <code className="text-foreground bg-muted px-1.5 py-0.5 rounded">{resultInfo.password}</code>
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Usuário já existia — senha mantida.
+              </p>
+            )}
+          </div>
+        </div>
+        <Button onClick={onSuccess} className="w-full">Concluir</Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4 py-2">
+    <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-1">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Nome da Empresa</Label>
@@ -324,34 +398,104 @@ function TenantForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Máx. Projetos Ativos</Label>
-          <Input
-            type="number"
-            min={1}
-            value={maxProjects}
-            onChange={e => setMaxProjects(Number(e.target.value))}
-          />
+      {!isEdit && (
+        <>
+          <div className="rounded-lg border border-border p-3 space-y-3 bg-muted/20">
+            <p className="text-sm font-medium text-foreground">Plano e Trial</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Plano</Label>
+                <Select value={planSlug} onValueChange={(v) => setPlanSlug(v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {plans?.map((p: any) => (
+                      <SelectItem key={p.slug} value={p.slug}>
+                        {p.name} — R$ {Number(p.price_monthly).toFixed(0)}/mês
+                      </SelectItem>
+                    )) || (
+                      <>
+                        <SelectItem value="starter">Starter — R$ 297/mês</SelectItem>
+                        <SelectItem value="pro">Pro — R$ 597/mês</SelectItem>
+                        <SelectItem value="enterprise">Enterprise — R$ 1.497/mês</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center justify-between">
+                  Trial gratuito
+                  <Switch checked={enableTrial} onCheckedChange={setEnableTrial} />
+                </Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={30}
+                  disabled={!enableTrial}
+                  value={trialDays}
+                  onChange={e => setTrialDays(Number(e.target.value))}
+                />
+                <p className="text-xs text-muted-foreground">Dias de teste antes de cobrar</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border p-3 space-y-3 bg-muted/20">
+            <p className="text-sm font-medium text-foreground flex items-center gap-2">
+              <Users className="h-4 w-4" /> Administrador do tenant
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Nome completo</Label>
+                <Input value={adminName} onChange={e => setAdminName(e.target.value)} placeholder="Nome do admin" />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={adminEmail}
+                  onChange={e => setAdminEmail(e.target.value)}
+                  placeholder="admin@empresa.com.br"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Geramos uma senha temporária automaticamente. Ela aparece após a criação.
+            </p>
+          </div>
+        </>
+      )}
+
+      {isEdit && (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Máx. Projetos Ativos</Label>
+            <Input
+              type="number"
+              min={1}
+              value={maxProjects}
+              onChange={e => setMaxProjects(Number(e.target.value))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="trial">Trial</SelectItem>
+                <SelectItem value="active">Ativo</SelectItem>
+                <SelectItem value="suspended">Suspenso</SelectItem>
+                <SelectItem value="inactive">Inativo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <div className="space-y-2">
-          <Label>Status</Label>
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="trial">Trial</SelectItem>
-              <SelectItem value="active">Ativo</SelectItem>
-              <SelectItem value="suspended">Suspenso</SelectItem>
-              <SelectItem value="inactive">Inativo</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      )}
 
       <Button onClick={handleSubmit} disabled={saving} className="w-full">
-        {saving ? "Salvando..." : isEdit ? "Salvar Alterações" : "Criar Tenant"}
+        {saving ? "Provisionando..." : isEdit ? "Salvar Alterações" : "Criar Tenant"}
       </Button>
     </div>
   );
