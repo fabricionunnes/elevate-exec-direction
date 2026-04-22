@@ -288,18 +288,37 @@ export const ProjectAIChat = ({
                   </div>
                 )}
                 <div
-                  className={`max-w-[80%] rounded-lg p-3 ${
+                  className={`${
+                    message.role === "user" ? "max-w-[80%]" : "max-w-[88%]"
+                  } rounded-2xl p-4 shadow-sm ${
                     message.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
+                      ? "bg-primary text-primary-foreground rounded-tr-sm"
+                      : "bg-card border border-border rounded-tl-sm"
                   }`}
                 >
                   {message.role === "assistant" ? (
-                    <div className="prose prose-sm dark:prose-invert max-w-none overflow-x-auto">
+                    <div
+                      className={[
+                        "prose prose-sm dark:prose-invert max-w-none",
+                        "prose-headings:font-semibold prose-headings:text-foreground prose-headings:tracking-tight",
+                        "prose-h2:text-base prose-h2:mt-5 prose-h2:mb-2 prose-h2:pb-1 prose-h2:border-b prose-h2:border-border",
+                        "prose-h3:text-sm prose-h3:mt-4 prose-h3:mb-2 prose-h3:text-primary",
+                        "prose-p:text-foreground prose-p:leading-relaxed prose-p:my-2",
+                        "prose-strong:text-foreground prose-strong:font-semibold",
+                        "prose-em:text-foreground/90",
+                        "prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-li:text-foreground prose-li:marker:text-primary",
+                        "prose-blockquote:border-l-primary prose-blockquote:bg-muted/40 prose-blockquote:py-1 prose-blockquote:px-3 prose-blockquote:rounded-r-md prose-blockquote:not-italic prose-blockquote:text-foreground/80",
+                        "prose-code:bg-muted prose-code:text-foreground prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-code:font-mono prose-code:text-xs",
+                        "prose-table:text-xs prose-th:bg-muted prose-th:text-foreground prose-th:font-semibold prose-td:border-border",
+                        "prose-a:text-primary prose-a:no-underline hover:prose-a:underline",
+                        "prose-hr:border-border",
+                        "overflow-x-auto",
+                      ].join(" ")}
+                    >
                       <ReactMarkdown
                         components={{
                           pre: ({ children }) => (
-                            <pre className="whitespace-pre-wrap break-words overflow-x-auto">{children}</pre>
+                            <pre className="whitespace-pre-wrap break-words overflow-x-auto bg-muted rounded-md p-3 text-xs">{children}</pre>
                           ),
                           code: (({ inline, className, children, ...props }: any) => (
                             <code
@@ -317,10 +336,10 @@ export const ProjectAIChat = ({
                       </ReactMarkdown>
                     </div>
                   ) : (
-                    <p>{message.content}</p>
+                    <p className="leading-relaxed whitespace-pre-wrap">{message.content}</p>
                   )}
                   <p
-                    className={`text-xs mt-2 ${
+                    className={`text-[10px] mt-2 ${
                       message.role === "user" ? "text-primary-foreground/70" : "text-muted-foreground"
                     }`}
                   >
