@@ -174,6 +174,14 @@ Deno.serve(async (req) => {
     if (existingLead) {
       // Lead already exists — update name/phone/email but keep current stage
       const reentryAt = new Date().toISOString();
+      const { data: entryStage } = await supabase
+        .from('crm_stages')
+        .select('id')
+        .eq('pipeline_id', form.pipeline_id)
+        .order('sort_order', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
       await supabase
         .from('crm_leads')
         .update({
@@ -189,7 +197,7 @@ Deno.serve(async (req) => {
       await reenrollApplicableCadences(supabase, {
         leadId: existingLead.id,
         pipelineId: existingLead.pipeline_id || form.pipeline_id,
-        stageId: existingLead.stage_id,
+        stageId: entryStage?.id || existingLead.stage_id,
         tenantId: existingLead.tenant_id,
         nowIso: reentryAt,
       });
