@@ -8210,6 +8210,7 @@ export type Database = {
           project_id: string
           role: string | null
           segment: string | null
+          stage_entered_at: string
           stage_id: string
           state: string | null
           trade_name: string | null
@@ -8244,6 +8245,7 @@ export type Database = {
           project_id: string
           role?: string | null
           segment?: string | null
+          stage_entered_at?: string
           stage_id: string
           state?: string | null
           trade_name?: string | null
@@ -8278,6 +8280,7 @@ export type Database = {
           project_id?: string
           role?: string | null
           segment?: string | null
+          stage_entered_at?: string
           stage_id?: string
           state?: string | null
           trade_name?: string | null
@@ -13808,6 +13811,7 @@ export type Database = {
           scheduled_by_staff_id: string | null
           sdr_staff_id: string | null
           segment: string | null
+          stage_entered_at: string
           stage_id: string | null
           state: string | null
           team: string | null
@@ -13873,6 +13877,7 @@ export type Database = {
           scheduled_by_staff_id?: string | null
           sdr_staff_id?: string | null
           segment?: string | null
+          stage_entered_at?: string
           stage_id?: string | null
           state?: string | null
           team?: string | null
@@ -13938,6 +13943,7 @@ export type Database = {
           scheduled_by_staff_id?: string | null
           sdr_staff_id?: string | null
           segment?: string | null
+          stage_entered_at?: string
           stage_id?: string | null
           state?: string | null
           team?: string | null
