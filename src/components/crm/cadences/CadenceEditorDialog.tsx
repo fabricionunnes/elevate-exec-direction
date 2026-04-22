@@ -205,7 +205,7 @@ export function CadenceEditorDialog({ open, onOpenChange, editing, onSaved }: Pr
         media_url: s.media_type === "text" ? null : s.media_url,
         media_caption: s.media_type === "text" ? null : s.media_caption,
         media_filename: s.media_type === "text" ? null : s.media_filename,
-        branches: s.branches || [],
+        branches: (s.branches || []) as any,
       }));
       const { error: stepErr } = await supabase.from("crm_cadence_steps").insert(stepRows);
       if (stepErr) throw stepErr;
