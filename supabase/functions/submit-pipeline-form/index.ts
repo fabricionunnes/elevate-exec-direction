@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
     const cleanPhone = telefone.replace(/\D/g, '');
     const { data: existingLead } = await supabase
       .from('crm_leads')
-      .select('id')
+      .select('id, pipeline_id, stage_id, tenant_id')
       .eq('pipeline_id', form.pipeline_id)
       .or(`email.eq.${email},phone.eq.${cleanPhone}`)
       .limit(1)
@@ -173,16 +173,26 @@ Deno.serve(async (req) => {
 
     if (existingLead) {
       // Lead already exists — update name/phone/email but keep current stage
+      const reentryAt = new Date().toISOString();
       await supabase
         .from('crm_leads')
         .update({
           name: nome,
           phone: cleanPhone,
           email,
+          entered_pipeline_at: reentryAt,
           ...(empresa ? { company: empresa } : {}),
           ...(desafio ? { main_pain: desafio } : {}),
         })
         .eq('id', existingLead.id);
+
+      await reenrollApplicableCadences(supabase, {
+        leadId: existingLead.id,
+        pipelineId: existingLead.pipeline_id || form.pipeline_id,
+        stageId: existingLead.stage_id,
+        tenantId: existingLead.tenant_id,
+        nowIso: reentryAt,
+      });
 
       console.log('[submit-pipeline-form] Existing lead updated:', existingLead.id);
 
@@ -396,6 +406,110 @@ async function sendInternalNotifications(
     if (error) console.error('[submit-pipeline-form] Notification insert error:', error);
   } catch (e) {
     console.error('[submit-pipeline-form] Internal notification error:', e);
+  }
+}
+
+function calcCadenceNextRun(now: Date, delayValue?: number | null, delayUnit?: string | null) {
+  const safeValue = Number.isFinite(delayValue) ? Number(delayValue) : 0;
+  const delayMs = delayUnit === 'minutes'
+    ? safeValue * 60 * 1000
+    : delayUnit === 'hours'
+      ? safeValue * 60 * 60 * 1000
+      : safeValue * 24 * 60 * 60 * 1000;
+
+  return new Date(now.getTime() + delayMs);
+}
+
+async function reenrollApplicableCadences(
+  supabase: any,
+  params: { leadId: string; pipelineId: string; stageId?: string | null; tenantId?: string | null; nowIso: string }
+) {
+  const { leadId, pipelineId, stageId, tenantId, nowIso } = params;
+  const now = new Date(nowIso);
+
+  const queries = [
+    supabase
+      .from('crm_cadences')
+      .select('id')
+      .eq('is_active', true)
+      .eq('scope', 'pipeline')
+      .eq('pipeline_id', pipelineId),
+  ];
+
+  if (stageId) {
+    queries.push(
+      supabase
+        .from('crm_cadences')
+        .select('id')
+        .eq('is_active', true)
+        .eq('scope', 'stage')
+        .eq('stage_id', stageId)
+    );
+  }
+
+  const results = await Promise.all(queries);
+  const cadenceIds = [...new Set(results.flatMap((r: any) => (r.data || []).map((c: any) => c.id)))];
+
+  for (const cadenceId of cadenceIds) {
+    const { data: currentEnrollment } = await supabase
+      .from('crm_cadence_enrollments')
+      .select('id, status')
+      .eq('cadence_id', cadenceId)
+      .eq('lead_id', leadId)
+      .maybeSingle();
+
+    if (currentEnrollment?.status === 'active' || currentEnrollment?.status === 'paused') {
+      continue;
+    }
+
+    const { data: firstStep } = await supabase
+      .from('crm_cadence_steps')
+      .select('delay_value, delay_unit')
+      .eq('cadence_id', cadenceId)
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (!firstStep) continue;
+
+    const nextRunAt = calcCadenceNextRun(now, firstStep.delay_value, firstStep.delay_unit).toISOString();
+    const resetPayload = {
+      current_step_index: 0,
+      status: 'active',
+      next_run_at: nextRunAt,
+      enrolled_at: nowIso,
+      completed_at: null,
+      stopped_reason: null,
+      last_message_sent_at: null,
+      last_inbound_at: null,
+      last_inbound_text: null,
+    };
+
+    if (currentEnrollment?.id) {
+      const { error } = await supabase
+        .from('crm_cadence_enrollments')
+        .update(resetPayload)
+        .eq('id', currentEnrollment.id);
+
+      if (error) {
+        console.error('[submit-pipeline-form] Cadence reenroll update error:', { cadenceId, leadId, error });
+      }
+      continue;
+    }
+
+    const { error } = await supabase
+      .from('crm_cadence_enrollments')
+      .insert({
+        cadence_id: cadenceId,
+        lead_id: leadId,
+        ...resetPayload,
+        tenant_id: tenantId || null,
+      });
+
+    if (error) {
+      console.error('[submit-pipeline-form] Cadence reenroll insert error:', { cadenceId, leadId, error });
+    }
   }
 }
 
