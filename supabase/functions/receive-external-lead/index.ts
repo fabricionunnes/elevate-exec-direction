@@ -202,10 +202,28 @@ Deno.serve(async (req) => {
     const APP_URL = 'https://elevate-exec-direction.lovable.app';
     const leadLink = `${APP_URL}/#/crm/leads/${lead.id}`;
 
+    const formatBRPhone = (raw: string) => {
+      if (!raw) return raw;
+      const digits = String(raw).replace(/\D/g, '');
+      let hasDDI = false;
+      let clean = digits;
+      if (digits.startsWith('55') && digits.length >= 12) {
+        hasDDI = true;
+        clean = digits.slice(2);
+      }
+      let formatted = raw;
+      if (clean.length === 11) {
+        formatted = `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7)}`;
+      } else if (clean.length === 10) {
+        formatted = `(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6)}`;
+      }
+      return hasDDI ? `+55 ${formatted}` : formatted;
+    };
+
     const message = `🚀 *Novo Lead Externo!*\n\n` +
       `📊 *Funil:* ${resolvedPipelineName}\n` +
       `👤 *Nome:* ${nome}\n` +
-      `📞 *Telefone:* ${telefone}\n` +
+      `📞 *Telefone:* ${formatBRPhone(telefone)}\n` +
       `📧 *Email:* ${email}\n` +
       (empresa ? `🏢 *Empresa:* ${empresa}\n` : '') +
       (faturamento ? `💰 *Faturamento:* ${faturamento}\n` : '') +
