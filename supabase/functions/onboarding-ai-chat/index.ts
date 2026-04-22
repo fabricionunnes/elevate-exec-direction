@@ -798,7 +798,7 @@ INSTRUÇÕES:
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages,
-        max_tokens: 2000,
+        max_tokens: 8000,
       }),
     });
 
