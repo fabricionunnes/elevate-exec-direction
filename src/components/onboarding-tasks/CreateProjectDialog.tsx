@@ -169,20 +169,7 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
         companyId = newCompany.id;
       }
 
-      // Check for duplicate project (same company + same product)
-      const { data: existingProject } = await supabase
-        .from("onboarding_projects")
-        .select("id")
-        .eq("onboarding_company_id", companyId)
-        .eq("product_id", selectedProduct)
-        .maybeSingle();
-
-      if (existingProject) {
-        toast.info("Esta empresa já possui um projeto com este produto");
-        setLoading(false);
-        onOpenChange(false);
-        return;
-      }
+      // Duplicate product purchases are allowed — same company can buy the same product multiple times.
 
       const productName = serviceProducts.find(p => p.id === selectedProduct)?.name || productDetails[selectedProduct]?.name || selectedProduct;
 
