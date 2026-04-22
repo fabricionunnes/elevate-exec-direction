@@ -27,8 +27,16 @@ interface Branch {
   goto: number | "complete";
 }
 
+function normalizeTime(t: string): string {
+  if (!t) return "00:00";
+  const parts = t.split(":");
+  const h = (parts[0] || "0").padStart(2, "0");
+  const m = (parts[1] || "0").padStart(2, "0");
+  return `${h}:${m}`;
+}
+
 function parseTimeToMinutes(t: string): number {
-  const [h, m] = t.split(":").map(Number);
+  const [h, m] = normalizeTime(t).split(":").map(Number);
   return h * 60 + m;
 }
 
@@ -50,6 +58,7 @@ function isInsideWindow(now: Date, win: WindowConfig): boolean {
 
 function nextWindowOpening(now: Date, win: WindowConfig): Date {
   const tz = win.timezone || "America/Sao_Paulo";
+  const startHHMM = normalizeTime(win.window_start);
   for (let i = 0; i < 8; i++) {
     const candidate = new Date(now.getTime() + i * 86400000);
     const wdStr = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short" })
@@ -58,7 +67,8 @@ function nextWindowOpening(now: Date, win: WindowConfig): Date {
     const wd = wdMap[wdStr] ?? -1;
     if (!win.weekdays.includes(wd)) continue;
     const dateStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(candidate);
-    const target = new Date(`${dateStr}T${win.window_start}:00${tzOffsetString(tz, candidate)}`);
+    const target = new Date(`${dateStr}T${startHHMM}:00${tzOffsetString(tz, candidate)}`);
+    if (isNaN(target.getTime())) continue;
     if (target > now) return target;
   }
   return new Date(now.getTime() + 3600000);
@@ -119,13 +129,15 @@ Deno.serve(async (req) => {
     };
 
     const now = new Date();
+    console.log(`[cadence-dispatcher] tick now=${now.toISOString()} globalWindow=${JSON.stringify(globalWindow)}`);
 
     const { data: due, error: dueErr } = await supabase
       .from("crm_cadence_enrollments")
-      .select("id, cadence_id, lead_id, current_step_index, last_inbound_at, last_inbound_text, last_message_sent_at")
+      .select("id, cadence_id, lead_id, current_step_index, last_inbound_at, last_inbound_text, last_message_sent_at, next_run_at")
       .eq("status", "active").lte("next_run_at", now.toISOString()).limit(100);
 
     if (dueErr) throw dueErr;
+    console.log(`[cadence-dispatcher] due enrollments: ${due?.length ?? 0}`);
     if (!due || due.length === 0) {
       return new Response(JSON.stringify({ processed: 0 }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -165,8 +177,11 @@ Deno.serve(async (req) => {
           timezone: cadence.timezone || globalWindow.timezone,
         };
 
-        if (!isInsideWindow(now, win)) {
+        const inside = isInsideWindow(now, win);
+        console.log(`[cadence-dispatcher] enr=${enr.id} cadence=${cadence.id} step_idx=${enr.current_step_index} window=${JSON.stringify(win)} inside=${inside}`);
+        if (!inside) {
           const nextOpen = nextWindowOpening(now, win);
+          console.log(`[cadence-dispatcher] enr=${enr.id} OUT_OF_WINDOW reschedule_to=${nextOpen.toISOString()}`);
           await supabase.from("crm_cadence_enrollments").update({ next_run_at: nextOpen.toISOString() }).eq("id", enr.id);
           continue;
         }

@@ -1,0 +1,1 @@
+UPDATE public.crm_cadence_enrollments SET next_run_at = now() WHERE status = 'active';
