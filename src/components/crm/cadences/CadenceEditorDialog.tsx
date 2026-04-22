@@ -14,6 +14,8 @@ import {
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Plus, Trash2, GripVertical, Clock } from "lucide-react";
+import { CadenceMediaUpload } from "./CadenceMediaUpload";
+import { CadenceBranchesEditor, type Branch } from "./CadenceBranchesEditor";
 
 interface Cadence {
   id: string;
@@ -40,6 +42,11 @@ interface Step {
   whatsapp_instance_id: string | null;
   send_condition: "always" | "no_reply";
   is_active: boolean;
+  media_type: "text" | "image" | "audio" | "video" | "document";
+  media_url: string | null;
+  media_caption: string | null;
+  media_filename: string | null;
+  branches: Branch[];
 }
 
 interface Props {
@@ -58,6 +65,11 @@ const emptyStep = (order: number): Step => ({
   whatsapp_instance_id: null,
   send_condition: "always",
   is_active: true,
+  media_type: "text",
+  media_url: null,
+  media_caption: null,
+  media_filename: null,
+  branches: [],
 });
 
 export function CadenceEditorDialog({ open, onOpenChange, editing, onSaved }: Props) {
@@ -108,18 +120,20 @@ export function CadenceEditorDialog({ open, onOpenChange, editing, onSaved }: Pr
       setUseCustomWindow(hasWin);
       setWindowStart(editing.window_start || "09:00");
       setWindowEnd(editing.window_end || "18:00");
-      // load steps
       supabase.from("crm_cadence_steps").select("*").eq("cadence_id", editing.id).order("sort_order")
-        .then(({ data }) => setSteps((data as any) || [emptyStep(0)]));
-      // pre-load stages of pipeline if stage scope
+        .then(({ data }) => {
+          const mapped = (data || []).map((s: any) => ({
+            ...s,
+            media_type: s.media_type || "text",
+            branches: Array.isArray(s.branches) ? s.branches : [],
+          }));
+          setSteps(mapped.length ? mapped : [emptyStep(0)]);
+        });
       if (editing.pipeline_id) {
         supabase.from("crm_stages").select("id, name, pipeline_id").eq("pipeline_id", editing.pipeline_id).order("sort_order").then(({ data }) => setStages(data || []));
       } else if (editing.stage_id) {
-        // fetch stage to know pipeline
         supabase.from("crm_stages").select("id, name, pipeline_id").eq("id", editing.stage_id).maybeSingle().then(({ data }) => {
-          if (data) {
-            setPipelineId(data.pipeline_id);
-          }
+          if (data) setPipelineId(data.pipeline_id);
         });
       }
     } else {
@@ -141,7 +155,12 @@ export function CadenceEditorDialog({ open, onOpenChange, editing, onSaved }: Pr
     if (scope === "stage" && !stageId) { toast.error("Selecione uma etapa"); return; }
     if (steps.length === 0) { toast.error("Adicione ao menos uma mensagem"); return; }
     for (const s of steps) {
-      if (!s.message_template.trim()) { toast.error("Todas as mensagens precisam ter texto"); return; }
+      if (s.media_type === "text" && !s.message_template.trim()) {
+        toast.error("Mensagens de texto não podem estar vazias"); return;
+      }
+      if (s.media_type !== "text" && !s.media_url) {
+        toast.error(`Faça upload do arquivo de mídia em todos os passos com tipo "${s.media_type}"`); return;
+      }
       if (s.instance_mode === "fixed" && !s.whatsapp_instance_id) {
         toast.error("Selecione a instância para passos com modo fixo"); return;
       }
@@ -171,7 +190,6 @@ export function CadenceEditorDialog({ open, onOpenChange, editing, onSaved }: Pr
         cadenceId = data.id;
       }
 
-      // replace steps
       await supabase.from("crm_cadence_steps").delete().eq("cadence_id", cadenceId!);
       const stepRows = steps.map((s, i) => ({
         cadence_id: cadenceId,
@@ -183,6 +201,11 @@ export function CadenceEditorDialog({ open, onOpenChange, editing, onSaved }: Pr
         whatsapp_instance_id: s.instance_mode === "fixed" ? s.whatsapp_instance_id : null,
         send_condition: s.send_condition,
         is_active: s.is_active,
+        media_type: s.media_type,
+        media_url: s.media_type === "text" ? null : s.media_url,
+        media_caption: s.media_type === "text" ? null : s.media_caption,
+        media_filename: s.media_type === "text" ? null : s.media_filename,
+        branches: s.branches || [],
       }));
       const { error: stepErr } = await supabase.from("crm_cadence_steps").insert(stepRows);
       if (stepErr) throw stepErr;
@@ -356,15 +379,61 @@ export function CadenceEditorDialog({ open, onOpenChange, editing, onSaved }: Pr
                   )}
                 </div>
 
+                {/* Tipo de conteúdo */}
                 <div className="grid gap-1">
-                  <Label className="text-xs">Mensagem (variáveis: {`{{nome}}, {{nome_completo}}, {{empresa}}`})</Label>
-                  <Textarea
-                    rows={3}
-                    value={step.message_template}
-                    onChange={(e) => updateStep(idx, { message_template: e.target.value })}
-                    placeholder="Olá {{nome}}, tudo bem?"
-                  />
+                  <Label className="text-xs">Tipo de conteúdo</Label>
+                  <Select value={step.media_type} onValueChange={(v: any) => updateStep(idx, { media_type: v, media_url: null, media_filename: null })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="text">📝 Texto</SelectItem>
+                      <SelectItem value="image">🖼️ Imagem</SelectItem>
+                      <SelectItem value="audio">🎙️ Áudio</SelectItem>
+                      <SelectItem value="video">🎥 Vídeo</SelectItem>
+                      <SelectItem value="document">📎 Documento</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+
+                {step.media_type !== "text" && (
+                  <CadenceMediaUpload
+                    mediaType={step.media_type as any}
+                    value={step.media_url}
+                    filename={step.media_filename}
+                    onChange={(url, filename) => updateStep(idx, { media_url: url, media_filename: filename || null })}
+                  />
+                )}
+
+                <div className="grid gap-1">
+                  <Label className="text-xs">
+                    {step.media_type === "text"
+                      ? `Mensagem (variáveis: {{nome}}, {{nome_completo}}, {{empresa}})`
+                      : step.media_type === "audio"
+                      ? "Áudio não tem legenda"
+                      : `Legenda (opcional, variáveis: {{nome}}, {{empresa}})`}
+                  </Label>
+                  {step.media_type === "audio" ? null : step.media_type === "text" ? (
+                    <Textarea
+                      rows={3}
+                      value={step.message_template}
+                      onChange={(e) => updateStep(idx, { message_template: e.target.value })}
+                      placeholder="Olá {{nome}}, tudo bem?"
+                    />
+                  ) : (
+                    <Textarea
+                      rows={2}
+                      value={step.media_caption || ""}
+                      onChange={(e) => updateStep(idx, { media_caption: e.target.value })}
+                      placeholder="Legenda opcional..."
+                    />
+                  )}
+                </div>
+
+                <CadenceBranchesEditor
+                  branches={step.branches}
+                  onChange={(b) => updateStep(idx, { branches: b })}
+                  totalSteps={steps.length}
+                  currentSortOrder={idx}
+                />
               </Card>
             ))}
           </div>
