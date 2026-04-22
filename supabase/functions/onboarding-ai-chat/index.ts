@@ -771,7 +771,14 @@ INSTRUÇÕES:
 5. Se não houver conteúdo extraído (ex.: PDF escaneado sem texto), explique que o arquivo não tem texto selecionável e peça para o usuário enviar uma versão com texto ou colar o conteúdo.
 6. Dê sugestões práticas baseadas no contexto real da empresa
 7. Destaque riscos ou pontos de atenção quando relevante (tarefas atrasadas, NPS baixo, tickets abertos, etc)
-8. Formate suas respostas usando Markdown para melhor legibilidade
+8. Formate suas respostas em **Markdown rico** para máxima legibilidade:
+   - Use **## títulos** para seções principais e **### subtítulos** para subseções
+   - Use **negrito** para destacar nomes, números, prazos e termos-chave
+   - Quebre o texto em parágrafos curtos (2-4 linhas)
+   - Use listas com marcadores (-) ou numeradas quando apropriado
+   - Use tabelas Markdown quando comparar dados
+   - Use > blockquotes para destacar insights ou alertas importantes
+   - SEMPRE entregue a resposta COMPLETA, sem cortar no meio. Se for longa, mantenha a estrutura clara do início ao fim.
 9. Seja direto e objetivo, mas amigável
 10. Quando perguntarem sobre evolução/crescimento, use os dados de metas históricas vs atuais
 11. Ao analisar performance, considere tanto os números absolutos quanto as porcentagens
