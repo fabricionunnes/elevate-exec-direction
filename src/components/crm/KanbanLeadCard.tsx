@@ -4,7 +4,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Mail, 
   Building2, 
-  MessageSquare 
+  MessageSquare,
+  Clock 
 } from "lucide-react";
 import { TwilioCallButton } from "@/components/crm/TwilioCallButton";
 import { formatDistanceToNow } from "date-fns";
@@ -25,6 +26,7 @@ interface Lead {
   owner_staff_id: string | null;
   opportunity_value: number | null;
   last_activity_at: string | null;
+  stage_entered_at?: string | null;
   urgency: string | null;
   origin?: { name: string } | null;
   owner?: { name: string; avatar_url?: string | null } | null;
