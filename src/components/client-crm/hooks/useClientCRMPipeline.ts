@@ -19,6 +19,7 @@ export interface ClientCRMLead {
   urgency: string | null;
   notes: string | null;
   created_at: string;
+  stage_entered_at: string | null;
   pipeline_id: string | null;
   origin?: { name: string } | null;
   owner?: { name: string } | null;
@@ -138,7 +139,7 @@ export function useClientCRMPipeline(projectId: string) {
           .from("client_crm_leads")
           .select(`
             id, name, company, phone, email, document, stage_id, origin_id, owner_id,
-            opportunity_value, probability, last_activity_at, next_activity_at, urgency, notes, created_at, pipeline_id,
+            opportunity_value, probability, last_activity_at, next_activity_at, urgency, notes, created_at, stage_entered_at, pipeline_id,
             origin:client_crm_origins(name),
             owner:onboarding_users!client_crm_leads_owner_id_fkey(name),
             tags:client_crm_lead_tags(tag:client_crm_tags(id, name, color))

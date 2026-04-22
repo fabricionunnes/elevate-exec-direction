@@ -4,7 +4,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Mail, 
   Building2, 
-  MessageSquare 
+  MessageSquare,
+  Clock 
 } from "lucide-react";
 import { TwilioCallButton } from "@/components/crm/TwilioCallButton";
 import { formatDistanceToNow } from "date-fns";
@@ -13,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { LeadMeetingActions } from "@/components/crm/LeadMeetingActions";
 import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
 import { LeadCardNotes } from "@/components/crm/LeadCardNotes";
+import { formatTimeInStage } from "@/lib/timeInStage";
 
 interface Lead {
   id: string;
@@ -25,6 +27,7 @@ interface Lead {
   owner_staff_id: string | null;
   opportunity_value: number | null;
   last_activity_at: string | null;
+  stage_entered_at?: string | null;
   urgency: string | null;
   origin?: { name: string } | null;
   owner?: { name: string; avatar_url?: string | null } | null;
@@ -156,6 +159,15 @@ export const KanbanLeadCard = ({
             <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
               <Building2 className="h-3 w-3 shrink-0" />
               <span className="truncate">{lead.company}</span>
+            </div>
+          )}
+
+          {lead.stage_entered_at && (
+            <div className="flex items-center gap-1 text-[10px] text-muted-foreground/80 mt-0.5">
+              <Clock className="h-2.5 w-2.5 shrink-0" />
+              <span className="tabular-nums">
+                Na etapa há {formatTimeInStage(lead.stage_entered_at)}
+              </span>
             </div>
           )}
         </div>

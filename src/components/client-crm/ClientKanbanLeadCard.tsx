@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Building2, Phone as PhoneIcon, Mail } from "lucide-react";
+import { Building2, Phone as PhoneIcon, Mail, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import type { ClientCRMLead } from "./hooks/useClientCRMPipeline";
+import { formatTimeInStage } from "@/lib/timeInStage";
 
 interface ClientKanbanLeadCardProps {
   lead: ClientCRMLead;
@@ -121,6 +122,15 @@ export const ClientKanbanLeadCard = ({
             <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
               <Building2 className="h-3 w-3 shrink-0" />
               <span className="truncate">{lead.company}</span>
+            </div>
+          )}
+
+          {lead.stage_entered_at && (
+            <div className="flex items-center gap-1 text-[10px] text-muted-foreground/80 mt-0.5">
+              <Clock className="h-2.5 w-2.5 shrink-0" />
+              <span className="tabular-nums">
+                Na etapa há {formatTimeInStage(lead.stage_entered_at)}
+              </span>
             </div>
           )}
         </div>
