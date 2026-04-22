@@ -14,6 +14,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Plus, Trash2, GripVertical, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { CadenceMediaUpload } from "./CadenceMediaUpload";
 import { CadenceBranchesEditor, type Branch } from "./CadenceBranchesEditor";
 
@@ -88,6 +89,26 @@ export function CadenceEditorDialog({ open, onOpenChange, editing, onSaved }: Pr
   const [stages, setStages] = useState<any[]>([]);
   const [instances, setInstances] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
+  const [focusedField, setFocusedField] = useState<Record<number, "message" | "caption">>({});
+
+  const VARIABLES: { token: string; label: string; description: string }[] = [
+    { token: "{{primeiro_nome}}", label: "Primeiro nome", description: "Primeiro nome do lead" },
+    { token: "{{nome_completo}}", label: "Nome completo", description: "Nome completo do lead" },
+    { token: "{{empresa}}", label: "Empresa", description: "Empresa do lead" },
+    { token: "{{data_reuniao}}", label: "Data da reunião", description: "Próxima reunião agendada (data e hora)" },
+    { token: "{{link_reuniao}}", label: "Link da reunião", description: "Link da próxima reunião agendada" },
+  ];
+
+  const insertVariable = (idx: number, token: string) => {
+    const target = focusedField[idx] || (steps[idx].media_type === "text" ? "message" : "caption");
+    if (target === "caption") {
+      const current = steps[idx].media_caption || "";
+      updateStep(idx, { media_caption: current ? `${current} ${token}` : token });
+    } else {
+      const current = steps[idx].message_template || "";
+      updateStep(idx, { message_template: current ? `${current} ${token}` : token });
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
