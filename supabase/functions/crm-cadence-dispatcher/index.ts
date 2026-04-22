@@ -119,13 +119,15 @@ Deno.serve(async (req) => {
     };
 
     const now = new Date();
+    console.log(`[cadence-dispatcher] tick now=${now.toISOString()} globalWindow=${JSON.stringify(globalWindow)}`);
 
     const { data: due, error: dueErr } = await supabase
       .from("crm_cadence_enrollments")
-      .select("id, cadence_id, lead_id, current_step_index, last_inbound_at, last_inbound_text, last_message_sent_at")
+      .select("id, cadence_id, lead_id, current_step_index, last_inbound_at, last_inbound_text, last_message_sent_at, next_run_at")
       .eq("status", "active").lte("next_run_at", now.toISOString()).limit(100);
 
     if (dueErr) throw dueErr;
+    console.log(`[cadence-dispatcher] due enrollments: ${due?.length ?? 0}`);
     if (!due || due.length === 0) {
       return new Response(JSON.stringify({ processed: 0 }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
