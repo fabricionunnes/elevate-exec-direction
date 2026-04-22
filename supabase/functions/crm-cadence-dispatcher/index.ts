@@ -167,8 +167,11 @@ Deno.serve(async (req) => {
           timezone: cadence.timezone || globalWindow.timezone,
         };
 
-        if (!isInsideWindow(now, win)) {
+        const inside = isInsideWindow(now, win);
+        console.log(`[cadence-dispatcher] enr=${enr.id} cadence=${cadence.id} step_idx=${enr.current_step_index} window=${JSON.stringify(win)} inside=${inside}`);
+        if (!inside) {
           const nextOpen = nextWindowOpening(now, win);
+          console.log(`[cadence-dispatcher] enr=${enr.id} OUT_OF_WINDOW reschedule_to=${nextOpen.toISOString()}`);
           await supabase.from("crm_cadence_enrollments").update({ next_run_at: nextOpen.toISOString() }).eq("id", enr.id);
           continue;
         }
