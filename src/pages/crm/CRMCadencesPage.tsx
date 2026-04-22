@@ -6,11 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Loader2, Zap, MessageSquare, History, Settings as SettingsIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Zap, MessageSquare, History, Settings as SettingsIcon, UsersRound } from "lucide-react";
 import { CadenceEditorDialog } from "@/components/crm/cadences/CadenceEditorDialog";
 import { CadenceEnrollmentsList } from "@/components/crm/cadences/CadenceEnrollmentsList";
 import { CadenceMessagesLog } from "@/components/crm/cadences/CadenceMessagesLog";
 import { CadenceGlobalSettingsDialog } from "@/components/crm/cadences/CadenceGlobalSettingsDialog";
+import { CadenceBulkEnrollDialog } from "@/components/crm/cadences/CadenceBulkEnrollDialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -40,6 +41,7 @@ export default function CRMCadencesPage() {
   const [editing, setEditing] = useState<Cadence | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [bulkEnrollOpen, setBulkEnrollOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [tab, setTab] = useState("rules");
 
@@ -102,10 +104,14 @@ export default function CRMCadencesPage() {
             Mensagens automáticas para leads por funil ou etapa, com regras de horário e instância personalizáveis.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
             <SettingsIcon className="h-4 w-4 mr-2" />
             Janela global
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setBulkEnrollOpen(true)} disabled={cadences.length === 0}>
+            <UsersRound className="h-4 w-4 mr-2" />
+            Inscrição em massa
           </Button>
           <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}>
             <Plus className="h-4 w-4 mr-2" />
@@ -194,6 +200,14 @@ export default function CRMCadencesPage() {
       />
 
       <CadenceGlobalSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+
+      <CadenceBulkEnrollDialog
+        open={bulkEnrollOpen}
+        onOpenChange={setBulkEnrollOpen}
+        cadences={cadences.filter((c) => c.is_active).map((c) => ({
+          id: c.id, name: c.name, scope: c.scope, pipeline_id: c.pipeline_id, stage_id: c.stage_id,
+        }))}
+      />
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
