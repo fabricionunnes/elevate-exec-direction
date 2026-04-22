@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Building2, Phone as PhoneIcon, Mail, Clock } from "lucide-react";
-import { formatDistanceToNow, formatDistanceToNowStrict, differenceInSeconds } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import type { ClientCRMLead } from "./hooks/useClientCRMPipeline";
