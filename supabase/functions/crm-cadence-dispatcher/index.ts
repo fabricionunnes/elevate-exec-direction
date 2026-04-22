@@ -149,6 +149,24 @@ Deno.serve(async (req) => {
     for (const enr of due) {
       processed++;
       try {
+        // Atomic claim: only proceed if this invocation successfully moves next_run_at forward.
+        // Prevents duplicate sends from concurrent dispatcher invocations / overlapping ticks.
+        const claimUntil = new Date(now.getTime() + 5 * 60 * 1000).toISOString();
+        const { data: claimed, error: claimErr } = await supabase
+          .from("crm_cadence_enrollments")
+          .update({ next_run_at: claimUntil })
+          .eq("id", enr.id)
+          .eq("status", "active")
+          .eq("current_step_index", enr.current_step_index)
+          .lte("next_run_at", now.toISOString())
+          .select("id")
+          .maybeSingle();
+
+        if (claimErr || !claimed) {
+          console.log(`[cadence-dispatcher] enr=${enr.id} skipped (already claimed by another run)`);
+          continue;
+        }
+
         const { data: cadence } = await supabase
           .from("crm_cadences").select("*").eq("id", enr.cadence_id).maybeSingle();
         if (!cadence || !cadence.is_active) {
