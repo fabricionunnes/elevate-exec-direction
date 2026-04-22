@@ -26,6 +26,9 @@ interface Cadence {
   is_active: boolean;
   stop_on_reply: boolean;
   stop_on_stage_change: boolean;
+  window_start: string | null;
+  window_end: string | null;
+  window_weekdays: number[] | null;
   pipeline?: { name: string } | null;
   stage?: { name: string } | null;
   step_count?: number;
