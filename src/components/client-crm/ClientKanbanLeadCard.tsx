@@ -6,6 +6,7 @@ import { formatDistanceToNow, formatDistanceToNowStrict, differenceInSeconds } f
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import type { ClientCRMLead } from "./hooks/useClientCRMPipeline";
+import { formatTimeInStage } from "@/lib/timeInStage";
 
 interface ClientKanbanLeadCardProps {
   lead: ClientCRMLead;

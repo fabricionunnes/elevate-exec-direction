@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { LeadMeetingActions } from "@/components/crm/LeadMeetingActions";
 import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
 import { LeadCardNotes } from "@/components/crm/LeadCardNotes";
+import { formatTimeInStage } from "@/lib/timeInStage";
 
 interface Lead {
   id: string;
