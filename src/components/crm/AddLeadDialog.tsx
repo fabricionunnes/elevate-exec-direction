@@ -294,7 +294,7 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
           const message = `🚀 *Novo Lead CRM!*\n\n` +
             `📊 *Funil:* ${pipelineName}\n` +
             `👤 *Nome:* ${formData.name}\n` +
-            (formData.phone ? `📞 *Telefone:* ${formData.phone}\n` : '') +
+            (formData.phone ? `📞 *Telefone:* ${formatPhone(formData.phone) || formData.phone}\n` : '') +
             (formData.email ? `📧 *Email:* ${formData.email}\n` : '') +
             (formData.company ? `🏢 *Empresa:* ${formData.company}\n` : '') +
             `\n🔗 *Ver no CRM:* ${leadLink}`;
