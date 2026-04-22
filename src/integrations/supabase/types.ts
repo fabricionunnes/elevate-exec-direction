@@ -12775,6 +12775,7 @@ export type Database = {
           enrolled_at: string
           id: string
           last_inbound_at: string | null
+          last_inbound_text: string | null
           last_message_sent_at: string | null
           lead_id: string
           next_run_at: string | null
@@ -12791,6 +12792,7 @@ export type Database = {
           enrolled_at?: string
           id?: string
           last_inbound_at?: string | null
+          last_inbound_text?: string | null
           last_message_sent_at?: string | null
           lead_id: string
           next_run_at?: string | null
@@ -12807,6 +12809,7 @@ export type Database = {
           enrolled_at?: string
           id?: string
           last_inbound_at?: string | null
+          last_inbound_text?: string | null
           last_message_sent_at?: string | null
           lead_id?: string
           next_run_at?: string | null
@@ -12915,6 +12918,7 @@ export type Database = {
       }
       crm_cadence_steps: {
         Row: {
+          branches: Json
           cadence_id: string
           created_at: string
           delay_unit: string
@@ -12922,6 +12926,10 @@ export type Database = {
           id: string
           instance_mode: string
           is_active: boolean
+          media_caption: string | null
+          media_filename: string | null
+          media_type: string
+          media_url: string | null
           message_template: string
           send_condition: string
           sort_order: number
@@ -12929,6 +12937,7 @@ export type Database = {
           whatsapp_instance_id: string | null
         }
         Insert: {
+          branches?: Json
           cadence_id: string
           created_at?: string
           delay_unit?: string
@@ -12936,6 +12945,10 @@ export type Database = {
           id?: string
           instance_mode?: string
           is_active?: boolean
+          media_caption?: string | null
+          media_filename?: string | null
+          media_type?: string
+          media_url?: string | null
           message_template: string
           send_condition?: string
           sort_order?: number
@@ -12943,6 +12956,7 @@ export type Database = {
           whatsapp_instance_id?: string | null
         }
         Update: {
+          branches?: Json
           cadence_id?: string
           created_at?: string
           delay_unit?: string
@@ -12950,6 +12964,10 @@ export type Database = {
           id?: string
           instance_mode?: string
           is_active?: boolean
+          media_caption?: string | null
+          media_filename?: string | null
+          media_type?: string
+          media_url?: string | null
           message_template?: string
           send_condition?: string
           sort_order?: number
@@ -32781,6 +32799,13 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      enroll_leads_in_cadence: {
+        Args: { p_cadence_id: string; p_lead_ids: string[] }
+        Returns: {
+          enrolled_count: number
+          skipped_count: number
+        }[]
       }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
       get_ads_credits_balance: {
