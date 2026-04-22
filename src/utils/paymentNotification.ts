@@ -1,8 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Sends payment confirmation notifications to all staff members
- * who have fin_receivables_view permission or are master/admin.
+ * Sends payment confirmation notifications to staff members who have explicitly
+ * subscribed to payment notifications (same list used for WhatsApp alerts).
  */
 export async function sendPaymentNotification(
   companyName: string,
@@ -10,32 +10,22 @@ export async function sendPaymentNotification(
   description?: string
 ) {
   try {
-    // Get all active staff with master/admin roles (they have full access)
-    const { data: masterStaff } = await supabase
-      .from("onboarding_staff")
-      .select("id, role")
-      .eq("is_active", true)
-      .in("role", ["master", "admin"]);
-
-    // Get staff with fin_receivables_view permission
-    const { data: permStaff } = await supabase
-      .from("staff_financial_permissions")
+    // Get only staff who are subscribed to payment notifications
+    const { data: subscribers, error: subsError } = await supabase
+      .from("payment_notification_subscribers")
       .select("staff_id")
-      .eq("permission_key", "fin_receivables_view");
+      .eq("is_active", true);
 
-    // Also check staff with financial menu permission
-    const { data: menuStaff } = await supabase
-      .from("staff_menu_permissions")
-      .select("staff_id")
-      .eq("menu_key", "financial");
+    if (subsError) {
+      console.error("Error loading payment subscribers:", subsError);
+      return;
+    }
 
-    // Combine unique staff IDs
-    const staffIds = new Set<string>();
-    (masterStaff || []).forEach(s => staffIds.add(s.id));
-    (permStaff || []).forEach(s => staffIds.add(s.staff_id));
-    (menuStaff || []).forEach(s => staffIds.add(s.staff_id));
+    const staffIds = Array.from(
+      new Set((subscribers || []).map((s) => s.staff_id).filter(Boolean))
+    );
 
-    if (staffIds.size === 0) return;
+    if (staffIds.length === 0) return;
 
     const formattedAmount = new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -45,7 +35,7 @@ export async function sendPaymentNotification(
     const title = `💰 Pagamento confirmado: ${companyName}`;
     const message = `Pagamento de ${formattedAmount} confirmado${description ? ` - ${description}` : ""} para ${companyName}.`;
 
-    const notifications = Array.from(staffIds).map(staffId => ({
+    const notifications = staffIds.map((staffId) => ({
       staff_id: staffId,
       type: "payment_confirmed",
       title,
