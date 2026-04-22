@@ -12766,6 +12766,288 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_cadence_enrollments: {
+        Row: {
+          cadence_id: string
+          completed_at: string | null
+          created_at: string
+          current_step_index: number
+          enrolled_at: string
+          id: string
+          last_inbound_at: string | null
+          last_message_sent_at: string | null
+          lead_id: string
+          next_run_at: string | null
+          status: string
+          stopped_reason: string | null
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          cadence_id: string
+          completed_at?: string | null
+          created_at?: string
+          current_step_index?: number
+          enrolled_at?: string
+          id?: string
+          last_inbound_at?: string | null
+          last_message_sent_at?: string | null
+          lead_id: string
+          next_run_at?: string | null
+          status?: string
+          stopped_reason?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cadence_id?: string
+          completed_at?: string | null
+          created_at?: string
+          current_step_index?: number
+          enrolled_at?: string
+          id?: string
+          last_inbound_at?: string | null
+          last_message_sent_at?: string | null
+          lead_id?: string
+          next_run_at?: string | null
+          status?: string
+          stopped_reason?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_cadence_enrollments_cadence_id_fkey"
+            columns: ["cadence_id"]
+            isOneToOne: false
+            referencedRelation: "crm_cadences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_cadence_enrollments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_cadence_messages: {
+        Row: {
+          cadence_id: string
+          created_at: string
+          enrollment_id: string
+          error_message: string | null
+          id: string
+          lead_id: string
+          message_content: string | null
+          phone: string | null
+          sent_at: string | null
+          status: string
+          step_id: string | null
+          whatsapp_instance_id: string | null
+        }
+        Insert: {
+          cadence_id: string
+          created_at?: string
+          enrollment_id: string
+          error_message?: string | null
+          id?: string
+          lead_id: string
+          message_content?: string | null
+          phone?: string | null
+          sent_at?: string | null
+          status?: string
+          step_id?: string | null
+          whatsapp_instance_id?: string | null
+        }
+        Update: {
+          cadence_id?: string
+          created_at?: string
+          enrollment_id?: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string
+          message_content?: string | null
+          phone?: string | null
+          sent_at?: string | null
+          status?: string
+          step_id?: string | null
+          whatsapp_instance_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_cadence_messages_cadence_id_fkey"
+            columns: ["cadence_id"]
+            isOneToOne: false
+            referencedRelation: "crm_cadences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_cadence_messages_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "crm_cadence_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_cadence_messages_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_cadence_messages_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "crm_cadence_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_cadence_messages_whatsapp_instance_id_fkey"
+            columns: ["whatsapp_instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_cadence_steps: {
+        Row: {
+          cadence_id: string
+          created_at: string
+          delay_unit: string
+          delay_value: number
+          id: string
+          instance_mode: string
+          is_active: boolean
+          message_template: string
+          send_condition: string
+          sort_order: number
+          updated_at: string
+          whatsapp_instance_id: string | null
+        }
+        Insert: {
+          cadence_id: string
+          created_at?: string
+          delay_unit?: string
+          delay_value?: number
+          id?: string
+          instance_mode?: string
+          is_active?: boolean
+          message_template: string
+          send_condition?: string
+          sort_order?: number
+          updated_at?: string
+          whatsapp_instance_id?: string | null
+        }
+        Update: {
+          cadence_id?: string
+          created_at?: string
+          delay_unit?: string
+          delay_value?: number
+          id?: string
+          instance_mode?: string
+          is_active?: boolean
+          message_template?: string
+          send_condition?: string
+          sort_order?: number
+          updated_at?: string
+          whatsapp_instance_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_cadence_steps_cadence_id_fkey"
+            columns: ["cadence_id"]
+            isOneToOne: false
+            referencedRelation: "crm_cadences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_cadence_steps_whatsapp_instance_id_fkey"
+            columns: ["whatsapp_instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_cadences: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          pipeline_id: string | null
+          scope: string
+          stage_id: string | null
+          stop_on_reply: boolean
+          stop_on_stage_change: boolean
+          tenant_id: string | null
+          timezone: string | null
+          updated_at: string
+          window_end: string | null
+          window_start: string | null
+          window_weekdays: number[] | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          pipeline_id?: string | null
+          scope?: string
+          stage_id?: string | null
+          stop_on_reply?: boolean
+          stop_on_stage_change?: boolean
+          tenant_id?: string | null
+          timezone?: string | null
+          updated_at?: string
+          window_end?: string | null
+          window_start?: string | null
+          window_weekdays?: number[] | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          pipeline_id?: string | null
+          scope?: string
+          stage_id?: string | null
+          stop_on_reply?: boolean
+          stop_on_stage_change?: boolean
+          tenant_id?: string | null
+          timezone?: string | null
+          updated_at?: string
+          window_end?: string | null
+          window_start?: string | null
+          window_weekdays?: number[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_cadences_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_cadences_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_clint_config: {
         Row: {
           api_token_secret_name: string
@@ -23931,6 +24213,7 @@ export type Database = {
           complement: string | null
           cpf: string | null
           created_at: string
+          default_whatsapp_instance_id: string | null
           email: string
           id: string
           is_active: boolean
@@ -23963,6 +24246,7 @@ export type Database = {
           complement?: string | null
           cpf?: string | null
           created_at?: string
+          default_whatsapp_instance_id?: string | null
           email: string
           id?: string
           is_active?: boolean
@@ -23995,6 +24279,7 @@ export type Database = {
           complement?: string | null
           cpf?: string | null
           created_at?: string
+          default_whatsapp_instance_id?: string | null
           email?: string
           id?: string
           is_active?: boolean
@@ -24013,6 +24298,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "onboarding_staff_default_whatsapp_instance_id_fkey"
+            columns: ["default_whatsapp_instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "onboarding_staff_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -32471,6 +32763,14 @@ export type Database = {
       create_social_default_stages: {
         Args: { p_board_id: string }
         Returns: undefined
+      }
+      crm_cadence_calc_next_run: {
+        Args: {
+          p_base_time: string
+          p_delay_unit: string
+          p_delay_value: number
+        }
+        Returns: string
       }
       current_user_is_tenant: { Args: never; Returns: boolean }
       current_user_tenant_id: { Args: never; Returns: string }

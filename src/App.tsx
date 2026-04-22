@@ -249,6 +249,7 @@ const CRMCallSummaryPage = lazy(() => import("./pages/crm").then(m => ({ default
 const CRMMeetingsPage = lazy(() => import("./pages/crm/CRMMeetingsPage"));
 const CRMApiPage = lazy(() => import("./pages/crm/CRMApiPage"));
 const CRMForecastPage = lazy(() => import("./pages/crm/CRMForecastPage"));
+const CRMCadencesPage = lazy(() => import("./pages/crm/CRMCadencesPage"));
 
 // Social Pipeline
 const SocialLayoutPage = lazy(() => import("./pages/social").then(m => ({ default: m.SocialLayout })));
@@ -486,6 +487,7 @@ const AppShell = () => {
               <Route path="call-summary" element={<CRMCallSummaryPage />} />
               <Route path="api" element={<CRMApiPage />} />
               <Route path="forecast" element={<CRMForecastPage />} />
+              <Route path="cadences" element={<CRMCadencesPage />} />
             </Route>
             
             {/* UNV Social - Content Pipeline */}
