@@ -277,10 +277,34 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // Próxima reunião agendada (para variáveis {{data_reuniao}} e {{link_reuniao}})
+        const { data: nextMeeting } = await supabase
+          .from("crm_activities")
+          .select("scheduled_at, meeting_link")
+          .eq("lead_id", lead.id)
+          .eq("type", "meeting")
+          .gte("scheduled_at", now.toISOString())
+          .order("scheduled_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        const firstName = lead.name?.split(" ")[0] || lead.name || "";
+        const meetingDate = nextMeeting?.scheduled_at
+          ? new Date(nextMeeting.scheduled_at).toLocaleString("pt-BR", {
+              timeZone: "America/Sao_Paulo",
+              day: "2-digit", month: "2-digit", year: "numeric",
+              hour: "2-digit", minute: "2-digit",
+            })
+          : "";
+        const meetingLink = nextMeeting?.meeting_link || "";
+
         const vars = {
-          nome: lead.name?.split(" ")[0] || lead.name || "",
+          nome: firstName,
+          primeiro_nome: firstName,
           nome_completo: lead.name || "",
           empresa: lead.company || "",
+          data_reuniao: meetingDate,
+          link_reuniao: meetingLink,
         };
 
         const mediaType = step.media_type || "text";

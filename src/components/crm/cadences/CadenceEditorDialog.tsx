@@ -14,6 +14,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Plus, Trash2, GripVertical, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { CadenceMediaUpload } from "./CadenceMediaUpload";
 import { CadenceBranchesEditor, type Branch } from "./CadenceBranchesEditor";
 
@@ -88,6 +89,26 @@ export function CadenceEditorDialog({ open, onOpenChange, editing, onSaved }: Pr
   const [stages, setStages] = useState<any[]>([]);
   const [instances, setInstances] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
+  const [focusedField, setFocusedField] = useState<Record<number, "message" | "caption">>({});
+
+  const VARIABLES: { token: string; label: string; description: string }[] = [
+    { token: "{{primeiro_nome}}", label: "Primeiro nome", description: "Primeiro nome do lead" },
+    { token: "{{nome_completo}}", label: "Nome completo", description: "Nome completo do lead" },
+    { token: "{{empresa}}", label: "Empresa", description: "Empresa do lead" },
+    { token: "{{data_reuniao}}", label: "Data da reunião", description: "Próxima reunião agendada (data e hora)" },
+    { token: "{{link_reuniao}}", label: "Link da reunião", description: "Link da próxima reunião agendada" },
+  ];
+
+  const insertVariable = (idx: number, token: string) => {
+    const target = focusedField[idx] || (steps[idx].media_type === "text" ? "message" : "caption");
+    if (target === "caption") {
+      const current = steps[idx].media_caption || "";
+      updateStep(idx, { media_caption: current ? `${current} ${token}` : token });
+    } else {
+      const current = steps[idx].message_template || "";
+      updateStep(idx, { message_template: current ? `${current} ${token}` : token });
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -406,23 +427,41 @@ export function CadenceEditorDialog({ open, onOpenChange, editing, onSaved }: Pr
                 <div className="grid gap-1">
                   <Label className="text-xs">
                     {step.media_type === "text"
-                      ? `Mensagem (variáveis: {{nome}}, {{nome_completo}}, {{empresa}})`
+                      ? "Mensagem"
                       : step.media_type === "audio"
                       ? "Áudio não tem legenda"
-                      : `Legenda (opcional, variáveis: {{nome}}, {{empresa}})`}
+                      : "Legenda (opcional)"}
                   </Label>
+                  {step.media_type !== "audio" && (
+                    <div className="flex flex-wrap gap-1.5 mb-1">
+                      <span className="text-[11px] text-muted-foreground self-center mr-1">Inserir:</span>
+                      {VARIABLES.map((v) => (
+                        <Badge
+                          key={v.token}
+                          variant="secondary"
+                          title={v.description}
+                          className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors text-[11px] font-normal"
+                          onClick={() => insertVariable(idx, v.token)}
+                        >
+                          {v.label}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                   {step.media_type === "audio" ? null : step.media_type === "text" ? (
                     <Textarea
                       rows={3}
                       value={step.message_template}
                       onChange={(e) => updateStep(idx, { message_template: e.target.value })}
-                      placeholder="Olá {{nome}}, tudo bem?"
+                      onFocus={() => setFocusedField((p) => ({ ...p, [idx]: "message" }))}
+                      placeholder="Olá {{primeiro_nome}}, tudo bem?"
                     />
                   ) : (
                     <Textarea
                       rows={2}
                       value={step.media_caption || ""}
                       onChange={(e) => updateStep(idx, { media_caption: e.target.value })}
+                      onFocus={() => setFocusedField((p) => ({ ...p, [idx]: "caption" }))}
                       placeholder="Legenda opcional..."
                     />
                   )}
