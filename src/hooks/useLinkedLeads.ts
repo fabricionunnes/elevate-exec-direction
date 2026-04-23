@@ -18,6 +18,7 @@ interface UseLinkedLeadsParams {
   phone?: string | null;
   email?: string | null;
   document?: string | null;
+  leadId?: string | null;
 }
 
 // Clean phone number for comparison (remove all non-digits)
@@ -32,7 +33,7 @@ const cleanDocument = (doc: string | null | undefined): string | null => {
   return doc.replace(/\D/g, "");
 };
 
-export function useLinkedLeads({ phone, email, document }: UseLinkedLeadsParams) {
+export function useLinkedLeads({ phone, email, document, leadId }: UseLinkedLeadsParams) {
   const [leads, setLeads] = useState<LinkedLead[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,8 +43,7 @@ export function useLinkedLeads({ phone, email, document }: UseLinkedLeadsParams)
     const cleanedDocument = cleanDocument(document);
     const cleanedEmail = email?.toLowerCase().trim();
 
-    // Only search if we have at least one identifier
-    if (!cleanedPhone && !cleanedEmail && !cleanedDocument) {
+    if (!cleanedPhone && !cleanedEmail && !cleanedDocument && !leadId) {
       setLeads([]);
       return;
     }
@@ -52,24 +52,26 @@ export function useLinkedLeads({ phone, email, document }: UseLinkedLeadsParams)
     setError(null);
 
     try {
-      // Build OR conditions for matching leads
       const conditions: string[] = [];
-      
+
+      if (leadId) {
+        conditions.push(`id.eq.${leadId}`);
+      }
+
       if (cleanedPhone) {
         // Match by last 8 digits (handles BR mobile "9" prefix variations and country code differences)
         conditions.push(`phone.ilike.%${cleanedPhone.slice(-8)}%`);
       }
-      
+
       if (cleanedEmail) {
         conditions.push(`email.ilike.${cleanedEmail}`);
       }
-      
+
       if (cleanedDocument) {
         // Match document with any formatting
         conditions.push(`document.ilike.%${cleanedDocument}%`);
       }
 
-      // Fetch leads matching any of the identifiers
       const { data, error: fetchError } = await supabase
         .from("crm_leads")
         .select(`
@@ -89,20 +91,20 @@ export function useLinkedLeads({ phone, email, document }: UseLinkedLeadsParams)
 
       if (fetchError) throw fetchError;
 
-      // Filter results to ensure actual matches (due to ilike limitations)
-      const filteredLeads = (data || []).filter(lead => {
+      const filteredLeads = (data || []).filter((lead) => {
         const leadPhone = cleanPhone(lead.phone);
         const leadEmail = lead.email?.toLowerCase().trim();
         const leadDocument = cleanDocument(lead.document);
 
-        // Match if any identifier matches
+        if (leadId && lead.id === leadId) return true;
+
         if (cleanedPhone && leadPhone) {
           // Match last 8 digits — robust against BR mobile "9" prefix and country code variations
           if (leadPhone.slice(-8) === cleanedPhone.slice(-8)) return true;
         }
-        
+
         if (cleanedEmail && leadEmail === cleanedEmail) return true;
-        
+
         if (cleanedDocument && leadDocument === cleanedDocument) return true;
 
         return false;
@@ -116,7 +118,7 @@ export function useLinkedLeads({ phone, email, document }: UseLinkedLeadsParams)
     } finally {
       setLoading(false);
     }
-  }, [phone, email, document]);
+  }, [phone, email, document, leadId]);
 
   useEffect(() => {
     fetchLinkedLeads();
