@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const AVAILABLE_VARIABLES = [
   { key: '{{nome_cliente}}', label: 'Nome' },
@@ -32,14 +33,22 @@ interface LeadContext {
   meetingDateTime?: string;
 }
 
+export interface WhatsAppInstanceOption {
+  id: string;
+  instance_name: string;
+  display_name?: string | null;
+}
+
 interface WhatsAppMessageDialogProps {
   phone: string;
   recipientName?: string;
   defaultMessage?: string;
   onClose: () => void;
-  onSend: (message: string) => Promise<void>;
+  onSend: (message: string, instanceId?: string) => Promise<void>;
   sending: boolean;
   leadContext?: LeadContext;
+  instances?: WhatsAppInstanceOption[];
+  defaultInstanceId?: string;
 }
 
 const MESSAGE_TEMPLATES = [
@@ -81,14 +90,20 @@ export const WhatsAppMessageDialog = ({
   onSend,
   sending,
   leadContext,
+  instances,
+  defaultInstanceId,
 }: WhatsAppMessageDialogProps) => {
   const [message, setMessage] = useState(defaultMessage);
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string>(
+    defaultInstanceId || instances?.[0]?.id || ""
+  );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = async () => {
     if (!message.trim()) return;
+    if (instances && instances.length > 0 && !selectedInstanceId) return;
     const resolved = resolveVariables(message.trim(), leadContext);
-    await onSend(resolved);
+    await onSend(resolved, selectedInstanceId || undefined);
   };
 
   const applyTemplate = (template: string) => {
@@ -136,6 +151,33 @@ export const WhatsAppMessageDialog = ({
               {formatPhone(phone)}
             </p>
           </div>
+
+          {/* Instance selector */}
+          {instances && instances.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">
+                Instância de envio:
+              </Label>
+              {instances.length === 1 ? (
+                <div className="bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm">
+                  {instances[0].display_name || instances[0].instance_name}
+                </div>
+              ) : (
+                <Select value={selectedInstanceId} onValueChange={setSelectedInstanceId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a instância" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {instances.map((inst) => (
+                      <SelectItem key={inst.id} value={inst.id}>
+                        {inst.display_name || inst.instance_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
 
           {/* Quick Templates */}
           <div className="space-y-2">
