@@ -156,7 +156,7 @@ interface Activity {
 export const CRMLeadDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAdmin, staffId } = useCRMContext();
+  const { isAdmin, isMaster, staffId } = useCRMContext();
   
   const [lead, setLead] = useState<Lead | null>(null);
   const [stages, setStages] = useState<Stage[]>([]);
@@ -183,6 +183,57 @@ export const CRMLeadDetailPage = () => {
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
   const [siblingLeadIds, setSiblingLeadIds] = useState<string[]>([]);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  const [authorizedInstances, setAuthorizedInstances] = useState<
+    Array<{ id: string; instance_name: string; display_name?: string | null }>
+  >([]);
+
+  // Load WhatsApp instances the current user is authorized to send from
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (isMaster || isAdmin) {
+          const { data } = await supabase
+            .from("whatsapp_instances")
+            .select("id, instance_name, display_name, status")
+            .order("instance_name");
+          if (!cancelled) {
+            setAuthorizedInstances(
+              (data || [])
+                .filter((i: any) => i.status === "connected" || i.status === "open")
+                .map((i: any) => ({
+                  id: i.id,
+                  instance_name: i.instance_name,
+                  display_name: i.display_name,
+                }))
+            );
+          }
+        } else if (staffId) {
+          const { data } = await supabase
+            .from("whatsapp_instance_access")
+            .select("instance:whatsapp_instances(id, instance_name, display_name, status)")
+            .eq("staff_id", staffId)
+            .eq("can_send", true);
+          if (!cancelled) {
+            const list = (data || [])
+              .map((a: any) => a.instance)
+              .filter((i: any) => i && (i.status === "connected" || i.status === "open"))
+              .map((i: any) => ({
+                id: i.id,
+                instance_name: i.instance_name,
+                display_name: i.display_name,
+              }));
+            setAuthorizedInstances(list);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading authorized instances:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isMaster, isAdmin, staffId]);
 
   const loadLead = useCallback(async () => {
     if (!id) return;
