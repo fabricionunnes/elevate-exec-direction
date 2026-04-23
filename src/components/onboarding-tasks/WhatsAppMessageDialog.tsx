@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const AVAILABLE_VARIABLES = [
   { key: '{{nome_cliente}}', label: 'Nome' },
@@ -32,14 +33,22 @@ interface LeadContext {
   meetingDateTime?: string;
 }
 
+export interface WhatsAppInstanceOption {
+  id: string;
+  instance_name: string;
+  display_name?: string | null;
+}
+
 interface WhatsAppMessageDialogProps {
   phone: string;
   recipientName?: string;
   defaultMessage?: string;
   onClose: () => void;
-  onSend: (message: string) => Promise<void>;
+  onSend: (message: string, instanceId?: string) => Promise<void>;
   sending: boolean;
   leadContext?: LeadContext;
+  instances?: WhatsAppInstanceOption[];
+  defaultInstanceId?: string;
 }
 
 const MESSAGE_TEMPLATES = [
