@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Briefcase, UserPlus, UserMinus, TrendingDown, AlertCircle, Cake, Target, GraduationCap } from "lucide-react";
+import { Users, Briefcase, UserPlus, UserMinus, TrendingDown, AlertCircle, Cake, Target, GraduationCap, Rocket } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 
 export default function UNVProfileDashboardPage() {
@@ -65,7 +65,7 @@ export default function UNVProfileDashboardPage() {
         <KPI icon={UserPlus} label="Admissões (mês)" value={stats.hires} color="bg-cyan-500" />
         <KPI icon={UserMinus} label="Desligamentos" value={stats.terms} color="bg-rose-500" />
         <KPI icon={TrendingDown} label="Turnover %" value={stats.turnover + "%"} color="bg-orange-500" />
-        <KPI icon={Rocket as any} label="Onboardings" value={stats.onboarding} color="bg-amber-500" />
+        <KPI icon={Rocket} label="Onboardings" value={stats.onboarding} color="bg-amber-500" />
         <KPI icon={Target} label="PDIs pendentes" value={stats.pdiPending} color="bg-pink-500" />
         <KPI icon={AlertCircle} label="Avaliações pendentes" value={stats.evalPending} color="bg-indigo-500" />
         <KPI icon={Cake} label="Aniversariantes" value="0" color="bg-fuchsia-500" />
@@ -95,5 +95,3 @@ export default function UNVProfileDashboardPage() {
     </div>
   );
 }
-
-import { Rocket } from "lucide-react";
