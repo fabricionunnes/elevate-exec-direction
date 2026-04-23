@@ -345,6 +345,7 @@ export const CRMInboxPage = () => {
             .select(`
               *,
               contact:crm_whatsapp_contacts(*),
+              lead:crm_leads(id, name),
               assigned_staff:onboarding_staff(id, name, avatar_url)
             `)
             .eq('id', conversationIdFromUrl)

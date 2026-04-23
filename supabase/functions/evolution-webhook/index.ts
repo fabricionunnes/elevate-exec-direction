@@ -624,7 +624,7 @@ async function getOrCreateContact(supabase: any, phone: string, name?: string) {
     .from('crm_whatsapp_contacts')
     .select('*')
     .eq('phone', phone)
-    .single();
+    .maybeSingle();
 
   if (existingContact) {
     // Only update name if:
@@ -680,11 +680,20 @@ async function getOrCreateConversation(supabase: any, instanceId: string, contac
     .neq('status', 'closed')
     .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (existingConversation) {
     return existingConversation;
   }
+
+  const { data: inheritedConversation } = await supabase
+    .from('crm_whatsapp_conversations')
+    .select('lead_id')
+    .eq('contact_id', contactId)
+    .not('lead_id', 'is', null)
+    .order('last_message_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   // Create new conversation
   const { data: newConversation, error } = await supabase
@@ -692,6 +701,7 @@ async function getOrCreateConversation(supabase: any, instanceId: string, contac
     .insert({
       instance_id: instanceId,
       contact_id: contactId,
+      lead_id: inheritedConversation?.lead_id || null,
       status: 'open',
     })
     .select()
