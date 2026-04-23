@@ -179,11 +179,22 @@ export default function PrivacyPage() {
                 <div className="text-body space-y-4">
                   <p>
                     Em caso de dúvidas, solicitações ou reclamações relacionadas ao tratamento dos seus
-                    dados pessoais, entre em contato:
+                    dados pessoais, entre em contato com nosso responsável:
                   </p>
                   <ul className="list-disc list-inside space-y-2 text-muted-foreground">
-                    <li><strong>E-mail:</strong> contato@unv.com.br</li>
-                    <li><strong>WhatsApp:</strong> (31) 99912-0003</li>
+                    <li><strong>Responsável:</strong> Fabrício Nunnes</li>
+                    <li>
+                      <strong>E-mail:</strong>{" "}
+                      <a href="mailto:fabricio@universidadevendas.com.br" className="text-primary hover:underline">
+                        fabricio@universidadevendas.com.br
+                      </a>
+                    </li>
+                    <li>
+                      <strong>Telefone / WhatsApp:</strong>{" "}
+                      <a href="https://wa.me/5531989840003" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        (31) 98984-0003
+                      </a>
+                    </li>
                     <li><strong>Empresa:</strong> UNV — Universidade Nacional de Vendas</li>
                   </ul>
                 </div>
