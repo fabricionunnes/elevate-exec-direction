@@ -1998,6 +1998,10 @@ const OnboardingTasksPage = () => {
                         <GraduationCap className="h-4 w-4 mr-2" />
                         UNV Academy
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/unv-profile")}>
+                        <Users className="h-4 w-4 mr-2" />
+                        UNV Profile
+                      </DropdownMenuItem>
                     </>
                   )}
                   {/* UNV Circle */}
