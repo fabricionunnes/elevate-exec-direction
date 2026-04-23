@@ -527,7 +527,7 @@ export const CRMLeadDetailPage = () => {
           const saleDate = new Date();
           const saleDateStr = saleDate.toISOString().slice(0, 10); // yyyy-mm-dd
 
-          const closerId = lead.closer_staff_id || lead.owner_staff_id;
+          const closerId = effectiveCloserId;
           const sdrId = lead.sdr_staff_id || null;
           const value = lead.opportunity_value || 0;
 
