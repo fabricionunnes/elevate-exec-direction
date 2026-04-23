@@ -92,12 +92,16 @@ export const WhatsAppMessageDialog = ({
   leadContext,
 }: WhatsAppMessageDialogProps) => {
   const [message, setMessage] = useState(defaultMessage);
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string>(
+    defaultInstanceId || instances?.[0]?.id || ""
+  );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = async () => {
     if (!message.trim()) return;
+    if (instances && instances.length > 0 && !selectedInstanceId) return;
     const resolved = resolveVariables(message.trim(), leadContext);
-    await onSend(resolved);
+    await onSend(resolved, selectedInstanceId || undefined);
   };
 
   const applyTemplate = (template: string) => {
