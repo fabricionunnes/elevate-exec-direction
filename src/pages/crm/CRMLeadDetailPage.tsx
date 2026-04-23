@@ -718,18 +718,20 @@ export const CRMLeadDetailPage = () => {
         .limit(1)
         .maybeSingle();
 
-      // Get the first stage of the new pipeline
-      const { data: firstStage } = await supabase
+      // Get the first stage of the new pipeline (use maybeSingle to avoid throwing when empty)
+      const { data: firstStage, error: stageError } = await supabase
         .from("crm_stages")
         .select("id")
         .eq("pipeline_id", selectedPipelineId)
         .eq("is_final", false)
         .order("sort_order")
         .limit(1)
-        .single();
+        .maybeSingle();
+
+      if (stageError) throw stageError;
 
       if (!firstStage) {
-        toast.error("Nenhuma etapa encontrada no funil selecionado");
+        toast.error("Este funil não possui etapas configuradas. Configure as etapas antes de mover leads para ele.");
         return;
       }
 
@@ -749,9 +751,9 @@ export const CRMLeadDetailPage = () => {
       setChangePipelineDialogOpen(false);
       setSelectedPipelineId("");
       loadLead();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error changing pipeline:", error);
-      toast.error("Erro ao mudar de funil");
+      toast.error(`Erro ao mudar de funil: ${error?.message || "erro desconhecido"}`);
     }
   };
 
