@@ -29,7 +29,8 @@ const MODULE_CATALOG: Array<{
   { key: "whatsapp", label: "WhatsApp Hub", description: "Atendimento centralizado e instâncias", icon: MessageSquare },
   { key: "social", label: "Social / Posts", description: "Publicação de conteúdo nas redes", icon: Share2 },
   { key: "academy", label: "Academy", description: "Trilhas de aprendizagem e quizzes", icon: GraduationCap },
-  { key: "hr", label: "Recursos Humanos", description: "Vagas, candidatos e contratos", icon: Users },
+  { key: "hr", label: "Recursos Humanos (legado)", description: "Vagas, candidatos e contratos", icon: Users },
+  { key: "profile", label: "UNV Profile", description: "RH completo: pessoas, DISC, PDI, carreira, avaliações, clima", icon: Users },
   { key: "b2b", label: "Prospecção B2B", description: "Captura de leads via Google Places", icon: Search },
 ];
 

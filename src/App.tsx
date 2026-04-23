@@ -195,6 +195,13 @@ const PublicAdsBriefingPage = lazy(() => import("./pages/public/PublicAdsBriefin
 const PublicPresentationPage = lazy(() => import("./pages/public/PublicPresentationPage"));
 const SlideRemoteControlPage = lazy(() => import("./pages/public/SlideRemoteControlPage"));
 
+// UNV Profile
+const UNVProfileLayout = lazy(() => import("./pages/unv-profile/UNVProfileLayout"));
+const UNVProfileHomePage = lazy(() => import("./pages/unv-profile/UNVProfileHomePage"));
+const UNVProfileDashboardPage = lazy(() => import("./pages/unv-profile/UNVProfileDashboardPage"));
+const UNVProfileEmployeesPage = lazy(() => import("./pages/unv-profile/UNVProfileEmployeesPage"));
+const UNVProfileScaffoldPage = lazy(() => import("./pages/unv-profile/UNVProfileScaffoldPage"));
+
 // PDI
 const PDILayout = lazy(() => import("./pages/pdi/PDILayout"));
 const PDIDashboardPage = lazy(() => import("./pages/pdi/PDIDashboardPage"));
