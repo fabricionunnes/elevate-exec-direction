@@ -200,7 +200,25 @@ const UNVProfileLayout = lazy(() => import("./pages/unv-profile/UNVProfileLayout
 const UNVProfileHomePage = lazy(() => import("./pages/unv-profile/UNVProfileHomePage"));
 const UNVProfileDashboardPage = lazy(() => import("./pages/unv-profile/UNVProfileDashboardPage"));
 const UNVProfileEmployeesPage = lazy(() => import("./pages/unv-profile/UNVProfileEmployeesPage"));
-const UNVProfileScaffoldPage = lazy(() => import("./pages/unv-profile/UNVProfileScaffoldPage"));
+const UNVProfileRecruitmentPage = lazy(() => import("./pages/unv-profile/UNVProfileRecruitmentPage"));
+const UNVProfileRecruitmentPipelinePage = lazy(() => import("./pages/unv-profile/UNVProfileRecruitmentPipelinePage"));
+const UNVProfileTalentPoolPage = lazy(() => import("./pages/unv-profile/UNVProfileTalentPoolPage"));
+const UNVProfileDISCPage = lazy(() => import("./pages/unv-profile/UNVProfileDISCPage"));
+const UNVProfileOnboardingPage = lazy(() => import("./pages/unv-profile/UNVProfileOnboardingPage"));
+const UNVProfilePDIPage = lazy(() => import("./pages/unv-profile/UNVProfilePDIPage"));
+const UNVProfileCareerPage = lazy(() => import("./pages/unv-profile/UNVProfileCareerPage"));
+const UNVProfileTrainingsPage = lazy(() => import("./pages/unv-profile/UNVProfileTrainingsPage"));
+const UNVProfileEvaluationsPage = lazy(() => import("./pages/unv-profile/UNVProfileEvaluationsPage"));
+const UNVProfileFeedbacksPage = lazy(() => import("./pages/unv-profile/UNVProfileFeedbacksPage"));
+const UNVProfilePositionsPage = lazy(() => import("./pages/unv-profile/UNVProfilePositionsPage"));
+const UNVProfileOrgChartPage = lazy(() => import("./pages/unv-profile/UNVProfileOrgChartPage"));
+const UNVProfileClimatePage = lazy(() => import("./pages/unv-profile/UNVProfileClimatePage"));
+const UNVProfileAIPage = lazy(() => import("./pages/unv-profile/UNVProfileAIPage"));
+const UNVProfileReportsPage = lazy(() => import("./pages/unv-profile/UNVProfileReportsPage"));
+const UNVProfileMePage = lazy(() => import("./pages/unv-profile/UNVProfileMePage"));
+const UNVProfileAdminPage = lazy(() => import("./pages/unv-profile/UNVProfileAdminPage"));
+const UNVProfileIntegrationsPage = lazy(() => import("./pages/unv-profile/UNVProfileIntegrationsPage"));
+const UNVProfilePermissionsPage = lazy(() => import("./pages/unv-profile/UNVProfilePermissionsPage"));
 
 // PDI
 const PDILayout = lazy(() => import("./pages/pdi/PDILayout"));
