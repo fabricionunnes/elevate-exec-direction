@@ -205,6 +205,10 @@ Deno.serve(async (req) => {
               body: { action: "auto_renew", recurring_charge_id: invoice.recurring_charge_id },
             });
           }
+        } else if (invoice.status === "paid" || invoice.status === "partial") {
+          // Never overwrite a manually-paid invoice with overdue/pending from Asaas
+          console.log(`[Asaas Webhook] Invoice ${invoice.id} already paid/partial locally; ignoring webhook status ${newStatus}`);
+          matched = true;
         } else if (newStatus === "pending") {
           // Revert scenario
           const due = new Date(dueDate + "T12:00:00");
