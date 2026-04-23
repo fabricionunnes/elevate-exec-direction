@@ -56,8 +56,8 @@ export function useLinkedLeads({ phone, email, document }: UseLinkedLeadsParams)
       const conditions: string[] = [];
       
       if (cleanedPhone) {
-        // Match phone with or without country code, cleaning both sides
-        conditions.push(`phone.ilike.%${cleanedPhone.slice(-9)}%`);
+        // Match by last 8 digits (handles BR mobile "9" prefix variations and country code differences)
+        conditions.push(`phone.ilike.%${cleanedPhone.slice(-8)}%`);
       }
       
       if (cleanedEmail) {
@@ -97,8 +97,8 @@ export function useLinkedLeads({ phone, email, document }: UseLinkedLeadsParams)
 
         // Match if any identifier matches
         if (cleanedPhone && leadPhone) {
-          // Match last 9 digits (common phone matching)
-          if (leadPhone.slice(-9) === cleanedPhone.slice(-9)) return true;
+          // Match last 8 digits — robust against BR mobile "9" prefix and country code variations
+          if (leadPhone.slice(-8) === cleanedPhone.slice(-8)) return true;
         }
         
         if (cleanedEmail && leadEmail === cleanedEmail) return true;
