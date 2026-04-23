@@ -119,15 +119,24 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
       }
     }
 
-    // Verificar se já existe uma empresa com esse CNPJ (documento)
-    let existingCompany = null;
-    if (lead.document && lead.document.trim()) {
-      const { data: companyByDoc } = await supabase
+    // Nome da empresa: prioriza nome fantasia (trade_name) dos dados contratuais
+    const companyDisplayName = (lead.trade_name && lead.trade_name.trim())
+      ? lead.trade_name.trim()
+      : lead.company;
+
+    // Verificar se já existe uma empresa com esse CNPJ (normalizando — só dígitos)
+    let existingCompany: { id: string } | null = null;
+    const cleanedDoc = (lead.document || "").replace(/\D/g, "");
+    if (cleanedDoc.length >= 11) {
+      // Busca ampla e filtra em JS para lidar com variações de máscara
+      const { data: candidates } = await supabase
         .from("onboarding_companies")
-        .select("id")
-        .eq("cnpj", lead.document.trim())
-        .maybeSingle();
-      existingCompany = companyByDoc;
+        .select("id, cnpj")
+        .not("cnpj", "is", null);
+      if (candidates) {
+        const match = candidates.find(c => (c.cnpj || "").replace(/\D/g, "") === cleanedDoc);
+        if (match) existingCompany = { id: match.id };
+      }
     }
 
     let companyId: string;
