@@ -1,52 +1,48 @@
-const CACHE_NAME = 'unv-nexus-v2';
+const CACHE_NAME = 'unv-nexus-v3';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_ASSETS = [
-  '/',
   '/offline.html',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
 ];
 
-// Install: precache essential assets
+// Install: precache essential assets (NEVER precache '/' — causes Safari to serve stale HTML)
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_ASSETS);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_ASSETS))
   );
   self.skipWaiting();
 });
 
-// Activate: clean old caches
+// Activate: nuke ALL old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      )
-    )
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
+      await self.clients.claim();
+    })()
   );
-  self.clients.claim();
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
 // Fetch strategy
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
-  // Skip non-GET
   if (request.method !== 'GET') return;
-
-  // Skip chrome-extension, etc.
   if (!request.url.startsWith('http')) return;
 
   const url = new URL(request.url);
 
-  // API / supabase calls: network-only (don't cache)
+  // API / supabase / lovable runtime: network-only
   if (
     url.hostname.includes('supabase') ||
+    url.hostname.includes('lovable') ||
     url.pathname.startsWith('/rest/') ||
     url.pathname.startsWith('/auth/') ||
     url.pathname.startsWith('/functions/')
@@ -54,11 +50,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation requests: network-first, fallback to offline page
+  // Navigation requests: ALWAYS network-first, NEVER serve cached HTML
+  // (caching index.html is what breaks Safari after deploys)
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
-        .catch(() => caches.match(OFFLINE_URL))
+      fetch(request).catch(() => caches.match(OFFLINE_URL))
     );
     return;
   }
@@ -83,7 +79,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Everything else: network-first with cache fallback
+  // Everything else: network-first
   event.respondWith(
     fetch(request)
       .then((response) => {
