@@ -492,12 +492,21 @@ export const CRMLeadDetailPage = () => {
     }
 
     try {
+      // Definir o closer como o usuário logado que está dando ganho
+      // (sobrescreve qualquer closer anterior — quem clica em "Ganho" é o vendedor responsável)
+      const effectiveCloserId = staffId || lead.closer_staff_id || lead.owner_staff_id || null;
+
+      const updatePayload: Record<string, any> = {
+        stage_id: wonStage.id,
+        closed_at: new Date().toISOString(),
+      };
+      if (staffId) {
+        updatePayload.closer_staff_id = staffId;
+      }
+
       const { error } = await supabase
         .from("crm_leads")
-        .update({ 
-          stage_id: wonStage.id,
-          closed_at: new Date().toISOString()
-        })
+        .update(updatePayload)
         .eq("id", lead.id);
 
       if (error) throw error;
@@ -518,7 +527,7 @@ export const CRMLeadDetailPage = () => {
           const saleDate = new Date();
           const saleDateStr = saleDate.toISOString().slice(0, 10); // yyyy-mm-dd
 
-          const closerId = lead.closer_staff_id || lead.owner_staff_id;
+          const closerId = effectiveCloserId;
           const sdrId = lead.sdr_staff_id || null;
           const value = lead.opportunity_value || 0;
 
