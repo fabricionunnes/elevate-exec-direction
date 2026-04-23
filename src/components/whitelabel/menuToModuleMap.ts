@@ -58,8 +58,25 @@ export const MENU_TO_MODULE: Record<string, string> = {
   // Academy
   unv_academy: "academy",
 
-  // RH
+  // RH legado (Vagas)
   rh: "hr",
+
+  // UNV Profile (RH completo)
+  unv_profile: "profile",
+  unv_profile_dashboard: "profile",
+  unv_profile_employees: "profile",
+  unv_profile_recruitment: "profile",
+  unv_profile_talent_pool: "profile",
+  unv_profile_disc: "profile",
+  unv_profile_onboarding: "profile",
+  unv_profile_pdi: "profile",
+  unv_profile_career: "profile",
+  unv_profile_evaluations: "profile",
+  unv_profile_feedbacks: "profile",
+  unv_profile_trainings: "profile",
+  unv_profile_org_chart: "profile",
+  unv_profile_climate: "profile",
+  unv_profile_reports: "profile",
 
   // B2B
   prospeccao_b2b: "b2b",
