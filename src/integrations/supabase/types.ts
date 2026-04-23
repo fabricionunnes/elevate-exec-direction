@@ -26638,6 +26638,1334 @@ export type Database = {
           },
         ]
       }
+      profile_activity_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          payload: Json | null
+          tenant_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          payload?: Json | null
+          tenant_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          payload?: Json | null
+          tenant_id?: string | null
+        }
+        Relationships: []
+      }
+      profile_candidate_notes: {
+        Row: {
+          author_id: string | null
+          candidate_id: string
+          created_at: string
+          id: string
+          note: string
+          tenant_id: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          candidate_id: string
+          created_at?: string
+          id?: string
+          note: string
+          tenant_id?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          candidate_id?: string
+          created_at?: string
+          id?: string
+          note?: string
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_candidate_notes_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "profile_candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_candidates: {
+        Row: {
+          ai_concerns: Json | null
+          ai_score: number | null
+          ai_strengths: Json | null
+          ai_summary: string | null
+          city: string | null
+          cover_letter: string | null
+          created_at: string
+          custom_answers: Json
+          email: string | null
+          full_name: string
+          id: string
+          is_favorite: boolean
+          job_id: string | null
+          linkedin_url: string | null
+          phone: string | null
+          resume_url: string | null
+          source: string | null
+          stage: string
+          state: string | null
+          status: string
+          tags: string[] | null
+          tenant_id: string | null
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          ai_concerns?: Json | null
+          ai_score?: number | null
+          ai_strengths?: Json | null
+          ai_summary?: string | null
+          city?: string | null
+          cover_letter?: string | null
+          created_at?: string
+          custom_answers?: Json
+          email?: string | null
+          full_name: string
+          id?: string
+          is_favorite?: boolean
+          job_id?: string | null
+          linkedin_url?: string | null
+          phone?: string | null
+          resume_url?: string | null
+          source?: string | null
+          stage?: string
+          state?: string | null
+          status?: string
+          tags?: string[] | null
+          tenant_id?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          ai_concerns?: Json | null
+          ai_score?: number | null
+          ai_strengths?: Json | null
+          ai_summary?: string | null
+          city?: string | null
+          cover_letter?: string | null
+          created_at?: string
+          custom_answers?: Json
+          email?: string | null
+          full_name?: string
+          id?: string
+          is_favorite?: boolean
+          job_id?: string | null
+          linkedin_url?: string | null
+          phone?: string | null
+          resume_url?: string | null
+          source?: string | null
+          stage?: string
+          state?: string | null
+          status?: string
+          tags?: string[] | null
+          tenant_id?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_candidates_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "profile_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_candidates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_career_tracks: {
+        Row: {
+          area: string | null
+          company_id: string | null
+          created_at: string
+          id: string
+          levels: Json
+          name: string
+          tenant_id: string | null
+        }
+        Insert: {
+          area?: string | null
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          levels?: Json
+          name: string
+          tenant_id?: string | null
+        }
+        Update: {
+          area?: string | null
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          levels?: Json
+          name?: string
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_career_tracks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "profile_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_career_tracks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_climate_responses: {
+        Row: {
+          answers: Json
+          created_at: string
+          employee_id: string | null
+          enps_score: number | null
+          id: string
+          is_anonymous: boolean | null
+          survey_id: string
+          tenant_id: string | null
+        }
+        Insert: {
+          answers?: Json
+          created_at?: string
+          employee_id?: string | null
+          enps_score?: number | null
+          id?: string
+          is_anonymous?: boolean | null
+          survey_id: string
+          tenant_id?: string | null
+        }
+        Update: {
+          answers?: Json
+          created_at?: string
+          employee_id?: string | null
+          enps_score?: number | null
+          id?: string
+          is_anonymous?: boolean | null
+          survey_id?: string
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_climate_responses_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profile_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_climate_responses_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "profile_climate_surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_climate_surveys: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          ends_at: string | null
+          id: string
+          questions: Json
+          starts_at: string | null
+          status: string
+          tenant_id: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          questions?: Json
+          starts_at?: string | null
+          status?: string
+          tenant_id?: string | null
+          title: string
+          type?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          questions?: Json
+          starts_at?: string | null
+          status?: string
+          tenant_id?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_climate_surveys_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "profile_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_climate_surveys_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_companies: {
+        Row: {
+          cnpj: string | null
+          created_at: string
+          id: string
+          industry: string | null
+          is_internal: boolean
+          logo_url: string | null
+          name: string
+          onboarding_company_id: string | null
+          size: string | null
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          cnpj?: string | null
+          created_at?: string
+          id?: string
+          industry?: string | null
+          is_internal?: boolean
+          logo_url?: string | null
+          name: string
+          onboarding_company_id?: string | null
+          size?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cnpj?: string | null
+          created_at?: string
+          id?: string
+          industry?: string | null
+          is_internal?: boolean
+          logo_url?: string | null
+          name?: string
+          onboarding_company_id?: string | null
+          size?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_companies_onboarding_company_id_fkey"
+            columns: ["onboarding_company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_companies_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_departments: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          parent_id: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          parent_id?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_departments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "profile_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_departments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "profile_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_departments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_disc_results: {
+        Row: {
+          c_score: number | null
+          candidate_id: string | null
+          d_score: number | null
+          dominant: string | null
+          employee_id: string | null
+          i_score: number | null
+          id: string
+          interpretation: string | null
+          raw_responses: Json | null
+          s_score: number | null
+          taken_at: string
+          tenant_id: string | null
+        }
+        Insert: {
+          c_score?: number | null
+          candidate_id?: string | null
+          d_score?: number | null
+          dominant?: string | null
+          employee_id?: string | null
+          i_score?: number | null
+          id?: string
+          interpretation?: string | null
+          raw_responses?: Json | null
+          s_score?: number | null
+          taken_at?: string
+          tenant_id?: string | null
+        }
+        Update: {
+          c_score?: number | null
+          candidate_id?: string | null
+          d_score?: number | null
+          dominant?: string | null
+          employee_id?: string | null
+          i_score?: number | null
+          id?: string
+          interpretation?: string | null
+          raw_responses?: Json | null
+          s_score?: number | null
+          taken_at?: string
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_disc_results_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "profile_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_disc_results_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profile_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_disc_results_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_employee_links: {
+        Row: {
+          company_id: string
+          created_at: string
+          employee_id: string
+          end_date: string | null
+          id: string
+          is_primary: boolean
+          link_type: string
+          start_date: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          employee_id: string
+          end_date?: string | null
+          id?: string
+          is_primary?: boolean
+          link_type?: string
+          start_date?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          employee_id?: string
+          end_date?: string | null
+          id?: string
+          is_primary?: boolean
+          link_type?: string
+          start_date?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_employee_links_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "profile_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_employee_links_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profile_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_employee_links_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_employees: {
+        Row: {
+          avatar_url: string | null
+          birth_date: string | null
+          company_id: string | null
+          contract_type: string | null
+          cpf: string | null
+          created_at: string
+          department_id: string | null
+          email: string | null
+          employee_type: string
+          full_name: string
+          hire_date: string | null
+          id: string
+          is_employee: boolean
+          manager_id: string | null
+          metadata: Json
+          notes: string | null
+          phone: string | null
+          position_id: string | null
+          salary: number | null
+          staff_id: string | null
+          status: string
+          tenant_id: string | null
+          termination_date: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          birth_date?: string | null
+          company_id?: string | null
+          contract_type?: string | null
+          cpf?: string | null
+          created_at?: string
+          department_id?: string | null
+          email?: string | null
+          employee_type?: string
+          full_name: string
+          hire_date?: string | null
+          id?: string
+          is_employee?: boolean
+          manager_id?: string | null
+          metadata?: Json
+          notes?: string | null
+          phone?: string | null
+          position_id?: string | null
+          salary?: number | null
+          staff_id?: string | null
+          status?: string
+          tenant_id?: string | null
+          termination_date?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          birth_date?: string | null
+          company_id?: string | null
+          contract_type?: string | null
+          cpf?: string | null
+          created_at?: string
+          department_id?: string | null
+          email?: string | null
+          employee_type?: string
+          full_name?: string
+          hire_date?: string | null
+          id?: string
+          is_employee?: boolean
+          manager_id?: string | null
+          metadata?: Json
+          notes?: string | null
+          phone?: string | null
+          position_id?: string | null
+          salary?: number | null
+          staff_id?: string | null
+          status?: string
+          tenant_id?: string | null
+          termination_date?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_employees_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "profile_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_employees_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "profile_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "profile_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_employees_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "profile_positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_employees_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_employees_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_evaluation_cycles: {
+        Row: {
+          created_at: string
+          criteria: Json
+          end_date: string | null
+          id: string
+          name: string
+          start_date: string | null
+          status: string
+          tenant_id: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          criteria?: Json
+          end_date?: string | null
+          id?: string
+          name: string
+          start_date?: string | null
+          status?: string
+          tenant_id?: string | null
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          criteria?: Json
+          end_date?: string | null
+          id?: string
+          name?: string
+          start_date?: string | null
+          status?: string
+          tenant_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_evaluation_cycles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_evaluations: {
+        Row: {
+          ai_recommendation: string | null
+          comments: string | null
+          completed_at: string | null
+          created_at: string
+          cycle_id: string | null
+          evaluated_id: string | null
+          evaluator_id: string | null
+          evaluator_role: string | null
+          id: string
+          overall_score: number | null
+          scores: Json
+          tenant_id: string | null
+        }
+        Insert: {
+          ai_recommendation?: string | null
+          comments?: string | null
+          completed_at?: string | null
+          created_at?: string
+          cycle_id?: string | null
+          evaluated_id?: string | null
+          evaluator_id?: string | null
+          evaluator_role?: string | null
+          id?: string
+          overall_score?: number | null
+          scores?: Json
+          tenant_id?: string | null
+        }
+        Update: {
+          ai_recommendation?: string | null
+          comments?: string | null
+          completed_at?: string | null
+          created_at?: string
+          cycle_id?: string | null
+          evaluated_id?: string | null
+          evaluator_id?: string | null
+          evaluator_role?: string | null
+          id?: string
+          overall_score?: number | null
+          scores?: Json
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_evaluations_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "profile_evaluation_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_evaluations_evaluated_id_fkey"
+            columns: ["evaluated_id"]
+            isOneToOne: false
+            referencedRelation: "profile_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_evaluations_evaluator_id_fkey"
+            columns: ["evaluator_id"]
+            isOneToOne: false
+            referencedRelation: "profile_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_evaluations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_feedbacks: {
+        Row: {
+          action_plan: string | null
+          content: string
+          created_at: string
+          from_id: string | null
+          id: string
+          meeting_at: string | null
+          tenant_id: string | null
+          to_id: string | null
+          type: string
+        }
+        Insert: {
+          action_plan?: string | null
+          content: string
+          created_at?: string
+          from_id?: string | null
+          id?: string
+          meeting_at?: string | null
+          tenant_id?: string | null
+          to_id?: string | null
+          type?: string
+        }
+        Update: {
+          action_plan?: string | null
+          content?: string
+          created_at?: string
+          from_id?: string | null
+          id?: string
+          meeting_at?: string | null
+          tenant_id?: string | null
+          to_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_feedbacks_from_id_fkey"
+            columns: ["from_id"]
+            isOneToOne: false
+            referencedRelation: "profile_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_feedbacks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_feedbacks_to_id_fkey"
+            columns: ["to_id"]
+            isOneToOne: false
+            referencedRelation: "profile_employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_jobs: {
+        Row: {
+          area: string | null
+          city: string | null
+          closed_at: string | null
+          company_id: string | null
+          competencies: Json
+          contract_model: string | null
+          created_at: string
+          custom_questions: Json
+          description: string | null
+          id: string
+          is_remote: boolean
+          manager_id: string | null
+          opened_at: string
+          position_id: string | null
+          public_token: string | null
+          recruiter_id: string | null
+          requirements: string | null
+          salary_max: number | null
+          salary_min: number | null
+          seniority: string | null
+          state: string | null
+          status: string
+          tenant_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          area?: string | null
+          city?: string | null
+          closed_at?: string | null
+          company_id?: string | null
+          competencies?: Json
+          contract_model?: string | null
+          created_at?: string
+          custom_questions?: Json
+          description?: string | null
+          id?: string
+          is_remote?: boolean
+          manager_id?: string | null
+          opened_at?: string
+          position_id?: string | null
+          public_token?: string | null
+          recruiter_id?: string | null
+          requirements?: string | null
+          salary_max?: number | null
+          salary_min?: number | null
+          seniority?: string | null
+          state?: string | null
+          status?: string
+          tenant_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          area?: string | null
+          city?: string | null
+          closed_at?: string | null
+          company_id?: string | null
+          competencies?: Json
+          contract_model?: string | null
+          created_at?: string
+          custom_questions?: Json
+          description?: string | null
+          id?: string
+          is_remote?: boolean
+          manager_id?: string | null
+          opened_at?: string
+          position_id?: string | null
+          public_token?: string | null
+          recruiter_id?: string | null
+          requirements?: string | null
+          salary_max?: number | null
+          salary_min?: number | null
+          seniority?: string | null
+          state?: string | null
+          status?: string
+          tenant_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_jobs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "profile_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_jobs_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "profile_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_jobs_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "profile_positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_jobs_recruiter_id_fkey"
+            columns: ["recruiter_id"]
+            isOneToOne: false
+            referencedRelation: "profile_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_onboarding_progress: {
+        Row: {
+          checklist: Json
+          completed_at: string | null
+          employee_id: string
+          feedback_15: string | null
+          feedback_30: string | null
+          feedback_45: string | null
+          feedback_7: string | null
+          feedback_90: string | null
+          id: string
+          started_at: string
+          status: string
+          tenant_id: string | null
+          track_id: string | null
+        }
+        Insert: {
+          checklist?: Json
+          completed_at?: string | null
+          employee_id: string
+          feedback_15?: string | null
+          feedback_30?: string | null
+          feedback_45?: string | null
+          feedback_7?: string | null
+          feedback_90?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          tenant_id?: string | null
+          track_id?: string | null
+        }
+        Update: {
+          checklist?: Json
+          completed_at?: string | null
+          employee_id?: string
+          feedback_15?: string | null
+          feedback_30?: string | null
+          feedback_45?: string | null
+          feedback_7?: string | null
+          feedback_90?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          tenant_id?: string | null
+          track_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_onboarding_progress_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profile_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_onboarding_progress_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_onboarding_progress_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "profile_onboarding_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_onboarding_tracks: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          template: Json
+          tenant_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          template?: Json
+          tenant_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          template?: Json
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_onboarding_tracks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "profile_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_onboarding_tracks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_pdi: {
+        Row: {
+          actions: Json
+          ai_suggested: boolean
+          created_at: string
+          description: string | null
+          due_date: string | null
+          employee_id: string
+          evidences: Json | null
+          goals: Json
+          id: string
+          responsible_id: string | null
+          status: string
+          tenant_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          actions?: Json
+          ai_suggested?: boolean
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          employee_id: string
+          evidences?: Json | null
+          goals?: Json
+          id?: string
+          responsible_id?: string | null
+          status?: string
+          tenant_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          actions?: Json
+          ai_suggested?: boolean
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          employee_id?: string
+          evidences?: Json | null
+          goals?: Json
+          id?: string
+          responsible_id?: string | null
+          status?: string
+          tenant_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_pdi_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profile_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_pdi_responsible_id_fkey"
+            columns: ["responsible_id"]
+            isOneToOne: false
+            referencedRelation: "profile_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_pdi_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_positions: {
+        Row: {
+          company_id: string | null
+          competencies: Json
+          created_at: string
+          department_id: string | null
+          description: string | null
+          id: string
+          level: string | null
+          salary_max: number | null
+          salary_min: number | null
+          tenant_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          competencies?: Json
+          created_at?: string
+          department_id?: string | null
+          description?: string | null
+          id?: string
+          level?: string | null
+          salary_max?: number | null
+          salary_min?: number | null
+          tenant_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          competencies?: Json
+          created_at?: string
+          department_id?: string | null
+          description?: string | null
+          id?: string
+          level?: string | null
+          salary_max?: number | null
+          salary_min?: number | null
+          tenant_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_positions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "profile_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_positions_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "profile_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_positions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_training_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          employee_id: string
+          id: string
+          score: number | null
+          status: string
+          tenant_id: string | null
+          training_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          employee_id: string
+          id?: string
+          score?: number | null
+          status?: string
+          tenant_id?: string | null
+          training_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          employee_id?: string
+          id?: string
+          score?: number | null
+          status?: string
+          tenant_id?: string | null
+          training_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_training_progress_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profile_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_training_progress_training_id_fkey"
+            columns: ["training_id"]
+            isOneToOne: false
+            referencedRelation: "profile_trainings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_trainings: {
+        Row: {
+          category: string | null
+          company_id: string | null
+          content_url: string | null
+          created_at: string
+          description: string | null
+          duration_minutes: number | null
+          has_quiz: boolean | null
+          id: string
+          is_required: boolean | null
+          tenant_id: string | null
+          title: string
+        }
+        Insert: {
+          category?: string | null
+          company_id?: string | null
+          content_url?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          has_quiz?: boolean | null
+          id?: string
+          is_required?: boolean | null
+          tenant_id?: string | null
+          title: string
+        }
+        Update: {
+          category?: string | null
+          company_id?: string | null
+          content_url?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          has_quiz?: boolean | null
+          id?: string
+          is_required?: boolean | null
+          tenant_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_trainings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "profile_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_trainings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_menu_permissions: {
         Row: {
           created_at: string
@@ -32807,6 +34135,8 @@ export type Database = {
         }
         Returns: string
       }
+      current_staff_role: { Args: never; Returns: string }
+      current_staff_tenant_id: { Args: never; Returns: string }
       current_user_is_tenant: { Args: never; Returns: boolean }
       current_user_tenant_id: { Args: never; Returns: string }
       delete_email: {
@@ -32980,6 +34310,7 @@ export type Database = {
         Args: { check_company_id: string; check_user_id: string }
         Returns: boolean
       }
+      is_profile_admin: { Args: never; Returns: boolean }
       is_project_client: {
         Args: { check_project_id: string }
         Returns: boolean
