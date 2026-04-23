@@ -149,7 +149,7 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
       await supabase
         .from("onboarding_companies")
         .update({
-          name: lead.company,
+          name: companyDisplayName,
           phone: lead.phone,
           email: lead.email,
           cnpj: lead.document,
@@ -176,7 +176,7 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
       const { data: newCompany, error: companyError } = await supabase
         .from("onboarding_companies")
         .insert({
-          name: lead.company,
+          name: companyDisplayName,
           phone: lead.phone,
           email: lead.email,
           cnpj: lead.document,
