@@ -19,6 +19,7 @@ const footerLinks = {
   ],
   legal: [
     { name: "Termos e Disclaimers", href: "/terms" },
+    { name: "Política de Privacidade", href: "/privacidade" },
   ],
 };
 
@@ -130,7 +131,7 @@ export function Footer() {
                 </div>
               </li>
             </ul>
-            <div className="mt-4 sm:mt-6">
+            <div className="mt-4 sm:mt-6 flex flex-col gap-1.5">
               {footerLinks.legal.map((link) => (
                 <Link
                   key={link.href}
