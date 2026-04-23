@@ -135,8 +135,8 @@ export default function PrivacyPage() {
                   </ul>
                   <p>
                     Para exercer seus direitos, entre em contato pelo e-mail:{" "}
-                    <a href="mailto:contato@unv.com.br" className="text-primary hover:underline">
-                      contato@unv.com.br
+                    <a href="mailto:fabricio@universidadevendas.com.br" className="text-primary hover:underline">
+                      fabricio@universidadevendas.com.br
                     </a>
                   </p>
                 </div>
