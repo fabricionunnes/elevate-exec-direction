@@ -594,6 +594,11 @@ export const CRMInboxPage = () => {
 
   const hasConnectedDevice = connectedInstances.length > 0;
 
+  const handleLeadCreated = (leadId: string) => {
+    setSelectedConversation((prev) => (prev ? { ...prev, lead_id: leadId } : prev));
+    refetchConversations();
+  };
+
   return (
     <div className="h-full min-h-0 flex overflow-hidden">
       {/* Conversations List - Hidden on mobile when conversation is selected */}
@@ -1096,7 +1101,7 @@ export const CRMInboxPage = () => {
         <ConversationSidebar 
           conversation={selectedConversation}
           projectId={projectId || undefined}
-          onLeadCreated={() => refetchConversations()}
+          onLeadCreated={handleLeadCreated}
           onContactUpdated={() => refetchConversations()}
           onAssignmentChanged={() => refetchConversations()}
         />
@@ -1109,7 +1114,7 @@ export const CRMInboxPage = () => {
             <ConversationSidebar 
               conversation={selectedConversation}
               projectId={projectId || undefined}
-              onLeadCreated={() => refetchConversations()}
+              onLeadCreated={handleLeadCreated}
               onContactUpdated={() => refetchConversations()}
               onAssignmentChanged={() => refetchConversations()}
             />
