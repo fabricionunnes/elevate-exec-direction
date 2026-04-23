@@ -531,10 +531,16 @@ export const CRMInboxPage = () => {
   };
 
   const filteredConversations = conversations.filter(conv => {
+    const displayName = (() => {
+      const rawName = (conv.contact?.name || "").trim();
+      const isGeneric = !rawName || ["sou eu", "eu", "me"].includes(rawName.toLowerCase());
+      return isGeneric ? conv.lead?.name || rawName : rawName;
+    })();
+
     // Text search
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
-      const contactName = conv.contact?.name || "";
+      const contactName = displayName || "";
       const contactPhone = conv.contact?.phone || "";
       if (!contactName.toLowerCase().includes(search) && !contactPhone.includes(search)) {
         return false;
@@ -731,7 +737,12 @@ export const CRMInboxPage = () => {
               )}
             </div>
           ) : (
-            filteredConversations.map((conv) => (
+            filteredConversations.map((conv) => {
+              const rawName = (conv.contact?.name || "").trim();
+              const isGenericName = !rawName || ["sou eu", "eu", "me"].includes(rawName.toLowerCase());
+              const displayName = isGenericName ? conv.lead?.name || conv.contact?.phone || "Desconhecido" : rawName;
+
+              return (
               <button
                 key={conv.id}
                 onClick={() => {
@@ -749,13 +760,13 @@ export const CRMInboxPage = () => {
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={conv.contact?.profile_picture_url || undefined} />
                   <AvatarFallback>
-                    {(conv.contact?.name || conv.contact?.phone || "?").slice(0, 2).toUpperCase()}
+                    {(displayName || "?").slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-sm truncate">
-                      {conv.contact?.name || conv.contact?.phone || "Desconhecido"}
+                      {displayName}
                     </span>
                     <span className="text-[10px] text-muted-foreground">
                       {conv.last_message_at 
@@ -795,7 +806,7 @@ export const CRMInboxPage = () => {
                   </Badge>
                 )}
               </button>
-            ))
+            )})
           )}
         </ScrollArea>
       </div>
@@ -823,12 +834,20 @@ export const CRMInboxPage = () => {
               <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
                 <AvatarImage src={selectedConversation.contact?.profile_picture_url || undefined} />
                 <AvatarFallback>
-                  {(selectedConversation.contact?.name || selectedConversation.contact?.phone || "?").slice(0, 2).toUpperCase()}
+                  {(((() => {
+                    const rawName = (selectedConversation.contact?.name || "").trim();
+                    const isGenericName = !rawName || ["sou eu", "eu", "me"].includes(rawName.toLowerCase());
+                    return isGenericName ? selectedConversation.lead?.name || selectedConversation.contact?.phone || "?" : rawName;
+                  })()) || "?").slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
                 <p className="font-medium text-sm truncate">
-                  {selectedConversation.contact?.name || selectedConversation.contact?.phone}
+                  {(() => {
+                    const rawName = (selectedConversation.contact?.name || "").trim();
+                    const isGenericName = !rawName || ["sou eu", "eu", "me"].includes(rawName.toLowerCase());
+                    return isGenericName ? selectedConversation.lead?.name || selectedConversation.contact?.phone : rawName;
+                  })()}
                 </p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span className="truncate">{selectedConversation.contact?.phone}</span>
