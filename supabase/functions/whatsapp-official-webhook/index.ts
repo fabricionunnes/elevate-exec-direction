@@ -182,11 +182,21 @@ async function processIncomingMessage(
   if (existingConv) {
     conversationId = existingConv.id;
   } else {
+    const { data: inheritedConversation } = await supabase
+      .from('crm_whatsapp_conversations')
+      .select('lead_id')
+      .eq('contact_id', contactId)
+      .not('lead_id', 'is', null)
+      .order('last_message_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     const { data: newConv, error } = await supabase
       .from('crm_whatsapp_conversations')
       .insert({
         contact_id: contactId,
         official_instance_id: officialInstanceId,
+        lead_id: inheritedConversation?.lead_id || null,
         status: 'open',
         unread_count: 0,
       })
