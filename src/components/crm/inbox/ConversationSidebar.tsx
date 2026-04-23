@@ -74,10 +74,20 @@ export function ConversationSidebar({
   const [allPipelines, setAllPipelines] = useState<{ id: string; name: string }[]>([]);
   const [newPipelineId, setNewPipelineId] = useState("");
   
-  // Linked leads based on phone
+  const isGenericContactName = (name?: string | null) => {
+    const normalized = (name || "").trim().toLowerCase();
+    return !normalized || ["sou eu", "eu", "me"].includes(normalized);
+  };
+
+  // Linked leads based on phone / direct conversation link
   const { leads: linkedLeads, loading: loadingLinkedLeads, refetch: refetchLinkedLeads } = useLinkedLeads({
     phone: conversation.contact?.phone,
+    leadId: conversation.lead_id,
   });
+
+  const resolvedContactName = isGenericContactName(conversation.contact?.name)
+    ? linkedLeads[0]?.name || conversation.contact?.phone || ""
+    : conversation.contact?.name || conversation.contact?.phone || "";
 
   // Company identification by phone
   const { 
@@ -118,6 +128,75 @@ export function ConversationSidebar({
     fetchCRMStaff();
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    const syncConversationLead = async () => {
+      if (!conversation.contact?.id) return;
+
+      try {
+        let inheritedLeadId = conversation.lead_id;
+
+        if (!inheritedLeadId) {
+          const { data: inheritedConversation, error } = await supabase
+            .from("crm_whatsapp_conversations")
+            .select("lead_id")
+            .eq("contact_id", conversation.contact.id)
+            .not("lead_id", "is", null)
+            .neq("id", conversation.id)
+            .order("last_message_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (error) throw error;
+          inheritedLeadId = inheritedConversation?.lead_id || linkedLeads[0]?.id || null;
+        }
+
+        const resolvedLead = linkedLeads.find((lead) => lead.id === (conversation.lead_id || inheritedLeadId)) || linkedLeads[0];
+        const shouldLinkConversation = !conversation.lead_id && !!inheritedLeadId;
+        const shouldRenameContact = !!resolvedLead && isGenericContactName(conversation.contact?.name) && resolvedLead.name !== conversation.contact?.name;
+
+        if (!shouldLinkConversation && !shouldRenameContact) return;
+
+        const updates = await Promise.all([
+          shouldLinkConversation
+            ? supabase
+                .from("crm_whatsapp_conversations")
+                .update({ lead_id: inheritedLeadId })
+                .eq("id", conversation.id)
+            : Promise.resolve({ error: null }),
+          shouldRenameContact
+            ? supabase
+                .from("crm_whatsapp_contacts")
+                .update({ name: resolvedLead!.name })
+                .eq("id", conversation.contact.id)
+            : Promise.resolve({ error: null }),
+        ]);
+
+        const failedUpdate = updates.find((result: any) => result?.error);
+        if (failedUpdate?.error) throw failedUpdate.error;
+        if (!active) return;
+
+        if (shouldLinkConversation && inheritedLeadId) {
+          onLeadCreated?.(inheritedLeadId);
+        }
+
+        if (shouldRenameContact) {
+          onContactUpdated?.();
+        }
+
+        refetchLinkedLeads();
+      } catch (error) {
+        console.error("Error syncing conversation lead:", error);
+      }
+    };
+
+    syncConversationLead();
+    return () => {
+      active = false;
+    };
+  }, [conversation.id, conversation.contact?.id, conversation.contact?.name, conversation.lead_id, linkedLeads, onContactUpdated, onLeadCreated, refetchLinkedLeads]);
+
   const handleAssignStaff = async (staffIdToAssign: string | null) => {
     setLoading(true);
     try {
@@ -140,7 +219,7 @@ export function ConversationSidebar({
 
   // Form states
   const [dealData, setDealData] = useState({
-    name: conversation.contact?.name || "",
+    name: resolvedContactName,
     email: "",
     phone: conversation.contact?.phone || "",
     document: "",
@@ -243,12 +322,12 @@ export function ConversationSidebar({
   }, [dealData.pipeline_id, pipelinesForGroup]);
 
   const [contactData, setContactData] = useState({
-    name: conversation.contact?.name || "",
+    name: resolvedContactName,
     phone: conversation.contact?.phone || "",
   });
 
   const [scheduleData, setScheduleData] = useState({
-    title: `Reunião com ${conversation.contact?.name || conversation.contact?.phone}`,
+    title: `Reunião com ${resolvedContactName}`,
     date: "",
     time: "",
     notes: "",
@@ -259,6 +338,22 @@ export function ConversationSidebar({
     description: "",
     dueDate: "",
   });
+
+  useEffect(() => {
+    setDealData((prev) => ({
+      ...prev,
+      name: resolvedContactName,
+      phone: conversation.contact?.phone || prev.phone,
+    }));
+    setContactData({
+      name: resolvedContactName,
+      phone: conversation.contact?.phone || "",
+    });
+    setScheduleData((prev) => ({
+      ...prev,
+      title: `Reunião com ${resolvedContactName || conversation.contact?.phone || "contato"}`,
+    }));
+  }, [conversation.id, conversation.contact?.phone, resolvedContactName]);
 
   const handleAddDeal = async () => {
     if (!dealData.name.trim()) {
