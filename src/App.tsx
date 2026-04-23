@@ -49,6 +49,7 @@ const ApplyPage = lazy(() => import("./pages/ApplyPage"));
 const FAQPage = lazy(() => import("./pages/FAQPage"));
 const DepoimentosPage = lazy(() => import("./pages/DepoimentosPage"));
 const TermsPage = lazy(() => import("./pages/TermsPage"));
+const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
 const ComparePage = lazy(() => import("./pages/ComparePage"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
 const DiagnosticResponsesPage = lazy(() => import("./pages/DiagnosticResponsesPage"));
@@ -332,6 +333,8 @@ const AppShell = () => {
             <Route path="/faq" element={<FAQPage />} />
             <Route path="/depoimentos" element={<DepoimentosPage />} />
             <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacidade" element={<PrivacyPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/compare" element={<ComparePage />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/diagnostic-responses" element={<DiagnosticResponsesPage />} />
