@@ -520,17 +520,24 @@ const WhatsAppAdminPage = () => {
     
     setActionLoading(deleteInstance.id);
     try {
-      // Delete from Evolution API
-      await callEvolutionAPI("delete-instance", { 
-        instanceName: deleteInstance.instance_name 
-      });
-      
-      // Delete from database
-      await supabase
+      // Try to delete from Evolution API (don't block deletion if it fails / is offline)
+      try {
+        await Promise.race([
+          callEvolutionAPI("delete-instance", { instanceName: deleteInstance.instance_name }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000)),
+        ]);
+      } catch (evoErr) {
+        console.warn("Evolution delete-instance failed (continuing):", evoErr);
+      }
+
+      // Delete from database (source of truth)
+      const { error: dbError } = await supabase
         .from("whatsapp_instances")
         .delete()
         .eq("id", deleteInstance.id);
-      
+
+      if (dbError) throw dbError;
+
       toast.success("Instância excluída com sucesso");
       setDeleteInstance(null);
       fetchInstances();
