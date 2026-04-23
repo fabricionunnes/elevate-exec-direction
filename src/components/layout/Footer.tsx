@@ -110,13 +110,13 @@ export function Footer() {
             <ul className="space-y-2 sm:space-y-3">
               <li>
                 <a
-                  href="mailto:contato@unv.com.br"
+                  href="mailto:fabricio@universidadevendas.com.br"
                   className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-all duration-300 group"
                 >
                   <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-secondary/50 flex items-center justify-center group-hover:bg-primary/10 transition-all flex-shrink-0">
                     <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </span>
-                  contato@unv.com.br
+                  fabricio@universidadevendas.com.br
                 </a>
               </li>
               <li>
