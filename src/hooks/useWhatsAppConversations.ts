@@ -38,6 +38,10 @@ export interface WhatsAppConversation {
   updated_at: string;
   channel?: "whatsapp" | "instagram";
   contact?: WhatsAppContact;
+  lead?: {
+    id: string;
+    name: string;
+  };
   assigned_staff?: {
     id: string;
     name: string;
@@ -67,6 +71,7 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
         .select(`
           *,
           contact:crm_whatsapp_contacts(*),
+          lead:crm_leads(id, name),
           assigned_staff:onboarding_staff(id, name, avatar_url),
           instance:whatsapp_instances(id, instance_name, display_name),
           official_instance:whatsapp_official_instances(id, display_name, phone_number)
@@ -157,6 +162,7 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
       .select(`
         *,
         contact:crm_whatsapp_contacts(*),
+        lead:crm_leads(id, name),
         assigned_staff:onboarding_staff(id, name, avatar_url),
         instance:whatsapp_instances(id, instance_name, display_name),
         official_instance:whatsapp_official_instances(id, display_name, phone_number)
