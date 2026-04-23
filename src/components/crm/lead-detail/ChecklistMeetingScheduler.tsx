@@ -125,7 +125,7 @@ export function ChecklistMeetingScheduler({
   // Check for existing meeting on mount
   useEffect(() => {
     loadExistingMeeting();
-  }, [leadId]);
+  }, [leadId, checklistItemId, checklistItemTitle]);
 
   useEffect(() => {
     loadConnectedStaff();
@@ -143,12 +143,16 @@ export function ChecklistMeetingScheduler({
   const loadExistingMeeting = async () => {
     setLoadingExisting(true);
     try {
+      // Only look for meetings tied to THIS specific checklist item.
+      // We match by description prefix used when scheduling: "Agendamento via checklist: <title>"
+      const descNeedle = `Agendamento via checklist: ${checklistItemTitle}`;
       const { data, error } = await supabase
         .from("crm_activities")
-        .select("id, title, scheduled_at, meeting_link, google_calendar_event_id, google_calendar_user_id, lead_id, status, responsible_staff_id")
+        .select("id, title, scheduled_at, meeting_link, google_calendar_event_id, google_calendar_user_id, lead_id, status, responsible_staff_id, description")
         .eq("lead_id", leadId)
         .eq("type", "meeting")
         .neq("status", "cancelled")
+        .ilike("description", `${descNeedle}%`)
         .order("created_at", { ascending: false })
         .limit(1);
 
