@@ -125,7 +125,7 @@ export function ChecklistMeetingScheduler({
   // Check for existing meeting on mount
   useEffect(() => {
     loadExistingMeeting();
-  }, [leadId]);
+  }, [leadId, checklistItemId, checklistItemTitle]);
 
   useEffect(() => {
     loadConnectedStaff();
