@@ -148,17 +148,31 @@ export function Footer() {
         <div className="divider-glow mt-10 sm:mt-12 md:mt-16 mb-6 sm:mb-8" />
         
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-[10px] sm:text-xs text-muted-foreground/60">
+          <p className="text-[10px] sm:text-xs text-muted-foreground/60 text-center sm:text-left">
             © {new Date().getFullYear()} UNV — Universidade Nacional de Vendas. Todos os
             direitos reservados.
           </p>
-          <Link 
-            to="/admin" 
-            className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-          >
-            <Lock className="h-3 w-3" />
-            Área Restrita
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              to="/privacidade"
+              className="text-[10px] sm:text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+            >
+              Política de Privacidade
+            </Link>
+            <Link
+              to="/terms"
+              className="text-[10px] sm:text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+            >
+              Termos
+            </Link>
+            <Link 
+              to="/admin" 
+              className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+            >
+              <Lock className="h-3 w-3" />
+              Área Restrita
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
