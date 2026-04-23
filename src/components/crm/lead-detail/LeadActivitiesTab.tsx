@@ -736,7 +736,7 @@ export const LeadActivitiesTab = ({
               <>
                 <div className="flex-1 p-4 overflow-auto">
                   {selectedChecklistItem.description && (
-                    <p className="text-sm text-muted-foreground mb-4">
+                    <p className="text-sm text-muted-foreground mb-4 whitespace-pre-wrap break-words">
                       {selectedChecklistItem.description}
                     </p>
                   )}
