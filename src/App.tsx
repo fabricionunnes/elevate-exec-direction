@@ -456,24 +456,25 @@ const AppShell = () => {
               <Route index element={<UNVProfileHomePage />} />
               <Route path="dashboard" element={<UNVProfileDashboardPage />} />
               <Route path="employees" element={<UNVProfileEmployeesPage />} />
-              <Route path="org-chart" element={<UNVProfileScaffoldPage title="Organograma" description="Estrutura hierárquica visual" />} />
-              <Route path="positions" element={<UNVProfileScaffoldPage title="Cargos & Salários" description="Cadastro de cargos, faixas salariais e competências" />} />
-              <Route path="recruitment" element={<UNVProfileScaffoldPage title="Recrutamento & Seleção" description="Vagas, pipeline drag-and-drop e candidatos com IA" />} />
-              <Route path="talent-pool" element={<UNVProfileScaffoldPage title="Banco de Talentos" description="Curadoria, filtros e reuso de candidatos" />} />
-              <Route path="disc" element={<UNVProfileScaffoldPage title="Perfil DISC" description="Mapa comportamental individual, equipe e empresa" />} />
-              <Route path="onboarding" element={<UNVProfileScaffoldPage title="Onboarding" description="Trilhas de admissão + feedbacks 7/15/30/45/90 dias" />} />
-              <Route path="pdi" element={<UNVProfileScaffoldPage title="PDI" description="Planos de Desenvolvimento Individual com sugestão por IA" />} />
-              <Route path="career" element={<UNVProfileScaffoldPage title="Plano de Carreira" description="Trilhas de evolução por cargo e área" />} />
-              <Route path="trainings" element={<UNVProfileScaffoldPage title="Treinamentos" description="Trilhas, conteúdos, testes e certificados" />} />
-              <Route path="evaluations" element={<UNVProfileScaffoldPage title="Avaliações de Desempenho" description="Auto / Gestor / 90 / 180 / 360" />} />
-              <Route path="feedbacks" element={<UNVProfileScaffoldPage title="Feedbacks & 1:1" description="Cultura de feedback contínuo" />} />
-              <Route path="climate" element={<UNVProfileScaffoldPage title="Clima & Engajamento" description="Pulse surveys, eNPS e análise por IA" />} />
-              <Route path="ai" element={<UNVProfileScaffoldPage title="UNV IA" description="Análise de candidatos, sugestões de PDI e identificação de riscos" />} />
-              <Route path="reports" element={<UNVProfileScaffoldPage title="Relatórios" description="Recrutamento, turnover, desempenho, PDI, clima, retenção e sucessão" />} />
-              <Route path="me" element={<UNVProfileScaffoldPage title="Minha Área" description="Painel individual: PDI, carreira, treinamentos, avaliações, pendências" />} />
-              <Route path="admin" element={<UNVProfileScaffoldPage title="Admin UNV" description="Visão global de todas empresas e indicadores estratégicos" />} />
-              <Route path="integrations" element={<UNVProfileScaffoldPage title="Integrações" description="WhatsApp, e-mail, Google Calendar, Meet, ClickSign, CRM, Financeiro, N8N" />} />
-              <Route path="permissions" element={<UNVProfileScaffoldPage title="Permissões" description="Controle por perfil: Admin UNV, Empresa, RH, Gestor, Colaborador, Recrutador, Candidato" />} />
+              <Route path="org-chart" element={<UNVProfileOrgChartPage />} />
+              <Route path="positions" element={<UNVProfilePositionsPage />} />
+              <Route path="recruitment" element={<UNVProfileRecruitmentPage />} />
+              <Route path="recruitment/:jobId" element={<UNVProfileRecruitmentPipelinePage />} />
+              <Route path="talent-pool" element={<UNVProfileTalentPoolPage />} />
+              <Route path="disc" element={<UNVProfileDISCPage />} />
+              <Route path="onboarding" element={<UNVProfileOnboardingPage />} />
+              <Route path="pdi" element={<UNVProfilePDIPage />} />
+              <Route path="career" element={<UNVProfileCareerPage />} />
+              <Route path="trainings" element={<UNVProfileTrainingsPage />} />
+              <Route path="evaluations" element={<UNVProfileEvaluationsPage />} />
+              <Route path="feedbacks" element={<UNVProfileFeedbacksPage />} />
+              <Route path="climate" element={<UNVProfileClimatePage />} />
+              <Route path="ai" element={<UNVProfileAIPage />} />
+              <Route path="reports" element={<UNVProfileReportsPage />} />
+              <Route path="me" element={<UNVProfileMePage />} />
+              <Route path="admin" element={<UNVProfileAdminPage />} />
+              <Route path="integrations" element={<UNVProfileIntegrationsPage />} />
+              <Route path="permissions" element={<UNVProfilePermissionsPage />} />
             </Route>
             
             {/* Leader Dashboard */}
