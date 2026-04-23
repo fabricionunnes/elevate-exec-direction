@@ -73,7 +73,8 @@ export function ConvertLeadToCompanyDialog({
   useEffect(() => {
     if (open) {
       fetchServices();
-      setCompanyName(lead.company || lead.name);
+      // Prioriza nome fantasia (trade_name) dos dados contratuais
+      setCompanyName(lead.trade_name?.trim() || lead.company || lead.name);
       setEmail(lead.email || "");
       setPhone(lead.phone || "");
       setDocument(lead.document || "");
@@ -108,15 +109,19 @@ export function ConvertLeadToCompanyDialog({
       if (!service) throw new Error("Produto não encontrado");
 
       let companyId: string;
-      let existingCompany = null;
+      let existingCompany: { id: string } | null = null;
 
-      if (document && document.trim()) {
-        const { data: companyByDoc } = await supabase
+      // Normaliza CNPJ/CPF (apenas dígitos) para deduplicação resiliente a máscaras
+      const cleanedDoc = (document || "").replace(/\D/g, "");
+      if (cleanedDoc.length >= 11) {
+        const { data: candidates } = await supabase
           .from("onboarding_companies")
-          .select("id")
-          .eq("cnpj", document.trim())
-          .maybeSingle();
-        existingCompany = companyByDoc;
+          .select("id, cnpj")
+          .not("cnpj", "is", null);
+        if (candidates) {
+          const match = candidates.find(c => (c.cnpj || "").replace(/\D/g, "") === cleanedDoc);
+          if (match) existingCompany = { id: match.id };
+        }
       }
 
       const companyPayload = {
