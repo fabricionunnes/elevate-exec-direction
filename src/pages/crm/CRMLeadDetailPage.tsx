@@ -1497,23 +1497,29 @@ export const CRMLeadDetailPage = () => {
             ownerName: lead.owner?.name || undefined,
           }}
           sending={sendingWhatsapp}
-          onSend={async (message) => {
+          instances={authorizedInstances}
+          onSend={async (message, chosenInstanceId) => {
             setSendingWhatsapp(true);
             try {
-              // Resolve instance name to UUID
-              const instanceName = await getDefaultWhatsAppInstance();
-              const { data: instance, error: instErr } = await supabase
-                .from("whatsapp_instances")
-                .select("id")
-                .eq("instance_name", instanceName)
-                .limit(1)
-                .maybeSingle();
+              let instanceId = chosenInstanceId;
 
-              if (instErr) throw instErr;
-              if (!instance) throw new Error("Instância WhatsApp não encontrada");
+              // Fallback: resolve default instance by name (only if no list provided)
+              if (!instanceId) {
+                const instanceName = await getDefaultWhatsAppInstance();
+                const { data: instance, error: instErr } = await supabase
+                  .from("whatsapp_instances")
+                  .select("id")
+                  .eq("instance_name", instanceName)
+                  .limit(1)
+                  .maybeSingle();
+
+                if (instErr) throw instErr;
+                if (!instance) throw new Error("Instância WhatsApp não encontrada");
+                instanceId = instance.id;
+              }
 
               await sendLoggedWhatsAppText({
-                instanceId: instance.id,
+                instanceId,
                 phoneRaw: lead.phone!,
                 message,
                 leadId: lead.id,
