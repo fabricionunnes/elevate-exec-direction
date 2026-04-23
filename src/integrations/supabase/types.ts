@@ -17765,6 +17765,7 @@ export type Database = {
           initial_balance_cents: number
           is_active: boolean
           name: string
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -17777,6 +17778,7 @@ export type Database = {
           initial_balance_cents?: number
           is_active?: boolean
           name: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -17789,9 +17791,18 @@ export type Database = {
           initial_balance_cents?: number
           is_active?: boolean
           name?: string
+          tenant_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "financial_banks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       financial_budgets: {
         Row: {
