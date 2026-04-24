@@ -4,14 +4,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   DollarSign, MousePointerClick, Eye, Users, TrendingDown, TrendingUp, Layers,
-  Image as ImageIcon, Target,
+  Image as ImageIcon, Target, CalendarCheck, CalendarClock,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
 } from "recharts";
 import type {
   CRMMetaCampaign, CRMMetaAdset, CRMMetaAd,
-  CampaignPipelineLink, PipelineLeadCount,
+  CampaignPipelineLink, PipelineLeadCount, MeetingStat,
 } from "./useCRMTrafficData";
 
 interface Props {
@@ -21,6 +21,7 @@ interface Props {
   links: CampaignPipelineLink[];
   pipelines: { id: string; name: string }[];
   leadStats: PipelineLeadCount[];
+  meetingStats?: MeetingStat[];
 }
 
 const fmtBRL = (v: number) =>
@@ -30,7 +31,7 @@ const fmtPct = (v: number) => `${(v || 0).toFixed(2)}%`;
 const safeDiv = (a: number, b: number) => (b > 0 ? a / b : 0);
 
 export const CRMTrafficDashboard = ({
-  campaigns, adsets, ads, links, pipelines, leadStats,
+  campaigns, adsets, ads, links, pipelines, leadStats, meetingStats = [],
 }: Props) => {
   // Totais gerais
   const totals = useMemo(() => {
@@ -57,7 +58,7 @@ export const CRMTrafficDashboard = ({
     };
   }, [campaigns]);
 
-  // Por funil: somar gasto das campanhas vinculadas (com peso); e leads/vendas via leadStats por utm_campaign
+  // Por funil: somar gasto das campanhas vinculadas (com peso); leads/reuniões via stats por utm_campaign
   const perPipeline = useMemo(() => {
     const campMap = new Map(campaigns.map((c) => [c.campaign_id, c]));
     const pipeMap = new Map(pipelines.map((p) => [p.id, p.name]));
@@ -66,35 +67,40 @@ export const CRMTrafficDashboard = ({
       pipeline_id: string; pipeline_name: string;
       spend: number; leads_meta: number; leads_crm: number;
       won: number; won_value: number;
+      meetings_scheduled: number; meetings_realized: number;
     };
     const map = new Map<string, Row>();
 
-    // Spend e leads (via vínculos)
+    const empty = (id: string): Row => ({
+      pipeline_id: id,
+      pipeline_name: pipeMap.get(id) || "—",
+      spend: 0, leads_meta: 0, leads_crm: 0, won: 0, won_value: 0,
+      meetings_scheduled: 0, meetings_realized: 0,
+    });
+
     for (const link of links) {
       const camp = campMap.get(link.campaign_id);
       if (!camp) continue;
       const w = Number(link.weight || 1);
-      const cur = map.get(link.pipeline_id) || {
-        pipeline_id: link.pipeline_id,
-        pipeline_name: pipeMap.get(link.pipeline_id) || "—",
-        spend: 0, leads_meta: 0, leads_crm: 0, won: 0, won_value: 0,
-      };
+      const cur = map.get(link.pipeline_id) || empty(link.pipeline_id);
       cur.spend += Number(camp.spend || 0) * w;
       cur.leads_meta += Number(camp.leads || 0) * w;
       map.set(link.pipeline_id, cur);
     }
 
-    // Leads/won reais via UTM (por funil)
     for (const stat of leadStats) {
-      const cur = map.get(stat.pipeline_id) || {
-        pipeline_id: stat.pipeline_id,
-        pipeline_name: pipeMap.get(stat.pipeline_id) || "—",
-        spend: 0, leads_meta: 0, leads_crm: 0, won: 0, won_value: 0,
-      };
+      const cur = map.get(stat.pipeline_id) || empty(stat.pipeline_id);
       cur.leads_crm += stat.total;
       cur.won += stat.won;
       cur.won_value += stat.won_value;
       map.set(stat.pipeline_id, cur);
+    }
+
+    for (const ms of meetingStats) {
+      const cur = map.get(ms.pipeline_id) || empty(ms.pipeline_id);
+      cur.meetings_scheduled += ms.scheduled;
+      cur.meetings_realized += ms.realized;
+      map.set(ms.pipeline_id, cur);
     }
 
     return Array.from(map.values()).map((r) => ({
@@ -102,8 +108,21 @@ export const CRMTrafficDashboard = ({
       cpl: safeDiv(r.spend, r.leads_crm || r.leads_meta),
       cac: safeDiv(r.spend, r.won),
       roas: safeDiv(r.won_value, r.spend),
+      cost_per_scheduled: safeDiv(r.spend, r.meetings_scheduled),
+      cost_per_realized: safeDiv(r.spend, r.meetings_realized),
     })).sort((a, b) => b.spend - a.spend);
-  }, [campaigns, links, pipelines, leadStats]);
+  }, [campaigns, links, pipelines, leadStats, meetingStats]);
+
+  const meetingTotals = useMemo(() => {
+    const sched = perPipeline.reduce((s, r) => s + r.meetings_scheduled, 0);
+    const real = perPipeline.reduce((s, r) => s + r.meetings_realized, 0);
+    return {
+      scheduled: sched,
+      realized: real,
+      cost_per_scheduled: safeDiv(totals.spend, sched),
+      cost_per_realized: safeDiv(totals.spend, real),
+    };
+  }, [perPipeline, totals.spend]);
 
   // Top campanhas / criativos por gasto
   const topCampaigns = [...campaigns].sort((a, b) => Number(b.spend) - Number(a.spend)).slice(0, 10);
@@ -118,22 +137,24 @@ export const CRMTrafficDashboard = ({
         <KPI icon={MousePointerClick} label="Cliques" value={fmtInt(totals.clicks)} color="#06b6d4" />
         <KPI icon={Users} label="Leads (Meta)" value={fmtInt(totals.leads)} color="#10b981" />
         <KPI icon={TrendingDown} label="CPL" value={fmtBRL(totals.cpl)} color="#f59e0b" hint="Custo por Lead" />
+        <KPI icon={CalendarClock} label="Custo / Reunião Agendada" value={fmtBRL(meetingTotals.cost_per_scheduled)} color="#0ea5e9" hint={`${fmtInt(meetingTotals.scheduled)} agendadas`} />
+        <KPI icon={CalendarCheck} label="Custo / Reunião Realizada" value={fmtBRL(meetingTotals.cost_per_realized)} color="#14b8a6" hint={`${fmtInt(meetingTotals.realized)} realizadas`} />
         <KPI icon={Target} label="CAC" value={fmtBRL(totals.cac)} color="#ef4444" hint="Custo por Venda" />
         <KPI icon={TrendingUp} label="ROAS" value={`${(totals.roas || 0).toFixed(2)}x`} color="#22c55e" />
         <KPI icon={MousePointerClick} label="CTR" value={fmtPct(totals.ctr)} color="#a855f7" />
       </div>
 
-      {/* CAC por Funil — destaque */}
+      {/* Métricas por Funil — destaque */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Target className="h-4 w-4" /> CAC e CPL por Funil
+            <Target className="h-4 w-4" /> Custo por Funil
           </CardTitle>
         </CardHeader>
         <CardContent>
           {perPipeline.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">
-              Vincule campanhas a funis para visualizar o CAC por funil.
+              Vincule campanhas a funis para visualizar o custo por funil.
             </p>
           ) : (
             <div className="overflow-auto">
@@ -143,10 +164,13 @@ export const CRMTrafficDashboard = ({
                     <th className="text-left py-2 px-2">Funil</th>
                     <th className="text-right py-2 px-2">Investido</th>
                     <th className="text-right py-2 px-2">Leads (CRM)</th>
-                    <th className="text-right py-2 px-2">Vendas</th>
                     <th className="text-right py-2 px-2">CPL</th>
+                    <th className="text-right py-2 px-2">Reun. Agend.</th>
+                    <th className="text-right py-2 px-2">Custo / Agend.</th>
+                    <th className="text-right py-2 px-2">Reun. Real.</th>
+                    <th className="text-right py-2 px-2">Custo / Real.</th>
+                    <th className="text-right py-2 px-2">Vendas</th>
                     <th className="text-right py-2 px-2">CAC</th>
-                    <th className="text-right py-2 px-2">Receita</th>
                     <th className="text-right py-2 px-2">ROAS</th>
                   </tr>
                 </thead>
@@ -156,10 +180,13 @@ export const CRMTrafficDashboard = ({
                       <td className="py-2 px-2 font-medium">{r.pipeline_name}</td>
                       <td className="text-right py-2 px-2">{fmtBRL(r.spend)}</td>
                       <td className="text-right py-2 px-2">{fmtInt(r.leads_crm)}</td>
+                      <td className="text-right py-2 px-2 font-semibold">{fmtBRL(r.cpl)}</td>
+                      <td className="text-right py-2 px-2">{fmtInt(r.meetings_scheduled)}</td>
+                      <td className="text-right py-2 px-2 font-semibold">{fmtBRL(r.cost_per_scheduled)}</td>
+                      <td className="text-right py-2 px-2">{fmtInt(r.meetings_realized)}</td>
+                      <td className="text-right py-2 px-2 font-semibold">{fmtBRL(r.cost_per_realized)}</td>
                       <td className="text-right py-2 px-2">{fmtInt(r.won)}</td>
-                      <td className="text-right py-2 px-2">{fmtBRL(r.cpl)}</td>
                       <td className="text-right py-2 px-2 font-semibold">{fmtBRL(r.cac)}</td>
-                      <td className="text-right py-2 px-2">{fmtBRL(r.won_value)}</td>
                       <td className="text-right py-2 px-2">
                         <Badge variant={r.roas >= 1 ? "default" : "secondary"}>
                           {r.roas.toFixed(2)}x

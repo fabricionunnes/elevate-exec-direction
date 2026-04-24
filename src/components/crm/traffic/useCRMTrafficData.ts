@@ -81,6 +81,13 @@ export interface PipelineLeadCount {
   won_value: number;
 }
 
+export interface MeetingStat {
+  pipeline_id: string;
+  utm_campaign: string | null;
+  scheduled: number;
+  realized: number;
+}
+
 export function useCRMTrafficData() {
   const [account, setAccount] = useState<CRMMetaAccount | null>(null);
   const [campaigns, setCampaigns] = useState<CRMMetaCampaign[]>([]);
@@ -89,6 +96,7 @@ export function useCRMTrafficData() {
   const [links, setLinks] = useState<CampaignPipelineLink[]>([]);
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [leadStats, setLeadStats] = useState<PipelineLeadCount[]>([]);
+  const [meetingStats, setMeetingStats] = useState<MeetingStat[]>([]);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
@@ -112,7 +120,7 @@ export function useCRMTrafficData() {
       setPipelines((pipes as any) || []);
 
       if (!accData) {
-        setCampaigns([]); setAdsets([]); setAds([]); setLinks([]); setLeadStats([]);
+        setCampaigns([]); setAdsets([]); setAds([]); setLinks([]); setLeadStats([]); setMeetingStats([]);
         return;
       }
 
@@ -175,6 +183,29 @@ export function useCRMTrafficData() {
         map.set(key, cur);
       }
       setLeadStats(Array.from(map.values()));
+
+      // Estatísticas de reuniões (agendadas / realizadas) por funil + utm_campaign
+      const { data: meetings } = await supabase
+        .from("crm_meeting_events")
+        .select("event_type, pipeline_id, lead:crm_leads(utm_campaign)")
+        .in("event_type", ["scheduled", "realized"]);
+
+      const mMap = new Map<string, MeetingStat>();
+      for (const ev of (meetings as any) || []) {
+        const utm = ev.lead?.utm_campaign || null;
+        if (!ev.pipeline_id) continue;
+        const key = `${ev.pipeline_id}::${utm || "__none__"}`;
+        const cur = mMap.get(key) || {
+          pipeline_id: ev.pipeline_id,
+          utm_campaign: utm,
+          scheduled: 0,
+          realized: 0,
+        };
+        if (ev.event_type === "scheduled") cur.scheduled += 1;
+        else if (ev.event_type === "realized") cur.realized += 1;
+        mMap.set(key, cur);
+      }
+      setMeetingStats(Array.from(mMap.values()));
     } finally {
       setLoading(false);
     }
@@ -192,6 +223,7 @@ export function useCRMTrafficData() {
     links,
     pipelines,
     leadStats,
+    meetingStats,
     loading,
     reload,
   };
