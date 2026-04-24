@@ -78,6 +78,7 @@ export interface CampaignPipelineLink {
 export interface PipelineLeadCount {
   pipeline_id: string;
   utm_campaign: string | null;
+  date: string | null; // YYYY-MM-DD (created_at do lead)
   total: number;
   won: number;
   won_value: number;
@@ -86,6 +87,7 @@ export interface PipelineLeadCount {
 export interface MeetingStat {
   pipeline_id: string;
   utm_campaign: string | null;
+  date: string | null; // YYYY-MM-DD (event_date)
   scheduled: number;
   realized: number;
 }
@@ -158,20 +160,22 @@ export function useCRMTrafficData() {
         })),
       );
 
-      // Estatísticas de leads/vendas por funil (+ utm_campaign quando existir)
+      // Estatísticas de leads/vendas por funil + utm_campaign + dia
       const { data: leads } = await supabase
         .from("crm_leads")
-        .select("pipeline_id, utm_campaign, opportunity_value, crm_stages(final_type)");
+        .select("pipeline_id, utm_campaign, opportunity_value, created_at, crm_stages(final_type)");
 
       const map = new Map<string, PipelineLeadCount>();
       for (const lead of (leads as any) || []) {
         if (!lead.pipeline_id) continue;
         const utm = lead.utm_campaign || null;
-        const key = `${lead.pipeline_id}::${utm || "__none__"}`;
+        const date = lead.created_at ? String(lead.created_at).slice(0, 10) : null;
+        const key = `${lead.pipeline_id}::${utm || "__none__"}::${date || "__nd__"}`;
         const isWon = lead.crm_stages?.final_type === "won";
         const cur = map.get(key) || {
           pipeline_id: lead.pipeline_id,
           utm_campaign: utm,
+          date,
           total: 0,
           won: 0,
           won_value: 0,
@@ -185,20 +189,22 @@ export function useCRMTrafficData() {
       }
       setLeadStats(Array.from(map.values()));
 
-      // Estatísticas de reuniões (agendadas / realizadas) por funil (+ utm_campaign do lead)
+      // Estatísticas de reuniões por funil + utm_campaign + dia
       const { data: meetings } = await supabase
         .from("crm_meeting_events")
-        .select("event_type, pipeline_id, lead:crm_leads(utm_campaign)")
+        .select("event_type, pipeline_id, event_date, lead:crm_leads(utm_campaign)")
         .in("event_type", ["scheduled", "realized"]);
 
       const mMap = new Map<string, MeetingStat>();
       for (const ev of (meetings as any) || []) {
         const utm = ev.lead?.utm_campaign || null;
         if (!ev.pipeline_id) continue;
-        const key = `${ev.pipeline_id}::${utm || "__none__"}`;
+        const date = ev.event_date ? String(ev.event_date).slice(0, 10) : null;
+        const key = `${ev.pipeline_id}::${utm || "__none__"}::${date || "__nd__"}`;
         const cur = mMap.get(key) || {
           pipeline_id: ev.pipeline_id,
           utm_campaign: utm,
+          date,
           scheduled: 0,
           realized: 0,
         };

@@ -111,13 +111,19 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
         matchStatus(a.status),
     );
 
-    // Para leads/reuniões: filtramos apenas por funil (o vínculo campanha→funil já garante atribuição correta).
-    // Filtro por campanha afeta apenas gasto/impressões/cliques/criativos.
+    // Filtro por funil + data (created_at do lead / event_date da reunião)
+    const inDateStr = (d?: string | null) => {
+      if (!dateFrom && !dateTo) return true;
+      if (!d) return false;
+      if (dateFrom && d < dateFrom) return false;
+      if (dateTo && d > dateTo) return false;
+      return true;
+    };
     const fLeadStats = leadStats.filter(
-      (s) => pipelineFilter === "all" || s.pipeline_id === pipelineFilter,
+      (s) => (pipelineFilter === "all" || s.pipeline_id === pipelineFilter) && inDateStr(s.date),
     );
     const fMeetingStats = meetingStats.filter(
-      (s) => pipelineFilter === "all" || s.pipeline_id === pipelineFilter,
+      (s) => (pipelineFilter === "all" || s.pipeline_id === pipelineFilter) && inDateStr(s.date),
     );
 
     return { campaigns: fCampaigns, adsets: fAdsets, ads: fAds, leadStats: fLeadStats, meetingStats: fMeetingStats };
