@@ -143,6 +143,13 @@ Deno.serve(async (req) => {
 
       let leadId = existingLead?.id;
       if (!leadId) {
+        // Origem "Isca de baleia" no CRM Comercial
+        const { data: origin } = await supabase
+          .from("crm_origins")
+          .select("id")
+          .ilike("name", "Isca de baleia")
+          .maybeSingle();
+
         const { data: newLead, error: leadErr } = await supabase
           .from("crm_leads")
           .insert({
@@ -154,7 +161,8 @@ Deno.serve(async (req) => {
             owner_staff_id: owner?.id || null,
             urgency: "medium",
             entered_pipeline_at: new Date().toISOString(),
-            notes: "Origem: Scanner de Vendas UNV",
+            origin_id: origin?.id || null,
+            notes: "Origem: Scanner de Vendas UNV (Isca de baleia)",
           })
           .select("id")
           .single();
