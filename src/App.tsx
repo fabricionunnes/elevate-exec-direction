@@ -401,6 +401,7 @@ const AppShell = () => {
 
             {/* Scanner de Vendas UNV */}
             <Route path="/scanner-vendas" element={<ScannerVendasUNV />} />
+            <Route path="/scanner-vendas-continuar" element={<ScannerVendasUNV />} />
             <Route path="/scanner-lead-conversao" element={<ScannerLeadConversao />} />
             <Route path="/scanner-diagnostico-conversao" element={<ScannerDiagnosticoConversao />} />
             
