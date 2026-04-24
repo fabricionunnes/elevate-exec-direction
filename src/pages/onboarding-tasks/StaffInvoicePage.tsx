@@ -97,6 +97,15 @@ const StaffInvoicePage = () => {
     return { month: prevMonth, year: prevYear };
   };
   const _brasiliaPrev = getBrasiliaPrevMonth();
+  const getBrasiliaCurrentMonth = () => {
+    const fmt = new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", year: "numeric", month: "numeric" });
+    const parts = fmt.formatToParts(new Date());
+    return {
+      month: Number(parts.find(p => p.type === "month")?.value),
+      year: Number(parts.find(p => p.type === "year")?.value),
+    };
+  };
+  const _brasiliaCurrent = getBrasiliaCurrentMonth();
 
   // Admin state
   const [allStaff, setAllStaff] = useState<StaffMember[]>([]);
