@@ -12,7 +12,7 @@ import { toast } from "sonner";
 export default function UNVProfileEvaluationsPage() {
   const [cycles, setCycles] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<any>({ title: "", type: "self", starts_at: "", ends_at: "" });
+  const [form, setForm] = useState<any>({ name: "", type: "self", start_date: "", end_date: "" });
 
   const load = async () => {
     const { data } = await supabase.from("profile_evaluation_cycles").select("*").order("created_at", { ascending: false });
@@ -22,12 +22,15 @@ export default function UNVProfileEvaluationsPage() {
   useEffect(() => { load(); }, []);
 
   const create = async () => {
-    if (!form.title) return toast.error("Título obrigatório");
-    const { error } = await supabase.from("profile_evaluation_cycles").insert(form);
+    if (!form.name) return toast.error("Título obrigatório");
+    const payload: any = { name: form.name, type: form.type };
+    if (form.start_date) payload.start_date = form.start_date;
+    if (form.end_date) payload.end_date = form.end_date;
+    const { error } = await supabase.from("profile_evaluation_cycles").insert(payload);
     if (error) return toast.error(error.message);
     toast.success("Ciclo criado");
     setOpen(false);
-    setForm({ title: "", type: "self", starts_at: "", ends_at: "" });
+    setForm({ name: "", type: "self", start_date: "", end_date: "" });
     load();
   };
 
@@ -43,7 +46,7 @@ export default function UNVProfileEvaluationsPage() {
           <DialogContent>
             <DialogHeader><DialogTitle>Novo ciclo de avaliação</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <Input placeholder="Título (ex: Avaliação 2026.1)" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+              <Input placeholder="Título (ex: Avaliação 2026.1)" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
               <Select value={form.type} onValueChange={v => setForm({ ...form, type: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -54,8 +57,8 @@ export default function UNVProfileEvaluationsPage() {
                   <SelectItem value="360">360 graus</SelectItem>
                 </SelectContent>
               </Select>
-              <Input type="date" value={form.starts_at} onChange={e => setForm({ ...form, starts_at: e.target.value })} />
-              <Input type="date" value={form.ends_at} onChange={e => setForm({ ...form, ends_at: e.target.value })} />
+              <Input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} />
+              <Input type="date" value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })} />
             </div>
             <DialogFooter><Button onClick={create}>Criar</Button></DialogFooter>
           </DialogContent>
@@ -67,13 +70,13 @@ export default function UNVProfileEvaluationsPage() {
           <Card key={c.id}>
             <CardHeader>
               <div className="flex justify-between items-start">
-                <CardTitle className="text-base">{c.title}</CardTitle>
+                <CardTitle className="text-base">{c.name}</CardTitle>
                 <Badge variant="outline">{c.type}</Badge>
               </div>
             </CardHeader>
             <CardContent>
               <p className="text-xs text-muted-foreground">
-                {c.starts_at && new Date(c.starts_at).toLocaleDateString("pt-BR")} - {c.ends_at && new Date(c.ends_at).toLocaleDateString("pt-BR")}
+                {c.start_date && new Date(c.start_date).toLocaleDateString("pt-BR")} - {c.end_date && new Date(c.end_date).toLocaleDateString("pt-BR")}
               </p>
             </CardContent>
           </Card>
