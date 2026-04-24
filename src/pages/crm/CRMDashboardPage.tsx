@@ -28,6 +28,10 @@ import { ptBR } from "date-fns/locale";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, PieChart, Pie } from "recharts";
 import { Link } from "react-router-dom";
 import { MeetingDetailCards, type MeetingEventDetail } from "@/components/crm/MeetingDetailCards";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CRMTrafficTab } from "@/components/crm/traffic/CRMTrafficTab";
+import { useSearchParams } from "react-router-dom";
+import { Megaphone, BarChart3 } from "lucide-react";
 
 interface DashboardMetrics {
   newLeads: number;
@@ -84,6 +88,13 @@ export const CRMDashboardPage = () => {
     dailyTarget: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") === "traffic" ? "traffic" : "overview";
+  const setActiveTab = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === "overview") next.delete("tab"); else next.set("tab", v);
+    setSearchParams(next, { replace: true });
+  };
 
   const getDateRange = () => {
     const now = new Date();
@@ -482,7 +493,18 @@ export const CRMDashboardPage = () => {
         </div>
       </div>
 
-      {/* Daily Goal - Hero Card - Ultra Vibrant */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="bg-card border border-border/40 shadow-sm">
+          <TabsTrigger value="overview" className="gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+            <BarChart3 className="h-3.5 w-3.5" /> Visão Geral
+          </TabsTrigger>
+          <TabsTrigger value="traffic" className="gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+            <Megaphone className="h-3.5 w-3.5" /> Tráfego Pago
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="mt-5 space-y-6">
+          {/* Daily Goal - Hero Card - Ultra Vibrant */}
       <div className="relative overflow-hidden rounded-3xl p-[3px] shadow-2xl shadow-fuchsia-500/30" style={{ background: 'linear-gradient(135deg, #f43f5e, #d946ef, #8b5cf6, #3b82f6, #06b6d4, #10b981)' }}>
         <div className="relative rounded-[21px] overflow-hidden" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 30%, #4a1942 60%, #1e293b 100%)' }}>
           {/* Animated glow orbs */}
@@ -808,6 +830,12 @@ export const CRMDashboardPage = () => {
           </div>
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="traffic" className="mt-5">
+          <CRMTrafficTab isAdmin={isAdmin} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

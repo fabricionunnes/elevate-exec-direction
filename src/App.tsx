@@ -64,6 +64,7 @@ const InstagramOAuthCallback = lazy(() => import("./pages/InstagramOAuthCallback
 const SocialInstagramCallback = lazy(() => import("./pages/social/SocialInstagramCallback"));
 const PublicInstagramReportPage = lazy(() => import("./pages/PublicInstagramReportPage"));
 const MetaAdsCallbackPage = lazy(() => import("./pages/MetaAdsCallbackPage"));
+const CRMMetaAdsCallbackPage = lazy(() => import("./pages/CRMMetaAdsCallbackPage"));
 const GoogleCalendarOAuthCallback = lazy(() => import("./pages/GoogleCalendarOAuthCallback"));
 const SystemShowcasePage = lazy(() => import("./pages/SystemShowcasePage"));
 const HotseatFormPage = lazy(() => import("./pages/HotseatFormPage"));
@@ -376,6 +377,7 @@ const AppShell = () => {
             <Route path="/social/instagram-callback" element={<SocialInstagramCallback />} />
             <Route path="/instagram-report/:shareToken" element={<PublicInstagramReportPage />} />
             <Route path="/meta-ads-callback" element={<MetaAdsCallbackPage />} />
+            <Route path="/crm-meta-ads-callback" element={<CRMMetaAdsCallbackPage />} />
             <Route path="/google-calendar-callback" element={<GoogleCalendarOAuthCallback />} />
             
             {/* Onboarding CS */}

@@ -14140,6 +14140,405 @@ export type Database = {
           },
         ]
       }
+      crm_meta_ads_accounts: {
+        Row: {
+          access_token: string
+          ad_account_id: string
+          ad_account_name: string | null
+          connected_by: string | null
+          created_at: string
+          id: string
+          is_connected: boolean
+          last_synced_at: string | null
+          tenant_id: string | null
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          ad_account_id: string
+          ad_account_name?: string | null
+          connected_by?: string | null
+          created_at?: string
+          id?: string
+          is_connected?: boolean
+          last_synced_at?: string | null
+          tenant_id?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          ad_account_id?: string
+          ad_account_name?: string | null
+          connected_by?: string | null
+          created_at?: string
+          id?: string
+          is_connected?: boolean
+          last_synced_at?: string | null
+          tenant_id?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_meta_ads_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_meta_ads_ads: {
+        Row: {
+          account_id: string
+          ad_id: string
+          ad_name: string | null
+          adset_id: string | null
+          adset_name: string | null
+          campaign_id: string | null
+          campaign_name: string | null
+          clicks: number | null
+          conversion_value: number | null
+          conversions: number | null
+          cpc: number | null
+          cpm: number | null
+          creative_body: string | null
+          creative_link_url: string | null
+          creative_thumbnail_url: string | null
+          creative_title: string | null
+          ctr: number | null
+          date_start: string | null
+          date_stop: string | null
+          frequency: number | null
+          id: string
+          impressions: number | null
+          leads: number | null
+          reach: number | null
+          spend: number | null
+          status: string | null
+          synced_at: string
+          tenant_id: string | null
+        }
+        Insert: {
+          account_id: string
+          ad_id: string
+          ad_name?: string | null
+          adset_id?: string | null
+          adset_name?: string | null
+          campaign_id?: string | null
+          campaign_name?: string | null
+          clicks?: number | null
+          conversion_value?: number | null
+          conversions?: number | null
+          cpc?: number | null
+          cpm?: number | null
+          creative_body?: string | null
+          creative_link_url?: string | null
+          creative_thumbnail_url?: string | null
+          creative_title?: string | null
+          ctr?: number | null
+          date_start?: string | null
+          date_stop?: string | null
+          frequency?: number | null
+          id?: string
+          impressions?: number | null
+          leads?: number | null
+          reach?: number | null
+          spend?: number | null
+          status?: string | null
+          synced_at?: string
+          tenant_id?: string | null
+        }
+        Update: {
+          account_id?: string
+          ad_id?: string
+          ad_name?: string | null
+          adset_id?: string | null
+          adset_name?: string | null
+          campaign_id?: string | null
+          campaign_name?: string | null
+          clicks?: number | null
+          conversion_value?: number | null
+          conversions?: number | null
+          cpc?: number | null
+          cpm?: number | null
+          creative_body?: string | null
+          creative_link_url?: string | null
+          creative_thumbnail_url?: string | null
+          creative_title?: string | null
+          ctr?: number | null
+          date_start?: string | null
+          date_stop?: string | null
+          frequency?: number | null
+          id?: string
+          impressions?: number | null
+          leads?: number | null
+          reach?: number | null
+          spend?: number | null
+          status?: string | null
+          synced_at?: string
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_meta_ads_ads_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "crm_meta_ads_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_meta_ads_ads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_meta_ads_adsets: {
+        Row: {
+          account_id: string
+          adset_id: string
+          adset_name: string | null
+          campaign_id: string | null
+          campaign_name: string | null
+          clicks: number | null
+          conversion_value: number | null
+          conversions: number | null
+          cpc: number | null
+          cpm: number | null
+          ctr: number | null
+          daily_budget: number | null
+          date_start: string | null
+          date_stop: string | null
+          frequency: number | null
+          id: string
+          impressions: number | null
+          leads: number | null
+          reach: number | null
+          spend: number | null
+          status: string | null
+          synced_at: string
+          tenant_id: string | null
+        }
+        Insert: {
+          account_id: string
+          adset_id: string
+          adset_name?: string | null
+          campaign_id?: string | null
+          campaign_name?: string | null
+          clicks?: number | null
+          conversion_value?: number | null
+          conversions?: number | null
+          cpc?: number | null
+          cpm?: number | null
+          ctr?: number | null
+          daily_budget?: number | null
+          date_start?: string | null
+          date_stop?: string | null
+          frequency?: number | null
+          id?: string
+          impressions?: number | null
+          leads?: number | null
+          reach?: number | null
+          spend?: number | null
+          status?: string | null
+          synced_at?: string
+          tenant_id?: string | null
+        }
+        Update: {
+          account_id?: string
+          adset_id?: string
+          adset_name?: string | null
+          campaign_id?: string | null
+          campaign_name?: string | null
+          clicks?: number | null
+          conversion_value?: number | null
+          conversions?: number | null
+          cpc?: number | null
+          cpm?: number | null
+          ctr?: number | null
+          daily_budget?: number | null
+          date_start?: string | null
+          date_stop?: string | null
+          frequency?: number | null
+          id?: string
+          impressions?: number | null
+          leads?: number | null
+          reach?: number | null
+          spend?: number | null
+          status?: string | null
+          synced_at?: string
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_meta_ads_adsets_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "crm_meta_ads_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_meta_ads_adsets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_meta_ads_campaigns: {
+        Row: {
+          account_id: string
+          campaign_id: string
+          campaign_name: string | null
+          clicks: number | null
+          conversion_value: number | null
+          conversions: number | null
+          cpc: number | null
+          cpm: number | null
+          ctr: number | null
+          daily_budget: number | null
+          date_start: string | null
+          date_stop: string | null
+          frequency: number | null
+          id: string
+          impressions: number | null
+          leads: number | null
+          lifetime_budget: number | null
+          objective: string | null
+          reach: number | null
+          spend: number | null
+          status: string | null
+          synced_at: string
+          tenant_id: string | null
+        }
+        Insert: {
+          account_id: string
+          campaign_id: string
+          campaign_name?: string | null
+          clicks?: number | null
+          conversion_value?: number | null
+          conversions?: number | null
+          cpc?: number | null
+          cpm?: number | null
+          ctr?: number | null
+          daily_budget?: number | null
+          date_start?: string | null
+          date_stop?: string | null
+          frequency?: number | null
+          id?: string
+          impressions?: number | null
+          leads?: number | null
+          lifetime_budget?: number | null
+          objective?: string | null
+          reach?: number | null
+          spend?: number | null
+          status?: string | null
+          synced_at?: string
+          tenant_id?: string | null
+        }
+        Update: {
+          account_id?: string
+          campaign_id?: string
+          campaign_name?: string | null
+          clicks?: number | null
+          conversion_value?: number | null
+          conversions?: number | null
+          cpc?: number | null
+          cpm?: number | null
+          ctr?: number | null
+          daily_budget?: number | null
+          date_start?: string | null
+          date_stop?: string | null
+          frequency?: number | null
+          id?: string
+          impressions?: number | null
+          leads?: number | null
+          lifetime_budget?: number | null
+          objective?: string | null
+          reach?: number | null
+          spend?: number | null
+          status?: string | null
+          synced_at?: string
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_meta_ads_campaigns_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "crm_meta_ads_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_meta_ads_campaigns_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_meta_campaign_pipelines: {
+        Row: {
+          account_id: string
+          campaign_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          pipeline_id: string
+          tenant_id: string | null
+          weight: number
+        }
+        Insert: {
+          account_id: string
+          campaign_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          pipeline_id: string
+          tenant_id?: string | null
+          weight?: number
+        }
+        Update: {
+          account_id?: string
+          campaign_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          pipeline_id?: string
+          tenant_id?: string | null
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_meta_campaign_pipelines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "crm_meta_ads_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_meta_campaign_pipelines_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_meta_campaign_pipelines_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_notification_queue: {
         Row: {
           cancelled_reason: string | null
