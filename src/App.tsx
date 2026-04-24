@@ -79,6 +79,7 @@ const ServiceSalesPage = lazy(() => import("./pages/ServiceSalesPage"));
 const ServicesCatalogPage = lazy(() => import("./pages/ServicesCatalogPage"));
 const ScannerVendasUNV = lazy(() => import("./pages/ScannerVendasUNV"));
 const ScannerLeadConversao = lazy(() => import("./pages/ScannerLeadConversao"));
+const ScannerDiagnosticoConversao = lazy(() => import("./pages/ScannerDiagnosticoConversao"));
 
 // Portal
 const PortalLandingPage = lazy(() => import("./pages/portal/PortalLandingPage"));
@@ -401,6 +402,7 @@ const AppShell = () => {
             {/* Scanner de Vendas UNV */}
             <Route path="/scanner-vendas" element={<ScannerVendasUNV />} />
             <Route path="/scanner-lead-conversao" element={<ScannerLeadConversao />} />
+            <Route path="/scanner-diagnostico-conversao" element={<ScannerDiagnosticoConversao />} />
             
             {/* Staff Self-Registration */}
             <Route path="/staff-register/:token" element={<StaffRegistrationPage />} />

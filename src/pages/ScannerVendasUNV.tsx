@@ -92,6 +92,7 @@ export default function ScannerVendasUNV() {
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [fireConversionFrame, setFireConversionFrame] = useState(false);
+  const [fireDiagnosisFrame, setFireDiagnosisFrame] = useState(false);
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
   const [revenue, setRevenue] = useState<Revenue | null>(null);
   const [meetingRequested, setMeetingRequested] = useState(false);
@@ -310,6 +311,8 @@ export default function ScannerVendasUNV() {
       setDiagnosis(resp.diagnosis);
       setRevenue(resp.revenue);
       setStep(7);
+      // Dispara conversão personalizada no diagnóstico via iframe oculto
+      setFireDiagnosisFrame(true);
     } catch (e: any) {
       toast.error(e.message || "Erro ao gerar diagnóstico");
     } finally {
@@ -342,6 +345,15 @@ export default function ScannerVendasUNV() {
         <iframe
           src="/scanner-lead-conversao"
           title="conv"
+          aria-hidden="true"
+          tabIndex={-1}
+          style={{ position: "absolute", width: 1, height: 1, border: 0, opacity: 0, pointerEvents: "none", left: -9999, top: -9999 }}
+        />
+      )}
+      {fireDiagnosisFrame && (
+        <iframe
+          src="/scanner-diagnostico-conversao"
+          title="conv-diag"
           aria-hidden="true"
           tabIndex={-1}
           style={{ position: "absolute", width: 1, height: 1, border: 0, opacity: 0, pointerEvents: "none", left: -9999, top: -9999 }}
