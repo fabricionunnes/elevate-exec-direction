@@ -53,6 +53,7 @@ import {
   Briefcase,
   FileAudio,
   ClipboardList,
+  ScanLine,
   Video,
   ScrollText,
   FolderOpen,
