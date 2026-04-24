@@ -83,16 +83,32 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
       );
     }
 
+    const matchStatus = (status?: string | null) => {
+      if (statusFilter === "all") return true;
+      const isActive = (status || "").toUpperCase() === "ACTIVE";
+      return statusFilter === "active" ? isActive : !isActive;
+    };
+
     const fCampaigns = campaigns.filter((c) => {
       if (campaignFilter !== "all" && c.campaign_id !== campaignFilter) return false;
       if (allowedCampaignIds && !allowedCampaignIds.has(c.campaign_id)) return false;
+      if (!matchStatus(c.status)) return false;
       if (!inDate(c.date_start, c.date_stop)) return false;
       return true;
     });
 
     const validCampIds = new Set(fCampaigns.map((c) => c.campaign_id));
-    const fAdsets = adsets.filter((a) => a.campaign_id && validCampIds.has(a.campaign_id));
-    const fAds = ads.filter((a) => a.campaign_id && validCampIds.has(a.campaign_id));
+    const fAdsets = adsets.filter(
+      (a) => a.campaign_id && validCampIds.has(a.campaign_id) && matchStatus(a.status),
+    );
+    const validAdsetIds = new Set(fAdsets.map((a) => a.adset_id));
+    const fAds = ads.filter(
+      (a) =>
+        a.campaign_id &&
+        validCampIds.has(a.campaign_id) &&
+        (a.adset_id ? validAdsetIds.has(a.adset_id) : true) &&
+        matchStatus(a.status),
+    );
 
     // Para leads/reuniões: filtramos apenas por funil (o vínculo campanha→funil já garante atribuição correta).
     // Filtro por campanha afeta apenas gasto/impressões/cliques/criativos.
