@@ -73,11 +73,7 @@ const MetaAdsCallbackPage = () => {
         setMessage("Meta Ads conectado ao CRM!");
         setTimeout(() => {
           const target = `/crm?tab=traffic`;
-          if (returnOrigin && returnOrigin !== window.location.origin) {
-            window.location.href = `${returnOrigin}/#${target}`;
-          } else {
-            navigate(target, { replace: true });
-          }
+          navigate(target, { replace: true });
         }, 1200);
         return;
       }
