@@ -373,7 +373,10 @@ function LevelEditor({
   );
 }
 
+import { useProfileViewerScope } from "@/hooks/useProfileViewerScope";
+
 export default function UNVProfileCareerPage() {
+  const { isAdmin, employeeId, loading: scopeLoading } = useProfileViewerScope();
   const [tracks, setTracks] = useState<CareerTrack[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -406,18 +409,41 @@ export default function UNVProfileCareerPage() {
       setLoading(false);
       return;
     }
-    setTracks(
-      (data || []).map((t: any) => ({
-        ...t,
-        levels: Array.isArray(t.levels) ? t.levels : [],
-      })),
-    );
+    let allTracks = (data || []).map((t: any) => ({
+      ...t,
+      levels: Array.isArray(t.levels) ? t.levels : [],
+    }));
+
+    // Não-admin: filtra somente a trilha relacionada ao cargo/área do colaborador.
+    if (!isAdmin && employeeId) {
+      const { data: emp } = await supabase
+        .from("profile_employees")
+        .select("position_id, department_id, profile_positions(name, area), profile_departments(name)")
+        .eq("id", employeeId)
+        .maybeSingle();
+      const empArea = ((emp as any)?.profile_positions?.area || (emp as any)?.profile_departments?.name || "").toLowerCase();
+      const empPos = ((emp as any)?.profile_positions?.name || "").toLowerCase();
+      if (empArea || empPos) {
+        allTracks = allTracks.filter((t) => {
+          const a = (t.area || "").toLowerCase();
+          const n = (t.name || "").toLowerCase();
+          return (empArea && (a.includes(empArea) || empArea.includes(a) || n.includes(empArea))) ||
+                 (empPos && (n.includes(empPos) || empPos.includes(n)));
+        });
+      } else {
+        allTracks = [];
+      }
+    } else if (!isAdmin) {
+      allTracks = [];
+    }
+
+    setTracks(allTracks);
     setLoading(false);
   };
 
   useEffect(() => {
-    load();
-  }, []);
+    if (!scopeLoading) load();
+  }, [scopeLoading, isAdmin, employeeId]);
 
   const createTrack = async () => {
     if (!trackForm.name.trim()) return toast.error("Nome obrigatório");
