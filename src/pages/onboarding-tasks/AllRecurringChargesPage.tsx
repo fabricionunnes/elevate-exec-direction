@@ -1499,16 +1499,19 @@ export default function AllRecurringChargesPage() {
                       ]}
                       placeholder="Empresa"
                     />
-                    <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                      <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="pending">Pendente</SelectItem>
-                        <SelectItem value="paid">Pago</SelectItem>
-                        <SelectItem value="overdue">Vencido</SelectItem>
-                        <SelectItem value="cancelled">Cancelado</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <MultiSelectFilter
+                      options={[
+                        { value: "pending", label: "Pendente" },
+                        { value: "paid", label: "Pago" },
+                        { value: "partial", label: "Pago Parcial" },
+                        { value: "overdue", label: "Vencido" },
+                        { value: "cancelled", label: "Cancelado" },
+                      ]}
+                      selected={selectedStatuses}
+                      onChange={setSelectedStatuses}
+                      placeholder="Status"
+                      allLabel="Todos"
+                    />
                     <SearchableSelect
                       value={selectedConsultant}
                       onValueChange={setSelectedConsultant}
@@ -1529,23 +1532,19 @@ export default function AllRecurringChargesPage() {
                         onOffsetChange={setReceivableOffset}
                       />
                     </div>
-                    <SearchableSelect
-                      value={selectedCategory}
-                      onValueChange={setSelectedCategory}
+                    <MultiSelectFilter
+                      selected={selectedCategories}
+                      onChange={setSelectedCategories}
                       placeholder="Categoria"
-                      options={[
-                        { value: "all", label: "Todas as Categorias" },
-                        ...staffCategories.filter((c: any) => c.type === "receita").map((c: any) => ({ value: c.id, label: c.name })),
-                      ]}
+                      allLabel="Todas as Categorias"
+                      options={staffCategories.filter((c: any) => c.type === "receita").map((c: any) => ({ value: c.id, label: c.name }))}
                     />
-                    <SearchableSelect
-                      value={selectedCostCenter}
-                      onValueChange={setSelectedCostCenter}
+                    <MultiSelectFilter
+                      selected={selectedCostCenters}
+                      onChange={setSelectedCostCenters}
                       placeholder="Centro de Custo"
-                      options={[
-                        { value: "all", label: "Todos os Centros de Custo" },
-                        ...staffCostCenters.map((cc: any) => ({ value: cc.id, label: cc.name })),
-                      ]}
+                      allLabel="Todos os Centros de Custo"
+                      options={staffCostCenters.map((cc: any) => ({ value: cc.id, label: cc.name }))}
                     />
                     <Popover>
                       <PopoverTrigger asChild>
