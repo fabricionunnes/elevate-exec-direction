@@ -392,7 +392,52 @@ export const CRMSettingsPage = () => {
     setEditStageOpen(true);
   };
 
-  const handleDuplicatePipeline = async (pipeline: Pipeline) => {
+  // Drag-and-drop reorder for pipelines
+  const handlePipelineDragStart = (id: string) => {
+    setDraggedPipelineId(id);
+  };
+  const handlePipelineDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    if (draggedPipelineId && draggedPipelineId !== id) {
+      setDragOverPipelineId(id);
+    }
+  };
+  const handlePipelineDragEnd = () => {
+    setDraggedPipelineId(null);
+    setDragOverPipelineId(null);
+  };
+  const handlePipelineDrop = async (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const sourceId = draggedPipelineId;
+    setDraggedPipelineId(null);
+    setDragOverPipelineId(null);
+    if (!sourceId || sourceId === targetId) return;
+
+    const ordered = [...pipelines].sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    const fromIdx = ordered.findIndex(p => p.id === sourceId);
+    const toIdx = ordered.findIndex(p => p.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const [moved] = ordered.splice(fromIdx, 1);
+    ordered.splice(toIdx, 0, moved);
+
+    // Optimistic update
+    const updated = ordered.map((p, idx) => ({ ...p, sort_order: idx } as any));
+    setPipelines(updated);
+
+    try {
+      await Promise.all(
+        updated.map((p: any) =>
+          supabase.from("crm_pipelines").update({ sort_order: p.sort_order }).eq("id", p.id)
+        )
+      );
+    } catch (err) {
+      console.error("Erro ao reordenar pipelines", err);
+      toast.error("Erro ao salvar nova ordem");
+      loadData();
+    }
+  };
+
+
     setSaving(true);
     try {
       // 1. Create new pipeline with "Cópia de" prefix
