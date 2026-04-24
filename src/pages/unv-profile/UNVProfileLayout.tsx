@@ -45,6 +45,12 @@ const GROUPS = ["Visão Geral", "Pessoas", "Atração", "Desenvolvimento", "Perf
 
 export default function UNVProfileLayout() {
   const location = useLocation();
+  const { hasPermission, isMaster, loading } = useStaffPermissions();
+
+  // Master vê tudo. Demais staff só veem itens cuja permissão (profile_*) foi liberada.
+  const visibleNav = NAV.filter((n) => isMaster || hasPermission(n.permKey));
+  const visibleGroups = GROUPS.filter((g) => visibleNav.some((n) => n.group === g));
+
   return (
     <ModuleGuard module="profile" label="UNV Profile">
       <div className="min-h-screen bg-background flex">
@@ -64,27 +70,35 @@ export default function UNVProfileLayout() {
             </Link>
           </div>
           <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
-            {GROUPS.map(group => (
-              <div key={group}>
-                <p className="px-3 text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-1">{group}</p>
-                {NAV.filter(n => n.group === group).map(item => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.to === "/unv-profile"}
-                    className={({ isActive }) => cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-                      isActive
-                        ? "bg-primary/10 text-primary font-medium"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    <item.icon className="w-4 h-4" />
-                    {item.label}
-                  </NavLink>
-                ))}
+            {loading ? (
+              <div className="px-3 py-4 text-xs text-muted-foreground">Carregando…</div>
+            ) : visibleNav.length === 0 ? (
+              <div className="px-3 py-4 text-xs text-muted-foreground">
+                Você não possui permissões liberadas para o UNV Profile. Solicite acesso ao administrador.
               </div>
-            ))}
+            ) : (
+              visibleGroups.map(group => (
+                <div key={group}>
+                  <p className="px-3 text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-1">{group}</p>
+                  {visibleNav.filter(n => n.group === group).map(item => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={item.to === "/unv-profile"}
+                      className={({ isActive }) => cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                        isActive
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <item.icon className="w-4 h-4" />
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </div>
+              ))
+            )}
           </nav>
         </aside>
 
