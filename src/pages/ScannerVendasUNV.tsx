@@ -311,6 +311,8 @@ export default function ScannerVendasUNV() {
       setDiagnosis(resp.diagnosis);
       setRevenue(resp.revenue);
       setStep(7);
+      // Dispara conversão personalizada no diagnóstico via iframe oculto
+      setFireDiagnosisFrame(true);
     } catch (e: any) {
       toast.error(e.message || "Erro ao gerar diagnóstico");
     } finally {
