@@ -238,8 +238,8 @@ Deno.serve(async (req) => {
           leads,
           conversions,
           conversion_value,
-          date_start: range.since,
-          date_stop: range.until,
+          date_start: ins.date_start || range.since,
+          date_stop: ins.date_stop || range.until,
           synced_at: new Date().toISOString(),
         });
       }
