@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -322,14 +323,14 @@ export default function AllRecurringChargesPage() {
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [selectedRecurrence, setSelectedRecurrence] = useState("all");
   const [selectedConsultant, setSelectedConsultant] = useState("all");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedCostCenter, setSelectedCostCenter] = useState("all");
-  const [selectedPayableCategory, setSelectedPayableCategory] = useState("all");
-  const [selectedPayableCostCenter, setSelectedPayableCostCenter] = useState("all");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedCostCenters, setSelectedCostCenters] = useState<string[]>([]);
+  const [selectedPayableCategories, setSelectedPayableCategories] = useState<string[]>([]);
+  const [selectedPayableCostCenters, setSelectedPayableCostCenters] = useState<string[]>([]);
   const [selectedPayableConsultant, setSelectedPayableConsultant] = useState("all");
   const [receivablePeriod, setReceivablePeriod] = useState<PeriodType>("this_month");
   const [payablePeriod, setPayablePeriod] = useState<PeriodType>("this_month");
