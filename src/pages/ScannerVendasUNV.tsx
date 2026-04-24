@@ -195,6 +195,19 @@ export default function ScannerVendasUNV() {
       if (error || resp?.error) throw new Error(resp?.error || error?.message || "Erro");
 
       setSubmissionId(resp.submission_id);
+
+      // Meta Pixel — conversão "Lead" após envio dos dados iniciais
+      try {
+        const pixelId = "247392077001023";
+        const w = window as any;
+        if (typeof w.fbq === "function") {
+          w.fbq("track", "Lead");
+        }
+        const img = new Image(1, 1);
+        img.style.display = "none";
+        img.src = `https://www.facebook.com/tr?id=${pixelId}&ev=Lead&noscript=1`;
+      } catch {}
+
       setStep(2);
     } catch (e: any) {
       toast.error(e.message || "Erro ao iniciar diagnóstico");
