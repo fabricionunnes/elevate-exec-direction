@@ -830,6 +830,12 @@ export const CRMDashboardPage = () => {
           </div>
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="traffic" className="mt-5">
+          <CRMTrafficTab isAdmin={isAdmin} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
