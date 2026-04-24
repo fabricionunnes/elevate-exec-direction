@@ -62,10 +62,16 @@ Deno.serve(async (req) => {
     // ---------------- AUTH URL ----------------
     if (action === "auth_url") {
       const { tenant_id, redirect_uri, return_origin } = body;
-      const state = btoa(JSON.stringify({ tenant_id: tenant_id ?? null, redirect_uri, return_origin }));
+      const effectiveRedirect = redirect_uri || STABLE_REDIRECT_URI;
+      const state = btoa(JSON.stringify({
+        flow: "crm_meta_ads",
+        tenant_id: tenant_id ?? null,
+        redirect_uri: effectiveRedirect,
+        return_origin,
+      }));
       const url = new URL("https://www.facebook.com/v21.0/dialog/oauth");
       url.searchParams.set("client_id", FACEBOOK_APP_ID || "");
-      url.searchParams.set("redirect_uri", redirect_uri || STABLE_REDIRECT_URI);
+      url.searchParams.set("redirect_uri", effectiveRedirect);
       url.searchParams.set("scope", SCOPES.join(","));
       url.searchParams.set("response_type", "code");
       url.searchParams.set("state", state);
