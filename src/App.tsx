@@ -79,6 +79,7 @@ const ServiceSalesPage = lazy(() => import("./pages/ServiceSalesPage"));
 const ServicesCatalogPage = lazy(() => import("./pages/ServicesCatalogPage"));
 const ScannerVendasUNV = lazy(() => import("./pages/ScannerVendasUNV"));
 const ScannerLeadConversao = lazy(() => import("./pages/ScannerLeadConversao"));
+const ScannerDiagnosticoConversao = lazy(() => import("./pages/ScannerDiagnosticoConversao"));
 
 // Portal
 const PortalLandingPage = lazy(() => import("./pages/portal/PortalLandingPage"));
