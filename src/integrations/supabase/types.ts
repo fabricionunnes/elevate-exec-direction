@@ -34281,6 +34281,7 @@ export type Database = {
         }
         Returns: string
       }
+      current_profile_employee_id: { Args: never; Returns: string }
       current_staff_role: { Args: never; Returns: string }
       current_staff_tenant_id: { Args: never; Returns: string }
       current_user_is_tenant: { Args: never; Returns: boolean }
