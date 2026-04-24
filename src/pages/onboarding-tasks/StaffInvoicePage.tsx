@@ -965,11 +965,16 @@ const StaffInvoicePage = () => {
           {hasManagePermission && (
             <TabsContent value="salarios">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
                   <CardTitle>Configuração de Salários</CardTitle>
-                  <Button onClick={() => { setSalaryDialogOpen(true); setSalaryStaffId(""); setSalaryAmount(0); setSalaryCommission(0); }}>
-                    Configurar Salário
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={openBulkDialog}>
+                      Configurar Todos
+                    </Button>
+                    <Button onClick={() => { setSalaryDialogOpen(true); setSalaryStaffId(""); setSalaryAmount(0); setSalaryCommission(0); }}>
+                      Configurar Salário
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {allSalaries.length === 0 ? (
