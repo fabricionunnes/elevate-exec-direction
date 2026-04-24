@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import type {
   CRMMetaCampaign, CRMMetaAdset, CRMMetaAd,
-  CampaignPipelineLink, PipelineLeadCount,
+  CampaignPipelineLink, PipelineLeadCount, MeetingStat,
 } from "./useCRMTrafficData";
 
 interface Props {
@@ -21,6 +21,7 @@ interface Props {
   links: CampaignPipelineLink[];
   pipelines: { id: string; name: string }[];
   leadStats: PipelineLeadCount[];
+  meetingStats?: MeetingStat[];
 }
 
 const fmtBRL = (v: number) =>
@@ -30,7 +31,7 @@ const fmtPct = (v: number) => `${(v || 0).toFixed(2)}%`;
 const safeDiv = (a: number, b: number) => (b > 0 ? a / b : 0);
 
 export const CRMTrafficDashboard = ({
-  campaigns, adsets, ads, links, pipelines, leadStats,
+  campaigns, adsets, ads, links, pipelines, leadStats, meetingStats = [],
 }: Props) => {
   // Totais gerais
   const totals = useMemo(() => {
