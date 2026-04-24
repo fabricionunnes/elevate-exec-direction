@@ -261,8 +261,10 @@ Deno.serve(async (req) => {
       for (const a of adsetMetaRes.data || []) adsetsMeta[a.id] = a;
 
       const adsetInsRes = await gj(
-        `${GRAPH_API}/${fbAccount}/insights?level=adset&fields=${insightFields}&time_range=${timeRange}&time_increment=${timeIncrement}&limit=5000&access_token=${token}`,
+        `${GRAPH_API}/${fbAccount}/insights?level=adset&fields=${insightFields}&time_range=${timeRange}&time_increment=1&limit=5000&access_token=${token}`,
       );
+      if (adsetInsRes.error) console.error("[adset insights]", adsetInsRes.error);
+      console.log(`[sync] adset insights rows=${(adsetInsRes.data || []).length}`);
       const adsetRows: any[] = [];
       for (const ins of adsetInsRes.data || []) {
         const meta = adsetsMeta[ins.adset_id] || {};
