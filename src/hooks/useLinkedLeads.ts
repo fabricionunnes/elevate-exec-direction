@@ -52,65 +52,41 @@ export function useLinkedLeads({ phone, email, document, leadId }: UseLinkedLead
     setError(null);
 
     try {
-      const conditions: string[] = [];
-
-      if (leadId) {
-        conditions.push(`id.eq.${leadId}`);
-      }
-
-      if (cleanedPhone) {
-        // Match by last 8 digits (handles BR mobile "9" prefix variations and country code differences)
-        conditions.push(`phone.ilike.%${cleanedPhone.slice(-8)}%`);
-      }
-
-      if (cleanedEmail) {
-        conditions.push(`email.ilike.${cleanedEmail}`);
-      }
-
-      if (cleanedDocument) {
-        // Match document with any formatting
-        conditions.push(`document.ilike.%${cleanedDocument}%`);
-      }
-
-      const { data, error: fetchError } = await supabase
-        .from("crm_leads")
-        .select(`
-          id,
-          name,
-          company,
-          phone,
-          email,
-          document,
-          opportunity_value,
-          pipeline:crm_pipelines(id, name),
-          stage:crm_stages(id, name, color),
-          created_at
-        `)
-        .or(conditions.join(","))
-        .order("created_at", { ascending: false });
+      // Use SECURITY DEFINER RPC so users with CRM access can find linked
+      // leads even when the lead is owned by another team member.
+      const { data, error: fetchError } = await supabase.rpc("find_linked_crm_leads", {
+        _phone_last8: cleanedPhone ? cleanedPhone.slice(-8) : null,
+        _email: cleanedEmail || null,
+        _document: cleanedDocument || null,
+        _lead_id: leadId || null,
+      });
 
       if (fetchError) throw fetchError;
 
-      const filteredLeads = (data || []).filter((lead) => {
-        const leadPhone = cleanPhone(lead.phone);
-        const leadEmail = lead.email?.toLowerCase().trim();
-        const leadDocument = cleanDocument(lead.document);
+      const mapped: LinkedLead[] = (data || []).map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        company: row.company,
+        phone: row.phone,
+        email: row.email,
+        document: row.document,
+        opportunity_value: row.opportunity_value,
+        pipeline: row.pipeline_id ? { id: row.pipeline_id, name: row.pipeline_name } : null,
+        stage: row.stage_id ? { id: row.stage_id, name: row.stage_name, color: row.stage_color } : null,
+        created_at: row.created_at,
+      }));
 
+      // Extra last-8-digit safety filter on the client
+      const filteredLeads = mapped.filter((lead) => {
         if (leadId && lead.id === leadId) return true;
-
-        if (cleanedPhone && leadPhone) {
-          // Match last 8 digits — robust against BR mobile "9" prefix and country code variations
-          if (leadPhone.slice(-8) === cleanedPhone.slice(-8)) return true;
-        }
-
-        if (cleanedEmail && leadEmail === cleanedEmail) return true;
-
-        if (cleanedDocument && leadDocument === cleanedDocument) return true;
-
+        const leadPhone = cleanPhone(lead.phone);
+        if (cleanedPhone && leadPhone && leadPhone.slice(-8) === cleanedPhone.slice(-8)) return true;
+        if (cleanedEmail && lead.email?.toLowerCase().trim() === cleanedEmail) return true;
+        if (cleanedDocument && cleanDocument(lead.document) === cleanedDocument) return true;
         return false;
       });
 
-      setLeads(filteredLeads as LinkedLead[]);
+      setLeads(filteredLeads);
     } catch (err: any) {
       console.error("Error fetching linked leads:", err);
       setError(err.message);

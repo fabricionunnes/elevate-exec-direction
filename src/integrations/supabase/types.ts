@@ -34298,6 +34298,29 @@ export type Database = {
         }[]
       }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
+      find_linked_crm_leads: {
+        Args: {
+          _document?: string
+          _email?: string
+          _lead_id?: string
+          _phone_last8?: string
+        }
+        Returns: {
+          company: string
+          created_at: string
+          document: string
+          email: string
+          id: string
+          name: string
+          opportunity_value: number
+          phone: string
+          pipeline_id: string
+          pipeline_name: string
+          stage_color: string
+          stage_id: string
+          stage_name: string
+        }[]
+      }
       get_ads_credits_balance: {
         Args: { p_profile_id: string }
         Returns: number
