@@ -621,7 +621,7 @@ function ResultView({
               )}
             </Button>
           ) : (
-            <div className="inline-flex items-center gap-2 text-emerald-600 font-semibold text-lg">
+            <div className="inline-flex items-center gap-2 text-primary font-semibold text-lg">
               <CheckCircle2 className="w-5 h-5" />
               Nosso time vai entrar em contato com você
             </div>
