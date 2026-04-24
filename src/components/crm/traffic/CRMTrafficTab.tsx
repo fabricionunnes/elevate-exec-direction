@@ -233,40 +233,40 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground">Status</Label>
-              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Apenas ativos</SelectItem>
-                  <SelectItem value="inactive">Apenas inativos</SelectItem>
-                  <SelectItem value="all">Todos</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={statusFilter}
+                onChange={(v) => setStatusFilter(v as any)}
+                options={[
+                  { value: "active", label: "Apenas ativos" },
+                  { value: "inactive", label: "Apenas inativos" },
+                  { value: "all", label: "Todos" },
+                ]}
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground">Funil</Label>
-              <Select value={pipelineFilter} onValueChange={setPipelineFilter}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os funis</SelectItem>
-                  {pipelines.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={pipelineFilter}
+                onChange={setPipelineFilter}
+                options={[
+                  { value: "all", label: "Todos os funis" },
+                  ...pipelines.map((p) => ({ value: p.id, label: p.name })),
+                ]}
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground">Campanha</Label>
-              <Select value={campaignFilter} onValueChange={setCampaignFilter}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  <SelectItem value="all">Todas as campanhas</SelectItem>
-                  {campaigns.map((c) => (
-                    <SelectItem key={c.campaign_id} value={c.campaign_id}>
-                      {c.campaign_name || c.campaign_id}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={campaignFilter}
+                onChange={setCampaignFilter}
+                options={[
+                  { value: "all", label: "Todas as campanhas" },
+                  ...campaigns.map((c) => ({
+                    value: c.campaign_id,
+                    label: c.campaign_name || c.campaign_id,
+                  })),
+                ]}
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground">Data inicial</Label>
