@@ -86,11 +86,23 @@ const StaffInvoicePage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const commissionFileInputRef = useRef<HTMLInputElement>(null);
   
+  // Default filter = previous month in Brasília timezone (America/Sao_Paulo)
+  const getBrasiliaPrevMonth = () => {
+    const fmt = new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", year: "numeric", month: "numeric" });
+    const parts = fmt.formatToParts(new Date());
+    const y = Number(parts.find(p => p.type === "year")?.value);
+    const m = Number(parts.find(p => p.type === "month")?.value);
+    const prevMonth = m === 1 ? 12 : m - 1;
+    const prevYear = m === 1 ? y - 1 : y;
+    return { month: prevMonth, year: prevYear };
+  };
+  const _brasiliaPrev = getBrasiliaPrevMonth();
+
   // Admin state
   const [allStaff, setAllStaff] = useState<StaffMember[]>([]);
   const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
-  const [adminFilterMonth, setAdminFilterMonth] = useState<number | "all">("all");
-  const [adminFilterYear, setAdminFilterYear] = useState(new Date().getFullYear());
+  const [adminFilterMonth, setAdminFilterMonth] = useState<number | "all">(_brasiliaPrev.month);
+  const [adminFilterYear, setAdminFilterYear] = useState(_brasiliaPrev.year);
   const [adminFilterStaff, setAdminFilterStaff] = useState("all");
   const [adminFilterStatus, setAdminFilterStatus] = useState("all");
   
