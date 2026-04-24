@@ -220,10 +220,11 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       // or sales in the period — even without the "closer" role.
       const expandedCloserMap = new Map(baseCloserStaff.map(s => [s.id, s]));
       (meetingEvents || []).forEach((ev: any) => {
-        const sid = ev.credited_staff_id;
+        // Crédito vai para o RESPONSÁVEL do lead (owner), não para quem deu baixa.
+        const sid = ev.lead?.owner_staff_id;
         if (!sid || expandedCloserMap.has(sid)) return;
         if (excludedRolesFromClosers.has(staffRoleMap.get(sid) || "")) return;
-        const staffInfo = allStaffMap.get(sid) || (ev.credited_staff ? { id: sid, name: ev.credited_staff.name } : null);
+        const staffInfo = allStaffMap.get(sid);
         if (staffInfo) expandedCloserMap.set(sid, staffInfo);
       });
       (salesData || []).forEach((s: any) => {
