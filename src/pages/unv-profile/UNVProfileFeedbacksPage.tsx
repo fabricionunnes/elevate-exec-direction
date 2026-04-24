@@ -16,11 +16,11 @@ export default function UNVProfileFeedbacksPage() {
   const [list, setList] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<any>({ to_employee_id: "", type: "positive", message: "" });
+  const [form, setForm] = useState<any>({ to_id: "", type: "positive", content: "" });
 
   const load = async () => {
     const [f, e] = await Promise.all([
-      supabase.from("profile_feedbacks").select("*, profile_employees!profile_feedbacks_to_employee_id_fkey(full_name)").order("created_at", { ascending: false }),
+      supabase.from("profile_feedbacks").select("*, profile_employees!profile_feedbacks_to_id_fkey(full_name)").order("created_at", { ascending: false }),
       supabase.from("profile_employees").select("id, full_name").order("full_name"),
     ]);
     setList(f.data || []);
@@ -30,12 +30,16 @@ export default function UNVProfileFeedbacksPage() {
   useEffect(() => { load(); }, []);
 
   const create = async () => {
-    if (!form.to_employee_id || !form.message) return toast.error("Preencha colaborador e mensagem");
-    const { error } = await supabase.from("profile_feedbacks").insert(form);
+    if (!form.to_id || !form.content) return toast.error("Preencha colaborador e mensagem");
+    const { error } = await supabase.from("profile_feedbacks").insert({
+      to_id: form.to_id,
+      type: form.type,
+      content: form.content,
+    });
     if (error) return toast.error(error.message);
     toast.success("Feedback registrado");
     setOpen(false);
-    setForm({ to_employee_id: "", type: "positive", message: "" });
+    setForm({ to_id: "", type: "positive", content: "" });
     load();
   };
 
@@ -51,7 +55,7 @@ export default function UNVProfileFeedbacksPage() {
           <DialogContent>
             <DialogHeader><DialogTitle>Novo feedback</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <Select value={form.to_employee_id} onValueChange={v => setForm({ ...form, to_employee_id: v })}>
+              <Select value={form.to_id} onValueChange={v => setForm({ ...form, to_id: v })}>
                 <SelectTrigger><SelectValue placeholder="Para quem? *" /></SelectTrigger>
                 <SelectContent>{employees.map(e => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}</SelectContent>
               </Select>
@@ -64,7 +68,7 @@ export default function UNVProfileFeedbacksPage() {
                   <SelectItem value="neutral">Geral</SelectItem>
                 </SelectContent>
               </Select>
-              <Textarea placeholder="Mensagem" rows={5} value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} />
+              <Textarea placeholder="Mensagem" rows={5} value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} />
             </div>
             <DialogFooter><Button onClick={create}>Enviar</Button></DialogFooter>
           </DialogContent>
@@ -79,7 +83,7 @@ export default function UNVProfileFeedbacksPage() {
                 <p className="text-sm font-medium">{f.profile_employees?.full_name}</p>
                 <Badge className={`${TYPE_COLORS[f.type]} text-white`}>{TYPE_LABELS[f.type]}</Badge>
               </div>
-              <p className="text-sm whitespace-pre-wrap text-muted-foreground">{f.message}</p>
+              <p className="text-sm whitespace-pre-wrap text-muted-foreground">{f.content}</p>
               <p className="text-[10px] text-muted-foreground">{new Date(f.created_at).toLocaleString("pt-BR")}</p>
             </CardContent>
           </Card>
