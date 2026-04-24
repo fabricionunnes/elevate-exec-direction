@@ -124,6 +124,18 @@ export const CRMTrafficDashboard = ({
     };
   }, [perPipeline, totals.spend]);
 
+  // CAC e ROAS gerais a partir das vendas/receita do CRM (somatório por funil)
+  const crmTotals = useMemo(() => {
+    const won = perPipeline.reduce((s, r) => s + r.won, 0);
+    const wonValue = perPipeline.reduce((s, r) => s + r.won_value, 0);
+    return {
+      won,
+      won_value: wonValue,
+      cac: safeDiv(totals.spend, won),
+      roas: safeDiv(wonValue, totals.spend),
+    };
+  }, [perPipeline, totals.spend]);
+
   // Top campanhas / criativos por gasto
   const topCampaigns = [...campaigns].sort((a, b) => Number(b.spend) - Number(a.spend)).slice(0, 10);
   const topAds = [...ads].sort((a, b) => Number(b.spend) - Number(a.spend)).slice(0, 12);
@@ -139,8 +151,8 @@ export const CRMTrafficDashboard = ({
         <KPI icon={TrendingDown} label="CPL" value={fmtBRL(totals.cpl)} color="#f59e0b" hint="Custo por Lead" />
         <KPI icon={CalendarClock} label="Custo / Reunião Agendada" value={fmtBRL(meetingTotals.cost_per_scheduled)} color="#0ea5e9" hint={`${fmtInt(meetingTotals.scheduled)} agendadas`} />
         <KPI icon={CalendarCheck} label="Custo / Reunião Realizada" value={fmtBRL(meetingTotals.cost_per_realized)} color="#14b8a6" hint={`${fmtInt(meetingTotals.realized)} realizadas`} />
-        <KPI icon={Target} label="CAC" value={fmtBRL(totals.cac)} color="#ef4444" hint="Custo por Venda" />
-        <KPI icon={TrendingUp} label="ROAS" value={`${(totals.roas || 0).toFixed(2)}x`} color="#22c55e" />
+        <KPI icon={Target} label="CAC" value={fmtBRL(crmTotals.cac)} color="#ef4444" hint={`${fmtInt(crmTotals.won)} vendas`} />
+        <KPI icon={TrendingUp} label="ROAS" value={`${(crmTotals.roas || 0).toFixed(2)}x`} color="#22c55e" />
         <KPI icon={MousePointerClick} label="CTR" value={fmtPct(totals.ctr)} color="#a855f7" />
       </div>
 
