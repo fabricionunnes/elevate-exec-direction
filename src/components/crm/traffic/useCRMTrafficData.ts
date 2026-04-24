@@ -223,6 +223,7 @@ export function useCRMTrafficData() {
     links,
     pipelines,
     leadStats,
+    meetingStats,
     loading,
     reload,
   };
