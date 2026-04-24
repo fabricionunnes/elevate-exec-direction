@@ -77,6 +77,7 @@ const TrafegoPagoPage = lazy(() => import("./pages/TrafegoPagoPage"));
 const SocialMediaPage = lazy(() => import("./pages/SocialMediaPage"));
 const ServiceSalesPage = lazy(() => import("./pages/ServiceSalesPage"));
 const ServicesCatalogPage = lazy(() => import("./pages/ServicesCatalogPage"));
+const ScannerVendasUNV = lazy(() => import("./pages/ScannerVendasUNV"));
 
 // Portal
 const PortalLandingPage = lazy(() => import("./pages/portal/PortalLandingPage"));
@@ -395,6 +396,9 @@ const AppShell = () => {
             
             {/* Public Pipeline Form */}
             <Route path="/form/:token" element={<PublicPipelineForm />} />
+
+            {/* Scanner de Vendas UNV */}
+            <Route path="/scanner-vendas" element={<ScannerVendasUNV />} />
             
             {/* Staff Self-Registration */}
             <Route path="/staff-register/:token" element={<StaffRegistrationPage />} />
