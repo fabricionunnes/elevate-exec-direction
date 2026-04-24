@@ -28,6 +28,10 @@ import { ptBR } from "date-fns/locale";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, PieChart, Pie } from "recharts";
 import { Link } from "react-router-dom";
 import { MeetingDetailCards, type MeetingEventDetail } from "@/components/crm/MeetingDetailCards";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CRMTrafficTab } from "@/components/crm/traffic/CRMTrafficTab";
+import { useSearchParams } from "react-router-dom";
+import { Megaphone, BarChart3 } from "lucide-react";
 
 interface DashboardMetrics {
   newLeads: number;
