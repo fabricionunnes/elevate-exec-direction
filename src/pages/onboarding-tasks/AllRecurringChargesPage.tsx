@@ -595,12 +595,9 @@ export default function AllRecurringChargesPage() {
         if (!match) return false;
       }
       if (selectedCompany !== "all" && inv.company_id !== selectedCompany) return false;
-      if (selectedStatus !== "all") {
+      if (selectedStatuses.length > 0) {
         const effectiveStatus = isEffectivelyOverdue(inv.status, inv.due_date) ? "overdue" : inv.status;
-        if (selectedStatus === "pending" && effectiveStatus !== "pending") return false;
-        if (selectedStatus === "paid" && effectiveStatus !== "paid") return false;
-        if (selectedStatus === "overdue" && effectiveStatus !== "overdue") return false;
-        if (selectedStatus === "cancelled" && effectiveStatus !== "cancelled") return false;
+        if (!selectedStatuses.includes(effectiveStatus)) return false;
       }
       if (dateFrom) { if (inv.due_date < format(dateFrom, "yyyy-MM-dd")) return false; }
       if (dateTo) { if (inv.due_date > format(dateTo, "yyyy-MM-dd")) return false; }
@@ -609,14 +606,14 @@ export default function AllRecurringChargesPage() {
         if (!consultantIds || !consultantIds.has(selectedConsultant)) return false;
       }
       const invAny = inv as any;
-      if (selectedCategory !== "all" && invAny.category_id !== selectedCategory) return false;
-      if (selectedCostCenter !== "all" && invAny.cost_center_id !== selectedCostCenter) return false;
+      if (selectedCategories.length > 0 && !selectedCategories.includes(invAny.category_id)) return false;
+      if (selectedCostCenters.length > 0 && !selectedCostCenters.includes(invAny.cost_center_id)) return false;
       return true;
     });
-  }, [invoices, searchTerm, selectedCompany, selectedStatus, dateFrom, dateTo, selectedConsultant, selectedCategory, selectedCostCenter, companyConsultantMap]);
+  }, [invoices, searchTerm, selectedCompany, selectedStatuses, dateFrom, dateTo, selectedConsultant, selectedCategories, selectedCostCenters, companyConsultantMap]);
 
   // Reset page when filters change
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedCompany, selectedStatus, dateFrom, dateTo, selectedConsultant, selectedCategory, selectedCostCenter]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedCompany, selectedStatuses, dateFrom, dateTo, selectedConsultant, selectedCategories, selectedCostCenters]);
 
   const sortedInvoices = useMemo(() => {
     if (!recSortCol) return filteredInvoices;
