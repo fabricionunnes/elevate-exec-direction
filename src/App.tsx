@@ -178,6 +178,7 @@ const MasterAIConsultPage = lazy(() => import("./pages/onboarding-tasks/MasterAI
 
 // Assessments
 const LegacyDiscRedirect = lazy(() => import("./pages/assessments/LegacyDiscRedirect"));
+const PublicProfileDISCPage = lazy(() => import("./pages/assessments/PublicProfileDISCPage"));
 const Assessment360Page = lazy(() => import("./pages/assessments/Assessment360Page"));
 const AssessmentReportsPage = lazy(() => import("./pages/assessments/AssessmentReportsPage"));
 const UnifiedAssessmentPage = lazy(() => import("./pages/assessments/UnifiedAssessmentPage"));
@@ -501,6 +502,7 @@ const AppShell = () => {
             <Route path="/csat" element={<CSATSurveyPage />} />
             <Route path="/kpi-entry/:companyId" element={<KPIEntryPage />} />
             <Route path="/disc" element={<LegacyDiscRedirect />} />
+            <Route path="/disc-publico" element={<PublicProfileDISCPage />} />
             <Route path="/360" element={<Assessment360Page />} />
             <Route path="/avaliacao" element={<UnifiedAssessmentPage />} />
             <Route path="/hr-disc/:token" element={<HrCandidateDiscPage />} />
