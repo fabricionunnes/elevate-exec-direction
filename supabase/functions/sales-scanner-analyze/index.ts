@@ -34,7 +34,7 @@ async function getPipelineAndStages(supabase: any) {
   const { data: pipeline } = await supabase
     .from("crm_pipelines")
     .select("id, name")
-    .eq("name", "Scanner de Vendas UNV")
+    .eq("name", "Isca de baleia")
     .maybeSingle();
   if (!pipeline) return { pipeline: null, stages: {} as Record<string, string> };
 
@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
       const cleanPhone = whatsapp.replace(/\D/g, "");
 
       const { pipeline, stages } = await getPipelineAndStages(supabase);
-      if (!pipeline) return json({ error: "Pipeline Scanner de Vendas UNV não encontrado" }, 500);
+      if (!pipeline) return json({ error: "Pipeline Isca de baleia não encontrado" }, 500);
 
       // Verifica lead existente nesse pipeline (24h)
       const dedup = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
