@@ -129,6 +129,9 @@ export const CRMSettingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedPipeline, setSelectedPipeline] = useState<string>("");
   const [selectedOriginGroup, setSelectedOriginGroup] = useState<string>("");
+  const [pipelineGroupFilter, setPipelineGroupFilter] = useState<string>("all");
+  const [draggedPipelineId, setDraggedPipelineId] = useState<string | null>(null);
+  const [dragOverPipelineId, setDragOverPipelineId] = useState<string | null>(null);
 
   // Dialogs
   const [newPipelineOpen, setNewPipelineOpen] = useState(false);
