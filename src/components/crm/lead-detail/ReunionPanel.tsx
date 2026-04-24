@@ -216,8 +216,9 @@ export function ReunionPanel({
       const endH = h + Math.floor(durationMinutes / 60);
       const endM = m + (durationMinutes % 60);
       const endTime = `${String(endH).padStart(2, "0")}:${String(endM % 60).padStart(2, "0")}`;
-      const newStart = `${dateStr}T${selectedSlot}:00`;
-      const newEnd = `${dateStr}T${endTime}:00`;
+      // Use Brasília offset (-03:00) so the stored UTC matches the chosen local time
+      const newStart = `${dateStr}T${selectedSlot}:00-03:00`;
+      const newEnd = `${dateStr}T${endTime}:00-03:00`;
 
       const oldUserId = meeting.google_calendar_user_id;
       const newUserId = selectedStaffUserId;
