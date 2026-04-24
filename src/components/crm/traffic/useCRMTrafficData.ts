@@ -156,21 +156,20 @@ export function useCRMTrafficData() {
         })),
       );
 
-      // Estatísticas de leads/vendas por funil + utm_campaign
+      // Estatísticas de leads/vendas por funil (+ utm_campaign quando existir)
       const { data: leads } = await supabase
         .from("crm_leads")
-        .select("pipeline_id, utm_campaign, stage_id, opportunity_value, crm_stages(stage_type)")
-        .not("utm_campaign", "is", null);
+        .select("pipeline_id, utm_campaign, opportunity_value, crm_stages(final_type)");
 
       const map = new Map<string, PipelineLeadCount>();
       for (const lead of (leads as any) || []) {
-        if (!lead.pipeline_id || !lead.utm_campaign) continue;
-        const key = `${lead.pipeline_id}::${lead.utm_campaign}`;
-        const stageType = lead.crm_stages?.stage_type;
-        const isWon = stageType === "won";
+        if (!lead.pipeline_id) continue;
+        const utm = lead.utm_campaign || null;
+        const key = `${lead.pipeline_id}::${utm || "__none__"}`;
+        const isWon = lead.crm_stages?.final_type === "won";
         const cur = map.get(key) || {
           pipeline_id: lead.pipeline_id,
-          utm_campaign: lead.utm_campaign,
+          utm_campaign: utm,
           total: 0,
           won: 0,
           won_value: 0,
@@ -184,7 +183,7 @@ export function useCRMTrafficData() {
       }
       setLeadStats(Array.from(map.values()));
 
-      // Estatísticas de reuniões (agendadas / realizadas) por funil + utm_campaign
+      // Estatísticas de reuniões (agendadas / realizadas) por funil (+ utm_campaign do lead)
       const { data: meetings } = await supabase
         .from("crm_meeting_events")
         .select("event_type, pipeline_id, lead:crm_leads(utm_campaign)")

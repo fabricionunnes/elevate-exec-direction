@@ -93,25 +93,14 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
     const fAdsets = adsets.filter((a) => a.campaign_id && validCampIds.has(a.campaign_id));
     const fAds = ads.filter((a) => a.campaign_id && validCampIds.has(a.campaign_id));
 
-    // Filtrar leadStats / meetingStats por funil + utm_campaign equivalente à campanha selecionada
-    const campaignNames = new Set(fCampaigns.map((c) => (c.campaign_name || "").toLowerCase()));
-    const matchUtm = (utm?: string | null) => {
-      if (campaignFilter === "all") return true;
-      if (!utm) return false;
-      return campaignNames.has(utm.toLowerCase());
-    };
-
-    const fLeadStats = leadStats.filter((s) => {
-      if (pipelineFilter !== "all" && s.pipeline_id !== pipelineFilter) return false;
-      if (!matchUtm(s.utm_campaign)) return false;
-      return true;
-    });
-
-    const fMeetingStats = meetingStats.filter((s) => {
-      if (pipelineFilter !== "all" && s.pipeline_id !== pipelineFilter) return false;
-      if (!matchUtm(s.utm_campaign)) return false;
-      return true;
-    });
+    // Para leads/reuniões: filtramos apenas por funil (o vínculo campanha→funil já garante atribuição correta).
+    // Filtro por campanha afeta apenas gasto/impressões/cliques/criativos.
+    const fLeadStats = leadStats.filter(
+      (s) => pipelineFilter === "all" || s.pipeline_id === pipelineFilter,
+    );
+    const fMeetingStats = meetingStats.filter(
+      (s) => pipelineFilter === "all" || s.pipeline_id === pipelineFilter,
+    );
 
     return { campaigns: fCampaigns, adsets: fAdsets, ads: fAds, leadStats: fLeadStats, meetingStats: fMeetingStats };
   }, [campaigns, adsets, ads, links, leadStats, meetingStats, pipelineFilter, campaignFilter, dateFrom, dateTo]);
