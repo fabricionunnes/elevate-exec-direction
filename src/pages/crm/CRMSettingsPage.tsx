@@ -192,7 +192,7 @@ export const CRMSettingsPage = () => {
     setLoading(true);
     try {
       const [pipelinesRes, stagesRes, reasonsRes, tagsRes, originGroupsRes, originsRes] = await Promise.all([
-        supabase.from("crm_pipelines").select("*").order("is_default", { ascending: false }),
+        supabase.from("crm_pipelines").select("*").order("sort_order", { ascending: true }).order("is_default", { ascending: false }),
         supabase.from("crm_stages").select("*").order("sort_order"),
         supabase.from("crm_loss_reasons").select("*").order("sort_order"),
         supabase.from("crm_tags").select("*").order("name"),
