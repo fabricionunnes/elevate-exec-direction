@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Brain, Send } from "lucide-react";
+import { Brain, Send, Copy, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar, BarChart, XAxis, YAxis, Bar, Tooltip } from "recharts";
 import { toast } from "sonner";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 const PROFILE_LABELS: Record<string, { name: string; color: string; desc: string }> = {
   D: { name: "Dominância", color: "#ef4444", desc: "Foco em resultado, decisão rápida" },
@@ -29,8 +30,26 @@ export default function UNVProfileDISCPage() {
     })();
   }, []);
 
-  const sendInvite = async () => {
-    toast.success("Link de teste DISC copiado: /#/disc-test (abra para o colaborador responder)");
+  const publicLink = `${getPublicBaseUrl()}/disc-publico`;
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(publicLink);
+      toast.success("Link público copiado! Qualquer pessoa pode abrir e responder.");
+    } catch {
+      // Fallback for browsers that block clipboard API
+      const ta = document.createElement("textarea");
+      ta.value = publicLink;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        toast.success("Link copiado!");
+      } catch {
+        toast.error("Não foi possível copiar. Copie manualmente: " + publicLink);
+      }
+      document.body.removeChild(ta);
+    }
   };
 
   const filtered = results.filter(r =>
@@ -51,8 +70,29 @@ export default function UNVProfileDISCPage() {
           <h1 className="text-2xl font-bold flex items-center gap-2"><Brain className="w-6 h-6 text-primary" /> Perfil DISC</h1>
           <p className="text-sm text-muted-foreground">Mapa comportamental individual e do time</p>
         </div>
-        <Button onClick={sendInvite}><Send className="w-4 h-4 mr-2" />Convidar para teste</Button>
       </div>
+
+      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Send className="w-4 h-4 text-primary" /> Link público do teste DISC
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Compartilhe este link com qualquer pessoa (sem login). O resultado aparece abaixo automaticamente.
+          </p>
+          <div className="flex gap-2">
+            <Input value={publicLink} readOnly className="font-mono text-sm bg-muted" />
+            <Button onClick={copyLink} variant="outline" className="gap-2">
+              <Copy className="w-4 h-4" /> Copiar
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => window.open(publicLink, "_blank")}>
+              <ExternalLink className="w-4 h-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle className="text-base">Distribuição comportamental do time</CardTitle></CardHeader>
