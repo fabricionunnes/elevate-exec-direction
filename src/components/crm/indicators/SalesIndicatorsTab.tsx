@@ -171,6 +171,11 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       // mesmo sem o role de closer.
       const baseCloserStaff = filteredCloserStaff.map(s => ({ id: s.id, name: s.name }));
       const allStaffMap = new Map((allActiveStaff || []).map(s => [s.id, { id: s.id, name: s.name }]));
+      // Roles que NUNCA devem aparecer no Desempenho dos Closers (são pré-vendas)
+      const excludedRolesFromClosers = new Set(["sdr", "social_setter", "bdr"]);
+      const staffRoleMap = new Map(
+        (allActiveStaff || []).map(s => [s.id, String((s as any).role ?? "").toLowerCase()])
+      );
 
       // Load scheduled calls
       const { data: calls } = await supabase
