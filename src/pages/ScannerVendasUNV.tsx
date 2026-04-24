@@ -217,11 +217,11 @@ export default function ScannerVendasUNV() {
     try {
       // Se já tem submissionId (retorno via localStorage), só redireciona
       if (submissionId) {
-        // Persiste step 2 no storage antes de redirecionar
         localStorage.setItem(
           STORAGE_KEY,
           JSON.stringify({ data, step: 2, submissionId })
         );
+        setLoading(false);
         window.location.href = "/#/scanner-vendas-continuar";
         return;
       }
