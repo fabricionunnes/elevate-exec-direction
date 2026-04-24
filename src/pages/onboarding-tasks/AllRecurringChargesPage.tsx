@@ -641,18 +641,19 @@ export default function AllRecurringChargesPage() {
     return payables.filter(p => {
       if (searchTerm && !p.description?.toLowerCase().includes(searchTerm.toLowerCase()) && !p.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       const today = format(new Date(), "yyyy-MM-dd");
-      const isOverdue = p.status === "pending" && p.due_date && p.due_date < today;
-      if (selectedStatus === "pending" && (p.status !== "pending" || isOverdue)) return false;
-      if (selectedStatus === "paid" && p.status !== "paid") return false;
-      if (selectedStatus === "overdue" && !isOverdue) return false;
+      const isOverdue = (p.status === "pending" || p.status === "partial") && p.due_date && p.due_date < today;
+      if (selectedStatuses.length > 0) {
+        const effectiveStatus = isOverdue ? "overdue" : p.status;
+        if (!selectedStatuses.includes(effectiveStatus)) return false;
+      }
       if (payableDateFrom && p.due_date) { if (p.due_date < format(payableDateFrom, "yyyy-MM-dd")) return false; }
       if (payableDateTo && p.due_date) { if (p.due_date > format(payableDateTo, "yyyy-MM-dd")) return false; }
       const pAny = p as any;
-      if (selectedPayableCategory !== "all" && pAny.category_id !== selectedPayableCategory) return false;
-      if (selectedPayableCostCenter !== "all" && pAny.cost_center_id !== selectedPayableCostCenter) return false;
+      if (selectedPayableCategories.length > 0 && !selectedPayableCategories.includes(pAny.category_id)) return false;
+      if (selectedPayableCostCenters.length > 0 && !selectedPayableCostCenters.includes(pAny.cost_center_id)) return false;
       return true;
     });
-  }, [payables, searchTerm, selectedStatus, payableDateFrom, payableDateTo, selectedPayableCategory, selectedPayableCostCenter]);
+  }, [payables, searchTerm, selectedStatuses, payableDateFrom, payableDateTo, selectedPayableCategories, selectedPayableCostCenters]);
 
   const sortedPayables = useMemo(() => {
     if (!paySortCol) return filteredPayables;
