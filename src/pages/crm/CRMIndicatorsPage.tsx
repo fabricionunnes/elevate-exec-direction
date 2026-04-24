@@ -4,8 +4,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SalesIndicatorsTab } from "@/components/crm/indicators/SalesIndicatorsTab";
 import { PreSalesIndicatorsTab } from "@/components/crm/indicators/PreSalesIndicatorsTab";
+import { CRMTrafficTab } from "@/components/crm/traffic/CRMTrafficTab";
 import { CRMCommissionCard, CommissionSummary } from "@/components/crm/CRMCommissionCard";
-import { DollarSign, ChevronDown, TrendingUp, Wallet } from "lucide-react";
+import { DollarSign, ChevronDown, TrendingUp, Wallet, Megaphone } from "lucide-react";
 
 export const CRMIndicatorsPage = () => {
   const { staffRole, staffId } = useOutletContext<{ staffRole: string; isAdmin: boolean; staffId: string | null }>();
