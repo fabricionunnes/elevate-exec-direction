@@ -327,7 +327,7 @@ const StaffInvoicePage = () => {
 
     const hasCommission = mySalary.commission && mySalary.commission > 0;
     if (hasCommission && !selectedCommissionFile) {
-      toast.error("Anexe a NF da parcela variável de honorário antes de enviar");
+      toast.error("Anexe a NF do honorário variável antes de enviar");
       return;
     }
 
@@ -382,7 +382,7 @@ const StaffInvoicePage = () => {
       await supabase.from("staff_invoice_audit_logs").insert({
         staff_id: currentStaff.id,
         action: "envio",
-        details: `NF enviada para ${MONTHS[selectedMonth - 1].label}/${selectedYear} - Parcela Fixa: R$ ${mySalary.amount.toFixed(2)}${hasCommission ? ` + Parcela Variável: R$ ${mySalary.commission!.toFixed(2)}` : ""}`,
+        details: `NF enviada para ${MONTHS[selectedMonth - 1].label}/${selectedYear} - Honorário Fixo: R$ ${mySalary.amount.toFixed(2)}${hasCommission ? ` + Honorário Variável: R$ ${mySalary.commission!.toFixed(2)}` : ""}`,
       });
 
       toast.success("Nota(s) fiscal(is) enviada(s) com sucesso!");
@@ -718,13 +718,13 @@ const StaffInvoicePage = () => {
                       <p className="text-3xl font-bold text-green-700 dark:text-green-400">
                         R$ {mySalary.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                       </p>
-                      <p className="text-xs text-muted-foreground">Parcela Fixa de Honorário</p>
+                      <p className="text-xs text-muted-foreground">Honorário Fixo</p>
                       {mySalary.commission && mySalary.commission > 0 && (
                         <>
                           <p className="text-xl font-bold text-blue-700 dark:text-blue-400">
                             + R$ {mySalary.commission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                           </p>
-                          <p className="text-xs text-muted-foreground">Parcela Variável de Honorário</p>
+                          <p className="text-xs text-muted-foreground">Honorário Variável</p>
                         </>
                       )}
                     </div>
@@ -772,7 +772,7 @@ const StaffInvoicePage = () => {
                     </div>
                   </div>
                   <div>
-                    <Label>NF da Parcela Fixa de Honorário (PDF) *</Label>
+                    <Label>NF da Honorário Fixo (PDF) *</Label>
                     <Input
                       ref={fileInputRef}
                       type="file"
@@ -790,9 +790,9 @@ const StaffInvoicePage = () => {
                   </div>
                   {mySalary?.commission && mySalary.commission > 0 && (
                     <div>
-                      <Label>NF da Parcela Variável de Honorário (PDF) *</Label>
+                      <Label>NF da Honorário Variável (PDF) *</Label>
                       <p className="text-xs text-muted-foreground mb-1">
-                        Parcela Variável: R$ {mySalary.commission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        Honorário Variável: R$ {mySalary.commission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                       </p>
                       <Input
                         ref={commissionFileInputRef}
@@ -857,7 +857,7 @@ const StaffInvoicePage = () => {
                           <TableCell>{MONTHS[inv.month - 1]?.label}/{inv.year}</TableCell>
                           <TableCell>
                             <Badge variant={(inv as any).invoice_type === "commission" ? "secondary" : "outline"}>
-                              {(inv as any).invoice_type === "commission" ? "Parcela Variável" : "Parcela Fixa"}
+                              {(inv as any).invoice_type === "commission" ? "Honorário Variável" : "Honorário Fixo"}
                             </Badge>
                           </TableCell>
                           <TableCell>R$ {inv.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
@@ -962,7 +962,7 @@ const StaffInvoicePage = () => {
                                 <TableCell>{MONTHS[inv.month - 1]?.label}/{inv.year}</TableCell>
                                 <TableCell>
                                   <Badge variant={(inv as any).invoice_type === "commission" ? "secondary" : "outline"}>
-                                    {(inv as any).invoice_type === "commission" ? "Parcela Variável" : "Parcela Fixa"}
+                                    {(inv as any).invoice_type === "commission" ? "Honorário Variável" : "Honorário Fixo"}
                                   </Badge>
                                 </TableCell>
                                 <TableCell>R$ {inv.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
@@ -1068,7 +1068,7 @@ const StaffInvoicePage = () => {
                           <TableHead>Colaborador</TableHead>
                           <TableHead>Mês</TableHead>
                           <TableHead>Valor</TableHead>
-                            <TableHead>Parcela Variável de Honorário</TableHead>
+                            <TableHead>Honorário Variável</TableHead>
                             <TableHead>Ações</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1152,14 +1152,14 @@ const StaffInvoicePage = () => {
                       </div>
                     </div>
                     <div>
-                      <Label>Parcela Fixa de Honorário (R$) *</Label>
+                      <Label>Honorário Fixo (R$) *</Label>
                       <CurrencyInput
                         value={salaryAmount}
                         onChange={setSalaryAmount}
                       />
                     </div>
                     <div>
-                      <Label>Parcela Variável de Honorário (R$) <span className="text-xs text-muted-foreground">— opcional</span></Label>
+                      <Label>Honorário Variável (R$) <span className="text-xs text-muted-foreground">— opcional</span></Label>
                       <CurrencyInput
                         value={salaryCommission}
                         onChange={setSalaryCommission}
@@ -1208,15 +1208,15 @@ const StaffInvoicePage = () => {
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Os valores existentes para o período foram pré-preenchidos. Defina a parcela fixa e (opcionalmente) a parcela variável de honorário de cada colaborador.
+                      Os valores existentes para o período foram pré-preenchidos. Defina a honorário fixo e (opcionalmente) o honorário variável de cada colaborador.
                     </p>
                     <div className="max-h-[420px] overflow-y-auto rounded-md border">
                       <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Colaborador</TableHead>
-                            <TableHead className="w-44">Parcela Fixa de Honorário (R$)</TableHead>
-                            <TableHead className="w-44">Parcela Variável de Honorário (R$)</TableHead>
+                            <TableHead className="w-44">Honorário Fixo (R$)</TableHead>
+                            <TableHead className="w-44">Honorário Variável (R$)</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
