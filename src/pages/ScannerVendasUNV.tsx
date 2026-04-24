@@ -110,7 +110,9 @@ export default function ScannerVendasUNV() {
   // Na URL /scanner-vendas-continuar carrega imediatamente e dispara "Lead"
   // (URL dedicada para Conversão Personalizada do Meta).
   useEffect(() => {
-    const isContinuar = window.location.pathname === "/scanner-vendas-continuar";
+    const isContinuar =
+      window.location.pathname === "/scanner-vendas-continuar" ||
+      window.location.hash.includes("/scanner-vendas-continuar");
     let loaded = false;
     const loadPixel = (fireLead = false) => {
       if (loaded) {
@@ -183,7 +185,10 @@ export default function ScannerVendasUNV() {
       }
     } catch {}
     // Na URL de continuação, força etapa >= 2
-    if (window.location.pathname === "/scanner-vendas-continuar") {
+    if (
+      window.location.pathname === "/scanner-vendas-continuar" ||
+      window.location.hash.includes("/scanner-vendas-continuar")
+    ) {
       setStep((s) => (s < 2 ? 2 : s));
     }
   }, []);
@@ -217,7 +222,7 @@ export default function ScannerVendasUNV() {
           STORAGE_KEY,
           JSON.stringify({ data, step: 2, submissionId })
         );
-        window.location.href = "/scanner-vendas-continuar";
+        window.location.href = "/#/scanner-vendas-continuar";
         return;
       }
 
@@ -238,7 +243,7 @@ export default function ScannerVendasUNV() {
       );
 
       // Redireciona para a URL dedicada — a página de destino dispara Pixel + Lead
-      window.location.href = "/scanner-vendas-continuar";
+      window.location.href = "/#/scanner-vendas-continuar";
     } catch (e: any) {
       toast.error(e.message || "Erro ao iniciar diagnóstico");
       setLoading(false);
