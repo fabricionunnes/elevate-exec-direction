@@ -13,32 +13,32 @@ interface NavItem { to: string; label: string; icon: any; group: string; permKey
 
 const NAV: NavItem[] = [
   { to: "/unv-profile", label: "Home", icon: LayoutDashboard, group: "Visão Geral", permKey: "profile_home" },
-  { to: "/unv-profile/dashboard", label: "Dashboard", icon: BarChart3, group: "Visão Geral" },
+  { to: "/unv-profile/dashboard", label: "Dashboard", icon: BarChart3, group: "Visão Geral", permKey: "profile_dashboard" },
 
-  { to: "/unv-profile/employees", label: "Colaboradores", icon: Users, group: "Pessoas" },
-  { to: "/unv-profile/org-chart", label: "Organograma", icon: Network, group: "Pessoas" },
-  { to: "/unv-profile/positions", label: "Cargos & Salários", icon: Building2, group: "Pessoas" },
+  { to: "/unv-profile/employees", label: "Colaboradores", icon: Users, group: "Pessoas", permKey: "profile_employees" },
+  { to: "/unv-profile/org-chart", label: "Organograma", icon: Network, group: "Pessoas", permKey: "profile_org_chart" },
+  { to: "/unv-profile/positions", label: "Cargos & Salários", icon: Building2, group: "Pessoas", permKey: "profile_positions" },
 
-  { to: "/unv-profile/recruitment", label: "Recrutamento", icon: Briefcase, group: "Atração" },
-  { to: "/unv-profile/talent-pool", label: "Banco de Talentos", icon: UserCheck, group: "Atração" },
+  { to: "/unv-profile/recruitment", label: "Recrutamento", icon: Briefcase, group: "Atração", permKey: "profile_recruitment" },
+  { to: "/unv-profile/talent-pool", label: "Banco de Talentos", icon: UserCheck, group: "Atração", permKey: "profile_talent_pool" },
 
-  { to: "/unv-profile/disc", label: "Perfil DISC", icon: Brain, group: "Desenvolvimento" },
-  { to: "/unv-profile/onboarding", label: "Onboarding", icon: Rocket, group: "Desenvolvimento" },
-  { to: "/unv-profile/pdi", label: "PDI", icon: Target, group: "Desenvolvimento" },
-  { to: "/unv-profile/career", label: "Plano de Carreira", icon: TrendingUp, group: "Desenvolvimento" },
-  { to: "/unv-profile/trainings", label: "Treinamentos", icon: GraduationCap, group: "Desenvolvimento" },
+  { to: "/unv-profile/disc", label: "Perfil DISC", icon: Brain, group: "Desenvolvimento", permKey: "profile_disc" },
+  { to: "/unv-profile/onboarding", label: "Onboarding", icon: Rocket, group: "Desenvolvimento", permKey: "profile_onboarding" },
+  { to: "/unv-profile/pdi", label: "PDI", icon: Target, group: "Desenvolvimento", permKey: "profile_pdi" },
+  { to: "/unv-profile/career", label: "Plano de Carreira", icon: TrendingUp, group: "Desenvolvimento", permKey: "profile_career" },
+  { to: "/unv-profile/trainings", label: "Treinamentos", icon: GraduationCap, group: "Desenvolvimento", permKey: "profile_trainings" },
 
-  { to: "/unv-profile/evaluations", label: "Avaliações", icon: FileText, group: "Performance" },
-  { to: "/unv-profile/feedbacks", label: "Feedbacks & 1:1", icon: MessageSquare, group: "Performance" },
-  { to: "/unv-profile/climate", label: "Clima & eNPS", icon: Heart, group: "Performance" },
+  { to: "/unv-profile/evaluations", label: "Avaliações", icon: FileText, group: "Performance", permKey: "profile_evaluations" },
+  { to: "/unv-profile/feedbacks", label: "Feedbacks & 1:1", icon: MessageSquare, group: "Performance", permKey: "profile_feedbacks" },
+  { to: "/unv-profile/climate", label: "Clima & eNPS", icon: Heart, group: "Performance", permKey: "profile_climate" },
 
-  { to: "/unv-profile/ai", label: "UNV IA", icon: Sparkles, group: "Inteligência" },
-  { to: "/unv-profile/reports", label: "Relatórios", icon: BarChart3, group: "Inteligência" },
+  { to: "/unv-profile/ai", label: "UNV IA", icon: Sparkles, group: "Inteligência", permKey: "profile_ai" },
+  { to: "/unv-profile/reports", label: "Relatórios", icon: BarChart3, group: "Inteligência", permKey: "profile_reports" },
 
-  { to: "/unv-profile/me", label: "Minha Área", icon: User, group: "Pessoal" },
-  { to: "/unv-profile/admin", label: "Admin UNV", icon: Shield, group: "Administração" },
-  { to: "/unv-profile/integrations", label: "Integrações", icon: Zap, group: "Administração" },
-  { to: "/unv-profile/permissions", label: "Permissões", icon: Settings, group: "Administração" },
+  { to: "/unv-profile/me", label: "Minha Área", icon: User, group: "Pessoal", permKey: "profile_me" },
+  { to: "/unv-profile/admin", label: "Admin UNV", icon: Shield, group: "Administração", permKey: "profile_admin" },
+  { to: "/unv-profile/integrations", label: "Integrações", icon: Zap, group: "Administração", permKey: "profile_integrations" },
+  { to: "/unv-profile/permissions", label: "Permissões", icon: Settings, group: "Administração", permKey: "profile_permissions" },
 ];
 
 const GROUPS = ["Visão Geral", "Pessoas", "Atração", "Desenvolvimento", "Performance", "Inteligência", "Pessoal", "Administração"];
