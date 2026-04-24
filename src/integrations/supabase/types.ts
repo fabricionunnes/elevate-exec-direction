@@ -28813,6 +28813,146 @@ export type Database = {
           },
         ]
       }
+      sales_scanner_submissions: {
+        Row: {
+          action_plan: Json | null
+          annual_loss: number | null
+          avg_ticket: number | null
+          bottlenecks: string[] | null
+          company_name: string | null
+          completed_at: string | null
+          conversion_rate: number | null
+          cost_per_lead: number | null
+          created_at: string
+          current_revenue: number | null
+          diagnosis_text: string | null
+          email: string
+          full_name: string
+          funnel_status: string
+          has_crm: boolean | null
+          has_marketing_team: boolean | null
+          has_process: string | null
+          has_sales_manager: boolean | null
+          id: string
+          invests_paid_traffic: boolean | null
+          lead_channels: string[] | null
+          lead_id: string | null
+          leads_per_month: number | null
+          maturity_goals: number | null
+          maturity_lead_quality: number | null
+          maturity_organization: number | null
+          maturity_performance: number | null
+          maturity_predictability: number | null
+          meeting_requested_at: string | null
+          monthly_loss: number | null
+          paid_traffic_monthly: number | null
+          performance_level: string | null
+          potential_revenue: number | null
+          revenue_range: string | null
+          sales_cycle_days: number | null
+          sales_per_month: number | null
+          segment: string | null
+          sellers_count: number | null
+          tracks_goals_daily: boolean | null
+          updated_at: string
+          whatsapp: string
+        }
+        Insert: {
+          action_plan?: Json | null
+          annual_loss?: number | null
+          avg_ticket?: number | null
+          bottlenecks?: string[] | null
+          company_name?: string | null
+          completed_at?: string | null
+          conversion_rate?: number | null
+          cost_per_lead?: number | null
+          created_at?: string
+          current_revenue?: number | null
+          diagnosis_text?: string | null
+          email: string
+          full_name: string
+          funnel_status?: string
+          has_crm?: boolean | null
+          has_marketing_team?: boolean | null
+          has_process?: string | null
+          has_sales_manager?: boolean | null
+          id?: string
+          invests_paid_traffic?: boolean | null
+          lead_channels?: string[] | null
+          lead_id?: string | null
+          leads_per_month?: number | null
+          maturity_goals?: number | null
+          maturity_lead_quality?: number | null
+          maturity_organization?: number | null
+          maturity_performance?: number | null
+          maturity_predictability?: number | null
+          meeting_requested_at?: string | null
+          monthly_loss?: number | null
+          paid_traffic_monthly?: number | null
+          performance_level?: string | null
+          potential_revenue?: number | null
+          revenue_range?: string | null
+          sales_cycle_days?: number | null
+          sales_per_month?: number | null
+          segment?: string | null
+          sellers_count?: number | null
+          tracks_goals_daily?: boolean | null
+          updated_at?: string
+          whatsapp: string
+        }
+        Update: {
+          action_plan?: Json | null
+          annual_loss?: number | null
+          avg_ticket?: number | null
+          bottlenecks?: string[] | null
+          company_name?: string | null
+          completed_at?: string | null
+          conversion_rate?: number | null
+          cost_per_lead?: number | null
+          created_at?: string
+          current_revenue?: number | null
+          diagnosis_text?: string | null
+          email?: string
+          full_name?: string
+          funnel_status?: string
+          has_crm?: boolean | null
+          has_marketing_team?: boolean | null
+          has_process?: string | null
+          has_sales_manager?: boolean | null
+          id?: string
+          invests_paid_traffic?: boolean | null
+          lead_channels?: string[] | null
+          lead_id?: string | null
+          leads_per_month?: number | null
+          maturity_goals?: number | null
+          maturity_lead_quality?: number | null
+          maturity_organization?: number | null
+          maturity_performance?: number | null
+          maturity_predictability?: number | null
+          meeting_requested_at?: string | null
+          monthly_loss?: number | null
+          paid_traffic_monthly?: number | null
+          performance_level?: string | null
+          potential_revenue?: number | null
+          revenue_range?: string | null
+          sales_cycle_days?: number | null
+          sales_per_month?: number | null
+          segment?: string | null
+          sellers_count?: number | null
+          tracks_goals_daily?: boolean | null
+          updated_at?: string
+          whatsapp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_scanner_submissions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salesperson_sectors: {
         Row: {
           created_at: string | null
