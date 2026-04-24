@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "./SearchableSelect";
+import { MultiSearchableSelect } from "./MultiSearchableSelect";
 
 interface Props {
   isAdmin: boolean;
