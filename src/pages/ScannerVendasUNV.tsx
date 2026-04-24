@@ -236,13 +236,12 @@ export default function ScannerVendasUNV() {
       });
       if (error || resp?.error) throw new Error(resp?.error || error?.message || "Erro");
 
-      // Persiste o estado já na etapa 2 com o submission_id antes do redirect
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({ data, step: 2, submissionId: resp.submission_id })
       );
 
-      // Redireciona para a URL dedicada — a página de destino dispara Pixel + Lead
+      setLoading(false);
       window.location.href = "/#/scanner-vendas-continuar";
     } catch (e: any) {
       toast.error(e.message || "Erro ao iniciar diagnóstico");
