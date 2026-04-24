@@ -106,11 +106,22 @@ export default function ScannerVendasUNV() {
     m.setAttribute("content", desc);
   }, []);
 
-  // Meta Pixel — carregamento adiado (após interação ou 4s)
+  // Meta Pixel — carregamento adiado (após interação ou 4s).
+  // Na URL /scanner-vendas-continuar carrega imediatamente e dispara "Lead"
+  // (URL dedicada para Conversão Personalizada do Meta).
   useEffect(() => {
+    const isContinuar = window.location.pathname === "/scanner-vendas-continuar";
     let loaded = false;
-    const loadPixel = () => {
-      if (loaded) return;
+    const loadPixel = (fireLead = false) => {
+      if (loaded) {
+        if (fireLead) {
+          try {
+            const w = window as any;
+            if (typeof w.fbq === "function") w.fbq("track", "Lead");
+          } catch {}
+        }
+        return;
+      }
       loaded = true;
       const pixelId = "247392077001023";
       (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
@@ -131,10 +142,23 @@ export default function ScannerVendasUNV() {
       })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
       (window as any).fbq("init", pixelId);
       (window as any).fbq("track", "PageView");
+      if (fireLead) {
+        try { (window as any).fbq("track", "Lead"); } catch {}
+        try {
+          const img = new Image(1, 1);
+          img.style.display = "none";
+          img.src = `https://www.facebook.com/tr?id=${pixelId}&ev=Lead&noscript=1`;
+        } catch {}
+      }
     };
 
-    const timeout = setTimeout(loadPixel, 4000);
-    const onInteract = () => loadPixel();
+    if (isContinuar) {
+      loadPixel(true);
+      return;
+    }
+
+    const timeout = setTimeout(() => loadPixel(false), 4000);
+    const onInteract = () => loadPixel(false);
     window.addEventListener("scroll", onInteract, { once: true, passive: true });
     window.addEventListener("pointerdown", onInteract, { once: true });
 
