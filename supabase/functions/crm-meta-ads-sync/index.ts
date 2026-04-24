@@ -349,8 +349,8 @@ Deno.serve(async (req) => {
           frequency: num(ins.frequency),
           leads,
           conversions,
-          date_start: range.since,
-          date_stop: range.until,
+          date_start: ins.date_start || range.since,
+          date_stop: ins.date_stop || range.until,
           synced_at: new Date().toISOString(),
         });
       }
