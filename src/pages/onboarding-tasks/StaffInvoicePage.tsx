@@ -1104,7 +1104,8 @@ const StaffInvoicePage = () => {
                         ))}
                       </TableBody>
                     </Table>
-                  )}
+                  );
+                  })()}
                 </CardContent>
               </Card>
 
