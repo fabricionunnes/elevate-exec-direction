@@ -4,8 +4,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SalesIndicatorsTab } from "@/components/crm/indicators/SalesIndicatorsTab";
 import { PreSalesIndicatorsTab } from "@/components/crm/indicators/PreSalesIndicatorsTab";
+import { CRMTrafficTab } from "@/components/crm/traffic/CRMTrafficTab";
 import { CRMCommissionCard, CommissionSummary } from "@/components/crm/CRMCommissionCard";
-import { DollarSign, ChevronDown, TrendingUp, Wallet } from "lucide-react";
+import { DollarSign, ChevronDown, TrendingUp, Wallet, Megaphone } from "lucide-react";
 
 export const CRMIndicatorsPage = () => {
   const { staffRole, staffId } = useOutletContext<{ staffRole: string; isAdmin: boolean; staffId: string | null }>();
@@ -75,6 +76,12 @@ export const CRMIndicatorsPage = () => {
             >
               Pré vendas
             </TabsTrigger>
+            <TabsTrigger 
+              value="traffic"
+              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-6 gap-1.5"
+            >
+              <Megaphone className="h-3.5 w-3.5" /> Tráfego Pago
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -84,6 +91,9 @@ export const CRMIndicatorsPage = () => {
           </TabsContent>
           <TabsContent value="presales" className="m-0 h-full">
             <PreSalesIndicatorsTab staffId={staffId} staffRole={staffRole} />
+          </TabsContent>
+          <TabsContent value="traffic" className="m-0 h-full p-4">
+            <CRMTrafficTab isAdmin={isAdmin} />
           </TabsContent>
         </div>
       </Tabs>
