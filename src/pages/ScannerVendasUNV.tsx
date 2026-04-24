@@ -185,7 +185,10 @@ export default function ScannerVendasUNV() {
       }
     } catch {}
     // Na URL de continuação, força etapa >= 2
-    if (window.location.pathname === "/scanner-vendas-continuar") {
+    if (
+      window.location.pathname === "/scanner-vendas-continuar" ||
+      window.location.hash.includes("/scanner-vendas-continuar")
+    ) {
       setStep((s) => (s < 2 ? 2 : s));
     }
   }, []);
