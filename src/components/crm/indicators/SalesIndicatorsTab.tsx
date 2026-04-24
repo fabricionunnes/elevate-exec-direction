@@ -211,6 +211,25 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         .lte("sale_date", format(filterEnd, "yyyy-MM-dd"));
       setRawSalesData(salesData || []);
 
+      // Expand "closers" list with anyone who has scheduled/realized meetings
+      // or sales in the period — even without the "closer" role.
+      const expandedCloserMap = new Map(baseCloserStaff.map(s => [s.id, s]));
+      (meetingEvents || []).forEach((ev: any) => {
+        const sid = ev.credited_staff_id;
+        if (sid && !expandedCloserMap.has(sid)) {
+          const staffInfo = allStaffMap.get(sid) || (ev.credited_staff ? { id: sid, name: ev.credited_staff.name } : null);
+          if (staffInfo) expandedCloserMap.set(sid, staffInfo);
+        }
+      });
+      (salesData || []).forEach((s: any) => {
+        const sid = s.closer_staff_id;
+        if (sid && !expandedCloserMap.has(sid)) {
+          const staffInfo = allStaffMap.get(sid) || (s.closer ? { id: sid, name: s.closer.name } : null);
+          if (staffInfo) expandedCloserMap.set(sid, staffInfo);
+        }
+      });
+      setRawCloserStaff(Array.from(expandedCloserMap.values()));
+
       // Load forecasts from leads in "Forecast" stages across all pipelines
       const { data: forecastStages } = await supabase
         .from("crm_stages")
