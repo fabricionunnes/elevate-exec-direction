@@ -444,6 +444,30 @@ const StaffInvoicePage = () => {
     }
   };
 
+  const handleDeleteInvoice = async (invoiceId: string) => {
+    if (!confirm("Tem certeza que deseja excluir esta nota fiscal? Esta ação não pode ser desfeita.")) return;
+    try {
+      const { error } = await supabase
+        .from("staff_invoices")
+        .delete()
+        .eq("id", invoiceId);
+      if (error) throw error;
+
+      await supabase.from("staff_invoice_audit_logs").insert({
+        staff_id: currentStaff?.id,
+        invoice_id: invoiceId,
+        action: "invoice_deleted",
+        details: "Nota fiscal excluída pelo administrador",
+      });
+
+      toast.success("Nota fiscal excluída com sucesso");
+      loadAdminInvoices();
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Erro ao excluir nota fiscal: " + (err?.message || ""));
+    }
+  };
+
   const handleSaveSalary = async () => {
     if (!salaryStaffId || !salaryAmount) {
       toast.error("Preencha todos os campos");
@@ -876,14 +900,25 @@ const StaffInvoicePage = () => {
                                   </Button>
                                 </TableCell>
                                 <TableCell>
-                                  <Select value={inv.status} onValueChange={(v) => handleUpdateInvoiceStatus(inv.id, v)}>
-                                    <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="enviado">Enviado</SelectItem>
-                                      <SelectItem value="em_analise">Em análise</SelectItem>
-                                      <SelectItem value="pago">Pago</SelectItem>
-                                    </SelectContent>
-                                  </Select>
+                                  <div className="flex items-center gap-1">
+                                    <Select value={inv.status} onValueChange={(v) => handleUpdateInvoiceStatus(inv.id, v)}>
+                                      <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="enviado">Enviado</SelectItem>
+                                        <SelectItem value="em_analise">Em análise</SelectItem>
+                                        <SelectItem value="pago">Pago</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                      onClick={() => handleDeleteInvoice(inv.id)}
+                                      title="Excluir nota fiscal"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </TableCell>
                               </TableRow>
                             );
