@@ -166,7 +166,11 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         const role = String((staff as any).role ?? "").toLowerCase();
         return crmStaffIds.has(staff.id) && allowedCloserRoles.has(role);
       });
-      setRawCloserStaff(filteredCloserStaff.map(s => ({ id: s.id, name: s.name })));
+      // Base list (closers/head_comercial). Será expandido abaixo com qualquer staff
+      // que tenha tido agendamento/realização de reunião ou venda no período,
+      // mesmo sem o role de closer.
+      const baseCloserStaff = filteredCloserStaff.map(s => ({ id: s.id, name: s.name }));
+      const allStaffMap = new Map((allActiveStaff || []).map(s => [s.id, { id: s.id, name: s.name }]));
 
       // Load scheduled calls
       const { data: calls } = await supabase
