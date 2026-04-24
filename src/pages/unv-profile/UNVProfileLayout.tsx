@@ -1,4 +1,3 @@
-import { ReactNode } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Users, Briefcase, UserCheck, Brain, Rocket, Target,
@@ -6,13 +5,14 @@ import {
   Sparkles, Settings, ArrowLeft, Building2, BarChart3, Zap, Shield, User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { ModuleGuard } from "@/components/whitelabel/ModuleGuard";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { PATH_TO_PROFILE_KEY, type ProfileMenuKey } from "@/types/profilePermissions";
 
-interface NavItem { to: string; label: string; icon: any; group: string }
+interface NavItem { to: string; label: string; icon: any; group: string; permKey: ProfileMenuKey }
 
 const NAV: NavItem[] = [
-  { to: "/unv-profile", label: "Home", icon: LayoutDashboard, group: "Visão Geral" },
+  { to: "/unv-profile", label: "Home", icon: LayoutDashboard, group: "Visão Geral", permKey: "profile_home" },
   { to: "/unv-profile/dashboard", label: "Dashboard", icon: BarChart3, group: "Visão Geral" },
 
   { to: "/unv-profile/employees", label: "Colaboradores", icon: Users, group: "Pessoas" },
