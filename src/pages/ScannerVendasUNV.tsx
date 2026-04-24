@@ -92,6 +92,7 @@ export default function ScannerVendasUNV() {
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [fireConversionFrame, setFireConversionFrame] = useState(false);
+  const [fireDiagnosisFrame, setFireDiagnosisFrame] = useState(false);
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
   const [revenue, setRevenue] = useState<Revenue | null>(null);
   const [meetingRequested, setMeetingRequested] = useState(false);
