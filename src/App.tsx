@@ -400,8 +400,8 @@ const AppShell = () => {
             <Route path="/form/:token" element={<PublicPipelineForm />} />
 
             {/* Scanner de Vendas UNV */}
-            <Route path="/scanner-vendas" element={<ScannerVendasUNV />} />
-            <Route path="/scanner-vendas-continuar" element={<ScannerVendasUNV />} />
+            <Route path="/scanner-vendas" element={<ScannerVendasUNV key="scanner-start" />} />
+            <Route path="/scanner-vendas-continuar" element={<ScannerVendasUNV key="scanner-continue" />} />
             <Route path="/scanner-lead-conversao" element={<ScannerLeadConversao />} />
             <Route path="/scanner-diagnostico-conversao" element={<ScannerDiagnosticoConversao />} />
             
