@@ -137,6 +137,8 @@ export const CRMTrafficDashboard = ({
         <KPI icon={MousePointerClick} label="Cliques" value={fmtInt(totals.clicks)} color="#06b6d4" />
         <KPI icon={Users} label="Leads (Meta)" value={fmtInt(totals.leads)} color="#10b981" />
         <KPI icon={TrendingDown} label="CPL" value={fmtBRL(totals.cpl)} color="#f59e0b" hint="Custo por Lead" />
+        <KPI icon={CalendarClock} label="Custo / Reunião Agendada" value={fmtBRL(meetingTotals.cost_per_scheduled)} color="#0ea5e9" hint={`${fmtInt(meetingTotals.scheduled)} agendadas`} />
+        <KPI icon={CalendarCheck} label="Custo / Reunião Realizada" value={fmtBRL(meetingTotals.cost_per_realized)} color="#14b8a6" hint={`${fmtInt(meetingTotals.realized)} realizadas`} />
         <KPI icon={Target} label="CAC" value={fmtBRL(totals.cac)} color="#ef4444" hint="Custo por Venda" />
         <KPI icon={TrendingUp} label="ROAS" value={`${(totals.roas || 0).toFixed(2)}x`} color="#22c55e" />
         <KPI icon={MousePointerClick} label="CTR" value={fmtPct(totals.ctr)} color="#a855f7" />
