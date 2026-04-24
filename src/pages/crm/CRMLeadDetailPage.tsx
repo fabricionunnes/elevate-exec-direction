@@ -1243,6 +1243,7 @@ export const CRMLeadDetailPage = () => {
               { value: "deal", label: "Negócio", icon: Briefcase, color: "text-amber-500" },
               { value: "transcription", label: "Transcrição", icon: FileAudio, color: "text-pink-500" },
               { value: "form_answers", label: "Respostas", icon: ClipboardList, color: "text-cyan-500" },
+              { value: "scanner", label: "Scanner UNV", icon: ScanLine, color: "text-fuchsia-500" },
               { value: "meetings", label: "Reuniões", icon: Video, color: "text-indigo-500" },
               { value: "contract_data", label: "Dados Contratuais", icon: ScrollText, color: "text-orange-500" },
               { value: "files", label: "Arquivos", icon: FolderOpen, color: "text-teal-500" },
