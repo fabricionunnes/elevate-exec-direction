@@ -36,6 +36,7 @@ export interface CRMMetaAdset {
   adset_name: string | null;
   campaign_id: string | null;
   campaign_name: string | null;
+  status: string | null;
   spend: number;
   impressions: number;
   clicks: number;
@@ -53,6 +54,7 @@ export interface CRMMetaAd {
   adset_name: string | null;
   campaign_id: string | null;
   campaign_name: string | null;
+  status: string | null;
   creative_thumbnail_url: string | null;
   creative_title: string | null;
   spend: number;

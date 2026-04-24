@@ -30,6 +30,7 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
   // Filtros do dashboard
   const [pipelineFilter, setPipelineFilter] = useState<string>("all");
   const [campaignFilter, setCampaignFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
 
@@ -82,16 +83,32 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
       );
     }
 
+    const matchStatus = (status?: string | null) => {
+      if (statusFilter === "all") return true;
+      const isActive = (status || "").toUpperCase() === "ACTIVE";
+      return statusFilter === "active" ? isActive : !isActive;
+    };
+
     const fCampaigns = campaigns.filter((c) => {
       if (campaignFilter !== "all" && c.campaign_id !== campaignFilter) return false;
       if (allowedCampaignIds && !allowedCampaignIds.has(c.campaign_id)) return false;
+      if (!matchStatus(c.status)) return false;
       if (!inDate(c.date_start, c.date_stop)) return false;
       return true;
     });
 
     const validCampIds = new Set(fCampaigns.map((c) => c.campaign_id));
-    const fAdsets = adsets.filter((a) => a.campaign_id && validCampIds.has(a.campaign_id));
-    const fAds = ads.filter((a) => a.campaign_id && validCampIds.has(a.campaign_id));
+    const fAdsets = adsets.filter(
+      (a) => a.campaign_id && validCampIds.has(a.campaign_id) && matchStatus(a.status),
+    );
+    const validAdsetIds = new Set(fAdsets.map((a) => a.adset_id));
+    const fAds = ads.filter(
+      (a) =>
+        a.campaign_id &&
+        validCampIds.has(a.campaign_id) &&
+        (a.adset_id ? validAdsetIds.has(a.adset_id) : true) &&
+        matchStatus(a.status),
+    );
 
     // Para leads/reuniões: filtramos apenas por funil (o vínculo campanha→funil já garante atribuição correta).
     // Filtro por campanha afeta apenas gasto/impressões/cliques/criativos.
@@ -103,12 +120,13 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
     );
 
     return { campaigns: fCampaigns, adsets: fAdsets, ads: fAds, leadStats: fLeadStats, meetingStats: fMeetingStats };
-  }, [campaigns, adsets, ads, links, leadStats, meetingStats, pipelineFilter, campaignFilter, dateFrom, dateTo]);
+  }, [campaigns, adsets, ads, links, leadStats, meetingStats, pipelineFilter, campaignFilter, statusFilter, dateFrom, dateTo]);
 
-  const hasFilters = pipelineFilter !== "all" || campaignFilter !== "all" || dateFrom || dateTo;
+  const hasFilters = pipelineFilter !== "all" || campaignFilter !== "all" || statusFilter !== "active" || dateFrom || dateTo;
   const clearFilters = () => {
     setPipelineFilter("all");
     setCampaignFilter("all");
+    setStatusFilter("active");
     setDateFrom("");
     setDateTo("");
   };
@@ -211,7 +229,18 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
               </Button>
             )}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground">Status</Label>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Apenas ativos</SelectItem>
+                  <SelectItem value="inactive">Apenas inativos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground">Funil</Label>
               <Select value={pipelineFilter} onValueChange={setPipelineFilter}>
