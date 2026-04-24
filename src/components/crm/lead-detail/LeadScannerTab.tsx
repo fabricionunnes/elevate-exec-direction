@@ -42,6 +42,7 @@ interface ScannerSubmission {
   company_name: string | null;
   segment: string | null;
   revenue_range: string | null;
+  monthly_revenue: number | null;
   sellers_count: number | null;
   has_sales_manager: boolean | null;
   lead_channels: string[] | null;
@@ -351,7 +352,14 @@ export const LeadScannerTab = ({ leadId }: LeadScannerTabProps) => {
             <Field label="E-mail" value={s.email} />
             <Field label="Empresa" value={s.company_name} />
             <Field label="Nicho/Segmento" value={s.segment} />
-            <Field label="Faturamento mensal" value={s.revenue_range} />
+            <Field
+              label="Faturamento mensal (real)"
+              value={
+                s.monthly_revenue != null
+                  ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(s.monthly_revenue))
+                  : s.revenue_range
+              }
+            />
             <Field label="Nº de vendedores" value={s.sellers_count} />
             <Field label="Possui gerente comercial" value={fmtBool(s.has_sales_manager)} />
           </CardContent>

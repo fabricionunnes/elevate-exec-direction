@@ -242,10 +242,18 @@ Deno.serve(async (req) => {
       const conv = Number(sub.conversion_rate) || 0; // %
       const ticket = Number(sub.avg_ticket) || 0;
 
-      const currentRevenue = leads * (conv / 100) * ticket;
+      // Faturamento atual: usa o valor REAL informado pelo cliente quando disponível;
+      // caso contrário, calcula a partir de leads × conversão × ticket.
+      const reportedRevenue = Number(sub.monthly_revenue) || 0;
+      const computedRevenue = leads * (conv / 100) * ticket;
+      const currentRevenue = reportedRevenue > 0 ? reportedRevenue : computedRevenue;
+
       const newConv = conv * 1.1;
       const newTicket = ticket * 1.1;
-      const potentialRevenue = leads * (newConv / 100) * newTicket;
+      const computedPotential = leads * (newConv / 100) * newTicket;
+      // Se temos o faturamento real, projetamos o potencial como +10% sobre o atual no mínimo,
+      // mas privilegiamos o cálculo por funil quando ele for maior.
+      const potentialRevenue = Math.max(currentRevenue * 1.1, computedPotential);
       const monthlyLoss = Math.max(0, potentialRevenue - currentRevenue);
       const annualLoss = monthlyLoss * 12;
 
@@ -262,6 +270,7 @@ Deno.serve(async (req) => {
         const userPayload = {
           empresa: sub.company_name,
           segmento: sub.segment,
+          faturamento_mensal_real: sub.monthly_revenue,
           faturamento_faixa: sub.revenue_range,
           vendedores: sub.sellers_count,
           gerente_comercial: sub.has_sales_manager,

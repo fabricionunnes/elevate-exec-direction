@@ -28845,6 +28845,7 @@ export type Database = {
           maturity_predictability: number | null
           meeting_requested_at: string | null
           monthly_loss: number | null
+          monthly_revenue: number | null
           paid_traffic_monthly: number | null
           performance_level: string | null
           potential_revenue: number | null
@@ -28888,6 +28889,7 @@ export type Database = {
           maturity_predictability?: number | null
           meeting_requested_at?: string | null
           monthly_loss?: number | null
+          monthly_revenue?: number | null
           paid_traffic_monthly?: number | null
           performance_level?: string | null
           potential_revenue?: number | null
@@ -28931,6 +28933,7 @@ export type Database = {
           maturity_predictability?: number | null
           meeting_requested_at?: string | null
           monthly_loss?: number | null
+          monthly_revenue?: number | null
           paid_traffic_monthly?: number | null
           performance_level?: string | null
           potential_revenue?: number | null

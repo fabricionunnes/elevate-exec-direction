@@ -1,0 +1,1 @@
+ALTER TABLE public.sales_scanner_submissions ADD COLUMN IF NOT EXISTS monthly_revenue numeric;
