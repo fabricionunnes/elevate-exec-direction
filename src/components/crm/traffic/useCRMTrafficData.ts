@@ -120,7 +120,7 @@ export function useCRMTrafficData() {
       setPipelines((pipes as any) || []);
 
       if (!accData) {
-        setCampaigns([]); setAdsets([]); setAds([]); setLinks([]); setLeadStats([]);
+        setCampaigns([]); setAdsets([]); setAds([]); setLinks([]); setLeadStats([]); setMeetingStats([]);
         return;
       }
 
