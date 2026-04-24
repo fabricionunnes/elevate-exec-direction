@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Megaphone, Link2 } from "lucide-react";
 
-const STABLE_REDIRECT = "https://elevate-exec-direction.lovable.app/crm-meta-ads-callback";
+const STABLE_REDIRECT = "https://elevate-exec-direction.lovable.app/meta-ads-callback";
 
 interface Props {
   onConnected: () => void;
