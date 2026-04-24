@@ -66,6 +66,15 @@ serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(5);
 
+    // Fetch Scanner UNV submission (Isca de baleia funnel) for richer context
+    const { data: scannerSub } = await supabase
+      .from("sales_scanner_submissions")
+      .select("*")
+      .eq("lead_id", leadId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     // Fetch all stages from same pipeline for journey
     let pipelineStages: any[] = [];
     if (lead.pipeline_id) {
@@ -155,6 +164,45 @@ serve(async (req) => {
         content: (t.transcription_text || "").substring(0, 3000),
         date: t.created_at,
       })),
+      scanner_unv: scannerSub ? {
+        _description: "Diagnóstico comercial completo respondido pelo lead no Scanner de Vendas UNV (funil Isca de Baleia). Use estas informações para personalizar o atendimento, abordar dores reais, citar números do próprio cliente e construir urgência baseada nas perdas declaradas.",
+        empresa: scannerSub.company_name,
+        segmento: scannerSub.segment,
+        faturamento_mensal: scannerSub.monthly_revenue,
+        faixa_faturamento: scannerSub.revenue_range,
+        n_vendedores: scannerSub.sellers_count,
+        possui_gerente_comercial: scannerSub.has_sales_manager,
+        canais_aquisicao: scannerSub.lead_channels,
+        leads_por_mes: scannerSub.leads_per_month,
+        possui_processo_comercial: scannerSub.has_process,
+        ticket_medio: scannerSub.avg_ticket,
+        taxa_conversao_pct: scannerSub.conversion_rate,
+        ciclo_vendas_dias: scannerSub.sales_cycle_days,
+        vendas_por_mes: scannerSub.sales_per_month,
+        possui_crm: scannerSub.has_crm,
+        acompanha_metas_diariamente: scannerSub.tracks_goals_daily,
+        investe_trafego_pago: scannerSub.invests_paid_traffic,
+        investimento_mensal_trafego: scannerSub.paid_traffic_monthly,
+        custo_por_lead: scannerSub.cost_per_lead,
+        possui_equipe_marketing: scannerSub.has_marketing_team,
+        maturidade: {
+          organizacao: scannerSub.maturity_organization,
+          metas: scannerSub.maturity_goals,
+          previsibilidade: scannerSub.maturity_predictability,
+          qualidade_leads: scannerSub.maturity_lead_quality,
+          performance: scannerSub.maturity_performance,
+        },
+        diagnostico_ia: scannerSub.diagnosis_text,
+        nivel_performance: scannerSub.performance_level,
+        gargalos: scannerSub.bottlenecks,
+        faturamento_atual: scannerSub.current_revenue,
+        faturamento_potencial: scannerSub.potential_revenue,
+        perda_mensal_estimada: scannerSub.monthly_loss,
+        perda_anual_estimada: scannerSub.annual_loss,
+        plano_acao: scannerSub.action_plan,
+        preenchido_em: scannerSub.created_at,
+        reuniao_solicitada_em: scannerSub.meeting_requested_at,
+      } : null,
     };
 
     let systemPrompt = "";
