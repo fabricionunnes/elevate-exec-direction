@@ -37,7 +37,7 @@ export function OAuthRedirectHandler() {
         try {
           const decodedState = JSON.parse(atob(state));
 
-          if (decodedState.flow === "meta_ads") {
+          if (decodedState.flow === "meta_ads" || decodedState.flow === "crm_meta_ads") {
             const callbackUrl = `/meta-ads-callback${queryString}`;
             window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
             navigate(callbackUrl, { replace: true });
@@ -77,7 +77,7 @@ export function OAuthRedirectHandler() {
           try {
             const decodedState = JSON.parse(atob(stateParam));
 
-            if (decodedState.flow === "meta_ads") {
+            if (decodedState.flow === "meta_ads" || decodedState.flow === "crm_meta_ads") {
               const callbackUrl = `/meta-ads-callback${queryString}`;
               window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
               navigate(callbackUrl, { replace: true });
