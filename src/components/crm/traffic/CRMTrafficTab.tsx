@@ -79,9 +79,10 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
 
     // Conjunto de campaign_ids permitidos pelo filtro de funil (via vínculos)
     let allowedCampaignIds: Set<string> | null = null;
-    if (pipelineFilter !== "all") {
+    if (pipelineFilter.length > 0) {
+      const pipeSet = new Set(pipelineFilter);
       allowedCampaignIds = new Set(
-        links.filter((l) => l.pipeline_id === pipelineFilter).map((l) => l.campaign_id),
+        links.filter((l) => pipeSet.has(l.pipeline_id)).map((l) => l.campaign_id),
       );
     }
 
@@ -91,8 +92,10 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
       return statusFilter === "active" ? isActive : !isActive;
     };
 
+    const campSet = campaignFilter.length > 0 ? new Set(campaignFilter) : null;
+
     const fCampaigns = campaigns.filter((c) => {
-      if (campaignFilter !== "all" && c.campaign_id !== campaignFilter) return false;
+      if (campSet && !campSet.has(c.campaign_id)) return false;
       if (allowedCampaignIds && !allowedCampaignIds.has(c.campaign_id)) return false;
       if (!matchStatus(c.status)) return false;
       if (!inDate(c.date_start, c.date_stop)) return false;
@@ -120,20 +123,21 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
       if (dateTo && d > dateTo) return false;
       return true;
     };
+    const pipeSet2 = pipelineFilter.length > 0 ? new Set(pipelineFilter) : null;
     const fLeadStats = leadStats.filter(
-      (s) => (pipelineFilter === "all" || s.pipeline_id === pipelineFilter) && inDateStr(s.date),
+      (s) => (!pipeSet2 || pipeSet2.has(s.pipeline_id)) && inDateStr(s.date),
     );
     const fMeetingStats = meetingStats.filter(
-      (s) => (pipelineFilter === "all" || s.pipeline_id === pipelineFilter) && inDateStr(s.date),
+      (s) => (!pipeSet2 || pipeSet2.has(s.pipeline_id)) && inDateStr(s.date),
     );
 
     return { campaigns: fCampaigns, adsets: fAdsets, ads: fAds, leadStats: fLeadStats, meetingStats: fMeetingStats };
   }, [campaigns, adsets, ads, links, leadStats, meetingStats, pipelineFilter, campaignFilter, statusFilter, dateFrom, dateTo]);
 
-  const hasFilters = pipelineFilter !== "all" || campaignFilter !== "all" || statusFilter !== "active" || dateFrom || dateTo;
+  const hasFilters = pipelineFilter.length > 0 || campaignFilter.length > 0 || statusFilter !== "active" || dateFrom || dateTo;
   const clearFilters = () => {
-    setPipelineFilter("all");
-    setCampaignFilter("all");
+    setPipelineFilter([]);
+    setCampaignFilter([]);
     setStatusFilter("active");
     setDateFrom("");
     setDateTo("");
