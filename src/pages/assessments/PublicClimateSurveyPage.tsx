@@ -29,17 +29,36 @@ export default function PublicClimateSurveyPage() {
 
   useEffect(() => {
     const load = async () => {
-      if (!surveyId) return;
-      const { data, error } = await supabase
-        .from("profile_climate_surveys")
-        .select("id, title, type, status, questions")
-        .eq("id", surveyId)
-        .maybeSingle();
-      if (error || !data) {
+      if (!surveyId) {
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke("profile-climate-public", {
+        method: "GET" as any,
+        body: undefined,
+        // pass survey_id via query string by manually building URL
+      });
+      // supabase.functions.invoke does not support query string easily — fall back to fetch
+      let surveyData: any = null;
+      try {
+        const fnUrl = `${(import.meta as any).env.VITE_SUPABASE_URL}/functions/v1/profile-climate-public?survey_id=${encodeURIComponent(surveyId)}`;
+        const resp = await fetch(fnUrl, {
+          headers: {
+            apikey: (import.meta as any).env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+        });
+        const json = await resp.json();
+        surveyData = json?.survey;
+      } catch (_e) {
+        // ignore
+      }
+      if (!surveyData && data?.survey) surveyData = data.survey;
+      if (!surveyData) {
         toast.error("Pesquisa não encontrada");
       } else {
-        setSurvey(data);
+        setSurvey(surveyData);
       }
+      if (error) console.error(error);
       setLoading(false);
     };
     load();
@@ -56,23 +75,34 @@ export default function PublicClimateSurveyPage() {
     const enps_score = enpsQ ? Number(answers[String(enpsQ.id)]) : null;
 
     setSubmitting(true);
-    const payload: any = {
-      survey_id: survey.id,
-      answers,
-      is_anonymous: anonymous,
-    };
-    if (typeof enps_score === "number" && !isNaN(enps_score)) payload.enps_score = enps_score;
-    if (!anonymous) {
-      payload.answers = { ...answers, _respondent: { name, email } };
+    const fnUrl = `${(import.meta as any).env.VITE_SUPABASE_URL}/functions/v1/profile-climate-public`;
+    try {
+      const resp = await fetch(fnUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: (import.meta as any).env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({
+          survey_id: survey.id,
+          answers,
+          enps_score: typeof enps_score === "number" && !isNaN(enps_score) ? enps_score : undefined,
+          is_anonymous: anonymous,
+          respondent_name: anonymous ? undefined : name,
+          respondent_email: anonymous ? undefined : email,
+        }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) {
+        toast.error(json?.error || "Erro ao enviar");
+        setSubmitting(false);
+        return;
+      }
+      setSubmitted(true);
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao enviar");
     }
-
-    const { error } = await supabase.from("profile_climate_responses").insert(payload);
     setSubmitting(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    setSubmitted(true);
   };
 
   if (loading) {
@@ -109,7 +139,7 @@ export default function PublicClimateSurveyPage() {
       <div className="min-h-screen flex items-center justify-center p-6">
         <Card className="max-w-md w-full">
           <CardContent className="p-8 text-center space-y-3">
-            <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" />
+            <CheckCircle2 className="w-16 h-16 text-primary mx-auto" />
             <p className="text-xl font-bold">Obrigado!</p>
             <p className="text-sm text-muted-foreground">Sua resposta foi registrada.</p>
           </CardContent>
