@@ -106,6 +106,13 @@ const StaffInvoicePage = () => {
   const [deleteSalaryId, setDeleteSalaryId] = useState<string | null>(null);
   const [deletingSalary, setDeletingSalary] = useState(false);
 
+  // Bulk salary config
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkMonth, setBulkMonth] = useState(new Date().getMonth() + 1);
+  const [bulkYear, setBulkYear] = useState(new Date().getFullYear());
+  const [bulkRows, setBulkRows] = useState<Record<string, { amount: number; commission: number }>>({});
+  const [savingBulk, setSavingBulk] = useState(false);
+
   useEffect(() => {
     loadInitialData();
   }, []);
