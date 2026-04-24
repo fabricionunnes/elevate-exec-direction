@@ -437,7 +437,7 @@ export const CRMSettingsPage = () => {
     }
   };
 
-
+  const handleDuplicatePipeline = async (pipeline: Pipeline) => {
     setSaving(true);
     try {
       // 1. Create new pipeline with "Cópia de" prefix
