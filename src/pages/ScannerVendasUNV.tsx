@@ -191,6 +191,32 @@ export default function ScannerVendasUNV() {
 
   const update = <K extends keyof FormData>(k: K, v: FormData[K]) => setData((d) => ({ ...d, [k]: v }));
 
+  // Restaurar progresso
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved.data) setData((d) => ({ ...d, ...saved.data }));
+        if (saved.step) setStep(saved.step);
+        if (saved.submissionId) setSubmissionId(saved.submissionId);
+      }
+    } catch {}
+    // Na URL de continuação, força etapa >= 2
+    if (window.location.pathname === "/scanner-vendas-continuar") {
+      setStep((s) => (s < 2 ? 2 : s));
+    }
+  }, []);
+
+  // Salvar progresso
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ data, step, submissionId }));
+  }, [data, step, submissionId]);
+
+  const progress = useMemo(() => Math.round(((step - 1) / TOTAL_STEPS) * 100), [step]);
+
+  const update = <K extends keyof FormData>(k: K, v: FormData[K]) => setData((d) => ({ ...d, [k]: v }));
+
   // === Etapa 1: cria lead + submissão ===
   const handleStep1Submit = async () => {
     if (!data.full_name.trim() || !data.email.trim() || !data.whatsapp.trim()) {
@@ -204,9 +230,14 @@ export default function ScannerVendasUNV() {
 
     setLoading(true);
     try {
-      // Se já tem submissionId (retorno via localStorage), só avança
+      // Se já tem submissionId (retorno via localStorage), só redireciona
       if (submissionId) {
-        setStep(2);
+        // Persiste step 2 no storage antes de redirecionar
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ data, step: 2, submissionId })
+        );
+        window.location.href = "/scanner-vendas-continuar";
         return;
       }
 
@@ -220,27 +251,16 @@ export default function ScannerVendasUNV() {
       });
       if (error || resp?.error) throw new Error(resp?.error || error?.message || "Erro");
 
-      setSubmissionId(resp.submission_id);
+      // Persiste o estado já na etapa 2 com o submission_id antes do redirect
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ data, step: 2, submissionId: resp.submission_id })
+      );
 
-      // Meta Pixel — conversão "Lead" após envio dos dados iniciais
-      try {
-        const pixelId = "247392077001023";
-        const w = window as any;
-        if (typeof w.fbq === "function") {
-          w.fbq("track", "Lead");
-        }
-        const img = new Image(1, 1);
-        img.style.display = "none";
-        img.src = `https://www.facebook.com/tr?id=${pixelId}&ev=Lead&noscript=1`;
-      } catch {}
-
-      // Dispara conversão personalizada via iframe oculto na URL dedicada
-      setFireConversionFrame(true);
-
-      setStep(2);
+      // Redireciona para a URL dedicada — a página de destino dispara Pixel + Lead
+      window.location.href = "/scanner-vendas-continuar";
     } catch (e: any) {
       toast.error(e.message || "Erro ao iniciar diagnóstico");
-    } finally {
       setLoading(false);
     }
   };
