@@ -157,6 +157,8 @@ project_id = "czmyjgdixwhpfasfugkm"
     verify_jwt = false
   [functions.profile-climate-public]
     verify_jwt = false
+  [functions.profile-ai]
+    verify_jwt = true
   [functions.prepare-meeting-briefing]
     verify_jwt = true
   [functions.process-email-queue]
