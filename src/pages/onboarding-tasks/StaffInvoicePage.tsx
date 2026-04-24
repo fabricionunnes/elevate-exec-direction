@@ -824,11 +824,11 @@ const StaffInvoicePage = () => {
                   {allInvoices.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Nenhuma nota fiscal encontrada</p>
                   ) : (
-                    <div className="max-h-[600px] overflow-auto rounded-md border">
-                      <Table className="min-w-[1100px]">
+                    <div className="overflow-x-scroll rounded-md border" style={{ scrollbarGutter: "stable" }}>
+                      <Table className="min-w-[1300px]">
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Usuário</TableHead>
+                            <TableHead className="sticky left-0 z-20 bg-background shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] min-w-[180px]">Usuário</TableHead>
                             <TableHead>Mês</TableHead>
                             <TableHead>Tipo</TableHead>
                             <TableHead>Valor</TableHead>
@@ -845,7 +845,7 @@ const StaffInvoicePage = () => {
                             const staffInfo = inv.onboarding_staff as any;
                             return (
                               <TableRow key={inv.id}>
-                                <TableCell className="font-medium">{staffInfo?.name || "—"}</TableCell>
+                                <TableCell className="font-medium sticky left-0 z-10 bg-background shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] min-w-[180px]">{staffInfo?.name || "—"}</TableCell>
                                 <TableCell>{MONTHS[inv.month - 1]?.label}/{inv.year}</TableCell>
                                 <TableCell>
                                   <Badge variant={(inv as any).invoice_type === "commission" ? "secondary" : "outline"}>
