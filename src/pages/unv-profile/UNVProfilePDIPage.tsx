@@ -17,7 +17,7 @@ export default function UNVProfilePDIPage() {
   const [list, setList] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<any>({ employee_id: "", title: "", description: "", target_date: "", status: "open" });
+  const [form, setForm] = useState<any>({ employee_id: "", title: "", description: "", due_date: "", status: "open" });
 
   const load = async () => {
     const [pdis, emps] = await Promise.all([
@@ -32,11 +32,18 @@ export default function UNVProfilePDIPage() {
 
   const create = async () => {
     if (!form.employee_id || !form.title) return toast.error("Colaborador e título são obrigatórios");
-    const { error } = await supabase.from("profile_pdi").insert(form);
+    const payload: any = {
+      employee_id: form.employee_id,
+      title: form.title,
+      description: form.description || null,
+      status: form.status || "open",
+    };
+    if (form.due_date) payload.due_date = form.due_date;
+    const { error } = await supabase.from("profile_pdi").insert(payload);
     if (error) return toast.error(error.message);
     toast.success("PDI criado");
     setOpen(false);
-    setForm({ employee_id: "", title: "", description: "", target_date: "", status: "open" });
+    setForm({ employee_id: "", title: "", description: "", due_date: "", status: "open" });
     load();
   };
 
@@ -58,7 +65,7 @@ export default function UNVProfilePDIPage() {
               </Select>
               <Input placeholder="Título" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
               <Textarea placeholder="Descrição / Ações" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-              <Input type="date" value={form.target_date} onChange={e => setForm({ ...form, target_date: e.target.value })} />
+              <Input type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} />
             </div>
             <DialogFooter><Button onClick={create}>Criar PDI</Button></DialogFooter>
           </DialogContent>
@@ -84,7 +91,7 @@ export default function UNVProfilePDIPage() {
                 <CardTitle className="text-base">{p.title}</CardTitle>
                 <Badge className={`${STATUS_COLORS[p.status]} text-white`}>{STATUS_LABELS[p.status]}</Badge>
               </div>
-              <p className="text-xs text-muted-foreground">{p.profile_employees?.full_name} {p.target_date && `• Até ${new Date(p.target_date).toLocaleDateString("pt-BR")}`}</p>
+              <p className="text-xs text-muted-foreground">{p.profile_employees?.full_name} {p.due_date && `• Até ${new Date(p.due_date).toLocaleDateString("pt-BR")}`}</p>
             </CardHeader>
             <CardContent>
               <p className="text-sm whitespace-pre-wrap">{p.description}</p>
