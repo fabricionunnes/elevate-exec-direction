@@ -541,10 +541,12 @@ export default function UNVProfileCareerPage() {
           <Badge variant="outline">
             {tracks.length} trilhas · {totalLevels} níveis
           </Badge>
-          <Button onClick={() => setOpenTrack(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nova trilha
-          </Button>
+          {isAdmin && (
+            <Button onClick={() => setOpenTrack(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Nova trilha
+            </Button>
+          )}
         </div>
       </div>
 
@@ -568,28 +570,30 @@ export default function UNVProfileCareerPage() {
                     <CardTitle className="text-base">{t.name}</CardTitle>
                     {t.area && <p className="text-xs text-muted-foreground">{t.area}</p>}
                   </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setEditingTrackId(t.id);
-                        setEditingLevelIndex(null);
-                        setEditingLevel(null);
-                        setEditorOpen(true);
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5 mr-1" /> Nível
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteTrack(t.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  {isAdmin && (
+                    <div className="flex gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingTrackId(t.id);
+                          setEditingLevelIndex(null);
+                          setEditingLevel(null);
+                          setEditorOpen(true);
+                        }}
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1" /> Nível
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteTrack(t.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -672,45 +676,49 @@ export default function UNVProfileCareerPage() {
                           >
                             Ver
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => {
-                              setEditingTrackId(t.id);
-                              setEditingLevelIndex(i);
-                              setEditingLevel(lvl);
-                              setEditorOpen(true);
-                            }}
-                          >
-                            <Pencil className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => moveLevel(t.id, i, -1)}
-                            disabled={i === 0}
-                          >
-                            ←
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => moveLevel(t.id, i, 1)}
-                            disabled={i === t.levels.length - 1}
-                          >
-                            →
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive hover:text-destructive"
-                            onClick={() => removeLevel(t.id, i)}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
+                          {isAdmin && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => {
+                                  setEditingTrackId(t.id);
+                                  setEditingLevelIndex(i);
+                                  setEditingLevel(lvl);
+                                  setEditorOpen(true);
+                                }}
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => moveLevel(t.id, i, -1)}
+                                disabled={i === 0}
+                              >
+                                ←
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => moveLevel(t.id, i, 1)}
+                                disabled={i === t.levels.length - 1}
+                              >
+                                →
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-destructive hover:text-destructive"
+                                onClick={() => removeLevel(t.id, i)}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
