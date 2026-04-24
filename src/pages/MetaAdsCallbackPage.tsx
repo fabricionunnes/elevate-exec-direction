@@ -35,18 +35,54 @@ const MetaAdsCallbackPage = () => {
 
   const handleCallback = async (code: string, stateParam: string) => {
     try {
-      let projectId: string;
+      let projectId: string | undefined;
       let stateRedirectUri: string | undefined;
       let returnOrigin: string | undefined;
+      let flow: string | undefined;
+      let tenantId: string | null = null;
       try {
         const decoded = JSON.parse(atob(stateParam));
         projectId = decoded.project_id;
         stateRedirectUri = decoded.redirect_uri;
         returnOrigin = decoded.return_origin;
+        flow = decoded.flow;
+        tenantId = decoded.tenant_id ?? null;
       } catch {
         throw new Error("State inválido");
       }
 
+      // ─── CRM Comercial flow ───
+      if (flow === "crm_meta_ads") {
+        setMessage("Trocando código por token (CRM)...");
+        const redirectUri = sessionStorage.getItem("crm_meta_ads_redirect_uri") || stateRedirectUri || "";
+        sessionStorage.removeItem("crm_meta_ads_redirect_uri");
+
+        const { data: result, error: err } = await supabase.functions.invoke("crm-meta-ads-sync", {
+          body: { action: "connect", code, redirect_uri: redirectUri, oauth_state: stateParam },
+        });
+        if (err || result?.error) throw new Error(result?.error || "Erro na conexão");
+
+        sessionStorage.setItem("crm_meta_ads_callback", JSON.stringify({
+          accounts: result.accounts,
+          access_token: result.access_token,
+          expires_at: result.expires_at,
+          tenant_id: tenantId,
+        }));
+
+        setStatus("success");
+        setMessage("Meta Ads conectado ao CRM!");
+        setTimeout(() => {
+          const target = `/crm?tab=traffic`;
+          if (returnOrigin && returnOrigin !== window.location.origin) {
+            window.location.href = `${returnOrigin}/#${target}`;
+          } else {
+            navigate(target, { replace: true });
+          }
+        }, 1200);
+        return;
+      }
+
+      // ─── Onboarding (projeto) flow ───
       if (!projectId) throw new Error("Project ID não encontrado");
 
       setMessage("Trocando código por token de acesso...");
