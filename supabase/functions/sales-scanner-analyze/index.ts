@@ -433,12 +433,13 @@ Deno.serve(async (req) => {
         })
         .eq("id", submission_id);
 
-      // Move lead para "Preencheu formulário"
-      if (sub.lead_id && stages["Preencheu formulário"]) {
+      // Move lead para "Formulário preenchido"
+      const filledStageId = stages["Formulário preenchido"] || stages["Preencheu formulário"];
+      if (sub.lead_id && filledStageId) {
         await supabase
           .from("crm_leads")
           .update({
-            stage_id: stages["Preencheu formulário"],
+            stage_id: filledStageId,
             company: sub.company_name || undefined,
           })
           .eq("id", sub.lead_id);
