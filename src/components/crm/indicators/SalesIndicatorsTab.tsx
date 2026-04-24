@@ -435,11 +435,29 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       dailyTarget,
     };
 
-    // Closer metrics table (always show all closers in the table)
+    // Closer metrics table (sempre mostra todos os closers).
+    // Crédito de agendamento/realização vai para o RESPONSÁVEL do lead (owner),
+    // não para quem deu baixa/agendou (credited_staff_id pode ser SDR ou outro).
+    // Deduplicamos por (lead_id, event_type) para não contar a mesma reunião 2x
+    // quando houver múltiplos credited (ex.: SDR + Closer).
+    const eventsByOwner = (() => {
+      const seen = new Set<string>();
+      const list: any[] = [];
+      rawMeetingEvents.forEach((ev: any) => {
+        const ownerId = ev.lead?.owner_staff_id;
+        if (!ownerId) return;
+        const key = `${ev.lead_id}-${ev.event_type}-${ownerId}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        list.push({ ...ev, owner_id: ownerId });
+      });
+      return list;
+    })();
+
     const closerMetrics: CloserMetrics[] = rawCloserStaff.map(closer => {
       const closerSales = rawSalesData.filter(s => s.closer_staff_id === closer.id);
       const closerRevenue = closerSales.reduce((sum, s) => sum + (s.revenue_value || 0), 0);
-      const closerMeetingEvents = uniqueMeetingEvents.filter(e => e.credited_staff_id === closer.id);
+      const closerMeetingEvents = eventsByOwner.filter(e => e.owner_id === closer.id);
       const closerScheduled = closerMeetingEvents.filter(e => e.event_type === "scheduled").length;
       const closerCompleted = closerMeetingEvents.filter(e => e.event_type === "realized").length;
 
