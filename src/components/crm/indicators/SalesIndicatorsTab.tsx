@@ -166,7 +166,11 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         const role = String((staff as any).role ?? "").toLowerCase();
         return crmStaffIds.has(staff.id) && allowedCloserRoles.has(role);
       });
-      setRawCloserStaff(filteredCloserStaff.map(s => ({ id: s.id, name: s.name })));
+      // Base list (closers/head_comercial). Será expandido abaixo com qualquer staff
+      // que tenha tido agendamento/realização de reunião ou venda no período,
+      // mesmo sem o role de closer.
+      const baseCloserStaff = filteredCloserStaff.map(s => ({ id: s.id, name: s.name }));
+      const allStaffMap = new Map((allActiveStaff || []).map(s => [s.id, { id: s.id, name: s.name }]));
 
       // Load scheduled calls
       const { data: calls } = await supabase
@@ -206,6 +210,25 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         .gte("sale_date", format(filterStart, "yyyy-MM-dd"))
         .lte("sale_date", format(filterEnd, "yyyy-MM-dd"));
       setRawSalesData(salesData || []);
+
+      // Expand "closers" list with anyone who has scheduled/realized meetings
+      // or sales in the period — even without the "closer" role.
+      const expandedCloserMap = new Map(baseCloserStaff.map(s => [s.id, s]));
+      (meetingEvents || []).forEach((ev: any) => {
+        const sid = ev.credited_staff_id;
+        if (sid && !expandedCloserMap.has(sid)) {
+          const staffInfo = allStaffMap.get(sid) || (ev.credited_staff ? { id: sid, name: ev.credited_staff.name } : null);
+          if (staffInfo) expandedCloserMap.set(sid, staffInfo);
+        }
+      });
+      (salesData || []).forEach((s: any) => {
+        const sid = s.closer_staff_id;
+        if (sid && !expandedCloserMap.has(sid)) {
+          const staffInfo = allStaffMap.get(sid) || (s.closer ? { id: sid, name: s.closer.name } : null);
+          if (staffInfo) expandedCloserMap.set(sid, staffInfo);
+        }
+      });
+      setRawCloserStaff(Array.from(expandedCloserMap.values()));
 
       // Load forecasts from leads in "Forecast" stages across all pipelines
       const { data: forecastStages } = await supabase
