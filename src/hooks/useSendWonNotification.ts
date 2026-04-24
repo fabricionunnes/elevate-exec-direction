@@ -248,7 +248,8 @@ function formatWonMessage(lead: any, paymentMethodName: string | null, briefingT
 
   // Use the SDR who scheduled the meeting, falling back to the lead's assigned SDR
   const sdrName = schedulerSdrName || lead.scheduler?.name || lead.sdr?.name || "Não informado";
-  const closerName = lead.closer?.name || lead.owner?.name || "Não informado";
+  // Sempre usar o responsável pelo lead (owner) como Closer na notificação
+  const closerName = lead.owner?.name || lead.closer?.name || "Não informado";
   const serviceName = lead.product?.name || "Não informado";
   const planName = lead.plan?.name || "Não informado";
 
