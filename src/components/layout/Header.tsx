@@ -76,6 +76,7 @@ const productCategories: ProductCategory[] = [
 const navigation = [
   { name: "Serviços", href: "/products", hasSubmenu: true },
   { name: "Trilha", href: "/pricing" },
+  { name: "Scanner", href: "/scanner-vendas" },
   { name: "Depoimentos", href: "/depoimentos" },
   { name: "Planejamento", href: "/portal" },
   { name: "Diagnóstico", href: "/diagnostico" },
