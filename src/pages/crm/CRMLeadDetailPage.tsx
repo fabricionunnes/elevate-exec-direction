@@ -53,6 +53,7 @@ import {
   Briefcase,
   FileAudio,
   ClipboardList,
+  ScanLine,
   Video,
   ScrollText,
   FolderOpen,
@@ -79,6 +80,7 @@ import {
 } from "@/components/crm/lead-detail";
 import { LeadContractDataTab } from "@/components/crm/lead-detail/LeadContractDataTab";
 import { LeadFormAnswersTab } from "@/components/crm/lead-detail/LeadFormAnswersTab";
+import { LeadScannerTab } from "@/components/crm/lead-detail/LeadScannerTab";
 import { LeadMeetingsPanel } from "@/components/crm/lead-detail/LeadMeetingsPanel";
 import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
 import { SendContractButton } from "@/components/crm/SendContractButton";
@@ -1241,6 +1243,7 @@ export const CRMLeadDetailPage = () => {
               { value: "deal", label: "Negócio", icon: Briefcase, color: "text-amber-500" },
               { value: "transcription", label: "Transcrição", icon: FileAudio, color: "text-pink-500" },
               { value: "form_answers", label: "Respostas", icon: ClipboardList, color: "text-cyan-500" },
+              { value: "scanner", label: "Scanner UNV", icon: ScanLine, color: "text-fuchsia-500" },
               { value: "meetings", label: "Reuniões", icon: Video, color: "text-indigo-500" },
               { value: "contract_data", label: "Dados Contratuais", icon: ScrollText, color: "text-orange-500" },
               { value: "files", label: "Arquivos", icon: FolderOpen, color: "text-teal-500" },
@@ -1292,6 +1295,10 @@ export const CRMLeadDetailPage = () => {
 
         <TabsContent value="form_answers" className="flex-1 mt-0 overflow-auto">
           <LeadFormAnswersTab leadId={lead.id} />
+        </TabsContent>
+
+        <TabsContent value="scanner" className="flex-1 mt-0 overflow-auto">
+          <LeadScannerTab leadId={lead.id} />
         </TabsContent>
 
         <TabsContent value="contact" className="flex-1 mt-0 overflow-auto">
