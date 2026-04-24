@@ -81,6 +81,13 @@ export interface PipelineLeadCount {
   won_value: number;
 }
 
+export interface MeetingStat {
+  pipeline_id: string;
+  utm_campaign: string | null;
+  scheduled: number;
+  realized: number;
+}
+
 export function useCRMTrafficData() {
   const [account, setAccount] = useState<CRMMetaAccount | null>(null);
   const [campaigns, setCampaigns] = useState<CRMMetaCampaign[]>([]);
