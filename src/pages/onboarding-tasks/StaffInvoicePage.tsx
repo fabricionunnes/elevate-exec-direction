@@ -1172,7 +1172,7 @@ const StaffInvoicePage = () => {
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Os valores existentes para o período foram pré-preenchidos. Defina o salário fixo e (opcionalmente) a comissão de cada colaborador.
+                      Os valores existentes para o período foram pré-preenchidos. Defina a parcela fixa e (opcionalmente) a parcela variável de honorário de cada colaborador.
                     </p>
                     <div className="max-h-[420px] overflow-y-auto rounded-md border">
                       <Table>
@@ -1222,7 +1222,7 @@ const StaffInvoicePage = () => {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Excluir honorário configurado?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Esta ação não pode ser desfeita. O salário configurado será removido permanentemente.
+                      Esta ação não pode ser desfeita. O honorário configurado será removido permanentemente.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
