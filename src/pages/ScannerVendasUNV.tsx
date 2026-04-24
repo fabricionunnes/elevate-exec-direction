@@ -222,7 +222,7 @@ export default function ScannerVendasUNV() {
           STORAGE_KEY,
           JSON.stringify({ data, step: 2, submissionId })
         );
-        window.location.href = "/scanner-vendas-continuar";
+        window.location.href = "/#/scanner-vendas-continuar";
         return;
       }
 
@@ -243,7 +243,7 @@ export default function ScannerVendasUNV() {
       );
 
       // Redireciona para a URL dedicada — a página de destino dispara Pixel + Lead
-      window.location.href = "/scanner-vendas-continuar";
+      window.location.href = "/#/scanner-vendas-continuar";
     } catch (e: any) {
       toast.error(e.message || "Erro ao iniciar diagnóstico");
       setLoading(false);
