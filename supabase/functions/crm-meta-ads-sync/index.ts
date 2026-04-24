@@ -182,6 +182,8 @@ Deno.serve(async (req) => {
       const fbAccount = acc.ad_account_id; // formato: act_XXX
       const range = todayRangeISO(days || 30);
       const timeRange = encodeURIComponent(JSON.stringify(range));
+      // Breakdown diário: cada linha do insights = 1 dia (permite filtro de data preciso)
+      const timeIncrement = "1";
 
       const insightFields =
         "campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name,impressions,reach,clicks,spend,cpc,cpm,ctr,frequency,actions,action_values";
