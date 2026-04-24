@@ -110,7 +110,9 @@ export default function ScannerVendasUNV() {
   // Na URL /scanner-vendas-continuar carrega imediatamente e dispara "Lead"
   // (URL dedicada para Conversão Personalizada do Meta).
   useEffect(() => {
-    const isContinuar = window.location.pathname === "/scanner-vendas-continuar";
+    const isContinuar =
+      window.location.pathname === "/scanner-vendas-continuar" ||
+      window.location.hash.includes("/scanner-vendas-continuar");
     let loaded = false;
     const loadPixel = (fireLead = false) => {
       if (loaded) {
