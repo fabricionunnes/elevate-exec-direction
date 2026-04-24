@@ -76,6 +76,12 @@ export const CRMIndicatorsPage = () => {
             >
               Pré vendas
             </TabsTrigger>
+            <TabsTrigger 
+              value="traffic"
+              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-6 gap-1.5"
+            >
+              <Megaphone className="h-3.5 w-3.5" /> Tráfego Pago
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -85,6 +91,9 @@ export const CRMIndicatorsPage = () => {
           </TabsContent>
           <TabsContent value="presales" className="m-0 h-full">
             <PreSalesIndicatorsTab staffId={staffId} staffRole={staffRole} />
+          </TabsContent>
+          <TabsContent value="traffic" className="m-0 h-full p-4">
+            <CRMTrafficTab isAdmin={isAdmin} />
           </TabsContent>
         </div>
       </Tabs>
