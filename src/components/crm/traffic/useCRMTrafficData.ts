@@ -96,6 +96,7 @@ export function useCRMTrafficData() {
   const [links, setLinks] = useState<CampaignPipelineLink[]>([]);
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [leadStats, setLeadStats] = useState<PipelineLeadCount[]>([]);
+  const [meetingStats, setMeetingStats] = useState<MeetingStat[]>([]);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
