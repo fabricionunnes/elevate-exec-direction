@@ -31,6 +31,10 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CRMTrafficTab } from "@/components/crm/traffic/CRMTrafficTab";
+import { useSearchParams } from "react-router-dom";
+import { BarChart3, Megaphone } from "lucide-react";
 
 
 interface ConversionData {
