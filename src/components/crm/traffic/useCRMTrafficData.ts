@@ -78,6 +78,7 @@ export interface CampaignPipelineLink {
 export interface PipelineLeadCount {
   pipeline_id: string;
   utm_campaign: string | null;
+  date: string | null; // YYYY-MM-DD (created_at do lead)
   total: number;
   won: number;
   won_value: number;
@@ -86,6 +87,7 @@ export interface PipelineLeadCount {
 export interface MeetingStat {
   pipeline_id: string;
   utm_campaign: string | null;
+  date: string | null; // YYYY-MM-DD (event_date)
   scheduled: number;
   realized: number;
 }
