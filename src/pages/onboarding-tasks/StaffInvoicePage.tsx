@@ -481,6 +481,75 @@ const StaffInvoicePage = () => {
     }
   };
 
+  const openBulkDialog = () => {
+    // Pre-fill with existing salaries for the current bulk month/year
+    const initial: Record<string, { amount: number; commission: number }> = {};
+    allStaff.forEach(s => {
+      const existing = allSalaries.find(sal => sal.staff_id === s.id && sal.month === bulkMonth && sal.year === bulkYear);
+      initial[s.id] = {
+        amount: existing?.amount || 0,
+        commission: (existing as any)?.commission || 0,
+      };
+    });
+    setBulkRows(initial);
+    setBulkDialogOpen(true);
+  };
+
+  // Re-sync bulk rows when month/year change inside dialog
+  useEffect(() => {
+    if (!bulkDialogOpen) return;
+    const initial: Record<string, { amount: number; commission: number }> = {};
+    allStaff.forEach(s => {
+      const existing = allSalaries.find(sal => sal.staff_id === s.id && sal.month === bulkMonth && sal.year === bulkYear);
+      initial[s.id] = {
+        amount: existing?.amount || 0,
+        commission: (existing as any)?.commission || 0,
+      };
+    });
+    setBulkRows(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bulkMonth, bulkYear, bulkDialogOpen]);
+
+  const handleSaveBulkSalaries = async () => {
+    const entries = Object.entries(bulkRows).filter(([, v]) => v.amount > 0);
+    if (entries.length === 0) {
+      toast.error("Preencha o salário de pelo menos um colaborador");
+      return;
+    }
+    setSavingBulk(true);
+    try {
+      const payload = entries.map(([staffId, v]) => ({
+        staff_id: staffId,
+        month: bulkMonth,
+        year: bulkYear,
+        amount: v.amount,
+        commission: v.commission > 0 ? v.commission : null,
+        created_by: currentStaff?.id,
+      }));
+
+      const { error } = await supabase
+        .from("staff_salaries")
+        .upsert(payload as any, { onConflict: "staff_id,month,year" });
+      if (error) throw error;
+
+      await supabase.from("staff_invoice_audit_logs").insert({
+        staff_id: currentStaff?.id,
+        action: "salary_bulk_config",
+        details: `Configuração em massa de salários para ${MONTHS[bulkMonth - 1].label}/${bulkYear} — ${entries.length} colaborador(es)`,
+      });
+
+      toast.success(`Salários configurados (${entries.length} colaborador(es))`);
+      setBulkDialogOpen(false);
+      loadAllSalaries();
+      loadMySalary();
+    } catch (err: any) {
+      console.error("Bulk salary save error:", err);
+      toast.error(err?.message || "Erro ao salvar salários em massa");
+    } finally {
+      setSavingBulk(false);
+    }
+  };
+
   const handleDeleteSalary = async () => {
     if (!deleteSalaryId) return;
     setDeletingSalary(true);
