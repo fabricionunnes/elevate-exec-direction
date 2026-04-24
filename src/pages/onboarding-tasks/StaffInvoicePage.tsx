@@ -1027,7 +1027,24 @@ const StaffInvoicePage = () => {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
                   <CardTitle>Configuração de Honorários</CardTitle>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    <Select value={String(salaryFilterMonth)} onValueChange={(v) => setSalaryFilterMonth(v === "all" ? "all" : Number(v))}>
+                      <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os meses</SelectItem>
+                        {MONTHS.map(m => (
+                          <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={String(salaryFilterYear)} onValueChange={(v) => setSalaryFilterYear(Number(v))}>
+                      <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {[2025, 2026, 2027].map(y => (
+                          <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Button variant="outline" onClick={openBulkDialog}>
                       Configurar Todos
                     </Button>
@@ -1037,8 +1054,13 @@ const StaffInvoicePage = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {allSalaries.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">Nenhum honorário configurado</p>
+                  {(() => {
+                    const filteredSalaries = allSalaries.filter(s =>
+                      (salaryFilterMonth === "all" || s.month === salaryFilterMonth) &&
+                      s.year === salaryFilterYear
+                    );
+                    return filteredSalaries.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">Nenhum honorário configurado para este período</p>
                   ) : (
                     <Table>
                       <TableHeader>
@@ -1051,7 +1073,7 @@ const StaffInvoicePage = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {allSalaries.map((sal) => (
+                        {filteredSalaries.map((sal) => (
                           <TableRow key={sal.id}>
                             <TableCell>{getStaffName(sal.staff_id)}</TableCell>
                             <TableCell>{MONTHS[sal.month - 1]?.label}/{sal.year}</TableCell>
