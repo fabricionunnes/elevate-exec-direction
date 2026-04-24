@@ -118,6 +118,13 @@ const StaffInvoicePage = () => {
   const [deleteSalaryId, setDeleteSalaryId] = useState<string | null>(null);
   const [deletingSalary, setDeletingSalary] = useState(false);
 
+  // Bulk salary config
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkMonth, setBulkMonth] = useState(new Date().getMonth() + 1);
+  const [bulkYear, setBulkYear] = useState(new Date().getFullYear());
+  const [bulkRows, setBulkRows] = useState<Record<string, { amount: number; commission: number }>>({});
+  const [savingBulk, setSavingBulk] = useState(false);
+
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -507,6 +514,75 @@ const StaffInvoicePage = () => {
       toast.error(err?.message || "Erro ao salvar salário");
     } finally {
       setSavingSalary(false);
+    }
+  };
+
+  const openBulkDialog = () => {
+    // Pre-fill with existing salaries for the current bulk month/year
+    const initial: Record<string, { amount: number; commission: number }> = {};
+    allStaff.forEach(s => {
+      const existing = allSalaries.find(sal => sal.staff_id === s.id && sal.month === bulkMonth && sal.year === bulkYear);
+      initial[s.id] = {
+        amount: existing?.amount || 0,
+        commission: (existing as any)?.commission || 0,
+      };
+    });
+    setBulkRows(initial);
+    setBulkDialogOpen(true);
+  };
+
+  // Re-sync bulk rows when month/year change inside dialog
+  useEffect(() => {
+    if (!bulkDialogOpen) return;
+    const initial: Record<string, { amount: number; commission: number }> = {};
+    allStaff.forEach(s => {
+      const existing = allSalaries.find(sal => sal.staff_id === s.id && sal.month === bulkMonth && sal.year === bulkYear);
+      initial[s.id] = {
+        amount: existing?.amount || 0,
+        commission: (existing as any)?.commission || 0,
+      };
+    });
+    setBulkRows(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bulkMonth, bulkYear, bulkDialogOpen]);
+
+  const handleSaveBulkSalaries = async () => {
+    const entries = Object.entries(bulkRows).filter(([, v]) => v.amount > 0);
+    if (entries.length === 0) {
+      toast.error("Preencha o salário de pelo menos um colaborador");
+      return;
+    }
+    setSavingBulk(true);
+    try {
+      const payload = entries.map(([staffId, v]) => ({
+        staff_id: staffId,
+        month: bulkMonth,
+        year: bulkYear,
+        amount: v.amount,
+        commission: v.commission > 0 ? v.commission : null,
+        created_by: currentStaff?.id,
+      }));
+
+      const { error } = await supabase
+        .from("staff_salaries")
+        .upsert(payload as any, { onConflict: "staff_id,month,year" });
+      if (error) throw error;
+
+      await supabase.from("staff_invoice_audit_logs").insert({
+        staff_id: currentStaff?.id,
+        action: "salary_bulk_config",
+        details: `Configuração em massa de salários para ${MONTHS[bulkMonth - 1].label}/${bulkYear} — ${entries.length} colaborador(es)`,
+      });
+
+      toast.success(`Salários configurados (${entries.length} colaborador(es))`);
+      setBulkDialogOpen(false);
+      loadAllSalaries();
+      loadMySalary();
+    } catch (err: any) {
+      console.error("Bulk salary save error:", err);
+      toast.error(err?.message || "Erro ao salvar salários em massa");
+    } finally {
+      setSavingBulk(false);
     }
   };
 
@@ -936,11 +1012,16 @@ const StaffInvoicePage = () => {
           {hasManagePermission && (
             <TabsContent value="salarios">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
                   <CardTitle>Configuração de Salários</CardTitle>
-                  <Button onClick={() => { setSalaryDialogOpen(true); setSalaryStaffId(""); setSalaryAmount(0); setSalaryCommission(0); }}>
-                    Configurar Salário
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={openBulkDialog}>
+                      Configurar Todos
+                    </Button>
+                    <Button onClick={() => { setSalaryDialogOpen(true); setSalaryStaffId(""); setSalaryAmount(0); setSalaryCommission(0); }}>
+                      Configurar Salário
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {allSalaries.length === 0 ? (
@@ -1059,7 +1140,83 @@ const StaffInvoicePage = () => {
                 </DialogContent>
               </Dialog>
 
-              {/* Delete Salary Confirmation */}
+              {/* Bulk Salary Dialog */}
+              <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+                <DialogContent className="max-w-3xl">
+                  <DialogHeader>
+                    <DialogTitle>Configurar Salários — Todos os Colaboradores</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <Label>Mês</Label>
+                        <Select value={String(bulkMonth)} onValueChange={(v) => setBulkMonth(Number(v))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {MONTHS.map(m => (
+                              <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="w-28">
+                        <Label>Ano</Label>
+                        <Select value={String(bulkYear)} onValueChange={(v) => setBulkYear(Number(v))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {[2025, 2026, 2027].map(y => (
+                              <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Os valores existentes para o período foram pré-preenchidos. Defina o salário fixo e (opcionalmente) a comissão de cada colaborador.
+                    </p>
+                    <div className="max-h-[420px] overflow-y-auto rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Colaborador</TableHead>
+                            <TableHead className="w-44">Salário (R$)</TableHead>
+                            <TableHead className="w-44">Comissão (R$)</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {allStaff.map(s => {
+                            const row = bulkRows[s.id] || { amount: 0, commission: 0 };
+                            return (
+                              <TableRow key={s.id}>
+                                <TableCell className="font-medium">{s.name}</TableCell>
+                                <TableCell>
+                                  <CurrencyInput
+                                    value={row.amount}
+                                    onChange={(v) => setBulkRows(prev => ({ ...prev, [s.id]: { ...row, amount: v } }))}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <CurrencyInput
+                                    value={row.commission}
+                                    onChange={(v) => setBulkRows(prev => ({ ...prev, [s.id]: { ...row, commission: v } }))}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setBulkDialogOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleSaveBulkSalaries} disabled={savingBulk}>
+                      {savingBulk ? "Salvando..." : "Salvar Todos"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
               <AlertDialog open={!!deleteSalaryId} onOpenChange={(open) => !open && setDeleteSalaryId(null)}>
                 <AlertDialogContent>
                   <AlertDialogHeader>
