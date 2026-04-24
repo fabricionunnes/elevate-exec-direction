@@ -432,6 +432,30 @@ const StaffInvoicePage = () => {
     }
   };
 
+  const handleDeleteInvoice = async (invoiceId: string) => {
+    if (!confirm("Tem certeza que deseja excluir esta nota fiscal? Esta ação não pode ser desfeita.")) return;
+    try {
+      const { error } = await supabase
+        .from("staff_invoices")
+        .delete()
+        .eq("id", invoiceId);
+      if (error) throw error;
+
+      await supabase.from("staff_invoice_audit_logs").insert({
+        staff_id: currentStaff?.id,
+        invoice_id: invoiceId,
+        action: "invoice_deleted",
+        details: "Nota fiscal excluída pelo administrador",
+      });
+
+      toast.success("Nota fiscal excluída com sucesso");
+      loadAdminInvoices();
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Erro ao excluir nota fiscal: " + (err?.message || ""));
+    }
+  };
+
   const handleSaveSalary = async () => {
     if (!salaryStaffId || !salaryAmount) {
       toast.error("Preencha todos os campos");
