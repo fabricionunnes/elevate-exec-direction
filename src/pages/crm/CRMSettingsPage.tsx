@@ -1117,74 +1117,118 @@ export const CRMSettingsPage = () => {
           <div className="grid md:grid-cols-2 gap-6">
             {/* Pipeline List */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Seus Pipelines</CardTitle>
+              <CardHeader className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-base">Seus Pipelines</CardTitle>
+                  <div className="w-56">
+                    <Select value={pipelineGroupFilter} onValueChange={setPipelineGroupFilter}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Filtrar por grupo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os grupos</SelectItem>
+                        <SelectItem value="none">Sem grupo</SelectItem>
+                        {originGroups.filter(g => g.is_active).map(g => (
+                          <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Arraste os pipelines para reorganizar a ordem.
+                </p>
               </CardHeader>
               <CardContent className="space-y-2">
-                {pipelines.map(pipeline => (
-                  <div
-                    key={pipeline.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                      selectedPipeline === pipeline.id 
-                        ? "border-primary bg-primary/5" 
-                        : "border-border hover:bg-muted"
-                    }`}
-                    onClick={() => setSelectedPipeline(pipeline.id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{pipeline.name}</span>
-                          {pipeline.is_default && (
-                            <Badge variant="secondary" className="text-xs">Padrão</Badge>
-                          )}
+                {pipelines
+                  .filter(pipeline => {
+                    if (pipelineGroupFilter === "all") return true;
+                    const originForPipeline = origins.find(o => o.pipeline_id === pipeline.id);
+                    if (pipelineGroupFilter === "none") return !originForPipeline?.group_id;
+                    return originForPipeline?.group_id === pipelineGroupFilter;
+                  })
+                  .map(pipeline => {
+                    const originForPipeline = origins.find(o => o.pipeline_id === pipeline.id);
+                    const group = originGroups.find(g => g.id === originForPipeline?.group_id);
+                    const isDragging = draggedPipelineId === pipeline.id;
+                    const isDragOver = dragOverPipelineId === pipeline.id;
+                    return (
+                      <div
+                        key={pipeline.id}
+                        draggable
+                        onDragStart={() => handlePipelineDragStart(pipeline.id)}
+                        onDragOver={(e) => handlePipelineDragOver(e, pipeline.id)}
+                        onDragLeave={() => setDragOverPipelineId(null)}
+                        onDrop={(e) => handlePipelineDrop(e, pipeline.id)}
+                        onDragEnd={handlePipelineDragEnd}
+                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedPipeline === pipeline.id
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:bg-muted"
+                        } ${isDragging ? "opacity-50" : ""} ${isDragOver ? "border-primary border-2" : ""}`}
+                        onClick={() => setSelectedPipeline(pipeline.id)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium">{pipeline.name}</span>
+                                {pipeline.is_default && (
+                                  <Badge variant="secondary" className="text-xs">Padrão</Badge>
+                                )}
+                                {group && (
+                                  <Badge variant="outline" className="text-xs">{group.name}</Badge>
+                                )}
+                              </div>
+                              {pipeline.description && (
+                                <p className="text-xs text-muted-foreground mt-1">{pipeline.description}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditPipeline(pipeline);
+                              }}
+                              title="Editar"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDuplicatePipeline(pipeline);
+                              }}
+                              disabled={saving}
+                              title="Duplicar"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteDialog({ type: "pipeline", id: pipeline.id, name: pipeline.name });
+                              }}
+                              title="Excluir"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        {pipeline.description && (
-                          <p className="text-xs text-muted-foreground mt-1">{pipeline.description}</p>
-                        )}
                       </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEditPipeline(pipeline);
-                          }}
-                          title="Editar"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDuplicatePipeline(pipeline);
-                          }}
-                          disabled={saving}
-                          title="Duplicar"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteDialog({ type: "pipeline", id: pipeline.id, name: pipeline.name });
-                          }}
-                          title="Excluir"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  })}
               </CardContent>
             </Card>
 
