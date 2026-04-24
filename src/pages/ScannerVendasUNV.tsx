@@ -104,6 +104,45 @@ export default function ScannerVendasUNV() {
     m.setAttribute("content", desc);
   }, []);
 
+  // Meta Pixel — carregamento adiado (após interação ou 4s)
+  useEffect(() => {
+    let loaded = false;
+    const loadPixel = () => {
+      if (loaded) return;
+      loaded = true;
+      const pixelId = "247392077001023";
+      (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
+        if (f.fbq) return;
+        n = f.fbq = function () {
+          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+        };
+        if (!f._fbq) f._fbq = n;
+        n.push = n;
+        n.loaded = !0;
+        n.version = "2.0";
+        n.queue = [];
+        t = b.createElement(e);
+        t.async = !0;
+        t.src = v;
+        s = b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t, s);
+      })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
+      (window as any).fbq("init", pixelId);
+      (window as any).fbq("track", "PageView");
+    };
+
+    const timeout = setTimeout(loadPixel, 4000);
+    const onInteract = () => loadPixel();
+    window.addEventListener("scroll", onInteract, { once: true, passive: true });
+    window.addEventListener("pointerdown", onInteract, { once: true });
+
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener("scroll", onInteract);
+      window.removeEventListener("pointerdown", onInteract);
+    };
+  }, []);
+
   // Restaurar progresso
   useEffect(() => {
     try {
@@ -156,6 +195,19 @@ export default function ScannerVendasUNV() {
       if (error || resp?.error) throw new Error(resp?.error || error?.message || "Erro");
 
       setSubmissionId(resp.submission_id);
+
+      // Meta Pixel — conversão "Lead" após envio dos dados iniciais
+      try {
+        const pixelId = "247392077001023";
+        const w = window as any;
+        if (typeof w.fbq === "function") {
+          w.fbq("track", "Lead");
+        }
+        const img = new Image(1, 1);
+        img.style.display = "none";
+        img.src = `https://www.facebook.com/tr?id=${pixelId}&ev=Lead&noscript=1`;
+      } catch {}
+
       setStep(2);
     } catch (e: any) {
       toast.error(e.message || "Erro ao iniciar diagnóstico");
