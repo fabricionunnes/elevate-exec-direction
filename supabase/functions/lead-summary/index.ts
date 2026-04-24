@@ -66,6 +66,15 @@ serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(5);
 
+    // Fetch Scanner UNV submission (Isca de baleia funnel) for richer context
+    const { data: scannerSub } = await supabase
+      .from("sales_scanner_submissions")
+      .select("*")
+      .eq("lead_id", leadId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     // Fetch all stages from same pipeline for journey
     let pipelineStages: any[] = [];
     if (lead.pipeline_id) {
