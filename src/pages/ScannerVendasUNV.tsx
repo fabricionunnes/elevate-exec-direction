@@ -169,27 +169,7 @@ export default function ScannerVendasUNV() {
     };
   }, []);
 
-  // Restaurar progresso
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw);
-        if (saved.data) setData((d) => ({ ...d, ...saved.data }));
-        if (saved.step) setStep(saved.step);
-        if (saved.submissionId) setSubmissionId(saved.submissionId);
-      }
-    } catch {}
-  }, []);
 
-  // Salvar progresso
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ data, step, submissionId }));
-  }, [data, step, submissionId]);
-
-  const progress = useMemo(() => Math.round(((step - 1) / TOTAL_STEPS) * 100), [step]);
-
-  const update = <K extends keyof FormData>(k: K, v: FormData[K]) => setData((d) => ({ ...d, [k]: v }));
 
   // Restaurar progresso
   useEffect(() => {
