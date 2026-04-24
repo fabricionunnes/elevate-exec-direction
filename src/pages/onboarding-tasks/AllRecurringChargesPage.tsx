@@ -1990,32 +1990,32 @@ export default function AllRecurringChargesPage() {
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
                     </div>
-                    <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                      <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="pending">Pendente</SelectItem>
-                        <SelectItem value="paid">Pago</SelectItem>
-                        <SelectItem value="overdue">Vencido</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <SearchableSelect
-                      value={selectedPayableCategory}
-                      onValueChange={setSelectedPayableCategory}
-                      placeholder="Categoria"
+                    <MultiSelectFilter
                       options={[
-                        { value: "all", label: "Todas as Categorias" },
-                        ...staffCategories.filter((c: any) => c.type === "despesa").map((c: any) => ({ value: c.id, label: c.name })),
+                        { value: "pending", label: "Pendente" },
+                        { value: "paid", label: "Pago" },
+                        { value: "partial", label: "Pago Parcial" },
+                        { value: "overdue", label: "Vencido" },
+                        { value: "cancelled", label: "Cancelado" },
                       ]}
+                      selected={selectedStatuses}
+                      onChange={setSelectedStatuses}
+                      placeholder="Status"
+                      allLabel="Todos"
                     />
-                    <SearchableSelect
-                      value={selectedPayableCostCenter}
-                      onValueChange={setSelectedPayableCostCenter}
+                    <MultiSelectFilter
+                      selected={selectedPayableCategories}
+                      onChange={setSelectedPayableCategories}
+                      placeholder="Categoria"
+                      allLabel="Todas as Categorias"
+                      options={staffCategories.filter((c: any) => c.type === "despesa").map((c: any) => ({ value: c.id, label: c.name }))}
+                    />
+                    <MultiSelectFilter
+                      selected={selectedPayableCostCenters}
+                      onChange={setSelectedPayableCostCenters}
                       placeholder="Centro de Custo"
-                      options={[
-                        { value: "all", label: "Todos os Centros de Custo" },
-                        ...staffCostCenters.map((cc: any) => ({ value: cc.id, label: cc.name })),
-                      ]}
+                      allLabel="Todos os Centros de Custo"
+                      options={staffCostCenters.map((cc: any) => ({ value: cc.id, label: cc.name }))}
                     />
                   </div>
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 mt-3">
