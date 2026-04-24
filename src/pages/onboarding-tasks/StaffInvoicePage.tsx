@@ -308,13 +308,13 @@ const StaffInvoicePage = () => {
     }
 
     if (!mySalary) {
-      toast.error("Não há salário configurado para este mês");
+      toast.error("Não há honorário configurado para este mês");
       return;
     }
 
     const hasCommission = mySalary.commission && mySalary.commission > 0;
     if (hasCommission && !selectedCommissionFile) {
-      toast.error("Anexe a NF de comissão antes de enviar");
+      toast.error("Anexe a NF da parcela variável de honorário antes de enviar");
       return;
     }
 
@@ -369,7 +369,7 @@ const StaffInvoicePage = () => {
       await supabase.from("staff_invoice_audit_logs").insert({
         staff_id: currentStaff.id,
         action: "envio",
-        details: `NF enviada para ${MONTHS[selectedMonth - 1].label}/${selectedYear} - Salário: R$ ${mySalary.amount.toFixed(2)}${hasCommission ? ` + Comissão: R$ ${mySalary.commission!.toFixed(2)}` : ""}`,
+        details: `NF enviada para ${MONTHS[selectedMonth - 1].label}/${selectedYear} - Parcela Fixa: R$ ${mySalary.amount.toFixed(2)}${hasCommission ? ` + Parcela Variável: R$ ${mySalary.commission!.toFixed(2)}` : ""}`,
       });
 
       toast.success("Nota(s) fiscal(is) enviada(s) com sucesso!");
@@ -502,16 +502,16 @@ const StaffInvoicePage = () => {
       await supabase.from("staff_invoice_audit_logs").insert({
         staff_id: currentStaff?.id,
         action: "salary_config",
-        details: `Salário configurado para staff ${salaryStaffId}: R$ ${amount.toFixed(2)} em ${MONTHS[salaryMonth - 1].label}/${salaryYear}`,
+        details: `Honorário configurado para staff ${salaryStaffId}: R$ ${amount.toFixed(2)} em ${MONTHS[salaryMonth - 1].label}/${salaryYear}`,
       });
 
-      toast.success("Salário configurado!");
+      toast.success("Honorário configurado!");
       setSalaryDialogOpen(false);
       loadAllSalaries();
       loadMySalary();
     } catch (err: any) {
       console.error("Salary save error:", err, { salaryStaffId, salaryMonth, salaryYear, salaryAmount });
-      toast.error(err?.message || "Erro ao salvar salário");
+      toast.error(err?.message || "Erro ao salvar honorário");
     } finally {
       setSavingSalary(false);
     }
@@ -549,7 +549,7 @@ const StaffInvoicePage = () => {
   const handleSaveBulkSalaries = async () => {
     const entries = Object.entries(bulkRows).filter(([, v]) => v.amount > 0);
     if (entries.length === 0) {
-      toast.error("Preencha o salário de pelo menos um colaborador");
+      toast.error("Preencha o honorário de pelo menos um colaborador");
       return;
     }
     setSavingBulk(true);
@@ -571,16 +571,16 @@ const StaffInvoicePage = () => {
       await supabase.from("staff_invoice_audit_logs").insert({
         staff_id: currentStaff?.id,
         action: "salary_bulk_config",
-        details: `Configuração em massa de salários para ${MONTHS[bulkMonth - 1].label}/${bulkYear} — ${entries.length} colaborador(es)`,
+        details: `Configuração em massa de honorários para ${MONTHS[bulkMonth - 1].label}/${bulkYear} — ${entries.length} colaborador(es)`,
       });
 
-      toast.success(`Salários configurados (${entries.length} colaborador(es))`);
+      toast.success(`Honorários configurados (${entries.length} colaborador(es))`);
       setBulkDialogOpen(false);
       loadAllSalaries();
       loadMySalary();
     } catch (err: any) {
       console.error("Bulk salary save error:", err);
-      toast.error(err?.message || "Erro ao salvar salários em massa");
+      toast.error(err?.message || "Erro ao salvar honorários em massa");
     } finally {
       setSavingBulk(false);
     }
@@ -599,14 +599,14 @@ const StaffInvoicePage = () => {
       await supabase.from("staff_invoice_audit_logs").insert({
         staff_id: currentStaff?.id,
         action: "salary_delete",
-        details: `Salário excluído (ID: ${deleteSalaryId})`,
+        details: `Honorário excluído (ID: ${deleteSalaryId})`,
       });
 
-      toast.success("Salário excluído!");
+      toast.success("Honorário excluído!");
       setDeleteSalaryId(null);
       loadAllSalaries();
     } catch (err: any) {
-      toast.error(err?.message || "Erro ao excluir salário");
+      toast.error(err?.message || "Erro ao excluir honorário");
     } finally {
       setDeletingSalary(false);
     }
@@ -634,7 +634,7 @@ const StaffInvoicePage = () => {
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Envio de Nota Fiscal</h1>
-            <p className="text-sm text-muted-foreground">Gerencie suas notas fiscais e visualize seu salário</p>
+            <p className="text-sm text-muted-foreground">Gerencie suas notas fiscais e visualize seus honorários</p>
           </div>
         </div>
 
@@ -656,7 +656,7 @@ const StaffInvoicePage = () => {
                 </TabsTrigger>
                 <TabsTrigger value="salarios" className="gap-2">
                   <Settings className="h-4 w-4" />
-                  Salários
+                  Honorários
                 </TabsTrigger>
               </>
             )}
@@ -705,19 +705,19 @@ const StaffInvoicePage = () => {
                       <p className="text-3xl font-bold text-green-700 dark:text-green-400">
                         R$ {mySalary.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                       </p>
-                      <p className="text-xs text-muted-foreground">Salário</p>
+                      <p className="text-xs text-muted-foreground">Parcela Fixa de Honorário</p>
                       {mySalary.commission && mySalary.commission > 0 && (
                         <>
                           <p className="text-xl font-bold text-blue-700 dark:text-blue-400">
                             + R$ {mySalary.commission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                           </p>
-                          <p className="text-xs text-muted-foreground">Comissão</p>
+                          <p className="text-xs text-muted-foreground">Parcela Variável de Honorário</p>
                         </>
                       )}
                     </div>
                   ) : (
                     <div className="bg-muted rounded-lg p-6 text-center">
-                      <p className="text-muted-foreground">Nenhum salário configurado para este mês</p>
+                      <p className="text-muted-foreground">Nenhum honorário configurado para este mês</p>
                     </div>
                   )}
                 </CardContent>
@@ -759,7 +759,7 @@ const StaffInvoicePage = () => {
                     </div>
                   </div>
                   <div>
-                    <Label>NF do Salário (PDF) *</Label>
+                    <Label>NF da Parcela Fixa de Honorário (PDF) *</Label>
                     <Input
                       ref={fileInputRef}
                       type="file"
@@ -772,14 +772,14 @@ const StaffInvoicePage = () => {
                       <p className="text-xs text-muted-foreground mt-1">📄 {selectedFile.name}</p>
                     )}
                     {!mySalary && (
-                      <p className="text-xs text-destructive mt-1">Salário não configurado para este mês</p>
+                      <p className="text-xs text-destructive mt-1">Honorário não configurado para este mês</p>
                     )}
                   </div>
                   {mySalary?.commission && mySalary.commission > 0 && (
                     <div>
-                      <Label>NF da Comissão (PDF) *</Label>
+                      <Label>NF da Parcela Variável de Honorário (PDF) *</Label>
                       <p className="text-xs text-muted-foreground mb-1">
-                        Comissão: R$ {mySalary.commission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        Parcela Variável: R$ {mySalary.commission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                       </p>
                       <Input
                         ref={commissionFileInputRef}
@@ -844,7 +844,7 @@ const StaffInvoicePage = () => {
                           <TableCell>{MONTHS[inv.month - 1]?.label}/{inv.year}</TableCell>
                           <TableCell>
                             <Badge variant={(inv as any).invoice_type === "commission" ? "secondary" : "outline"}>
-                              {(inv as any).invoice_type === "commission" ? "Comissão" : "Salário"}
+                              {(inv as any).invoice_type === "commission" ? "Parcela Variável" : "Parcela Fixa"}
                             </Badge>
                           </TableCell>
                           <TableCell>R$ {inv.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
@@ -949,7 +949,7 @@ const StaffInvoicePage = () => {
                                 <TableCell>{MONTHS[inv.month - 1]?.label}/{inv.year}</TableCell>
                                 <TableCell>
                                   <Badge variant={(inv as any).invoice_type === "commission" ? "secondary" : "outline"}>
-                                    {(inv as any).invoice_type === "commission" ? "Comissão" : "Salário"}
+                                    {(inv as any).invoice_type === "commission" ? "Parcela Variável" : "Parcela Fixa"}
                                   </Badge>
                                 </TableCell>
                                 <TableCell>R$ {inv.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
@@ -1013,19 +1013,19 @@ const StaffInvoicePage = () => {
             <TabsContent value="salarios">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
-                  <CardTitle>Configuração de Salários</CardTitle>
+                  <CardTitle>Configuração de Honorários</CardTitle>
                   <div className="flex gap-2">
                     <Button variant="outline" onClick={openBulkDialog}>
                       Configurar Todos
                     </Button>
                     <Button onClick={() => { setSalaryDialogOpen(true); setSalaryStaffId(""); setSalaryAmount(0); setSalaryCommission(0); }}>
-                      Configurar Salário
+                      Configurar Honorário
                     </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
                   {allSalaries.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">Nenhum salário configurado</p>
+                    <p className="text-center text-muted-foreground py-8">Nenhum honorário configurado</p>
                   ) : (
                     <Table>
                       <TableHeader>
@@ -1033,7 +1033,7 @@ const StaffInvoicePage = () => {
                           <TableHead>Colaborador</TableHead>
                           <TableHead>Mês</TableHead>
                           <TableHead>Valor</TableHead>
-                            <TableHead>Comissão</TableHead>
+                            <TableHead>Parcela Variável de Honorário</TableHead>
                             <TableHead>Ações</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1077,7 +1077,7 @@ const StaffInvoicePage = () => {
               <Dialog open={salaryDialogOpen} onOpenChange={setSalaryDialogOpen}>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Configurar Salário</DialogTitle>
+                    <DialogTitle>Configurar Honorário</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div>
@@ -1116,14 +1116,14 @@ const StaffInvoicePage = () => {
                       </div>
                     </div>
                     <div>
-                      <Label>Salário (R$) *</Label>
+                      <Label>Parcela Fixa de Honorário (R$) *</Label>
                       <CurrencyInput
                         value={salaryAmount}
                         onChange={setSalaryAmount}
                       />
                     </div>
                     <div>
-                      <Label>Comissão (R$) <span className="text-xs text-muted-foreground">— opcional</span></Label>
+                      <Label>Parcela Variável de Honorário (R$) <span className="text-xs text-muted-foreground">— opcional</span></Label>
                       <CurrencyInput
                         value={salaryCommission}
                         onChange={setSalaryCommission}
@@ -1144,7 +1144,7 @@ const StaffInvoicePage = () => {
               <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
                 <DialogContent className="max-w-3xl">
                   <DialogHeader>
-                    <DialogTitle>Configurar Salários — Todos os Colaboradores</DialogTitle>
+                    <DialogTitle>Configurar Honorários — Todos os Colaboradores</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="flex gap-3">
@@ -1172,15 +1172,15 @@ const StaffInvoicePage = () => {
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Os valores existentes para o período foram pré-preenchidos. Defina o salário fixo e (opcionalmente) a comissão de cada colaborador.
+                      Os valores existentes para o período foram pré-preenchidos. Defina a parcela fixa e (opcionalmente) a parcela variável de honorário de cada colaborador.
                     </p>
                     <div className="max-h-[420px] overflow-y-auto rounded-md border">
                       <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Colaborador</TableHead>
-                            <TableHead className="w-44">Salário (R$)</TableHead>
-                            <TableHead className="w-44">Comissão (R$)</TableHead>
+                            <TableHead className="w-44">Parcela Fixa de Honorário (R$)</TableHead>
+                            <TableHead className="w-44">Parcela Variável de Honorário (R$)</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1220,9 +1220,9 @@ const StaffInvoicePage = () => {
               <AlertDialog open={!!deleteSalaryId} onOpenChange={(open) => !open && setDeleteSalaryId(null)}>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Excluir salário configurado?</AlertDialogTitle>
+                    <AlertDialogTitle>Excluir honorário configurado?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Esta ação não pode ser desfeita. O salário configurado será removido permanentemente.
+                      Esta ação não pode ser desfeita. O honorário configurado será removido permanentemente.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
