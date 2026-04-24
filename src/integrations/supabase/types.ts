@@ -14534,6 +14534,7 @@ export type Database = {
           is_active: boolean | null
           is_default: boolean | null
           name: string
+          sort_order: number
           tenant_id: string | null
           updated_at: string
         }
@@ -14545,6 +14546,7 @@ export type Database = {
           is_active?: boolean | null
           is_default?: boolean | null
           name: string
+          sort_order?: number
           tenant_id?: string | null
           updated_at?: string
         }
@@ -14556,6 +14558,7 @@ export type Database = {
           is_active?: boolean | null
           is_default?: boolean | null
           name?: string
+          sort_order?: number
           tenant_id?: string | null
           updated_at?: string
         }
