@@ -55,6 +55,13 @@ type DateFilterType = "today" | "week" | "month" | "quarter" | "year" | "custom"
 
 export const CRMReportsPage = () => {
   const { isAdmin } = useOutletContext<{ staffRole: string; isAdmin: boolean }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") === "traffic" ? "traffic" : "overview";
+  const setActiveTab = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === "overview") next.delete("tab"); else next.set("tab", v);
+    setSearchParams(next, { replace: true });
+  };
   const [period, setPeriod] = useState<DateFilterType>("month");
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: undefined,
