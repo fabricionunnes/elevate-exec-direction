@@ -9,31 +9,50 @@ import { Badge } from "@/components/ui/badge";
 import { Heart, Plus, Copy, ExternalLink, Lock, Unlock } from "lucide-react";
 import { toast } from "sonner";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
+import { useProfileViewerScope } from "@/hooks/useProfileViewerScope";
 
 const STATUS_LABELS: Record<string, string> = { draft: "Rascunho", active: "Ativa", closed: "Encerrada" };
 const TYPE_LABELS: Record<string, string> = { pulse: "Pulse", climate: "Clima geral", enps: "eNPS" };
 
 export default function UNVProfileClimatePage() {
+  const { isAdmin, employeeId, loading: scopeLoading } = useProfileViewerScope();
   const [list, setList] = useState<any[]>([]);
+  const [myResponses, setMyResponses] = useState<any[]>([]);
   const [enps, setEnps] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<any>({ title: "", type: "pulse", status: "active" });
 
   const load = async () => {
-    const [s, r] = await Promise.all([
-      supabase.from("profile_climate_surveys").select("*").order("created_at", { ascending: false }),
-      supabase.from("profile_climate_responses").select("enps_score"),
-    ]);
-    setList(s.data || []);
-    const scores = (r.data || []).map((x: any) => x.enps_score).filter((x: any) => typeof x === "number");
-    if (scores.length) {
-      const promoters = scores.filter((x: number) => x >= 9).length;
-      const detractors = scores.filter((x: number) => x <= 6).length;
-      setEnps(Math.round(((promoters - detractors) / scores.length) * 100));
+    if (isAdmin) {
+      const [s, r] = await Promise.all([
+        supabase.from("profile_climate_surveys").select("*").order("created_at", { ascending: false }),
+        supabase.from("profile_climate_responses").select("enps_score"),
+      ]);
+      setList(s.data || []);
+      const scores = (r.data || []).map((x: any) => x.enps_score).filter((x: any) => typeof x === "number");
+      if (scores.length) {
+        const promoters = scores.filter((x: number) => x >= 9).length;
+        const detractors = scores.filter((x: number) => x <= 6).length;
+        setEnps(Math.round(((promoters - detractors) / scores.length) * 100));
+      } else {
+        setEnps(null);
+      }
+      setMyResponses([]);
+      return;
     }
+    if (!employeeId) { setList([]); setMyResponses([]); setEnps(null); return; }
+    // Não-admin: apenas as pesquisas que ele respondeu (não-anônimas vinculadas ao employee_id).
+    const { data: resp } = await supabase
+      .from("profile_climate_responses")
+      .select("*, survey:profile_climate_surveys(id, title, type, status)")
+      .eq("employee_id", employeeId)
+      .order("created_at", { ascending: false });
+    setMyResponses(resp || []);
+    setList([]);
+    setEnps(null);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (!scopeLoading) load(); }, [scopeLoading, isAdmin, employeeId]);
 
   const create = async () => {
     if (!form.title) return toast.error("Título obrigatório");
@@ -88,29 +107,31 @@ export default function UNVProfileClimatePage() {
       <div className="flex justify-between items-start flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Heart className="w-6 h-6 text-primary" /> Clima & Engajamento</h1>
-          <p className="text-sm text-muted-foreground">Pulse surveys e eNPS interno</p>
+          <p className="text-sm text-muted-foreground">{isAdmin ? "Pulse surveys e eNPS interno" : "Suas respostas em pesquisas"}</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-2" />Nova pesquisa</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Nova pesquisa de clima</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <Input placeholder="Título" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
-              <Select value={form.type} onValueChange={v => setForm({ ...form, type: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pulse">Pulse (rápida)</SelectItem>
-                  <SelectItem value="climate">Clima geral</SelectItem>
-                  <SelectItem value="enps">eNPS</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter><Button onClick={create}>Criar</Button></DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {isAdmin && (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-2" />Nova pesquisa</Button></DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Nova pesquisa de clima</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <Input placeholder="Título" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+                <Select value={form.type} onValueChange={v => setForm({ ...form, type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pulse">Pulse (rápida)</SelectItem>
+                    <SelectItem value="climate">Clima geral</SelectItem>
+                    <SelectItem value="enps">eNPS</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter><Button onClick={create}>Criar</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
-      {enps !== null && (
+      {isAdmin && enps !== null && (
         <Card className={enps >= 50 ? "border-emerald-500/50 bg-emerald-500/5" : enps >= 0 ? "border-amber-500/50 bg-amber-500/5" : "border-rose-500/50 bg-rose-500/5"}>
           <CardContent className="p-6 flex items-center justify-between">
             <div>
@@ -122,36 +143,67 @@ export default function UNVProfileClimatePage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {list.map(s => (
-          <Card key={s.id}>
-            <CardHeader>
-              <div className="flex justify-between items-start gap-2">
-                <CardTitle className="text-base">{s.title}</CardTitle>
-                <Badge variant={s.status === "active" ? "default" : "secondary"}>{STATUS_LABELS[s.status]}</Badge>
-              </div>
-              <p className="text-xs text-muted-foreground">{TYPE_LABELS[s.type] || s.type} • {(s.questions || []).length} perguntas</p>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="rounded-md bg-muted px-3 py-2 text-xs font-mono break-all">
-                {buildLink(s.id)}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" onClick={() => copyLink(s.id)}>
-                  <Copy className="w-3.5 h-3.5 mr-1.5" /> Copiar link
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => window.open(buildLink(s.id), "_blank")}>
-                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => toggleStatus(s)}>
-                  {s.status === "closed" ? <><Unlock className="w-3.5 h-3.5 mr-1.5" />Reabrir</> : <><Lock className="w-3.5 h-3.5 mr-1.5" />Encerrar</>}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        {list.length === 0 && <p className="col-span-full text-center text-sm text-muted-foreground py-12">Nenhuma pesquisa criada.</p>}
-      </div>
+      {isAdmin ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {list.map(s => (
+            <Card key={s.id}>
+              <CardHeader>
+                <div className="flex justify-between items-start gap-2">
+                  <CardTitle className="text-base">{s.title}</CardTitle>
+                  <Badge variant={s.status === "active" ? "default" : "secondary"}>{STATUS_LABELS[s.status]}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">{TYPE_LABELS[s.type] || s.type} • {(s.questions || []).length} perguntas</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="rounded-md bg-muted px-3 py-2 text-xs font-mono break-all">
+                  {buildLink(s.id)}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => copyLink(s.id)}>
+                    <Copy className="w-3.5 h-3.5 mr-1.5" /> Copiar link
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => window.open(buildLink(s.id), "_blank")}>
+                    <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => toggleStatus(s)}>
+                    {s.status === "closed" ? <><Unlock className="w-3.5 h-3.5 mr-1.5" />Reabrir</> : <><Lock className="w-3.5 h-3.5 mr-1.5" />Encerrar</>}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {list.length === 0 && <p className="col-span-full text-center text-sm text-muted-foreground py-12">Nenhuma pesquisa criada.</p>}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {myResponses.map((r: any) => (
+            <Card key={r.id}>
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <p className="text-sm font-medium">{r.survey?.title || "Pesquisa"}</p>
+                  <Badge variant="outline">{TYPE_LABELS[r.survey?.type] || r.survey?.type}</Badge>
+                </div>
+                {r.enps_score != null && (
+                  <p className="text-sm">Sua nota eNPS: <strong>{r.enps_score}</strong></p>
+                )}
+                {r.answers && Object.keys(r.answers).length > 0 && (
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    {Object.entries(r.answers).map(([k, v]) => (
+                      <p key={k}><strong>{k}:</strong> {String(v)}</p>
+                    ))}
+                  </div>
+                )}
+                <p className="text-[10px] text-muted-foreground">{new Date(r.created_at).toLocaleString("pt-BR")}</p>
+              </CardContent>
+            </Card>
+          ))}
+          {myResponses.length === 0 && (
+            <p className="text-center text-sm text-muted-foreground py-12">
+              Você ainda não respondeu nenhuma pesquisa de clima identificada.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

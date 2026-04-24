@@ -373,7 +373,10 @@ function LevelEditor({
   );
 }
 
+import { useProfileViewerScope } from "@/hooks/useProfileViewerScope";
+
 export default function UNVProfileCareerPage() {
+  const { isAdmin, employeeId, loading: scopeLoading } = useProfileViewerScope();
   const [tracks, setTracks] = useState<CareerTrack[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -406,18 +409,41 @@ export default function UNVProfileCareerPage() {
       setLoading(false);
       return;
     }
-    setTracks(
-      (data || []).map((t: any) => ({
-        ...t,
-        levels: Array.isArray(t.levels) ? t.levels : [],
-      })),
-    );
+    let allTracks = (data || []).map((t: any) => ({
+      ...t,
+      levels: Array.isArray(t.levels) ? t.levels : [],
+    }));
+
+    // Não-admin: filtra somente a trilha relacionada ao cargo/área do colaborador.
+    if (!isAdmin && employeeId) {
+      const { data: emp } = await supabase
+        .from("profile_employees")
+        .select("position_id, department_id, profile_positions(name, area), profile_departments(name)")
+        .eq("id", employeeId)
+        .maybeSingle();
+      const empArea = ((emp as any)?.profile_positions?.area || (emp as any)?.profile_departments?.name || "").toLowerCase();
+      const empPos = ((emp as any)?.profile_positions?.name || "").toLowerCase();
+      if (empArea || empPos) {
+        allTracks = allTracks.filter((t) => {
+          const a = (t.area || "").toLowerCase();
+          const n = (t.name || "").toLowerCase();
+          return (empArea && (a.includes(empArea) || empArea.includes(a) || n.includes(empArea))) ||
+                 (empPos && (n.includes(empPos) || empPos.includes(n)));
+        });
+      } else {
+        allTracks = [];
+      }
+    } else if (!isAdmin) {
+      allTracks = [];
+    }
+
+    setTracks(allTracks);
     setLoading(false);
   };
 
   useEffect(() => {
-    load();
-  }, []);
+    if (!scopeLoading) load();
+  }, [scopeLoading, isAdmin, employeeId]);
 
   const createTrack = async () => {
     if (!trackForm.name.trim()) return toast.error("Nome obrigatório");
@@ -515,10 +541,12 @@ export default function UNVProfileCareerPage() {
           <Badge variant="outline">
             {tracks.length} trilhas · {totalLevels} níveis
           </Badge>
-          <Button onClick={() => setOpenTrack(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nova trilha
-          </Button>
+          {isAdmin && (
+            <Button onClick={() => setOpenTrack(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Nova trilha
+            </Button>
+          )}
         </div>
       </div>
 
@@ -542,28 +570,30 @@ export default function UNVProfileCareerPage() {
                     <CardTitle className="text-base">{t.name}</CardTitle>
                     {t.area && <p className="text-xs text-muted-foreground">{t.area}</p>}
                   </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setEditingTrackId(t.id);
-                        setEditingLevelIndex(null);
-                        setEditingLevel(null);
-                        setEditorOpen(true);
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5 mr-1" /> Nível
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteTrack(t.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  {isAdmin && (
+                    <div className="flex gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingTrackId(t.id);
+                          setEditingLevelIndex(null);
+                          setEditingLevel(null);
+                          setEditorOpen(true);
+                        }}
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1" /> Nível
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteTrack(t.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -646,45 +676,49 @@ export default function UNVProfileCareerPage() {
                           >
                             Ver
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => {
-                              setEditingTrackId(t.id);
-                              setEditingLevelIndex(i);
-                              setEditingLevel(lvl);
-                              setEditorOpen(true);
-                            }}
-                          >
-                            <Pencil className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => moveLevel(t.id, i, -1)}
-                            disabled={i === 0}
-                          >
-                            ←
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => moveLevel(t.id, i, 1)}
-                            disabled={i === t.levels.length - 1}
-                          >
-                            →
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive hover:text-destructive"
-                            onClick={() => removeLevel(t.id, i)}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
+                          {isAdmin && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => {
+                                  setEditingTrackId(t.id);
+                                  setEditingLevelIndex(i);
+                                  setEditingLevel(lvl);
+                                  setEditorOpen(true);
+                                }}
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => moveLevel(t.id, i, -1)}
+                                disabled={i === 0}
+                              >
+                                ←
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => moveLevel(t.id, i, 1)}
+                                disabled={i === t.levels.length - 1}
+                              >
+                                →
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-destructive hover:text-destructive"
+                                onClick={() => removeLevel(t.id, i)}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
