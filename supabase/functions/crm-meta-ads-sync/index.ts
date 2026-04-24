@@ -19,9 +19,8 @@ const SCOPES = [
   "ads_read",
   "ads_management",
   "business_management",
-  "read_insights",
-  "pages_read_engagement",
-  "pages_show_list",
+  "instagram_basic",
+  "instagram_manage_insights",
 ];
 
 async function gj(url: string) {
