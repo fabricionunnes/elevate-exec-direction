@@ -124,6 +124,10 @@ const StaffInvoicePage = () => {
   const [salaryCommission, setSalaryCommission] = useState<number>(0);
   const [allSalaries, setAllSalaries] = useState<Salary[]>([]);
   const [savingSalary, setSavingSalary] = useState(false);
+
+  // Honorário list filters (default: current month in Brasília)
+  const [salaryFilterMonth, setSalaryFilterMonth] = useState<number | "all">(_brasiliaCurrent.month);
+  const [salaryFilterYear, setSalaryFilterYear] = useState<number>(_brasiliaCurrent.year);
   const [deleteSalaryId, setDeleteSalaryId] = useState<string | null>(null);
   const [deletingSalary, setDeletingSalary] = useState(false);
 
