@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -322,14 +323,14 @@ export default function AllRecurringChargesPage() {
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [selectedRecurrence, setSelectedRecurrence] = useState("all");
   const [selectedConsultant, setSelectedConsultant] = useState("all");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedCostCenter, setSelectedCostCenter] = useState("all");
-  const [selectedPayableCategory, setSelectedPayableCategory] = useState("all");
-  const [selectedPayableCostCenter, setSelectedPayableCostCenter] = useState("all");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedCostCenters, setSelectedCostCenters] = useState<string[]>([]);
+  const [selectedPayableCategories, setSelectedPayableCategories] = useState<string[]>([]);
+  const [selectedPayableCostCenters, setSelectedPayableCostCenters] = useState<string[]>([]);
   const [selectedPayableConsultant, setSelectedPayableConsultant] = useState("all");
   const [receivablePeriod, setReceivablePeriod] = useState<PeriodType>("this_month");
   const [payablePeriod, setPayablePeriod] = useState<PeriodType>("this_month");
@@ -594,12 +595,9 @@ export default function AllRecurringChargesPage() {
         if (!match) return false;
       }
       if (selectedCompany !== "all" && inv.company_id !== selectedCompany) return false;
-      if (selectedStatus !== "all") {
+      if (selectedStatuses.length > 0) {
         const effectiveStatus = isEffectivelyOverdue(inv.status, inv.due_date) ? "overdue" : inv.status;
-        if (selectedStatus === "pending" && effectiveStatus !== "pending") return false;
-        if (selectedStatus === "paid" && effectiveStatus !== "paid") return false;
-        if (selectedStatus === "overdue" && effectiveStatus !== "overdue") return false;
-        if (selectedStatus === "cancelled" && effectiveStatus !== "cancelled") return false;
+        if (!selectedStatuses.includes(effectiveStatus)) return false;
       }
       if (dateFrom) { if (inv.due_date < format(dateFrom, "yyyy-MM-dd")) return false; }
       if (dateTo) { if (inv.due_date > format(dateTo, "yyyy-MM-dd")) return false; }
@@ -608,14 +606,14 @@ export default function AllRecurringChargesPage() {
         if (!consultantIds || !consultantIds.has(selectedConsultant)) return false;
       }
       const invAny = inv as any;
-      if (selectedCategory !== "all" && invAny.category_id !== selectedCategory) return false;
-      if (selectedCostCenter !== "all" && invAny.cost_center_id !== selectedCostCenter) return false;
+      if (selectedCategories.length > 0 && !selectedCategories.includes(invAny.category_id)) return false;
+      if (selectedCostCenters.length > 0 && !selectedCostCenters.includes(invAny.cost_center_id)) return false;
       return true;
     });
-  }, [invoices, searchTerm, selectedCompany, selectedStatus, dateFrom, dateTo, selectedConsultant, selectedCategory, selectedCostCenter, companyConsultantMap]);
+  }, [invoices, searchTerm, selectedCompany, selectedStatuses, dateFrom, dateTo, selectedConsultant, selectedCategories, selectedCostCenters, companyConsultantMap]);
 
   // Reset page when filters change
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedCompany, selectedStatus, dateFrom, dateTo, selectedConsultant, selectedCategory, selectedCostCenter]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedCompany, selectedStatuses, dateFrom, dateTo, selectedConsultant, selectedCategories, selectedCostCenters]);
 
   const sortedInvoices = useMemo(() => {
     if (!recSortCol) return filteredInvoices;
@@ -643,18 +641,19 @@ export default function AllRecurringChargesPage() {
     return payables.filter(p => {
       if (searchTerm && !p.description?.toLowerCase().includes(searchTerm.toLowerCase()) && !p.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       const today = format(new Date(), "yyyy-MM-dd");
-      const isOverdue = p.status === "pending" && p.due_date && p.due_date < today;
-      if (selectedStatus === "pending" && (p.status !== "pending" || isOverdue)) return false;
-      if (selectedStatus === "paid" && p.status !== "paid") return false;
-      if (selectedStatus === "overdue" && !isOverdue) return false;
+      const isOverdue = (p.status === "pending" || p.status === "partial") && p.due_date && p.due_date < today;
+      if (selectedStatuses.length > 0) {
+        const effectiveStatus = isOverdue ? "overdue" : p.status;
+        if (!selectedStatuses.includes(effectiveStatus)) return false;
+      }
       if (payableDateFrom && p.due_date) { if (p.due_date < format(payableDateFrom, "yyyy-MM-dd")) return false; }
       if (payableDateTo && p.due_date) { if (p.due_date > format(payableDateTo, "yyyy-MM-dd")) return false; }
       const pAny = p as any;
-      if (selectedPayableCategory !== "all" && pAny.category_id !== selectedPayableCategory) return false;
-      if (selectedPayableCostCenter !== "all" && pAny.cost_center_id !== selectedPayableCostCenter) return false;
+      if (selectedPayableCategories.length > 0 && !selectedPayableCategories.includes(pAny.category_id)) return false;
+      if (selectedPayableCostCenters.length > 0 && !selectedPayableCostCenters.includes(pAny.cost_center_id)) return false;
       return true;
     });
-  }, [payables, searchTerm, selectedStatus, payableDateFrom, payableDateTo, selectedPayableCategory, selectedPayableCostCenter]);
+  }, [payables, searchTerm, selectedStatuses, payableDateFrom, payableDateTo, selectedPayableCategories, selectedPayableCostCenters]);
 
   const sortedPayables = useMemo(() => {
     if (!paySortCol) return filteredPayables;
@@ -700,14 +699,14 @@ export default function AllRecurringChargesPage() {
     const now = new Date();
     setSearchTerm("");
     setSelectedCompany("all");
-    setSelectedStatus("all");
+    setSelectedStatuses([]);
     setSelectedMonth("all");
     setSelectedRecurrence("all");
     setSelectedConsultant("all");
-    setSelectedCategory("all");
-    setSelectedCostCenter("all");
-    setSelectedPayableCategory("all");
-    setSelectedPayableCostCenter("all");
+    setSelectedCategories([]);
+    setSelectedCostCenters([]);
+    setSelectedPayableCategories([]);
+    setSelectedPayableCostCenters([]);
     setSelectedPayableConsultant("all");
     setDateFrom(new Date(now.getFullYear(), now.getMonth(), 1));
     setDateTo(new Date(now.getFullYear(), now.getMonth() + 1, 0));
@@ -1500,16 +1499,19 @@ export default function AllRecurringChargesPage() {
                       ]}
                       placeholder="Empresa"
                     />
-                    <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                      <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="pending">Pendente</SelectItem>
-                        <SelectItem value="paid">Pago</SelectItem>
-                        <SelectItem value="overdue">Vencido</SelectItem>
-                        <SelectItem value="cancelled">Cancelado</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <MultiSelectFilter
+                      options={[
+                        { value: "pending", label: "Pendente" },
+                        { value: "paid", label: "Pago" },
+                        { value: "partial", label: "Pago Parcial" },
+                        { value: "overdue", label: "Vencido" },
+                        { value: "cancelled", label: "Cancelado" },
+                      ]}
+                      selected={selectedStatuses}
+                      onChange={setSelectedStatuses}
+                      placeholder="Status"
+                      allLabel="Todos"
+                    />
                     <SearchableSelect
                       value={selectedConsultant}
                       onValueChange={setSelectedConsultant}
@@ -1530,23 +1532,19 @@ export default function AllRecurringChargesPage() {
                         onOffsetChange={setReceivableOffset}
                       />
                     </div>
-                    <SearchableSelect
-                      value={selectedCategory}
-                      onValueChange={setSelectedCategory}
+                    <MultiSelectFilter
+                      selected={selectedCategories}
+                      onChange={setSelectedCategories}
                       placeholder="Categoria"
-                      options={[
-                        { value: "all", label: "Todas as Categorias" },
-                        ...staffCategories.filter((c: any) => c.type === "receita").map((c: any) => ({ value: c.id, label: c.name })),
-                      ]}
+                      allLabel="Todas as Categorias"
+                      options={staffCategories.filter((c: any) => c.type === "receita").map((c: any) => ({ value: c.id, label: c.name }))}
                     />
-                    <SearchableSelect
-                      value={selectedCostCenter}
-                      onValueChange={setSelectedCostCenter}
+                    <MultiSelectFilter
+                      selected={selectedCostCenters}
+                      onChange={setSelectedCostCenters}
                       placeholder="Centro de Custo"
-                      options={[
-                        { value: "all", label: "Todos os Centros de Custo" },
-                        ...staffCostCenters.map((cc: any) => ({ value: cc.id, label: cc.name })),
-                      ]}
+                      allLabel="Todos os Centros de Custo"
+                      options={staffCostCenters.map((cc: any) => ({ value: cc.id, label: cc.name }))}
                     />
                     <Popover>
                       <PopoverTrigger asChild>
@@ -1992,32 +1990,32 @@ export default function AllRecurringChargesPage() {
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
                     </div>
-                    <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                      <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="pending">Pendente</SelectItem>
-                        <SelectItem value="paid">Pago</SelectItem>
-                        <SelectItem value="overdue">Vencido</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <SearchableSelect
-                      value={selectedPayableCategory}
-                      onValueChange={setSelectedPayableCategory}
-                      placeholder="Categoria"
+                    <MultiSelectFilter
                       options={[
-                        { value: "all", label: "Todas as Categorias" },
-                        ...staffCategories.filter((c: any) => c.type === "despesa").map((c: any) => ({ value: c.id, label: c.name })),
+                        { value: "pending", label: "Pendente" },
+                        { value: "paid", label: "Pago" },
+                        { value: "partial", label: "Pago Parcial" },
+                        { value: "overdue", label: "Vencido" },
+                        { value: "cancelled", label: "Cancelado" },
                       ]}
+                      selected={selectedStatuses}
+                      onChange={setSelectedStatuses}
+                      placeholder="Status"
+                      allLabel="Todos"
                     />
-                    <SearchableSelect
-                      value={selectedPayableCostCenter}
-                      onValueChange={setSelectedPayableCostCenter}
+                    <MultiSelectFilter
+                      selected={selectedPayableCategories}
+                      onChange={setSelectedPayableCategories}
+                      placeholder="Categoria"
+                      allLabel="Todas as Categorias"
+                      options={staffCategories.filter((c: any) => c.type === "despesa").map((c: any) => ({ value: c.id, label: c.name }))}
+                    />
+                    <MultiSelectFilter
+                      selected={selectedPayableCostCenters}
+                      onChange={setSelectedPayableCostCenters}
                       placeholder="Centro de Custo"
-                      options={[
-                        { value: "all", label: "Todos os Centros de Custo" },
-                        ...staffCostCenters.map((cc: any) => ({ value: cc.id, label: cc.name })),
-                      ]}
+                      allLabel="Todos os Centros de Custo"
+                      options={staffCostCenters.map((cc: any) => ({ value: cc.id, label: cc.name }))}
                     />
                   </div>
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 mt-3">
