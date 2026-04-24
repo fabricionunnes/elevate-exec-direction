@@ -208,6 +208,9 @@ export default function ScannerVendasUNV() {
         img.src = `https://www.facebook.com/tr?id=${pixelId}&ev=Lead&noscript=1`;
       } catch {}
 
+      // Dispara conversão personalizada via iframe oculto na URL dedicada
+      setFireConversionFrame(true);
+
       setStep(2);
     } catch (e: any) {
       toast.error(e.message || "Erro ao iniciar diagnóstico");
