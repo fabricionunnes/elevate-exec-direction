@@ -1093,7 +1093,83 @@ const StaffInvoicePage = () => {
                 </DialogContent>
               </Dialog>
 
-              {/* Delete Salary Confirmation */}
+              {/* Bulk Salary Dialog */}
+              <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+                <DialogContent className="max-w-3xl">
+                  <DialogHeader>
+                    <DialogTitle>Configurar Salários — Todos os Colaboradores</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <Label>Mês</Label>
+                        <Select value={String(bulkMonth)} onValueChange={(v) => setBulkMonth(Number(v))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {MONTHS.map(m => (
+                              <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="w-28">
+                        <Label>Ano</Label>
+                        <Select value={String(bulkYear)} onValueChange={(v) => setBulkYear(Number(v))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {[2025, 2026, 2027].map(y => (
+                              <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Os valores existentes para o período foram pré-preenchidos. Defina o salário fixo e (opcionalmente) a comissão de cada colaborador.
+                    </p>
+                    <div className="max-h-[420px] overflow-y-auto rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Colaborador</TableHead>
+                            <TableHead className="w-44">Salário (R$)</TableHead>
+                            <TableHead className="w-44">Comissão (R$)</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {allStaff.map(s => {
+                            const row = bulkRows[s.id] || { amount: 0, commission: 0 };
+                            return (
+                              <TableRow key={s.id}>
+                                <TableCell className="font-medium">{s.name}</TableCell>
+                                <TableCell>
+                                  <CurrencyInput
+                                    value={row.amount}
+                                    onChange={(v) => setBulkRows(prev => ({ ...prev, [s.id]: { ...row, amount: v } }))}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <CurrencyInput
+                                    value={row.commission}
+                                    onChange={(v) => setBulkRows(prev => ({ ...prev, [s.id]: { ...row, commission: v } }))}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setBulkDialogOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleSaveBulkSalaries} disabled={savingBulk}>
+                      {savingBulk ? "Salvando..." : "Salvar Todos"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
               <AlertDialog open={!!deleteSalaryId} onOpenChange={(open) => !open && setDeleteSalaryId(null)}>
                 <AlertDialogContent>
                   <AlertDialogHeader>
