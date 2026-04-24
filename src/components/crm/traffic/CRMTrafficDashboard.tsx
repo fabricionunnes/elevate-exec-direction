@@ -144,17 +144,17 @@ export const CRMTrafficDashboard = ({
         <KPI icon={MousePointerClick} label="CTR" value={fmtPct(totals.ctr)} color="#a855f7" />
       </div>
 
-      {/* CAC por Funil — destaque */}
+      {/* Métricas por Funil — destaque */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Target className="h-4 w-4" /> CAC e CPL por Funil
+            <Target className="h-4 w-4" /> Custo por Funil
           </CardTitle>
         </CardHeader>
         <CardContent>
           {perPipeline.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">
-              Vincule campanhas a funis para visualizar o CAC por funil.
+              Vincule campanhas a funis para visualizar o custo por funil.
             </p>
           ) : (
             <div className="overflow-auto">
@@ -164,10 +164,13 @@ export const CRMTrafficDashboard = ({
                     <th className="text-left py-2 px-2">Funil</th>
                     <th className="text-right py-2 px-2">Investido</th>
                     <th className="text-right py-2 px-2">Leads (CRM)</th>
-                    <th className="text-right py-2 px-2">Vendas</th>
                     <th className="text-right py-2 px-2">CPL</th>
+                    <th className="text-right py-2 px-2">Reun. Agend.</th>
+                    <th className="text-right py-2 px-2">Custo / Agend.</th>
+                    <th className="text-right py-2 px-2">Reun. Real.</th>
+                    <th className="text-right py-2 px-2">Custo / Real.</th>
+                    <th className="text-right py-2 px-2">Vendas</th>
                     <th className="text-right py-2 px-2">CAC</th>
-                    <th className="text-right py-2 px-2">Receita</th>
                     <th className="text-right py-2 px-2">ROAS</th>
                   </tr>
                 </thead>
@@ -177,10 +180,13 @@ export const CRMTrafficDashboard = ({
                       <td className="py-2 px-2 font-medium">{r.pipeline_name}</td>
                       <td className="text-right py-2 px-2">{fmtBRL(r.spend)}</td>
                       <td className="text-right py-2 px-2">{fmtInt(r.leads_crm)}</td>
+                      <td className="text-right py-2 px-2 font-semibold">{fmtBRL(r.cpl)}</td>
+                      <td className="text-right py-2 px-2">{fmtInt(r.meetings_scheduled)}</td>
+                      <td className="text-right py-2 px-2 font-semibold">{fmtBRL(r.cost_per_scheduled)}</td>
+                      <td className="text-right py-2 px-2">{fmtInt(r.meetings_realized)}</td>
+                      <td className="text-right py-2 px-2 font-semibold">{fmtBRL(r.cost_per_realized)}</td>
                       <td className="text-right py-2 px-2">{fmtInt(r.won)}</td>
-                      <td className="text-right py-2 px-2">{fmtBRL(r.cpl)}</td>
                       <td className="text-right py-2 px-2 font-semibold">{fmtBRL(r.cac)}</td>
-                      <td className="text-right py-2 px-2">{fmtBRL(r.won_value)}</td>
                       <td className="text-right py-2 px-2">
                         <Badge variant={r.roas >= 1 ? "default" : "secondary"}>
                           {r.roas.toFixed(2)}x
