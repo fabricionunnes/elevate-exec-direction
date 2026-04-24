@@ -58,7 +58,7 @@ export const CRMTrafficDashboard = ({
     };
   }, [campaigns]);
 
-  // Por funil: somar gasto das campanhas vinculadas (com peso); e leads/vendas via leadStats por utm_campaign
+  // Por funil: somar gasto das campanhas vinculadas (com peso); leads/reuniões via stats por utm_campaign
   const perPipeline = useMemo(() => {
     const campMap = new Map(campaigns.map((c) => [c.campaign_id, c]));
     const pipeMap = new Map(pipelines.map((p) => [p.id, p.name]));
@@ -67,35 +67,40 @@ export const CRMTrafficDashboard = ({
       pipeline_id: string; pipeline_name: string;
       spend: number; leads_meta: number; leads_crm: number;
       won: number; won_value: number;
+      meetings_scheduled: number; meetings_realized: number;
     };
     const map = new Map<string, Row>();
 
-    // Spend e leads (via vínculos)
+    const empty = (id: string): Row => ({
+      pipeline_id: id,
+      pipeline_name: pipeMap.get(id) || "—",
+      spend: 0, leads_meta: 0, leads_crm: 0, won: 0, won_value: 0,
+      meetings_scheduled: 0, meetings_realized: 0,
+    });
+
     for (const link of links) {
       const camp = campMap.get(link.campaign_id);
       if (!camp) continue;
       const w = Number(link.weight || 1);
-      const cur = map.get(link.pipeline_id) || {
-        pipeline_id: link.pipeline_id,
-        pipeline_name: pipeMap.get(link.pipeline_id) || "—",
-        spend: 0, leads_meta: 0, leads_crm: 0, won: 0, won_value: 0,
-      };
+      const cur = map.get(link.pipeline_id) || empty(link.pipeline_id);
       cur.spend += Number(camp.spend || 0) * w;
       cur.leads_meta += Number(camp.leads || 0) * w;
       map.set(link.pipeline_id, cur);
     }
 
-    // Leads/won reais via UTM (por funil)
     for (const stat of leadStats) {
-      const cur = map.get(stat.pipeline_id) || {
-        pipeline_id: stat.pipeline_id,
-        pipeline_name: pipeMap.get(stat.pipeline_id) || "—",
-        spend: 0, leads_meta: 0, leads_crm: 0, won: 0, won_value: 0,
-      };
+      const cur = map.get(stat.pipeline_id) || empty(stat.pipeline_id);
       cur.leads_crm += stat.total;
       cur.won += stat.won;
       cur.won_value += stat.won_value;
       map.set(stat.pipeline_id, cur);
+    }
+
+    for (const ms of meetingStats) {
+      const cur = map.get(ms.pipeline_id) || empty(ms.pipeline_id);
+      cur.meetings_scheduled += ms.scheduled;
+      cur.meetings_realized += ms.realized;
+      map.set(ms.pipeline_id, cur);
     }
 
     return Array.from(map.values()).map((r) => ({
@@ -103,8 +108,21 @@ export const CRMTrafficDashboard = ({
       cpl: safeDiv(r.spend, r.leads_crm || r.leads_meta),
       cac: safeDiv(r.spend, r.won),
       roas: safeDiv(r.won_value, r.spend),
+      cost_per_scheduled: safeDiv(r.spend, r.meetings_scheduled),
+      cost_per_realized: safeDiv(r.spend, r.meetings_realized),
     })).sort((a, b) => b.spend - a.spend);
-  }, [campaigns, links, pipelines, leadStats]);
+  }, [campaigns, links, pipelines, leadStats, meetingStats]);
+
+  const meetingTotals = useMemo(() => {
+    const sched = perPipeline.reduce((s, r) => s + r.meetings_scheduled, 0);
+    const real = perPipeline.reduce((s, r) => s + r.meetings_realized, 0);
+    return {
+      scheduled: sched,
+      realized: real,
+      cost_per_scheduled: safeDiv(totals.spend, sched),
+      cost_per_realized: safeDiv(totals.spend, real),
+    };
+  }, [perPipeline, totals.spend]);
 
   // Top campanhas / criativos por gasto
   const topCampaigns = [...campaigns].sort((a, b) => Number(b.spend) - Number(a.spend)).slice(0, 10);
