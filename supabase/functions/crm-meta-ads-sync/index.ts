@@ -310,7 +310,7 @@ Deno.serve(async (req) => {
       for (const a of adMetaRes.data || []) adsMeta[a.id] = a;
 
       const adInsRes = await gj(
-        `${GRAPH_API}/${fbAccount}/insights?level=ad&fields=${insightFields}&time_range=${timeRange}&limit=1000&access_token=${token}`,
+        `${GRAPH_API}/${fbAccount}/insights?level=ad&fields=${insightFields}&time_range=${timeRange}&time_increment=${timeIncrement}&limit=5000&access_token=${token}`,
       );
       const adRows: any[] = [];
       for (const ins of adInsRes.data || []) {
