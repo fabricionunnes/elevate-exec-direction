@@ -195,9 +195,9 @@ Deno.serve(async (req) => {
       const campsMeta: Record<string, any> = {};
       for (const c of campMetaRes.data || []) campsMeta[c.id] = c;
 
-      // ---- CAMPAIGN insights ----
+      // ---- CAMPAIGN insights (breakdown diário) ----
       const campInsRes = await gj(
-        `${GRAPH_API}/${fbAccount}/insights?level=campaign&fields=${insightFields}&time_range=${timeRange}&limit=500&access_token=${token}`,
+        `${GRAPH_API}/${fbAccount}/insights?level=campaign&fields=${insightFields}&time_range=${timeRange}&time_increment=${timeIncrement}&limit=5000&access_token=${token}`,
       );
       const campaignsRows: any[] = [];
       for (const ins of campInsRes.data || []) {
