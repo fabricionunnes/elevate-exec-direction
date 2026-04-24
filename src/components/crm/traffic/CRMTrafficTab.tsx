@@ -229,7 +229,18 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
               </Button>
             )}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground">Status</Label>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Apenas ativos</SelectItem>
+                  <SelectItem value="inactive">Apenas inativos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground">Funil</Label>
               <Select value={pipelineFilter} onValueChange={setPipelineFilter}>
