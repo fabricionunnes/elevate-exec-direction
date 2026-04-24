@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Plus } from "lucide-react";
+import { Heart, Plus, Copy, ExternalLink, Lock, Unlock } from "lucide-react";
 import { toast } from "sonner";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 const STATUS_LABELS: Record<string, string> = { draft: "Rascunho", active: "Ativa", closed: "Encerrada" };
+const TYPE_LABELS: Record<string, string> = { pulse: "Pulse", climate: "Clima geral", enps: "eNPS" };
 
 export default function UNVProfileClimatePage() {
   const [list, setList] = useState<any[]>([]);
@@ -35,18 +37,49 @@ export default function UNVProfileClimatePage() {
 
   const create = async () => {
     if (!form.title) return toast.error("Título obrigatório");
+
+    const baseQuestions: any[] = [];
+    if (form.type === "enps" || form.type === "climate") {
+      baseQuestions.push({ id: 1, type: "enps", text: "De 0 a 10, o quanto você recomendaria nossa empresa como um bom lugar para trabalhar?" });
+    }
+    if (form.type === "pulse" || form.type === "climate") {
+      baseQuestions.push({ id: baseQuestions.length + 1, type: "scale", text: "Como você se sente em relação ao seu trabalho hoje? (1 a 5)" });
+    }
+    baseQuestions.push({ id: baseQuestions.length + 1, type: "text", text: "O que poderíamos melhorar?" });
+
     const { error } = await supabase.from("profile_climate_surveys").insert({
       ...form,
-      questions: [
-        { id: 1, type: "enps", text: "De 0 a 10, o quanto você recomendaria nossa empresa como um bom lugar para trabalhar?" },
-        { id: 2, type: "scale", text: "Como você se sente em relação ao seu trabalho hoje?" },
-        { id: 3, type: "text", text: "O que poderíamos melhorar?" },
-      ],
+      questions: baseQuestions,
     });
     if (error) return toast.error(error.message);
     toast.success("Pesquisa criada");
     setOpen(false);
     setForm({ title: "", type: "pulse", status: "active" });
+    load();
+  };
+
+  const buildLink = (id: string) => `${getPublicBaseUrl()}/#/pesquisa-clima/${id}`;
+
+  const copyLink = async (id: string) => {
+    const link = buildLink(id);
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success("Link copiado!");
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = link;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); toast.success("Link copiado!"); } catch { toast.error("Falha ao copiar"); }
+      document.body.removeChild(ta);
+    }
+  };
+
+  const toggleStatus = async (s: any) => {
+    const next = s.status === "closed" ? "active" : "closed";
+    const { error } = await supabase.from("profile_climate_surveys").update({ status: next }).eq("id", s.id);
+    if (error) return toast.error(error.message);
+    toast.success(next === "active" ? "Pesquisa reaberta" : "Pesquisa encerrada");
     load();
   };
 
@@ -93,14 +126,27 @@ export default function UNVProfileClimatePage() {
         {list.map(s => (
           <Card key={s.id}>
             <CardHeader>
-              <div className="flex justify-between">
+              <div className="flex justify-between items-start gap-2">
                 <CardTitle className="text-base">{s.title}</CardTitle>
-                <Badge>{STATUS_LABELS[s.status]}</Badge>
+                <Badge variant={s.status === "active" ? "default" : "secondary"}>{STATUS_LABELS[s.status]}</Badge>
               </div>
-              <p className="text-xs text-muted-foreground">{s.type}</p>
+              <p className="text-xs text-muted-foreground">{TYPE_LABELS[s.type] || s.type} • {(s.questions || []).length} perguntas</p>
             </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground">{(s.questions || []).length} perguntas</p>
+            <CardContent className="space-y-3">
+              <div className="rounded-md bg-muted px-3 py-2 text-xs font-mono break-all">
+                {buildLink(s.id)}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => copyLink(s.id)}>
+                  <Copy className="w-3.5 h-3.5 mr-1.5" /> Copiar link
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => window.open(buildLink(s.id), "_blank")}>
+                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => toggleStatus(s)}>
+                  {s.status === "closed" ? <><Unlock className="w-3.5 h-3.5 mr-1.5" />Reabrir</> : <><Lock className="w-3.5 h-3.5 mr-1.5" />Encerrar</>}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
