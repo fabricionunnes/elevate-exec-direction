@@ -350,6 +350,15 @@ export default function ScannerVendasUNV() {
           style={{ position: "absolute", width: 1, height: 1, border: 0, opacity: 0, pointerEvents: "none", left: -9999, top: -9999 }}
         />
       )}
+      {fireDiagnosisFrame && (
+        <iframe
+          src="/scanner-diagnostico-conversao"
+          title="conv-diag"
+          aria-hidden="true"
+          tabIndex={-1}
+          style={{ position: "absolute", width: 1, height: 1, border: 0, opacity: 0, pointerEvents: "none", left: -9999, top: -9999 }}
+        />
+      )}
       <header className="border-b border-border bg-card/50 backdrop-blur sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
