@@ -888,14 +888,25 @@ const StaffInvoicePage = () => {
                                   </Button>
                                 </TableCell>
                                 <TableCell>
-                                  <Select value={inv.status} onValueChange={(v) => handleUpdateInvoiceStatus(inv.id, v)}>
-                                    <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="enviado">Enviado</SelectItem>
-                                      <SelectItem value="em_analise">Em análise</SelectItem>
-                                      <SelectItem value="pago">Pago</SelectItem>
-                                    </SelectContent>
-                                  </Select>
+                                  <div className="flex items-center gap-1">
+                                    <Select value={inv.status} onValueChange={(v) => handleUpdateInvoiceStatus(inv.id, v)}>
+                                      <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="enviado">Enviado</SelectItem>
+                                        <SelectItem value="em_analise">Em análise</SelectItem>
+                                        <SelectItem value="pago">Pago</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                      onClick={() => handleDeleteInvoice(inv.id)}
+                                      title="Excluir nota fiscal"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </TableCell>
                               </TableRow>
                             );
