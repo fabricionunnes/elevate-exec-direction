@@ -43,7 +43,7 @@ type FormData = {
   // 1
   full_name: string; whatsapp: string; email: string;
   // 2
-  company_name: string; segment: string; revenue_range: string;
+  company_name: string; segment: string; revenue_range: string; monthly_revenue: number | undefined;
   sellers_count: string; has_sales_manager: string;
   // 3
   lead_channels: string[]; leads_per_month: string; has_process: string;
@@ -61,7 +61,7 @@ type FormData = {
 
 const initialData: FormData = {
   full_name: "", whatsapp: "", email: "",
-  company_name: "", segment: "", revenue_range: "", sellers_count: "", has_sales_manager: "",
+  company_name: "", segment: "", revenue_range: "", monthly_revenue: undefined, sellers_count: "", has_sales_manager: "",
   lead_channels: [], leads_per_month: "", has_process: "",
   avg_ticket: undefined, conversion_rate: "", sales_cycle_days: "", sales_per_month: "",
   has_crm: "", tracks_goals_daily: "",
@@ -235,14 +235,20 @@ export default function ScannerVendasUNV() {
   const goNext = async () => {
     // valida & salva por etapa
     if (step === 2) {
-      if (!data.company_name || !data.revenue_range || !data.has_sales_manager) {
+      if (!data.company_name || !data.monthly_revenue || data.monthly_revenue <= 0 || !data.has_sales_manager) {
         toast.error("Preencha os campos obrigatórios");
         return;
       }
+      const revenueFormatted = new Intl.NumberFormat("pt-BR", {
+        style: "currency", currency: "BRL", minimumFractionDigits: 2,
+      }).format(data.monthly_revenue);
+      // mantém revenue_range como texto formatado para compatibilidade com schema/CRM
+      update("revenue_range", revenueFormatted);
       await saveProgress({
         company_name: data.company_name,
         segment: data.segment || null,
-        revenue_range: data.revenue_range,
+        revenue_range: revenueFormatted,
+        monthly_revenue: data.monthly_revenue,
         sellers_count: data.sellers_count ? Number(data.sellers_count) : null,
         has_sales_manager: data.has_sales_manager === "sim",
       });
@@ -409,15 +415,15 @@ export default function ScannerVendasUNV() {
               <Input value={data.segment} onChange={(e) => update("segment", e.target.value)}
                 placeholder="Ex: Imobiliário, SaaS, Saúde…" />
             </Field>
-            <Field label="Faturamento mensal *">
-              <Select value={data.revenue_range} onValueChange={(v) => update("revenue_range", v)}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {REVENUE_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <Field label="Faturamento mensal real (R$) *">
+              <CurrencyInput
+                value={data.monthly_revenue}
+                onChange={(v) => update("monthly_revenue", v)}
+                placeholder="Ex: 125.000,00"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Digite o valor exato que sua empresa fatura por mês.
+              </p>
             </Field>
             <Field label="Número de vendedores">
               <Input type="number" min={0} value={data.sellers_count}
