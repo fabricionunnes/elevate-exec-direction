@@ -30,8 +30,10 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
   const [openSettings, setOpenSettings] = useState(false);
 
   // Filtros do dashboard
-  const [pipelineFilter, setPipelineFilter] = useState<string>("all");
+  const [pipelineFilter, setPipelineFilter] = useState<string[]>([]);
   const [campaignFilter, setCampaignFilter] = useState<string[]>([]);
+  const [adsetFilter, setAdsetFilter] = useState<string[]>([]);
+  const [adFilter, setAdFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
@@ -78,10 +80,11 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
     };
 
     // Conjunto de campaign_ids permitidos pelo filtro de funil (via vínculos)
+    const pipeSet = pipelineFilter.length > 0 ? new Set(pipelineFilter) : null;
     let allowedCampaignIds: Set<string> | null = null;
-    if (pipelineFilter !== "all") {
+    if (pipeSet) {
       allowedCampaignIds = new Set(
-        links.filter((l) => l.pipeline_id === pipelineFilter).map((l) => l.campaign_id),
+        links.filter((l) => pipeSet.has(l.pipeline_id)).map((l) => l.campaign_id),
       );
     }
 
@@ -92,6 +95,9 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
     };
 
     const campSet = campaignFilter.length > 0 ? new Set(campaignFilter) : null;
+    const adsetSet = adsetFilter.length > 0 ? new Set(adsetFilter) : null;
+    const adSet = adFilter.length > 0 ? new Set(adFilter) : null;
+
     const fCampaigns = campaigns.filter((c) => {
       if (campSet && !campSet.has(c.campaign_id)) return false;
       if (allowedCampaignIds && !allowedCampaignIds.has(c.campaign_id)) return false;
@@ -101,17 +107,20 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
     });
 
     const validCampIds = new Set(fCampaigns.map((c) => c.campaign_id));
-    const fAdsets = adsets.filter(
-      (a) => a.campaign_id && validCampIds.has(a.campaign_id) && matchStatus(a.status),
-    );
+    const fAdsets = adsets.filter((a) => {
+      if (!a.campaign_id || !validCampIds.has(a.campaign_id)) return false;
+      if (adsetSet && !adsetSet.has(a.adset_id)) return false;
+      if (!matchStatus(a.status)) return false;
+      return true;
+    });
     const validAdsetIds = new Set(fAdsets.map((a) => a.adset_id));
-    const fAds = ads.filter(
-      (a) =>
-        a.campaign_id &&
-        validCampIds.has(a.campaign_id) &&
-        (a.adset_id ? validAdsetIds.has(a.adset_id) : true) &&
-        matchStatus(a.status),
-    );
+    const fAds = ads.filter((a) => {
+      if (!a.campaign_id || !validCampIds.has(a.campaign_id)) return false;
+      if (adsetSet && (!a.adset_id || !validAdsetIds.has(a.adset_id))) return false;
+      if (adSet && !adSet.has(a.ad_id)) return false;
+      if (!matchStatus(a.status)) return false;
+      return true;
+    });
 
     // Filtro por funil + data (created_at do lead / event_date da reunião)
     const inDateStr = (d?: string | null) => {
@@ -122,19 +131,21 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
       return true;
     };
     const fLeadStats = leadStats.filter(
-      (s) => (pipelineFilter === "all" || s.pipeline_id === pipelineFilter) && inDateStr(s.date),
+      (s) => (!pipeSet || pipeSet.has(s.pipeline_id)) && inDateStr(s.date),
     );
     const fMeetingStats = meetingStats.filter(
-      (s) => (pipelineFilter === "all" || s.pipeline_id === pipelineFilter) && inDateStr(s.date),
+      (s) => (!pipeSet || pipeSet.has(s.pipeline_id)) && inDateStr(s.date),
     );
 
     return { campaigns: fCampaigns, adsets: fAdsets, ads: fAds, leadStats: fLeadStats, meetingStats: fMeetingStats };
-  }, [campaigns, adsets, ads, links, leadStats, meetingStats, pipelineFilter, campaignFilter, statusFilter, dateFrom, dateTo]);
+  }, [campaigns, adsets, ads, links, leadStats, meetingStats, pipelineFilter, campaignFilter, adsetFilter, adFilter, statusFilter, dateFrom, dateTo]);
 
-  const hasFilters = pipelineFilter !== "all" || campaignFilter.length > 0 || statusFilter !== "active" || dateFrom || dateTo;
+  const hasFilters = pipelineFilter.length > 0 || campaignFilter.length > 0 || adsetFilter.length > 0 || adFilter.length > 0 || statusFilter !== "active" || dateFrom || dateTo;
   const clearFilters = () => {
-    setPipelineFilter("all");
+    setPipelineFilter([]);
     setCampaignFilter([]);
+    setAdsetFilter([]);
+    setAdFilter([]);
     setStatusFilter("active");
     setDateFrom("");
     setDateTo("");
@@ -255,7 +266,7 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
               </Button>
             )}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground">Status</Label>
               <SearchableSelect
@@ -270,13 +281,11 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
             </div>
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground">Funil</Label>
-              <SearchableSelect
-                value={pipelineFilter}
+              <MultiSearchableSelect
+                values={pipelineFilter}
                 onChange={setPipelineFilter}
-                options={[
-                  { value: "all", label: "Todos os funis" },
-                  ...pipelines.map((p) => ({ value: p.id, label: p.name })),
-                ]}
+                allLabel="Todos os funis"
+                options={pipelines.map((p) => ({ value: p.id, label: p.name }))}
               />
             </div>
             <div className="space-y-1.5">
@@ -285,10 +294,45 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
                 values={campaignFilter}
                 onChange={setCampaignFilter}
                 allLabel="Todas as campanhas"
-                options={campaigns.map((c) => ({
-                  value: c.campaign_id,
-                  label: c.campaign_name || c.campaign_id,
-                }))}
+                options={Array.from(
+                  new Map(
+                    campaigns.map((c) => [c.campaign_id, { value: c.campaign_id, label: c.campaign_name || c.campaign_id }]),
+                  ).values(),
+                )}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground">Conjunto de Anúncios</Label>
+              <MultiSearchableSelect
+                values={adsetFilter}
+                onChange={setAdsetFilter}
+                allLabel="Todos os conjuntos"
+                options={Array.from(
+                  new Map(
+                    adsets
+                      .filter((a) => campaignFilter.length === 0 || campaignFilter.includes(a.campaign_id || ""))
+                      .map((a) => [a.adset_id, { value: a.adset_id, label: a.adset_name || a.adset_id }]),
+                  ).values(),
+                )}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground">Anúncios</Label>
+              <MultiSearchableSelect
+                values={adFilter}
+                onChange={setAdFilter}
+                allLabel="Todos os anúncios"
+                options={Array.from(
+                  new Map(
+                    ads
+                      .filter((a) => {
+                        if (campaignFilter.length > 0 && !campaignFilter.includes(a.campaign_id || "")) return false;
+                        if (adsetFilter.length > 0 && !adsetFilter.includes(a.adset_id || "")) return false;
+                        return true;
+                      })
+                      .map((a) => [a.ad_id, { value: a.ad_id, label: a.ad_name || a.ad_id }]),
+                  ).values(),
+                )}
               />
             </div>
             <div className="space-y-1.5">
