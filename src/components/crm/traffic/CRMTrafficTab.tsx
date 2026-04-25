@@ -177,6 +177,71 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
     return { campaigns: effectiveCampaigns, adsets: fAdsets, ads: fAds, leadStats: fLeadStats, meetingStats: fMeetingStats };
   }, [campaigns, adsets, ads, links, leadStats, meetingStats, pipelineFilter, campaignFilter, adsetFilter, adFilter, statusFilter, dateFrom, dateTo]);
 
+  // Opções dos selects respeitando o filtro de Status (e cascata Campanha → Conjunto → Anúncio)
+  const availableOptions = useMemo(() => {
+    const matchStatus = (status?: string | null) => {
+      if (statusFilter === "all") return true;
+      const isActive = (status || "").toUpperCase() === "ACTIVE";
+      return statusFilter === "active" ? isActive : !isActive;
+    };
+
+    const statusOkCampaigns = campaigns.filter((c) => matchStatus(c.status));
+    const statusOkCampaignIds = new Set(statusOkCampaigns.map((c) => c.campaign_id));
+
+    // Funis: somente os com pelo menos uma campanha que bate com o status
+    const linkedPipelineIds = new Set(
+      links.filter((l) => statusOkCampaignIds.has(l.campaign_id)).map((l) => l.pipeline_id),
+    );
+    const pipelineOptions = pipelines
+      .filter((p) => linkedPipelineIds.has(p.id))
+      .map((p) => ({ value: p.id, label: p.name }));
+
+    // Campanhas: status + funil selecionado
+    const pipeSet = pipelineFilter.length > 0 ? new Set(pipelineFilter) : null;
+    const campaignIdsAllowedByPipe = pipeSet
+      ? new Set(links.filter((l) => pipeSet.has(l.pipeline_id)).map((l) => l.campaign_id))
+      : null;
+    const campaignOptions = Array.from(
+      new Map(
+        statusOkCampaigns
+          .filter((c) => !campaignIdsAllowedByPipe || campaignIdsAllowedByPipe.has(c.campaign_id))
+          .map((c) => [c.campaign_id, { value: c.campaign_id, label: c.campaign_name || c.campaign_id }]),
+      ).values(),
+    );
+
+    const allowedCampaignIdsForChildren = new Set(campaignOptions.map((o) => o.value));
+    const campSelectedSet = campaignFilter.length > 0 ? new Set(campaignFilter) : null;
+
+    const adsetOptions = Array.from(
+      new Map(
+        adsets
+          .filter((a) => matchStatus(a.status))
+          .filter((a) => a.campaign_id && allowedCampaignIdsForChildren.has(a.campaign_id))
+          .filter((a) => !campSelectedSet || (a.campaign_id && campSelectedSet.has(a.campaign_id)))
+          .map((a) => [a.adset_id, { value: a.adset_id, label: a.adset_name || a.adset_id }]),
+      ).values(),
+    );
+
+    const adsetSelectedSet = adsetFilter.length > 0 ? new Set(adsetFilter) : null;
+    const adOptions = Array.from(
+      new Map(
+        ads
+          .filter((a) => matchStatus(a.status))
+          .filter((a) => a.campaign_id && allowedCampaignIdsForChildren.has(a.campaign_id))
+          .filter((a) => !campSelectedSet || (a.campaign_id && campSelectedSet.has(a.campaign_id)))
+          .filter((a) => !adsetSelectedSet || (a.adset_id && adsetSelectedSet.has(a.adset_id)))
+          .map((a) => [a.ad_id, { value: a.ad_id, label: a.ad_name || a.ad_id }]),
+      ).values(),
+    );
+
+    return { pipelineOptions, campaignOptions, adsetOptions, adOptions };
+  }, [campaigns, adsets, ads, links, pipelines, statusFilter, pipelineFilter, campaignFilter, adsetFilter]);
+
+  const availablePipelineOptions = availableOptions.pipelineOptions;
+  const availableCampaignOptions = availableOptions.campaignOptions;
+  const availableAdsetOptions = availableOptions.adsetOptions;
+  const availableAdOptions = availableOptions.adOptions;
+
   const hasFilters = pipelineFilter.length > 0 || campaignFilter.length > 0 || adsetFilter.length > 0 || adFilter.length > 0 || statusFilter !== "active" || dateFrom || dateTo;
   const clearFilters = () => {
     setPipelineFilter([]);
@@ -323,7 +388,7 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
                 values={pipelineFilter}
                 onChange={setPipelineFilter}
                 allLabel="Todos os funis"
-                options={pipelines.map((p) => ({ value: p.id, label: p.name }))}
+                options={availablePipelineOptions}
               />
             </div>
             <div className="space-y-1.5">
@@ -344,11 +409,7 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
                 values={campaignFilter}
                 onChange={setCampaignFilter}
                 allLabel="Todas as campanhas"
-                options={Array.from(
-                  new Map(
-                    campaigns.map((c) => [c.campaign_id, { value: c.campaign_id, label: c.campaign_name || c.campaign_id }]),
-                  ).values(),
-                )}
+                options={availableCampaignOptions}
               />
             </div>
             <div className="space-y-1.5">
@@ -357,13 +418,7 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
                 values={adsetFilter}
                 onChange={setAdsetFilter}
                 allLabel="Todos os conjuntos"
-                options={Array.from(
-                  new Map(
-                    adsets
-                      .filter((a) => campaignFilter.length === 0 || campaignFilter.includes(a.campaign_id || ""))
-                      .map((a) => [a.adset_id, { value: a.adset_id, label: a.adset_name || a.adset_id }]),
-                  ).values(),
-                )}
+                options={availableAdsetOptions}
               />
             </div>
             <div className="space-y-1.5">
@@ -372,17 +427,7 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
                 values={adFilter}
                 onChange={setAdFilter}
                 allLabel="Todos os anúncios"
-                options={Array.from(
-                  new Map(
-                    ads
-                      .filter((a) => {
-                        if (campaignFilter.length > 0 && !campaignFilter.includes(a.campaign_id || "")) return false;
-                        if (adsetFilter.length > 0 && !adsetFilter.includes(a.adset_id || "")) return false;
-                        return true;
-                      })
-                      .map((a) => [a.ad_id, { value: a.ad_id, label: a.ad_name || a.ad_id }]),
-                  ).values(),
-                )}
+                options={availableAdOptions}
               />
             </div>
           </div>
