@@ -143,64 +143,77 @@ export const CRMTrafficDashboard = ({
   return (
     <div className="space-y-6">
       {/* KPIs gerais */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KPI icon={DollarSign} label="Investimento" value={fmtBRL(totals.spend)} color="#3b82f6" />
-        <KPI icon={Eye} label="Impressões" value={fmtInt(totals.impressions)} color="#8b5cf6" />
-        <KPI icon={MousePointerClick} label="Cliques" value={fmtInt(totals.clicks)} color="#06b6d4" />
-        <KPI icon={Users} label="Leads (Meta)" value={fmtInt(totals.leads)} color="#10b981" />
-        <KPI icon={TrendingDown} label="CPL" value={fmtBRL(totals.cpl)} color="#f59e0b" hint="Custo por Lead" />
-        <KPI icon={CalendarClock} label="Custo / Reunião Agendada" value={fmtBRL(meetingTotals.cost_per_scheduled)} color="#0ea5e9" hint={`${fmtInt(meetingTotals.scheduled)} agendadas`} />
-        <KPI icon={CalendarCheck} label="Custo / Reunião Realizada" value={fmtBRL(meetingTotals.cost_per_realized)} color="#14b8a6" hint={`${fmtInt(meetingTotals.realized)} realizadas`} />
-        <KPI icon={Target} label="CAC" value={fmtBRL(crmTotals.cac)} color="#ef4444" hint={`${fmtInt(crmTotals.won)} vendas`} />
-        <KPI icon={TrendingUp} label="ROAS" value={`${(crmTotals.roas || 0).toFixed(2)}x`} color="#22c55e" />
-        <KPI icon={MousePointerClick} label="CTR" value={fmtPct(totals.ctr)} color="#a855f7" />
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        <KPI icon={DollarSign} label="Investimento" value={fmtBRL(totals.spend)} gradient="from-blue-500 to-indigo-600" />
+        <KPI icon={Eye} label="Impressões" value={fmtInt(totals.impressions)} gradient="from-violet-500 to-purple-600" />
+        <KPI icon={MousePointerClick} label="Cliques" value={fmtInt(totals.clicks)} gradient="from-cyan-500 to-sky-600" />
+        <KPI icon={Users} label="Leads (Meta)" value={fmtInt(totals.leads)} gradient="from-emerald-500 to-green-600" />
+        <KPI icon={TrendingDown} label="CPL" value={fmtBRL(totals.cpl)} gradient="from-amber-500 to-orange-600" hint="Custo por Lead" />
+        <KPI icon={CalendarClock} label="Custo / Reun. Agendada" value={fmtBRL(meetingTotals.cost_per_scheduled)} gradient="from-sky-500 to-blue-600" hint={`${fmtInt(meetingTotals.scheduled)} agendadas`} />
+        <KPI icon={CalendarCheck} label="Custo / Reun. Realizada" value={fmtBRL(meetingTotals.cost_per_realized)} gradient="from-teal-500 to-cyan-600" hint={`${fmtInt(meetingTotals.realized)} realizadas`} />
+        <KPI icon={Target} label="CAC" value={fmtBRL(crmTotals.cac)} gradient="from-rose-500 to-red-600" hint={`${fmtInt(crmTotals.won)} vendas`} />
+        <KPI icon={TrendingUp} label="ROAS" value={`${(crmTotals.roas || 0).toFixed(2)}x`} gradient="from-green-500 to-emerald-600" />
+        <KPI icon={MousePointerClick} label="CTR" value={fmtPct(totals.ctr)} gradient="from-fuchsia-500 to-pink-600" />
       </div>
 
       {/* Métricas por Funil — destaque */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Target className="h-4 w-4" /> Custo por Funil
+      <Card className="overflow-hidden border-border/40 shadow-lg">
+        <div className="h-1 bg-gradient-to-r from-blue-500 via-violet-500 to-pink-500" />
+        <CardHeader className="pb-3 bg-gradient-to-br from-muted/40 to-transparent">
+          <CardTitle className="flex items-center gap-2.5 text-base">
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 shadow-md">
+              <Target className="h-4 w-4 text-white" />
+            </div>
+            Custo por Funil
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           {perPipeline.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">
               Vincule campanhas a funis para visualizar o custo por funil.
             </p>
           ) : (
-            <div className="overflow-auto">
+            <div className="overflow-auto rounded-lg border border-border/40">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-xs text-muted-foreground">
-                    <th className="text-left py-2 px-2">Funil</th>
-                    <th className="text-right py-2 px-2">Investido</th>
-                    <th className="text-right py-2 px-2">Leads (CRM)</th>
-                    <th className="text-right py-2 px-2">CPL</th>
-                    <th className="text-right py-2 px-2">Reun. Agend.</th>
-                    <th className="text-right py-2 px-2">Custo / Agend.</th>
-                    <th className="text-right py-2 px-2">Reun. Real.</th>
-                    <th className="text-right py-2 px-2">Custo / Real.</th>
-                    <th className="text-right py-2 px-2">Vendas</th>
-                    <th className="text-right py-2 px-2">CAC</th>
-                    <th className="text-right py-2 px-2">ROAS</th>
+                  <tr className="bg-gradient-to-r from-muted/60 to-muted/20 text-xs text-muted-foreground">
+                    <th className="text-left py-2.5 px-3 font-semibold">Funil</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">Investido</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">Leads (CRM)</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">CPL</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">Reun. Agend.</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">Custo / Agend.</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">Reun. Real.</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">Custo / Real.</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">Vendas</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">CAC</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">ROAS</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {perPipeline.map((r) => (
-                    <tr key={r.pipeline_id} className="border-b border-border/40 hover:bg-muted/30">
-                      <td className="py-2 px-2 font-medium">{r.pipeline_name}</td>
-                      <td className="text-right py-2 px-2">{fmtBRL(r.spend)}</td>
-                      <td className="text-right py-2 px-2">{fmtInt(r.leads_crm)}</td>
-                      <td className="text-right py-2 px-2 font-semibold">{fmtBRL(r.cpl)}</td>
-                      <td className="text-right py-2 px-2">{fmtInt(r.meetings_scheduled)}</td>
-                      <td className="text-right py-2 px-2 font-semibold">{fmtBRL(r.cost_per_scheduled)}</td>
-                      <td className="text-right py-2 px-2">{fmtInt(r.meetings_realized)}</td>
-                      <td className="text-right py-2 px-2 font-semibold">{fmtBRL(r.cost_per_realized)}</td>
-                      <td className="text-right py-2 px-2">{fmtInt(r.won)}</td>
-                      <td className="text-right py-2 px-2 font-semibold">{fmtBRL(r.cac)}</td>
-                      <td className="text-right py-2 px-2">
-                        <Badge variant={r.roas >= 1 ? "default" : "secondary"}>
+                  {perPipeline.map((r, idx) => (
+                    <tr
+                      key={r.pipeline_id}
+                      className={`border-t border-border/40 hover:bg-gradient-to-r hover:from-blue-500/5 hover:to-violet-500/5 transition-colors ${idx % 2 === 0 ? "bg-muted/10" : ""}`}
+                    >
+                      <td className="py-2.5 px-3 font-semibold">{r.pipeline_name}</td>
+                      <td className="text-right py-2.5 px-3 tabular-nums">{fmtBRL(r.spend)}</td>
+                      <td className="text-right py-2.5 px-3 tabular-nums">{fmtInt(r.leads_crm)}</td>
+                      <td className="text-right py-2.5 px-3 font-semibold tabular-nums text-amber-600 dark:text-amber-400">{fmtBRL(r.cpl)}</td>
+                      <td className="text-right py-2.5 px-3 tabular-nums">{fmtInt(r.meetings_scheduled)}</td>
+                      <td className="text-right py-2.5 px-3 font-semibold tabular-nums text-sky-600 dark:text-sky-400">{fmtBRL(r.cost_per_scheduled)}</td>
+                      <td className="text-right py-2.5 px-3 tabular-nums">{fmtInt(r.meetings_realized)}</td>
+                      <td className="text-right py-2.5 px-3 font-semibold tabular-nums text-teal-600 dark:text-teal-400">{fmtBRL(r.cost_per_realized)}</td>
+                      <td className="text-right py-2.5 px-3 tabular-nums">{fmtInt(r.won)}</td>
+                      <td className="text-right py-2.5 px-3 font-semibold tabular-nums text-rose-600 dark:text-rose-400">{fmtBRL(r.cac)}</td>
+                      <td className="text-right py-2.5 px-3">
+                        <Badge
+                          className={`tabular-nums border-0 ${
+                            r.roas >= 1
+                              ? "bg-gradient-to-r from-emerald-500 to-green-600 text-white"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
                           {r.roas.toFixed(2)}x
                         </Badge>
                       </td>
@@ -215,22 +228,28 @@ export const CRMTrafficDashboard = ({
 
       {/* Drill-down */}
       <Tabs defaultValue="campaigns" className="w-full">
-        <TabsList>
-          <TabsTrigger value="campaigns" className="gap-1">
+        <TabsList className="bg-muted/40 backdrop-blur-sm">
+          <TabsTrigger value="campaigns" className="gap-1.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-md">
             <Layers className="h-3.5 w-3.5" /> Campanhas
           </TabsTrigger>
-          <TabsTrigger value="adsets" className="gap-1">
+          <TabsTrigger value="adsets" className="gap-1.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md">
             <Layers className="h-3.5 w-3.5" /> Conjuntos
           </TabsTrigger>
-          <TabsTrigger value="creatives" className="gap-1">
+          <TabsTrigger value="creatives" className="gap-1.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-fuchsia-500 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-md">
             <ImageIcon className="h-3.5 w-3.5" /> Criativos
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="campaigns" className="mt-4">
-          <Card>
+          <Card className="overflow-hidden border-border/40 shadow-md">
+            <div className="h-1 bg-gradient-to-r from-blue-500 to-violet-600" />
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Top Campanhas por Investimento</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 shadow-md">
+                  <Layers className="h-4 w-4 text-white" />
+                </div>
+                Top Campanhas por Investimento
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-72 mb-4">
@@ -239,11 +258,20 @@ export const CRMTrafficDashboard = ({
                     name: (c.campaign_name || "").slice(0, 24),
                     spend: Number(c.spend), leads: Number(c.leads),
                   }))}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-25} textAnchor="end" height={70} />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <Tooltip formatter={(v: any, k: string) => k === "spend" ? fmtBRL(Number(v)) : fmtInt(Number(v))} />
-                    <Bar dataKey="spend" fill="#3b82f6" name="Investido" />
+                    <defs>
+                      <linearGradient id="spendGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.8} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-25} textAnchor="end" height={70} stroke="hsl(var(--muted-foreground))" />
+                    <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                    <Tooltip
+                      formatter={(v: any, k: string) => k === "spend" ? fmtBRL(Number(v)) : fmtInt(Number(v))}
+                      contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                    />
+                    <Bar dataKey="spend" fill="url(#spendGradient)" name="Investido" radius={[8, 8, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -253,9 +281,15 @@ export const CRMTrafficDashboard = ({
         </TabsContent>
 
         <TabsContent value="adsets" className="mt-4">
-          <Card>
+          <Card className="overflow-hidden border-border/40 shadow-md">
+            <div className="h-1 bg-gradient-to-r from-cyan-500 to-blue-600" />
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Conjuntos de Anúncios</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 shadow-md">
+                  <Layers className="h-4 w-4 text-white" />
+                </div>
+                Conjuntos de Anúncios
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <AdsetTable adsets={adsets.slice(0, 30)} />
@@ -264,9 +298,15 @@ export const CRMTrafficDashboard = ({
         </TabsContent>
 
         <TabsContent value="creatives" className="mt-4">
-          <Card>
+          <Card className="overflow-hidden border-border/40 shadow-md">
+            <div className="h-1 bg-gradient-to-r from-fuchsia-500 to-pink-600" />
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Top Criativos</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-fuchsia-500 to-pink-600 shadow-md">
+                  <ImageIcon className="h-4 w-4 text-white" />
+                </div>
+                Top Criativos
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -274,10 +314,10 @@ export const CRMTrafficDashboard = ({
                   const cpl = safeDiv(Number(ad.spend), Number(ad.leads));
                   const cac = safeDiv(Number(ad.spend), Number(ad.conversions));
                   return (
-                    <div key={ad.id} className="rounded-xl border border-border/40 overflow-hidden bg-card hover:shadow-md transition">
-                      <div className="aspect-video bg-muted overflow-hidden flex items-center justify-center">
+                    <div key={ad.id} className="group rounded-xl border border-border/40 overflow-hidden bg-card hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
+                      <div className="aspect-video bg-gradient-to-br from-muted to-muted/40 overflow-hidden flex items-center justify-center relative">
                         {ad.creative_thumbnail_url ? (
-                          <img src={ad.creative_thumbnail_url} alt={ad.ad_name || ""} className="w-full h-full object-cover" />
+                          <img src={ad.creative_thumbnail_url} alt={ad.ad_name || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         ) : (
                           <ImageIcon className="h-10 w-10 text-muted-foreground/40" />
                         )}
@@ -312,18 +352,22 @@ export const CRMTrafficDashboard = ({
 };
 
 const KPI = ({
-  icon: Icon, label, value, color, hint,
-}: { icon: any; label: string; value: string; color: string; hint?: string }) => (
-  <Card className="overflow-hidden border-border/40">
-    <CardContent className="p-4">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-          <p className="text-xl font-bold mt-1">{value}</p>
-          {hint && <p className="text-[10px] text-muted-foreground mt-0.5">{hint}</p>}
+  icon: Icon, label, value, gradient, hint,
+}: { icon: any; label: string; value: string; gradient: string; hint?: string }) => (
+  <Card className="overflow-hidden border-border/40 group hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 relative">
+    {/* Glow gradiente atrás */}
+    <div className={`absolute inset-0 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity bg-gradient-to-br ${gradient}`} />
+    {/* Barra de cor no topo */}
+    <div className={`h-1 bg-gradient-to-r ${gradient}`} />
+    <CardContent className="p-4 relative">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold truncate">{label}</p>
+          <p className="text-xl font-bold mt-1.5 tabular-nums truncate">{value}</p>
+          {hint && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{hint}</p>}
         </div>
-        <div className="p-2 rounded-lg" style={{ background: `${color}20` }}>
-          <Icon className="h-4 w-4" style={{ color }} />
+        <div className={`p-2 rounded-lg bg-gradient-to-br ${gradient} shadow-md shrink-0 group-hover:scale-110 transition-transform`}>
+          <Icon className="h-4 w-4 text-white" />
         </div>
       </div>
     </CardContent>

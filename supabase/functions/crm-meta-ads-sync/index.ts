@@ -182,14 +182,11 @@ Deno.serve(async (req) => {
       const fbAccount = acc.ad_account_id; // formato: act_XXX
       const range = todayRangeISO(days || 30);
       const timeRange = encodeURIComponent(JSON.stringify(range));
+      // Breakdown diário: cada linha do insights = 1 dia (permite filtro de data preciso)
+      const timeIncrement = "1";
 
       const insightFields =
         "campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name,impressions,reach,clicks,spend,cpc,cpm,ctr,frequency,actions,action_values";
-
-      // Limpa dados antigos do período para evitar conflito entre agregado antigo e diário novo
-      await supabase.from("crm_meta_ads_campaigns").delete().eq("account_id", acc.id);
-      await supabase.from("crm_meta_ads_adsets").delete().eq("account_id", acc.id);
-      await supabase.from("crm_meta_ads_ads").delete().eq("account_id", acc.id);
 
       // ---- CAMPAIGNS metadata ----
       const campMetaRes = await gj(
@@ -198,11 +195,10 @@ Deno.serve(async (req) => {
       const campsMeta: Record<string, any> = {};
       for (const c of campMetaRes.data || []) campsMeta[c.id] = c;
 
-      // ---- CAMPAIGN insights (breakdown diário via time_increment=1) ----
-      const campInsUrl = `${GRAPH_API}/${fbAccount}/insights?level=campaign&fields=${insightFields}&time_range=${timeRange}&time_increment=1&limit=5000&access_token=${token}`;
-      const campInsRes = await gj(campInsUrl);
-      if (campInsRes.error) console.error("[campaign insights]", campInsRes.error);
-      console.log(`[sync] campaign insights rows=${(campInsRes.data || []).length}`);
+      // ---- CAMPAIGN insights (breakdown diário) ----
+      const campInsRes = await gj(
+        `${GRAPH_API}/${fbAccount}/insights?level=campaign&fields=${insightFields}&time_range=${timeRange}&time_increment=${timeIncrement}&limit=5000&access_token=${token}`,
+      );
       const campaignsRows: any[] = [];
       for (const ins of campInsRes.data || []) {
         const meta = campsMeta[ins.campaign_id] || {};
@@ -261,10 +257,8 @@ Deno.serve(async (req) => {
       for (const a of adsetMetaRes.data || []) adsetsMeta[a.id] = a;
 
       const adsetInsRes = await gj(
-        `${GRAPH_API}/${fbAccount}/insights?level=adset&fields=${insightFields}&time_range=${timeRange}&time_increment=1&limit=5000&access_token=${token}`,
+        `${GRAPH_API}/${fbAccount}/insights?level=adset&fields=${insightFields}&time_range=${timeRange}&time_increment=${timeIncrement}&limit=5000&access_token=${token}`,
       );
-      if (adsetInsRes.error) console.error("[adset insights]", adsetInsRes.error);
-      console.log(`[sync] adset insights rows=${(adsetInsRes.data || []).length}`);
       const adsetRows: any[] = [];
       for (const ins of adsetInsRes.data || []) {
         const meta = adsetsMeta[ins.adset_id] || {};
@@ -316,10 +310,8 @@ Deno.serve(async (req) => {
       for (const a of adMetaRes.data || []) adsMeta[a.id] = a;
 
       const adInsRes = await gj(
-        `${GRAPH_API}/${fbAccount}/insights?level=ad&fields=${insightFields}&time_range=${timeRange}&time_increment=1&limit=5000&access_token=${token}`,
+        `${GRAPH_API}/${fbAccount}/insights?level=ad&fields=${insightFields}&time_range=${timeRange}&time_increment=${timeIncrement}&limit=5000&access_token=${token}`,
       );
-      if (adInsRes.error) console.error("[ad insights]", adInsRes.error);
-      console.log(`[sync] ad insights rows=${(adInsRes.data || []).length}`);
       const adRows: any[] = [];
       for (const ins of adInsRes.data || []) {
         const meta = adsMeta[ins.ad_id] || {};

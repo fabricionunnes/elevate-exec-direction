@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "./SearchableSelect";
-import { MultiSearchableSelect } from "./MultiSearchableSelect";
 
 interface Props {
   isAdmin: boolean;
@@ -30,8 +29,8 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
   const [openSettings, setOpenSettings] = useState(false);
 
   // Filtros do dashboard
-  const [pipelineFilter, setPipelineFilter] = useState<string[]>([]);
-  const [campaignFilter, setCampaignFilter] = useState<string[]>([]);
+  const [pipelineFilter, setPipelineFilter] = useState<string>("all");
+  const [campaignFilter, setCampaignFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
@@ -79,10 +78,9 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
 
     // Conjunto de campaign_ids permitidos pelo filtro de funil (via vínculos)
     let allowedCampaignIds: Set<string> | null = null;
-    if (pipelineFilter.length > 0) {
-      const pipeSet = new Set(pipelineFilter);
+    if (pipelineFilter !== "all") {
       allowedCampaignIds = new Set(
-        links.filter((l) => pipeSet.has(l.pipeline_id)).map((l) => l.campaign_id),
+        links.filter((l) => l.pipeline_id === pipelineFilter).map((l) => l.campaign_id),
       );
     }
 
@@ -92,10 +90,8 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
       return statusFilter === "active" ? isActive : !isActive;
     };
 
-    const campSet = campaignFilter.length > 0 ? new Set(campaignFilter) : null;
-
     const fCampaigns = campaigns.filter((c) => {
-      if (campSet && !campSet.has(c.campaign_id)) return false;
+      if (campaignFilter !== "all" && c.campaign_id !== campaignFilter) return false;
       if (allowedCampaignIds && !allowedCampaignIds.has(c.campaign_id)) return false;
       if (!matchStatus(c.status)) return false;
       if (!inDate(c.date_start, c.date_stop)) return false;
@@ -123,21 +119,20 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
       if (dateTo && d > dateTo) return false;
       return true;
     };
-    const pipeSet2 = pipelineFilter.length > 0 ? new Set(pipelineFilter) : null;
     const fLeadStats = leadStats.filter(
-      (s) => (!pipeSet2 || pipeSet2.has(s.pipeline_id)) && inDateStr(s.date),
+      (s) => (pipelineFilter === "all" || s.pipeline_id === pipelineFilter) && inDateStr(s.date),
     );
     const fMeetingStats = meetingStats.filter(
-      (s) => (!pipeSet2 || pipeSet2.has(s.pipeline_id)) && inDateStr(s.date),
+      (s) => (pipelineFilter === "all" || s.pipeline_id === pipelineFilter) && inDateStr(s.date),
     );
 
     return { campaigns: fCampaigns, adsets: fAdsets, ads: fAds, leadStats: fLeadStats, meetingStats: fMeetingStats };
   }, [campaigns, adsets, ads, links, leadStats, meetingStats, pipelineFilter, campaignFilter, statusFilter, dateFrom, dateTo]);
 
-  const hasFilters = pipelineFilter.length > 0 || campaignFilter.length > 0 || statusFilter !== "active" || dateFrom || dateTo;
+  const hasFilters = pipelineFilter !== "all" || campaignFilter !== "all" || statusFilter !== "active" || dateFrom || dateTo;
   const clearFilters = () => {
-    setPipelineFilter([]);
-    setCampaignFilter([]);
+    setPipelineFilter("all");
+    setCampaignFilter("all");
     setStatusFilter("active");
     setDateFrom("");
     setDateTo("");
@@ -161,21 +156,31 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
 
   return (
     <div className="space-y-5">
-      {/* Barra de status/ações */}
-      <Card className="border-border/40">
-        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      {/* Hero/status header com gradiente */}
+      <Card className="relative overflow-hidden border-border/40 shadow-xl">
+        {/* Background gradiente sutil */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-violet-500/5 to-pink-500/10" />
+        <div className="absolute -top-24 -right-24 w-64 h-64 bg-gradient-to-br from-blue-500/20 to-violet-500/20 rounded-full blur-3xl" />
+        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-gradient-to-tr from-pink-500/20 to-fuchsia-500/20 rounded-full blur-3xl" />
+
+        <CardContent className="relative p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-lg" style={{ background: "linear-gradient(135deg, #3b82f6, #8b5cf6)" }}>
-              <Megaphone className="h-4 w-4 text-white" />
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 via-violet-500 to-pink-500 shadow-lg ring-1 ring-white/10">
+              <Megaphone className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-bold truncate">{account.ad_account_name || account.ad_account_id}</p>
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                <p className="text-base font-bold truncate bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                  {account.ad_account_name || account.ad_account_id}
+                </p>
+                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                  <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Conectado</span>
+                </div>
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground mt-0.5">
                 {account.last_synced_at
-                  ? `Última sync: ${format(new Date(account.last_synced_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}`
+                  ? `Última sincronização: ${format(new Date(account.last_synced_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
                   : "Ainda não sincronizado"}
               </p>
             </div>
@@ -183,7 +188,7 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
 
           <div className="flex items-center gap-2 flex-wrap">
             <Select value={days} onValueChange={setDays}>
-              <SelectTrigger className="h-9 w-[130px] text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[140px] text-xs bg-background/60 backdrop-blur"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="7">Últimos 7 dias</SelectItem>
                 <SelectItem value="30">Últimos 30 dias</SelectItem>
@@ -192,7 +197,12 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
               </SelectContent>
             </Select>
             {isAdmin && (
-              <Button onClick={handleSync} disabled={syncing} size="sm" className="gap-1.5">
+              <Button
+                onClick={handleSync}
+                disabled={syncing}
+                size="sm"
+                className="gap-1.5 bg-gradient-to-br from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white border-0 shadow-md hover:shadow-lg transition-all"
+              >
                 {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                 Sincronizar
               </Button>
@@ -200,7 +210,7 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
             {isAdmin && (
               <Sheet open={openSettings} onOpenChange={setOpenSettings}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1.5">
+                  <Button variant="outline" size="sm" className="gap-1.5 bg-background/60 backdrop-blur">
                     <Settings2 className="h-3.5 w-3.5" /> Vínculos
                   </Button>
                 </SheetTrigger>
@@ -221,7 +231,7 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
               </Sheet>
             )}
             {isAdmin && (
-              <Button onClick={handleDisconnect} variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+              <Button onClick={handleDisconnect} variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-destructive">
                 <Plug2 className="h-3.5 w-3.5" /> Desconectar
               </Button>
             )}
@@ -230,13 +240,15 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
       </Card>
 
       {/* Filtros */}
-      <Card className="border-border/40">
+      <Card className="border-border/40 shadow-sm">
         <CardContent className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Filter className="h-4 w-4 text-muted-foreground" />
+            <div className="p-1 rounded-md bg-gradient-to-br from-blue-500/20 to-violet-500/20">
+              <Filter className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+            </div>
             <p className="text-sm font-semibold">Filtros</p>
             {hasFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="ml-auto h-7 text-xs gap-1">
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="ml-auto h-7 text-xs gap-1 hover:text-destructive">
                 <X className="h-3 w-3" /> Limpar
               </Button>
             )}
@@ -256,23 +268,27 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
             </div>
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground">Funil</Label>
-              <MultiSearchableSelect
-                values={pipelineFilter}
+              <SearchableSelect
+                value={pipelineFilter}
                 onChange={setPipelineFilter}
-                allLabel="Todos os funis"
-                options={pipelines.map((p) => ({ value: p.id, label: p.name }))}
+                options={[
+                  { value: "all", label: "Todos os funis" },
+                  ...pipelines.map((p) => ({ value: p.id, label: p.name })),
+                ]}
               />
             </div>
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground">Campanha</Label>
-              <MultiSearchableSelect
-                values={campaignFilter}
+              <SearchableSelect
+                value={campaignFilter}
                 onChange={setCampaignFilter}
-                allLabel="Todas as campanhas"
-                options={campaigns.map((c) => ({
-                  value: c.campaign_id,
-                  label: c.campaign_name || c.campaign_id,
-                }))}
+                options={[
+                  { value: "all", label: "Todas as campanhas" },
+                  ...campaigns.map((c) => ({
+                    value: c.campaign_id,
+                    label: c.campaign_name || c.campaign_id,
+                  })),
+                ]}
               />
             </div>
             <div className="space-y-1.5">
