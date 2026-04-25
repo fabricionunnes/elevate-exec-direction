@@ -298,6 +298,7 @@ export function useCRMTrafficData() {
     leadStats,
     meetingStats,
     adLeadStats,
+    diagnostics,
     loading,
     reload,
   };
