@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "./SearchableSelect";
+import { MultiSearchableSelect } from "./MultiSearchableSelect";
 
 interface Props {
   isAdmin: boolean;
@@ -30,7 +31,7 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
 
   // Filtros do dashboard
   const [pipelineFilter, setPipelineFilter] = useState<string>("all");
-  const [campaignFilter, setCampaignFilter] = useState<string>("all");
+  const [campaignFilter, setCampaignFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
@@ -90,8 +91,9 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
       return statusFilter === "active" ? isActive : !isActive;
     };
 
+    const campSet = campaignFilter.length > 0 ? new Set(campaignFilter) : null;
     const fCampaigns = campaigns.filter((c) => {
-      if (campaignFilter !== "all" && c.campaign_id !== campaignFilter) return false;
+      if (campSet && !campSet.has(c.campaign_id)) return false;
       if (allowedCampaignIds && !allowedCampaignIds.has(c.campaign_id)) return false;
       if (!matchStatus(c.status)) return false;
       if (!inDate(c.date_start, c.date_stop)) return false;
@@ -129,10 +131,10 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
     return { campaigns: fCampaigns, adsets: fAdsets, ads: fAds, leadStats: fLeadStats, meetingStats: fMeetingStats };
   }, [campaigns, adsets, ads, links, leadStats, meetingStats, pipelineFilter, campaignFilter, statusFilter, dateFrom, dateTo]);
 
-  const hasFilters = pipelineFilter !== "all" || campaignFilter !== "all" || statusFilter !== "active" || dateFrom || dateTo;
+  const hasFilters = pipelineFilter !== "all" || campaignFilter.length > 0 || statusFilter !== "active" || dateFrom || dateTo;
   const clearFilters = () => {
     setPipelineFilter("all");
-    setCampaignFilter("all");
+    setCampaignFilter([]);
     setStatusFilter("active");
     setDateFrom("");
     setDateTo("");
@@ -279,16 +281,14 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
             </div>
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground">Campanha</Label>
-              <SearchableSelect
-                value={campaignFilter}
+              <MultiSearchableSelect
+                values={campaignFilter}
                 onChange={setCampaignFilter}
-                options={[
-                  { value: "all", label: "Todas as campanhas" },
-                  ...campaigns.map((c) => ({
-                    value: c.campaign_id,
-                    label: c.campaign_name || c.campaign_id,
-                  })),
-                ]}
+                allLabel="Todas as campanhas"
+                options={campaigns.map((c) => ({
+                  value: c.campaign_id,
+                  label: c.campaign_name || c.campaign_id,
+                }))}
               />
             </div>
             <div className="space-y-1.5">
