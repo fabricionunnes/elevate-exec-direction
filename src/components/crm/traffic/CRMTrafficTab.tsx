@@ -30,8 +30,10 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
   const [openSettings, setOpenSettings] = useState(false);
 
   // Filtros do dashboard
-  const [pipelineFilter, setPipelineFilter] = useState<string>("all");
+  const [pipelineFilter, setPipelineFilter] = useState<string[]>([]);
   const [campaignFilter, setCampaignFilter] = useState<string[]>([]);
+  const [adsetFilter, setAdsetFilter] = useState<string[]>([]);
+  const [adFilter, setAdFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
