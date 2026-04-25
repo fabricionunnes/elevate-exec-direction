@@ -5,7 +5,8 @@ import {
   Mail, 
   Building2, 
   MessageSquare,
-  Clock 
+  Clock,
+  Megaphone,
 } from "lucide-react";
 import { TwilioCallButton } from "@/components/crm/TwilioCallButton";
 import { formatDistanceToNow } from "date-fns";
@@ -29,6 +30,9 @@ interface Lead {
   last_activity_at: string | null;
   stage_entered_at?: string | null;
   urgency: string | null;
+  utm_source?: string | null;
+  utm_campaign?: string | null;
+  utm_content?: string | null;
   origin?: { name: string } | null;
   owner?: { name: string; avatar_url?: string | null } | null;
   tags?: { tag: { id: string; name: string; color: string } }[];
