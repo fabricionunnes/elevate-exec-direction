@@ -498,9 +498,11 @@ export const CRMDashboardPage = () => {
           <TabsTrigger value="overview" className="gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
             <BarChart3 className="h-3.5 w-3.5" /> Visão Geral
           </TabsTrigger>
-          <TabsTrigger value="traffic" className="gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-            <Megaphone className="h-3.5 w-3.5" /> Tráfego Pago
-          </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="traffic" className="gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <Megaphone className="h-3.5 w-3.5" /> Tráfego Pago
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="overview" className="mt-5 space-y-6">
