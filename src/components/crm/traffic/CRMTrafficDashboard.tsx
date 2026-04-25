@@ -493,6 +493,72 @@ export const CRMTrafficDashboard = ({
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="byad" className="mt-4">
+          <Card className="overflow-hidden border-border/40 shadow-md">
+            <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-600" />
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md">
+                  <Megaphone className="h-4 w-4 text-white" />
+                </div>
+                Atribuição direta por Anúncio
+                <Badge variant="outline" className="ml-2 text-[10px]">
+                  via meta_ad_id
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {perAd.length === 0 ? (
+                <div className="text-center py-8 space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Nenhum lead com <code className="text-xs bg-muted px-1 rounded">meta_ad_id</code> ainda.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Configure os Parâmetros de URL nos seus anúncios do Meta Ads para começar a rastrear.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-auto rounded-lg border border-border/40">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-muted/60 to-muted/20 text-xs text-muted-foreground">
+                        <th className="text-left py-2.5 px-3 font-semibold">Anúncio</th>
+                        <th className="text-left py-2.5 px-3 font-semibold">Campanha</th>
+                        <th className="text-right py-2.5 px-3 font-semibold">Investido</th>
+                        <th className="text-right py-2.5 px-3 font-semibold">Leads</th>
+                        <th className="text-right py-2.5 px-3 font-semibold">CPL</th>
+                        <th className="text-right py-2.5 px-3 font-semibold">Vendas</th>
+                        <th className="text-right py-2.5 px-3 font-semibold">CAC</th>
+                        <th className="text-right py-2.5 px-3 font-semibold">Receita</th>
+                        <th className="text-right py-2.5 px-3 font-semibold">ROAS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {perAd.map((r, idx) => (
+                        <tr key={r.meta_ad_id} className={`border-t border-border/40 hover:bg-emerald-500/5 transition-colors ${idx % 2 === 0 ? "bg-muted/10" : ""}`}>
+                          <td className="py-2.5 px-3 font-semibold max-w-[260px] truncate" title={r.ad_name}>{r.ad_name}</td>
+                          <td className="py-2.5 px-3 text-muted-foreground max-w-[200px] truncate" title={r.campaign_name}>{r.campaign_name || "—"}</td>
+                          <td className="text-right py-2.5 px-3 tabular-nums">{fmtBRL(r.spend)}</td>
+                          <td className="text-right py-2.5 px-3 tabular-nums">{fmtInt(r.leads)}</td>
+                          <td className="text-right py-2.5 px-3 tabular-nums font-semibold text-amber-600 dark:text-amber-400">{fmtBRL(r.cpl)}</td>
+                          <td className="text-right py-2.5 px-3 tabular-nums">{fmtInt(r.won)}</td>
+                          <td className="text-right py-2.5 px-3 tabular-nums font-semibold text-rose-600 dark:text-rose-400">{fmtBRL(r.cac)}</td>
+                          <td className="text-right py-2.5 px-3 tabular-nums">{fmtBRL(r.won_value)}</td>
+                          <td className="text-right py-2.5 px-3">
+                            <Badge className={`tabular-nums border-0 ${r.roas >= 1 ? "bg-gradient-to-r from-emerald-500 to-green-600 text-white" : "bg-muted text-muted-foreground"}`}>
+                              {r.roas.toFixed(2)}x
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
