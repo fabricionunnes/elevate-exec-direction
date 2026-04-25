@@ -131,64 +131,77 @@ export const CRMTrafficDashboard = ({
   return (
     <div className="space-y-6">
       {/* KPIs gerais */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KPI icon={DollarSign} label="Investimento" value={fmtBRL(totals.spend)} color="#3b82f6" />
-        <KPI icon={Eye} label="Impressões" value={fmtInt(totals.impressions)} color="#8b5cf6" />
-        <KPI icon={MousePointerClick} label="Cliques" value={fmtInt(totals.clicks)} color="#06b6d4" />
-        <KPI icon={Users} label="Leads (Meta)" value={fmtInt(totals.leads)} color="#10b981" />
-        <KPI icon={TrendingDown} label="CPL" value={fmtBRL(totals.cpl)} color="#f59e0b" hint="Custo por Lead" />
-        <KPI icon={CalendarClock} label="Custo / Reunião Agendada" value={fmtBRL(meetingTotals.cost_per_scheduled)} color="#0ea5e9" hint={`${fmtInt(meetingTotals.scheduled)} agendadas`} />
-        <KPI icon={CalendarCheck} label="Custo / Reunião Realizada" value={fmtBRL(meetingTotals.cost_per_realized)} color="#14b8a6" hint={`${fmtInt(meetingTotals.realized)} realizadas`} />
-        <KPI icon={Target} label="CAC" value={fmtBRL(totals.cac)} color="#ef4444" hint="Custo por Venda" />
-        <KPI icon={TrendingUp} label="ROAS" value={`${(totals.roas || 0).toFixed(2)}x`} color="#22c55e" />
-        <KPI icon={MousePointerClick} label="CTR" value={fmtPct(totals.ctr)} color="#a855f7" />
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        <KPI icon={DollarSign} label="Investimento" value={fmtBRL(totals.spend)} gradient="from-blue-500 to-indigo-600" />
+        <KPI icon={Eye} label="Impressões" value={fmtInt(totals.impressions)} gradient="from-violet-500 to-purple-600" />
+        <KPI icon={MousePointerClick} label="Cliques" value={fmtInt(totals.clicks)} gradient="from-cyan-500 to-sky-600" />
+        <KPI icon={Users} label="Leads (Meta)" value={fmtInt(totals.leads)} gradient="from-emerald-500 to-green-600" />
+        <KPI icon={TrendingDown} label="CPL" value={fmtBRL(totals.cpl)} gradient="from-amber-500 to-orange-600" hint="Custo por Lead" />
+        <KPI icon={CalendarClock} label="Custo / Reun. Agendada" value={fmtBRL(meetingTotals.cost_per_scheduled)} gradient="from-sky-500 to-blue-600" hint={`${fmtInt(meetingTotals.scheduled)} agendadas`} />
+        <KPI icon={CalendarCheck} label="Custo / Reun. Realizada" value={fmtBRL(meetingTotals.cost_per_realized)} gradient="from-teal-500 to-cyan-600" hint={`${fmtInt(meetingTotals.realized)} realizadas`} />
+        <KPI icon={Target} label="CAC" value={fmtBRL(crmTotals.cac)} gradient="from-rose-500 to-red-600" hint={`${fmtInt(crmTotals.won)} vendas`} />
+        <KPI icon={TrendingUp} label="ROAS" value={`${(crmTotals.roas || 0).toFixed(2)}x`} gradient="from-green-500 to-emerald-600" />
+        <KPI icon={MousePointerClick} label="CTR" value={fmtPct(totals.ctr)} gradient="from-fuchsia-500 to-pink-600" />
       </div>
 
       {/* Métricas por Funil — destaque */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Target className="h-4 w-4" /> Custo por Funil
+      <Card className="overflow-hidden border-border/40 shadow-lg">
+        <div className="h-1 bg-gradient-to-r from-blue-500 via-violet-500 to-pink-500" />
+        <CardHeader className="pb-3 bg-gradient-to-br from-muted/40 to-transparent">
+          <CardTitle className="flex items-center gap-2.5 text-base">
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 shadow-md">
+              <Target className="h-4 w-4 text-white" />
+            </div>
+            Custo por Funil
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           {perPipeline.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">
               Vincule campanhas a funis para visualizar o custo por funil.
             </p>
           ) : (
-            <div className="overflow-auto">
+            <div className="overflow-auto rounded-lg border border-border/40">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-xs text-muted-foreground">
-                    <th className="text-left py-2 px-2">Funil</th>
-                    <th className="text-right py-2 px-2">Investido</th>
-                    <th className="text-right py-2 px-2">Leads (CRM)</th>
-                    <th className="text-right py-2 px-2">CPL</th>
-                    <th className="text-right py-2 px-2">Reun. Agend.</th>
-                    <th className="text-right py-2 px-2">Custo / Agend.</th>
-                    <th className="text-right py-2 px-2">Reun. Real.</th>
-                    <th className="text-right py-2 px-2">Custo / Real.</th>
-                    <th className="text-right py-2 px-2">Vendas</th>
-                    <th className="text-right py-2 px-2">CAC</th>
-                    <th className="text-right py-2 px-2">ROAS</th>
+                  <tr className="bg-gradient-to-r from-muted/60 to-muted/20 text-xs text-muted-foreground">
+                    <th className="text-left py-2.5 px-3 font-semibold">Funil</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">Investido</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">Leads (CRM)</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">CPL</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">Reun. Agend.</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">Custo / Agend.</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">Reun. Real.</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">Custo / Real.</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">Vendas</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">CAC</th>
+                    <th className="text-right py-2.5 px-3 font-semibold">ROAS</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {perPipeline.map((r) => (
-                    <tr key={r.pipeline_id} className="border-b border-border/40 hover:bg-muted/30">
-                      <td className="py-2 px-2 font-medium">{r.pipeline_name}</td>
-                      <td className="text-right py-2 px-2">{fmtBRL(r.spend)}</td>
-                      <td className="text-right py-2 px-2">{fmtInt(r.leads_crm)}</td>
-                      <td className="text-right py-2 px-2 font-semibold">{fmtBRL(r.cpl)}</td>
-                      <td className="text-right py-2 px-2">{fmtInt(r.meetings_scheduled)}</td>
-                      <td className="text-right py-2 px-2 font-semibold">{fmtBRL(r.cost_per_scheduled)}</td>
-                      <td className="text-right py-2 px-2">{fmtInt(r.meetings_realized)}</td>
-                      <td className="text-right py-2 px-2 font-semibold">{fmtBRL(r.cost_per_realized)}</td>
-                      <td className="text-right py-2 px-2">{fmtInt(r.won)}</td>
-                      <td className="text-right py-2 px-2 font-semibold">{fmtBRL(r.cac)}</td>
-                      <td className="text-right py-2 px-2">
-                        <Badge variant={r.roas >= 1 ? "default" : "secondary"}>
+                  {perPipeline.map((r, idx) => (
+                    <tr
+                      key={r.pipeline_id}
+                      className={`border-t border-border/40 hover:bg-gradient-to-r hover:from-blue-500/5 hover:to-violet-500/5 transition-colors ${idx % 2 === 0 ? "bg-muted/10" : ""}`}
+                    >
+                      <td className="py-2.5 px-3 font-semibold">{r.pipeline_name}</td>
+                      <td className="text-right py-2.5 px-3 tabular-nums">{fmtBRL(r.spend)}</td>
+                      <td className="text-right py-2.5 px-3 tabular-nums">{fmtInt(r.leads_crm)}</td>
+                      <td className="text-right py-2.5 px-3 font-semibold tabular-nums text-amber-600 dark:text-amber-400">{fmtBRL(r.cpl)}</td>
+                      <td className="text-right py-2.5 px-3 tabular-nums">{fmtInt(r.meetings_scheduled)}</td>
+                      <td className="text-right py-2.5 px-3 font-semibold tabular-nums text-sky-600 dark:text-sky-400">{fmtBRL(r.cost_per_scheduled)}</td>
+                      <td className="text-right py-2.5 px-3 tabular-nums">{fmtInt(r.meetings_realized)}</td>
+                      <td className="text-right py-2.5 px-3 font-semibold tabular-nums text-teal-600 dark:text-teal-400">{fmtBRL(r.cost_per_realized)}</td>
+                      <td className="text-right py-2.5 px-3 tabular-nums">{fmtInt(r.won)}</td>
+                      <td className="text-right py-2.5 px-3 font-semibold tabular-nums text-rose-600 dark:text-rose-400">{fmtBRL(r.cac)}</td>
+                      <td className="text-right py-2.5 px-3">
+                        <Badge
+                          className={`tabular-nums border-0 ${
+                            r.roas >= 1
+                              ? "bg-gradient-to-r from-emerald-500 to-green-600 text-white"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
                           {r.roas.toFixed(2)}x
                         </Badge>
                       </td>
