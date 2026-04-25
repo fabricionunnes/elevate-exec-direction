@@ -13792,6 +13792,9 @@ export type Database = {
           loss_reason_id: string | null
           main_pain: string | null
           marital_status: string | null
+          meta_ad_id: string | null
+          meta_adset_id: string | null
+          meta_campaign_id: string | null
           name: string
           next_activity_at: string | null
           notes: string | null
@@ -13823,6 +13826,7 @@ export type Database = {
           utm_content: string | null
           utm_medium: string | null
           utm_source: string | null
+          utm_term: string | null
           zipcode: string | null
         }
         Insert: {
@@ -13858,6 +13862,9 @@ export type Database = {
           loss_reason_id?: string | null
           main_pain?: string | null
           marital_status?: string | null
+          meta_ad_id?: string | null
+          meta_adset_id?: string | null
+          meta_campaign_id?: string | null
           name: string
           next_activity_at?: string | null
           notes?: string | null
@@ -13889,6 +13896,7 @@ export type Database = {
           utm_content?: string | null
           utm_medium?: string | null
           utm_source?: string | null
+          utm_term?: string | null
           zipcode?: string | null
         }
         Update: {
@@ -13924,6 +13932,9 @@ export type Database = {
           loss_reason_id?: string | null
           main_pain?: string | null
           marital_status?: string | null
+          meta_ad_id?: string | null
+          meta_adset_id?: string | null
+          meta_campaign_id?: string | null
           name?: string
           next_activity_at?: string | null
           notes?: string | null
@@ -13955,6 +13966,7 @@ export type Database = {
           utm_content?: string | null
           utm_medium?: string | null
           utm_source?: string | null
+          utm_term?: string | null
           zipcode?: string | null
         }
         Relationships: [
