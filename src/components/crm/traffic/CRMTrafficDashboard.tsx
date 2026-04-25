@@ -63,11 +63,12 @@ export const CRMTrafficDashboard = ({
   // Por funil: somar gasto das campanhas vinculadas (com peso); leads/reuniões via stats por utm_campaign
   const perPipeline = useMemo(() => {
     // Agrega campanhas por campaign_id (há múltiplas linhas: 1 por dia)
-    const campMap = new Map<string, { spend: number; leads: number }>();
+    const campMap = new Map<string, { spend: number; leads: number; name: string }>();
     for (const c of campaigns) {
-      const cur = campMap.get(c.campaign_id) || { spend: 0, leads: 0 };
+      const cur = campMap.get(c.campaign_id) || { spend: 0, leads: 0, name: c.campaign_name || "" };
       cur.spend += Number(c.spend || 0);
       cur.leads += Number(c.leads || 0);
+      if (!cur.name && c.campaign_name) cur.name = c.campaign_name;
       campMap.set(c.campaign_id, cur);
     }
     const pipeMap = new Map(pipelines.map((p) => [p.id, p.name]));
@@ -76,6 +77,16 @@ export const CRMTrafficDashboard = ({
     const allowedPipelineIds = new Set(
       links.filter((l) => campMap.has(l.campaign_id)).map((l) => l.pipeline_id),
     );
+
+    // utm_campaigns válidos = nomes (e ids) das campanhas Meta presentes no filtro,
+    // normalizados (lowercase, trim) para casar com utm_campaign dos leads
+    const norm = (s: string | null | undefined) =>
+      (s || "").toString().trim().toLowerCase();
+    const allowedUtms = new Set<string>();
+    for (const [cid, info] of campMap.entries()) {
+      if (info.name) allowedUtms.add(norm(info.name));
+      allowedUtms.add(norm(cid));
+    }
 
     type Row = {
       pipeline_id: string; pipeline_name: string;
@@ -104,6 +115,8 @@ export const CRMTrafficDashboard = ({
 
     for (const stat of leadStats) {
       if (!allowedPipelineIds.has(stat.pipeline_id)) continue;
+      // Considera apenas leads cuja utm_campaign casa com alguma campanha Meta do filtro atual
+      if (!allowedUtms.has(norm(stat.utm_campaign))) continue;
       const cur = map.get(stat.pipeline_id) || empty(stat.pipeline_id);
       cur.leads_crm += stat.total;
       cur.won += stat.won;
@@ -113,6 +126,7 @@ export const CRMTrafficDashboard = ({
 
     for (const ms of meetingStats) {
       if (!allowedPipelineIds.has(ms.pipeline_id)) continue;
+      if (!allowedUtms.has(norm(ms.utm_campaign))) continue;
       const cur = map.get(ms.pipeline_id) || empty(ms.pipeline_id);
       cur.meetings_scheduled += ms.scheduled;
       cur.meetings_realized += ms.realized;
