@@ -325,18 +325,22 @@ export const CRMTrafficDashboard = ({
 };
 
 const KPI = ({
-  icon: Icon, label, value, color, hint,
-}: { icon: any; label: string; value: string; color: string; hint?: string }) => (
-  <Card className="overflow-hidden border-border/40">
-    <CardContent className="p-4">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-          <p className="text-xl font-bold mt-1">{value}</p>
-          {hint && <p className="text-[10px] text-muted-foreground mt-0.5">{hint}</p>}
+  icon: Icon, label, value, gradient, hint,
+}: { icon: any; label: string; value: string; gradient: string; hint?: string }) => (
+  <Card className="overflow-hidden border-border/40 group hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 relative">
+    {/* Glow gradiente atrás */}
+    <div className={`absolute inset-0 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity bg-gradient-to-br ${gradient}`} />
+    {/* Barra de cor no topo */}
+    <div className={`h-1 bg-gradient-to-r ${gradient}`} />
+    <CardContent className="p-4 relative">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold truncate">{label}</p>
+          <p className="text-xl font-bold mt-1.5 tabular-nums truncate">{value}</p>
+          {hint && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{hint}</p>}
         </div>
-        <div className="p-2 rounded-lg" style={{ background: `${color}20` }}>
-          <Icon className="h-4 w-4" style={{ color }} />
+        <div className={`p-2 rounded-lg bg-gradient-to-br ${gradient} shadow-md shrink-0 group-hover:scale-110 transition-transform`}>
+          <Icon className="h-4 w-4 text-white" />
         </div>
       </div>
     </CardContent>
