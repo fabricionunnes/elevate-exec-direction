@@ -171,34 +171,59 @@ export function useCRMTrafficData() {
         })),
       );
 
-      // Estatísticas de leads/vendas por funil + utm_campaign + dia
+      // Estatísticas de leads/vendas por funil + utm_campaign + dia + IDs do Meta
       const { data: leads } = await supabase
         .from("crm_leads")
-        .select("pipeline_id, utm_campaign, opportunity_value, created_at, crm_stages(final_type)");
+        .select("pipeline_id, utm_campaign, opportunity_value, created_at, meta_campaign_id, meta_adset_id, meta_ad_id, crm_stages(final_type)");
 
       const map = new Map<string, PipelineLeadCount>();
+      const adMap = new Map<string, AdLeadStat>();
       for (const lead of (leads as any) || []) {
-        if (!lead.pipeline_id) continue;
-        const utm = lead.utm_campaign || null;
         const date = lead.created_at ? String(lead.created_at).slice(0, 10) : null;
-        const key = `${lead.pipeline_id}::${utm || "__none__"}::${date || "__nd__"}`;
         const isWon = lead.crm_stages?.final_type === "won";
-        const cur = map.get(key) || {
-          pipeline_id: lead.pipeline_id,
-          utm_campaign: utm,
-          date,
-          total: 0,
-          won: 0,
-          won_value: 0,
-        };
-        cur.total += 1;
-        if (isWon) {
-          cur.won += 1;
-          cur.won_value += Number(lead.opportunity_value || 0);
+        const won_val = Number(lead.opportunity_value || 0);
+
+        if (lead.pipeline_id) {
+          const utm = lead.utm_campaign || null;
+          const key = `${lead.pipeline_id}::${utm || "__none__"}::${date || "__nd__"}`;
+          const cur = map.get(key) || {
+            pipeline_id: lead.pipeline_id,
+            utm_campaign: utm,
+            date,
+            total: 0,
+            won: 0,
+            won_value: 0,
+          };
+          cur.total += 1;
+          if (isWon) {
+            cur.won += 1;
+            cur.won_value += won_val;
+          }
+          map.set(key, cur);
         }
-        map.set(key, cur);
+
+        // Atribuição direta por anúncio (quando o lead carrega meta_ad_id)
+        if (lead.meta_ad_id) {
+          const aKey = `${lead.meta_ad_id}::${date || "__nd__"}`;
+          const cur = adMap.get(aKey) || {
+            meta_ad_id: lead.meta_ad_id,
+            meta_adset_id: lead.meta_adset_id || null,
+            meta_campaign_id: lead.meta_campaign_id || null,
+            date,
+            total: 0,
+            won: 0,
+            won_value: 0,
+          };
+          cur.total += 1;
+          if (isWon) {
+            cur.won += 1;
+            cur.won_value += won_val;
+          }
+          adMap.set(aKey, cur);
+        }
       }
       setLeadStats(Array.from(map.values()));
+      setAdLeadStats(Array.from(adMap.values()));
 
       // Estatísticas de reuniões por funil + utm_campaign + dia
       const { data: meetings } = await supabase
