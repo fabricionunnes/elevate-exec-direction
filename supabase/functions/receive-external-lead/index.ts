@@ -32,7 +32,8 @@ Deno.serve(async (req) => {
     const {
       nome, telefone, email, empresa, faturamento, qtd_vendedores, desafio, tag,
       pipeline_id, pipeline_name, origin_name,
-      utm_source, utm_medium, utm_campaign, utm_content
+      utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+      meta_campaign_id, meta_adset_id, meta_ad_id,
     } = body;
 
     if (!nome || !telefone || !email) {
