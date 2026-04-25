@@ -13,6 +13,7 @@ import type {
   CRMMetaCampaign, CRMMetaAdset, CRMMetaAd,
   CampaignPipelineLink, PipelineLeadCount, MeetingStat,
 } from "./useCRMTrafficData";
+import { CRMTrafficCompare } from "./CRMTrafficCompare";
 
 interface Props {
   campaigns: CRMMetaCampaign[];
@@ -241,6 +242,15 @@ export const CRMTrafficDashboard = ({
           )}
         </CardContent>
       </Card>
+
+      {/* Comparativo de Performance (Funis × Campanhas) */}
+      <CRMTrafficCompare
+        campaigns={campaigns}
+        links={links}
+        pipelines={pipelines}
+        leadStats={leadStats}
+        meetingStats={meetingStats}
+      />
 
       {/* Drill-down */}
       <Tabs defaultValue="campaigns" className="w-full">
