@@ -92,6 +92,16 @@ export interface MeetingStat {
   realized: number;
 }
 
+export interface AdLeadStat {
+  meta_ad_id: string;
+  meta_adset_id: string | null;
+  meta_campaign_id: string | null;
+  date: string | null; // YYYY-MM-DD (created_at)
+  total: number;
+  won: number;
+  won_value: number;
+}
+
 export function useCRMTrafficData() {
   const [account, setAccount] = useState<CRMMetaAccount | null>(null);
   const [campaigns, setCampaigns] = useState<CRMMetaCampaign[]>([]);
@@ -101,6 +111,7 @@ export function useCRMTrafficData() {
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [leadStats, setLeadStats] = useState<PipelineLeadCount[]>([]);
   const [meetingStats, setMeetingStats] = useState<MeetingStat[]>([]);
+  const [adLeadStats, setAdLeadStats] = useState<AdLeadStat[]>([]);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
