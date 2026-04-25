@@ -89,7 +89,7 @@ export const CRMDashboardPage = () => {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") === "traffic" ? "traffic" : "overview";
+  const activeTab = searchParams.get("tab") === "traffic" && isAdmin ? "traffic" : "overview";
   const setActiveTab = (v: string) => {
     const next = new URLSearchParams(searchParams);
     if (v === "overview") next.delete("tab"); else next.set("tab", v);
