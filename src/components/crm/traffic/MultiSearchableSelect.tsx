@@ -79,17 +79,17 @@ export const MultiSearchableSelect = ({
               <div className="flex items-center justify-between px-2 py-1.5 border-b">
                 <button
                   type="button"
-                  onClick={() => onChange([])}
-                  className="text-[11px] text-muted-foreground hover:text-foreground"
+                  onClick={() => onChange(options.map((o) => o.value))}
+                  className="text-[11px] font-medium text-primary hover:underline"
                 >
                   Selecionar todos
                 </button>
                 <button
                   type="button"
-                  onClick={() => onChange(options.map((o) => o.value))}
+                  onClick={() => onChange([])}
                   className="text-[11px] text-muted-foreground hover:text-foreground"
                 >
-                  Marcar tudo
+                  Limpar
                 </button>
               </div>
               {options.map((o) => {
