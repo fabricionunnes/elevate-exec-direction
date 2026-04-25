@@ -323,7 +323,7 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
                 values={pipelineFilter}
                 onChange={setPipelineFilter}
                 allLabel="Todos os funis"
-                options={pipelines.map((p) => ({ value: p.id, label: p.name }))}
+                options={availablePipelineOptions}
               />
             </div>
             <div className="space-y-1.5">
@@ -344,11 +344,7 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
                 values={campaignFilter}
                 onChange={setCampaignFilter}
                 allLabel="Todas as campanhas"
-                options={Array.from(
-                  new Map(
-                    campaigns.map((c) => [c.campaign_id, { value: c.campaign_id, label: c.campaign_name || c.campaign_id }]),
-                  ).values(),
-                )}
+                options={availableCampaignOptions}
               />
             </div>
             <div className="space-y-1.5">
@@ -357,13 +353,7 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
                 values={adsetFilter}
                 onChange={setAdsetFilter}
                 allLabel="Todos os conjuntos"
-                options={Array.from(
-                  new Map(
-                    adsets
-                      .filter((a) => campaignFilter.length === 0 || campaignFilter.includes(a.campaign_id || ""))
-                      .map((a) => [a.adset_id, { value: a.adset_id, label: a.adset_name || a.adset_id }]),
-                  ).values(),
-                )}
+                options={availableAdsetOptions}
               />
             </div>
             <div className="space-y-1.5">
@@ -372,17 +362,7 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
                 values={adFilter}
                 onChange={setAdFilter}
                 allLabel="Todos os anúncios"
-                options={Array.from(
-                  new Map(
-                    ads
-                      .filter((a) => {
-                        if (campaignFilter.length > 0 && !campaignFilter.includes(a.campaign_id || "")) return false;
-                        if (adsetFilter.length > 0 && !adsetFilter.includes(a.adset_id || "")) return false;
-                        return true;
-                      })
-                      .map((a) => [a.ad_id, { value: a.ad_id, label: a.ad_name || a.ad_id }]),
-                  ).values(),
-                )}
+                options={availableAdOptions}
               />
             </div>
           </div>
