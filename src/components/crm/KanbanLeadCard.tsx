@@ -197,6 +197,16 @@ export const KanbanLeadCard = ({
         </div>
       )}
 
+      {/* Origem do anúncio (Meta Ads) */}
+      {(lead.utm_content || lead.utm_campaign) && (
+        <div className="flex items-center gap-1 mt-2 px-1.5 py-1 rounded-md bg-gradient-to-r from-blue-500/10 to-violet-500/10 border border-blue-500/20">
+          <Megaphone className="h-3 w-3 text-blue-600 dark:text-blue-400 shrink-0" />
+          <span className="text-[10px] text-blue-700 dark:text-blue-300 font-medium truncate" title={`${lead.utm_campaign || ""}${lead.utm_content ? " / " + lead.utm_content : ""}`}>
+            {lead.utm_content || lead.utm_campaign}
+          </span>
+        </div>
+      )}
+
       {/* Meeting Actions */}
       <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border/50">
         <LeadMeetingActions
