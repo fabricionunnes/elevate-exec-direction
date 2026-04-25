@@ -167,6 +167,7 @@ export const CRMTrafficDashboard = ({
         <KPI icon={CalendarClock} label="Custo / Reun. Agendada" value={fmtBRL(meetingTotals.cost_per_scheduled)} gradient="from-sky-500 to-blue-600" hint={`${fmtInt(meetingTotals.scheduled)} agendadas`} />
         <KPI icon={CalendarCheck} label="Custo / Reun. Realizada" value={fmtBRL(meetingTotals.cost_per_realized)} gradient="from-teal-500 to-cyan-600" hint={`${fmtInt(meetingTotals.realized)} realizadas`} />
         <KPI icon={Target} label="CAC" value={fmtBRL(crmTotals.cac)} gradient="from-rose-500 to-red-600" hint={`${fmtInt(crmTotals.won)} vendas`} />
+        <KPI icon={Receipt} label="Ticket Médio" value={fmtBRL(crmTotals.ticket_medio)} gradient="from-indigo-500 to-purple-600" hint={fmtBRL(crmTotals.won_value)} />
         <KPI icon={TrendingUp} label="ROAS" value={`${(crmTotals.roas || 0).toFixed(2)}x`} gradient="from-green-500 to-emerald-600" />
         <KPI icon={MousePointerClick} label="CTR" value={fmtPct(totals.ctr)} gradient="from-fuchsia-500 to-pink-600" />
       </div>
