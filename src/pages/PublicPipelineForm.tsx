@@ -156,10 +156,15 @@ const PublicPipelineForm = () => {
             utm_medium: searchParams.get("utm_medium") || undefined,
             utm_campaign: searchParams.get("utm_campaign") || undefined,
             utm_content: searchParams.get("utm_content") || undefined,
+            utm_term: searchParams.get("utm_term") || undefined,
             fbclid: searchParams.get("fbclid") || undefined,
             ad_name: searchParams.get("ad_name") || undefined,
             adset_name: searchParams.get("adset_name") || undefined,
             campaign_name: searchParams.get("campaign_name") || undefined,
+            // IDs do Meta Ads (preenchidos via URL Parameters do anúncio)
+            meta_campaign_id: searchParams.get("meta_campaign_id") || searchParams.get("campaign_id") || undefined,
+            meta_adset_id: searchParams.get("meta_adset_id") || searchParams.get("adset_id") || undefined,
+            meta_ad_id: searchParams.get("meta_ad_id") || searchParams.get("ad_id") || undefined,
           }),
         }
       );

@@ -32,7 +32,8 @@ Deno.serve(async (req) => {
     const {
       nome, telefone, email, empresa, faturamento, qtd_vendedores, desafio, tag,
       pipeline_id, pipeline_name, origin_name,
-      utm_source, utm_medium, utm_campaign, utm_content
+      utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+      meta_campaign_id, meta_adset_id, meta_ad_id,
     } = body;
 
     if (!nome || !telefone || !email) {
@@ -184,6 +185,10 @@ Deno.serve(async (req) => {
         utm_medium: utm_medium || null,
         utm_campaign: utm_campaign || null,
         utm_content: utm_content || null,
+        utm_term: utm_term || null,
+        meta_campaign_id: meta_campaign_id || null,
+        meta_adset_id: meta_adset_id || null,
+        meta_ad_id: meta_ad_id || null,
       })
       .select('id')
       .single();
