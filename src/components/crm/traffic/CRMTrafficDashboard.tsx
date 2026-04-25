@@ -2,17 +2,18 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   DollarSign, MousePointerClick, Eye, Users, TrendingDown, TrendingUp, Layers,
   Image as ImageIcon, Target, CalendarCheck, CalendarClock, Receipt,
-  ShoppingCart, Banknote,
+  ShoppingCart, Banknote, Radar, AlertTriangle, CheckCircle2, Megaphone,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
 } from "recharts";
 import type {
   CRMMetaCampaign, CRMMetaAdset, CRMMetaAd,
-  CampaignPipelineLink, PipelineLeadCount, MeetingStat,
+  CampaignPipelineLink, PipelineLeadCount, MeetingStat, AdLeadStat, TrackingDiagnostics,
 } from "./useCRMTrafficData";
 import { CRMTrafficCompare } from "./CRMTrafficCompare";
 
@@ -24,6 +25,8 @@ interface Props {
   pipelines: { id: string; name: string }[];
   leadStats: PipelineLeadCount[];
   meetingStats?: MeetingStat[];
+  adLeadStats?: AdLeadStat[];
+  diagnostics?: TrackingDiagnostics;
 }
 
 const fmtBRL = (v: number) =>
@@ -34,6 +37,7 @@ const safeDiv = (a: number, b: number) => (b > 0 ? a / b : 0);
 
 export const CRMTrafficDashboard = ({
   campaigns, adsets, ads, links, pipelines, leadStats, meetingStats = [],
+  adLeadStats = [], diagnostics,
 }: Props) => {
   // Totais gerais
   const totals = useMemo(() => {
