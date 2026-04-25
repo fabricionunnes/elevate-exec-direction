@@ -266,7 +266,7 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
               </Button>
             )}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground">Status</Label>
               <SearchableSelect
@@ -281,13 +281,11 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
             </div>
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground">Funil</Label>
-              <SearchableSelect
-                value={pipelineFilter}
+              <MultiSearchableSelect
+                values={pipelineFilter}
                 onChange={setPipelineFilter}
-                options={[
-                  { value: "all", label: "Todos os funis" },
-                  ...pipelines.map((p) => ({ value: p.id, label: p.name })),
-                ]}
+                allLabel="Todos os funis"
+                options={pipelines.map((p) => ({ value: p.id, label: p.name }))}
               />
             </div>
             <div className="space-y-1.5">
@@ -296,10 +294,45 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
                 values={campaignFilter}
                 onChange={setCampaignFilter}
                 allLabel="Todas as campanhas"
-                options={campaigns.map((c) => ({
-                  value: c.campaign_id,
-                  label: c.campaign_name || c.campaign_id,
-                }))}
+                options={Array.from(
+                  new Map(
+                    campaigns.map((c) => [c.campaign_id, { value: c.campaign_id, label: c.campaign_name || c.campaign_id }]),
+                  ).values(),
+                )}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground">Conjunto de Anúncios</Label>
+              <MultiSearchableSelect
+                values={adsetFilter}
+                onChange={setAdsetFilter}
+                allLabel="Todos os conjuntos"
+                options={Array.from(
+                  new Map(
+                    adsets
+                      .filter((a) => campaignFilter.length === 0 || campaignFilter.includes(a.campaign_id || ""))
+                      .map((a) => [a.adset_id, { value: a.adset_id, label: a.adset_name || a.adset_id }]),
+                  ).values(),
+                )}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground">Anúncios</Label>
+              <MultiSearchableSelect
+                values={adFilter}
+                onChange={setAdFilter}
+                allLabel="Todos os anúncios"
+                options={Array.from(
+                  new Map(
+                    ads
+                      .filter((a) => {
+                        if (campaignFilter.length > 0 && !campaignFilter.includes(a.campaign_id || "")) return false;
+                        if (adsetFilter.length > 0 && !adsetFilter.includes(a.adset_id || "")) return false;
+                        return true;
+                      })
+                      .map((a) => [a.ad_id, { value: a.ad_id, label: a.ad_name || a.ad_id }]),
+                  ).values(),
+                )}
               />
             </div>
             <div className="space-y-1.5">
