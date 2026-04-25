@@ -161,6 +161,50 @@ export const CRMTrafficDashboard = ({
   const topCampaigns = [...campaigns].sort((a, b) => Number(b.spend) - Number(a.spend)).slice(0, 10);
   const topAds = [...ads].sort((a, b) => Number(b.spend) - Number(a.spend)).slice(0, 12);
 
+  // Atribuição direta por anúncio (via meta_ad_id no lead)
+  const perAd = useMemo(() => {
+    type Row = {
+      meta_ad_id: string; ad_name: string; campaign_name: string;
+      spend: number; leads: number; won: number; won_value: number;
+    };
+    const adMeta = new Map<string, { name: string; campaign_name: string; spend: number }>();
+    for (const a of ads) {
+      const cur = adMeta.get(a.ad_id) || { name: a.ad_name || a.ad_id, campaign_name: a.campaign_name || "", spend: 0 };
+      cur.spend += Number(a.spend || 0);
+      adMeta.set(a.ad_id, cur);
+    }
+    const rowMap = new Map<string, Row>();
+    for (const s of adLeadStats) {
+      const meta = adMeta.get(s.meta_ad_id);
+      const cur = rowMap.get(s.meta_ad_id) || {
+        meta_ad_id: s.meta_ad_id,
+        ad_name: meta?.name || s.meta_ad_id,
+        campaign_name: meta?.campaign_name || "",
+        spend: meta?.spend || 0,
+        leads: 0, won: 0, won_value: 0,
+      };
+      cur.leads += s.total;
+      cur.won += s.won;
+      cur.won_value += s.won_value;
+      rowMap.set(s.meta_ad_id, cur);
+    }
+    return Array.from(rowMap.values())
+      .map((r) => ({
+        ...r,
+        cpl: safeDiv(r.spend, r.leads),
+        cac: safeDiv(r.spend, r.won),
+        roas: safeDiv(r.won_value, r.spend),
+      }))
+      .sort((a, b) => b.leads - a.leads);
+  }, [adLeadStats, ads]);
+
+  // Diagnóstico de cobertura
+  const diag = diagnostics;
+  const coverageAd = diag && diag.total_leads > 0 ? (diag.with_ad_id / diag.total_leads) * 100 : 0;
+  const coverageCampaign = diag && diag.total_leads > 0 ? (diag.with_campaign_id / diag.total_leads) * 100 : 0;
+  const coverageUtm = diag && diag.total_leads > 0 ? (diag.with_any_utm / diag.total_leads) * 100 : 0;
+  const coverageStatus = coverageAd >= 70 ? "good" : coverageAd >= 30 ? "warn" : "bad";
+
   return (
     <div className="space-y-6">
       {/* KPIs gerais */}
