@@ -24,7 +24,7 @@ interface Props {
 }
 
 export const CRMTrafficTab = ({ isAdmin }: Props) => {
-  const { account, campaigns, adsets, ads, links, pipelines, leadStats, meetingStats, loading, reload } = useCRMTrafficData();
+  const { account, campaigns, adsets, ads, links, pipelines, leadStats, meetingStats, adLeadStats, diagnostics, loading, reload } = useCRMTrafficData();
   const [syncing, setSyncing] = useState(false);
   const [days, setDays] = useState("30");
   const [openSettings, setOpenSettings] = useState(false);
@@ -442,6 +442,8 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
         pipelines={pipelines}
         leadStats={filtered.leadStats}
         meetingStats={filtered.meetingStats}
+        adLeadStats={adLeadStats}
+        diagnostics={diagnostics}
       />
     </div>
   );
