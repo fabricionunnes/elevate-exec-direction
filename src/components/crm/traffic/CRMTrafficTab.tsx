@@ -281,16 +281,14 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
             </div>
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground">Campanha</Label>
-              <SearchableSelect
-                value={campaignFilter}
+              <MultiSearchableSelect
+                values={campaignFilter}
                 onChange={setCampaignFilter}
-                options={[
-                  { value: "all", label: "Todas as campanhas" },
-                  ...campaigns.map((c) => ({
-                    value: c.campaign_id,
-                    label: c.campaign_name || c.campaign_id,
-                  })),
-                ]}
+                allLabel="Todas as campanhas"
+                options={campaigns.map((c) => ({
+                  value: c.campaign_id,
+                  label: c.campaign_name || c.campaign_id,
+                }))}
               />
             </div>
             <div className="space-y-1.5">
