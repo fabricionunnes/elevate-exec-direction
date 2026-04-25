@@ -266,7 +266,8 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
               </Button>
             )}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+          {/* Linha 1: Status, Funil, Datas */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground">Status</Label>
               <SearchableSelect
@@ -288,6 +289,18 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
                 options={pipelines.map((p) => ({ value: p.id, label: p.name }))}
               />
             </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground">Data inicial</Label>
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-xs" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground">Data final</Label>
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-xs" />
+            </div>
+          </div>
+
+          {/* Linha 2: Campanha, Conjunto de Anúncios, Anúncios (mais largos) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground">Campanha</Label>
               <MultiSearchableSelect
@@ -334,14 +347,6 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
                   ).values(),
                 )}
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[11px] text-muted-foreground">Data inicial</Label>
-              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-xs" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[11px] text-muted-foreground">Data final</Label>
-              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-xs" />
             </div>
           </div>
         </CardContent>
