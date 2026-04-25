@@ -80,10 +80,11 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
     };
 
     // Conjunto de campaign_ids permitidos pelo filtro de funil (via vínculos)
+    const pipeSet = pipelineFilter.length > 0 ? new Set(pipelineFilter) : null;
     let allowedCampaignIds: Set<string> | null = null;
-    if (pipelineFilter !== "all") {
+    if (pipeSet) {
       allowedCampaignIds = new Set(
-        links.filter((l) => l.pipeline_id === pipelineFilter).map((l) => l.campaign_id),
+        links.filter((l) => pipeSet.has(l.pipeline_id)).map((l) => l.campaign_id),
       );
     }
 
@@ -94,6 +95,9 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
     };
 
     const campSet = campaignFilter.length > 0 ? new Set(campaignFilter) : null;
+    const adsetSet = adsetFilter.length > 0 ? new Set(adsetFilter) : null;
+    const adSet = adFilter.length > 0 ? new Set(adFilter) : null;
+
     const fCampaigns = campaigns.filter((c) => {
       if (campSet && !campSet.has(c.campaign_id)) return false;
       if (allowedCampaignIds && !allowedCampaignIds.has(c.campaign_id)) return false;
@@ -103,17 +107,20 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
     });
 
     const validCampIds = new Set(fCampaigns.map((c) => c.campaign_id));
-    const fAdsets = adsets.filter(
-      (a) => a.campaign_id && validCampIds.has(a.campaign_id) && matchStatus(a.status),
-    );
+    const fAdsets = adsets.filter((a) => {
+      if (!a.campaign_id || !validCampIds.has(a.campaign_id)) return false;
+      if (adsetSet && !adsetSet.has(a.adset_id)) return false;
+      if (!matchStatus(a.status)) return false;
+      return true;
+    });
     const validAdsetIds = new Set(fAdsets.map((a) => a.adset_id));
-    const fAds = ads.filter(
-      (a) =>
-        a.campaign_id &&
-        validCampIds.has(a.campaign_id) &&
-        (a.adset_id ? validAdsetIds.has(a.adset_id) : true) &&
-        matchStatus(a.status),
-    );
+    const fAds = ads.filter((a) => {
+      if (!a.campaign_id || !validCampIds.has(a.campaign_id)) return false;
+      if (adsetSet && (!a.adset_id || !validAdsetIds.has(a.adset_id))) return false;
+      if (adSet && !adSet.has(a.ad_id)) return false;
+      if (!matchStatus(a.status)) return false;
+      return true;
+    });
 
     // Filtro por funil + data (created_at do lead / event_date da reunião)
     const inDateStr = (d?: string | null) => {
@@ -124,19 +131,21 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
       return true;
     };
     const fLeadStats = leadStats.filter(
-      (s) => (pipelineFilter === "all" || s.pipeline_id === pipelineFilter) && inDateStr(s.date),
+      (s) => (!pipeSet || pipeSet.has(s.pipeline_id)) && inDateStr(s.date),
     );
     const fMeetingStats = meetingStats.filter(
-      (s) => (pipelineFilter === "all" || s.pipeline_id === pipelineFilter) && inDateStr(s.date),
+      (s) => (!pipeSet || pipeSet.has(s.pipeline_id)) && inDateStr(s.date),
     );
 
     return { campaigns: fCampaigns, adsets: fAdsets, ads: fAds, leadStats: fLeadStats, meetingStats: fMeetingStats };
-  }, [campaigns, adsets, ads, links, leadStats, meetingStats, pipelineFilter, campaignFilter, statusFilter, dateFrom, dateTo]);
+  }, [campaigns, adsets, ads, links, leadStats, meetingStats, pipelineFilter, campaignFilter, adsetFilter, adFilter, statusFilter, dateFrom, dateTo]);
 
-  const hasFilters = pipelineFilter !== "all" || campaignFilter.length > 0 || statusFilter !== "active" || dateFrom || dateTo;
+  const hasFilters = pipelineFilter.length > 0 || campaignFilter.length > 0 || adsetFilter.length > 0 || adFilter.length > 0 || statusFilter !== "active" || dateFrom || dateTo;
   const clearFilters = () => {
-    setPipelineFilter("all");
+    setPipelineFilter([]);
     setCampaignFilter([]);
+    setAdsetFilter([]);
+    setAdFilter([]);
     setStatusFilter("active");
     setDateFrom("");
     setDateTo("");
