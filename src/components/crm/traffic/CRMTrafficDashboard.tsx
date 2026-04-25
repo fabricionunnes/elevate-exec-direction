@@ -63,6 +63,11 @@ export const CRMTrafficDashboard = ({
     const campMap = new Map(campaigns.map((c) => [c.campaign_id, c]));
     const pipeMap = new Map(pipelines.map((p) => [p.id, p.name]));
 
+    // Pipelines permitidos: apenas os vinculados a alguma campanha presente no filtro atual
+    const allowedPipelineIds = new Set(
+      links.filter((l) => campMap.has(l.campaign_id)).map((l) => l.pipeline_id),
+    );
+
     type Row = {
       pipeline_id: string; pipeline_name: string;
       spend: number; leads_meta: number; leads_crm: number;
@@ -89,6 +94,7 @@ export const CRMTrafficDashboard = ({
     }
 
     for (const stat of leadStats) {
+      if (!allowedPipelineIds.has(stat.pipeline_id)) continue;
       const cur = map.get(stat.pipeline_id) || empty(stat.pipeline_id);
       cur.leads_crm += stat.total;
       cur.won += stat.won;
@@ -97,6 +103,7 @@ export const CRMTrafficDashboard = ({
     }
 
     for (const ms of meetingStats) {
+      if (!allowedPipelineIds.has(ms.pipeline_id)) continue;
       const cur = map.get(ms.pipeline_id) || empty(ms.pipeline_id);
       cur.meetings_scheduled += ms.scheduled;
       cur.meetings_realized += ms.realized;
