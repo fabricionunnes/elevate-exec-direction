@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   DollarSign, MousePointerClick, Eye, Users, TrendingDown, TrendingUp, Layers,
   Image as ImageIcon, Target, CalendarCheck, CalendarClock, Receipt,
+  ShoppingCart, Banknote,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
@@ -167,6 +168,8 @@ export const CRMTrafficDashboard = ({
         <KPI icon={TrendingDown} label="CPL" value={fmtBRL(totals.cpl)} gradient="from-amber-500 to-orange-600" hint="Custo por Lead" />
         <KPI icon={CalendarClock} label="Custo / Reun. Agendada" value={fmtBRL(meetingTotals.cost_per_scheduled)} gradient="from-sky-500 to-blue-600" hint={`${fmtInt(meetingTotals.scheduled)} agendadas`} />
         <KPI icon={CalendarCheck} label="Custo / Reun. Realizada" value={fmtBRL(meetingTotals.cost_per_realized)} gradient="from-teal-500 to-cyan-600" hint={`${fmtInt(meetingTotals.realized)} realizadas`} />
+        <KPI icon={ShoppingCart} label="Vendas" value={fmtInt(crmTotals.won)} gradient="from-emerald-500 to-teal-600" hint="Vendas no período" />
+        <KPI icon={Banknote} label="Receita" value={fmtBRL(crmTotals.won_value)} gradient="from-green-500 to-emerald-600" hint="Total vendido" />
         <KPI icon={Target} label="CAC" value={fmtBRL(crmTotals.cac)} gradient="from-rose-500 to-red-600" hint={`${fmtInt(crmTotals.won)} vendas`} />
         <KPI icon={Receipt} label="Ticket Médio" value={fmtBRL(crmTotals.ticket_medio)} gradient="from-indigo-500 to-purple-600" hint={fmtBRL(crmTotals.won_value)} />
         <KPI icon={TrendingUp} label="ROAS" value={`${(crmTotals.roas || 0).toFixed(2)}x`} gradient="from-green-500 to-emerald-600" />
