@@ -242,6 +242,15 @@ export const CRMTrafficDashboard = ({
         </CardContent>
       </Card>
 
+      {/* Comparativo de Performance (Funis × Campanhas) */}
+      <CRMTrafficCompare
+        campaigns={campaigns}
+        links={links}
+        pipelines={pipelines}
+        leadStats={leadStats}
+        meetingStats={meetingStats}
+      />
+
       {/* Drill-down */}
       <Tabs defaultValue="campaigns" className="w-full">
         <TabsList className="bg-muted/40 backdrop-blur-sm">
