@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   DollarSign, MousePointerClick, Eye, Users, TrendingDown, TrendingUp, Layers,
   Image as ImageIcon, Target, CalendarCheck, CalendarClock, Receipt,
+  ShoppingCart, Banknote,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
