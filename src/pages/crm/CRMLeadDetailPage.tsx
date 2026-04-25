@@ -120,6 +120,10 @@ interface Lead {
   utm_medium?: string | null;
   utm_campaign?: string | null;
   utm_content?: string | null;
+  utm_term?: string | null;
+  meta_campaign_id?: string | null;
+  meta_adset_id?: string | null;
+  meta_ad_id?: string | null;
   fbclid?: string | null;
   ad_name?: string | null;
   adset_name?: string | null;
@@ -1178,55 +1182,76 @@ export const CRMLeadDetailPage = () => {
       )}
 
       {/* Rastreamento Meta Ads */}
-      {(lead.utm_source || lead.utm_medium || lead.utm_campaign || lead.utm_content || lead.fbclid || lead.ad_name || lead.adset_name || lead.campaign_name) && (
+      {(lead.utm_source || lead.utm_medium || lead.utm_campaign || lead.utm_content || lead.utm_term || lead.fbclid || lead.ad_name || lead.adset_name || lead.campaign_name || lead.meta_ad_id) && (
         <div className="px-4 sm:px-6 py-2">
-          <div className="rounded-lg border border-blue-200/50 dark:border-blue-800/30 bg-blue-50/50 dark:bg-blue-950/20 p-3">
-            <p className="text-[10px] uppercase tracking-wide text-blue-600 dark:text-blue-400 font-medium mb-2 flex items-center gap-1">
-              <Activity className="h-3 w-3" />
-              Rastreamento de Origem
+          <div className="rounded-lg border border-blue-200/50 dark:border-blue-800/30 bg-gradient-to-br from-blue-50/70 to-violet-50/40 dark:from-blue-950/30 dark:to-violet-950/20 p-4 space-y-3">
+            <p className="text-[11px] uppercase tracking-wider text-blue-700 dark:text-blue-300 font-bold flex items-center gap-1.5">
+              <Activity className="h-3.5 w-3.5" />
+              Origem do Anúncio (Meta Ads)
             </p>
-            <div className="flex flex-wrap gap-2">
-              {lead.campaign_name && (
-                <Badge variant="outline" className="text-[10px] gap-1 bg-background">
-                  📢 Campanha: {lead.campaign_name}
-                </Badge>
+
+            {/* Hierarquia Campanha → Conjunto → Anúncio */}
+            <div className="space-y-2">
+              {(lead.utm_campaign || lead.campaign_name) && (
+                <div className="flex items-start gap-2 p-2 rounded-md bg-background/70 border border-border/40">
+                  <span className="text-base">📢</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Campanha</p>
+                    <p className="text-sm font-semibold truncate" title={lead.utm_campaign || lead.campaign_name || ""}>
+                      {lead.utm_campaign || lead.campaign_name}
+                    </p>
+                    {lead.meta_campaign_id && (
+                      <p className="text-[10px] text-muted-foreground tabular-nums">ID: {lead.meta_campaign_id}</p>
+                    )}
+                  </div>
+                </div>
               )}
-              {lead.adset_name && (
-                <Badge variant="outline" className="text-[10px] gap-1 bg-background">
-                  🎯 Conjunto: {lead.adset_name}
-                </Badge>
+              {(lead.utm_term || lead.adset_name) && (
+                <div className="flex items-start gap-2 p-2 rounded-md bg-background/70 border border-border/40">
+                  <span className="text-base">🎯</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Conjunto de Anúncios</p>
+                    <p className="text-sm font-semibold truncate" title={lead.utm_term || lead.adset_name || ""}>
+                      {lead.utm_term || lead.adset_name}
+                    </p>
+                    {lead.meta_adset_id && (
+                      <p className="text-[10px] text-muted-foreground tabular-nums">ID: {lead.meta_adset_id}</p>
+                    )}
+                  </div>
+                </div>
               )}
-              {lead.ad_name && (
-                <Badge variant="outline" className="text-[10px] gap-1 bg-background">
-                  📋 Anúncio: {lead.ad_name}
-                </Badge>
-              )}
-              {lead.utm_source && (
-                <Badge variant="outline" className="text-[10px] gap-1 bg-background">
-                  Source: {lead.utm_source}
-                </Badge>
-              )}
-              {lead.utm_medium && (
-                <Badge variant="outline" className="text-[10px] gap-1 bg-background">
-                  Medium: {lead.utm_medium}
-                </Badge>
-              )}
-              {lead.utm_campaign && (
-                <Badge variant="outline" className="text-[10px] gap-1 bg-background">
-                  Campaign: {lead.utm_campaign}
-                </Badge>
-              )}
-              {lead.utm_content && (
-                <Badge variant="outline" className="text-[10px] gap-1 bg-background">
-                  Content: {lead.utm_content}
-                </Badge>
-              )}
-              {lead.fbclid && (
-                <Badge variant="outline" className="text-[10px] gap-1 bg-background text-muted-foreground">
-                  FBCLID: {lead.fbclid.slice(0, 12)}...
-                </Badge>
+              {(lead.utm_content || lead.ad_name) && (
+                <div className="flex items-start gap-2 p-2 rounded-md bg-background/70 border border-border/40">
+                  <span className="text-base">📋</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Anúncio</p>
+                    <p className="text-sm font-semibold truncate" title={lead.utm_content || lead.ad_name || ""}>
+                      {lead.utm_content || lead.ad_name}
+                    </p>
+                    {lead.meta_ad_id && (
+                      <p className="text-[10px] text-muted-foreground tabular-nums">ID: {lead.meta_ad_id}</p>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
+
+            {/* UTMs auxiliares */}
+            {(lead.utm_source || lead.utm_medium || lead.fbclid) && (
+              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/40">
+                {lead.utm_source && (
+                  <Badge variant="outline" className="text-[10px] bg-background">Source: {lead.utm_source}</Badge>
+                )}
+                {lead.utm_medium && (
+                  <Badge variant="outline" className="text-[10px] bg-background">Medium: {lead.utm_medium}</Badge>
+                )}
+                {lead.fbclid && (
+                  <Badge variant="outline" className="text-[10px] bg-background text-muted-foreground">
+                    FBCLID: {lead.fbclid.slice(0, 12)}…
+                  </Badge>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
