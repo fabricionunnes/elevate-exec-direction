@@ -224,6 +224,73 @@ export const CRMTrafficDashboard = ({
         <KPI icon={MousePointerClick} label="CTR" value={fmtPct(totals.ctr)} gradient="from-fuchsia-500 to-pink-600" />
       </div>
 
+      {/* Diagnóstico de Rastreamento */}
+      {diag && (
+        <Card className="overflow-hidden border-border/40 shadow-lg">
+          <div className={`h-1 bg-gradient-to-r ${
+            coverageStatus === "good" ? "from-emerald-500 to-green-600"
+            : coverageStatus === "warn" ? "from-amber-500 to-orange-600"
+            : "from-rose-500 to-red-600"
+          }`} />
+          <CardHeader className="pb-3 bg-gradient-to-br from-muted/40 to-transparent">
+            <CardTitle className="flex items-center gap-2.5 text-base">
+              <div className={`p-1.5 rounded-lg shadow-md bg-gradient-to-br ${
+                coverageStatus === "good" ? "from-emerald-500 to-green-600"
+                : coverageStatus === "warn" ? "from-amber-500 to-orange-600"
+                : "from-rose-500 to-red-600"
+              }`}>
+                <Radar className="h-4 w-4 text-white" />
+              </div>
+              Diagnóstico de Rastreamento
+              {coverageStatus === "good" ? (
+                <Badge className="ml-2 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-0">
+                  <CheckCircle2 className="h-3 w-3 mr-1" /> Saudável
+                </Badge>
+              ) : (
+                <Badge className={`ml-2 border-0 ${
+                  coverageStatus === "warn"
+                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                    : "bg-rose-500/15 text-rose-700 dark:text-rose-400"
+                }`}>
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  {coverageStatus === "warn" ? "Cobertura parcial" : "Cobertura baixa"}
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <DiagStat label="Total de Leads" value={fmtInt(diag.total_leads)} />
+              <DiagStat label="Com ID do Anúncio" value={fmtInt(diag.with_ad_id)} hint={fmtPct(coverageAd)} />
+              <DiagStat label="Com ID da Campanha" value={fmtInt(diag.with_campaign_id)} hint={fmtPct(coverageCampaign)} />
+              <DiagStat label="Com UTM" value={fmtInt(diag.with_any_utm)} hint={fmtPct(coverageUtm)} />
+              <DiagStat label="Anúncios únicos rastreados" value={fmtInt(diag.unique_ads_tracked)} />
+              <DiagStat label="Campanhas únicas rastreadas" value={fmtInt(diag.unique_campaigns_tracked)} />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Cobertura de atribuição direta (meta_ad_id)</span>
+                <span className="font-semibold tabular-nums">{fmtPct(coverageAd)}</span>
+              </div>
+              <Progress value={coverageAd} className="h-2" />
+            </div>
+            {coverageStatus !== "good" && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs space-y-1">
+                <p className="font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5" /> Como melhorar a cobertura
+                </p>
+                <p className="text-muted-foreground">
+                  Configure os <strong>Parâmetros de URL</strong> em todos os seus anúncios no Meta Ads:
+                </p>
+                <code className="block mt-1 p-2 rounded bg-muted/60 text-[10px] break-all">
+                  utm_source=facebook&utm_medium=paid&utm_campaign={"{{campaign.name}}"}&utm_content={"{{ad.name}}"}&utm_term={"{{adset.name}}"}&meta_campaign_id={"{{campaign.id}}"}&meta_adset_id={"{{adset.id}}"}&meta_ad_id={"{{ad.id}}"}
+                </code>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Métricas por Funil — destaque */}
       <Card className="overflow-hidden border-border/40 shadow-lg">
         <div className="h-1 bg-gradient-to-r from-blue-500 via-violet-500 to-pink-500" />
