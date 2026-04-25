@@ -382,6 +382,9 @@ export const CRMTrafficDashboard = ({
           <TabsTrigger value="creatives" className="gap-1.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-fuchsia-500 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-md">
             <ImageIcon className="h-3.5 w-3.5" /> Criativos
           </TabsTrigger>
+          <TabsTrigger value="byad" className="gap-1.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-md">
+            <Megaphone className="h-3.5 w-3.5" /> Por Anúncio (Direto)
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="campaigns" className="mt-4">
