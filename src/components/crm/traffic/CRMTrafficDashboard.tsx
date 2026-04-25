@@ -13,6 +13,7 @@ import type {
   CRMMetaCampaign, CRMMetaAdset, CRMMetaAd,
   CampaignPipelineLink, PipelineLeadCount, MeetingStat,
 } from "./useCRMTrafficData";
+import { CRMTrafficCompare } from "./CRMTrafficCompare";
 
 interface Props {
   campaigns: CRMMetaCampaign[];
