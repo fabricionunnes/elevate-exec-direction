@@ -122,6 +122,10 @@ export function useCRMTrafficData() {
   const [leadStats, setLeadStats] = useState<PipelineLeadCount[]>([]);
   const [meetingStats, setMeetingStats] = useState<MeetingStat[]>([]);
   const [adLeadStats, setAdLeadStats] = useState<AdLeadStat[]>([]);
+  const [diagnostics, setDiagnostics] = useState<TrackingDiagnostics>({
+    total_leads: 0, with_ad_id: 0, with_adset_id: 0, with_campaign_id: 0,
+    with_any_utm: 0, unique_ads_tracked: 0, unique_campaigns_tracked: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
