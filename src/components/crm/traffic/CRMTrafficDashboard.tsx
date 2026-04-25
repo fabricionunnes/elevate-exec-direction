@@ -281,9 +281,15 @@ export const CRMTrafficDashboard = ({
         </TabsContent>
 
         <TabsContent value="adsets" className="mt-4">
-          <Card>
+          <Card className="overflow-hidden border-border/40 shadow-md">
+            <div className="h-1 bg-gradient-to-r from-cyan-500 to-blue-600" />
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Conjuntos de Anúncios</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 shadow-md">
+                  <Layers className="h-4 w-4 text-white" />
+                </div>
+                Conjuntos de Anúncios
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <AdsetTable adsets={adsets.slice(0, 30)} />
@@ -292,9 +298,15 @@ export const CRMTrafficDashboard = ({
         </TabsContent>
 
         <TabsContent value="creatives" className="mt-4">
-          <Card>
+          <Card className="overflow-hidden border-border/40 shadow-md">
+            <div className="h-1 bg-gradient-to-r from-fuchsia-500 to-pink-600" />
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Top Criativos</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-fuchsia-500 to-pink-600 shadow-md">
+                  <ImageIcon className="h-4 w-4 text-white" />
+                </div>
+                Top Criativos
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -302,10 +314,10 @@ export const CRMTrafficDashboard = ({
                   const cpl = safeDiv(Number(ad.spend), Number(ad.leads));
                   const cac = safeDiv(Number(ad.spend), Number(ad.conversions));
                   return (
-                    <div key={ad.id} className="rounded-xl border border-border/40 overflow-hidden bg-card hover:shadow-md transition">
-                      <div className="aspect-video bg-muted overflow-hidden flex items-center justify-center">
+                    <div key={ad.id} className="group rounded-xl border border-border/40 overflow-hidden bg-card hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
+                      <div className="aspect-video bg-gradient-to-br from-muted to-muted/40 overflow-hidden flex items-center justify-center relative">
                         {ad.creative_thumbnail_url ? (
-                          <img src={ad.creative_thumbnail_url} alt={ad.ad_name || ""} className="w-full h-full object-cover" />
+                          <img src={ad.creative_thumbnail_url} alt={ad.ad_name || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         ) : (
                           <ImageIcon className="h-10 w-10 text-muted-foreground/40" />
                         )}
