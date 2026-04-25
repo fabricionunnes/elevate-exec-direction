@@ -102,6 +102,16 @@ export interface AdLeadStat {
   won_value: number;
 }
 
+export interface TrackingDiagnostics {
+  total_leads: number;
+  with_ad_id: number;
+  with_adset_id: number;
+  with_campaign_id: number;
+  with_any_utm: number;
+  unique_ads_tracked: number;
+  unique_campaigns_tracked: number;
+}
+
 export function useCRMTrafficData() {
   const [account, setAccount] = useState<CRMMetaAccount | null>(null);
   const [campaigns, setCampaigns] = useState<CRMMetaCampaign[]>([]);
