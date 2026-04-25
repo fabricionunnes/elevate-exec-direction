@@ -834,9 +834,11 @@ export const CRMDashboardPage = () => {
       </div>
         </TabsContent>
 
-        <TabsContent value="traffic" className="mt-5">
-          <CRMTrafficTab isAdmin={isAdmin} />
-        </TabsContent>
+        {isAdmin && (
+          <TabsContent value="traffic" className="mt-5">
+            <CRMTrafficTab isAdmin={isAdmin} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
