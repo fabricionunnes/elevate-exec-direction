@@ -314,10 +314,14 @@ Deno.serve(async (req) => {
         utm_medium: utm_medium || null,
         utm_campaign: utm_campaign || null,
         utm_content: utm_content || null,
+        utm_term: utm_term || null,
         fbclid: fbclid || null,
         ad_name: ad_name || null,
         adset_name: adset_name || null,
         campaign_name: campaign_name || null,
+        meta_campaign_id: meta_campaign_id || null,
+        meta_adset_id: meta_adset_id || null,
+        meta_ad_id: meta_ad_id || null,
       })
       .select('id')
       .single();
