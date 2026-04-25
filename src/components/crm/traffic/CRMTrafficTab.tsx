@@ -131,10 +131,10 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
     return { campaigns: fCampaigns, adsets: fAdsets, ads: fAds, leadStats: fLeadStats, meetingStats: fMeetingStats };
   }, [campaigns, adsets, ads, links, leadStats, meetingStats, pipelineFilter, campaignFilter, statusFilter, dateFrom, dateTo]);
 
-  const hasFilters = pipelineFilter !== "all" || campaignFilter !== "all" || statusFilter !== "active" || dateFrom || dateTo;
+  const hasFilters = pipelineFilter !== "all" || campaignFilter.length > 0 || statusFilter !== "active" || dateFrom || dateTo;
   const clearFilters = () => {
     setPipelineFilter("all");
-    setCampaignFilter("all");
+    setCampaignFilter([]);
     setStatusFilter("active");
     setDateFrom("");
     setDateTo("");
