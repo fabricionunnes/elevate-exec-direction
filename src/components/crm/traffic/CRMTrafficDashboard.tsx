@@ -60,7 +60,14 @@ export const CRMTrafficDashboard = ({
 
   // Por funil: somar gasto das campanhas vinculadas (com peso); leads/reuniões via stats por utm_campaign
   const perPipeline = useMemo(() => {
-    const campMap = new Map(campaigns.map((c) => [c.campaign_id, c]));
+    // Agrega campanhas por campaign_id (há múltiplas linhas: 1 por dia)
+    const campMap = new Map<string, { spend: number; leads: number }>();
+    for (const c of campaigns) {
+      const cur = campMap.get(c.campaign_id) || { spend: 0, leads: 0 };
+      cur.spend += Number(c.spend || 0);
+      cur.leads += Number(c.leads || 0);
+      campMap.set(c.campaign_id, cur);
+    }
     const pipeMap = new Map(pipelines.map((p) => [p.id, p.name]));
 
     // Pipelines permitidos: apenas os vinculados a alguma campanha presente no filtro atual
