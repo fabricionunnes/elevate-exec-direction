@@ -587,6 +587,14 @@ const KPI = ({
   </Card>
 );
 
+const DiagStat = ({ label, value, hint }: { label: string; value: string; hint?: string }) => (
+  <div className="rounded-lg border border-border/40 bg-muted/20 p-3">
+    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold truncate">{label}</p>
+    <p className="text-lg font-bold mt-1 tabular-nums truncate">{value}</p>
+    {hint && <p className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">{hint}</p>}
+  </div>
+);
+
 const Mini = ({ label, value }: { label: string; value: string }) => (
   <div className="bg-muted/40 rounded p-1.5">
     <p className="text-muted-foreground">{label}</p>
