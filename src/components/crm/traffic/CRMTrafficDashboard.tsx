@@ -228,22 +228,28 @@ export const CRMTrafficDashboard = ({
 
       {/* Drill-down */}
       <Tabs defaultValue="campaigns" className="w-full">
-        <TabsList>
-          <TabsTrigger value="campaigns" className="gap-1">
+        <TabsList className="bg-muted/40 backdrop-blur-sm">
+          <TabsTrigger value="campaigns" className="gap-1.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-md">
             <Layers className="h-3.5 w-3.5" /> Campanhas
           </TabsTrigger>
-          <TabsTrigger value="adsets" className="gap-1">
+          <TabsTrigger value="adsets" className="gap-1.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md">
             <Layers className="h-3.5 w-3.5" /> Conjuntos
           </TabsTrigger>
-          <TabsTrigger value="creatives" className="gap-1">
+          <TabsTrigger value="creatives" className="gap-1.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-fuchsia-500 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-md">
             <ImageIcon className="h-3.5 w-3.5" /> Criativos
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="campaigns" className="mt-4">
-          <Card>
+          <Card className="overflow-hidden border-border/40 shadow-md">
+            <div className="h-1 bg-gradient-to-r from-blue-500 to-violet-600" />
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Top Campanhas por Investimento</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 shadow-md">
+                  <Layers className="h-4 w-4 text-white" />
+                </div>
+                Top Campanhas por Investimento
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-72 mb-4">
@@ -252,11 +258,20 @@ export const CRMTrafficDashboard = ({
                     name: (c.campaign_name || "").slice(0, 24),
                     spend: Number(c.spend), leads: Number(c.leads),
                   }))}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-25} textAnchor="end" height={70} />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <Tooltip formatter={(v: any, k: string) => k === "spend" ? fmtBRL(Number(v)) : fmtInt(Number(v))} />
-                    <Bar dataKey="spend" fill="#3b82f6" name="Investido" />
+                    <defs>
+                      <linearGradient id="spendGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.8} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-25} textAnchor="end" height={70} stroke="hsl(var(--muted-foreground))" />
+                    <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                    <Tooltip
+                      formatter={(v: any, k: string) => k === "spend" ? fmtBRL(Number(v)) : fmtInt(Number(v))}
+                      contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                    />
+                    <Bar dataKey="spend" fill="url(#spendGradient)" name="Investido" radius={[8, 8, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
