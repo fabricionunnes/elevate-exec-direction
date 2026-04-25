@@ -124,6 +124,18 @@ export const CRMTrafficDashboard = ({
     };
   }, [perPipeline, totals.spend]);
 
+  // CAC e ROAS gerais a partir das vendas/receita do CRM (somatório por funil)
+  const crmTotals = useMemo(() => {
+    const won = perPipeline.reduce((s, r) => s + r.won, 0);
+    const wonValue = perPipeline.reduce((s, r) => s + r.won_value, 0);
+    return {
+      won,
+      won_value: wonValue,
+      cac: safeDiv(totals.spend, won),
+      roas: safeDiv(wonValue, totals.spend),
+    };
+  }, [perPipeline, totals.spend]);
+
   // Top campanhas / criativos por gasto
   const topCampaigns = [...campaigns].sort((a, b) => Number(b.spend) - Number(a.spend)).slice(0, 10);
   const topAds = [...ads].sort((a, b) => Number(b.spend) - Number(a.spend)).slice(0, 12);
