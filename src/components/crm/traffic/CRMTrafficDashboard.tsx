@@ -2,17 +2,18 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   DollarSign, MousePointerClick, Eye, Users, TrendingDown, TrendingUp, Layers,
   Image as ImageIcon, Target, CalendarCheck, CalendarClock, Receipt,
-  ShoppingCart, Banknote,
+  ShoppingCart, Banknote, Radar, AlertTriangle, CheckCircle2, Megaphone,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
 } from "recharts";
 import type {
   CRMMetaCampaign, CRMMetaAdset, CRMMetaAd,
-  CampaignPipelineLink, PipelineLeadCount, MeetingStat,
+  CampaignPipelineLink, PipelineLeadCount, MeetingStat, AdLeadStat, TrackingDiagnostics,
 } from "./useCRMTrafficData";
 import { CRMTrafficCompare } from "./CRMTrafficCompare";
 
@@ -24,6 +25,8 @@ interface Props {
   pipelines: { id: string; name: string }[];
   leadStats: PipelineLeadCount[];
   meetingStats?: MeetingStat[];
+  adLeadStats?: AdLeadStat[];
+  diagnostics?: TrackingDiagnostics;
 }
 
 const fmtBRL = (v: number) =>
@@ -34,6 +37,7 @@ const safeDiv = (a: number, b: number) => (b > 0 ? a / b : 0);
 
 export const CRMTrafficDashboard = ({
   campaigns, adsets, ads, links, pipelines, leadStats, meetingStats = [],
+  adLeadStats = [], diagnostics,
 }: Props) => {
   // Totais gerais
   const totals = useMemo(() => {
@@ -157,6 +161,50 @@ export const CRMTrafficDashboard = ({
   const topCampaigns = [...campaigns].sort((a, b) => Number(b.spend) - Number(a.spend)).slice(0, 10);
   const topAds = [...ads].sort((a, b) => Number(b.spend) - Number(a.spend)).slice(0, 12);
 
+  // Atribuição direta por anúncio (via meta_ad_id no lead)
+  const perAd = useMemo(() => {
+    type Row = {
+      meta_ad_id: string; ad_name: string; campaign_name: string;
+      spend: number; leads: number; won: number; won_value: number;
+    };
+    const adMeta = new Map<string, { name: string; campaign_name: string; spend: number }>();
+    for (const a of ads) {
+      const cur = adMeta.get(a.ad_id) || { name: a.ad_name || a.ad_id, campaign_name: a.campaign_name || "", spend: 0 };
+      cur.spend += Number(a.spend || 0);
+      adMeta.set(a.ad_id, cur);
+    }
+    const rowMap = new Map<string, Row>();
+    for (const s of adLeadStats) {
+      const meta = adMeta.get(s.meta_ad_id);
+      const cur = rowMap.get(s.meta_ad_id) || {
+        meta_ad_id: s.meta_ad_id,
+        ad_name: meta?.name || s.meta_ad_id,
+        campaign_name: meta?.campaign_name || "",
+        spend: meta?.spend || 0,
+        leads: 0, won: 0, won_value: 0,
+      };
+      cur.leads += s.total;
+      cur.won += s.won;
+      cur.won_value += s.won_value;
+      rowMap.set(s.meta_ad_id, cur);
+    }
+    return Array.from(rowMap.values())
+      .map((r) => ({
+        ...r,
+        cpl: safeDiv(r.spend, r.leads),
+        cac: safeDiv(r.spend, r.won),
+        roas: safeDiv(r.won_value, r.spend),
+      }))
+      .sort((a, b) => b.leads - a.leads);
+  }, [adLeadStats, ads]);
+
+  // Diagnóstico de cobertura
+  const diag = diagnostics;
+  const coverageAd = diag && diag.total_leads > 0 ? (diag.with_ad_id / diag.total_leads) * 100 : 0;
+  const coverageCampaign = diag && diag.total_leads > 0 ? (diag.with_campaign_id / diag.total_leads) * 100 : 0;
+  const coverageUtm = diag && diag.total_leads > 0 ? (diag.with_any_utm / diag.total_leads) * 100 : 0;
+  const coverageStatus = coverageAd >= 70 ? "good" : coverageAd >= 30 ? "warn" : "bad";
+
   return (
     <div className="space-y-6">
       {/* KPIs gerais */}
@@ -175,6 +223,73 @@ export const CRMTrafficDashboard = ({
         <KPI icon={TrendingUp} label="ROAS" value={`${(crmTotals.roas || 0).toFixed(2)}x`} gradient="from-green-500 to-emerald-600" />
         <KPI icon={MousePointerClick} label="CTR" value={fmtPct(totals.ctr)} gradient="from-fuchsia-500 to-pink-600" />
       </div>
+
+      {/* Diagnóstico de Rastreamento */}
+      {diag && (
+        <Card className="overflow-hidden border-border/40 shadow-lg">
+          <div className={`h-1 bg-gradient-to-r ${
+            coverageStatus === "good" ? "from-emerald-500 to-green-600"
+            : coverageStatus === "warn" ? "from-amber-500 to-orange-600"
+            : "from-rose-500 to-red-600"
+          }`} />
+          <CardHeader className="pb-3 bg-gradient-to-br from-muted/40 to-transparent">
+            <CardTitle className="flex items-center gap-2.5 text-base">
+              <div className={`p-1.5 rounded-lg shadow-md bg-gradient-to-br ${
+                coverageStatus === "good" ? "from-emerald-500 to-green-600"
+                : coverageStatus === "warn" ? "from-amber-500 to-orange-600"
+                : "from-rose-500 to-red-600"
+              }`}>
+                <Radar className="h-4 w-4 text-white" />
+              </div>
+              Diagnóstico de Rastreamento
+              {coverageStatus === "good" ? (
+                <Badge className="ml-2 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-0">
+                  <CheckCircle2 className="h-3 w-3 mr-1" /> Saudável
+                </Badge>
+              ) : (
+                <Badge className={`ml-2 border-0 ${
+                  coverageStatus === "warn"
+                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                    : "bg-rose-500/15 text-rose-700 dark:text-rose-400"
+                }`}>
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  {coverageStatus === "warn" ? "Cobertura parcial" : "Cobertura baixa"}
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <DiagStat label="Total de Leads" value={fmtInt(diag.total_leads)} />
+              <DiagStat label="Com ID do Anúncio" value={fmtInt(diag.with_ad_id)} hint={fmtPct(coverageAd)} />
+              <DiagStat label="Com ID da Campanha" value={fmtInt(diag.with_campaign_id)} hint={fmtPct(coverageCampaign)} />
+              <DiagStat label="Com UTM" value={fmtInt(diag.with_any_utm)} hint={fmtPct(coverageUtm)} />
+              <DiagStat label="Anúncios únicos rastreados" value={fmtInt(diag.unique_ads_tracked)} />
+              <DiagStat label="Campanhas únicas rastreadas" value={fmtInt(diag.unique_campaigns_tracked)} />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Cobertura de atribuição direta (meta_ad_id)</span>
+                <span className="font-semibold tabular-nums">{fmtPct(coverageAd)}</span>
+              </div>
+              <Progress value={coverageAd} className="h-2" />
+            </div>
+            {coverageStatus !== "good" && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs space-y-1">
+                <p className="font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5" /> Como melhorar a cobertura
+                </p>
+                <p className="text-muted-foreground">
+                  Configure os <strong>Parâmetros de URL</strong> em todos os seus anúncios no Meta Ads:
+                </p>
+                <code className="block mt-1 p-2 rounded bg-muted/60 text-[10px] break-all">
+                  utm_source=facebook&utm_medium=paid&utm_campaign={"{{campaign.name}}"}&utm_content={"{{ad.name}}"}&utm_term={"{{adset.name}}"}&meta_campaign_id={"{{campaign.id}}"}&meta_adset_id={"{{adset.id}}"}&meta_ad_id={"{{ad.id}}"}
+                </code>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Métricas por Funil — destaque */}
       <Card className="overflow-hidden border-border/40 shadow-lg">
@@ -266,6 +381,9 @@ export const CRMTrafficDashboard = ({
           </TabsTrigger>
           <TabsTrigger value="creatives" className="gap-1.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-fuchsia-500 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-md">
             <ImageIcon className="h-3.5 w-3.5" /> Criativos
+          </TabsTrigger>
+          <TabsTrigger value="byad" className="gap-1.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-md">
+            <Megaphone className="h-3.5 w-3.5" /> Por Anúncio (Direto)
           </TabsTrigger>
         </TabsList>
 
@@ -375,6 +493,72 @@ export const CRMTrafficDashboard = ({
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="byad" className="mt-4">
+          <Card className="overflow-hidden border-border/40 shadow-md">
+            <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-600" />
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md">
+                  <Megaphone className="h-4 w-4 text-white" />
+                </div>
+                Atribuição direta por Anúncio
+                <Badge variant="outline" className="ml-2 text-[10px]">
+                  via meta_ad_id
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {perAd.length === 0 ? (
+                <div className="text-center py-8 space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Nenhum lead com <code className="text-xs bg-muted px-1 rounded">meta_ad_id</code> ainda.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Configure os Parâmetros de URL nos seus anúncios do Meta Ads para começar a rastrear.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-auto rounded-lg border border-border/40">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-muted/60 to-muted/20 text-xs text-muted-foreground">
+                        <th className="text-left py-2.5 px-3 font-semibold">Anúncio</th>
+                        <th className="text-left py-2.5 px-3 font-semibold">Campanha</th>
+                        <th className="text-right py-2.5 px-3 font-semibold">Investido</th>
+                        <th className="text-right py-2.5 px-3 font-semibold">Leads</th>
+                        <th className="text-right py-2.5 px-3 font-semibold">CPL</th>
+                        <th className="text-right py-2.5 px-3 font-semibold">Vendas</th>
+                        <th className="text-right py-2.5 px-3 font-semibold">CAC</th>
+                        <th className="text-right py-2.5 px-3 font-semibold">Receita</th>
+                        <th className="text-right py-2.5 px-3 font-semibold">ROAS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {perAd.map((r, idx) => (
+                        <tr key={r.meta_ad_id} className={`border-t border-border/40 hover:bg-emerald-500/5 transition-colors ${idx % 2 === 0 ? "bg-muted/10" : ""}`}>
+                          <td className="py-2.5 px-3 font-semibold max-w-[260px] truncate" title={r.ad_name}>{r.ad_name}</td>
+                          <td className="py-2.5 px-3 text-muted-foreground max-w-[200px] truncate" title={r.campaign_name}>{r.campaign_name || "—"}</td>
+                          <td className="text-right py-2.5 px-3 tabular-nums">{fmtBRL(r.spend)}</td>
+                          <td className="text-right py-2.5 px-3 tabular-nums">{fmtInt(r.leads)}</td>
+                          <td className="text-right py-2.5 px-3 tabular-nums font-semibold text-amber-600 dark:text-amber-400">{fmtBRL(r.cpl)}</td>
+                          <td className="text-right py-2.5 px-3 tabular-nums">{fmtInt(r.won)}</td>
+                          <td className="text-right py-2.5 px-3 tabular-nums font-semibold text-rose-600 dark:text-rose-400">{fmtBRL(r.cac)}</td>
+                          <td className="text-right py-2.5 px-3 tabular-nums">{fmtBRL(r.won_value)}</td>
+                          <td className="text-right py-2.5 px-3">
+                            <Badge className={`tabular-nums border-0 ${r.roas >= 1 ? "bg-gradient-to-r from-emerald-500 to-green-600 text-white" : "bg-muted text-muted-foreground"}`}>
+                              {r.roas.toFixed(2)}x
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -401,6 +585,14 @@ const KPI = ({
       </div>
     </CardContent>
   </Card>
+);
+
+const DiagStat = ({ label, value, hint }: { label: string; value: string; hint?: string }) => (
+  <div className="rounded-lg border border-border/40 bg-muted/20 p-3">
+    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold truncate">{label}</p>
+    <p className="text-lg font-bold mt-1 tabular-nums truncate">{value}</p>
+    {hint && <p className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">{hint}</p>}
+  </div>
 );
 
 const Mini = ({ label, value }: { label: string; value: string }) => (

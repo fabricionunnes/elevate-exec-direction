@@ -5,7 +5,8 @@ import {
   Mail, 
   Building2, 
   MessageSquare,
-  Clock 
+  Clock,
+  Megaphone,
 } from "lucide-react";
 import { TwilioCallButton } from "@/components/crm/TwilioCallButton";
 import { formatDistanceToNow } from "date-fns";
@@ -29,6 +30,9 @@ interface Lead {
   last_activity_at: string | null;
   stage_entered_at?: string | null;
   urgency: string | null;
+  utm_source?: string | null;
+  utm_campaign?: string | null;
+  utm_content?: string | null;
   origin?: { name: string } | null;
   owner?: { name: string; avatar_url?: string | null } | null;
   tags?: { tag: { id: string; name: string; color: string } }[];
@@ -190,6 +194,16 @@ export const KanbanLeadCard = ({
               {t.tag.name}
             </Badge>
           ))}
+        </div>
+      )}
+
+      {/* Origem do anúncio (Meta Ads) */}
+      {(lead.utm_content || lead.utm_campaign) && (
+        <div className="flex items-center gap-1 mt-2 px-1.5 py-1 rounded-md bg-gradient-to-r from-blue-500/10 to-violet-500/10 border border-blue-500/20">
+          <Megaphone className="h-3 w-3 text-blue-600 dark:text-blue-400 shrink-0" />
+          <span className="text-[10px] text-blue-700 dark:text-blue-300 font-medium truncate" title={`${lead.utm_campaign || ""}${lead.utm_content ? " / " + lead.utm_content : ""}`}>
+            {lead.utm_content || lead.utm_campaign}
+          </span>
         </div>
       )}
 
