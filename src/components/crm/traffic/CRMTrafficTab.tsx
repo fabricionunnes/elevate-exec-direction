@@ -91,8 +91,9 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
       return statusFilter === "active" ? isActive : !isActive;
     };
 
+    const campSet = campaignFilter.length > 0 ? new Set(campaignFilter) : null;
     const fCampaigns = campaigns.filter((c) => {
-      if (campaignFilter !== "all" && c.campaign_id !== campaignFilter) return false;
+      if (campSet && !campSet.has(c.campaign_id)) return false;
       if (allowedCampaignIds && !allowedCampaignIds.has(c.campaign_id)) return false;
       if (!matchStatus(c.status)) return false;
       if (!inDate(c.date_start, c.date_stop)) return false;
