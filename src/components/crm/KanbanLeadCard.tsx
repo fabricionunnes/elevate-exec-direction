@@ -33,6 +33,10 @@ interface Lead {
   utm_source?: string | null;
   utm_campaign?: string | null;
   utm_content?: string | null;
+  utm_term?: string | null;
+  meta_campaign_id?: string | null;
+  meta_adset_id?: string | null;
+  meta_ad_id?: string | null;
   origin?: { name: string } | null;
   owner?: { name: string; avatar_url?: string | null } | null;
   tags?: { tag: { id: string; name: string; color: string } }[];
@@ -198,12 +202,30 @@ export const KanbanLeadCard = ({
       )}
 
       {/* Origem do anúncio (Meta Ads) */}
-      {(lead.utm_content || lead.utm_campaign) && (
-        <div className="flex items-center gap-1 mt-2 px-1.5 py-1 rounded-md bg-gradient-to-r from-blue-500/10 to-violet-500/10 border border-blue-500/20">
-          <Megaphone className="h-3 w-3 text-blue-600 dark:text-blue-400 shrink-0" />
-          <span className="text-[10px] text-blue-700 dark:text-blue-300 font-medium truncate" title={`${lead.utm_campaign || ""}${lead.utm_content ? " / " + lead.utm_content : ""}`}>
-            {lead.utm_content || lead.utm_campaign}
-          </span>
+      {(lead.utm_content || lead.utm_campaign || lead.utm_term) && (
+        <div className="mt-2 px-2 py-1.5 rounded-md bg-gradient-to-r from-blue-500/10 to-violet-500/10 border border-blue-500/20 space-y-0.5">
+          <div className="flex items-center gap-1 text-blue-700 dark:text-blue-300">
+            <Megaphone className="h-3 w-3 shrink-0" />
+            <span className="text-[9px] font-bold uppercase tracking-wider">Origem do Anúncio</span>
+          </div>
+          {lead.utm_campaign && (
+            <div className="flex items-baseline gap-1 text-[10px]">
+              <span className="text-muted-foreground shrink-0">Camp.:</span>
+              <span className="text-foreground font-medium truncate" title={lead.utm_campaign}>{lead.utm_campaign}</span>
+            </div>
+          )}
+          {lead.utm_term && (
+            <div className="flex items-baseline gap-1 text-[10px]">
+              <span className="text-muted-foreground shrink-0">Conj.:</span>
+              <span className="text-foreground font-medium truncate" title={lead.utm_term}>{lead.utm_term}</span>
+            </div>
+          )}
+          {lead.utm_content && (
+            <div className="flex items-baseline gap-1 text-[10px]">
+              <span className="text-muted-foreground shrink-0">Anún.:</span>
+              <span className="text-foreground font-medium truncate" title={lead.utm_content}>{lead.utm_content}</span>
+            </div>
+          )}
         </div>
       )}
 
