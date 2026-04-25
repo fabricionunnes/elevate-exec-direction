@@ -192,10 +192,23 @@ export function useCRMTrafficData() {
 
       const map = new Map<string, PipelineLeadCount>();
       const adMap = new Map<string, AdLeadStat>();
-      for (const lead of (leads as any) || []) {
+      const leadsArr = (leads as any) || [];
+      const diag: TrackingDiagnostics = {
+        total_leads: leadsArr.length,
+        with_ad_id: 0, with_adset_id: 0, with_campaign_id: 0,
+        with_any_utm: 0, unique_ads_tracked: 0, unique_campaigns_tracked: 0,
+      };
+      const adIdSet = new Set<string>();
+      const campIdSet = new Set<string>();
+      for (const lead of leadsArr) {
         const date = lead.created_at ? String(lead.created_at).slice(0, 10) : null;
         const isWon = lead.crm_stages?.final_type === "won";
         const won_val = Number(lead.opportunity_value || 0);
+
+        if (lead.meta_ad_id) { diag.with_ad_id += 1; adIdSet.add(lead.meta_ad_id); }
+        if (lead.meta_adset_id) diag.with_adset_id += 1;
+        if (lead.meta_campaign_id) { diag.with_campaign_id += 1; campIdSet.add(lead.meta_campaign_id); }
+        if (lead.utm_campaign) diag.with_any_utm += 1;
 
         if (lead.pipeline_id) {
           const utm = lead.utm_campaign || null;
@@ -236,6 +249,9 @@ export function useCRMTrafficData() {
           adMap.set(aKey, cur);
         }
       }
+      diag.unique_ads_tracked = adIdSet.size;
+      diag.unique_campaigns_tracked = campIdSet.size;
+      setDiagnostics(diag);
       setLeadStats(Array.from(map.values()));
       setAdLeadStats(Array.from(adMap.values()));
 
