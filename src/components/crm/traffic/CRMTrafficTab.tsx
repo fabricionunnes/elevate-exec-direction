@@ -122,6 +122,43 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
       return true;
     });
 
+    // Se filtros de adset/ad estão ativos, recalcula métricas das campanhas
+    // a partir dos adsets/ads filtrados (para refletir nos cards e Custo por Funil)
+    let effectiveCampaigns = fCampaigns;
+    if (adsetSet || adSet) {
+      const source: any[] = adSet ? fAds : fAdsets;
+      const agg = new Map<string, { spend: number; impressions: number; clicks: number; leads: number; conversions: number; conversion_value: number }>();
+      for (const item of source) {
+        if (!item.campaign_id) continue;
+        const cur = agg.get(item.campaign_id) || { spend: 0, impressions: 0, clicks: 0, leads: 0, conversions: 0, conversion_value: 0 };
+        cur.spend += Number(item.spend || 0);
+        cur.impressions += Number(item.impressions || 0);
+        cur.clicks += Number(item.clicks || 0);
+        cur.leads += Number(item.leads || 0);
+        cur.conversions += Number(item.conversions || 0);
+        cur.conversion_value += Number(item.conversion_value || 0);
+        agg.set(item.campaign_id, cur);
+      }
+      const campMeta = new Map(fCampaigns.map((c) => [c.campaign_id, c]));
+      effectiveCampaigns = Array.from(agg.entries()).map(([campaign_id, m]) => {
+        const base: any = campMeta.get(campaign_id) || {};
+        return {
+          ...base,
+          campaign_id,
+          campaign_name: base.campaign_name || campaign_id,
+          spend: m.spend,
+          impressions: m.impressions,
+          clicks: m.clicks,
+          ctr: m.impressions > 0 ? (m.clicks / m.impressions) * 100 : 0,
+          cpc: m.clicks > 0 ? m.spend / m.clicks : 0,
+          cpm: m.impressions > 0 ? (m.spend / m.impressions) * 1000 : 0,
+          leads: m.leads,
+          conversions: m.conversions,
+          conversion_value: m.conversion_value,
+        };
+      });
+    }
+
     // Filtro por funil + data (created_at do lead / event_date da reunião)
     const inDateStr = (d?: string | null) => {
       if (!dateFrom && !dateTo) return true;
@@ -137,7 +174,7 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
       (s) => (!pipeSet || pipeSet.has(s.pipeline_id)) && inDateStr(s.date),
     );
 
-    return { campaigns: fCampaigns, adsets: fAdsets, ads: fAds, leadStats: fLeadStats, meetingStats: fMeetingStats };
+    return { campaigns: effectiveCampaigns, adsets: fAdsets, ads: fAds, leadStats: fLeadStats, meetingStats: fMeetingStats };
   }, [campaigns, adsets, ads, links, leadStats, meetingStats, pipelineFilter, campaignFilter, adsetFilter, adFilter, statusFilter, dateFrom, dateTo]);
 
   const hasFilters = pipelineFilter.length > 0 || campaignFilter.length > 0 || adsetFilter.length > 0 || adFilter.length > 0 || statusFilter !== "active" || dateFrom || dateTo;
