@@ -147,6 +147,7 @@ export const CRMTrafficDashboard = ({
       won_value: wonValue,
       cac: safeDiv(totals.spend, won),
       roas: safeDiv(wonValue, totals.spend),
+      ticket_medio: safeDiv(wonValue, won),
     };
   }, [perPipeline, totals.spend]);
 
