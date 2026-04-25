@@ -97,7 +97,7 @@ export const MultiSearchableSelect = ({
                 return (
                   <CommandItem
                     key={o.value}
-                    value={o.label}
+                    value={`${o.label} ${o.value}`}
                     onSelect={() => toggle(o.value)}
                     className="gap-2"
                   >
