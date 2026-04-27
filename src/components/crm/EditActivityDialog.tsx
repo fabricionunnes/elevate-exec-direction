@@ -78,8 +78,9 @@ export const EditActivityDialog = ({ open, onOpenChange, activity, onSuccess }: 
 
     setLoading(true);
     try {
+      // Interpreta o input como horário de Brasília (-03:00), independente do fuso do navegador
       const nextScheduledAt = formData.scheduled_at
-        ? new Date(formData.scheduled_at).toISOString()
+        ? new Date(`${formData.scheduled_at}:00-03:00`).toISOString()
         : null;
 
       const scheduledAtChanged = (activity.scheduled_at || null) !== nextScheduledAt;
