@@ -512,6 +512,8 @@ export function PayablesPanel() {
       p.supplier_name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter.length === 0 || statusFilter.includes(p.status) || 
       (statusFilter.includes("overdue") && p.status === "partial" && p.due_date < format(new Date(), "yyyy-MM-dd"));
+    const matchesCategory = categoryFilter.length === 0 || (p.category_id && categoryFilter.includes(p.category_id));
+    const matchesCostCenter = costCenterFilter.length === 0 || (p.cost_center && costCenterFilter.includes(p.cost_center));
     
     // Period filter
     const { start, end } = getDateRangeForPeriod(periodFilter, periodOffset);
@@ -521,7 +523,7 @@ export function PayablesPanel() {
       matchesPeriod = dueDate >= startOfDay(start) && dueDate <= endOfDay(end);
     }
     
-    return matchesSearch && matchesStatus && matchesPeriod;
+    return matchesSearch && matchesStatus && matchesCategory && matchesCostCenter && matchesPeriod;
   });
 
   const today = format(new Date(), "yyyy-MM-dd");
