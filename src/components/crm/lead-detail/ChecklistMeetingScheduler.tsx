@@ -565,7 +565,7 @@ export function ChecklistMeetingScheduler({
         action: "rescheduled",
         performed_by_staff_id: staffId,
         old_scheduled_at: existingMeeting.scheduled_at,
-        new_scheduled_at: newStartDateTime,
+        new_scheduled_at: newStartDateTimeISO,
         notes: notesText,
       } as any);
 
