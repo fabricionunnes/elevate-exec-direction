@@ -528,7 +528,7 @@ export function ChecklistMeetingScheduler({
       const newResponsibleStaffId = newStaff?.id || existingMeeting.responsible_staff_id;
 
       const updatePayload: Record<string, any> = {
-        scheduled_at: newStartDateTime,
+        scheduled_at: newStartDateTimeISO,
         status: "pending",
       };
       if (closerChanged) {
