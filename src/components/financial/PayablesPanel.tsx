@@ -514,7 +514,7 @@ export function PayablesPanel() {
     const matchesStatus = statusFilter.length === 0 || statusFilter.includes(p.status) || 
       (statusFilter.includes("overdue") && p.status === "partial" && p.due_date < format(new Date(), "yyyy-MM-dd"));
     const matchesCategory = categoryFilter.length === 0 || (p.category_id && categoryFilter.includes(p.category_id));
-    const matchesCostCenter = costCenterFilter.length === 0 || (p.cost_center && costCenterFilter.includes(p.cost_center));
+    const matchesCostCenter = costCenterFilter.length === 0 || ((p.cost_center_id || p.cost_center) && costCenterFilter.includes((p.cost_center_id || p.cost_center) as string));
     
     // Period filter
     const { start, end } = getDateRangeForPeriod(periodFilter, periodOffset);
