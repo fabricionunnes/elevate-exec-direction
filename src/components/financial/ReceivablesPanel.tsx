@@ -471,6 +471,7 @@ export function ReceivablesPanel() {
       r.custom_receiver_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter.length === 0 || statusFilter.includes(r.status) ||
       (statusFilter.includes("overdue") && r.status === "partial" && r.due_date < format(new Date(), "yyyy-MM-dd"));
+    const matchesCategory = categoryFilter.length === 0 || (r.category_id && categoryFilter.includes(r.category_id));
     
     // Period filter
     const { start, end } = getDateRangeForPeriod(periodFilter, periodOffset);
@@ -480,7 +481,7 @@ export function ReceivablesPanel() {
       matchesPeriod = dueDate >= startOfDay(start) && dueDate <= endOfDay(end);
     }
     
-    return matchesSearch && matchesStatus && matchesPeriod;
+    return matchesSearch && matchesStatus && matchesCategory && matchesPeriod;
   });
 
   // Calculate totals based on filtered data
