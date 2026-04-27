@@ -274,6 +274,15 @@ const PublicContractDataPage = () => {
         console.error("Error updating company data:", companyErr);
       }
 
+      // Notify lead owner, head comercial and master (in-app + WhatsApp)
+      try {
+        await supabase.functions.invoke("notify-contract-form-submitted", {
+          body: { leadId },
+        });
+      } catch (notifyErr) {
+        console.error("Error sending contract form notifications:", notifyErr);
+      }
+
       setSubmitted(true);
       toast.success("Dados enviados com sucesso!");
     } catch (err) {
