@@ -334,7 +334,7 @@ export function ChecklistMeetingScheduler({
           type: "meeting",
           title: meetingTitle,
           description: `Agendamento via checklist: ${checklistItemTitle}`,
-          scheduled_at: startDateTime,
+          scheduled_at: startDateTimeISO,
           responsible_staff_id: selectedStaff?.id || staffData?.id,
           status: "pending",
           meeting_link: data.event?.meetingLink || null,
