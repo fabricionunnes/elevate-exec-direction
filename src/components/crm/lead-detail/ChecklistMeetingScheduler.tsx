@@ -370,7 +370,7 @@ export function ChecklistMeetingScheduler({
             lead_id: leadId,
             action: "scheduled",
             performed_by_staff_id: staffData?.id,
-            new_scheduled_at: startDateTime,
+            new_scheduled_at: startDateTimeISO,
             notes: `Agendado: ${meetingTitle}`,
           } as any);
         }
