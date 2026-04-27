@@ -463,6 +463,8 @@ export function ChecklistMeetingScheduler({
 
       const newStartDateTime = `${dateStr}T${selectedSlot}:00`;
       const newEndDateTime = `${dateStr}T${endTime}:00`;
+      // ISO com offset Brasil (-03:00) para persistir corretamente em timestamptz
+      const newStartDateTimeISO = `${newStartDateTime}-03:00`;
 
       const oldCalendarUserId = existingMeeting.google_calendar_user_id;
       const newCalendarUserId = selectedStaffUserId;
