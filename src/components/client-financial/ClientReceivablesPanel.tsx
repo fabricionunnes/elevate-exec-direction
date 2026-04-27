@@ -411,9 +411,11 @@ export function ClientReceivablesPanel({ projectId, canEdit }: Props) {
     const matchesSearch =
       r.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || r.status === statusFilter ||
-      (statusFilter === "overdue" && r.status === "partial" && r.due_date < new Date().toISOString().slice(0, 10));
-    return matchesSearch && matchesStatus;
+    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(r.status) ||
+      (statusFilter.includes("overdue") && (r.status as string) === "partial" && r.due_date < new Date().toISOString().slice(0, 10));
+    const matchesCategory = categoryFilter.length === 0 || (r.category_id && categoryFilter.includes(r.category_id));
+    const matchesCostCenter = costCenterFilter.length === 0 || (r.cost_center_id && costCenterFilter.includes(r.cost_center_id));
+    return matchesSearch && matchesStatus && matchesCategory && matchesCostCenter;
   });
 
   const totals = {
