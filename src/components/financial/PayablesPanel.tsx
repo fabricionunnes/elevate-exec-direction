@@ -117,6 +117,8 @@ export function PayablesPanel() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [costCenterFilter, setCostCenterFilter] = useState<string[]>([]);
   const [periodFilter, setPeriodFilter] = useState<import("./PeriodNavigator").PeriodType>("this_month");
   const [periodOffset, setPeriodOffset] = useState(0);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
