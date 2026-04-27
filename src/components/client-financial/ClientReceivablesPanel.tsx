@@ -54,7 +54,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import type { FinancialReceivable, FinancialCategory, FinancialPaymentMethod, FinancialBankAccount } from "./types";
+import type { FinancialReceivable, FinancialCategory, FinancialCostCenter, FinancialPaymentMethod, FinancialBankAccount } from "./types";
 import { ClientFinancialImportDialog } from "./ClientFinancialImportDialog";
 import { syncEntryToContaAzul, syncPaymentToContaAzul } from "@/utils/contaAzulSync";
 // Parse date string (YYYY-MM-DD) to local Date without timezone shift
