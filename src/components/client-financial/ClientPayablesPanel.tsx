@@ -473,7 +473,7 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
       p.supplier_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter.length === 0 || statusFilter.includes(p.status) ||
-      (statusFilter.includes("overdue") && p.status === "partial" && p.due_date < new Date().toISOString().slice(0, 10));
+      (statusFilter.includes("overdue") && (p.status as string) === "partial" && p.due_date < new Date().toISOString().slice(0, 10));
     const matchesCategory = categoryFilter.length === 0 || (p.category_id && categoryFilter.includes(p.category_id));
     const matchesCostCenter = costCenterFilter.length === 0 || (p.cost_center_id && costCenterFilter.includes(p.cost_center_id));
     return matchesSearch && matchesStatus && matchesCategory && matchesCostCenter;
