@@ -85,6 +85,7 @@ interface Payable {
   recurrence_type: string | null;
   payment_method: string | null;
   cost_center: string | null;
+  cost_center_id: string | null;
   notes: string | null;
   installment_number: number | null;
   total_installments: number | null;
@@ -117,6 +118,8 @@ export function PayablesPanel() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [costCenterFilter, setCostCenterFilter] = useState<string[]>([]);
   const [periodFilter, setPeriodFilter] = useState<import("./PeriodNavigator").PeriodType>("this_month");
   const [periodOffset, setPeriodOffset] = useState(0);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -510,6 +513,8 @@ export function PayablesPanel() {
       p.supplier_name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter.length === 0 || statusFilter.includes(p.status) || 
       (statusFilter.includes("overdue") && p.status === "partial" && p.due_date < format(new Date(), "yyyy-MM-dd"));
+    const matchesCategory = categoryFilter.length === 0 || (p.category_id && categoryFilter.includes(p.category_id));
+    const matchesCostCenter = costCenterFilter.length === 0 || ((p.cost_center_id || p.cost_center) && costCenterFilter.includes((p.cost_center_id || p.cost_center) as string));
     
     // Period filter
     const { start, end } = getDateRangeForPeriod(periodFilter, periodOffset);
@@ -519,7 +524,7 @@ export function PayablesPanel() {
       matchesPeriod = dueDate >= startOfDay(start) && dueDate <= endOfDay(end);
     }
     
-    return matchesSearch && matchesStatus && matchesPeriod;
+    return matchesSearch && matchesStatus && matchesCategory && matchesCostCenter && matchesPeriod;
   });
 
   const today = format(new Date(), "yyyy-MM-dd");
@@ -846,6 +851,22 @@ export function PayablesPanel() {
               placeholder="Status"
               allLabel="Todos"
               className="w-[180px]"
+            />
+            <MultiSelectFilter
+              options={categories.map((c) => ({ value: c.id, label: c.name }))}
+              selected={categoryFilter}
+              onChange={(v) => { setCategoryFilter(v); setCurrentPage(0); }}
+              placeholder="Categoria"
+              allLabel="Todas as categorias"
+              className="w-[200px]"
+            />
+            <MultiSelectFilter
+              options={costCenters.map((cc: any) => ({ value: cc.id ?? cc.name, label: cc.name }))}
+              selected={costCenterFilter}
+              onChange={(v) => { setCostCenterFilter(v); setCurrentPage(0); }}
+              placeholder="Centro de Custo"
+              allLabel="Todos os Centros de Custo"
+              className="w-[220px]"
             />
           </div>
         </CardContent>

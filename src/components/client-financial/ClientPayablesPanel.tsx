@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -80,7 +81,9 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
   const [paymentMethods, setPaymentMethods] = useState<FinancialPaymentMethod[]>([]);
   const [bankAccounts, setBankAccounts] = useState<FinancialBankAccount[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [costCenterFilter, setCostCenterFilter] = useState<string[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showPayDialog, setShowPayDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -470,8 +473,11 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
     const matchesSearch =
       p.supplier_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || p.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(p.status) ||
+      (statusFilter.includes("overdue") && (p.status as string) === "partial" && p.due_date < new Date().toISOString().slice(0, 10));
+    const matchesCategory = categoryFilter.length === 0 || (p.category_id && categoryFilter.includes(p.category_id));
+    const matchesCostCenter = costCenterFilter.length === 0 || (p.cost_center_id && costCenterFilter.includes(p.cost_center_id));
+    return matchesSearch && matchesStatus && matchesCategory && matchesCostCenter;
   });
 
   const totals = {
@@ -553,19 +559,36 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
             className="pl-10"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="open">Pendente</SelectItem>
-            <SelectItem value="partial">Pago Parcial</SelectItem>
-            <SelectItem value="overdue">Vencido</SelectItem>
-            <SelectItem value="paid">Pago</SelectItem>
-            <SelectItem value="cancelled">Cancelados</SelectItem>
-          </SelectContent>
-        </Select>
+        <MultiSelectFilter
+          options={[
+            { value: "open", label: "Pendente" },
+            { value: "partial", label: "Pago Parcial" },
+            { value: "overdue", label: "Vencido" },
+            { value: "paid", label: "Pago" },
+            { value: "cancelled", label: "Cancelados" },
+          ]}
+          selected={statusFilter}
+          onChange={setStatusFilter}
+          placeholder="Status"
+          allLabel="Todos"
+          className="w-[180px]"
+        />
+        <MultiSelectFilter
+          options={categories.map((c) => ({ value: c.id, label: c.name }))}
+          selected={categoryFilter}
+          onChange={setCategoryFilter}
+          placeholder="Categoria"
+          allLabel="Todas as categorias"
+          className="w-[200px]"
+        />
+        <MultiSelectFilter
+          options={costCenters.map((cc) => ({ value: cc.id, label: cc.name }))}
+          selected={costCenterFilter}
+          onChange={setCostCenterFilter}
+          placeholder="Centro de Custo"
+          allLabel="Todos os Centros de Custo"
+          className="w-[220px]"
+        />
         <Button variant="outline" size="icon" onClick={loadData}>
           <RefreshCw className="h-4 w-4" />
         </Button>

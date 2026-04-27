@@ -104,6 +104,7 @@ export function ReceivablesPanel() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [periodFilter, setPeriodFilter] = useState<import("./PeriodNavigator").PeriodType>("this_month");
   const [periodOffset, setPeriodOffset] = useState(0);
   const [monthFilter, setMonthFilter] = useState(format(new Date(), "yyyy-MM"));
@@ -470,6 +471,7 @@ export function ReceivablesPanel() {
       r.custom_receiver_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter.length === 0 || statusFilter.includes(r.status) ||
       (statusFilter.includes("overdue") && r.status === "partial" && r.due_date < format(new Date(), "yyyy-MM-dd"));
+    const matchesCategory = categoryFilter.length === 0 || (r.category_id && categoryFilter.includes(r.category_id));
     
     // Period filter
     const { start, end } = getDateRangeForPeriod(periodFilter, periodOffset);
@@ -479,7 +481,7 @@ export function ReceivablesPanel() {
       matchesPeriod = dueDate >= startOfDay(start) && dueDate <= endOfDay(end);
     }
     
-    return matchesSearch && matchesStatus && matchesPeriod;
+    return matchesSearch && matchesStatus && matchesCategory && matchesPeriod;
   });
 
   // Calculate totals based on filtered data
@@ -746,9 +748,9 @@ export function ReceivablesPanel() {
             <MultiSelectFilter
               options={[
                 { value: "pending", label: "Pendentes" },
-                { value: "partial", label: "Parciais" },
+                { value: "partial", label: "Recebido Parcial" },
                 { value: "overdue", label: "Atrasados" },
-                { value: "paid", label: "Pagos" },
+                { value: "paid", label: "Recebidos" },
                 { value: "cancelled", label: "Cancelados" },
               ]}
               selected={statusFilter}
@@ -756,6 +758,14 @@ export function ReceivablesPanel() {
               placeholder="Status"
               allLabel="Todos"
               className="w-[180px]"
+            />
+            <MultiSelectFilter
+              options={categories.map((c) => ({ value: c.id, label: c.name }))}
+              selected={categoryFilter}
+              onChange={setCategoryFilter}
+              placeholder="Categoria"
+              allLabel="Todas as categorias"
+              className="w-[200px]"
             />
           </div>
         </CardContent>

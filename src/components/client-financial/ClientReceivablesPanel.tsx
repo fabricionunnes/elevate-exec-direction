@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,7 +54,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import type { FinancialReceivable, FinancialCategory, FinancialPaymentMethod, FinancialBankAccount } from "./types";
+import type { FinancialReceivable, FinancialCategory, FinancialCostCenter, FinancialPaymentMethod, FinancialBankAccount } from "./types";
 import { ClientFinancialImportDialog } from "./ClientFinancialImportDialog";
 import { syncEntryToContaAzul, syncPaymentToContaAzul } from "@/utils/contaAzulSync";
 // Parse date string (YYYY-MM-DD) to local Date without timezone shift
@@ -77,10 +78,13 @@ export function ClientReceivablesPanel({ projectId, canEdit }: Props) {
   const [loading, setLoading] = useState(true);
   const [receivables, setReceivables] = useState<FinancialReceivable[]>([]);
   const [categories, setCategories] = useState<FinancialCategory[]>([]);
+  const [costCenters, setCostCenters] = useState<FinancialCostCenter[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<FinancialPaymentMethod[]>([]);
   const [bankAccounts, setBankAccounts] = useState<FinancialBankAccount[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [costCenterFilter, setCostCenterFilter] = useState<string[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showPayDialog, setShowPayDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -129,6 +133,14 @@ export function ClientReceivablesPanel({ projectId, canEdit }: Props) {
         .eq("type", "income")
         .eq("is_active", true);
       setCategories((catData || []) as FinancialCategory[]);
+
+      // Load cost centers
+      const { data: ccData } = await supabase
+        .from("client_financial_cost_centers")
+        .select("*")
+        .eq("project_id", projectId)
+        .eq("is_active", true);
+      setCostCenters((ccData || []) as FinancialCostCenter[]);
 
       // Load payment methods
       const { data: pmData } = await supabase
@@ -407,9 +419,11 @@ export function ClientReceivablesPanel({ projectId, canEdit }: Props) {
     const matchesSearch =
       r.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || r.status === statusFilter ||
-      (statusFilter === "overdue" && r.status === "partial" && r.due_date < new Date().toISOString().slice(0, 10));
-    return matchesSearch && matchesStatus;
+    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(r.status) ||
+      (statusFilter.includes("overdue") && (r.status as string) === "partial" && r.due_date < new Date().toISOString().slice(0, 10));
+    const matchesCategory = categoryFilter.length === 0 || (r.category_id && categoryFilter.includes(r.category_id));
+    const matchesCostCenter = costCenterFilter.length === 0 || (r.cost_center_id && costCenterFilter.includes(r.cost_center_id));
+    return matchesSearch && matchesStatus && matchesCategory && matchesCostCenter;
   });
 
   const totals = {
@@ -491,18 +505,36 @@ export function ClientReceivablesPanel({ projectId, canEdit }: Props) {
             className="pl-10"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="open">Em aberto</SelectItem>
-            <SelectItem value="overdue">Vencidos</SelectItem>
-            <SelectItem value="paid">Pagos</SelectItem>
-            <SelectItem value="cancelled">Cancelados</SelectItem>
-          </SelectContent>
-        </Select>
+        <MultiSelectFilter
+          options={[
+            { value: "open", label: "Em aberto" },
+            { value: "partial", label: "Recebido Parcial" },
+            { value: "overdue", label: "Vencidos" },
+            { value: "paid", label: "Recebidos" },
+            { value: "cancelled", label: "Cancelados" },
+          ]}
+          selected={statusFilter}
+          onChange={setStatusFilter}
+          placeholder="Status"
+          allLabel="Todos"
+          className="w-[180px]"
+        />
+        <MultiSelectFilter
+          options={categories.map((c) => ({ value: c.id, label: c.name }))}
+          selected={categoryFilter}
+          onChange={setCategoryFilter}
+          placeholder="Categoria"
+          allLabel="Todas as categorias"
+          className="w-[200px]"
+        />
+        <MultiSelectFilter
+          options={costCenters.map((cc) => ({ value: cc.id, label: cc.name }))}
+          selected={costCenterFilter}
+          onChange={setCostCenterFilter}
+          placeholder="Centro de Custo"
+          allLabel="Todos os Centros de Custo"
+          className="w-[220px]"
+        />
         <Button variant="outline" size="icon" onClick={loadData}>
           <RefreshCw className="h-4 w-4" />
         </Button>
