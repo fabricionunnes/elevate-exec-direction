@@ -134,6 +134,14 @@ export function ClientReceivablesPanel({ projectId, canEdit }: Props) {
         .eq("is_active", true);
       setCategories((catData || []) as FinancialCategory[]);
 
+      // Load cost centers
+      const { data: ccData } = await supabase
+        .from("client_financial_cost_centers")
+        .select("*")
+        .eq("project_id", projectId)
+        .eq("is_active", true);
+      setCostCenters((ccData || []) as FinancialCostCenter[]);
+
       // Load payment methods
       const { data: pmData } = await supabase
         .from("client_financial_payment_methods")
