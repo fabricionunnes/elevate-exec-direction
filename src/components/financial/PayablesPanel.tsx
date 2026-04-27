@@ -851,6 +851,22 @@ export function PayablesPanel() {
               allLabel="Todos"
               className="w-[180px]"
             />
+            <MultiSelectFilter
+              options={categories.map((c) => ({ value: c.id, label: c.name }))}
+              selected={categoryFilter}
+              onChange={(v) => { setCategoryFilter(v); setCurrentPage(0); }}
+              placeholder="Categoria"
+              allLabel="Todas as categorias"
+              className="w-[200px]"
+            />
+            <MultiSelectFilter
+              options={costCenters.map((cc: any) => ({ value: cc.id ?? cc.name, label: cc.name }))}
+              selected={costCenterFilter}
+              onChange={(v) => { setCostCenterFilter(v); setCurrentPage(0); }}
+              placeholder="Centro de Custo"
+              allLabel="Todos os Centros de Custo"
+              className="w-[220px]"
+            />
           </div>
         </CardContent>
       </Card>
