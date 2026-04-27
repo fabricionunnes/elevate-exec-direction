@@ -55,9 +55,14 @@ export const EditActivityDialog = ({ open, onOpenChange, activity, onSuccess }: 
         description: activity.description || "",
         scheduled_at: activity.scheduled_at
           ? (() => {
-              const d = new Date(activity.scheduled_at);
-              const pad = (n: number) => String(n).padStart(2, '0');
-              return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+              // Exibe sempre no fuso de Brasília (-03:00), independente do fuso do navegador
+              const parts = new Intl.DateTimeFormat("en-CA", {
+                timeZone: "America/Sao_Paulo",
+                year: "numeric", month: "2-digit", day: "2-digit",
+                hour: "2-digit", minute: "2-digit", hour12: false,
+              }).formatToParts(new Date(activity.scheduled_at));
+              const get = (t: string) => parts.find(p => p.type === t)?.value || "00";
+              return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
             })()
           : "",
       });
@@ -73,8 +78,9 @@ export const EditActivityDialog = ({ open, onOpenChange, activity, onSuccess }: 
 
     setLoading(true);
     try {
+      // Interpreta o input como horário de Brasília (-03:00), independente do fuso do navegador
       const nextScheduledAt = formData.scheduled_at
-        ? new Date(formData.scheduled_at).toISOString()
+        ? new Date(`${formData.scheduled_at}:00-03:00`).toISOString()
         : null;
 
       const scheduledAtChanged = (activity.scheduled_at || null) !== nextScheduledAt;

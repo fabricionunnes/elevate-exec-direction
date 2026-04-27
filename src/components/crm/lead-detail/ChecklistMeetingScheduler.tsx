@@ -288,6 +288,8 @@ export function ChecklistMeetingScheduler({
 
       const startDateTime = `${dateStr}T${selectedSlot}:00`;
       const endDateTime = `${dateStr}T${endTime}:00`;
+      // ISO com offset Brasil (-03:00) para persistir corretamente em timestamptz
+      const startDateTimeISO = `${startDateTime}-03:00`;
 
       const attendees = leadEmail ? [leadEmail] : undefined;
 
@@ -332,7 +334,7 @@ export function ChecklistMeetingScheduler({
           type: "meeting",
           title: meetingTitle,
           description: `Agendamento via checklist: ${checklistItemTitle}`,
-          scheduled_at: startDateTime,
+          scheduled_at: startDateTimeISO,
           responsible_staff_id: selectedStaff?.id || staffData?.id,
           status: "pending",
           meeting_link: data.event?.meetingLink || null,
@@ -349,7 +351,7 @@ export function ChecklistMeetingScheduler({
             leadName,
             activityTitle: meetingTitle,
             activityType: "meeting",
-            scheduledAt: startDateTime,
+            scheduledAt: startDateTimeISO,
           });
         }
 
@@ -368,7 +370,7 @@ export function ChecklistMeetingScheduler({
             lead_id: leadId,
             action: "scheduled",
             performed_by_staff_id: staffData?.id,
-            new_scheduled_at: startDateTime,
+            new_scheduled_at: startDateTimeISO,
             notes: `Agendado: ${meetingTitle}`,
           } as any);
         }
@@ -461,6 +463,8 @@ export function ChecklistMeetingScheduler({
 
       const newStartDateTime = `${dateStr}T${selectedSlot}:00`;
       const newEndDateTime = `${dateStr}T${endTime}:00`;
+      // ISO com offset Brasil (-03:00) para persistir corretamente em timestamptz
+      const newStartDateTimeISO = `${newStartDateTime}-03:00`;
 
       const oldCalendarUserId = existingMeeting.google_calendar_user_id;
       const newCalendarUserId = selectedStaffUserId;
@@ -524,7 +528,7 @@ export function ChecklistMeetingScheduler({
       const newResponsibleStaffId = newStaff?.id || existingMeeting.responsible_staff_id;
 
       const updatePayload: Record<string, any> = {
-        scheduled_at: newStartDateTime,
+        scheduled_at: newStartDateTimeISO,
         status: "pending",
       };
       if (closerChanged) {
@@ -561,7 +565,7 @@ export function ChecklistMeetingScheduler({
         action: "rescheduled",
         performed_by_staff_id: staffId,
         old_scheduled_at: existingMeeting.scheduled_at,
-        new_scheduled_at: newStartDateTime,
+        new_scheduled_at: newStartDateTimeISO,
         notes: notesText,
       } as any);
 

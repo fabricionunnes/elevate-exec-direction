@@ -57,7 +57,9 @@ export const AddActivityDialog = ({ open, onOpenChange, leadId, onSuccess }: Add
         .eq("user_id", user?.id)
         .single();
 
-      const scheduledIso = formData.scheduled_at ? new Date(formData.scheduled_at).toISOString() : null;
+      // Interpreta input "datetime-local" como horário de Brasília (-03:00),
+      // independente do fuso do navegador. Ex: "2026-04-28T09:15" → "2026-04-28T09:15:00-03:00"
+      const scheduledIso = formData.scheduled_at ? `${formData.scheduled_at}:00-03:00` : null;
 
       const { error } = await supabase
         .from("crm_activities")
