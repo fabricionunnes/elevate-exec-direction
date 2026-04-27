@@ -288,6 +288,8 @@ export function ChecklistMeetingScheduler({
 
       const startDateTime = `${dateStr}T${selectedSlot}:00`;
       const endDateTime = `${dateStr}T${endTime}:00`;
+      // ISO com offset Brasil (-03:00) para persistir corretamente em timestamptz
+      const startDateTimeISO = `${startDateTime}-03:00`;
 
       const attendees = leadEmail ? [leadEmail] : undefined;
 
