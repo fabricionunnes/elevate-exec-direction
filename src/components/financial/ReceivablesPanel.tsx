@@ -748,9 +748,9 @@ export function ReceivablesPanel() {
             <MultiSelectFilter
               options={[
                 { value: "pending", label: "Pendentes" },
-                { value: "partial", label: "Parciais" },
+                { value: "partial", label: "Recebido Parcial" },
                 { value: "overdue", label: "Atrasados" },
-                { value: "paid", label: "Pagos" },
+                { value: "paid", label: "Recebidos" },
                 { value: "cancelled", label: "Cancelados" },
               ]}
               selected={statusFilter}
@@ -758,6 +758,14 @@ export function ReceivablesPanel() {
               placeholder="Status"
               allLabel="Todos"
               className="w-[180px]"
+            />
+            <MultiSelectFilter
+              options={categories.map((c) => ({ value: c.id, label: c.name }))}
+              selected={categoryFilter}
+              onChange={setCategoryFilter}
+              placeholder="Categoria"
+              allLabel="Todas as categorias"
+              className="w-[200px]"
             />
           </div>
         </CardContent>
