@@ -80,7 +80,9 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
   const [paymentMethods, setPaymentMethods] = useState<FinancialPaymentMethod[]>([]);
   const [bankAccounts, setBankAccounts] = useState<FinancialBankAccount[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [costCenterFilter, setCostCenterFilter] = useState<string[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showPayDialog, setShowPayDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
