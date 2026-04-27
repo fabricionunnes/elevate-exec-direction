@@ -351,7 +351,7 @@ export function ChecklistMeetingScheduler({
             leadName,
             activityTitle: meetingTitle,
             activityType: "meeting",
-            scheduledAt: startDateTime,
+            scheduledAt: startDateTimeISO,
           });
         }
 
