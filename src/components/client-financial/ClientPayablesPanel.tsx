@@ -558,19 +558,36 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
             className="pl-10"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="open">Pendente</SelectItem>
-            <SelectItem value="partial">Pago Parcial</SelectItem>
-            <SelectItem value="overdue">Vencido</SelectItem>
-            <SelectItem value="paid">Pago</SelectItem>
-            <SelectItem value="cancelled">Cancelados</SelectItem>
-          </SelectContent>
-        </Select>
+        <MultiSelectFilter
+          options={[
+            { value: "open", label: "Pendente" },
+            { value: "partial", label: "Pago Parcial" },
+            { value: "overdue", label: "Vencido" },
+            { value: "paid", label: "Pago" },
+            { value: "cancelled", label: "Cancelados" },
+          ]}
+          selected={statusFilter}
+          onChange={setStatusFilter}
+          placeholder="Status"
+          allLabel="Todos"
+          className="w-[180px]"
+        />
+        <MultiSelectFilter
+          options={categories.map((c) => ({ value: c.id, label: c.name }))}
+          selected={categoryFilter}
+          onChange={setCategoryFilter}
+          placeholder="Categoria"
+          allLabel="Todas as categorias"
+          className="w-[200px]"
+        />
+        <MultiSelectFilter
+          options={costCenters.map((cc) => ({ value: cc.id, label: cc.name }))}
+          selected={costCenterFilter}
+          onChange={setCostCenterFilter}
+          placeholder="Centro de Custo"
+          allLabel="Todos os Centros de Custo"
+          className="w-[220px]"
+        />
         <Button variant="outline" size="icon" onClick={loadData}>
           <RefreshCw className="h-4 w-4" />
         </Button>
