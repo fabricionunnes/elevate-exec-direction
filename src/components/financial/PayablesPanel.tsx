@@ -85,6 +85,7 @@ interface Payable {
   recurrence_type: string | null;
   payment_method: string | null;
   cost_center: string | null;
+  cost_center_id: string | null;
   notes: string | null;
   installment_number: number | null;
   total_installments: number | null;
