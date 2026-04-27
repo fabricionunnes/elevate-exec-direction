@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import {
   DropdownMenu,
   DropdownMenuContent,
