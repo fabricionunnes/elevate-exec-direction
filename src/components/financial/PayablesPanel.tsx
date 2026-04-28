@@ -197,9 +197,16 @@ export function PayablesPanel() {
         console.warn("Could not load suppliers:", e);
       }
 
+      const { data: ccData } = await supabase
+        .from("staff_financial_cost_centers")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
+
       setCategories(categoriesData || []);
       setBankAccounts(banksData || []);
       setSuppliers(suppliersData);
+      setCostCenters(ccData || []);
 
       // Update overdue status for pending items past due date
       const today = format(new Date(), "yyyy-MM-dd");
