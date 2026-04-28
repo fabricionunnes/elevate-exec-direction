@@ -34,6 +34,18 @@ interface ImportFromStevoModalProps {
   projectId?: string; // Optional: for client mode, instances will be linked to this project
 }
 
+const getApiUrlError = (value: string) => {
+  try {
+    const hostname = new URL(value.trim().replace(/\/+$/g, "")).hostname.toLowerCase();
+    if (hostname.startsWith("sm-") && hostname.endsWith(".stevo.chat")) {
+      return "Você informou a URL do Manager V2. Use a URL da API/Servidor da Evolution, normalmente no formato https://evo07.stevo.chat.";
+    }
+  } catch {
+    return "URL inválida. Use o formato https://evo07.stevo.chat.";
+  }
+  return null;
+};
+
 export const ImportFromStevoModal = ({
   open,
   onOpenChange,
@@ -75,6 +87,13 @@ export const ImportFromStevoModal = ({
       }
 
       const cleanApiUrl = apiUrl.trim().replace(/\/+$/g, "");
+      const urlError = getApiUrlError(cleanApiUrl);
+      if (urlError) {
+        setError(urlError);
+        setInstances([]);
+        return;
+      }
+
       localStorage.setItem("stevo_api_url", cleanApiUrl);
       localStorage.setItem("stevo_api_key", apiKey.trim());
 
@@ -117,9 +136,9 @@ export const ImportFromStevoModal = ({
       
       // Check if error indicates 404 - likely wrong URL (dashboard instead of API)
       const errorMsg = err.message || "";
-      if (errorMsg.includes("404") || errorMsg.includes("Unable to list instances")) {
+      if (errorMsg.includes("Manager V2") || errorMsg.includes("404") || errorMsg.includes("Unable to list instances")) {
         setError(
-          "Não foi possível conectar à API. Verifique se você está usando a URL da API Evolution (ex: https://evo13.stevo.chat) e não a URL do dashboard (ex: https://sm-xyz.stevo.chat). A URL da API geralmente começa com 'evo' ou 'api'."
+          "Não foi possível conectar à API. Use a URL da API/Servidor Evolution (ex: https://evo07.stevo.chat), não a URL do Manager V2/dashboard (ex: https://sm-tucano.stevo.chat)."
         );
       } else {
         setError(err.message || "Erro ao carregar instâncias do STEVO");
@@ -160,6 +179,12 @@ export const ImportFromStevoModal = ({
       const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-webhook`;
       
       const cleanApiUrl = apiUrl.trim().replace(/\/+$/g, "");
+      const urlError = getApiUrlError(cleanApiUrl);
+      if (urlError) {
+        toast.error(urlError);
+        return;
+      }
+
       const { data: hookData, error: hookError } = await supabase.functions.invoke("evolution-api", {
         body: {
           action: "set-webhook-custom",
