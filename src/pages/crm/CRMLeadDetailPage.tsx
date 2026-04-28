@@ -1280,7 +1280,7 @@ export const CRMLeadDetailPage = () => {
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 px-3 sm:px-4 py-2.5 text-sm whitespace-nowrap flex-shrink-0 gap-1.5"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 px-3 sm:px-4 py-2.5 text-sm whitespace-nowrap gap-1.5"
               >
                 <tab.icon className={`h-3.5 w-3.5 ${tab.color}`} />
                 {tab.label}
