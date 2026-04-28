@@ -267,9 +267,10 @@ interface EditDialogProps {
   suppliers: any[];
   onSuccess: () => void;
   onSuppliersRefresh: () => void;
+  onCostCentersRefresh?: () => void;
 }
 
-export function PayableEditDialog({ open, onOpenChange, payable, categories, costCenters, suppliers, onSuccess, onSuppliersRefresh }: EditDialogProps) {
+export function PayableEditDialog({ open, onOpenChange, payable, categories, costCenters, suppliers, onSuccess, onSuppliersRefresh, onCostCentersRefresh }: EditDialogProps) {
   const [form, setForm] = useState({
     supplier_name: "",
     description: "",
