@@ -628,10 +628,11 @@ export function PayablesPanel() {
                   </div>
                   <div className="space-y-2">
                     <Label>Centro de Custo</Label>
-                    <Input
-                      value={formData.cost_center}
-                      onChange={(e) => setFormData({ ...formData, cost_center: e.target.value })}
-                      placeholder="Ex: Marketing"
+                    <CostCenterSelect
+                      value={formData.cost_center_id}
+                      onChange={(v) => setFormData({ ...formData, cost_center_id: v === "none" ? "" : v })}
+                      costCenters={costCenters}
+                      onCreated={(cc) => setCostCenters((prev) => [...prev, cc])}
                     />
                   </div>
                 </div>
