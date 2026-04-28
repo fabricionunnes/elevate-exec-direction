@@ -207,6 +207,14 @@ export default function WhitelabelUNVAdminPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-6 px-4 max-w-6xl">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate("/onboarding-tasks")}
+          className="mb-4 -ml-2"
+        >
+          ← Voltar para o início
+        </Button>
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
