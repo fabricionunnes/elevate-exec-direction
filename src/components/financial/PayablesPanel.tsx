@@ -1226,6 +1226,7 @@ export function PayablesPanel() {
         suppliers={suppliers}
         onSuccess={() => { loadData(); }}
         onSuppliersRefresh={() => { loadData(); }}
+        onCostCentersRefresh={() => { loadData(); }}
       />
     </div>
   );
