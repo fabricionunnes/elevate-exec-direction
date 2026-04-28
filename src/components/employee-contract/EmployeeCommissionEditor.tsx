@@ -127,7 +127,7 @@ export default function EmployeeCommissionEditor({ role, config, onChange }: Emp
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-muted-foreground">Até (%)</Label>
+                      <Label className="text-xs text-muted-foreground">Até ({isClients ? "qtd. clientes" : "%"})</Label>
                       <Input
                         type="number"
                         value={tier.maxPercent ?? ""}
