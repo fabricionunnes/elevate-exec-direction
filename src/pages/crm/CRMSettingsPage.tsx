@@ -469,6 +469,37 @@ export const CRMSettingsPage = () => {
     }
   };
 
+  const handleTogglePipelineActive = async (pipeline: Pipeline) => {
+    const newActive = !((pipeline as any).is_active ?? true);
+    // Optimistic update
+    setPipelines((prev) =>
+      prev.map((p) => (p.id === pipeline.id ? ({ ...p, is_active: newActive } as any) : p))
+    );
+    try {
+      // Toggle pipeline + linked origin so it disappears from the "Negócios" sidebar
+      const linkedOrigin = origins.find((o) => o.pipeline_id === pipeline.id);
+      const ops: any[] = [
+        supabase.from("crm_pipelines").update({ is_active: newActive }).eq("id", pipeline.id).then((r: any) => r),
+      ];
+      if (linkedOrigin) {
+        ops.push(
+          supabase.from("crm_origins").update({ is_active: newActive }).eq("id", linkedOrigin.id).then((r: any) => r)
+        );
+        setOrigins((prev) =>
+          prev.map((o) => (o.id === linkedOrigin.id ? { ...o, is_active: newActive } : o))
+        );
+      }
+      const results = await Promise.all(ops);
+      const firstError = results.find((r: any) => r?.error);
+      if (firstError?.error) throw firstError.error;
+      toast.success(newActive ? "Pipeline ativado" : "Pipeline inativado");
+    } catch (err: any) {
+      console.error("Erro ao alternar status do pipeline", err);
+      toast.error(err?.message || "Erro ao atualizar status");
+      loadData();
+    }
+  };
+
   const handleDuplicatePipeline = async (pipeline: Pipeline) => {
     setSaving(true);
     try {
@@ -1218,7 +1249,17 @@ export const CRMSettingsPage = () => {
                               )}
                             </div>
                           </div>
-                          <div className="flex gap-1">
+                          <div className="flex items-center gap-1">
+                            <div
+                              className="flex items-center gap-1.5 mr-1"
+                              onClick={(e) => e.stopPropagation()}
+                              title={(pipeline as any).is_active === false ? "Inativo (oculto no menu Negócios)" : "Ativo"}
+                            >
+                              <Switch
+                                checked={(pipeline as any).is_active !== false}
+                                onCheckedChange={() => handleTogglePipelineActive(pipeline)}
+                              />
+                            </div>
                             <Button
                               variant="ghost"
                               size="icon"
