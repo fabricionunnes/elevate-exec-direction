@@ -1553,6 +1553,10 @@ const OnboardingProjectPage = () => {
                   <MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500" />
                   Conversas
                 </TabsTrigger>
+                <TabsTrigger value="history" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Histórico
+                </TabsTrigger>
                 {project?.product_name === "UNV Sales Force" && (
                   <TabsTrigger value="sf_commissions" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
                     <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
