@@ -276,6 +276,35 @@ export const CRMTrafficCompare = ({
               </tr>
             ))}
           </tbody>
+          {(() => {
+            const totalSpend = sorted.reduce((s, r) => s + r.spend, 0);
+            const totalLeads = sorted.reduce((s, r) => s + r.leads, 0);
+            const totalSched = sorted.reduce((s, r) => s + r.meetings_scheduled, 0);
+            const totalReal = sorted.reduce((s, r) => s + r.meetings_realized, 0);
+            const totalWon = sorted.reduce((s, r) => s + r.won, 0);
+            const totalRev = sorted.reduce((s, r) => s + r.won_value, 0);
+            const totalCpl = safeDiv(totalSpend, totalLeads);
+            const totalCps = safeDiv(totalSpend, totalSched);
+            const totalCpr = safeDiv(totalSpend, totalReal);
+            const totalCac = safeDiv(totalSpend, totalWon);
+            return (
+              <tfoot>
+                <tr className="border-t-2 border-border bg-gradient-to-r from-muted/70 to-muted/40 font-bold">
+                  <td className="py-3 px-3 text-foreground">TOTAL</td>
+                  <td className="text-right py-3 px-3 tabular-nums">{fmtBRL(totalSpend)}</td>
+                  <td className="text-right py-3 px-3 tabular-nums">{fmtInt(totalLeads)}</td>
+                  <td className="text-right py-3 px-3 tabular-nums">{totalLeads > 0 ? fmtBRL(totalCpl) : "—"}</td>
+                  <td className="text-right py-3 px-3 tabular-nums">{fmtInt(totalSched)}</td>
+                  <td className="text-right py-3 px-3 tabular-nums">{totalSched > 0 ? fmtBRL(totalCps) : "—"}</td>
+                  <td className="text-right py-3 px-3 tabular-nums">{fmtInt(totalReal)}</td>
+                  <td className="text-right py-3 px-3 tabular-nums">{totalReal > 0 ? fmtBRL(totalCpr) : "—"}</td>
+                  <td className="text-right py-3 px-3 tabular-nums">{fmtInt(totalWon)}</td>
+                  <td className="text-right py-3 px-3 tabular-nums">{fmtBRL(totalRev)}</td>
+                  <td className="text-right py-3 px-3 tabular-nums">{totalWon > 0 ? fmtBRL(totalCac) : "—"}</td>
+                </tr>
+              </tfoot>
+            );
+          })()}
         </table>
       </div>
     );
