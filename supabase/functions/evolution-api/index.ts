@@ -793,7 +793,7 @@ Deno.serve(async (req) => {
 
         console.log(`[evolution-api] sendText using ${instance.api_url ? 'custom' : 'global'} credentials for instance ${instance.instance_name}, isGroup=${isGroup}`);
 
-        const response = await fetch(`${apiBaseUrl}/message/sendText/${instance.instance_name}`, {
+        const response = await fetch(`${apiBaseUrl}${isStevoManagerV2Url(apiBaseUrl) ? '/send/text' : `/message/sendText/${instance.instance_name}`}`, {
           method: 'POST',
           headers: apiHeaders,
           body: JSON.stringify({
