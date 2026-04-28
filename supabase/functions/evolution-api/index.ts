@@ -803,51 +803,45 @@ Deno.serve(async (req) => {
         // Send text message (alias for send-text, used by frontend)
         const { instanceId, phone, message } = body;
         const digitsOnlyPhone = String(phone || '').replace(/\D/g, '');
-        
+
         // Detect group JIDs (LID format starts with 120363 and is long)
         const isGroup = digitsOnlyPhone.startsWith('120363') && digitsOnlyPhone.length > 15;
         const numberToSend = isGroup ? `${digitsOnlyPhone}@g.us` : digitsOnlyPhone;
-        
-        // Get instance name AND custom API credentials from database
-        const supabaseService = createClient(
-          Deno.env.get('SUPABASE_URL')!,
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-        );
 
-        const { data: instance, error: instanceError } = await supabaseService
-          .from('whatsapp_instances')
-          .select('instance_name, api_url, api_key')
-          .eq('id', instanceId)
-          .single();
-
-        if (instanceError || !instance) {
+        const instance = await loadInstanceById(instanceId);
+        if (!instance) {
           return new Response(
             JSON.stringify({ error: 'Instance not found' }),
             { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        // Use instance-specific API credentials if available, otherwise fall back to global
-        const apiBaseUrl = instance.api_url ? normalizeBaseUrl(instance.api_url) : evolutionBaseUrl;
-        const apiHeaders = instance.api_key ? buildEvolutionHeaders(instance.api_key) : evolutionHeaders;
+        console.log(`[evolution-api] sendText provider=${instance.providerType} instance=${instance.instance_name}, isGroup=${isGroup}`);
 
-        console.log(`[evolution-api] sendText using ${instance.api_url ? 'custom' : 'global'} credentials for instance ${instance.instance_name}, isGroup=${isGroup}`);
+        let status: number;
+        let ok: boolean;
+        let data: any;
 
-        const response = await fetch(`${apiBaseUrl}${isStevoManagerV2Url(apiBaseUrl) ? '/send/text' : `/message/sendText/${instance.instance_name}`}`, {
-          method: 'POST',
-          headers: apiHeaders,
-          body: JSON.stringify({
-            number: numberToSend,
-            text: message,
-          }),
-        });
+        if (instance.providerType === 'manager_v2') {
+          const result = await ManagerV2.sendText(
+            { baseUrl: instance.apiBaseUrl, apiKey: instance.apiKey },
+            { number: numberToSend, text: message }
+          );
+          status = result.status; ok = result.ok; data = result.data;
+        } else {
+          const response = await fetch(`${instance.apiBaseUrl}/message/sendText/${instance.instance_name}`, {
+            method: 'POST',
+            headers: instance.apiHeaders,
+            body: JSON.stringify({ number: numberToSend, text: message }),
+          });
+          status = response.status; ok = response.ok; data = await response.json();
+        }
 
-        const data = await response.json();
-        console.log('[evolution-api] SendText response:', data);
+        console.log('[evolution-api] SendText response:', JSON.stringify(data).substring(0, 300));
 
         // Detect "Connection Closed" — instance disconnected on STEVO
         const dataStr = JSON.stringify(data);
-        if (!response.ok && dataStr.toLowerCase().includes('connection closed')) {
+        if (!ok && dataStr.toLowerCase().includes('connection closed')) {
           console.error('[evolution-api] WhatsApp instance connection closed');
           return new Response(
             JSON.stringify({
@@ -858,8 +852,8 @@ Deno.serve(async (req) => {
           );
         }
 
-        // If the number doesn't exist on WhatsApp, return a friendly error (200 with error field)
-        if (!response.ok) {
+        // If the number doesn't exist on WhatsApp, return a friendly error
+        if (!ok) {
           if (dataStr.includes('"exists":false') || dataStr.includes('"exists": false')) {
             return new Response(
               JSON.stringify({
@@ -870,7 +864,7 @@ Deno.serve(async (req) => {
             );
           }
           return new Response(
-            JSON.stringify({ error: data?.message || 'Erro ao enviar mensagem', details: data }),
+            JSON.stringify({ error: data?.message || data?.error || 'Erro ao enviar mensagem', details: data }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
