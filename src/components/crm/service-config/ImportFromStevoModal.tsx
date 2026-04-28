@@ -201,6 +201,76 @@ export const ImportFromStevoModal = ({
       return;
     }
 
+  const handleImportManagerV2 = async () => {
+    if (!mgrInstanceName.trim() || !apiUrl.trim() || !apiKey.trim()) {
+      toast.error("Informe Nome, URL (sm-*.stevo.chat) e API Key da instância");
+      return;
+    }
+    const cleanApiUrl = apiUrl.trim().replace(/\/+$/g, "");
+    try {
+      const host = new URL(cleanApiUrl).hostname.toLowerCase();
+      if (!/^sm[v0-9-]/.test(host) || !host.endsWith(".stevo.chat")) {
+        toast.error("URL deve ser do tipo https://sm-tucano.stevo.chat (Manager V2)");
+        return;
+      }
+    } catch {
+      toast.error("URL inválida");
+      return;
+    }
+
+    setImporting(true);
+    try {
+      // Configure webhook directly on Manager V2 (uses POST /instance/connect)
+      const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-webhook`;
+      try {
+        await supabase.functions.invoke("evolution-api", {
+          body: {
+            action: "set-webhook-custom",
+            apiUrl: cleanApiUrl,
+            apiKey: apiKey.trim(),
+            instanceApiKey: apiKey.trim(),
+            instanceName: mgrInstanceName.trim(),
+            webhookUrl,
+          },
+        });
+      } catch (e) {
+        console.warn("Webhook config falhou (segue insert):", e);
+      }
+
+      const { error: insertError } = await supabase.from("whatsapp_instances").insert({
+        instance_name: mgrInstanceName.trim(),
+        display_name: (displayName.trim() || mgrInstanceName.trim()),
+        phone_number: mgrPhone.trim() || null,
+        status: "disconnected",
+        is_default: false,
+        project_id: projectId || null,
+        api_url: cleanApiUrl,
+        api_key: apiKey.trim(),
+        provider_type: "manager_v2",
+      } as any);
+
+      if (insertError) throw insertError;
+
+      toast.success(`Instância Manager V2 "${displayName || mgrInstanceName}" cadastrada!`);
+      onOpenChange(false);
+      onImported();
+    } catch (err: any) {
+      console.error("Manager V2 import error:", err);
+      toast.error(err.message || "Erro ao cadastrar instância Manager V2");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleImport = async () => {
+    if (mode === "manager_v2") {
+      return handleImportManagerV2();
+    }
+    if (!selectedInstance) {
+      toast.error("Selecione uma instância para importar");
+      return;
+    }
+
     if (!apiUrl.trim() || !apiKey.trim()) {
       toast.error("Informe a URL da API e a API Key");
       return;
@@ -256,7 +326,8 @@ export const ImportFromStevoModal = ({
         project_id: projectId || null, // Link to project if provided (client mode)
         api_url: cleanApiUrl,
         api_key: selectedInst.apikey || apiKey.trim(),
-      });
+        provider_type: "evolution",
+      } as any);
 
       if (insertError) throw insertError;
 
