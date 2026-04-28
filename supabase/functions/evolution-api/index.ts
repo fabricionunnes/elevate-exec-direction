@@ -1024,6 +1024,22 @@ Deno.serve(async (req) => {
 
         const looksLikePhone = typeof number === 'string' && number.replace(/\D/g, '').length >= 10;
         const phoneDigits = typeof number === 'string' ? number.replace(/\D/g, '') : undefined;
+        const connectTarget = await resolveEvolutionCredentials(instanceName);
+
+        if (connectTarget.providerType === 'manager_v2') {
+          const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/evolution-webhook`;
+          const result = action === 'qr-code'
+            ? await ManagerV2.qr({ baseUrl: connectTarget.baseUrl, apiKey: connectTarget.apiKey })
+            : await ManagerV2.connect(
+                { baseUrl: connectTarget.baseUrl, apiKey: connectTarget.apiKey },
+                { webhookUrl, phone: phoneDigits }
+              );
+          const normalized = normalizeManagerV2Qr(result.data);
+          return new Response(
+            JSON.stringify({ ...normalized, _version: EVOLUTION_API_FUNC_VERSION }),
+            { status: result.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
 
         const hasQrPayload = (payload: any) => {
           if (!payload) return false;
