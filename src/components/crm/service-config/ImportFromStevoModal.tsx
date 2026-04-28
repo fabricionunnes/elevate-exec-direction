@@ -19,6 +19,7 @@ import { toast } from "sonner";
 interface StevoInstance {
   instanceName: string;
   instanceId?: string;
+  apikey?: string;
   status?: string;
   owner?: string;
   profileName?: string;
@@ -38,40 +39,28 @@ const getApiUrlError = (value: string) => {
   try {
     const hostname = new URL(value.trim().replace(/\/+$/g, "")).hostname.toLowerCase();
     if (hostname.startsWith("sm-") && hostname.endsWith(".stevo.chat")) {
-      return "Você informou a URL do Manager V2. Use a URL da API/Servidor da Evolution, normalmente no formato https://evo07.stevo.chat.";
+      return null;
     }
   } catch {
-    return "URL inválida. Use o formato https://evo07.stevo.chat.";
+    return "URL inválida. Use o formato https://sm-tucano.stevo.chat ou https://evo07.stevo.chat.";
   }
   return null;
-};
-
-const KNOWN_STEVO_MANAGER_SERVERS: Record<string, string> = {
-  "sm-tucano.stevo.chat": "https://evo07.stevo.chat",
 };
 
 const resolveStevoApiUrl = (value: string) => {
   const trimmed = value.trim().replace(/\/+$/g, "");
   try {
-    const hostname = new URL(trimmed).hostname.toLowerCase();
-    const knownServer = KNOWN_STEVO_MANAGER_SERVERS[hostname];
-    if (knownServer) {
-      return {
-        apiUrl: knownServer,
-        warning: `A URL do Manager V2 foi ajustada automaticamente para ${knownServer}.`,
-      };
-    }
     const error = getApiUrlError(trimmed);
     return error ? { apiUrl: trimmed, error } : { apiUrl: trimmed };
   } catch {
-    return { apiUrl: trimmed, error: "URL inválida. Use o formato https://evo07.stevo.chat." };
+    return { apiUrl: trimmed, error: "URL inválida. Use o formato https://sm-tucano.stevo.chat ou https://evo07.stevo.chat." };
   }
 };
 
 const formatStevoApiError = (payload: any, fallback = "Erro ao carregar instâncias do STEVO") => {
   const text = JSON.stringify(payload || {}).toLowerCase();
   if (payload?.status === 401 || text.includes("unauthorized")) {
-    return "A API da STEVO recusou essa chave do Manager V2 em todos os formatos testados. Confirme se ela pertence ao servidor informado e se tem permissão para listar instâncias.";
+    return "A STEVO recusou essa chave para esta URL. Confira se a URL é a mesma usada no Manager V2 e se a chave está correta.";
   }
   if (payload?.error?.includes?.("Manager V2") || text.includes("manager v2")) {
     return "Você informou a URL do Manager V2. Para sm-tucano, use https://evo07.stevo.chat como URL da API.";
@@ -140,8 +129,10 @@ export const ImportFromStevoModal = ({
       const cleanApiUrl = resolved.apiUrl;
       if (cleanApiUrl !== apiUrl.trim().replace(/\/+$/g, "")) {
         setApiUrl(cleanApiUrl);
-        toast.info(resolved.warning || "URL da API ajustada automaticamente.");
+        toast.info("URL ajustada automaticamente.");
       }
+
+      localStorage.setItem("stevo_api_url", cleanApiUrl);
 
       const { data, error: fnError } = await supabase.functions.invoke("evolution-api", {
         body: { action: "list-instances-custom", apiUrl: cleanApiUrl, apiKey: apiKey.trim() },
@@ -158,6 +149,7 @@ export const ImportFromStevoModal = ({
       const allInstances: StevoInstance[] = rawInstances.map((inst: any) => ({
         instanceName: inst.name || inst.instanceName,
         instanceId: inst.id,
+        apikey: inst.token || inst.apikey,
         status: inst.connectionStatus || inst.status,
         owner: inst.ownerJid,
         profileName: inst.profileName,
@@ -225,7 +217,7 @@ export const ImportFromStevoModal = ({
       const cleanApiUrl = resolved.apiUrl;
       if (cleanApiUrl !== apiUrl.trim().replace(/\/+$/g, "")) {
         setApiUrl(cleanApiUrl);
-        toast.info(resolved.warning || "URL da API ajustada automaticamente.");
+        toast.info("URL ajustada automaticamente.");
       }
 
       const { data: hookData, error: hookError } = await supabase.functions.invoke("evolution-api", {
@@ -233,6 +225,7 @@ export const ImportFromStevoModal = ({
           action: "set-webhook-custom",
           apiUrl: cleanApiUrl,
           apiKey: apiKey.trim(),
+          instanceApiKey: selectedInst.apikey,
           instanceName: selectedInstance,
           webhookUrl,
         },
@@ -256,7 +249,7 @@ export const ImportFromStevoModal = ({
         is_default: false,
         project_id: projectId || null, // Link to project if provided (client mode)
         api_url: cleanApiUrl,
-        api_key: apiKey.trim(),
+        api_key: selectedInst.apikey || apiKey.trim(),
       });
 
       if (insertError) throw insertError;
@@ -302,10 +295,10 @@ export const ImportFromStevoModal = ({
                 type="url"
                 value={apiUrl}
                 onChange={(e) => setApiUrl(e.target.value)}
-                placeholder="https://evo07.stevo.chat"
+                placeholder="https://sm-tucano.stevo.chat"
               />
               <p className="text-xs text-muted-foreground">
-                Use a URL da API/Servidor Evolution. Não use o link do Manager V2 que começa com sm-.
+                Pode usar a URL do Manager V2 ou a URL do servidor Evolution.
               </p>
             </div>
             <div className="space-y-2">

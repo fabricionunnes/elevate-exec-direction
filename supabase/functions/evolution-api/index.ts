@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 // Version tag for debugging deployments
-const EVOLUTION_API_FUNC_VERSION = "2026-03-16-v11";
+const EVOLUTION_API_FUNC_VERSION = "2026-03-16-v12";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,7 +19,7 @@ function buildHandledEvolutionError(message: string, status: number | undefined,
     error: message,
     errorType: isUnauthorized ? 'STEVO_UNAUTHORIZED' : 'STEVO_API_ERROR',
     userMessage: isUnauthorized
-      ? 'A API da STEVO recusou a chave em todos os formatos suportados. Confirme se a chave do Manager V2 pertence ao servidor informado e se tem permissão para listar instâncias.'
+      ? 'A API da STEVO recusou essa chave. Use a API Key/Hash da instância no servidor Evolution, não a chave do Manager V2.'
       : 'Não foi possível completar a chamada na API da STEVO. Confira URL, chave e permissões da instância.',
     status,
     details,
@@ -30,31 +30,24 @@ function buildHandledEvolutionError(message: string, status: number | undefined,
 }
 
 function normalizeBaseUrl(input: string) {
-  const cleaned = input.replace(/\/manager\/?$/i, '').replace(/\/+$/g, '');
+  return input.replace(/\/manager\/?$/i, '').replace(/\/+$/g, '');
+}
+
+function isStevoManagerV2Url(input?: string | null) {
   try {
-    const parsed = new URL(cleaned);
-    if (parsed.hostname.toLowerCase() === 'sm-tucano.stevo.chat') {
-      return 'https://evo07.stevo.chat';
-    }
+    const hostname = new URL(normalizeBaseUrl(String(input || ''))).hostname.toLowerCase();
+    return hostname.startsWith('sm-') && hostname.endsWith('.stevo.chat');
   } catch {
-    // Keep the original value so callers can return their existing validation errors.
+    return false;
   }
-  return cleaned;
 }
 
 function getStevoManagerUrlError(input: string) {
   try {
     const parsed = new URL(input.replace(/\/manager\/?$/i, '').replace(/\/+$/g, ''));
     const hostname = parsed.hostname.toLowerCase();
-    if (hostname === 'sm-tucano.stevo.chat') return null;
     if (hostname.startsWith('sm-') && hostname.endsWith('.stevo.chat')) {
-      return {
-        error: 'URL do Manager V2 informada no lugar da URL da API Evolution',
-        hint: 'Essa URL abre o painel da Stevo, mas não responde aos endpoints da Evolution API. Use a URL do servidor/API, geralmente no formato https://evoXX.stevo.chat.',
-        receivedHost: hostname,
-        expectedFormat: 'https://evo07.stevo.chat',
-        _version: EVOLUTION_API_FUNC_VERSION,
-      };
+      return null;
     }
   } catch {
     return null;
@@ -74,22 +67,37 @@ function buildEvolutionHeaders(apiKey: string) {
 }
 
 function buildEvolutionHeaderVariants(apiKey: string) {
+  const contentType = { 'Content-Type': 'application/json' };
   return [
-    { name: 'apikey', headers: { 'Content-Type': 'application/json', apikey: apiKey } },
-    { name: 'x-api-key', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey } },
-    { name: 'authorization-bearer', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` } },
-    { name: 'authorization-raw', headers: { 'Content-Type': 'application/json', Authorization: apiKey } },
+    { name: 'apikey', headers: { ...contentType, apikey: apiKey } },
+    { name: 'x-api-key', headers: { ...contentType, 'x-api-key': apiKey } },
+    { name: 'authorization-bearer', headers: { ...contentType, Authorization: `Bearer ${apiKey}` } },
+    { name: 'authorization-raw', headers: { ...contentType, Authorization: apiKey } },
     { name: 'combined', headers: buildEvolutionHeaders(apiKey) },
   ];
 }
 
-function redactSensitiveBody(body: any) {
-  if (!body || typeof body !== 'object') return body;
-  const redacted = { ...body };
-  for (const key of ['apiKey', 'customApiKey', 'token']) {
-    if (redacted[key]) redacted[key] = `[redacted:${String(redacted[key]).length}]`;
-  }
-  return redacted;
+function extractInstancesFromPayload(payload: any) {
+  const rawInstances = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.instances)
+      ? payload.instances
+      : Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(payload?.data?.instances)
+          ? payload.data.instances
+          : [];
+
+  return rawInstances.map((inst: any) => ({
+    ...inst,
+    instanceName: inst.instanceName || inst.name,
+    name: inst.name || inst.instanceName,
+    connectionStatus: inst.connectionStatus || inst.status || (inst.connected ? 'open' : inst.connected === false ? 'close' : undefined),
+    ownerJid: inst.ownerJid || inst.jid,
+    profileName: inst.profileName || inst.name || inst.instanceName,
+    number: inst.number || (inst.ownerJid || inst.jid ? String(inst.ownerJid || inst.jid).split('@')[0] : undefined),
+    token: inst.token || inst.apikey,
+  })).filter((inst: any) => inst.instanceName || inst.name);
 }
 
 function normalizeInstanceKey(value?: string | null) {
@@ -121,14 +129,6 @@ function mapFetchedGroups(data: any) {
       creation: group.creation,
     }))
     .filter((group: any) => group.id);
-}
-
-function extractInstancesFromPayload(payload: any) {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.instances)) return payload.instances;
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.response)) return payload.response;
-  return [];
 }
 
 async function fetchGroupsFromInstance(apiBaseUrl: string, apiHeaders: HeadersInit, instanceName: string) {
@@ -222,7 +222,7 @@ async function syncGroupsToConversations(supabaseService: any, instanceId: strin
 
   if (contactsError) throw contactsError;
 
-  const contactMap = new Map((existingContacts || []).map((contact: any) => [contact.phone, contact]));
+  const contactMap = new Map<string, any>((existingContacts || []).map((contact: any) => [contact.phone, contact]));
 
   const contactsToInsert = groups
     .filter((group: any) => !contactMap.has(group.phone))
@@ -524,10 +524,10 @@ Deno.serve(async (req) => {
       path: string,
       apiKey: string,
       init?: RequestInit
-    ): Promise<{ res: Response; json: any; prefix: string; authFormat: string; tried: Array<{ url: string; method: string; status?: number; authFormat: string }> }> => {
+    ): Promise<{ res: Response; json: any; prefix: string; tried: Array<{ url: string; method: string; status?: number; authFormat?: string }> }> => {
       const cleanBaseUrl = normalizeBaseUrl(baseUrl);
       const headerVariants = buildEvolutionHeaderVariants(apiKey);
-      const tried: Array<{ url: string; method: string; status?: number; authFormat: string }> = [];
+      const tried: Array<{ url: string; method: string; status?: number; authFormat?: string }> = [];
 
       for (const prefix of ROUTE_PREFIXES) {
         const endpoint = `${prefix}${path}`;
@@ -551,8 +551,9 @@ Deno.serve(async (req) => {
             }
 
             tried.push({ url: fullUrl, method, status: res.status, authFormat: variant.name });
-            if (res.ok || (res.status !== 401 && res.status !== 403 && res.status !== 404 && res.status !== 405)) {
-              return { res, json, prefix, authFormat: variant.name, tried };
+            // For discovery, keep trying 401/404/405 because Manager V2 and Evolution use different auth/path shapes.
+            if (res.ok || ![401, 404, 405].includes(res.status)) {
+              return { res, json, prefix, tried };
             }
           } catch (err) {
             console.error('[evolution-api] [custom] Network error calling Evolution API:', err);
@@ -561,12 +562,12 @@ Deno.serve(async (req) => {
         }
       }
 
-      const lastTried = tried[tried.length - 1];
+      // If all prefixes were 404/405, return a synthetic 404 with tried list
       const res = new Response(JSON.stringify({ error: 'Not Found' }), {
-        status: lastTried?.status || 404,
+        status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-      return { res, json: { error: lastTried?.status === 401 ? 'Unauthorized' : 'Not Found' }, prefix: '', authFormat: lastTried?.authFormat || '', tried };
+      return { res, json: { error: 'Not Found' }, prefix: '', tried };
     };
 
     // Try multiple route prefixes to find the working one
@@ -609,7 +610,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`[evolution-api] Action: ${action}`, JSON.stringify(redactSensitiveBody(body)).substring(0, 200));
+    console.log(`[evolution-api] Action: ${action}`, JSON.stringify(body).substring(0, 200));
 
     switch (action) {
       case 'create-instance': {
@@ -792,7 +793,7 @@ Deno.serve(async (req) => {
 
         console.log(`[evolution-api] sendText using ${instance.api_url ? 'custom' : 'global'} credentials for instance ${instance.instance_name}, isGroup=${isGroup}`);
 
-        const response = await fetch(`${apiBaseUrl}/message/sendText/${instance.instance_name}`, {
+        const response = await fetch(`${apiBaseUrl}${isStevoManagerV2Url(apiBaseUrl) ? '/send/text' : `/message/sendText/${instance.instance_name}`}`, {
           method: 'POST',
           headers: apiHeaders,
           body: JSON.stringify({
@@ -1252,39 +1253,42 @@ Deno.serve(async (req) => {
           );
         }
 
-        const endpoints = ['/instance/fetchInstances', '/instance'];
-        let finalResult: Awaited<ReturnType<typeof fetchCustomWithPrefixes>> | null = null;
+        const cleanApiUrl = normalizeBaseUrl(apiUrl);
+        const isManagerV2 = isStevoManagerV2Url(cleanApiUrl);
+        const listPaths = isManagerV2
+          ? ['/instance/all', '/instance/fetchInstances', '/instance']
+          : ['/instance/fetchInstances', '/instance/all', '/instance'];
+
+        let lastResult: { res: Response; json: any; prefix: string; tried: any[] } | null = null;
         let instances: any[] = [];
 
-        for (const endpoint of endpoints) {
-          const result = await fetchCustomWithPrefixes(apiUrl, endpoint, apiKey, { method: 'GET' });
-          finalResult = result;
+        for (const path of listPaths) {
+          const result = await fetchCustomWithPrefixes(cleanApiUrl, path, apiKey, { method: 'GET' });
+          lastResult = result;
           if (result.res.ok) {
             instances = extractInstancesFromPayload(result.json);
-            break;
+            if (instances.length > 0 || path === '/instance/all') {
+              return new Response(
+                JSON.stringify({ instances, prefix: result.prefix, mode: isManagerV2 ? 'manager-v2' : 'evolution', _version: EVOLUTION_API_FUNC_VERSION }),
+                { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
           }
         }
 
-        if (!finalResult?.res.ok) {
-          return new Response(
-            JSON.stringify(buildHandledEvolutionError(
-              'Unable to list instances on custom Evolution API',
-              finalResult?.res.status,
-              finalResult?.json,
-              { tried: finalResult?.tried, prefix: finalResult?.prefix, authFormat: finalResult?.authFormat }
-            )),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
         return new Response(
-          JSON.stringify({ instances, prefix: finalResult.prefix, authFormat: finalResult.authFormat, _version: EVOLUTION_API_FUNC_VERSION }),
+          JSON.stringify(buildHandledEvolutionError(
+            'Unable to list instances on custom Evolution API',
+            lastResult?.res.status,
+            lastResult?.json,
+            { tried: lastResult?.tried, prefix: lastResult?.prefix, mode: isManagerV2 ? 'manager-v2' : 'evolution' }
+          )),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       case 'set-webhook-custom': {
-        const { apiUrl, apiKey, instanceName, webhookUrl, events } = body;
+        const { apiUrl, apiKey, instanceApiKey, instanceName, webhookUrl, events } = body;
         if (!apiUrl || !apiKey || !instanceName || !webhookUrl) {
           return new Response(
             JSON.stringify({ error: 'apiUrl, apiKey, instanceName and webhookUrl are required' }),
@@ -1298,6 +1302,31 @@ Deno.serve(async (req) => {
             JSON.stringify(managerUrlError),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
+        }
+
+        const cleanApiUrl = normalizeBaseUrl(apiUrl);
+        const effectiveApiKey = instanceApiKey || apiKey;
+        const isManagerV2 = isStevoManagerV2Url(cleanApiUrl);
+
+        if (isManagerV2) {
+          const managerPayload = {
+            webhookUrl,
+            subscribe: events || ['ALL'],
+            rabbitmqEnable: '',
+            websocketEnable: '',
+            natsEnable: '',
+          };
+          const managerResult = await fetchCustomWithPrefixes(cleanApiUrl, '/instance/connect', effectiveApiKey, {
+            method: 'POST',
+            body: JSON.stringify(managerPayload),
+          });
+
+          if (managerResult.res.ok) {
+            return new Response(
+              JSON.stringify({ success: true, prefix: managerResult.prefix, mode: 'manager-v2', _version: EVOLUTION_API_FUNC_VERSION }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
         }
 
         const webhookPayload = {
@@ -1328,7 +1357,7 @@ Deno.serve(async (req) => {
 
         let last: { res: Response; json: any; prefix: string; tried: any[] } | null = null;
         for (const a of attempts) {
-          const result = await fetchCustomWithPrefixes(apiUrl, a.path, apiKey, {
+          const result = await fetchCustomWithPrefixes(cleanApiUrl, a.path, effectiveApiKey, {
             method: a.method,
             body: JSON.stringify(webhookPayload),
           });
@@ -1482,6 +1511,7 @@ Deno.serve(async (req) => {
         const sendTextTarget = await resolveEvolutionCredentials(instanceName);
         const sendTextBaseUrl = sendTextTarget.baseUrl;
         const sendTextHeaders = sendTextTarget.headers;
+        const sendTextEndpoint = isStevoManagerV2Url(sendTextBaseUrl) ? '/send/text' : `/message/sendText/${instanceName}`;
 
         console.log(`[evolution-api] send-text using ${sendTextTarget.source} credentials for instance ${instanceName}`);
 
@@ -1489,7 +1519,7 @@ Deno.serve(async (req) => {
         const sendTextTimeout = setTimeout(() => sendTextController.abort(), 25000);
         let response: Response;
         try {
-          response = await fetch(`${sendTextBaseUrl}/message/sendText/${instanceName}`, {
+          response = await fetch(`${sendTextBaseUrl}${sendTextEndpoint}`, {
             method: 'POST',
             headers: sendTextHeaders,
             signal: sendTextController.signal,
