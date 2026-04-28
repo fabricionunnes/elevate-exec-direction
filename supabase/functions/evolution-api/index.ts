@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 // Version tag for debugging deployments
-const EVOLUTION_API_FUNC_VERSION = "2026-03-16-v10";
+const EVOLUTION_API_FUNC_VERSION = "2026-03-16-v11";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,7 +19,7 @@ function buildHandledEvolutionError(message: string, status: number | undefined,
     error: message,
     errorType: isUnauthorized ? 'STEVO_UNAUTHORIZED' : 'STEVO_API_ERROR',
     userMessage: isUnauthorized
-      ? 'A API da STEVO recusou essa chave. Use a API Key/Hash da instância no servidor Evolution, não a chave do Manager V2.'
+      ? 'A API da STEVO recusou a chave em todos os formatos suportados. Confirme se a chave do Manager V2 pertence ao servidor informado e se tem permissão para listar instâncias.'
       : 'Não foi possível completar a chamada na API da STEVO. Confira URL, chave e permissões da instância.',
     status,
     details,
@@ -71,6 +71,16 @@ function buildEvolutionHeaders(apiKey: string) {
     Authorization: `Bearer ${apiKey}`,
     'x-api-key': apiKey,
   };
+}
+
+function buildEvolutionHeaderVariants(apiKey: string) {
+  return [
+    { name: 'apikey', headers: { 'Content-Type': 'application/json', apikey: apiKey } },
+    { name: 'x-api-key', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey } },
+    { name: 'authorization-bearer', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` } },
+    { name: 'authorization-raw', headers: { 'Content-Type': 'application/json', Authorization: apiKey } },
+    { name: 'combined', headers: buildEvolutionHeaders(apiKey) },
+  ];
 }
 
 function normalizeInstanceKey(value?: string | null) {
