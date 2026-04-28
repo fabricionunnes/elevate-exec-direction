@@ -343,11 +343,11 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
           await (supabase as any).from("crm_whatsapp_messages").update({ status: "failed" }).eq("id", inserted.id);
           throw sendErr || new Error(sendData?.error || "Erro ao enviar");
         }
-        await supabase
+        await (supabase as any)
           .from("crm_whatsapp_messages")
           .update({ status: "sent", remote_id: sendData?.key?.id ?? null })
           .eq("id", inserted.id);
-        await supabase
+        await (supabase as any)
           .from("crm_whatsapp_conversations")
           .update({ last_message: text, last_message_at: new Date().toISOString(), unread_count: 0 })
           .eq("id", activeConv.id);
