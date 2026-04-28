@@ -6,6 +6,8 @@ import { Link2, Building2, CreditCard, RefreshCw, Check, X, Loader2 } from "luci
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
+import { useTenant } from "@/contexts/TenantContext";
+import { AsaasIntegration } from "@/components/whitelabel/TenantIntegrationsSettings";
 
 interface ContaAzulStatus {
   connected: boolean;
