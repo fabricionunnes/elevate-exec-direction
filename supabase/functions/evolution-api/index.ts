@@ -1286,7 +1286,7 @@ Deno.serve(async (req) => {
       }
 
       case 'set-webhook-custom': {
-        const { apiUrl, apiKey, instanceName, webhookUrl, events } = body;
+        const { apiUrl, apiKey, instanceApiKey, instanceName, webhookUrl, events } = body;
         if (!apiUrl || !apiKey || !instanceName || !webhookUrl) {
           return new Response(
             JSON.stringify({ error: 'apiUrl, apiKey, instanceName and webhookUrl are required' }),
@@ -1300,6 +1300,38 @@ Deno.serve(async (req) => {
             JSON.stringify(managerUrlError),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
+        }
+
+        const cleanApiUrl = normalizeBaseUrl(apiUrl);
+        const effectiveApiKey = instanceApiKey || apiKey;
+        const isManagerV2 = (() => {
+          try {
+            const host = new URL(cleanApiUrl).hostname.toLowerCase();
+            return host.startsWith('sm-') && host.endsWith('.stevo.chat');
+          } catch {
+            return false;
+          }
+        })();
+
+        if (isManagerV2) {
+          const managerPayload = {
+            webhookUrl,
+            subscribe: events || ['ALL'],
+            rabbitmqEnable: '',
+            websocketEnable: '',
+            natsEnable: '',
+          };
+          const managerResult = await fetchCustomWithPrefixes(cleanApiUrl, '/instance/connect', effectiveApiKey, {
+            method: 'POST',
+            body: JSON.stringify(managerPayload),
+          });
+
+          if (managerResult.res.ok) {
+            return new Response(
+              JSON.stringify({ success: true, prefix: managerResult.prefix, mode: 'manager-v2', _version: EVOLUTION_API_FUNC_VERSION }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
         }
 
         const webhookPayload = {
@@ -1330,7 +1362,7 @@ Deno.serve(async (req) => {
 
         let last: { res: Response; json: any; prefix: string; tried: any[] } | null = null;
         for (const a of attempts) {
-          const result = await fetchCustomWithPrefixes(apiUrl, a.path, apiKey, {
+          const result = await fetchCustomWithPrefixes(cleanApiUrl, a.path, effectiveApiKey, {
             method: a.method,
             body: JSON.stringify(webhookPayload),
           });
