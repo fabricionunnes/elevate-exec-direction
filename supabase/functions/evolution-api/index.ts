@@ -1252,29 +1252,33 @@ Deno.serve(async (req) => {
           );
         }
 
-        const { res, json, prefix, tried } = await fetchCustomWithPrefixes(
-          apiUrl,
-          '/instance/fetchInstances',
-          apiKey,
-          { method: 'GET' }
-        );
+        const endpoints = ['/instance/fetchInstances', '/instance'];
+        let finalResult: Awaited<ReturnType<typeof fetchCustomWithPrefixes>> | null = null;
+        let instances: any[] = [];
 
-        if (!res.ok) {
+        for (const endpoint of endpoints) {
+          const result = await fetchCustomWithPrefixes(apiUrl, endpoint, apiKey, { method: 'GET' });
+          finalResult = result;
+          if (result.res.ok) {
+            instances = extractInstancesFromPayload(result.json);
+            break;
+          }
+        }
+
+        if (!finalResult?.res.ok) {
           return new Response(
             JSON.stringify(buildHandledEvolutionError(
               'Unable to list instances on custom Evolution API',
-              res.status,
-              json,
-              { tried, prefix }
+              finalResult?.res.status,
+              finalResult?.json,
+              { tried: finalResult?.tried, prefix: finalResult?.prefix, authFormat: finalResult?.authFormat }
             )),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        // Some installs return { instances: [...] }
-        const instances = Array.isArray(json) ? json : (Array.isArray(json?.instances) ? json.instances : []);
         return new Response(
-          JSON.stringify({ instances, prefix, _version: EVOLUTION_API_FUNC_VERSION }),
+          JSON.stringify({ instances, prefix: finalResult.prefix, authFormat: finalResult.authFormat, _version: EVOLUTION_API_FUNC_VERSION }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
