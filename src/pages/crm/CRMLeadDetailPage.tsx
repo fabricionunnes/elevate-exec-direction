@@ -59,6 +59,7 @@ import {
   FolderOpen,
   History,
   Sparkles,
+  MessagesSquare,
 } from "lucide-react";
 import { AddLeadNoteDialog } from "@/components/crm/lead-detail/AddLeadNoteDialog";
 import { LeadSummaryTab } from "@/components/crm/lead-detail/lead-summary/LeadSummaryTab";
@@ -79,6 +80,7 @@ import {
   LeadTranscriptionTab,
 } from "@/components/crm/lead-detail";
 import { LeadContractDataTab } from "@/components/crm/lead-detail/LeadContractDataTab";
+import { LeadConversationsTab } from "@/components/crm/lead-detail/LeadConversationsTab";
 import { LeadFormAnswersTab } from "@/components/crm/lead-detail/LeadFormAnswersTab";
 import { LeadScannerTab } from "@/components/crm/lead-detail/LeadScannerTab";
 import { LeadMeetingsPanel } from "@/components/crm/lead-detail/LeadMeetingsPanel";
@@ -1263,6 +1265,7 @@ export const CRMLeadDetailPage = () => {
             {[
               { value: "summary", label: "Resumo", icon: Sparkles, color: "text-purple-500" },
               { value: "activities", label: "Atividades", icon: Activity, color: "text-blue-500" },
+              { value: "conversations", label: "Conversas", icon: MessagesSquare, color: "text-emerald-500" },
               { value: "contact", label: "Contato", icon: User, color: "text-violet-500" },
               { value: "company", label: "Empresa", icon: Building2, color: "text-emerald-500" },
               { value: "deal", label: "Negócio", icon: Briefcase, color: "text-amber-500" },
@@ -1308,6 +1311,10 @@ export const CRMLeadDetailPage = () => {
             onStageChange={handleStageChange}
             onRefresh={loadLead}
           />
+        </TabsContent>
+
+        <TabsContent value="conversations" className="flex-1 mt-0 overflow-hidden">
+          <LeadConversationsTab leadId={lead.id} leadPhone={lead.phone} leadName={lead.name} />
         </TabsContent>
 
         <TabsContent value="meetings" className="flex-1 mt-0 overflow-hidden">
