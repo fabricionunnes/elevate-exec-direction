@@ -355,6 +355,7 @@ export const roleLabels: Record<string, string> = {
   consultor: "Consultor(a)",
   closer: "Closer",
   sdr: "SDR",
+  sdr_terceirizado: "SDR Terceirizado",
   cs: "Customer Success",
   head_comercial: "Head Comercial",
   rh: "Recursos Humanos",
