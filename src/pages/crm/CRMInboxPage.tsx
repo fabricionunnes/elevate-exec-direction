@@ -158,11 +158,14 @@ export const CRMInboxPage = () => {
       return allowedOfficialInstanceIds.includes(conv.official_instance_id);
     }
     
-    // If no instance_id and no official_instance_id, show to all (orphan conversations)
-    if (!conv.instance_id && !conv.official_instance_id) return true;
+    // Orphan conversations (no instance_id and no official_instance_id):
+    // only admin/master can see them — regular staff must NOT see unassigned conversations
+    if (!conv.instance_id && !conv.official_instance_id) {
+      return staffRole === "admin";
+    }
     
     // Check if user has access to this Evolution instance
-    const hasAccess = allowedInstanceIds.includes(conv.instance_id!);
+    const hasAccess = conv.instance_id ? allowedInstanceIds.includes(conv.instance_id) : false;
     return hasAccess;
   });
 
