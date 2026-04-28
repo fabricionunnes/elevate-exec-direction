@@ -150,6 +150,8 @@ export function IntegrationsPanel() {
         <p className="text-muted-foreground">Conecte sistemas externos</p>
       </div>
 
+      {tenant?.id && <AsaasIntegration tenantId={tenant.id} />}
+
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
