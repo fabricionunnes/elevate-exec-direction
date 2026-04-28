@@ -39,6 +39,16 @@ export const CRMTrafficDashboard = ({
   campaigns, adsets, ads, links, pipelines, leadStats, meetingStats = [],
   adLeadStats = [], diagnostics,
 }: Props) => {
+  const crmLeadTotals = useMemo(() => leadStats.reduce(
+    (acc, stat) => {
+      acc.total += stat.total;
+      acc.won += stat.won;
+      acc.won_value += stat.won_value;
+      return acc;
+    },
+    { total: 0, won: 0, won_value: 0 },
+  ), [leadStats]);
+
   // Totais gerais
   const totals = useMemo(() => {
     const t = campaigns.reduce(
@@ -58,11 +68,11 @@ export const CRMTrafficDashboard = ({
       ctr: safeDiv(t.clicks, t.impressions) * 100,
       cpc: safeDiv(t.spend, t.clicks),
       cpm: safeDiv(t.spend, t.impressions) * 1000,
-      cpl: safeDiv(t.spend, t.leads),
+      cpl: safeDiv(t.spend, crmLeadTotals.total || t.leads),
       cac: safeDiv(t.spend, t.conversions),
       roas: safeDiv(t.conversion_value, t.spend),
     };
-  }, [campaigns]);
+  }, [campaigns, crmLeadTotals.total]);
 
   // Por funil: somar gasto das campanhas vinculadas (com peso); leads/reuniões via stats por utm_campaign
   const perPipeline = useMemo(() => {
@@ -212,7 +222,7 @@ export const CRMTrafficDashboard = ({
         <KPI icon={DollarSign} label="Investimento" value={fmtBRL(totals.spend)} gradient="from-blue-500 to-indigo-600" />
         <KPI icon={Eye} label="Impressões" value={fmtInt(totals.impressions)} gradient="from-violet-500 to-purple-600" />
         <KPI icon={MousePointerClick} label="Cliques" value={fmtInt(totals.clicks)} gradient="from-cyan-500 to-sky-600" />
-        <KPI icon={Users} label="Leads (Meta)" value={fmtInt(totals.leads)} gradient="from-emerald-500 to-green-600" />
+        <KPI icon={Users} label="Leads (CRM atual)" value={fmtInt(crmLeadTotals.total)} gradient="from-emerald-500 to-green-600" hint={`${fmtInt(totals.leads)} leads Meta`} />
         <KPI icon={TrendingDown} label="CPL" value={fmtBRL(totals.cpl)} gradient="from-amber-500 to-orange-600" hint="Custo por Lead" />
         <KPI icon={CalendarClock} label="Custo / Reun. Agendada" value={fmtBRL(meetingTotals.cost_per_scheduled)} gradient="from-sky-500 to-blue-600" hint={`${fmtInt(meetingTotals.scheduled)} agendadas`} />
         <KPI icon={CalendarCheck} label="Custo / Reun. Realizada" value={fmtBRL(meetingTotals.cost_per_realized)} gradient="from-teal-500 to-cyan-600" hint={`${fmtInt(meetingTotals.realized)} realizadas`} />
