@@ -129,7 +129,7 @@ export const ImportFromStevoModal = ({
       const cleanApiUrl = resolved.apiUrl;
       if (cleanApiUrl !== apiUrl.trim().replace(/\/+$/g, "")) {
         setApiUrl(cleanApiUrl);
-        toast.info(resolved.warning || "URL da API ajustada automaticamente.");
+        toast.info("URL ajustada automaticamente.");
       }
 
       localStorage.setItem("stevo_api_url", cleanApiUrl);
@@ -217,7 +217,7 @@ export const ImportFromStevoModal = ({
       const cleanApiUrl = resolved.apiUrl;
       if (cleanApiUrl !== apiUrl.trim().replace(/\/+$/g, "")) {
         setApiUrl(cleanApiUrl);
-        toast.info(resolved.warning || "URL da API ajustada automaticamente.");
+        toast.info("URL ajustada automaticamente.");
       }
 
       const { data: hookData, error: hookError } = await supabase.functions.invoke("evolution-api", {
