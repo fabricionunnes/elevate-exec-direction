@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 // Version tag for debugging deployments
-const EVOLUTION_API_FUNC_VERSION = "2026-03-16-v10";
+const EVOLUTION_API_FUNC_VERSION = "2026-03-16-v11";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,7 +19,7 @@ function buildHandledEvolutionError(message: string, status: number | undefined,
     error: message,
     errorType: isUnauthorized ? 'STEVO_UNAUTHORIZED' : 'STEVO_API_ERROR',
     userMessage: isUnauthorized
-      ? 'A API da STEVO recusou essa chave. Use a API Key/Hash da instância no servidor Evolution, não a chave do Manager V2.'
+      ? 'A API da STEVO recusou a chave em todos os formatos suportados. Confirme se a chave do Manager V2 pertence ao servidor informado e se tem permissão para listar instâncias.'
       : 'Não foi possível completar a chamada na API da STEVO. Confira URL, chave e permissões da instância.',
     status,
     details,
@@ -73,6 +73,25 @@ function buildEvolutionHeaders(apiKey: string) {
   };
 }
 
+function buildEvolutionHeaderVariants(apiKey: string) {
+  return [
+    { name: 'apikey', headers: { 'Content-Type': 'application/json', apikey: apiKey } },
+    { name: 'x-api-key', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey } },
+    { name: 'authorization-bearer', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` } },
+    { name: 'authorization-raw', headers: { 'Content-Type': 'application/json', Authorization: apiKey } },
+    { name: 'combined', headers: buildEvolutionHeaders(apiKey) },
+  ];
+}
+
+function redactSensitiveBody(body: any) {
+  if (!body || typeof body !== 'object') return body;
+  const redacted = { ...body };
+  for (const key of ['apiKey', 'customApiKey', 'token']) {
+    if (redacted[key]) redacted[key] = `[redacted:${String(redacted[key]).length}]`;
+  }
+  return redacted;
+}
+
 function normalizeInstanceKey(value?: string | null) {
   return String(value || '')
     .normalize('NFD')
@@ -102,6 +121,14 @@ function mapFetchedGroups(data: any) {
       creation: group.creation,
     }))
     .filter((group: any) => group.id);
+}
+
+function extractInstancesFromPayload(payload: any) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.instances)) return payload.instances;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.response)) return payload.response;
+  return [];
 }
 
 async function fetchGroupsFromInstance(apiBaseUrl: string, apiHeaders: HeadersInit, instanceName: string) {
@@ -497,48 +524,49 @@ Deno.serve(async (req) => {
       path: string,
       apiKey: string,
       init?: RequestInit
-    ): Promise<{ res: Response; json: any; prefix: string; tried: Array<{ url: string; method: string; status?: number }> }> => {
+    ): Promise<{ res: Response; json: any; prefix: string; authFormat: string; tried: Array<{ url: string; method: string; status?: number; authFormat: string }> }> => {
       const cleanBaseUrl = normalizeBaseUrl(baseUrl);
-      const customHeaders = buildEvolutionHeaders(apiKey);
-      const tried: Array<{ url: string; method: string; status?: number }> = [];
+      const headerVariants = buildEvolutionHeaderVariants(apiKey);
+      const tried: Array<{ url: string; method: string; status?: number; authFormat: string }> = [];
 
       for (const prefix of ROUTE_PREFIXES) {
         const endpoint = `${prefix}${path}`;
         const fullUrl = `${cleanBaseUrl}${endpoint}`;
         const method = (init?.method || 'GET').toUpperCase();
 
-        console.log(`[evolution-api] [custom] Calling: ${method} ${fullUrl}`);
-        try {
-          const res = await fetch(fullUrl, {
-            ...init,
-            headers: { ...customHeaders, ...(init?.headers || {}) },
-          });
-
-          const text = await res.text();
-          let json: any = null;
+        for (const variant of headerVariants) {
+          console.log(`[evolution-api] [custom] Calling: ${method} ${fullUrl} auth=${variant.name}`);
           try {
-            json = text ? JSON.parse(text) : null;
-          } catch {
-            json = { raw: text };
-          }
+            const res = await fetch(fullUrl, {
+              ...init,
+              headers: { ...variant.headers, ...(init?.headers || {}) },
+            });
 
-          tried.push({ url: fullUrl, method, status: res.status });
-          // For prefix discovery: stop on success or on non-(404/405) so we can surface auth errors (401) quickly.
-          if (res.ok || (res.status !== 404 && res.status !== 405)) {
-            return { res, json, prefix, tried };
+            const text = await res.text();
+            let json: any = null;
+            try {
+              json = text ? JSON.parse(text) : null;
+            } catch {
+              json = { raw: text };
+            }
+
+            tried.push({ url: fullUrl, method, status: res.status, authFormat: variant.name });
+            if (res.ok || (res.status !== 401 && res.status !== 403 && res.status !== 404 && res.status !== 405)) {
+              return { res, json, prefix, authFormat: variant.name, tried };
+            }
+          } catch (err) {
+            console.error('[evolution-api] [custom] Network error calling Evolution API:', err);
+            tried.push({ url: fullUrl, method, authFormat: variant.name });
           }
-        } catch (err) {
-          console.error('[evolution-api] [custom] Network error calling Evolution API:', err);
-          tried.push({ url: fullUrl, method });
         }
       }
 
-      // If all prefixes were 404/405, return a synthetic 404 with tried list
+      const lastTried = tried[tried.length - 1];
       const res = new Response(JSON.stringify({ error: 'Not Found' }), {
-        status: 404,
+        status: lastTried?.status || 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-      return { res, json: { error: 'Not Found' }, prefix: '', tried };
+      return { res, json: { error: lastTried?.status === 401 ? 'Unauthorized' : 'Not Found' }, prefix: '', authFormat: lastTried?.authFormat || '', tried };
     };
 
     // Try multiple route prefixes to find the working one
@@ -581,7 +609,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`[evolution-api] Action: ${action}`, JSON.stringify(body).substring(0, 200));
+    console.log(`[evolution-api] Action: ${action}`, JSON.stringify(redactSensitiveBody(body)).substring(0, 200));
 
     switch (action) {
       case 'create-instance': {
@@ -1224,29 +1252,33 @@ Deno.serve(async (req) => {
           );
         }
 
-        const { res, json, prefix, tried } = await fetchCustomWithPrefixes(
-          apiUrl,
-          '/instance/fetchInstances',
-          apiKey,
-          { method: 'GET' }
-        );
+        const endpoints = ['/instance/fetchInstances', '/instance'];
+        let finalResult: Awaited<ReturnType<typeof fetchCustomWithPrefixes>> | null = null;
+        let instances: any[] = [];
 
-        if (!res.ok) {
+        for (const endpoint of endpoints) {
+          const result = await fetchCustomWithPrefixes(apiUrl, endpoint, apiKey, { method: 'GET' });
+          finalResult = result;
+          if (result.res.ok) {
+            instances = extractInstancesFromPayload(result.json);
+            break;
+          }
+        }
+
+        if (!finalResult?.res.ok) {
           return new Response(
             JSON.stringify(buildHandledEvolutionError(
               'Unable to list instances on custom Evolution API',
-              res.status,
-              json,
-              { tried, prefix }
+              finalResult?.res.status,
+              finalResult?.json,
+              { tried: finalResult?.tried, prefix: finalResult?.prefix, authFormat: finalResult?.authFormat }
             )),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        // Some installs return { instances: [...] }
-        const instances = Array.isArray(json) ? json : (Array.isArray(json?.instances) ? json.instances : []);
         return new Response(
-          JSON.stringify({ instances, prefix, _version: EVOLUTION_API_FUNC_VERSION }),
+          JSON.stringify({ instances, prefix: finalResult.prefix, authFormat: finalResult.authFormat, _version: EVOLUTION_API_FUNC_VERSION }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

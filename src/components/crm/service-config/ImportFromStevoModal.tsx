@@ -71,7 +71,7 @@ const resolveStevoApiUrl = (value: string) => {
 const formatStevoApiError = (payload: any, fallback = "Erro ao carregar instâncias do STEVO") => {
   const text = JSON.stringify(payload || {}).toLowerCase();
   if (payload?.status === 401 || text.includes("unauthorized")) {
-    return "A API da STEVO recusou essa API Key. Use a chave da instância/servidor Evolution (normalmente UUID), não a chave do Manager V2.";
+    return "A API da STEVO recusou essa chave do Manager V2 em todos os formatos testados. Confirme se ela pertence ao servidor informado e se tem permissão para listar instâncias.";
   }
   if (payload?.error?.includes?.("Manager V2") || text.includes("manager v2")) {
     return "Você informou a URL do Manager V2. Para sm-tucano, use https://evo07.stevo.chat como URL da API.";
@@ -142,9 +142,6 @@ export const ImportFromStevoModal = ({
         setApiUrl(cleanApiUrl);
         toast.info(resolved.warning || "URL da API ajustada automaticamente.");
       }
-
-      localStorage.setItem("stevo_api_url", cleanApiUrl);
-      localStorage.setItem("stevo_api_key", apiKey.trim());
 
       const { data, error: fnError } = await supabase.functions.invoke("evolution-api", {
         body: { action: "list-instances-custom", apiUrl: cleanApiUrl, apiKey: apiKey.trim() },
