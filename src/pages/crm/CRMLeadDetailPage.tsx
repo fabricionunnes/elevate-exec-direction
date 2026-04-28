@@ -59,6 +59,7 @@ import {
   FolderOpen,
   History,
   Sparkles,
+  MessagesSquare,
 } from "lucide-react";
 import { AddLeadNoteDialog } from "@/components/crm/lead-detail/AddLeadNoteDialog";
 import { LeadSummaryTab } from "@/components/crm/lead-detail/lead-summary/LeadSummaryTab";
