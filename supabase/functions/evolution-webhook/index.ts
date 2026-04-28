@@ -158,9 +158,86 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     
-    const event = body.event;
-    const instanceName = body.instance;
-    const data = body.data;
+    let event = body.event;
+    // Manager V2 uses `instanceName` (camelCase); Evolution uses `instance`
+    let instanceName = body.instance || body.instanceName;
+    let data = body.data;
+
+    // ============ Manager V2 adapter ============
+    // Manager V2 sends: Message (inbound), SendMessage (outbound), Receipt (delivery), ReadReceipt
+    // Structure: { event, instanceName, instanceId, data: { Info: {...}, Message: {...} } }
+    const isManagerV2 = !!body.instanceName && !body.instance;
+    if (isManagerV2) {
+      console.log(`[webhook][mgrV2] raw event=${event} instance=${instanceName}`);
+      if (event === 'Message' || event === 'SendMessage' || event === 'HistorySync') {
+        // Normalize to Evolution's messages.upsert format
+        const info = data?.Info || {};
+        const msg = data?.Message || {};
+        // Extract text from various message formats
+        const text =
+          msg.conversation ||
+          msg.extendedTextMessage?.text ||
+          msg.imageMessage?.caption ||
+          msg.videoMessage?.caption ||
+          msg.documentMessage?.caption ||
+          '';
+        // Determine media type
+        let messageType = 'conversation';
+        let mediaPayload: any = null;
+        if (msg.imageMessage) { messageType = 'imageMessage'; mediaPayload = msg.imageMessage; }
+        else if (msg.audioMessage) { messageType = 'audioMessage'; mediaPayload = msg.audioMessage; }
+        else if (msg.videoMessage) { messageType = 'videoMessage'; mediaPayload = msg.videoMessage; }
+        else if (msg.documentMessage) { messageType = 'documentMessage'; mediaPayload = msg.documentMessage; }
+        else if (msg.stickerMessage) { messageType = 'stickerMessage'; mediaPayload = msg.stickerMessage; }
+        else if (msg.extendedTextMessage) { messageType = 'extendedTextMessage'; }
+
+        // Normalize JIDs - strip device suffix (e.g. "553189840003:85@s.whatsapp.net" -> "553189840003@s.whatsapp.net")
+        const stripDevice = (jid: string) => {
+          if (!jid) return jid;
+          return jid.replace(/:\d+@/, '@');
+        };
+        const remoteJid = stripDevice(info.Chat || '');
+        const senderJid = stripDevice(info.Sender || '');
+        const fromMe = info.IsFromMe === true;
+        const isGroup = info.IsGroup === true || remoteJid.endsWith('@g.us');
+
+        data = {
+          key: {
+            remoteJid,
+            fromMe,
+            id: info.ID || '',
+            participant: isGroup ? senderJid : undefined,
+          },
+          message: msg,
+          messageType,
+          messageTimestamp: info.Timestamp
+            ? Math.floor(new Date(info.Timestamp).getTime() / 1000)
+            : Math.floor(Date.now() / 1000),
+          pushName: info.PushName || '',
+          // include media payload at top level for downstream handlers if any
+          mediaPayload,
+          _text: text,
+        };
+        event = 'messages.upsert';
+      } else if (event === 'Receipt' || event === 'ReadReceipt') {
+        // Map to status update — for now just log and return ok
+        console.log(`[webhook][mgrV2] receipt event ignored (status update)`);
+        return new Response(JSON.stringify({ success: true, ignored: 'receipt' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } else if (event === 'Connected' || event === 'Disconnected' || event === 'LoggedOut' || event === 'PairSuccess' || event === 'QR') {
+        // connection updates — minimal handling
+        const status = (event === 'Connected' || event === 'PairSuccess') ? 'connected' : 'disconnected';
+        data = { state: status };
+        event = 'connection.update';
+      } else {
+        console.log(`[webhook][mgrV2] unhandled event=${event}`);
+        return new Response(JSON.stringify({ success: true, unhandled: event }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+    // ============ End Manager V2 adapter ============
 
     // TEMPORARY: Log ALL incoming webhook payloads to debug missing group messages
     const remoteJid = data?.key?.remoteJid || data?.remoteJid || '';
@@ -168,10 +245,8 @@ Deno.serve(async (req) => {
     const participant = data?.key?.participant || '';
     console.log(`[webhook] event=${event} instance=${instanceName} jid=${remoteJid} isGroup=${isGroupEvent} participant=${participant}`);
     
-    // Log full payload for ALL messages.upsert events (to catch group messages)
-    // and for any non-routine events
     if (event === 'messages.upsert' || isGroupEvent || !['messages.update', 'connection.update'].includes(event)) {
-      console.log('[webhook] Full payload:', JSON.stringify(body, null, 2));
+      console.log('[webhook] Full payload (post-adapter):', JSON.stringify({ event, instanceName, data }, null, 2));
     }
 
     // Get instance from database (also fetch instance-specific API credentials)
@@ -191,7 +266,6 @@ Deno.serve(async (req) => {
 
     switch (event) {
       case 'messages.upsert':
-      // Handle alternative event names used by some Evolution API versions
       case 'message':
       case 'messages':
       case 'message.new':
