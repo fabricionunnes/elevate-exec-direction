@@ -1254,14 +1254,7 @@ Deno.serve(async (req) => {
         }
 
         const cleanApiUrl = normalizeBaseUrl(apiUrl);
-        const isManagerV2 = (() => {
-          try {
-            const host = new URL(cleanApiUrl).hostname.toLowerCase();
-            return host.startsWith('sm-') && host.endsWith('.stevo.chat');
-          } catch {
-            return false;
-          }
-        })();
+        const isManagerV2 = isStevoManagerV2Url(cleanApiUrl);
         const listPaths = isManagerV2
           ? ['/instance/all', '/instance/fetchInstances', '/instance']
           : ['/instance/fetchInstances', '/instance/all', '/instance'];
@@ -1313,14 +1306,7 @@ Deno.serve(async (req) => {
 
         const cleanApiUrl = normalizeBaseUrl(apiUrl);
         const effectiveApiKey = instanceApiKey || apiKey;
-        const isManagerV2 = (() => {
-          try {
-            const host = new URL(cleanApiUrl).hostname.toLowerCase();
-            return host.startsWith('sm-') && host.endsWith('.stevo.chat');
-          } catch {
-            return false;
-          }
-        })();
+        const isManagerV2 = isStevoManagerV2Url(cleanApiUrl);
 
         if (isManagerV2) {
           const managerPayload = {
