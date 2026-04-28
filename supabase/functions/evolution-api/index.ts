@@ -1188,6 +1188,14 @@ Deno.serve(async (req) => {
           );
         }
 
+        const managerUrlError = getStevoManagerUrlError(apiUrl);
+        if (managerUrlError) {
+          return new Response(
+            JSON.stringify(managerUrlError),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         const { res, json, prefix, tried } = await fetchCustomWithPrefixes(
           apiUrl,
           '/instance/fetchInstances',
@@ -1222,6 +1230,14 @@ Deno.serve(async (req) => {
         if (!apiUrl || !apiKey || !instanceName || !webhookUrl) {
           return new Response(
             JSON.stringify({ error: 'apiUrl, apiKey, instanceName and webhookUrl are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const managerUrlError = getStevoManagerUrlError(apiUrl);
+        if (managerUrlError) {
+          return new Response(
+            JSON.stringify(managerUrlError),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
