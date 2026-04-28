@@ -78,7 +78,7 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("onboarding_staff")
         .select("id")
         .eq("auth_user_id", user.id)
