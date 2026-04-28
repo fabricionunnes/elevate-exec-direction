@@ -33,6 +33,15 @@ function normalizeBaseUrl(input: string) {
   return input.replace(/\/manager\/?$/i, '').replace(/\/+$/g, '');
 }
 
+function isStevoManagerV2Url(input?: string | null) {
+  try {
+    const hostname = new URL(normalizeBaseUrl(String(input || ''))).hostname.toLowerCase();
+    return hostname.startsWith('sm-') && hostname.endsWith('.stevo.chat');
+  } catch {
+    return false;
+  }
+}
+
 function getStevoManagerUrlError(input: string) {
   try {
     const parsed = new URL(input.replace(/\/manager\/?$/i, '').replace(/\/+$/g, ''));
