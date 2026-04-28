@@ -18,6 +18,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { syncPaymentToContaAzul } from "@/utils/contaAzulSync";
 import { SupplierAutocomplete } from "./SupplierAutocomplete";
+import { CostCenterSelect } from "./CostCenterSelect";
 
 interface PayableEntry {
   id: string;
@@ -266,9 +267,10 @@ interface EditDialogProps {
   suppliers: any[];
   onSuccess: () => void;
   onSuppliersRefresh: () => void;
+  onCostCentersRefresh?: () => void;
 }
 
-export function PayableEditDialog({ open, onOpenChange, payable, categories, costCenters, suppliers, onSuccess, onSuppliersRefresh }: EditDialogProps) {
+export function PayableEditDialog({ open, onOpenChange, payable, categories, costCenters, suppliers, onSuccess, onSuppliersRefresh, onCostCentersRefresh }: EditDialogProps) {
   const [form, setForm] = useState({
     supplier_name: "",
     description: "",
@@ -452,15 +454,12 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
             </div>
             <div>
               <Label>Centro de Custo</Label>
-              <Select value={form.cost_center_id || "none"} onValueChange={(v) => setForm(f => ({ ...f, cost_center_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhum</SelectItem>
-                  {costCenters.map((cc: any) => (
-                    <SelectItem key={cc.id} value={cc.id}>{cc.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CostCenterSelect
+                value={form.cost_center_id}
+                onChange={(v) => setForm(f => ({ ...f, cost_center_id: v }))}
+                costCenters={costCenters}
+                onCreated={() => onCostCentersRefresh?.()}
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">

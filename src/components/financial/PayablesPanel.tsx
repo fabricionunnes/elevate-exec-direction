@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
+import { CostCenterSelect } from "./CostCenterSelect";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -144,7 +145,7 @@ export function PayablesPanel() {
     is_recurring: false,
     recurrence_type: "monthly",
     recurring_count: "12",
-    cost_center: "",
+    cost_center_id: "",
     reference_month: format(new Date(), "yyyy-MM"),
     notes: "",
     has_installments: false,
@@ -197,9 +198,16 @@ export function PayablesPanel() {
         console.warn("Could not load suppliers:", e);
       }
 
+      const { data: ccData } = await supabase
+        .from("staff_financial_cost_centers")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
+
       setCategories(categoriesData || []);
       setBankAccounts(banksData || []);
       setSuppliers(suppliersData);
+      setCostCenters(ccData || []);
 
       // Update overdue status for pending items past due date
       const today = format(new Date(), "yyyy-MM-dd");
@@ -279,7 +287,7 @@ export function PayablesPanel() {
           payment_method: formData.payment_method,
           is_recurring: formData.is_recurring,
           recurrence_type: formData.is_recurring ? formData.recurrence_type : null,
-          cost_center: formData.cost_center || null,
+          cost_center_id: formData.cost_center_id || null,
           reference_month: refMonth,
           notes: formData.notes || null,
           installment_number: totalEntries > 1 ? i : null,
@@ -467,7 +475,7 @@ export function PayablesPanel() {
       is_recurring: false,
       recurrence_type: "monthly",
       recurring_count: "12",
-      cost_center: "",
+      cost_center_id: "",
       reference_month: format(new Date(), "yyyy-MM"),
       notes: "",
       has_installments: false,
@@ -621,10 +629,11 @@ export function PayablesPanel() {
                   </div>
                   <div className="space-y-2">
                     <Label>Centro de Custo</Label>
-                    <Input
-                      value={formData.cost_center}
-                      onChange={(e) => setFormData({ ...formData, cost_center: e.target.value })}
-                      placeholder="Ex: Marketing"
+                    <CostCenterSelect
+                      value={formData.cost_center_id}
+                      onChange={(v) => setFormData({ ...formData, cost_center_id: v === "none" ? "" : v })}
+                      costCenters={costCenters}
+                      onCreated={(cc) => setCostCenters((prev) => [...prev, cc])}
                     />
                   </div>
                 </div>
@@ -1015,7 +1024,7 @@ export function PayablesPanel() {
                                 is_recurring: false,
                                 recurrence_type: "monthly",
                                 recurring_count: "12",
-                                cost_center: payable.cost_center || "",
+                                cost_center_id: payable.cost_center_id || "",
                                 reference_month: format(new Date(), "yyyy-MM"),
                                 notes: payable.notes || "",
                                 has_installments: false,
@@ -1217,6 +1226,7 @@ export function PayablesPanel() {
         suppliers={suppliers}
         onSuccess={() => { loadData(); }}
         onSuppliersRefresh={() => { loadData(); }}
+        onCostCentersRefresh={() => { loadData(); }}
       />
     </div>
   );
