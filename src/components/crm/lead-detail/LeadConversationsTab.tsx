@@ -73,17 +73,34 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
   const [staffId, setStaffId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Get current staff
+  const [isMaster, setIsMaster] = useState(false);
+  const [allowedWaInstanceIds, setAllowedWaInstanceIds] = useState<string[] | null>(null); // null = all (master)
+
+  // Get current staff + permitted whatsapp instances
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await (supabase as any)
+      const { data: staff } = await (supabase as any)
         .from("onboarding_staff")
-        .select("id")
+        .select("id, role")
         .eq("auth_user_id", user.id)
         .maybeSingle();
-      setStaffId(data?.id ?? null);
+      const sid = staff?.id ?? null;
+      setStaffId(sid);
+      const master = staff?.role === "master";
+      setIsMaster(master);
+
+      if (!master && sid) {
+        const { data: access } = await (supabase as any)
+          .from("whatsapp_instance_access")
+          .select("instance_id")
+          .eq("staff_id", sid)
+          .eq("can_view", true);
+        setAllowedWaInstanceIds(((access || []) as any[]).map((a) => a.instance_id));
+      } else {
+        setAllowedWaInstanceIds(null);
+      }
     })();
   }, []);
 
@@ -185,23 +202,32 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
         });
       }
 
+      // Apply WhatsApp Evolution access filter (non-master users only see permitted instances).
+      // Official WhatsApp + Instagram are not gated by whatsapp_instance_access.
+      const filtered = isMaster || allowedWaInstanceIds === null
+        ? all
+        : all.filter((c) => {
+            if (c.channel !== "whatsapp") return true;
+            return c.instance_id ? allowedWaInstanceIds.includes(c.instance_id) : false;
+          });
+
       // Sort by last_message_at
-      all.sort((a, b) => {
+      filtered.sort((a, b) => {
         const da = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
         const db = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
         return db - da;
       });
 
-      setConversations(all);
-      if (!activeId && all.length > 0) {
-        setActiveId(all[0].id);
+      setConversations(filtered);
+      if (!activeId && filtered.length > 0) {
+        setActiveId(filtered[0].id);
       }
     } catch (e) {
       console.error("Error loading conversations:", e);
     } finally {
       setLoading(false);
     }
-  }, [leadId, leadPhone, activeId]);
+  }, [leadId, leadPhone, activeId, isMaster, allowedWaInstanceIds]);
 
   useEffect(() => {
     fetchConversations();
