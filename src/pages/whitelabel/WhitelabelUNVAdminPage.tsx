@@ -719,6 +719,16 @@ function TenantForm({
         return;
       }
 
+      // Bloqueia uso de e-mail que já pertence ao staff interno (master)
+      const { data: isStaffEmail } = await supabase.rpc("is_email_from_master_staff", {
+        _email: adminEmail.trim(),
+      });
+      if (isStaffEmail === true) {
+        toast.error("Este e-mail já pertence a um usuário interno do staff. Use outro e-mail para o tenant.");
+        setSaving(false);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke("whitelabel-provision", {
         body: {
           name: name.trim(),

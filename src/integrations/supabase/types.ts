@@ -34873,6 +34873,7 @@ export type Database = {
         Returns: boolean
       }
       is_crm_admin: { Args: never; Returns: boolean }
+      is_email_from_master_staff: { Args: { _email: string }; Returns: boolean }
       is_financial_admin: { Args: never; Returns: boolean }
       is_master: { Args: never; Returns: boolean }
       is_master_user: { Args: never; Returns: boolean }
