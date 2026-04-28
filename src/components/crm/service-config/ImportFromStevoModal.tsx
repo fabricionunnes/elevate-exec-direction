@@ -133,7 +133,6 @@ export const ImportFromStevoModal = ({
       }
 
       localStorage.setItem("stevo_api_url", cleanApiUrl);
-      localStorage.setItem("stevo_api_key", apiKey.trim());
 
       const { data, error: fnError } = await supabase.functions.invoke("evolution-api", {
         body: { action: "list-instances-custom", apiUrl: cleanApiUrl, apiKey: apiKey.trim() },
@@ -150,6 +149,7 @@ export const ImportFromStevoModal = ({
       const allInstances: StevoInstance[] = rawInstances.map((inst: any) => ({
         instanceName: inst.name || inst.instanceName,
         instanceId: inst.id,
+        apikey: inst.token || inst.apikey,
         status: inst.connectionStatus || inst.status,
         owner: inst.ownerJid,
         profileName: inst.profileName,
@@ -225,6 +225,7 @@ export const ImportFromStevoModal = ({
           action: "set-webhook-custom",
           apiUrl: cleanApiUrl,
           apiKey: apiKey.trim(),
+          instanceApiKey: selectedInst.apikey,
           instanceName: selectedInstance,
           webhookUrl,
         },
@@ -248,7 +249,7 @@ export const ImportFromStevoModal = ({
         is_default: false,
         project_id: projectId || null, // Link to project if provided (client mode)
         api_url: cleanApiUrl,
-        api_key: apiKey.trim(),
+        api_key: selectedInst.apikey || apiKey.trim(),
       });
 
       if (insertError) throw insertError;
