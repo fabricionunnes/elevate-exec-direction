@@ -1244,29 +1244,43 @@ Deno.serve(async (req) => {
           );
         }
 
-        const { res, json, prefix, tried } = await fetchCustomWithPrefixes(
-          apiUrl,
-          '/instance/fetchInstances',
-          apiKey,
-          { method: 'GET' }
-        );
+        const cleanApiUrl = normalizeBaseUrl(apiUrl);
+        const isManagerV2 = (() => {
+          try {
+            const host = new URL(cleanApiUrl).hostname.toLowerCase();
+            return host.startsWith('sm-') && host.endsWith('.stevo.chat');
+          } catch {
+            return false;
+          }
+        })();
+        const listPaths = isManagerV2
+          ? ['/instance/all', '/instance/fetchInstances', '/instance']
+          : ['/instance/fetchInstances', '/instance/all', '/instance'];
 
-        if (!res.ok) {
-          return new Response(
-            JSON.stringify(buildHandledEvolutionError(
-              'Unable to list instances on custom Evolution API',
-              res.status,
-              json,
-              { tried, prefix }
-            )),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+        let lastResult: { res: Response; json: any; prefix: string; tried: any[] } | null = null;
+        let instances: any[] = [];
+
+        for (const path of listPaths) {
+          const result = await fetchCustomWithPrefixes(cleanApiUrl, path, apiKey, { method: 'GET' });
+          lastResult = result;
+          if (result.res.ok) {
+            instances = extractInstancesFromPayload(result.json);
+            if (instances.length > 0 || path === '/instance/all') {
+              return new Response(
+                JSON.stringify({ instances, prefix: result.prefix, mode: isManagerV2 ? 'manager-v2' : 'evolution', _version: EVOLUTION_API_FUNC_VERSION }),
+                { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+          }
         }
 
-        // Some installs return { instances: [...] }
-        const instances = Array.isArray(json) ? json : (Array.isArray(json?.instances) ? json.instances : []);
         return new Response(
-          JSON.stringify({ instances, prefix, _version: EVOLUTION_API_FUNC_VERSION }),
+          JSON.stringify(buildHandledEvolutionError(
+            'Unable to list instances on custom Evolution API',
+            lastResult?.res.status,
+            lastResult?.json,
+            { tried: lastResult?.tried, prefix: lastResult?.prefix, mode: isManagerV2 ? 'manager-v2' : 'evolution' }
+          )),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
