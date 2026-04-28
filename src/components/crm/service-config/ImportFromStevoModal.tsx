@@ -195,12 +195,6 @@ export const ImportFromStevoModal = ({
     }
   };
 
-  const handleImport = async () => {
-    if (!selectedInstance) {
-      toast.error("Selecione uma instância para importar");
-      return;
-    }
-
   const handleImportManagerV2 = async () => {
     if (!mgrInstanceName.trim() || !apiUrl.trim() || !apiKey.trim()) {
       toast.error("Informe Nome, URL (sm-*.stevo.chat) e API Key da instância");
