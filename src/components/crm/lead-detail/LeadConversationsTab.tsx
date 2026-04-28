@@ -202,8 +202,17 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
         });
       }
 
+      // Apply WhatsApp Evolution access filter (non-master users only see permitted instances).
+      // Official WhatsApp + Instagram are not gated by whatsapp_instance_access.
+      const filtered = isMaster || allowedWaInstanceIds === null
+        ? all
+        : all.filter((c) => {
+            if (c.channel !== "whatsapp") return true;
+            return c.instance_id ? allowedWaInstanceIds.includes(c.instance_id) : false;
+          });
+
       // Sort by last_message_at
-      all.sort((a, b) => {
+      filtered.sort((a, b) => {
         const da = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
         const db = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
         return db - da;
