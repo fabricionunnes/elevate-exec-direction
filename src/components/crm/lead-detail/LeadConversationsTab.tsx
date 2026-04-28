@@ -93,7 +93,7 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
       const all: ConversationItem[] = [];
 
       // 1) WhatsApp Evolution conversations linked to lead
-      const { data: waConvs } = await supabase
+      const { data: waConvs } = await (supabase as any)
         .from("crm_whatsapp_conversations")
         .select(`
           *,
