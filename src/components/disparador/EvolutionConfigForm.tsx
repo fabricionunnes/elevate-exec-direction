@@ -18,6 +18,18 @@ interface EvolutionConfig {
   api_key: string;
 }
 
+const getApiUrlError = (value: string) => {
+  try {
+    const hostname = new URL(value.trim().replace(/\/+$/g, "")).hostname.toLowerCase();
+    if (hostname.startsWith("sm-") && hostname.endsWith(".stevo.chat")) {
+      return "Você informou a URL do Manager V2. Use a URL da API/Servidor da Evolution, normalmente no formato https://evo07.stevo.chat.";
+    }
+  } catch {
+    return "URL inválida. Use o formato https://evo07.stevo.chat.";
+  }
+  return null;
+};
+
 export const EvolutionConfigForm = ({ projectId, onConfigured }: EvolutionConfigFormProps) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -58,11 +70,9 @@ export const EvolutionConfigForm = ({ projectId, onConfigured }: EvolutionConfig
       return;
     }
 
-    // Validate URL format
-    try {
-      new URL(apiUrl);
-    } catch {
-      toast.error("URL inválida. Use o formato https://sua-api.com");
+    const urlError = getApiUrlError(apiUrl);
+    if (urlError) {
+      toast.error(urlError);
       return;
     }
 
@@ -112,6 +122,12 @@ export const EvolutionConfigForm = ({ projectId, onConfigured }: EvolutionConfig
 
     setSaving(true);
     try {
+      const urlError = getApiUrlError(apiUrl);
+      if (urlError) {
+        toast.error(urlError);
+        return;
+      }
+
       const response = await fetch(`${apiUrl.trim().replace(/\/$/, "")}/instance/fetchInstances`, {
         method: "GET",
         headers: {
@@ -173,10 +189,10 @@ export const EvolutionConfigForm = ({ projectId, onConfigured }: EvolutionConfig
             type="url"
             value={apiUrl}
             onChange={(e) => setApiUrl(e.target.value)}
-            placeholder="https://sua-evolution-api.com"
+            placeholder="https://evo07.stevo.chat"
           />
           <p className="text-xs text-muted-foreground">
-            Ex: https://api.stevo.com.br ou sua URL personalizada
+            Use a URL da API/Servidor Evolution. Não use o link do Manager V2 que começa com sm-.
           </p>
         </div>
 
