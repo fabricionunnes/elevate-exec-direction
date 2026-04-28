@@ -1543,52 +1543,56 @@ Deno.serve(async (req) => {
         }
 
         const sendTextTarget = await resolveEvolutionCredentials(instanceName);
-        const sendTextBaseUrl = sendTextTarget.baseUrl;
-        const sendTextHeaders = sendTextTarget.headers;
-        const sendTextEndpoint = isStevoManagerV2Url(sendTextBaseUrl) ? '/send/text' : `/message/sendText/${instanceName}`;
+        console.log(`[evolution-api] send-text provider=${sendTextTarget.providerType} source=${sendTextTarget.source} instance=${instanceName}`);
 
-        console.log(`[evolution-api] send-text using ${sendTextTarget.source} credentials for instance ${instanceName}`);
+        let respStatus: number;
+        let respOk: boolean;
+        let data: any;
 
-        const sendTextController = new AbortController();
-        const sendTextTimeout = setTimeout(() => sendTextController.abort(), 25000);
-        let response: Response;
-        try {
-          response = await fetch(`${sendTextBaseUrl}${sendTextEndpoint}`, {
-            method: 'POST',
-            headers: sendTextHeaders,
-            signal: sendTextController.signal,
-            body: JSON.stringify({
-              number,
-              text,
-              delay: delay || 0,
-            }),
-          });
-        } catch (fetchErr: any) {
-          clearTimeout(sendTextTimeout);
-          if (fetchErr.name === 'AbortError') {
-            console.error('[evolution-api] send-text timed out after 25s');
-            return new Response(
-              JSON.stringify({
-                accepted: true,
-                pending: true,
-                timed_out: true,
-                instanceName,
-                number,
-                message: 'Timeout: o servidor WhatsApp não respondeu a tempo. A mensagem pode ter sido enviada.',
-              }),
-              { status: 202, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
+        if (sendTextTarget.providerType === 'manager_v2') {
+          // Manager V2 has its own timeout/abort handling internally
+          const result = await ManagerV2.sendText(
+            { baseUrl: sendTextTarget.baseUrl, apiKey: sendTextTarget.apiKey },
+            { number, text, delay: delay || 0 }
+          );
+          respStatus = result.status; respOk = result.ok; data = result.data;
+        } else {
+          const sendTextController = new AbortController();
+          const sendTextTimeout = setTimeout(() => sendTextController.abort(), 25000);
+          let response: Response;
+          try {
+            response = await fetch(`${sendTextTarget.baseUrl}/message/sendText/${instanceName}`, {
+              method: 'POST',
+              headers: sendTextTarget.headers,
+              signal: sendTextController.signal,
+              body: JSON.stringify({ number, text, delay: delay || 0 }),
+            });
+          } catch (fetchErr: any) {
+            clearTimeout(sendTextTimeout);
+            if (fetchErr.name === 'AbortError') {
+              console.error('[evolution-api] send-text timed out after 25s');
+              return new Response(
+                JSON.stringify({
+                  accepted: true,
+                  pending: true,
+                  timed_out: true,
+                  instanceName,
+                  number,
+                  message: 'Timeout: o servidor WhatsApp não respondeu a tempo. A mensagem pode ter sido enviada.',
+                }),
+                { status: 202, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+            throw fetchErr;
           }
-          throw fetchErr;
+          clearTimeout(sendTextTimeout);
+          respStatus = response.status; respOk = response.ok; data = await response.json();
         }
-        clearTimeout(sendTextTimeout);
 
-        const data = await response.json();
-        console.log('[evolution-api] Send text response:', data);
+        console.log('[evolution-api] Send text response:', JSON.stringify(data).substring(0, 300));
 
-        // Detect "Connection Closed" from Evolution API — means instance is disconnected
         const dataStr = JSON.stringify(data);
-        if (!response.ok && dataStr.toLowerCase().includes('connection closed')) {
+        if (!respOk && dataStr.toLowerCase().includes('connection closed')) {
           console.error('[evolution-api] WhatsApp instance connection closed');
           return new Response(
             JSON.stringify({
@@ -1601,7 +1605,7 @@ Deno.serve(async (req) => {
 
         return new Response(
           JSON.stringify(data),
-          { status: response.ok ? 200 : response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: respOk ? 200 : respStatus, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
