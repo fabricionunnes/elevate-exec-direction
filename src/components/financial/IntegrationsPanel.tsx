@@ -16,6 +16,8 @@ interface ContaAzulStatus {
 }
 
 export function IntegrationsPanel() {
+  const { tenant } = useTenant();
+
   const [searchParams] = useSearchParams();
   const [contaAzulStatus, setContaAzulStatus] = useState<ContaAzulStatus>({
     connected: false,
