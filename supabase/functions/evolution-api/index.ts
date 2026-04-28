@@ -1,7 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
+import {
+  ManagerV2,
+  isManagerV2Url,
+  normalizeManagerV2Status,
+  normalizeManagerV2Qr,
+} from "./_manager_v2.ts";
 
 // Version tag for debugging deployments
-const EVOLUTION_API_FUNC_VERSION = "2026-03-16-v12";
+const EVOLUTION_API_FUNC_VERSION = "2026-04-28-mgr-v2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
