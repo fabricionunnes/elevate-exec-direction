@@ -86,6 +86,7 @@ export const ImportFromStevoModal = ({
   onImported,
   projectId,
 }: ImportFromStevoModalProps) => {
+  const [mode, setMode] = useState<"evolution" | "manager_v2">("evolution");
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [instances, setInstances] = useState<StevoInstance[]>([]);
@@ -95,10 +96,13 @@ export const ImportFromStevoModal = ({
   const [apiUrl, setApiUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
+  // Manager V2 manual fields
+  const [mgrInstanceName, setMgrInstanceName] = useState("");
+  const [mgrPhone, setMgrPhone] = useState("");
 
   useEffect(() => {
     if (open) {
-      // Reset everything when opening — user must input credentials and click "Buscar"
+      setMode("evolution");
       setInstances([]);
       setSelectedInstance(null);
       setDisplayName("");
@@ -106,6 +110,8 @@ export const ImportFromStevoModal = ({
       setShowApiKey(false);
       setApiUrl("");
       setApiKey("");
+      setMgrInstanceName("");
+      setMgrPhone("");
     }
   }, [open]);
 
