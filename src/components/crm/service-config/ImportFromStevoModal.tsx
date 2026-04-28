@@ -46,6 +46,50 @@ const getApiUrlError = (value: string) => {
   return null;
 };
 
+const KNOWN_STEVO_MANAGER_SERVERS: Record<string, string> = {
+  "sm-tucano.stevo.chat": "https://evo07.stevo.chat",
+};
+
+const resolveStevoApiUrl = (value: string) => {
+  const trimmed = value.trim().replace(/\/+$/g, "");
+  try {
+    const hostname = new URL(trimmed).hostname.toLowerCase();
+    const knownServer = KNOWN_STEVO_MANAGER_SERVERS[hostname];
+    if (knownServer) {
+      return {
+        apiUrl: knownServer,
+        warning: `A URL do Manager V2 foi ajustada automaticamente para ${knownServer}.`,
+      };
+    }
+    const error = getApiUrlError(trimmed);
+    return error ? { apiUrl: trimmed, error } : { apiUrl: trimmed };
+  } catch {
+    return { apiUrl: trimmed, error: "URL inválida. Use o formato https://evo07.stevo.chat." };
+  }
+};
+
+const formatStevoApiError = (payload: any, fallback = "Erro ao carregar instâncias do STEVO") => {
+  const text = JSON.stringify(payload || {}).toLowerCase();
+  if (payload?.status === 401 || text.includes("unauthorized")) {
+    return "A API da STEVO recusou essa API Key. Use a chave da instância/servidor Evolution (normalmente UUID), não a chave do Manager V2.";
+  }
+  if (payload?.error?.includes?.("Manager V2") || text.includes("manager v2")) {
+    return "Você informou a URL do Manager V2. Para sm-tucano, use https://evo07.stevo.chat como URL da API.";
+  }
+  return payload?.details?.response?.message || payload?.details?.message || payload?.message || payload?.error || fallback;
+};
+
+const getInvokeErrorMessage = async (fnError: any) => {
+  try {
+    if (fnError?.context && typeof fnError.context.json === "function") {
+      return formatStevoApiError(await fnError.context.json(), fnError.message);
+    }
+  } catch {
+    // Fall back to the SDK message below.
+  }
+  return fnError?.message || "Erro ao chamar a integração do STEVO";
+};
+
 export const ImportFromStevoModal = ({
   open,
   onOpenChange,
