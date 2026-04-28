@@ -187,8 +187,7 @@ export const CRMLayout = () => {
 
   const isInboxRoute = location.pathname.includes("/crm/inbox");
   const isPipelineRoute = location.pathname.includes("/crm/pipeline");
-  const isLeadDetailRoute = /\/crm\/leads\/[^/]+/.test(location.pathname);
-  const lockViewportHeight = isInboxRoute || isPipelineRoute || isLeadDetailRoute;
+  const lockViewportHeight = isInboxRoute || isPipelineRoute;
 
   return (
     <CRMContext.Provider value={{
