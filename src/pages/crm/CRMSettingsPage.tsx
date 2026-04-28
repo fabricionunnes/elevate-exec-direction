@@ -424,12 +424,44 @@ export const CRMSettingsPage = () => {
     const updated = ordered.map((p, idx) => ({ ...p, sort_order: idx } as any));
     setPipelines(updated);
 
+    // Also reorder crm_origins.sort_order within each group, mirroring the new pipeline order
+    // so the sidebar (grouped by origin) reflects the same sequence the user defined here.
+    const pipelineOrderIndex = new Map<string, number>(updated.map((p: any, idx: number) => [p.id, idx]));
+    const originsByGroup = new Map<string, Origin[]>();
+    origins.forEach((o) => {
+      if (!o.pipeline_id || !o.group_id) return;
+      const arr = originsByGroup.get(o.group_id) || [];
+      arr.push(o);
+      originsByGroup.set(o.group_id, arr);
+    });
+
+    const updatedOrigins: Origin[] = [...origins];
+    const originUpdates: { id: string; sort_order: number }[] = [];
+    originsByGroup.forEach((groupOrigins) => {
+      const sorted = [...groupOrigins].sort((a, b) => {
+        const ai = pipelineOrderIndex.get(a.pipeline_id!) ?? Number.MAX_SAFE_INTEGER;
+        const bi = pipelineOrderIndex.get(b.pipeline_id!) ?? Number.MAX_SAFE_INTEGER;
+        return ai - bi;
+      });
+      sorted.forEach((o, idx) => {
+        if (o.sort_order !== idx) {
+          originUpdates.push({ id: o.id, sort_order: idx });
+          const target = updatedOrigins.find((u) => u.id === o.id);
+          if (target) target.sort_order = idx;
+        }
+      });
+    });
+    setOrigins(updatedOrigins);
+
     try {
-      await Promise.all(
-        updated.map((p: any) =>
+      await Promise.all([
+        ...updated.map((p: any) =>
           supabase.from("crm_pipelines").update({ sort_order: p.sort_order }).eq("id", p.id)
-        )
-      );
+        ),
+        ...originUpdates.map((o) =>
+          supabase.from("crm_origins").update({ sort_order: o.sort_order }).eq("id", o.id)
+        ),
+      ]);
     } catch (err) {
       console.error("Erro ao reordenar pipelines", err);
       toast.error("Erro ao salvar nova ordem");
