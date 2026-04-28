@@ -42,6 +42,15 @@ interface StaffOption {
   role: string;
   email: string;
   phone: string | null;
+  cpf: string | null;
+  cnpj: string | null;
+  street: string | null;
+  address_number: string | null;
+  complement: string | null;
+  neighborhood: string | null;
+  cep: string | null;
+  city: string | null;
+  state: string | null;
 }
 
 interface EmployeeContractFormProps {
@@ -84,17 +93,28 @@ export default function EmployeeContractForm({
     try {
       const { data, error } = await supabase
         .from("onboarding_staff")
-        .select("id, name, role, email, phone")
+        .select("id, name, role, email, phone, cpf, cnpj, street, address_number, complement, neighborhood, cep, city, state")
         .eq("is_active", true)
         .order("name");
 
       if (error) throw error;
-      setStaffList(data || []);
+      setStaffList((data as StaffOption[]) || []);
     } catch (err) {
       console.error("Error loading staff:", err);
     } finally {
       setLoadingStaff(false);
     }
+  };
+
+  const buildAddress = (s: StaffOption): string => {
+    const parts: string[] = [];
+    if (s.street) parts.push(s.address_number ? `${s.street}, ${s.address_number}` : s.street);
+    if (s.complement) parts.push(s.complement);
+    if (s.neighborhood) parts.push(s.neighborhood);
+    if (s.cep) parts.push(`CEP ${s.cep}`);
+    const cityState = [s.city, s.state].filter(Boolean).join("-");
+    if (cityState) parts.push(cityState);
+    return parts.join(", ");
   };
 
   const handleStaffSelect = (staffId: string) => {
@@ -107,6 +127,9 @@ export default function EmployeeContractForm({
         staffRole: staff.role,
         staffEmail: staff.email,
         staffPhone: staff.phone || "",
+        staffCpf: staff.cpf || "",
+        staffCnpj: staff.cnpj || "",
+        staffAddress: buildAddress(staff),
       });
       setStaffSearchOpen(false);
     }
