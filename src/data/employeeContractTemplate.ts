@@ -196,6 +196,18 @@ export const defaultCommissionByRole: Record<string, RoleCommissionConfig> = {
       { minPercent: 100, maxPercent: 150, value: "R$ 5.000,00", label: "Entre 100% e 150% da meta — comissão de R$ 5.000,00" },
     ],
   },
+  sdr_terceirizado: {
+    hasCommission: true,
+    unit: "clients",
+    description: "quantidade de empresas (clientes) ativas atendidas pela CONTRATADA no mês de apuração, com comissão variando conforme acordado para cada cliente",
+    tiers: [
+      { minPercent: 1, maxPercent: 1, value: "R$ 1.500,00", label: "1 empresa ativa atendida — R$ 1.500,00 por cliente/mês" },
+      { minPercent: 2, maxPercent: 3, value: "R$ 1.400,00", label: "De 2 a 3 empresas ativas — R$ 1.400,00 por cliente/mês" },
+      { minPercent: 4, maxPercent: 6, value: "R$ 1.300,00", label: "De 4 a 6 empresas ativas — R$ 1.300,00 por cliente/mês" },
+      { minPercent: 7, maxPercent: 10, value: "R$ 1.200,00", label: "De 7 a 10 empresas ativas — R$ 1.200,00 por cliente/mês" },
+      { minPercent: 11, maxPercent: null, value: "R$ 1.100,00", label: "Acima de 10 empresas ativas — R$ 1.100,00 por cliente/mês" },
+    ],
+  },
   cs: { hasCommission: false, description: "", tiers: [] },
   rh: { hasCommission: false, description: "", tiers: [] },
   admin: { hasCommission: false, description: "", tiers: [] },
