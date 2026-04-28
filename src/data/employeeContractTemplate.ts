@@ -216,7 +216,12 @@ export const defaultCommissionByRole: Record<string, RoleCommissionConfig> = {
 
 // Build the payment clause text from commission config
 export function buildPaymentClauseText(commissionConfig: RoleCommissionConfig): string {
-  const base = `5.1 Os serviços OBJETO deste contrato serão remunerados pela quantia especificada neste instrumento. O CONTRATANTE deverá efetuar o pagamento até o quinto dia útil do mês subsequente, por pagamento de boleto enviado, servindo o comprovante de pagamento como recibo de pagamento para todos os efeitos legais. Deverá a CONTRATADA emitir Recibo de Pagamento de Autônomo (RPA) ou nota fiscal a cada mês de serviço prestado.
+  const isClients = commissionConfig.unit === "clients";
+
+  const base = isClients
+    ? `5.1 Os serviços OBJETO deste contrato serão remunerados de forma variável, calculada mensalmente em função da quantidade de empresas (clientes) ativas atendidas pela CONTRATADA, conforme tabela da Cláusula 5.3. O valor mensal devido corresponderá à soma do valor por cliente ativo no mês de apuração, podendo a remuneração de cada cliente ser ajustada caso a caso mediante acordo entre as partes, registrada em aditivo ou comunicação por escrito. O CONTRATANTE deverá efetuar o pagamento até o quinto dia útil do mês subsequente, por boleto, PIX ou transferência, servindo o comprovante de pagamento como recibo para todos os efeitos legais. Deverá a CONTRATADA emitir Recibo de Pagamento de Autônomo (RPA) ou nota fiscal a cada mês de serviço prestado.
+5.2 A CONTRATADA apresentará ao CONTRATANTE, em formulário próprio, até o último dia de cada mês o memorial descritivo, contendo a relação de empresas (clientes) ativas atendidas no período, bem como os atendimentos prestados a cada uma.`
+    : `5.1 Os serviços OBJETO deste contrato serão remunerados pela quantia especificada neste instrumento. O CONTRATANTE deverá efetuar o pagamento até o quinto dia útil do mês subsequente, por pagamento de boleto enviado, servindo o comprovante de pagamento como recibo de pagamento para todos os efeitos legais. Deverá a CONTRATADA emitir Recibo de Pagamento de Autônomo (RPA) ou nota fiscal a cada mês de serviço prestado.
 5.2 A CONTRATADA apresentará ao CONTRATANTE, em formulário próprio, até o último dia de cada mês o memorial descritivo, contendo todos os atendimentos prestados durante o mês anterior.`;
 
   if (!commissionConfig.hasCommission || commissionConfig.tiers.length === 0) {
@@ -224,6 +229,13 @@ export function buildPaymentClauseText(commissionConfig: RoleCommissionConfig): 
   }
 
   const tiersText = commissionConfig.tiers.map((t) => `- ${t.label}`).join("\n");
+
+  if (isClients) {
+    return `${base}
+5.3 REMUNERAÇÃO POR CLIENTE ATIVO: A remuneração mensal da CONTRATADA será calculada conforme ${commissionConfig.description}, observando a seguinte tabela referencial por faixa de quantidade de empresas atendidas:
+${tiersText}
+Parágrafo Único: O valor por cliente ativo poderá variar de cliente para cliente, conforme escopo, complexidade e acordo específico, devendo as condições particulares serem registradas em aditivo ou e-mail entre as partes. Os pagamentos serão realizados no mês subsequente ao período de apuração.`;
+  }
 
   return `${base}
 5.3 COMISSÃO: Além da remuneração fixa, a CONTRATADA fará jus a comissão variável conforme ${commissionConfig.description}, nas seguintes faixas:
