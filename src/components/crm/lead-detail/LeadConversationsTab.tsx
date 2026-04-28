@@ -126,7 +126,7 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
       if (leadPhone) {
         const normalized = normalizePhoneDigits(leadPhone);
         if (normalized) {
-          const { data: phoneConvs } = await supabase
+          const { data: phoneConvs } = await (supabase as any)
             .from("crm_whatsapp_conversations")
             .select(`
               *,
@@ -159,7 +159,7 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
       }
 
       // 3) Instagram conversations linked to lead
-      const { data: igConvs } = await supabase
+      const { data: igConvs } = await (supabase as any)
         .from("instagram_conversations")
         .select(`
           *,
@@ -218,7 +218,7 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
     setLoadingMsgs(true);
     try {
       if (activeConv.channel === "instagram") {
-        const { data } = await supabase
+        const { data } = await (supabase as any)
           .from("instagram_messages")
           .select("*")
           .eq("conversation_id", activeConv.id)
@@ -235,7 +235,7 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
           }))
         );
       } else {
-        const { data } = await supabase
+        const { data } = await (supabase as any)
           .from("crm_whatsapp_messages")
           .select("*")
           .eq("conversation_id", activeConv.id)
@@ -317,7 +317,7 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
           toast.error("Instância indisponível");
           return;
         }
-        const { data: inserted, error: insErr } = await supabase
+        const { data: inserted, error: insErr } = await (supabase as any)
           .from("crm_whatsapp_messages")
           .insert({
             conversation_id: activeConv.id,
