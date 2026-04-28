@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 // Version tag for debugging deployments
-const EVOLUTION_API_FUNC_VERSION = "2026-03-16-v10";
+const EVOLUTION_API_FUNC_VERSION = "2026-03-16-v12";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,31 +30,15 @@ function buildHandledEvolutionError(message: string, status: number | undefined,
 }
 
 function normalizeBaseUrl(input: string) {
-  const cleaned = input.replace(/\/manager\/?$/i, '').replace(/\/+$/g, '');
-  try {
-    const parsed = new URL(cleaned);
-    if (parsed.hostname.toLowerCase() === 'sm-tucano.stevo.chat') {
-      return 'https://evo07.stevo.chat';
-    }
-  } catch {
-    // Keep the original value so callers can return their existing validation errors.
-  }
-  return cleaned;
+  return input.replace(/\/manager\/?$/i, '').replace(/\/+$/g, '');
 }
 
 function getStevoManagerUrlError(input: string) {
   try {
     const parsed = new URL(input.replace(/\/manager\/?$/i, '').replace(/\/+$/g, ''));
     const hostname = parsed.hostname.toLowerCase();
-    if (hostname === 'sm-tucano.stevo.chat') return null;
     if (hostname.startsWith('sm-') && hostname.endsWith('.stevo.chat')) {
-      return {
-        error: 'URL do Manager V2 informada no lugar da URL da API Evolution',
-        hint: 'Essa URL abre o painel da Stevo, mas não responde aos endpoints da Evolution API. Use a URL do servidor/API, geralmente no formato https://evoXX.stevo.chat.',
-        receivedHost: hostname,
-        expectedFormat: 'https://evo07.stevo.chat',
-        _version: EVOLUTION_API_FUNC_VERSION,
-      };
+      return null;
     }
   } catch {
     return null;
