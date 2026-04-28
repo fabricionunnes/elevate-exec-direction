@@ -1260,8 +1260,8 @@ export const CRMLeadDetailPage = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-        <div className="overflow-x-auto border-b border-border px-4 sm:px-6">
-          <TabsList className="h-auto p-0 bg-transparent rounded-none inline-flex w-auto min-w-full">
+        <div className="border-b border-border px-4 sm:px-6">
+          <TabsList className="h-auto p-0 bg-transparent rounded-none flex flex-wrap w-full justify-start gap-y-0">
             {[
               { value: "summary", label: "Resumo", icon: Sparkles, color: "text-purple-500" },
               { value: "activities", label: "Atividades", icon: Activity, color: "text-blue-500" },
