@@ -286,7 +286,7 @@ export function PayablesPanel() {
           payment_method: formData.payment_method,
           is_recurring: formData.is_recurring,
           recurrence_type: formData.is_recurring ? formData.recurrence_type : null,
-          cost_center: formData.cost_center || null,
+          cost_center_id: formData.cost_center_id || null,
           reference_month: refMonth,
           notes: formData.notes || null,
           installment_number: totalEntries > 1 ? i : null,
