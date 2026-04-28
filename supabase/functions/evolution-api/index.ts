@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 // Version tag for debugging deployments
-const EVOLUTION_API_FUNC_VERSION = "2026-03-16-v9";
+const EVOLUTION_API_FUNC_VERSION = "2026-03-16-v10";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,6 +13,25 @@ const ROUTE_PREFIXES = ['', '/api/v1', '/api/v2', '/v1', '/v2'];
 
 function normalizeBaseUrl(input: string) {
   return input.replace(/\/manager\/?$/i, '').replace(/\/+$/g, '');
+}
+
+function getStevoManagerUrlError(input: string) {
+  try {
+    const parsed = new URL(normalizeBaseUrl(input));
+    const hostname = parsed.hostname.toLowerCase();
+    if (hostname.startsWith('sm-') && hostname.endsWith('.stevo.chat')) {
+      return {
+        error: 'URL do Manager V2 informada no lugar da URL da API Evolution',
+        hint: 'Essa URL abre o painel da Stevo, mas não responde aos endpoints da Evolution API. Use a URL do servidor/API, geralmente no formato https://evoXX.stevo.chat.',
+        receivedHost: hostname,
+        expectedFormat: 'https://evo07.stevo.chat',
+        _version: EVOLUTION_API_FUNC_VERSION,
+      };
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 // Build headers that work across different Evolution/STEVO installs.
@@ -1169,6 +1188,14 @@ Deno.serve(async (req) => {
           );
         }
 
+        const managerUrlError = getStevoManagerUrlError(apiUrl);
+        if (managerUrlError) {
+          return new Response(
+            JSON.stringify(managerUrlError),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         const { res, json, prefix, tried } = await fetchCustomWithPrefixes(
           apiUrl,
           '/instance/fetchInstances',
@@ -1203,6 +1230,14 @@ Deno.serve(async (req) => {
         if (!apiUrl || !apiKey || !instanceName || !webhookUrl) {
           return new Response(
             JSON.stringify({ error: 'apiUrl, apiKey, instanceName and webhookUrl are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const managerUrlError = getStevoManagerUrlError(apiUrl);
+        if (managerUrlError) {
+          return new Response(
+            JSON.stringify(managerUrlError),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
