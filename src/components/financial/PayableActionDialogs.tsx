@@ -454,15 +454,12 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
             </div>
             <div>
               <Label>Centro de Custo</Label>
-              <Select value={form.cost_center_id || "none"} onValueChange={(v) => setForm(f => ({ ...f, cost_center_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhum</SelectItem>
-                  {costCenters.map((cc: any) => (
-                    <SelectItem key={cc.id} value={cc.id}>{cc.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CostCenterSelect
+                value={form.cost_center_id}
+                onChange={(v) => setForm(f => ({ ...f, cost_center_id: v }))}
+                costCenters={costCenters}
+                onCreated={() => onCostCentersRefresh?.()}
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
