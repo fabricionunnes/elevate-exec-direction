@@ -1233,15 +1233,13 @@ Deno.serve(async (req) => {
 
         if (!res.ok) {
           return new Response(
-            JSON.stringify({
-              error: 'Unable to list instances on custom Evolution API',
-              status: res.status,
-              details: json,
-              tried,
-              prefix,
-              _version: EVOLUTION_API_FUNC_VERSION,
-            }),
-            { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify(buildHandledEvolutionError(
+              'Unable to list instances on custom Evolution API',
+              res.status,
+              json,
+              { tried, prefix }
+            )),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
