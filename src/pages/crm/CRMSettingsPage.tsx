@@ -478,12 +478,12 @@ export const CRMSettingsPage = () => {
     try {
       // Toggle pipeline + linked origin so it disappears from the "Negócios" sidebar
       const linkedOrigin = origins.find((o) => o.pipeline_id === pipeline.id);
-      const ops: Promise<any>[] = [
-        supabase.from("crm_pipelines").update({ is_active: newActive }).eq("id", pipeline.id),
+      const ops: any[] = [
+        supabase.from("crm_pipelines").update({ is_active: newActive }).eq("id", pipeline.id).then((r: any) => r),
       ];
       if (linkedOrigin) {
         ops.push(
-          supabase.from("crm_origins").update({ is_active: newActive }).eq("id", linkedOrigin.id)
+          supabase.from("crm_origins").update({ is_active: newActive }).eq("id", linkedOrigin.id).then((r: any) => r)
         );
         setOrigins((prev) =>
           prev.map((o) => (o.id === linkedOrigin.id ? { ...o, is_active: newActive } : o))
