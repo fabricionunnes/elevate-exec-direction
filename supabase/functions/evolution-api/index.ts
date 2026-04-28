@@ -1511,6 +1511,7 @@ Deno.serve(async (req) => {
         const sendTextTarget = await resolveEvolutionCredentials(instanceName);
         const sendTextBaseUrl = sendTextTarget.baseUrl;
         const sendTextHeaders = sendTextTarget.headers;
+        const sendTextEndpoint = isStevoManagerV2Url(sendTextBaseUrl) ? '/send/text' : `/message/sendText/${instanceName}`;
 
         console.log(`[evolution-api] send-text using ${sendTextTarget.source} credentials for instance ${instanceName}`);
 
@@ -1518,7 +1519,7 @@ Deno.serve(async (req) => {
         const sendTextTimeout = setTimeout(() => sendTextController.abort(), 25000);
         let response: Response;
         try {
-          response = await fetch(`${sendTextBaseUrl}/message/sendText/${instanceName}`, {
+          response = await fetch(`${sendTextBaseUrl}${sendTextEndpoint}`, {
             method: 'POST',
             headers: sendTextHeaders,
             signal: sendTextController.signal,
