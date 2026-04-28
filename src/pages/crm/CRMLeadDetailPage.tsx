@@ -1265,6 +1265,7 @@ export const CRMLeadDetailPage = () => {
             {[
               { value: "summary", label: "Resumo", icon: Sparkles, color: "text-purple-500" },
               { value: "activities", label: "Atividades", icon: Activity, color: "text-blue-500" },
+              { value: "conversations", label: "Conversas", icon: MessagesSquare, color: "text-emerald-500" },
               { value: "contact", label: "Contato", icon: User, color: "text-violet-500" },
               { value: "company", label: "Empresa", icon: Building2, color: "text-emerald-500" },
               { value: "deal", label: "Negócio", icon: Briefcase, color: "text-amber-500" },
