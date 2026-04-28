@@ -1249,7 +1249,17 @@ export const CRMSettingsPage = () => {
                               )}
                             </div>
                           </div>
-                          <div className="flex gap-1">
+                          <div className="flex items-center gap-1">
+                            <div
+                              className="flex items-center gap-1.5 mr-1"
+                              onClick={(e) => e.stopPropagation()}
+                              title={(pipeline as any).is_active === false ? "Inativo (oculto no menu Negócios)" : "Ativo"}
+                            >
+                              <Switch
+                                checked={(pipeline as any).is_active !== false}
+                                onCheckedChange={() => handleTogglePipelineActive(pipeline)}
+                              />
+                            </div>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -1261,6 +1271,7 @@ export const CRMSettingsPage = () => {
                               title="Editar"
                             >
                               <Edit2 className="h-4 w-4" />
+                            </Button>
                             </Button>
                             <Button
                               variant="ghost"
