@@ -40,12 +40,7 @@ function normalizeBaseUrl(input: string) {
 }
 
 function isStevoManagerV2Url(input?: string | null) {
-  try {
-    const hostname = new URL(normalizeBaseUrl(String(input || ''))).hostname.toLowerCase();
-    return hostname.startsWith('sm-') && hostname.endsWith('.stevo.chat');
-  } catch {
-    return false;
-  }
+  return isManagerV2Url(input);
 }
 
 function getStevoManagerUrlError(input: string) {
