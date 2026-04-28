@@ -130,12 +130,17 @@ export const ImportFromStevoModal = ({
         return;
       }
 
-      const cleanApiUrl = apiUrl.trim().replace(/\/+$/g, "");
-      const urlError = getApiUrlError(cleanApiUrl);
-      if (urlError) {
-        setError(urlError);
+      const resolved = resolveStevoApiUrl(apiUrl);
+      if (resolved.error) {
+        setError(resolved.error);
         setInstances([]);
         return;
+      }
+
+      const cleanApiUrl = resolved.apiUrl;
+      if (cleanApiUrl !== apiUrl.trim().replace(/\/+$/g, "")) {
+        setApiUrl(cleanApiUrl);
+        toast.info(resolved.warning || "URL da API ajustada automaticamente.");
       }
 
       localStorage.setItem("stevo_api_url", cleanApiUrl);
@@ -145,8 +150,8 @@ export const ImportFromStevoModal = ({
         body: { action: "list-instances-custom", apiUrl: cleanApiUrl, apiKey: apiKey.trim() },
       });
 
-      if (fnError) throw fnError;
-      if (data?.error) throw new Error(data.error);
+      if (fnError) throw new Error(await getInvokeErrorMessage(fnError));
+      if (data?.error) throw new Error(formatStevoApiError(data));
 
       // The API returns { instances: [...] } for custom listing
       let rawInstances = data?.instances || data || [];
@@ -178,15 +183,7 @@ export const ImportFromStevoModal = ({
     } catch (err: any) {
       console.error("Error loading instances:", err);
       
-      // Check if error indicates 404 - likely wrong URL (dashboard instead of API)
-      const errorMsg = err.message || "";
-      if (errorMsg.includes("Manager V2") || errorMsg.includes("404") || errorMsg.includes("Unable to list instances")) {
-        setError(
-          "Não foi possível conectar à API. Use a URL da API/Servidor Evolution (ex: https://evo07.stevo.chat), não a URL do Manager V2/dashboard (ex: https://sm-tucano.stevo.chat)."
-        );
-      } else {
-        setError(err.message || "Erro ao carregar instâncias do STEVO");
-      }
+      setError(err.message || "Erro ao carregar instâncias do STEVO");
     } finally {
       setLoading(false);
     }
