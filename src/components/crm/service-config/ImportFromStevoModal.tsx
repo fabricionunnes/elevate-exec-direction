@@ -195,12 +195,6 @@ export const ImportFromStevoModal = ({
     }
   };
 
-  const handleImport = async () => {
-    if (!selectedInstance) {
-      toast.error("Selecione uma instância para importar");
-      return;
-    }
-
   const handleImportManagerV2 = async () => {
     if (!mgrInstanceName.trim() || !apiUrl.trim() || !apiKey.trim()) {
       toast.error("Informe Nome, URL (sm-*.stevo.chat) e API Key da instância");
@@ -358,9 +352,28 @@ export const ImportFromStevoModal = ({
             Importar do STEVO
           </DialogTitle>
           <DialogDescription>
-            Selecione uma instância existente no Evolution Manager para importar ao sistema.
+            Escolha o tipo de servidor e cadastre suas instâncias do STEVO.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="flex gap-2 px-1 pt-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={mode === "evolution" ? "default" : "outline"}
+            onClick={() => { setMode("evolution"); setError(null); setInstances([]); setSelectedInstance(null); }}
+          >
+            Evolution API
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={mode === "manager_v2" ? "default" : "outline"}
+            onClick={() => { setMode("manager_v2"); setError(null); setInstances([]); setSelectedInstance(null); }}
+          >
+            Manager V2
+          </Button>
+        </div>
 
         <div className="space-y-4 py-4">
           {/* API config */}
@@ -400,18 +413,55 @@ export const ImportFromStevoModal = ({
                 </Button>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadInstances}
-              disabled={loading || !apiUrl.trim() || !apiKey.trim()}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Buscar instâncias
-            </Button>
+            {mode === "evolution" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadInstances}
+                disabled={loading || !apiUrl.trim() || !apiKey.trim()}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Buscar instâncias
+              </Button>
+            )}
           </div>
 
-          {loading ? (
+          {mode === "manager_v2" && (
+            <div className="space-y-3 pt-2 border-t">
+              <p className="text-xs text-muted-foreground">
+                Manager V2 não permite listar instâncias automaticamente. Cadastre manualmente cada instância usando o nome técnico e a chave (apikey) da instância.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="mgr-instance-name">Nome técnico da instância</Label>
+                <Input
+                  id="mgr-instance-name"
+                  value={mgrInstanceName}
+                  onChange={(e) => setMgrInstanceName(e.target.value)}
+                  placeholder="ex: comercial-unv"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mgr-display-name">Nome de exibição</Label>
+                <Input
+                  id="mgr-display-name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Ex: Comercial UNV"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mgr-phone">Telefone (opcional)</Label>
+                <Input
+                  id="mgr-phone"
+                  value={mgrPhone}
+                  onChange={(e) => setMgrPhone(e.target.value)}
+                  placeholder="5511999999999"
+                />
+              </div>
+            </div>
+          )}
+
+          {mode === "evolution" && (loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               <span className="ml-2 text-muted-foreground">Carregando instâncias...</span>
@@ -474,7 +524,7 @@ export const ImportFromStevoModal = ({
                 </div>
               )}
             </>
-          )}
+          ))}
         </div>
 
         <DialogFooter>
@@ -483,7 +533,7 @@ export const ImportFromStevoModal = ({
           </Button>
           <Button
             onClick={handleImport}
-            disabled={!selectedInstance || importing || loading}
+            disabled={importing || loading || (mode === "evolution" ? !selectedInstance : (!mgrInstanceName.trim() || !apiUrl.trim() || !apiKey.trim()))}
           >
             {importing ? (
               <>
