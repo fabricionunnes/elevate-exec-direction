@@ -123,6 +123,14 @@ function mapFetchedGroups(data: any) {
     .filter((group: any) => group.id);
 }
 
+function extractInstancesFromPayload(payload: any) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.instances)) return payload.instances;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.response)) return payload.response;
+  return [];
+}
+
 async function fetchGroupsFromInstance(apiBaseUrl: string, apiHeaders: HeadersInit, instanceName: string) {
   const endpoints = [
     `/group/fetchAllGroups/${encodeURIComponent(instanceName)}?getParticipants=false`,
