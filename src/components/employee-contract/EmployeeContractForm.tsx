@@ -118,11 +118,13 @@ export default function EmployeeContractForm({
     onChange({ ...formData, [field]: value });
   };
 
+  const isSdrTerceirizado = formData.staffRole === "sdr_terceirizado";
+
   const isValid =
     formData.staffName &&
     formData.staffRole &&
     formData.staffCpf &&
-    formData.contractValue > 0 &&
+    (isSdrTerceirizado || formData.contractValue > 0) &&
     formData.startDate;
 
   return (
