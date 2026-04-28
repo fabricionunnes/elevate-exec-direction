@@ -1260,8 +1260,8 @@ export const CRMLeadDetailPage = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-        <div className="overflow-x-auto border-b border-border px-4 sm:px-6">
-          <TabsList className="h-auto p-0 bg-transparent rounded-none inline-flex w-auto min-w-full">
+        <div className="border-b border-border px-4 sm:px-6">
+          <TabsList className="h-auto p-0 bg-transparent rounded-none flex flex-wrap w-full justify-start gap-y-0">
             {[
               { value: "summary", label: "Resumo", icon: Sparkles, color: "text-purple-500" },
               { value: "activities", label: "Atividades", icon: Activity, color: "text-blue-500" },
@@ -1280,7 +1280,7 @@ export const CRMLeadDetailPage = () => {
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 px-3 sm:px-4 py-2.5 text-sm whitespace-nowrap flex-shrink-0 gap-1.5"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 px-3 sm:px-4 py-2.5 text-sm whitespace-nowrap gap-1.5"
               >
                 <tab.icon className={`h-3.5 w-3.5 ${tab.color}`} />
                 {tab.label}
