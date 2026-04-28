@@ -168,20 +168,31 @@ export const ManagerV2 = {
 // ---------------------------------------------------------------------------
 export function normalizeManagerV2Status(raw: any): any {
   // Manager V2 status payload variations:
+  //   { data: { Connected: true, LoggedIn: true, Name: '...' }, message: 'success' }
   //   { connected: true, loggedIn: true, ... }
   //   { status: 'connected' }
   //   { state: 'open' }
+  const payload = raw?.data ?? raw?.instance ?? raw ?? {};
+  const connectedFlag = payload?.connected ?? payload?.Connected ?? raw?.connected ?? raw?.Connected;
+  const loggedInFlag = payload?.loggedIn ?? payload?.LoggedIn ?? raw?.loggedIn ?? raw?.LoggedIn;
+  const stateValue = String(
+    payload?.state ?? payload?.State ?? payload?.status ?? payload?.Status ?? raw?.state ?? raw?.status ?? ''
+  ).toLowerCase();
   const connected =
-    raw?.connected === true ||
-    raw?.loggedIn === true ||
-    raw?.status === 'connected' ||
-    raw?.state === 'open';
+    connectedFlag === true ||
+    loggedInFlag === true ||
+    ['open', 'connected', 'online', 'loggedin', 'logged_in'].includes(stateValue);
+  const phoneNumber = payload?.phoneNumber ?? payload?.PhoneNumber ?? payload?.phone ?? payload?.Phone ?? null;
+  const profileName = payload?.profileName ?? payload?.ProfileName ?? payload?.name ?? payload?.Name ?? null;
 
   return {
     ...raw,
+    data: payload,
     instance: {
-      state: connected ? 'open' : raw?.state ?? raw?.status ?? 'close',
       ...(raw?.instance ?? {}),
+      state: connected ? 'open' : stateValue || 'close',
+      phoneNumber,
+      profileName,
     },
   };
 }
@@ -194,11 +205,13 @@ export function normalizeManagerV2Qr(raw: any): any {
   //   { qrCode: "data:image/png;base64,..." }
   //   { qr: "...", base64: "..." }
   //   { code: "...." } pairing code
-  const base64 = raw?.qrCode ?? raw?.base64 ?? raw?.qr?.base64 ?? raw?.image ?? null;
-  const code = raw?.code ?? raw?.pairingCode ?? raw?.qr?.code ?? null;
+  const payload = raw?.data ?? raw ?? {};
+  const base64 = payload?.qrCode ?? payload?.QRCode ?? payload?.base64 ?? payload?.qr?.base64 ?? payload?.image ?? payload?.Image ?? null;
+  const code = payload?.code ?? payload?.Code ?? payload?.pairingCode ?? payload?.PairingCode ?? payload?.qr?.code ?? null;
 
   return {
     ...raw,
+    data: payload,
     base64,
     code,
     qrcode: {

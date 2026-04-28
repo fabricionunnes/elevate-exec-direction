@@ -231,11 +231,17 @@ export const ImportFromStevoModal = ({
         console.warn("Webhook config falhou (segue insert):", e);
       }
 
+      const { data: statusData } = await supabase.functions.invoke("evolution-api", {
+        body: { action: "status", instanceName: mgrInstanceName.trim() },
+      });
+      const initialState = statusData?.instance?.state;
+      const initialPhone = statusData?.instance?.phoneNumber || mgrPhone.trim() || null;
+
       const { error: insertError } = await supabase.from("whatsapp_instances").insert({
         instance_name: mgrInstanceName.trim(),
         display_name: (displayName.trim() || mgrInstanceName.trim()),
-        phone_number: mgrPhone.trim() || null,
-        status: "disconnected",
+        phone_number: initialPhone,
+        status: initialState === "open" ? "connected" : "disconnected",
         is_default: false,
         project_id: projectId || null,
         api_url: cleanApiUrl,
