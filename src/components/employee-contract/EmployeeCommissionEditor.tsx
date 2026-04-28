@@ -118,7 +118,7 @@ export default function EmployeeCommissionEditor({ role, config, onChange }: Emp
                 <div key={index} className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
                   <div className="flex-1 grid grid-cols-3 gap-2">
                     <div>
-                      <Label className="text-xs text-muted-foreground">De (%)</Label>
+                      <Label className="text-xs text-muted-foreground">De ({isClients ? "qtd. clientes" : "%"})</Label>
                       <Input
                         type="number"
                         value={tier.minPercent}
