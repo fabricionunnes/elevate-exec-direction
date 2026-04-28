@@ -352,9 +352,28 @@ export const ImportFromStevoModal = ({
             Importar do STEVO
           </DialogTitle>
           <DialogDescription>
-            Selecione uma instância existente no Evolution Manager para importar ao sistema.
+            Escolha o tipo de servidor e cadastre suas instâncias do STEVO.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="flex gap-2 px-1 pt-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={mode === "evolution" ? "default" : "outline"}
+            onClick={() => { setMode("evolution"); setError(null); setInstances([]); setSelectedInstance(null); }}
+          >
+            Evolution API
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={mode === "manager_v2" ? "default" : "outline"}
+            onClick={() => { setMode("manager_v2"); setError(null); setInstances([]); setSelectedInstance(null); }}
+          >
+            Manager V2
+          </Button>
+        </div>
 
         <div className="space-y-4 py-4">
           {/* API config */}
