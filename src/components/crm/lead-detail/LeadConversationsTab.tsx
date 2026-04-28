@@ -352,26 +352,33 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
           .update({ last_message: text, last_message_at: new Date().toISOString(), unread_count: 0 })
           .eq("id", activeConv.id);
       } else if (activeConv.channel === "whatsapp_official") {
-        const phone = normalizePhoneDigits(activeConv.raw.contact_phone || leadPhone || "");
-        const { error } = await supabase.functions.invoke("whatsapp-official-send", {
+        const phone = (activeConv.raw.contact_phone || leadPhone || "").replace(/\D/g, "");
+        const { data, error } = await supabase.functions.invoke("whatsapp-official-api", {
           body: {
+            action: "sendText",
             instanceId: activeConv.instance_id,
             phone,
             message: text,
-            conversationId: activeConv.id,
-            sentBy: staffId,
           },
         });
         if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+        await (supabase as any).from("crm_whatsapp_messages").insert({
+          conversation_id: activeConv.id,
+          content: text,
+          type: "text",
+          direction: "outbound",
+          status: "sent",
+          sent_by: staffId,
+          whatsapp_message_id: (data as any)?.messageId,
+        });
+        await (supabase as any)
+          .from("crm_whatsapp_conversations")
+          .update({ last_message: text.substring(0, 255), last_message_at: new Date().toISOString() })
+          .eq("id", activeConv.id);
       } else if (activeConv.channel === "instagram") {
-        const { error } = await supabase.functions.invoke("instagram-send-message", {
-          body: {
-            conversationId: activeConv.id,
-            message: text,
-            sentBy: staffId,
-          },
-        });
-        if (error) throw error;
+        toast.error("Envio pelo Instagram não está disponível no momento.");
+        return;
       }
 
       setNewMessage("");
