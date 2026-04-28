@@ -91,6 +91,7 @@ import { HRRecruitmentPanel } from "@/components/hr-recruitment/HRRecruitmentPan
 import { ClientVirtualBoard } from "@/components/onboarding-tasks/ClientVirtualBoard";
 import { ClientFinancialModule } from "@/components/client-financial/ClientFinancialModule";
 import { ClientAccessHistory } from "@/components/onboarding-tasks/ClientAccessHistory";
+import { ProjectHistoryPanel } from "@/components/onboarding-tasks/ProjectHistoryPanel";
 import { ProjectMenuPermissionsDialog } from "@/components/onboarding-tasks/ProjectMenuPermissionsDialog";
 import { Wallet, Eye, LayoutGrid, Megaphone } from "lucide-react";
 import { ClientPaidTrafficPanel } from "@/components/client-portal/ClientPaidTrafficPanel";
