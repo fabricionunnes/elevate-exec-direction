@@ -259,8 +259,11 @@ export const ImportFromStevoModal = ({
                 type="url"
                 value={apiUrl}
                 onChange={(e) => setApiUrl(e.target.value)}
-                placeholder="https://evo13.stevo.chat"
+                placeholder="https://evo07.stevo.chat"
               />
+              <p className="text-xs text-muted-foreground">
+                Use a URL da API/Servidor Evolution. Não use o link do Manager V2 que começa com sm-.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="stevo-api-key">API Key</Label>
