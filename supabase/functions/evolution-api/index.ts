@@ -11,6 +11,24 @@ const corsHeaders = {
 // Route prefixes to try (Evolution API v2.x sometimes uses different base paths)
 const ROUTE_PREFIXES = ['', '/api/v1', '/api/v2', '/v1', '/v2'];
 
+function buildHandledEvolutionError(message: string, status: number | undefined, details: any, extra: Record<string, unknown> = {}) {
+  const detailsText = JSON.stringify(details || {}).toLowerCase();
+  const isUnauthorized = status === 401 || detailsText.includes('unauthorized');
+  return {
+    success: false,
+    error: message,
+    errorType: isUnauthorized ? 'STEVO_UNAUTHORIZED' : 'STEVO_API_ERROR',
+    userMessage: isUnauthorized
+      ? 'A API da STEVO recusou essa chave. Use a API Key/Hash da instância no servidor Evolution, não a chave do Manager V2.'
+      : 'Não foi possível completar a chamada na API da STEVO. Confira URL, chave e permissões da instância.',
+    status,
+    details,
+    handled: true,
+    _version: EVOLUTION_API_FUNC_VERSION,
+    ...extra,
+  };
+}
+
 function normalizeBaseUrl(input: string) {
   const cleaned = input.replace(/\/manager\/?$/i, '').replace(/\/+$/g, '');
   try {
@@ -1215,15 +1233,13 @@ Deno.serve(async (req) => {
 
         if (!res.ok) {
           return new Response(
-            JSON.stringify({
-              error: 'Unable to list instances on custom Evolution API',
-              status: res.status,
-              details: json,
-              tried,
-              prefix,
-              _version: EVOLUTION_API_FUNC_VERSION,
-            }),
-            { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify(buildHandledEvolutionError(
+              'Unable to list instances on custom Evolution API',
+              res.status,
+              json,
+              { tried, prefix }
+            )),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -1295,14 +1311,13 @@ Deno.serve(async (req) => {
         }
 
         return new Response(
-          JSON.stringify({
-            error: 'Unable to set webhook on custom Evolution API',
-            lastStatus: last?.res.status,
-            lastBodyPreview: last?.json,
-            tried: last?.tried,
-            _version: EVOLUTION_API_FUNC_VERSION,
-          }),
-          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify(buildHandledEvolutionError(
+            'Unable to set webhook on custom Evolution API',
+            last?.res.status,
+            last?.json,
+            { tried: last?.tried, prefix: last?.prefix }
+          )),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
