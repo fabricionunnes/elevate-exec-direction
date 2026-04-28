@@ -213,7 +213,7 @@ async function syncGroupsToConversations(supabaseService: any, instanceId: strin
 
   if (contactsError) throw contactsError;
 
-  const contactMap = new Map((existingContacts || []).map((contact: any) => [contact.phone, contact]));
+  const contactMap = new Map<string, any>((existingContacts || []).map((contact: any) => [contact.phone, contact]));
 
   const contactsToInsert = groups
     .filter((group: any) => !contactMap.has(group.phone))
