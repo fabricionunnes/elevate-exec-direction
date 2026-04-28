@@ -79,6 +79,7 @@ import {
   LeadTranscriptionTab,
 } from "@/components/crm/lead-detail";
 import { LeadContractDataTab } from "@/components/crm/lead-detail/LeadContractDataTab";
+import { LeadConversationsTab } from "@/components/crm/lead-detail/LeadConversationsTab";
 import { LeadFormAnswersTab } from "@/components/crm/lead-detail/LeadFormAnswersTab";
 import { LeadScannerTab } from "@/components/crm/lead-detail/LeadScannerTab";
 import { LeadMeetingsPanel } from "@/components/crm/lead-detail/LeadMeetingsPanel";
