@@ -1311,14 +1311,13 @@ Deno.serve(async (req) => {
         }
 
         return new Response(
-          JSON.stringify({
-            error: 'Unable to set webhook on custom Evolution API',
-            lastStatus: last?.res.status,
-            lastBodyPreview: last?.json,
-            tried: last?.tried,
-            _version: EVOLUTION_API_FUNC_VERSION,
-          }),
-          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify(buildHandledEvolutionError(
+            'Unable to set webhook on custom Evolution API',
+            last?.res.status,
+            last?.json,
+            { tried: last?.tried, prefix: last?.prefix }
+          )),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
