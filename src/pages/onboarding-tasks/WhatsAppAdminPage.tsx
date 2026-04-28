@@ -66,6 +66,7 @@ interface WhatsAppInstance {
   is_default: boolean;
   created_at: string;
   updated_at: string;
+  provider_type?: string | null;
 }
 
 interface MessageLog {
@@ -313,6 +314,16 @@ const WhatsAppAdminPage = () => {
 
   const extractInstance = (result: any) => result?.instance ?? result;
 
+  const normalizeConnectionStatus = (result: any): "connected" | "disconnected" => {
+    const inst = extractInstance(result);
+    const rawState = String(inst?.state ?? result?.state ?? result?.status ?? result?.data?.status ?? "").toLowerCase();
+    const connectedFlag = inst?.connected ?? inst?.Connected ?? result?.connected ?? result?.Connected ?? result?.data?.Connected;
+    const loggedInFlag = inst?.loggedIn ?? inst?.LoggedIn ?? result?.loggedIn ?? result?.LoggedIn ?? result?.data?.LoggedIn;
+    return connectedFlag === true || loggedInFlag === true || ["open", "connected", "online", "loggedin", "logged_in"].includes(rawState)
+      ? "connected"
+      : "disconnected";
+  };
+
 
   const handleCreateInstance = async () => {
     if (!newInstanceName.trim() || !newDisplayName.trim()) {
@@ -429,10 +440,8 @@ const WhatsAppAdminPage = () => {
       });
 
       const inst = extractInstance(result);
-      const state = inst?.state;
-
-      const newStatus = state === "open" ? "connected" : "disconnected";
-      const phoneNumber = inst?.phoneNumber || null;
+      const newStatus = normalizeConnectionStatus(result);
+      const phoneNumber = inst?.phoneNumber || instance.phone_number || null;
 
       await supabase
         .from("whatsapp_instances")
