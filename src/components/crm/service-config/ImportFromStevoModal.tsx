@@ -219,11 +219,16 @@ export const ImportFromStevoModal = ({
       // First, configure webhook for this instance
       const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-webhook`;
       
-      const cleanApiUrl = apiUrl.trim().replace(/\/+$/g, "");
-      const urlError = getApiUrlError(cleanApiUrl);
-      if (urlError) {
-        toast.error(urlError);
+      const resolved = resolveStevoApiUrl(apiUrl);
+      if (resolved.error) {
+        toast.error(resolved.error);
         return;
+      }
+
+      const cleanApiUrl = resolved.apiUrl;
+      if (cleanApiUrl !== apiUrl.trim().replace(/\/+$/g, "")) {
+        setApiUrl(cleanApiUrl);
+        toast.info(resolved.warning || "URL da API ajustada automaticamente.");
       }
 
       const { data: hookData, error: hookError } = await supabase.functions.invoke("evolution-api", {
@@ -236,8 +241,8 @@ export const ImportFromStevoModal = ({
         },
       });
 
-      if (hookError) throw hookError;
-      if (hookData?.error) throw new Error(hookData.error);
+      if (hookError) throw new Error(await getInvokeErrorMessage(hookError));
+      if (hookData?.error) throw new Error(formatStevoApiError(hookData, "Erro ao configurar webhook da instância"));
 
       // Determine status based on STEVO data
       let status = "disconnected";
