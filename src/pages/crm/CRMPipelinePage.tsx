@@ -438,7 +438,26 @@ export const CRMPipelinePage = () => {
     }
 
     const targetStage = stages.find(s => s.id === stageId);
-    
+    const currentStage = stages.find(s => s.id === draggedLead.stage_id);
+
+    // 🛡️ Proteção: impedir mover acidentalmente um lead já fechado (Ganho/Perdido)
+    // de volta para uma etapa do funil — isso bagunça as métricas de venda.
+    if (currentStage?.final_type === "won" || currentStage?.final_type === "lost") {
+      const fromLabel = currentStage.final_type === "won" ? "GANHO" : "PERDIDO";
+      const confirmed = window.confirm(
+        `⚠️ ATENÇÃO\n\nO lead "${draggedLead.name || "sem nome"}" já está marcado como ${fromLabel}.\n\n` +
+        `Mover para "${targetStage?.name || "outra etapa"}" vai:\n` +
+        `• Reabrir o negócio\n` +
+        `• Afetar as métricas de vendas (esta venda deixará de ser contabilizada)\n` +
+        `• Manter o projeto/contrato já criado vinculado ao lead\n\n` +
+        `Tem certeza que deseja continuar?`
+      );
+      if (!confirmed) {
+        setDraggedLead(null);
+        return;
+      }
+    }
+
     setStageMoveDialog({
       open: true,
       leadId: draggedLead.id,
