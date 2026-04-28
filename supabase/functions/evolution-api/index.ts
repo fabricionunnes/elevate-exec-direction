@@ -1250,6 +1250,16 @@ Deno.serve(async (req) => {
         }
 
         const statusTarget = await resolveEvolutionCredentials(instanceName);
+
+        if (statusTarget.providerType === 'manager_v2') {
+          const result = await ManagerV2.status({ baseUrl: statusTarget.baseUrl, apiKey: statusTarget.apiKey });
+          const normalized = normalizeManagerV2Status(result.data);
+          return new Response(
+            JSON.stringify({ ...normalized, _version: EVOLUTION_API_FUNC_VERSION }),
+            { status: result.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         const { res, json } = await fetchEvolutionRaw(
           `${statusTarget.baseUrl}/instance/connectionState/${encodeURIComponent(instanceName)}`,
           { method: 'GET', headers: statusTarget.headers }
