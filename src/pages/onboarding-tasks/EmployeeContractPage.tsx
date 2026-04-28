@@ -78,6 +78,8 @@ function getEditableClauses(role: string, durationMonths?: number, commissionCon
   const commission = commissionConfig || defaultCommissionByRole[role] || defaultCommissionByRole.consultor;
   const paymentContent = buildPaymentClauseText(commission);
   const duration = durationMonths || 3;
+  const isSdrTerceirizado = role === "sdr_terceirizado";
+
   return employeeContractClauses.map((c) => {
     let content = c.content;
     if (c.id === "objeto") content = clauseContent;
@@ -85,6 +87,30 @@ function getEditableClauses(role: string, durationMonths?: number, commissionCon
     if (c.id === "prazo") {
       content = content.replace("válido por 3 meses", `válido por ${duration} meses`);
     }
+
+    // SDR Terceirizado: remove agenda mínima (3.5) and non-compete items (d, e, f)
+    if (isSdrTerceirizado && c.id === "obrigacoes_contratada") {
+      // Remove the entire "3.5 ..." line (agenda mínima de 31 atendimentos)
+      content = content
+        .split("\n")
+        .filter((line) => !line.trim().startsWith("3.5 "))
+        .join("\n");
+    }
+    if (isSdrTerceirizado && c.id === "disposicoes") {
+      // Remove the non-compete items d), e) and f) and the leading colon line that introduces them
+      content = content
+        .split("\n")
+        .filter((line) => {
+          const t = line.trim();
+          return !(
+            t.startsWith("d) Não-Oferta") ||
+            t.startsWith("e) Não-Concorrência") ||
+            t.startsWith("f) Penalidade")
+          );
+        })
+        .join("\n");
+    }
+
     return {
       id: c.id,
       title: c.title,

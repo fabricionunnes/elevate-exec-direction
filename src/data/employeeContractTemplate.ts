@@ -64,6 +64,19 @@ export const clauseFirstByRole: Record<string, string> = {
 1.2. Todos os procedimentos cobertos pelo contrato estão de acordo com os termos do DEL 5452 (CLT) sobretudo o disposto no artigo 442-B do referido instrumento, e de acordo com os termos e condições detalhados neste contrato, afastando qualquer tipo de relação de emprego entre as partes.
 1.3. A CONTRATADA compromete-se a não se envolver direta ou indiretamente em atividades concorrentes durante o período de vigência deste contrato e por um período adicional de 3 (três) anos após o término deste.`,
 
+  sdr_terceirizado: `1. Objeto
+1.1. O presente contrato tem por objeto a execução de serviços terceirizados de prospecção e qualificação de leads (SDR Terceirizado) para clientes da CONTRATANTE, fora de suas dependências, sem controle de jornada, importando na realização dos seguintes procedimentos:
+
+- Prospecção ativa de potenciais clientes para as empresas atendidas (clientes da CONTRATANTE)
+- Qualificação de leads conforme critérios definidos pela CONTRATANTE e por cada cliente atendido
+- Agendamento de reuniões para o time de closers da empresa atendida
+- Seguir os processos e cadências de prospecção estipulados pela CONTRATANTE
+- Atualizar o CRM com informações de cada lead prospectado
+- Preenchimento de relatórios e sistemas estipulados pela CONTRATANTE
+- Participar de reuniões de alinhamento com o time comercial e com os clientes atendidos
+1.2. A CONTRATADA atuará exclusivamente como prestadora de serviço terceirizada, atendendo simultaneamente um ou mais clientes ativos indicados pela CONTRATANTE, sendo a remuneração calculada por cliente ativo conforme Cláusula Quinta.
+1.3. Todos os procedimentos cobertos pelo contrato estão de acordo com os termos do DEL 5452 (CLT) sobretudo o disposto no artigo 442-B do referido instrumento, e de acordo com os termos e condições detalhados neste contrato, afastando qualquer tipo de relação de emprego entre as partes.`,
+
   cs: `1. Objeto
 1.1. O presente contrato tem por objeto a execução de serviços de Customer Success (CS) de todos os produtos da CONTRATANTE fora de suas dependências, sem controle de jornada, importando na realização dos seguintes procedimentos:
 
@@ -128,10 +141,15 @@ export interface CommissionTier {
   label: string; // description for the contract text
 }
 
+// Unit used for tiers: by default "percent" (% of meta).
+// For SDR Terceirizado we use "clients" (number of active client companies).
+export type CommissionUnit = "percent" | "clients";
+
 export interface RoleCommissionConfig {
   hasCommission: boolean;
   description: string; // What the commission is based on (meta, vendas, reuniões, etc.)
   tiers: CommissionTier[];
+  unit?: CommissionUnit;
 }
 
 // Default commission configs per role
@@ -178,6 +196,18 @@ export const defaultCommissionByRole: Record<string, RoleCommissionConfig> = {
       { minPercent: 100, maxPercent: 150, value: "R$ 5.000,00", label: "Entre 100% e 150% da meta — comissão de R$ 5.000,00" },
     ],
   },
+  sdr_terceirizado: {
+    hasCommission: true,
+    unit: "clients",
+    description: "quantidade de empresas (clientes) ativas atendidas pela CONTRATADA no mês de apuração, com comissão variando conforme acordado para cada cliente",
+    tiers: [
+      { minPercent: 1, maxPercent: 1, value: "R$ 1.500,00", label: "1 empresa ativa atendida — R$ 1.500,00 por cliente/mês" },
+      { minPercent: 2, maxPercent: 3, value: "R$ 1.400,00", label: "De 2 a 3 empresas ativas — R$ 1.400,00 por cliente/mês" },
+      { minPercent: 4, maxPercent: 6, value: "R$ 1.300,00", label: "De 4 a 6 empresas ativas — R$ 1.300,00 por cliente/mês" },
+      { minPercent: 7, maxPercent: 10, value: "R$ 1.200,00", label: "De 7 a 10 empresas ativas — R$ 1.200,00 por cliente/mês" },
+      { minPercent: 11, maxPercent: null, value: "R$ 1.100,00", label: "Acima de 10 empresas ativas — R$ 1.100,00 por cliente/mês" },
+    ],
+  },
   cs: { hasCommission: false, description: "", tiers: [] },
   rh: { hasCommission: false, description: "", tiers: [] },
   admin: { hasCommission: false, description: "", tiers: [] },
@@ -186,7 +216,12 @@ export const defaultCommissionByRole: Record<string, RoleCommissionConfig> = {
 
 // Build the payment clause text from commission config
 export function buildPaymentClauseText(commissionConfig: RoleCommissionConfig): string {
-  const base = `5.1 Os serviços OBJETO deste contrato serão remunerados pela quantia especificada neste instrumento. O CONTRATANTE deverá efetuar o pagamento até o quinto dia útil do mês subsequente, por pagamento de boleto enviado, servindo o comprovante de pagamento como recibo de pagamento para todos os efeitos legais. Deverá a CONTRATADA emitir Recibo de Pagamento de Autônomo (RPA) ou nota fiscal a cada mês de serviço prestado.
+  const isClients = commissionConfig.unit === "clients";
+
+  const base = isClients
+    ? `5.1 Os serviços OBJETO deste contrato serão remunerados de forma variável, calculada mensalmente em função da quantidade de empresas (clientes) ativas atendidas pela CONTRATADA, conforme tabela da Cláusula 5.3. O valor mensal devido corresponderá à soma do valor por cliente ativo no mês de apuração, podendo a remuneração de cada cliente ser ajustada caso a caso mediante acordo entre as partes, registrada em aditivo ou comunicação por escrito. O CONTRATANTE deverá efetuar o pagamento até o quinto dia útil do mês subsequente, por boleto, PIX ou transferência, servindo o comprovante de pagamento como recibo para todos os efeitos legais. Deverá a CONTRATADA emitir Recibo de Pagamento de Autônomo (RPA) ou nota fiscal a cada mês de serviço prestado.
+5.2 A CONTRATADA apresentará ao CONTRATANTE, em formulário próprio, até o último dia de cada mês o memorial descritivo, contendo a relação de empresas (clientes) ativas atendidas no período, bem como os atendimentos prestados a cada uma.`
+    : `5.1 Os serviços OBJETO deste contrato serão remunerados pela quantia especificada neste instrumento. O CONTRATANTE deverá efetuar o pagamento até o quinto dia útil do mês subsequente, por pagamento de boleto enviado, servindo o comprovante de pagamento como recibo de pagamento para todos os efeitos legais. Deverá a CONTRATADA emitir Recibo de Pagamento de Autônomo (RPA) ou nota fiscal a cada mês de serviço prestado.
 5.2 A CONTRATADA apresentará ao CONTRATANTE, em formulário próprio, até o último dia de cada mês o memorial descritivo, contendo todos os atendimentos prestados durante o mês anterior.`;
 
   if (!commissionConfig.hasCommission || commissionConfig.tiers.length === 0) {
@@ -194,6 +229,13 @@ export function buildPaymentClauseText(commissionConfig: RoleCommissionConfig): 
   }
 
   const tiersText = commissionConfig.tiers.map((t) => `- ${t.label}`).join("\n");
+
+  if (isClients) {
+    return `${base}
+5.3 REMUNERAÇÃO POR CLIENTE ATIVO: A remuneração mensal da CONTRATADA será calculada conforme ${commissionConfig.description}, observando a seguinte tabela referencial por faixa de quantidade de empresas atendidas:
+${tiersText}
+Parágrafo Único: O valor por cliente ativo poderá variar de cliente para cliente, conforme escopo, complexidade e acordo específico, devendo as condições particulares serem registradas em aditivo ou e-mail entre as partes. Os pagamentos serão realizados no mês subsequente ao período de apuração.`;
+  }
 
   return `${base}
 5.3 COMISSÃO: Além da remuneração fixa, a CONTRATADA fará jus a comissão variável conforme ${commissionConfig.description}, nas seguintes faixas:
@@ -313,6 +355,7 @@ export const roleLabels: Record<string, string> = {
   consultor: "Consultor(a)",
   closer: "Closer",
   sdr: "SDR",
+  sdr_terceirizado: "SDR Terceirizado",
   cs: "Customer Success",
   head_comercial: "Head Comercial",
   rh: "Recursos Humanos",

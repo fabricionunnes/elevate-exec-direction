@@ -17,28 +17,40 @@ interface EmployeeCommissionEditorProps {
 export default function EmployeeCommissionEditor({ role, config, onChange }: EmployeeCommissionEditorProps) {
   const defaultConfig = defaultCommissionByRole[role] || { hasCommission: false, description: "", tiers: [] };
   const isModified = JSON.stringify(config) !== JSON.stringify(defaultConfig);
+  const isClients = config.unit === "clients";
+  const unitLabel = isClients ? "empresa(s) ativa(s)" : "% da meta";
+
+  const buildLabel = (t: CommissionTier): string => {
+    const maxLabel = t.maxPercent !== null && t.maxPercent !== undefined ? `${t.maxPercent}` : "+";
+    if (isClients) {
+      if (t.minPercent === t.maxPercent) {
+        return `${t.minPercent} empresa${t.minPercent === 1 ? "" : "s"} ativa${t.minPercent === 1 ? "" : "s"} — ${t.value} por cliente/mês`;
+      }
+      return `De ${t.minPercent} a ${maxLabel} empresas ativas — ${t.value} por cliente/mês`;
+    }
+    return t.value === "R$ 0,00"
+      ? `Até ${t.maxPercent || 0}% da meta — sem comissão`
+      : `Entre ${t.minPercent}% e ${maxLabel}% da meta — comissão de ${t.value}`;
+  };
 
   const updateTier = (index: number, field: keyof CommissionTier, value: any) => {
     const newTiers = [...config.tiers];
     newTiers[index] = { ...newTiers[index], [field]: value };
-    // Auto-update label
-    const t = newTiers[index];
-    const maxLabel = t.maxPercent ? `${t.maxPercent}%` : "+";
-    t.label = t.value === "R$ 0,00"
-      ? `Até ${t.maxPercent || 0}% da meta — sem comissão`
-      : `Entre ${t.minPercent}% e ${maxLabel} da meta — comissão de ${t.value}`;
+    newTiers[index].label = buildLabel(newTiers[index]);
     onChange({ ...config, tiers: newTiers });
   };
 
   const addTier = () => {
     const lastTier = config.tiers[config.tiers.length - 1];
-    const newMin = lastTier ? (lastTier.maxPercent || 150) : 0;
+    const step = isClients ? 1 : 30;
+    const newMin = lastTier ? ((lastTier.maxPercent ?? (isClients ? 10 : 150)) + (isClients ? 1 : 0)) : (isClients ? 1 : 0);
     const newTier: CommissionTier = {
       minPercent: newMin,
-      maxPercent: newMin + 30,
+      maxPercent: newMin + step,
       value: "R$ 0,00",
-      label: `Entre ${newMin}% e ${newMin + 30}% da meta — sem comissão`,
+      label: "",
     };
+    newTier.label = buildLabel(newTier);
     onChange({ ...config, tiers: [...config.tiers, newTier] });
   };
 
@@ -106,7 +118,7 @@ export default function EmployeeCommissionEditor({ role, config, onChange }: Emp
                 <div key={index} className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
                   <div className="flex-1 grid grid-cols-3 gap-2">
                     <div>
-                      <Label className="text-xs text-muted-foreground">De (%)</Label>
+                      <Label className="text-xs text-muted-foreground">De ({isClients ? "qtd. clientes" : "%"})</Label>
                       <Input
                         type="number"
                         value={tier.minPercent}
@@ -115,7 +127,7 @@ export default function EmployeeCommissionEditor({ role, config, onChange }: Emp
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-muted-foreground">Até (%)</Label>
+                      <Label className="text-xs text-muted-foreground">Até ({isClients ? "qtd. clientes" : "%"})</Label>
                       <Input
                         type="number"
                         value={tier.maxPercent ?? ""}

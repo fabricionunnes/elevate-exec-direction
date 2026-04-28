@@ -118,11 +118,13 @@ export default function EmployeeContractForm({
     onChange({ ...formData, [field]: value });
   };
 
+  const isSdrTerceirizado = formData.staffRole === "sdr_terceirizado";
+
   const isValid =
     formData.staffName &&
     formData.staffRole &&
     formData.staffCpf &&
-    formData.contractValue > 0 &&
+    (isSdrTerceirizado || formData.contractValue > 0) &&
     formData.startDate;
 
   return (
@@ -269,7 +271,11 @@ export default function EmployeeContractForm({
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label>Valor Mensal (R$)</Label>
+              <Label>
+                {isSdrTerceirizado
+                  ? "Valor Mensal Estimado (R$) — opcional, remuneração é variável por cliente ativo"
+                  : "Valor Mensal (R$)"}
+              </Label>
               <CurrencyInput
                 value={formData.contractValue}
                 onChange={(v) => update("contractValue", v)}
