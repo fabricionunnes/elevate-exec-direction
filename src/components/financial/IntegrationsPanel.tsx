@@ -6,6 +6,8 @@ import { Link2, Building2, CreditCard, RefreshCw, Check, X, Loader2 } from "luci
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
+import { useTenant } from "@/contexts/TenantContext";
+import { AsaasIntegration } from "@/components/whitelabel/TenantIntegrationsSettings";
 
 interface ContaAzulStatus {
   connected: boolean;
@@ -14,6 +16,8 @@ interface ContaAzulStatus {
 }
 
 export function IntegrationsPanel() {
+  const { tenant } = useTenant();
+
   const [searchParams] = useSearchParams();
   const [contaAzulStatus, setContaAzulStatus] = useState<ContaAzulStatus>({
     connected: false,
@@ -145,6 +149,8 @@ export function IntegrationsPanel() {
         <h2 className="text-2xl font-bold">Integrações</h2>
         <p className="text-muted-foreground">Conecte sistemas externos</p>
       </div>
+
+      {tenant?.id && <AsaasIntegration tenantId={tenant.id} />}
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

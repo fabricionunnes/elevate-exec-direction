@@ -83,7 +83,7 @@ export function TenantIntegrationsSettings() {
 }
 
 /* ------------------------- Asaas ------------------------- */
-function AsaasIntegration({ tenantId }: { tenantId: string }) {
+export function AsaasIntegration({ tenantId }: { tenantId: string }) {
   const [accounts, setAccounts] = useState<AsaasAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
