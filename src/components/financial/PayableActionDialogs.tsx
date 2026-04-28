@@ -18,6 +18,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { syncPaymentToContaAzul } from "@/utils/contaAzulSync";
 import { SupplierAutocomplete } from "./SupplierAutocomplete";
+import { CostCenterSelect } from "./CostCenterSelect";
 
 interface PayableEntry {
   id: string;
