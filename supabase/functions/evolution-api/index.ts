@@ -83,6 +83,15 @@ function buildEvolutionHeaderVariants(apiKey: string) {
   ];
 }
 
+function redactSensitiveBody(body: any) {
+  if (!body || typeof body !== 'object') return body;
+  const redacted = { ...body };
+  for (const key of ['apiKey', 'customApiKey', 'token']) {
+    if (redacted[key]) redacted[key] = `[redacted:${String(redacted[key]).length}]`;
+  }
+  return redacted;
+}
+
 function normalizeInstanceKey(value?: string | null) {
   return String(value || '')
     .normalize('NFD')
@@ -592,7 +601,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`[evolution-api] Action: ${action}`, JSON.stringify(body).substring(0, 200));
+    console.log(`[evolution-api] Action: ${action}`, JSON.stringify(redactSensitiveBody(body)).substring(0, 200));
 
     switch (action) {
       case 'create-instance': {
