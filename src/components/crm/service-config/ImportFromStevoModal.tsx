@@ -524,7 +524,7 @@ export const ImportFromStevoModal = ({
                 </div>
               )}
             </>
-          )}
+          ))}
         </div>
 
         <DialogFooter>
@@ -533,7 +533,7 @@ export const ImportFromStevoModal = ({
           </Button>
           <Button
             onClick={handleImport}
-            disabled={!selectedInstance || importing || loading}
+            disabled={importing || loading || (mode === "evolution" ? !selectedInstance : (!mgrInstanceName.trim() || !apiUrl.trim() || !apiKey.trim()))}
           >
             {importing ? (
               <>
