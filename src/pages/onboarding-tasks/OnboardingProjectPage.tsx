@@ -1939,6 +1939,10 @@ const OnboardingProjectPage = () => {
             <ProjectWhatsAppTab projectId={projectId!} />
           </TabsContent>
 
+          <TabsContent value="history">
+            <ProjectHistoryPanel projectId={projectId!} />
+          </TabsContent>
+
           {project?.product_name === "UNV Sales Force" && (
             <TabsContent value="sf_commissions">
               <SFCommissionsPanel
