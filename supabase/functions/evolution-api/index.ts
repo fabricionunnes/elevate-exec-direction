@@ -1,7 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
+import {
+  ManagerV2,
+  isManagerV2Url,
+  normalizeManagerV2Status,
+  normalizeManagerV2Qr,
+} from "./_manager_v2.ts";
 
 // Version tag for debugging deployments
-const EVOLUTION_API_FUNC_VERSION = "2026-03-16-v12";
+const EVOLUTION_API_FUNC_VERSION = "2026-04-28-mgr-v2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,12 +40,7 @@ function normalizeBaseUrl(input: string) {
 }
 
 function isStevoManagerV2Url(input?: string | null) {
-  try {
-    const hostname = new URL(normalizeBaseUrl(String(input || ''))).hostname.toLowerCase();
-    return hostname.startsWith('sm-') && hostname.endsWith('.stevo.chat');
-  } catch {
-    return false;
-  }
+  return isManagerV2Url(input);
 }
 
 function getStevoManagerUrlError(input: string) {
@@ -401,13 +402,15 @@ Deno.serve(async (req) => {
       const defaultTarget = {
         baseUrl: evolutionBaseUrl,
         headers: evolutionHeaders,
+        apiKey: EVOLUTION_API_KEY,
+        providerType: 'evolution' as 'evolution' | 'manager_v2',
         source: 'global-env',
       };
 
       try {
         const { data: configuredInstances, error: configuredInstancesError } = await supabaseService
           .from('whatsapp_instances')
-          .select('instance_name, api_url, api_key')
+          .select('instance_name, api_url, api_key, provider_type')
           .not('api_url', 'is', null)
           .not('api_key', 'is', null);
 
@@ -421,9 +424,15 @@ Deno.serve(async (req) => {
           : null;
 
         if (matchedInstance?.api_url && matchedInstance?.api_key) {
+          const cleanUrl = normalizeBaseUrl(matchedInstance.api_url);
+          const provider = (matchedInstance.provider_type === 'manager_v2' || isManagerV2Url(cleanUrl))
+            ? 'manager_v2' as const
+            : 'evolution' as const;
           return {
-            baseUrl: normalizeBaseUrl(matchedInstance.api_url),
+            baseUrl: cleanUrl,
             headers: buildEvolutionHeaders(matchedInstance.api_key),
+            apiKey: matchedInstance.api_key,
+            providerType: provider,
             source: `whatsapp_instances:${matchedInstance.instance_name}`,
           };
         }
@@ -439,9 +448,15 @@ Deno.serve(async (req) => {
         );
 
         if (defaultInstance?.api_url && defaultInstance?.api_key) {
+          const cleanUrl = normalizeBaseUrl(defaultInstance.api_url);
+          const provider = (defaultInstance.provider_type === 'manager_v2' || isManagerV2Url(cleanUrl))
+            ? 'manager_v2' as const
+            : 'evolution' as const;
           return {
-            baseUrl: normalizeBaseUrl(defaultInstance.api_url),
+            baseUrl: cleanUrl,
             headers: buildEvolutionHeaders(defaultInstance.api_key),
+            apiKey: defaultInstance.api_key,
+            providerType: provider,
             source: `default-instance:${defaultInstance.instance_name}`,
           };
         }
@@ -457,9 +472,13 @@ Deno.serve(async (req) => {
         }
 
         if (clientConfig?.server_url && clientConfig?.api_key) {
+          const cleanUrl = normalizeBaseUrl(clientConfig.server_url);
+          const provider = isManagerV2Url(cleanUrl) ? 'manager_v2' as const : 'evolution' as const;
           return {
-            baseUrl: normalizeBaseUrl(clientConfig.server_url),
+            baseUrl: cleanUrl,
             headers: buildEvolutionHeaders(clientConfig.api_key),
+            apiKey: clientConfig.api_key,
+            providerType: provider,
             source: 'client-crm-config',
           };
         }
@@ -468,6 +487,27 @@ Deno.serve(async (req) => {
       }
 
       return defaultTarget;
+    };
+
+    // Helper to load instance row + provider info from DB by id
+    const loadInstanceById = async (instanceId: string) => {
+      const { data: instance, error: instanceError } = await supabaseService
+        .from('whatsapp_instances')
+        .select('instance_name, api_url, api_key, provider_type')
+        .eq('id', instanceId)
+        .single();
+
+      if (instanceError || !instance) return null;
+
+      const apiBaseUrl = instance.api_url ? normalizeBaseUrl(instance.api_url) : evolutionBaseUrl;
+      const apiKey = instance.api_key || EVOLUTION_API_KEY;
+      const apiHeaders = instance.api_key ? buildEvolutionHeaders(instance.api_key) : evolutionHeaders;
+      const providerType: 'evolution' | 'manager_v2' =
+        instance.provider_type === 'manager_v2' || isManagerV2Url(apiBaseUrl)
+          ? 'manager_v2'
+          : 'evolution';
+
+      return { ...instance, apiBaseUrl, apiKey, apiHeaders, providerType };
     };
 
     // Make a raw fetch to any URL with Evolution headers
@@ -763,51 +803,45 @@ Deno.serve(async (req) => {
         // Send text message (alias for send-text, used by frontend)
         const { instanceId, phone, message } = body;
         const digitsOnlyPhone = String(phone || '').replace(/\D/g, '');
-        
+
         // Detect group JIDs (LID format starts with 120363 and is long)
         const isGroup = digitsOnlyPhone.startsWith('120363') && digitsOnlyPhone.length > 15;
         const numberToSend = isGroup ? `${digitsOnlyPhone}@g.us` : digitsOnlyPhone;
-        
-        // Get instance name AND custom API credentials from database
-        const supabaseService = createClient(
-          Deno.env.get('SUPABASE_URL')!,
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-        );
 
-        const { data: instance, error: instanceError } = await supabaseService
-          .from('whatsapp_instances')
-          .select('instance_name, api_url, api_key')
-          .eq('id', instanceId)
-          .single();
-
-        if (instanceError || !instance) {
+        const instance = await loadInstanceById(instanceId);
+        if (!instance) {
           return new Response(
             JSON.stringify({ error: 'Instance not found' }),
             { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        // Use instance-specific API credentials if available, otherwise fall back to global
-        const apiBaseUrl = instance.api_url ? normalizeBaseUrl(instance.api_url) : evolutionBaseUrl;
-        const apiHeaders = instance.api_key ? buildEvolutionHeaders(instance.api_key) : evolutionHeaders;
+        console.log(`[evolution-api] sendText provider=${instance.providerType} instance=${instance.instance_name}, isGroup=${isGroup}`);
 
-        console.log(`[evolution-api] sendText using ${instance.api_url ? 'custom' : 'global'} credentials for instance ${instance.instance_name}, isGroup=${isGroup}`);
+        let status: number;
+        let ok: boolean;
+        let data: any;
 
-        const response = await fetch(`${apiBaseUrl}${isStevoManagerV2Url(apiBaseUrl) ? '/send/text' : `/message/sendText/${instance.instance_name}`}`, {
-          method: 'POST',
-          headers: apiHeaders,
-          body: JSON.stringify({
-            number: numberToSend,
-            text: message,
-          }),
-        });
+        if (instance.providerType === 'manager_v2') {
+          const result = await ManagerV2.sendText(
+            { baseUrl: instance.apiBaseUrl, apiKey: instance.apiKey },
+            { number: numberToSend, text: message }
+          );
+          status = result.status; ok = result.ok; data = result.data;
+        } else {
+          const response = await fetch(`${instance.apiBaseUrl}/message/sendText/${instance.instance_name}`, {
+            method: 'POST',
+            headers: instance.apiHeaders,
+            body: JSON.stringify({ number: numberToSend, text: message }),
+          });
+          status = response.status; ok = response.ok; data = await response.json();
+        }
 
-        const data = await response.json();
-        console.log('[evolution-api] SendText response:', data);
+        console.log('[evolution-api] SendText response:', JSON.stringify(data).substring(0, 300));
 
         // Detect "Connection Closed" — instance disconnected on STEVO
         const dataStr = JSON.stringify(data);
-        if (!response.ok && dataStr.toLowerCase().includes('connection closed')) {
+        if (!ok && dataStr.toLowerCase().includes('connection closed')) {
           console.error('[evolution-api] WhatsApp instance connection closed');
           return new Response(
             JSON.stringify({
@@ -818,8 +852,8 @@ Deno.serve(async (req) => {
           );
         }
 
-        // If the number doesn't exist on WhatsApp, return a friendly error (200 with error field)
-        if (!response.ok) {
+        // If the number doesn't exist on WhatsApp, return a friendly error
+        if (!ok) {
           if (dataStr.includes('"exists":false') || dataStr.includes('"exists": false')) {
             return new Response(
               JSON.stringify({
@@ -830,7 +864,7 @@ Deno.serve(async (req) => {
             );
           }
           return new Response(
-            JSON.stringify({ error: data?.message || 'Erro ao enviar mensagem', details: data }),
+            JSON.stringify({ error: data?.message || data?.error || 'Erro ao enviar mensagem', details: data }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
@@ -1216,6 +1250,16 @@ Deno.serve(async (req) => {
         }
 
         const statusTarget = await resolveEvolutionCredentials(instanceName);
+
+        if (statusTarget.providerType === 'manager_v2') {
+          const result = await ManagerV2.status({ baseUrl: statusTarget.baseUrl, apiKey: statusTarget.apiKey });
+          const normalized = normalizeManagerV2Status(result.data);
+          return new Response(
+            JSON.stringify({ ...normalized, _version: EVOLUTION_API_FUNC_VERSION }),
+            { status: result.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         const { res, json } = await fetchEvolutionRaw(
           `${statusTarget.baseUrl}/instance/connectionState/${encodeURIComponent(instanceName)}`,
           { method: 'GET', headers: statusTarget.headers }
@@ -1509,52 +1553,56 @@ Deno.serve(async (req) => {
         }
 
         const sendTextTarget = await resolveEvolutionCredentials(instanceName);
-        const sendTextBaseUrl = sendTextTarget.baseUrl;
-        const sendTextHeaders = sendTextTarget.headers;
-        const sendTextEndpoint = isStevoManagerV2Url(sendTextBaseUrl) ? '/send/text' : `/message/sendText/${instanceName}`;
+        console.log(`[evolution-api] send-text provider=${sendTextTarget.providerType} source=${sendTextTarget.source} instance=${instanceName}`);
 
-        console.log(`[evolution-api] send-text using ${sendTextTarget.source} credentials for instance ${instanceName}`);
+        let respStatus: number;
+        let respOk: boolean;
+        let data: any;
 
-        const sendTextController = new AbortController();
-        const sendTextTimeout = setTimeout(() => sendTextController.abort(), 25000);
-        let response: Response;
-        try {
-          response = await fetch(`${sendTextBaseUrl}${sendTextEndpoint}`, {
-            method: 'POST',
-            headers: sendTextHeaders,
-            signal: sendTextController.signal,
-            body: JSON.stringify({
-              number,
-              text,
-              delay: delay || 0,
-            }),
-          });
-        } catch (fetchErr: any) {
-          clearTimeout(sendTextTimeout);
-          if (fetchErr.name === 'AbortError') {
-            console.error('[evolution-api] send-text timed out after 25s');
-            return new Response(
-              JSON.stringify({
-                accepted: true,
-                pending: true,
-                timed_out: true,
-                instanceName,
-                number,
-                message: 'Timeout: o servidor WhatsApp não respondeu a tempo. A mensagem pode ter sido enviada.',
-              }),
-              { status: 202, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
+        if (sendTextTarget.providerType === 'manager_v2') {
+          // Manager V2 has its own timeout/abort handling internally
+          const result = await ManagerV2.sendText(
+            { baseUrl: sendTextTarget.baseUrl, apiKey: sendTextTarget.apiKey },
+            { number, text, delay: delay || 0 }
+          );
+          respStatus = result.status; respOk = result.ok; data = result.data;
+        } else {
+          const sendTextController = new AbortController();
+          const sendTextTimeout = setTimeout(() => sendTextController.abort(), 25000);
+          let response: Response;
+          try {
+            response = await fetch(`${sendTextTarget.baseUrl}/message/sendText/${instanceName}`, {
+              method: 'POST',
+              headers: sendTextTarget.headers,
+              signal: sendTextController.signal,
+              body: JSON.stringify({ number, text, delay: delay || 0 }),
+            });
+          } catch (fetchErr: any) {
+            clearTimeout(sendTextTimeout);
+            if (fetchErr.name === 'AbortError') {
+              console.error('[evolution-api] send-text timed out after 25s');
+              return new Response(
+                JSON.stringify({
+                  accepted: true,
+                  pending: true,
+                  timed_out: true,
+                  instanceName,
+                  number,
+                  message: 'Timeout: o servidor WhatsApp não respondeu a tempo. A mensagem pode ter sido enviada.',
+                }),
+                { status: 202, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+            throw fetchErr;
           }
-          throw fetchErr;
+          clearTimeout(sendTextTimeout);
+          respStatus = response.status; respOk = response.ok; data = await response.json();
         }
-        clearTimeout(sendTextTimeout);
 
-        const data = await response.json();
-        console.log('[evolution-api] Send text response:', data);
+        console.log('[evolution-api] Send text response:', JSON.stringify(data).substring(0, 300));
 
-        // Detect "Connection Closed" from Evolution API — means instance is disconnected
         const dataStr = JSON.stringify(data);
-        if (!response.ok && dataStr.toLowerCase().includes('connection closed')) {
+        if (!respOk && dataStr.toLowerCase().includes('connection closed')) {
           console.error('[evolution-api] WhatsApp instance connection closed');
           return new Response(
             JSON.stringify({
@@ -1567,7 +1615,7 @@ Deno.serve(async (req) => {
 
         return new Response(
           JSON.stringify(data),
-          { status: response.ok ? 200 : response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: respOk ? 200 : respStatus, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 

@@ -33989,6 +33989,7 @@ export type Database = {
           is_default: boolean | null
           phone_number: string | null
           project_id: string | null
+          provider_type: string
           qr_code: string | null
           sector_id: string | null
           status: string | null
@@ -34006,6 +34007,7 @@ export type Database = {
           is_default?: boolean | null
           phone_number?: string | null
           project_id?: string | null
+          provider_type?: string
           qr_code?: string | null
           sector_id?: string | null
           status?: string | null
@@ -34023,6 +34025,7 @@ export type Database = {
           is_default?: boolean | null
           phone_number?: string | null
           project_id?: string | null
+          provider_type?: string
           qr_code?: string | null
           sector_id?: string | null
           status?: string | null
