@@ -57,6 +57,40 @@ function buildEvolutionHeaders(apiKey: string) {
   };
 }
 
+function buildEvolutionHeaderVariants(apiKey: string) {
+  const contentType = { 'Content-Type': 'application/json' };
+  return [
+    { name: 'apikey', headers: { ...contentType, apikey: apiKey } },
+    { name: 'x-api-key', headers: { ...contentType, 'x-api-key': apiKey } },
+    { name: 'authorization-bearer', headers: { ...contentType, Authorization: `Bearer ${apiKey}` } },
+    { name: 'authorization-raw', headers: { ...contentType, Authorization: apiKey } },
+    { name: 'combined', headers: buildEvolutionHeaders(apiKey) },
+  ];
+}
+
+function extractInstancesFromPayload(payload: any) {
+  const rawInstances = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.instances)
+      ? payload.instances
+      : Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(payload?.data?.instances)
+          ? payload.data.instances
+          : [];
+
+  return rawInstances.map((inst: any) => ({
+    ...inst,
+    instanceName: inst.instanceName || inst.name,
+    name: inst.name || inst.instanceName,
+    connectionStatus: inst.connectionStatus || inst.status || (inst.connected ? 'open' : inst.connected === false ? 'close' : undefined),
+    ownerJid: inst.ownerJid || inst.jid,
+    profileName: inst.profileName || inst.name || inst.instanceName,
+    number: inst.number || (inst.ownerJid || inst.jid ? String(inst.ownerJid || inst.jid).split('@')[0] : undefined),
+    token: inst.token || inst.apikey,
+  })).filter((inst: any) => inst.instanceName || inst.name);
+}
+
 function normalizeInstanceKey(value?: string | null) {
   return String(value || '')
     .normalize('NFD')
