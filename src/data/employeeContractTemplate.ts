@@ -141,10 +141,15 @@ export interface CommissionTier {
   label: string; // description for the contract text
 }
 
+// Unit used for tiers: by default "percent" (% of meta).
+// For SDR Terceirizado we use "clients" (number of active client companies).
+export type CommissionUnit = "percent" | "clients";
+
 export interface RoleCommissionConfig {
   hasCommission: boolean;
   description: string; // What the commission is based on (meta, vendas, reuniões, etc.)
   tiers: CommissionTier[];
+  unit?: CommissionUnit;
 }
 
 // Default commission configs per role
