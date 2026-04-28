@@ -64,6 +64,19 @@ export const clauseFirstByRole: Record<string, string> = {
 1.2. Todos os procedimentos cobertos pelo contrato estão de acordo com os termos do DEL 5452 (CLT) sobretudo o disposto no artigo 442-B do referido instrumento, e de acordo com os termos e condições detalhados neste contrato, afastando qualquer tipo de relação de emprego entre as partes.
 1.3. A CONTRATADA compromete-se a não se envolver direta ou indiretamente em atividades concorrentes durante o período de vigência deste contrato e por um período adicional de 3 (três) anos após o término deste.`,
 
+  sdr_terceirizado: `1. Objeto
+1.1. O presente contrato tem por objeto a execução de serviços terceirizados de prospecção e qualificação de leads (SDR Terceirizado) para clientes da CONTRATANTE, fora de suas dependências, sem controle de jornada, importando na realização dos seguintes procedimentos:
+
+- Prospecção ativa de potenciais clientes para as empresas atendidas (clientes da CONTRATANTE)
+- Qualificação de leads conforme critérios definidos pela CONTRATANTE e por cada cliente atendido
+- Agendamento de reuniões para o time de closers da empresa atendida
+- Seguir os processos e cadências de prospecção estipulados pela CONTRATANTE
+- Atualizar o CRM com informações de cada lead prospectado
+- Preenchimento de relatórios e sistemas estipulados pela CONTRATANTE
+- Participar de reuniões de alinhamento com o time comercial e com os clientes atendidos
+1.2. A CONTRATADA atuará exclusivamente como prestadora de serviço terceirizada, atendendo simultaneamente um ou mais clientes ativos indicados pela CONTRATANTE, sendo a remuneração calculada por cliente ativo conforme Cláusula Quinta.
+1.3. Todos os procedimentos cobertos pelo contrato estão de acordo com os termos do DEL 5452 (CLT) sobretudo o disposto no artigo 442-B do referido instrumento, e de acordo com os termos e condições detalhados neste contrato, afastando qualquer tipo de relação de emprego entre as partes.`,
+
   cs: `1. Objeto
 1.1. O presente contrato tem por objeto a execução de serviços de Customer Success (CS) de todos os produtos da CONTRATANTE fora de suas dependências, sem controle de jornada, importando na realização dos seguintes procedimentos:
 
