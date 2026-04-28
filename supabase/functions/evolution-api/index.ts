@@ -507,48 +507,49 @@ Deno.serve(async (req) => {
       path: string,
       apiKey: string,
       init?: RequestInit
-    ): Promise<{ res: Response; json: any; prefix: string; tried: Array<{ url: string; method: string; status?: number }> }> => {
+    ): Promise<{ res: Response; json: any; prefix: string; authFormat: string; tried: Array<{ url: string; method: string; status?: number; authFormat: string }> }> => {
       const cleanBaseUrl = normalizeBaseUrl(baseUrl);
-      const customHeaders = buildEvolutionHeaders(apiKey);
-      const tried: Array<{ url: string; method: string; status?: number }> = [];
+      const headerVariants = buildEvolutionHeaderVariants(apiKey);
+      const tried: Array<{ url: string; method: string; status?: number; authFormat: string }> = [];
 
       for (const prefix of ROUTE_PREFIXES) {
         const endpoint = `${prefix}${path}`;
         const fullUrl = `${cleanBaseUrl}${endpoint}`;
         const method = (init?.method || 'GET').toUpperCase();
 
-        console.log(`[evolution-api] [custom] Calling: ${method} ${fullUrl}`);
-        try {
-          const res = await fetch(fullUrl, {
-            ...init,
-            headers: { ...customHeaders, ...(init?.headers || {}) },
-          });
-
-          const text = await res.text();
-          let json: any = null;
+        for (const variant of headerVariants) {
+          console.log(`[evolution-api] [custom] Calling: ${method} ${fullUrl} auth=${variant.name}`);
           try {
-            json = text ? JSON.parse(text) : null;
-          } catch {
-            json = { raw: text };
-          }
+            const res = await fetch(fullUrl, {
+              ...init,
+              headers: { ...variant.headers, ...(init?.headers || {}) },
+            });
 
-          tried.push({ url: fullUrl, method, status: res.status });
-          // For prefix discovery: stop on success or on non-(404/405) so we can surface auth errors (401) quickly.
-          if (res.ok || (res.status !== 404 && res.status !== 405)) {
-            return { res, json, prefix, tried };
+            const text = await res.text();
+            let json: any = null;
+            try {
+              json = text ? JSON.parse(text) : null;
+            } catch {
+              json = { raw: text };
+            }
+
+            tried.push({ url: fullUrl, method, status: res.status, authFormat: variant.name });
+            if (res.ok || (res.status !== 401 && res.status !== 403 && res.status !== 404 && res.status !== 405)) {
+              return { res, json, prefix, authFormat: variant.name, tried };
+            }
+          } catch (err) {
+            console.error('[evolution-api] [custom] Network error calling Evolution API:', err);
+            tried.push({ url: fullUrl, method, authFormat: variant.name });
           }
-        } catch (err) {
-          console.error('[evolution-api] [custom] Network error calling Evolution API:', err);
-          tried.push({ url: fullUrl, method });
         }
       }
 
-      // If all prefixes were 404/405, return a synthetic 404 with tried list
+      const lastTried = tried[tried.length - 1];
       const res = new Response(JSON.stringify({ error: 'Not Found' }), {
-        status: 404,
+        status: lastTried?.status || 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-      return { res, json: { error: 'Not Found' }, prefix: '', tried };
+      return { res, json: { error: lastTried?.status === 401 ? 'Unauthorized' : 'Not Found' }, prefix: '', authFormat: lastTried?.authFormat || '', tried };
     };
 
     // Try multiple route prefixes to find the working one
