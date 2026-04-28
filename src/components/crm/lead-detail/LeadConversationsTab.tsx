@@ -73,17 +73,34 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
   const [staffId, setStaffId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Get current staff
+  const [isMaster, setIsMaster] = useState(false);
+  const [allowedWaInstanceIds, setAllowedWaInstanceIds] = useState<string[] | null>(null); // null = all (master)
+
+  // Get current staff + permitted whatsapp instances
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await (supabase as any)
+      const { data: staff } = await (supabase as any)
         .from("onboarding_staff")
-        .select("id")
+        .select("id, role")
         .eq("auth_user_id", user.id)
         .maybeSingle();
-      setStaffId(data?.id ?? null);
+      const sid = staff?.id ?? null;
+      setStaffId(sid);
+      const master = staff?.role === "master";
+      setIsMaster(master);
+
+      if (!master && sid) {
+        const { data: access } = await (supabase as any)
+          .from("whatsapp_instance_access")
+          .select("instance_id")
+          .eq("staff_id", sid)
+          .eq("can_view", true);
+        setAllowedWaInstanceIds(((access || []) as any[]).map((a) => a.instance_id));
+      } else {
+        setAllowedWaInstanceIds(null);
+      }
     })();
   }, []);
 
