@@ -32148,6 +32148,7 @@ export type Database = {
           is_active: boolean
           name: string
           sort_order: number
+          tenant_id: string | null
         }
         Insert: {
           created_at?: string
@@ -32156,6 +32157,7 @@ export type Database = {
           is_active?: boolean
           name: string
           sort_order?: number
+          tenant_id?: string | null
         }
         Update: {
           created_at?: string
@@ -32164,8 +32166,17 @@ export type Database = {
           is_active?: boolean
           name?: string
           sort_order?: number
+          tenant_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "staff_financial_cost_centers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       staff_financial_entries: {
         Row: {
