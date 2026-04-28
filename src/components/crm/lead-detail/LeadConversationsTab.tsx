@@ -218,16 +218,16 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
         return db - da;
       });
 
-      setConversations(all);
-      if (!activeId && all.length > 0) {
-        setActiveId(all[0].id);
+      setConversations(filtered);
+      if (!activeId && filtered.length > 0) {
+        setActiveId(filtered[0].id);
       }
     } catch (e) {
       console.error("Error loading conversations:", e);
     } finally {
       setLoading(false);
     }
-  }, [leadId, leadPhone, activeId]);
+  }, [leadId, leadPhone, activeId, isMaster, allowedWaInstanceIds]);
 
   useEffect(() => {
     fetchConversations();
