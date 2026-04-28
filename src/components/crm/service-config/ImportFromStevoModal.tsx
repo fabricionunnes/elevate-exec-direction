@@ -413,16 +413,53 @@ export const ImportFromStevoModal = ({
                 </Button>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadInstances}
-              disabled={loading || !apiUrl.trim() || !apiKey.trim()}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Buscar instâncias
-            </Button>
+            {mode === "evolution" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadInstances}
+                disabled={loading || !apiUrl.trim() || !apiKey.trim()}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Buscar instâncias
+              </Button>
+            )}
           </div>
+
+          {mode === "manager_v2" && (
+            <div className="space-y-3 pt-2 border-t">
+              <p className="text-xs text-muted-foreground">
+                Manager V2 não permite listar instâncias automaticamente. Cadastre manualmente cada instância usando o nome técnico e a chave (apikey) da instância.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="mgr-instance-name">Nome técnico da instância</Label>
+                <Input
+                  id="mgr-instance-name"
+                  value={mgrInstanceName}
+                  onChange={(e) => setMgrInstanceName(e.target.value)}
+                  placeholder="ex: comercial-unv"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mgr-display-name">Nome de exibição</Label>
+                <Input
+                  id="mgr-display-name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Ex: Comercial UNV"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mgr-phone">Telefone (opcional)</Label>
+                <Input
+                  id="mgr-phone"
+                  value={mgrPhone}
+                  onChange={(e) => setMgrPhone(e.target.value)}
+                  placeholder="5511999999999"
+                />
+              </div>
+            </div>
+          )}
 
           {loading ? (
             <div className="flex items-center justify-center py-8">
