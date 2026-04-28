@@ -256,7 +256,7 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
       // Mark as read
       if ((activeConv.unread_count || 0) > 0) {
         const table = activeConv.channel === "instagram" ? "instagram_conversations" : "crm_whatsapp_conversations";
-        await supabase.from(table).update({ unread_count: 0 }).eq("id", activeConv.id);
+        await (supabase as any).from(table).update({ unread_count: 0 }).eq("id", activeConv.id);
       }
     } catch (e) {
       console.error("Error loading messages:", e);
@@ -340,7 +340,7 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
           },
         });
         if (sendErr || sendData?.error) {
-          await supabase.from("crm_whatsapp_messages").update({ status: "failed" }).eq("id", inserted.id);
+          await (supabase as any).from("crm_whatsapp_messages").update({ status: "failed" }).eq("id", inserted.id);
           throw sendErr || new Error(sendData?.error || "Erro ao enviar");
         }
         await supabase
