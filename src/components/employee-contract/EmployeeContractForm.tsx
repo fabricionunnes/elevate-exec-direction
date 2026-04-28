@@ -91,14 +91,38 @@ export default function EmployeeContractForm({
 
   const loadStaff = async () => {
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from("onboarding_staff")
         .select("id, name, role, email, phone, cpf, cnpj, street, address_number, complement, neighborhood, cep, city, state")
         .eq("is_active", true)
         .order("name");
 
-      if (error) throw error;
-      setStaffList((data as StaffOption[]) || []);
+      if (error) {
+        console.warn("Full staff select failed, retrying with basic columns:", error);
+        const fallback = await supabase
+          .from("onboarding_staff")
+          .select("id, name, role, email, phone")
+          .eq("is_active", true)
+          .order("name");
+        if (fallback.error) throw fallback.error;
+        data = fallback.data as any;
+      }
+      setStaffList(((data as any[]) || []).map((s) => ({
+        id: s.id,
+        name: s.name,
+        role: s.role,
+        email: s.email,
+        phone: s.phone ?? null,
+        cpf: s.cpf ?? null,
+        cnpj: s.cnpj ?? null,
+        street: s.street ?? null,
+        address_number: s.address_number ?? null,
+        complement: s.complement ?? null,
+        neighborhood: s.neighborhood ?? null,
+        cep: s.cep ?? null,
+        city: s.city ?? null,
+        state: s.state ?? null,
+      })));
     } catch (err) {
       console.error("Error loading staff:", err);
     } finally {
