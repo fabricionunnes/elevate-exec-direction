@@ -42,6 +42,15 @@ interface StaffOption {
   role: string;
   email: string;
   phone: string | null;
+  cpf: string | null;
+  cnpj: string | null;
+  street: string | null;
+  address_number: string | null;
+  complement: string | null;
+  neighborhood: string | null;
+  cep: string | null;
+  city: string | null;
+  state: string | null;
 }
 
 interface EmployeeContractFormProps {
