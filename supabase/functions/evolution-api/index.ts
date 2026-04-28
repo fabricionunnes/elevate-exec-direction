@@ -12,13 +12,23 @@ const corsHeaders = {
 const ROUTE_PREFIXES = ['', '/api/v1', '/api/v2', '/v1', '/v2'];
 
 function normalizeBaseUrl(input: string) {
-  return input.replace(/\/manager\/?$/i, '').replace(/\/+$/g, '');
+  const cleaned = input.replace(/\/manager\/?$/i, '').replace(/\/+$/g, '');
+  try {
+    const parsed = new URL(cleaned);
+    if (parsed.hostname.toLowerCase() === 'sm-tucano.stevo.chat') {
+      return 'https://evo07.stevo.chat';
+    }
+  } catch {
+    // Keep the original value so callers can return their existing validation errors.
+  }
+  return cleaned;
 }
 
 function getStevoManagerUrlError(input: string) {
   try {
-    const parsed = new URL(normalizeBaseUrl(input));
+    const parsed = new URL(input.replace(/\/manager\/?$/i, '').replace(/\/+$/g, ''));
     const hostname = parsed.hostname.toLowerCase();
+    if (hostname === 'sm-tucano.stevo.chat') return null;
     if (hostname.startsWith('sm-') && hostname.endsWith('.stevo.chat')) {
       return {
         error: 'URL do Manager V2 informada no lugar da URL da API Evolution',
