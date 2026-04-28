@@ -1023,7 +1023,7 @@ export function PayablesPanel() {
                                 is_recurring: false,
                                 recurrence_type: "monthly",
                                 recurring_count: "12",
-                                cost_center: payable.cost_center || "",
+                                cost_center_id: payable.cost_center_id || "",
                                 reference_month: format(new Date(), "yyyy-MM"),
                                 notes: payable.notes || "",
                                 has_installments: false,
