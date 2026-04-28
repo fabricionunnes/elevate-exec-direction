@@ -402,13 +402,15 @@ Deno.serve(async (req) => {
       const defaultTarget = {
         baseUrl: evolutionBaseUrl,
         headers: evolutionHeaders,
+        apiKey: EVOLUTION_API_KEY,
+        providerType: 'evolution' as 'evolution' | 'manager_v2',
         source: 'global-env',
       };
 
       try {
         const { data: configuredInstances, error: configuredInstancesError } = await supabaseService
           .from('whatsapp_instances')
-          .select('instance_name, api_url, api_key')
+          .select('instance_name, api_url, api_key, provider_type')
           .not('api_url', 'is', null)
           .not('api_key', 'is', null);
 
@@ -422,9 +424,15 @@ Deno.serve(async (req) => {
           : null;
 
         if (matchedInstance?.api_url && matchedInstance?.api_key) {
+          const cleanUrl = normalizeBaseUrl(matchedInstance.api_url);
+          const provider = (matchedInstance.provider_type === 'manager_v2' || isManagerV2Url(cleanUrl))
+            ? 'manager_v2' as const
+            : 'evolution' as const;
           return {
-            baseUrl: normalizeBaseUrl(matchedInstance.api_url),
+            baseUrl: cleanUrl,
             headers: buildEvolutionHeaders(matchedInstance.api_key),
+            apiKey: matchedInstance.api_key,
+            providerType: provider,
             source: `whatsapp_instances:${matchedInstance.instance_name}`,
           };
         }
@@ -440,9 +448,15 @@ Deno.serve(async (req) => {
         );
 
         if (defaultInstance?.api_url && defaultInstance?.api_key) {
+          const cleanUrl = normalizeBaseUrl(defaultInstance.api_url);
+          const provider = (defaultInstance.provider_type === 'manager_v2' || isManagerV2Url(cleanUrl))
+            ? 'manager_v2' as const
+            : 'evolution' as const;
           return {
-            baseUrl: normalizeBaseUrl(defaultInstance.api_url),
+            baseUrl: cleanUrl,
             headers: buildEvolutionHeaders(defaultInstance.api_key),
+            apiKey: defaultInstance.api_key,
+            providerType: provider,
             source: `default-instance:${defaultInstance.instance_name}`,
           };
         }
@@ -458,9 +472,13 @@ Deno.serve(async (req) => {
         }
 
         if (clientConfig?.server_url && clientConfig?.api_key) {
+          const cleanUrl = normalizeBaseUrl(clientConfig.server_url);
+          const provider = isManagerV2Url(cleanUrl) ? 'manager_v2' as const : 'evolution' as const;
           return {
-            baseUrl: normalizeBaseUrl(clientConfig.server_url),
+            baseUrl: cleanUrl,
             headers: buildEvolutionHeaders(clientConfig.api_key),
+            apiKey: clientConfig.api_key,
+            providerType: provider,
             source: 'client-crm-config',
           };
         }
@@ -469,6 +487,27 @@ Deno.serve(async (req) => {
       }
 
       return defaultTarget;
+    };
+
+    // Helper to load instance row + provider info from DB by id
+    const loadInstanceById = async (instanceId: string) => {
+      const { data: instance, error: instanceError } = await supabaseService
+        .from('whatsapp_instances')
+        .select('instance_name, api_url, api_key, provider_type')
+        .eq('id', instanceId)
+        .single();
+
+      if (instanceError || !instance) return null;
+
+      const apiBaseUrl = instance.api_url ? normalizeBaseUrl(instance.api_url) : evolutionBaseUrl;
+      const apiKey = instance.api_key || EVOLUTION_API_KEY;
+      const apiHeaders = instance.api_key ? buildEvolutionHeaders(instance.api_key) : evolutionHeaders;
+      const providerType: 'evolution' | 'manager_v2' =
+        instance.provider_type === 'manager_v2' || isManagerV2Url(apiBaseUrl)
+          ? 'manager_v2'
+          : 'evolution';
+
+      return { ...instance, apiBaseUrl, apiKey, apiHeaders, providerType };
     };
 
     // Make a raw fetch to any URL with Evolution headers
