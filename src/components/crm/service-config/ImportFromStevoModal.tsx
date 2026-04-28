@@ -46,6 +46,50 @@ const getApiUrlError = (value: string) => {
   return null;
 };
 
+const KNOWN_STEVO_MANAGER_SERVERS: Record<string, string> = {
+  "sm-tucano.stevo.chat": "https://evo07.stevo.chat",
+};
+
+const resolveStevoApiUrl = (value: string) => {
+  const trimmed = value.trim().replace(/\/+$/g, "");
+  try {
+    const hostname = new URL(trimmed).hostname.toLowerCase();
+    const knownServer = KNOWN_STEVO_MANAGER_SERVERS[hostname];
+    if (knownServer) {
+      return {
+        apiUrl: knownServer,
+        warning: `A URL do Manager V2 foi ajustada automaticamente para ${knownServer}.`,
+      };
+    }
+    const error = getApiUrlError(trimmed);
+    return error ? { apiUrl: trimmed, error } : { apiUrl: trimmed };
+  } catch {
+    return { apiUrl: trimmed, error: "URL inválida. Use o formato https://evo07.stevo.chat." };
+  }
+};
+
+const formatStevoApiError = (payload: any, fallback = "Erro ao carregar instâncias do STEVO") => {
+  const text = JSON.stringify(payload || {}).toLowerCase();
+  if (payload?.status === 401 || text.includes("unauthorized")) {
+    return "A API da STEVO recusou essa API Key. Use a chave da instância/servidor Evolution (normalmente UUID), não a chave do Manager V2.";
+  }
+  if (payload?.error?.includes?.("Manager V2") || text.includes("manager v2")) {
+    return "Você informou a URL do Manager V2. Para sm-tucano, use https://evo07.stevo.chat como URL da API.";
+  }
+  return payload?.details?.response?.message || payload?.details?.message || payload?.message || payload?.error || fallback;
+};
+
+const getInvokeErrorMessage = async (fnError: any) => {
+  try {
+    if (fnError?.context && typeof fnError.context.json === "function") {
+      return formatStevoApiError(await fnError.context.json(), fnError.message);
+    }
+  } catch {
+    // Fall back to the SDK message below.
+  }
+  return fnError?.message || "Erro ao chamar a integração do STEVO";
+};
+
 export const ImportFromStevoModal = ({
   open,
   onOpenChange,
@@ -86,12 +130,17 @@ export const ImportFromStevoModal = ({
         return;
       }
 
-      const cleanApiUrl = apiUrl.trim().replace(/\/+$/g, "");
-      const urlError = getApiUrlError(cleanApiUrl);
-      if (urlError) {
-        setError(urlError);
+      const resolved = resolveStevoApiUrl(apiUrl);
+      if (resolved.error) {
+        setError(resolved.error);
         setInstances([]);
         return;
+      }
+
+      const cleanApiUrl = resolved.apiUrl;
+      if (cleanApiUrl !== apiUrl.trim().replace(/\/+$/g, "")) {
+        setApiUrl(cleanApiUrl);
+        toast.info(resolved.warning || "URL da API ajustada automaticamente.");
       }
 
       localStorage.setItem("stevo_api_url", cleanApiUrl);
@@ -101,8 +150,8 @@ export const ImportFromStevoModal = ({
         body: { action: "list-instances-custom", apiUrl: cleanApiUrl, apiKey: apiKey.trim() },
       });
 
-      if (fnError) throw fnError;
-      if (data?.error) throw new Error(data.error);
+      if (fnError) throw new Error(await getInvokeErrorMessage(fnError));
+      if (data?.error) throw new Error(formatStevoApiError(data));
 
       // The API returns { instances: [...] } for custom listing
       let rawInstances = data?.instances || data || [];
@@ -134,15 +183,7 @@ export const ImportFromStevoModal = ({
     } catch (err: any) {
       console.error("Error loading instances:", err);
       
-      // Check if error indicates 404 - likely wrong URL (dashboard instead of API)
-      const errorMsg = err.message || "";
-      if (errorMsg.includes("Manager V2") || errorMsg.includes("404") || errorMsg.includes("Unable to list instances")) {
-        setError(
-          "Não foi possível conectar à API. Use a URL da API/Servidor Evolution (ex: https://evo07.stevo.chat), não a URL do Manager V2/dashboard (ex: https://sm-tucano.stevo.chat)."
-        );
-      } else {
-        setError(err.message || "Erro ao carregar instâncias do STEVO");
-      }
+      setError(err.message || "Erro ao carregar instâncias do STEVO");
     } finally {
       setLoading(false);
     }
@@ -178,11 +219,16 @@ export const ImportFromStevoModal = ({
       // First, configure webhook for this instance
       const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-webhook`;
       
-      const cleanApiUrl = apiUrl.trim().replace(/\/+$/g, "");
-      const urlError = getApiUrlError(cleanApiUrl);
-      if (urlError) {
-        toast.error(urlError);
+      const resolved = resolveStevoApiUrl(apiUrl);
+      if (resolved.error) {
+        toast.error(resolved.error);
         return;
+      }
+
+      const cleanApiUrl = resolved.apiUrl;
+      if (cleanApiUrl !== apiUrl.trim().replace(/\/+$/g, "")) {
+        setApiUrl(cleanApiUrl);
+        toast.info(resolved.warning || "URL da API ajustada automaticamente.");
       }
 
       const { data: hookData, error: hookError } = await supabase.functions.invoke("evolution-api", {
@@ -195,8 +241,8 @@ export const ImportFromStevoModal = ({
         },
       });
 
-      if (hookError) throw hookError;
-      if (hookData?.error) throw new Error(hookData.error);
+      if (hookError) throw new Error(await getInvokeErrorMessage(hookError));
+      if (hookData?.error) throw new Error(formatStevoApiError(hookData, "Erro ao configurar webhook da instância"));
 
       // Determine status based on STEVO data
       let status = "disconnected";
