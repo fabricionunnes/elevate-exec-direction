@@ -1353,43 +1353,41 @@ export const KPIDashboardTab = ({
     <div className="space-y-6">
       {/* Filters */}
       <Card>
-        <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
+        <CardContent className="pt-3 sm:pt-6 px-3 sm:px-6 pb-3 sm:pb-6">
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-4">
-            <div className="space-y-1">
-              <Label className="text-xs sm:text-sm">Data Inicial</Label>
+            <div className="space-y-1 min-w-0">
+              <Label className="text-[11px] sm:text-sm text-muted-foreground">Data Inicial</Label>
               <Input
                 type="date"
                 value={dateRange.start}
                 onChange={(e) => {
-                  // Only update if value is a valid date string (not empty)
                   if (e.target.value) {
                     setDateRange({ ...dateRange, start: e.target.value });
                   }
                 }}
-                className="h-8 sm:h-10 text-xs sm:text-sm"
+                className="h-9 sm:h-10 text-[11px] sm:text-sm px-2 sm:px-3 w-full min-w-0"
               />
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs sm:text-sm">Data Final</Label>
+            <div className="space-y-1 min-w-0">
+              <Label className="text-[11px] sm:text-sm text-muted-foreground">Data Final</Label>
               <Input
                 type="date"
                 value={dateRange.end}
                 onChange={(e) => {
-                  // Only update if value is a valid date string (not empty)
                   if (e.target.value) {
                     setDateRange({ ...dateRange, end: e.target.value });
                   }
                 }}
-                className="h-8 sm:h-10 text-xs sm:text-sm"
+                className="h-9 sm:h-10 text-[11px] sm:text-sm px-2 sm:px-3 w-full min-w-0"
               />
             </div>
 
-            <div className="col-span-2 flex flex-wrap gap-2">
+            <div className="col-span-2 grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs"
+                className="h-8 text-xs w-full sm:w-auto"
                 onClick={() => applyMonthRange(0)}
               >
                 Mês atual
@@ -1398,7 +1396,7 @@ export const KPIDashboardTab = ({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs"
+                className="h-8 text-xs w-full sm:w-auto"
                 onClick={() => applyMonthRange(1)}
               >
                 Mês anterior
