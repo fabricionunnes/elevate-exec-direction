@@ -23,7 +23,7 @@ export const themePresets: ThemePreset[] = [
     isDark: true,
     colors: {
       primary: "355 85% 52%", // vermelho UNV
-      accent: "0 0% 100%", // branco como destaque
+      accent: "214 45% 24%", // azul marinho para estados selecionados/hover
       background: "214 70% 10%", // azul marinho profundo
       foreground: "0 0% 98%",
       card: "214 60% 14%",
