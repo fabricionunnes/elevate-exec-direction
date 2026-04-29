@@ -239,7 +239,12 @@ export function ThemeCustomizationProvider({ children }: { children: ReactNode }
         applyThemeToDOM(colorsToApply, preset.isDark);
       } catch (e) {
         console.error("Failed to parse stored theme:", e);
+        // Fallback to default brand theme
+        applyThemeToDOM(themePresets[0].colors, themePresets[0].isDark);
       }
+    } else {
+      // No saved theme — apply UNV brand default for everyone
+      applyThemeToDOM(themePresets[0].colors, themePresets[0].isDark);
     }
   }, []);
 
