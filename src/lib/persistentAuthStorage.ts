@@ -5,7 +5,7 @@ const SUPABASE_PROJECT_REF = import.meta.env.VITE_SUPABASE_PROJECT_ID || "czmyjg
 export const AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
 
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
-const COOKIE_CHUNK_SIZE = 2800;
+const COOKIE_CHUNK_SIZE = 1800;
 const MAX_COOKIE_CHUNKS = 12;
 
 const memoryCache = new Map<string, string>();
