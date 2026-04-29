@@ -16,6 +16,7 @@ import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 
 interface Pipeline { id: string; name: string; }
+interface Stage { id: string; name: string; pipeline_id: string; sort_order: number; color?: string | null; }
 
 type AppType = "mastermind" | "diagnostic";
 
@@ -60,15 +61,25 @@ export default function CRMApplicationsPage() {
 
   // Send to pipeline
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [stages, setStages] = useState<Stage[]>([]);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [chosenPipelineId, setChosenPipelineId] = useState<string>("");
+  const [chosenStageId, setChosenStageId] = useState<string>("");
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
     supabase.from("crm_pipelines").select("id, name").order("name").then(({ data }) => {
       setPipelines(data || []);
     });
+    supabase.from("crm_stages").select("id, name, pipeline_id, sort_order, color").order("sort_order").then(({ data }) => {
+      setStages((data || []) as Stage[]);
+    });
   }, []);
+
+  const stagesForChosenPipeline = useMemo(
+    () => stages.filter((s) => s.pipeline_id === chosenPipelineId),
+    [stages, chosenPipelineId]
+  );
 
   // Build a human-readable summary of the application form responses
   const buildNotes = (a: UnifiedApplication): string => {
@@ -124,23 +135,8 @@ export default function CRMApplicationsPage() {
   };
 
   const sendToPipeline = async () => {
-    if (!selected || !chosenPipelineId) return;
+    if (!selected || !chosenPipelineId || !chosenStageId) return;
     setSending(true);
-
-    // Find first stage of selected pipeline
-    const { data: firstStage, error: stageError } = await supabase
-      .from("crm_stages")
-      .select("id")
-      .eq("pipeline_id", chosenPipelineId)
-      .order("sort_order", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (stageError || !firstStage) {
-      setSending(false);
-      toast.error("Pipeline sem etapas configuradas");
-      return;
-    }
 
     const productInterest = selected.raw.product_interest || null;
     const compiledNotes = buildNotes(selected);
@@ -154,7 +150,7 @@ export default function CRMApplicationsPage() {
         company: selected.company,
         role: selected.raw.role || null,
         pipeline_id: chosenPipelineId,
-        stage_id: firstStage.id,
+        stage_id: chosenStageId,
         origin: selected.type === "mastermind" ? "Aplicação Mastermind" : "Aplicação Diagnóstico",
         estimated_revenue: selected.raw.monthly_revenue || null,
         employee_count: selected.raw.employees_count ? String(selected.raw.employees_count) : (selected.raw.team_size || null),
@@ -404,7 +400,7 @@ export default function CRMApplicationsPage() {
                 <DialogTitle className="flex items-center gap-3 flex-wrap">
                   <Badge variant="outline" className={typeLabels[selected.type].className}>{typeLabels[selected.type].label}</Badge>
                   <span className="flex-1">{selected.full_name}</span>
-                  <Button size="sm" variant="hero" onClick={() => { setChosenPipelineId(""); setSendDialogOpen(true); }}>
+                  <Button size="sm" variant="hero" onClick={() => { setChosenPipelineId(""); setChosenStageId(""); setSendDialogOpen(true); }}>
                     <Send className="h-4 w-4 mr-2" />
                     Enviar para Funil
                   </Button>
@@ -462,16 +458,37 @@ export default function CRMApplicationsPage() {
             </p>
             <div className="space-y-2">
               <Label>Escolha o funil de destino</Label>
-              <Select value={chosenPipelineId} onValueChange={setChosenPipelineId}>
+              <Select value={chosenPipelineId} onValueChange={(v) => { setChosenPipelineId(v); setChosenStageId(""); }}>
                 <SelectTrigger><SelectValue placeholder="Selecione um funil..." /></SelectTrigger>
                 <SelectContent>
                   {pipelines.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Etapa do funil</Label>
+              <Select value={chosenStageId} onValueChange={setChosenStageId} disabled={!chosenPipelineId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={chosenPipelineId ? "Selecione uma etapa..." : "Escolha um funil primeiro"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {stagesForChosenPipeline.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      <span className="flex items-center gap-2">
+                        {s.color && <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.color }} />}
+                        {s.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                  {chosenPipelineId && stagesForChosenPipeline.length === 0 && (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">Este funil não possui etapas</div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setSendDialogOpen(false)} disabled={sending}>Cancelar</Button>
-              <Button onClick={sendToPipeline} disabled={!chosenPipelineId || sending}>
+              <Button onClick={sendToPipeline} disabled={!chosenPipelineId || !chosenStageId || sending}>
                 {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ArrowRight className="h-4 w-4 mr-2" />}
                 Criar Lead
               </Button>
