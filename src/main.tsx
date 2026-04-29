@@ -4,6 +4,18 @@ import "./index.css";
 import { isCircleDomain } from "./lib/domainRouting";
 import { registerServiceWorker } from "./registerSW";
 
+// Detecta Safari (desktop + iOS) e aplica classe no <html> para
+// desabilitar backdrop-filter via CSS — esse efeito trava o app no Safari.
+(() => {
+  const ua = navigator.userAgent;
+  const isSafari =
+    /^((?!chrome|android|crios|fxios|edgios|edg\/).)*safari/i.test(ua) ||
+    /iPad|iPhone|iPod/.test(ua);
+  if (isSafari) {
+    document.documentElement.classList.add("is-safari");
+  }
+})();
+
 // Redirect non-hash deep links to hash equivalents for public routes.
 // IMPORTANT: some apps (WhatsApp/Instagram) may drop URL fragments (#/...).
 // Also, some in-app browsers keep an old hash around; in that case the HashRouter
