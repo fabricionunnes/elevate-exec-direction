@@ -16,6 +16,7 @@ import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 
 interface Pipeline { id: string; name: string; }
+interface Stage { id: string; name: string; pipeline_id: string; sort_order: number; color?: string | null; }
 
 type AppType = "mastermind" | "diagnostic";
 
