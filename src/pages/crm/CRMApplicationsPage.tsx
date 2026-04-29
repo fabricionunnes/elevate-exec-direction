@@ -141,6 +141,18 @@ export default function CRMApplicationsPage() {
     const productInterest = selected.raw.product_interest || null;
     const compiledNotes = buildNotes(selected);
 
+    // Resolve current staff to set as owner (so the lead is visible in the funnel)
+    const { data: userData } = await supabase.auth.getUser();
+    let ownerStaffId: string | null = null;
+    if (userData.user?.id) {
+      const { data: staff } = await supabase
+        .from("onboarding_staff")
+        .select("id")
+        .eq("user_id", userData.user.id)
+        .maybeSingle();
+      ownerStaffId = staff?.id || null;
+    }
+
     const { data: lead, error: insertError } = await supabase
       .from("crm_leads")
       .insert({
@@ -157,6 +169,7 @@ export default function CRMApplicationsPage() {
         main_pain: selected.raw.main_challenge || selected.raw.energy_drain || null,
         notes: compiledNotes,
         entered_pipeline_at: new Date().toISOString(),
+        owner_staff_id: ownerStaffId,
       })
       .select("id")
       .single();
