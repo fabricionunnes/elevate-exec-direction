@@ -10,13 +10,13 @@
  *  2) Migra qualquer sessão existente do localStorage para o Preferences
  *  3) Reidrata a sessão a partir do storage persistente
  */
-import { Capacitor } from "@capacitor/core";
-import { Preferences } from "@capacitor/preferences";
 import { supabase } from "@/integrations/supabase/client";
-import { capacitorStorage } from "@/lib/capacitorStorage";
-
-const SUPABASE_PROJECT_REF = "czmyjgdixwhpfasfugkm";
-const AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
+import {
+  AUTH_STORAGE_KEY,
+  persistentAuthStorage,
+  restoreAuthSession,
+  syncPersistentAuthStorage,
+} from "@/lib/persistentAuthStorage";
 
 let patched = false;
 
@@ -24,68 +24,33 @@ export async function setupNativeAuthPersistence(): Promise<void> {
   if (patched) return;
   patched = true;
 
-  if (!Capacitor.isNativePlatform()) {
-    return; // No web puro, localStorage já basta
-  }
-
   try {
-    // 1) Migra sessão do localStorage (se existir) para Preferences
-    try {
-      const legacy = localStorage.getItem(AUTH_STORAGE_KEY);
-      if (legacy) {
-        const existing = await Preferences.get({ key: AUTH_STORAGE_KEY });
-        if (!existing.value) {
-          await Preferences.set({ key: AUTH_STORAGE_KEY, value: legacy });
-        }
-      }
-    } catch (e) {
-      console.warn("[nativeAuth] migration error:", e);
-    }
+    await syncPersistentAuthStorage();
 
-    // 2) Substitui o storage do GoTrue client por um proxy persistente.
+    // Substitui o storage do GoTrue client por um proxy persistente.
     // O GoTrue lê via `this.storage`, então monkey-patch funciona.
     try {
       // @ts-expect-error - acesso interno ao client de auth
-      supabase.auth.storage = capacitorStorage;
+      supabase.auth.storage = persistentAuthStorage;
     } catch (e) {
       console.warn("[nativeAuth] could not patch auth.storage:", e);
     }
 
-    // 3) Reidrata a sessão a partir do Preferences caso o localStorage esteja vazio
-    try {
-      const { value } = await Preferences.get({ key: AUTH_STORAGE_KEY });
-      if (value) {
-        try {
-          const parsed = JSON.parse(value);
-          const session = parsed?.currentSession ?? parsed;
-          if (session?.access_token && session?.refresh_token) {
-            await supabase.auth.setSession({
-              access_token: session.access_token,
-              refresh_token: session.refresh_token,
-            });
-          }
-        } catch (e) {
-          console.warn("[nativeAuth] parse session error:", e);
-        }
-      }
-    } catch (e) {
-      console.warn("[nativeAuth] rehydrate error:", e);
-    }
+    await restoreAuthSession(supabase);
 
-    // 4) Persiste mudanças futuras de sessão no Preferences
-    supabase.auth.onAuthStateChange(async (_event, session) => {
+    // Persiste mudanças futuras de sessão fora do sessionStorage.
+    supabase.auth.onAuthStateChange((_event, session) => {
+      void (async () => {
       try {
         if (session) {
-          await Preferences.set({
-            key: AUTH_STORAGE_KEY,
-            value: JSON.stringify(session),
-          });
+          await persistentAuthStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
         } else {
-          await Preferences.remove({ key: AUTH_STORAGE_KEY });
+          await persistentAuthStorage.removeItem(AUTH_STORAGE_KEY);
         }
       } catch (e) {
         console.warn("[nativeAuth] persist session error:", e);
       }
+      })();
     });
   } catch (e) {
     console.warn("[nativeAuth] setup error:", e);
