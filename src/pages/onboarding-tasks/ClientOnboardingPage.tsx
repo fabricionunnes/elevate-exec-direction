@@ -649,7 +649,7 @@ const ClientOnboardingPage = () => {
       )}
       
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/98 backdrop-blur-md border-b safe-area-top">
+      <header className="sticky top-0 z-50 bg-background backdrop-blur-md border-b safe-area-top">
         <div className="px-4 py-3 max-w-7xl mx-auto">
           {/* Top row: Welcome + Actions */}
           <div className="flex items-center justify-between gap-3 mb-3">
@@ -859,7 +859,7 @@ const ClientOnboardingPage = () => {
       </header>
 
       {/* Bottom Navigation - Mobile Only */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/98 backdrop-blur-md border-t safe-area-bottom md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background backdrop-blur-md border-t safe-area-bottom md:hidden">
         <div className="flex items-stretch overflow-x-auto">
           {menuStructure.map((item) => {
             const Icon = item.icon;

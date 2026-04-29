@@ -463,3 +463,14 @@ html.is-safari *::after {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
+
+/* Safari opaque sticky/fixed bars: avoid see-through when blur is disabled. */
+html.is-safari header.sticky,
+html.is-safari nav.fixed,
+html.is-safari header.fixed,
+html.is-safari .sticky.top-0,
+html.is-safari .fixed.bottom-0,
+html.is-safari .fixed.top-0 {
+  background-color: hsl(var(--background)) !important;
+}
+
