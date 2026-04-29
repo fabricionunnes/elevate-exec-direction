@@ -9,10 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Loader2, Search, Mail, Phone, Building2, ExternalLink, RefreshCw } from "lucide-react";
+import { Loader2, Search, Mail, Phone, Building2, ExternalLink, RefreshCw, Send, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
+
+interface Pipeline { id: string; name: string; }
 
 type AppType = "mastermind" | "diagnostic";
 
@@ -45,6 +48,7 @@ const statusLabels: Record<string, string> = {
 const statusOptions = Object.keys(statusLabels);
 
 export default function CRMApplicationsPage() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<UnifiedApplication[]>([]);
   const [search, setSearch] = useState("");
@@ -53,6 +57,132 @@ export default function CRMApplicationsPage() {
   const [selected, setSelected] = useState<UnifiedApplication | null>(null);
   const [savingNotes, setSavingNotes] = useState(false);
   const [draftNotes, setDraftNotes] = useState("");
+
+  // Send to pipeline
+  const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [chosenPipelineId, setChosenPipelineId] = useState<string>("");
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    supabase.from("crm_pipelines").select("id, name").order("name").then(({ data }) => {
+      setPipelines(data || []);
+    });
+  }, []);
+
+  // Build a human-readable summary of the application form responses
+  const buildNotes = (a: UnifiedApplication): string => {
+    const skip = new Set(["id", "created_at", "updated_at", "full_name", "email", "phone", "company", "status", "notes"]);
+    const labelMap: Record<string, string> = {
+      monthly_revenue: "Faturamento mensal",
+      team_size: "Tamanho do time",
+      product_interest: "Produto de interesse",
+      main_challenge: "Principal desafio",
+      website: "Website",
+      role: "Cargo",
+      role_other: "Outro cargo",
+      company_age: "Tempo de empresa",
+      employees_count: "Nº de funcionários",
+      salespeople_count: "Nº de vendedores",
+      upcoming_decision: "Próxima decisão estratégica",
+      energy_drain: "O que mais drena energia",
+      feels_alone: "Sente-se sozinho",
+      willing_to_share_numbers: "Disposto a compartilhar números",
+      reaction_to_confrontation: "Reação a confrontação",
+      contribution_to_group: "Contribuição ao grupo",
+      validation_or_confrontation: "Busca validação ou confrontação",
+      available_for_meetings: "Disponível para encontros",
+      understands_mansion_costs: "Entende custos da Mansão",
+      agrees_confidentiality: "Concorda com confidencialidade",
+      aware_of_investment: "Ciente do investimento",
+      why_right_moment: "Por que é o momento certo",
+      success_definition: "Definição de sucesso",
+      is_decision_maker: "É decisor",
+      understands_not_operational: "Entende que não é operacional",
+      understands_may_be_refused: "Entende que pode ser recusado",
+      commits_confidentiality: "Compromisso de confidencialidade",
+      accepted_terms: "Aceitou termos",
+    };
+    const lines: string[] = [];
+    lines.push(`📋 APLICAÇÃO ${a.type === "mastermind" ? "MASTERMIND" : "DIAGNÓSTICO"}`);
+    lines.push(`Recebida em: ${format(new Date(a.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}`);
+    lines.push("");
+    lines.push("RESPOSTAS:");
+    Object.entries(a.raw).forEach(([k, v]) => {
+      if (skip.has(k)) return;
+      if (v === null || v === undefined || v === "") return;
+      const label = labelMap[k] || k.replace(/_/g, " ");
+      const value = typeof v === "boolean" ? (v ? "Sim" : "Não") : String(v);
+      lines.push(`• ${label}: ${value}`);
+    });
+    if (a.notes) {
+      lines.push("");
+      lines.push("OBSERVAÇÕES INTERNAS:");
+      lines.push(a.notes);
+    }
+    return lines.join("\n");
+  };
+
+  const sendToPipeline = async () => {
+    if (!selected || !chosenPipelineId) return;
+    setSending(true);
+
+    // Find first stage of selected pipeline
+    const { data: firstStage, error: stageError } = await supabase
+      .from("crm_stages")
+      .select("id")
+      .eq("pipeline_id", chosenPipelineId)
+      .order("sort_order", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (stageError || !firstStage) {
+      setSending(false);
+      toast.error("Pipeline sem etapas configuradas");
+      return;
+    }
+
+    const productInterest = selected.raw.product_interest || null;
+    const compiledNotes = buildNotes(selected);
+
+    const { data: lead, error: insertError } = await supabase
+      .from("crm_leads")
+      .insert({
+        name: selected.full_name,
+        email: selected.email,
+        phone: selected.phone,
+        company: selected.company,
+        role: selected.raw.role || null,
+        pipeline_id: chosenPipelineId,
+        stage_id: firstStage.id,
+        origin: selected.type === "mastermind" ? "Aplicação Mastermind" : "Aplicação Diagnóstico",
+        estimated_revenue: selected.raw.monthly_revenue || null,
+        employee_count: selected.raw.employees_count ? String(selected.raw.employees_count) : (selected.raw.team_size || null),
+        main_pain: selected.raw.main_challenge || selected.raw.energy_drain || null,
+        notes: compiledNotes,
+        entered_pipeline_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+
+    if (insertError || !lead) {
+      console.error(insertError);
+      setSending(false);
+      toast.error("Erro ao criar lead no funil");
+      return;
+    }
+
+    // Mark application as contacted
+    const table = selected.type === "mastermind" ? "mastermind_applications" : "diagnostic_applications";
+    await supabase.from(table).update({ status: "contacted" }).eq("id", selected.id);
+    setItems((prev) => prev.map((x) => (x.id === selected.id && x.type === selected.type ? { ...x, status: "contacted" } : x)));
+
+    setSending(false);
+    setSendDialogOpen(false);
+    toast.success("Lead criado no funil");
+    navigate(`/crm/leads/${lead.id}`);
+  };
+
 
   const load = async () => {
     setLoading(true);
@@ -271,9 +401,13 @@ export default function CRMApplicationsPage() {
           {selected && (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-3">
+                <DialogTitle className="flex items-center gap-3 flex-wrap">
                   <Badge variant="outline" className={typeLabels[selected.type].className}>{typeLabels[selected.type].label}</Badge>
-                  {selected.full_name}
+                  <span className="flex-1">{selected.full_name}</span>
+                  <Button size="sm" variant="hero" onClick={() => { setChosenPipelineId(""); setSendDialogOpen(true); }}>
+                    <Send className="h-4 w-4 mr-2" />
+                    Enviar para Funil
+                  </Button>
                 </DialogTitle>
               </DialogHeader>
 
@@ -313,6 +447,36 @@ export default function CRMApplicationsPage() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Send to Pipeline dialog */}
+      <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Enviar para Funil do CRM</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Um novo lead será criado com todas as informações da aplicação preenchidas. Todas as respostas do formulário serão adicionadas como observações.
+            </p>
+            <div className="space-y-2">
+              <Label>Escolha o funil de destino</Label>
+              <Select value={chosenPipelineId} onValueChange={setChosenPipelineId}>
+                <SelectTrigger><SelectValue placeholder="Selecione um funil..." /></SelectTrigger>
+                <SelectContent>
+                  {pipelines.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setSendDialogOpen(false)} disabled={sending}>Cancelar</Button>
+              <Button onClick={sendToPipeline} disabled={!chosenPipelineId || sending}>
+                {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ArrowRight className="h-4 w-4 mr-2" />}
+                Criar Lead
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
