@@ -17119,6 +17119,63 @@ export type Database = {
         }
         Relationships: []
       }
+      diagnostic_applications: {
+        Row: {
+          accepted_terms: boolean
+          company: string
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          main_challenge: string
+          monthly_revenue: string | null
+          notes: string | null
+          phone: string
+          product_interest: string | null
+          role: string | null
+          status: string
+          team_size: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          accepted_terms?: boolean
+          company: string
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          main_challenge: string
+          monthly_revenue?: string | null
+          notes?: string | null
+          phone: string
+          product_interest?: string | null
+          role?: string | null
+          status?: string
+          team_size?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          accepted_terms?: boolean
+          company?: string
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          main_challenge?: string
+          monthly_revenue?: string | null
+          notes?: string | null
+          phone?: string
+          product_interest?: string | null
+          role?: string | null
+          status?: string
+          team_size?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       disc_responses: {
         Row: {
           completed_at: string
@@ -34883,6 +34940,7 @@ export type Database = {
         Args: { check_conversation_id: string; check_profile_id: string }
         Returns: boolean
       }
+      is_commercial_staff: { Args: { _user_id: string }; Returns: boolean }
       is_crm_admin: { Args: never; Returns: boolean }
       is_email_from_master_staff: { Args: { _email: string }; Returns: boolean }
       is_financial_admin: { Args: never; Returns: boolean }
