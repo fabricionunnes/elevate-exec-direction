@@ -859,7 +859,7 @@ const ClientOnboardingPage = () => {
       </header>
 
       {/* Bottom Navigation - Mobile Only */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/98 backdrop-blur-md border-t safe-area-bottom md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background backdrop-blur-md border-t safe-area-bottom md:hidden">
         <div className="flex items-stretch overflow-x-auto">
           {menuStructure.map((item) => {
             const Icon = item.icon;
