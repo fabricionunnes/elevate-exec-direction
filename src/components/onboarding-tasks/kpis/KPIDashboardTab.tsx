@@ -1354,53 +1354,56 @@ export const KPIDashboardTab = ({
       {/* Filters */}
       <Card>
         <CardContent className="pt-3 sm:pt-6 px-3 sm:px-6 pb-3 sm:pb-6">
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-4">
-            <div className="space-y-1 min-w-0">
-              <Label className="text-[11px] sm:text-sm text-muted-foreground">Data Inicial</Label>
-              <Input
-                type="date"
-                value={dateRange.start}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    setDateRange({ ...dateRange, start: e.target.value });
-                  }
-                }}
-                className="h-9 sm:h-10 text-[11px] sm:text-sm px-2 sm:px-3 w-full min-w-0"
-              />
-            </div>
-            <div className="space-y-1 min-w-0">
-              <Label className="text-[11px] sm:text-sm text-muted-foreground">Data Final</Label>
-              <Input
-                type="date"
-                value={dateRange.end}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    setDateRange({ ...dateRange, end: e.target.value });
-                  }
-                }}
-                className="h-9 sm:h-10 text-[11px] sm:text-sm px-2 sm:px-3 w-full min-w-0"
-              />
-            </div>
-
-            <div className="col-span-2 grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs w-full sm:w-auto"
-                onClick={() => applyMonthRange(0)}
-              >
-                Mês atual
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs w-full sm:w-auto"
-                onClick={() => applyMonthRange(1)}
-              >
-                Mês anterior
-              </Button>
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4">
+            {/* Período compacto: dois inputs lado a lado em uma única "pílula" */}
+            <div className="space-y-1.5 w-full sm:w-auto">
+              <Label className="text-[11px] sm:text-sm text-muted-foreground flex items-center gap-1.5">
+                <CalendarDays className="h-3 w-3" />
+                Período
+              </Label>
+              <div className="flex items-center gap-1 rounded-md border border-input bg-background px-2 h-9">
+                <Input
+                  type="date"
+                  value={dateRange.start}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setDateRange({ ...dateRange, start: e.target.value });
+                    }
+                  }}
+                  className="h-7 border-0 bg-transparent text-[11px] sm:text-xs px-1 focus-visible:ring-0 focus-visible:ring-offset-0 flex-1 min-w-0 sm:w-[130px] sm:flex-none"
+                />
+                <span className="text-muted-foreground text-xs shrink-0">→</span>
+                <Input
+                  type="date"
+                  value={dateRange.end}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setDateRange({ ...dateRange, end: e.target.value });
+                    }
+                  }}
+                  className="h-7 border-0 bg-transparent text-[11px] sm:text-xs px-1 focus-visible:ring-0 focus-visible:ring-offset-0 flex-1 min-w-0 sm:w-[130px] sm:flex-none"
+                />
+              </div>
+              <div className="flex gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[11px] px-2.5 flex-1 sm:flex-none"
+                  onClick={() => applyMonthRange(0)}
+                >
+                  Mês atual
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[11px] px-2.5 flex-1 sm:flex-none"
+                  onClick={() => applyMonthRange(1)}
+                >
+                  Mês anterior
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-1">

@@ -625,11 +625,14 @@ const OnboardingResultsPage = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-40 safe-area-top">
-        <div className="container mx-auto px-4 py-3 max-w-7xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => {
+      <div
+        className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-40 safe-area-top"
+        style={{ paddingTop: "max(env(safe-area-inset-top), 12px)" }}
+      >
+        <div className="container mx-auto px-3 sm:px-4 py-2.5 sm:py-3 max-w-7xl">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+              <Button variant="ghost" size="icon" className="shrink-0 h-9 w-9" onClick={() => {
                 if (selectedCompanyId) {
                   setSelectedCompanyId(null);
                 } else {
@@ -638,11 +641,11 @@ const OnboardingResultsPage = () => {
               }}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <NexusHeader showTitle={false} />
-              <div>
-                <h1 className="text-lg font-bold flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  {selectedCompany ? selectedCompany.name : "Resultados"}
+              <NexusHeader showTitle={false} className="shrink-0" />
+              <div className="min-w-0 flex-1">
+                <h1 className="text-sm sm:text-lg font-bold flex items-center gap-1.5 sm:gap-2 truncate">
+                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
+                  <span className="truncate">{selectedCompany ? selectedCompany.name : "Resultados"}</span>
                 </h1>
                 {selectedCompany ? (
                   <p className="text-xs text-muted-foreground">
