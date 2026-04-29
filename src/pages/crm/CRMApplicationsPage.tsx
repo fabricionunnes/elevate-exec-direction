@@ -61,15 +61,25 @@ export default function CRMApplicationsPage() {
 
   // Send to pipeline
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [stages, setStages] = useState<Stage[]>([]);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [chosenPipelineId, setChosenPipelineId] = useState<string>("");
+  const [chosenStageId, setChosenStageId] = useState<string>("");
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
     supabase.from("crm_pipelines").select("id, name").order("name").then(({ data }) => {
       setPipelines(data || []);
     });
+    supabase.from("crm_stages").select("id, name, pipeline_id, sort_order, color").order("sort_order").then(({ data }) => {
+      setStages((data || []) as Stage[]);
+    });
   }, []);
+
+  const stagesForChosenPipeline = useMemo(
+    () => stages.filter((s) => s.pipeline_id === chosenPipelineId),
+    [stages, chosenPipelineId]
+  );
 
   // Build a human-readable summary of the application form responses
   const buildNotes = (a: UnifiedApplication): string => {
