@@ -135,23 +135,8 @@ export default function CRMApplicationsPage() {
   };
 
   const sendToPipeline = async () => {
-    if (!selected || !chosenPipelineId) return;
+    if (!selected || !chosenPipelineId || !chosenStageId) return;
     setSending(true);
-
-    // Find first stage of selected pipeline
-    const { data: firstStage, error: stageError } = await supabase
-      .from("crm_stages")
-      .select("id")
-      .eq("pipeline_id", chosenPipelineId)
-      .order("sort_order", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (stageError || !firstStage) {
-      setSending(false);
-      toast.error("Pipeline sem etapas configuradas");
-      return;
-    }
 
     const productInterest = selected.raw.product_interest || null;
     const compiledNotes = buildNotes(selected);
@@ -165,7 +150,7 @@ export default function CRMApplicationsPage() {
         company: selected.company,
         role: selected.raw.role || null,
         pipeline_id: chosenPipelineId,
-        stage_id: firstStage.id,
+        stage_id: chosenStageId,
         origin: selected.type === "mastermind" ? "Aplicação Mastermind" : "Aplicação Diagnóstico",
         estimated_revenue: selected.raw.monthly_revenue || null,
         employee_count: selected.raw.employees_count ? String(selected.raw.employees_count) : (selected.raw.team_size || null),
