@@ -401,9 +401,13 @@ export default function CRMApplicationsPage() {
           {selected && (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-3">
+                <DialogTitle className="flex items-center gap-3 flex-wrap">
                   <Badge variant="outline" className={typeLabels[selected.type].className}>{typeLabels[selected.type].label}</Badge>
-                  {selected.full_name}
+                  <span className="flex-1">{selected.full_name}</span>
+                  <Button size="sm" variant="hero" onClick={() => { setChosenPipelineId(""); setSendDialogOpen(true); }}>
+                    <Send className="h-4 w-4 mr-2" />
+                    Enviar para Funil
+                  </Button>
                 </DialogTitle>
               </DialogHeader>
 
@@ -443,6 +447,37 @@ export default function CRMApplicationsPage() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+      </Dialog>
+
+      {/* Send to Pipeline dialog */}
+      <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Enviar para Funil do CRM</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Um novo lead será criado com todas as informações da aplicação preenchidas. Todas as respostas do formulário serão adicionadas como observações.
+            </p>
+            <div className="space-y-2">
+              <Label>Escolha o funil de destino</Label>
+              <Select value={chosenPipelineId} onValueChange={setChosenPipelineId}>
+                <SelectTrigger><SelectValue placeholder="Selecione um funil..." /></SelectTrigger>
+                <SelectContent>
+                  {pipelines.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setSendDialogOpen(false)} disabled={sending}>Cancelar</Button>
+              <Button onClick={sendToPipeline} disabled={!chosenPipelineId || sending}>
+                {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ArrowRight className="h-4 w-4 mr-2" />}
+                Criar Lead
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
