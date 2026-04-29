@@ -1406,7 +1406,7 @@ export const KPIDashboardTab = ({
             <div className="space-y-1">
               <Label className="text-xs sm:text-sm">KPI</Label>
               <Select value={selectedKpi} onValueChange={setSelectedKpi}>
-                <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
+                <SelectTrigger className="w-full sm:w-[180px] h-9 sm:h-10 text-[11px] sm:text-sm px-2 sm:px-3">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-background">
@@ -1427,7 +1427,7 @@ export const KPIDashboardTab = ({
                   setSelectedSector("all");
                   setSelectedSalesperson("all");
                 }}>
-                  <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
+                  <SelectTrigger className="w-full sm:w-[180px] h-9 sm:h-10 text-[11px] sm:text-sm px-2 sm:px-3">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-background">
@@ -1448,7 +1448,7 @@ export const KPIDashboardTab = ({
                   setSelectedTeam("all");
                   setSelectedSalesperson("all");
                 }}>
-                  <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
+                  <SelectTrigger className="w-full sm:w-[180px] h-9 sm:h-10 text-[11px] sm:text-sm px-2 sm:px-3">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-background">
@@ -1472,7 +1472,7 @@ export const KPIDashboardTab = ({
                     setSelectedSalesperson("all");
                   }
                 }}>
-                  <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
+                  <SelectTrigger className="w-full sm:w-[180px] h-9 sm:h-10 text-[11px] sm:text-sm px-2 sm:px-3">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-background">
@@ -1497,7 +1497,7 @@ export const KPIDashboardTab = ({
             <div className="space-y-1">
               <Label className="text-xs sm:text-sm">Vendedor</Label>
               <Select value={selectedSalesperson} onValueChange={setSelectedSalesperson}>
-                <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
+                <SelectTrigger className="w-full sm:w-[180px] h-9 sm:h-10 text-[11px] sm:text-sm px-2 sm:px-3">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-background">
