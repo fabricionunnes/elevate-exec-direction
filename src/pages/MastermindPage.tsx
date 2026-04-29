@@ -242,8 +242,8 @@ export default function MastermindPage() {
           "Direção individual limitada"
         ]}
         arrow="Onde empresários param de crescer sozinhos."
-        targetAudience={{
-          revenue: "R$ 1M a R$ 10M/mês"
+         targetAudience={{
+          revenue: "A partir de R$ 100k/mês (ideal, não obrigatório)"
         }}
         schedule={[
           { period: "Mensal", description: "Mastermind" },
@@ -337,7 +337,7 @@ export default function MastermindPage() {
               <ul className="space-y-4">
                 <li className="flex items-start gap-3">
                   <CheckCircle className="h-5 w-5 text-accent mt-0.5 flex-shrink-0" />
-                  <span className="text-muted-foreground">Faturamento <span className="text-foreground font-semibold">R$ 1M a R$ 10M/mês</span></span>
+                  <span className="text-muted-foreground">Faturamento <span className="text-foreground font-semibold">a partir de R$ 100k/mês</span> <span className="text-xs">(ideal, não obrigatório)</span></span>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle className="h-5 w-5 text-accent mt-0.5 flex-shrink-0" />
@@ -679,7 +679,7 @@ export default function MastermindPage() {
                 <p className="text-sm text-muted-foreground mb-4">O candidato precisa atender <span className="text-foreground font-semibold">TODOS:</span></p>
                 <ul className="space-y-3">
                   {[
-                    "Faturamento mínimo: R$ 300k/mês",
+                    "Faturamento ideal: a partir de R$ 100k/mês (não obrigatório)",
                     "É dono ou sócio decisor",
                     "Tem estrutura mínima de operação",
                     "Está disposto a compartilhar números reais",
