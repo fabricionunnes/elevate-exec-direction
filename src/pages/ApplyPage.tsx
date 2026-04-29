@@ -6,9 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight, CheckCircle } from "lucide-react";
+import { ArrowRight, CheckCircle, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const revenueOptions = [{ value: "under-50k", label: "Menos de R$ 50k/mês" }, { value: "50k-150k", label: "R$ 50k–150k/mês" }, { value: "150k-400k", label: "R$ 150k–400k/mês" }, { value: "400k-1m", label: "R$ 400k–1M/mês" }, { value: "over-1m", label: "Acima de R$ 1M/mês" }];
 const teamSizeOptions = [{ value: "1", label: "1 vendedor" }, { value: "2-3", label: "2–3 vendedores" }, { value: "4-5", label: "4–5 vendedores" }, { value: "6-10", label: "6–10 vendedores" }, { value: "over-10", label: "10+ vendedores" }];
@@ -17,9 +18,37 @@ const productOptions = [{ value: "unsure", label: "Não tenho certeza — precis
 export default function ApplyPage() {
   const { toast } = useToast();
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({ name: "", email: "", phone: "", company: "", website: "", role: "", revenue: "", teamSize: "", product: "", challenge: "", acceptTerms: false });
 
-  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if (!formData.acceptTerms) { toast({ title: "Termos obrigatórios", description: "Por favor, aceite os termos para continuar.", variant: "destructive" }); return; } setIsSubmitted(true); toast({ title: "Aplicação enviada", description: "Entraremos em contato em até 48 horas." }); };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.acceptTerms) {
+      toast({ title: "Termos obrigatórios", description: "Por favor, aceite os termos para continuar.", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    const { error } = await supabase.from("diagnostic_applications").insert({
+      full_name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      company: formData.company,
+      website: formData.website || null,
+      role: formData.role || null,
+      monthly_revenue: formData.revenue || null,
+      team_size: formData.teamSize || null,
+      product_interest: formData.product || null,
+      main_challenge: formData.challenge,
+      accepted_terms: formData.acceptTerms,
+    });
+    setSubmitting(false);
+    if (error) {
+      toast({ title: "Erro ao enviar", description: "Tente novamente em instantes.", variant: "destructive" });
+      return;
+    }
+    setIsSubmitted(true);
+    toast({ title: "Aplicação enviada", description: "Entraremos em contato em até 48 horas." });
+  };
 
   return (
     <Layout>
