@@ -258,14 +258,26 @@ export function ThemeCustomizationProvider({ children }: { children: ReactNode }
       root.classList.remove("dark");
     }
 
+    // Helper: extract lightness from HSL string "H S% L%" and pick contrast foreground
+    const contrastFor = (hsl: string): string => {
+      const match = hsl.match(/(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)%\s+(\d+(?:\.\d+)?)%/);
+      if (!match) return isDark ? "0 0% 98%" : "214 65% 12%";
+      const lightness = parseFloat(match[3]);
+      // If background color is light (>55%), use dark text; if dark, use light text
+      return lightness > 55 ? "214 65% 12%" : "0 0% 98%";
+    };
+
     // Apply CSS variables
     root.style.setProperty("--primary", colors.primary);
+    root.style.setProperty("--primary-foreground", contrastFor(colors.primary));
     root.style.setProperty("--accent", colors.accent);
+    root.style.setProperty("--accent-foreground", contrastFor(colors.accent));
     root.style.setProperty("--background", colors.background);
     root.style.setProperty("--foreground", colors.foreground);
     root.style.setProperty("--card", colors.card);
     root.style.setProperty("--card-foreground", colors.foreground);
     root.style.setProperty("--muted", colors.muted);
+    root.style.setProperty("--muted-foreground", contrastFor(colors.muted));
     root.style.setProperty("--popover", colors.card);
     root.style.setProperty("--popover-foreground", colors.foreground);
     
