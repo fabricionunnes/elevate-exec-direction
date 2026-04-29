@@ -153,6 +153,14 @@ export default function CRMApplicationsPage() {
       ownerStaffId = staff?.id || null;
     }
 
+    // Resolve crm_origins entry tied to the chosen pipeline so the breadcrumb
+    // shows the funnel name, not the application source string.
+    const { data: originRow } = await supabase
+      .from("crm_origins")
+      .select("id")
+      .eq("pipeline_id", chosenPipelineId)
+      .maybeSingle();
+
     const { data: lead, error: insertError } = await supabase
       .from("crm_leads")
       .insert({
@@ -164,6 +172,7 @@ export default function CRMApplicationsPage() {
         pipeline_id: chosenPipelineId,
         stage_id: chosenStageId,
         origin: selected.type === "mastermind" ? "Aplicação Mastermind" : "Aplicação Diagnóstico",
+        origin_id: originRow?.id || null,
         estimated_revenue: selected.raw.monthly_revenue || null,
         employee_count: selected.raw.employees_count ? String(selected.raw.employees_count) : (selected.raw.team_size || null),
         main_pain: selected.raw.main_challenge || selected.raw.energy_drain || null,
