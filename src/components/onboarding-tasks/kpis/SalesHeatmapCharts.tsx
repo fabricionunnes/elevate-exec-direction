@@ -266,9 +266,9 @@ export const SalesHeatmapCharts = ({
                 <div className="flex flex-col gap-[2px]">
                   {Array.from({ length: 31 }, (_, dayIdx) => {
                     const day = dayIdx + 1;
-                    const hasAnyValue = monthDayData.months.some(
-                      (m) => (monthDayData.grid[m][day] || 0) > 0
-                    );
+                    const rowValues = monthDayData.months.map((m) => monthDayData.grid[m][day] || 0);
+                    const rowMax = Math.max(0, ...rowValues);
+                    const hasAnyValue = rowMax > 0;
                     // Show all days up to 28, then only those with data
                     if (day > 28 && !hasAnyValue) return null;
 
@@ -283,7 +283,7 @@ export const SalesHeatmapCharts = ({
                             <Tooltip key={m}>
                               <TooltipTrigger asChild>
                                 <div
-                                  className={`flex-1 h-5 rounded-[3px] transition-all cursor-default ${getMonthDayColor(val, monthDayData.maxVal)}`}
+                                  className={`flex-1 h-5 rounded-[3px] transition-all cursor-default ${getMonthDayColor(val, rowMax)}`}
                                 />
                               </TooltipTrigger>
                               <TooltipContent side="top" className="text-xs">
