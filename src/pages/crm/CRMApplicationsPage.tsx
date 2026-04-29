@@ -449,7 +449,6 @@ export default function CRMApplicationsPage() {
           )}
         </DialogContent>
       </Dialog>
-      </Dialog>
 
       {/* Send to Pipeline dialog */}
       <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
