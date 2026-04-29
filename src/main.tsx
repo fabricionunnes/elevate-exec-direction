@@ -3,6 +3,12 @@ import App from "./App.tsx";
 import "./index.css";
 import { isCircleDomain } from "./lib/domainRouting";
 import { registerServiceWorker } from "./registerSW";
+import { setupNativeAuthPersistence } from "./lib/nativeAuthPersistence";
+
+// Em apps nativos (Capacitor), garante que a sessão de login persista
+// usando Capacitor Preferences (NSUserDefaults / SharedPreferences) em vez
+// de localStorage, que pode ser limpo pelo WebView entre sessões.
+setupNativeAuthPersistence();
 
 // Detecta Safari (desktop + iOS) e aplica classe no <html> para
 // desabilitar backdrop-filter via CSS — esse efeito trava o app no Safari.
