@@ -859,8 +859,8 @@ const ClientOnboardingPage = () => {
       </header>
 
       {/* Bottom Navigation - Mobile Only */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background backdrop-blur-md border-t safe-area-bottom lg:hidden">
-        <div className="flex items-stretch overflow-x-auto">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t safe-area-bottom lg:hidden">
+        <div className="flex items-stretch gap-1 overflow-x-auto scrollbar-hide px-2">
           {menuStructure.map((item) => {
             const Icon = item.icon;
             
@@ -872,8 +872,8 @@ const ClientOnboardingPage = () => {
                   <DropdownMenuTrigger asChild>
                     <button
                       className={`
-                        flex-1 flex flex-col items-center justify-center py-2 px-1 gap-0.5
-                        transition-colors touch-manipulation min-h-[56px]
+                        flex-none w-20 flex flex-col items-center justify-center py-2 px-1 gap-0.5
+                        transition-colors touch-manipulation min-h-[62px]
                         ${isSubmenuActive
                           ? "text-primary"
                           : "text-muted-foreground active:text-foreground"
@@ -886,7 +886,7 @@ const ClientOnboardingPage = () => {
                       `}>
                         <Icon className="h-5 w-5" />
                       </div>
-                      <span className="text-[10px] font-medium leading-tight">{item.label}</span>
+                      <span className="text-[10px] font-medium leading-tight text-center break-words">{item.label}</span>
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="center" side="top" className="min-w-[140px] mb-2">
@@ -916,12 +916,12 @@ const ClientOnboardingPage = () => {
                 <button
                   key={item.id}
                   onClick={() => navigate(item.href)}
-                  className="flex-1 flex flex-col items-center justify-center py-2 px-1 gap-0.5 transition-colors touch-manipulation min-h-[56px] text-muted-foreground active:text-foreground"
+                  className="flex-none w-20 flex flex-col items-center justify-center py-2 px-1 gap-0.5 transition-colors touch-manipulation min-h-[62px] text-muted-foreground active:text-foreground"
                 >
                   <div className="p-1.5 rounded-xl transition-colors">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <span className="text-[10px] font-medium leading-tight">{item.label}</span>
+                  <span className="text-[10px] font-medium leading-tight text-center break-words">{item.label}</span>
                 </button>
               );
             }
@@ -933,8 +933,8 @@ const ClientOnboardingPage = () => {
                 key={item.id}
                 onClick={() => setActiveView(item.id as ViewType)}
                 className={`
-                  flex-1 flex flex-col items-center justify-center py-2 px-1 gap-0.5
-                  transition-colors touch-manipulation min-h-[56px]
+                  flex-none w-20 flex flex-col items-center justify-center py-2 px-1 gap-0.5
+                  transition-colors touch-manipulation min-h-[62px]
                   ${isActive
                     ? "text-primary"
                     : "text-muted-foreground active:text-foreground"
@@ -947,7 +947,7 @@ const ClientOnboardingPage = () => {
                 `}>
                   <Icon className="h-5 w-5" />
                 </div>
-                <span className="text-[10px] font-medium leading-tight">{item.label}</span>
+                <span className="text-[10px] font-medium leading-tight text-center break-words">{item.label}</span>
               </button>
             );
           })}
