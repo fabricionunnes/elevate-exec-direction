@@ -458,16 +458,37 @@ export default function CRMApplicationsPage() {
             </p>
             <div className="space-y-2">
               <Label>Escolha o funil de destino</Label>
-              <Select value={chosenPipelineId} onValueChange={setChosenPipelineId}>
+              <Select value={chosenPipelineId} onValueChange={(v) => { setChosenPipelineId(v); setChosenStageId(""); }}>
                 <SelectTrigger><SelectValue placeholder="Selecione um funil..." /></SelectTrigger>
                 <SelectContent>
                   {pipelines.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Etapa do funil</Label>
+              <Select value={chosenStageId} onValueChange={setChosenStageId} disabled={!chosenPipelineId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={chosenPipelineId ? "Selecione uma etapa..." : "Escolha um funil primeiro"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {stagesForChosenPipeline.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      <span className="flex items-center gap-2">
+                        {s.color && <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.color }} />}
+                        {s.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                  {chosenPipelineId && stagesForChosenPipeline.length === 0 && (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">Este funil não possui etapas</div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setSendDialogOpen(false)} disabled={sending}>Cancelar</Button>
-              <Button onClick={sendToPipeline} disabled={!chosenPipelineId || sending}>
+              <Button onClick={sendToPipeline} disabled={!chosenPipelineId || !chosenStageId || sending}>
                 {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ArrowRight className="h-4 w-4 mr-2" />}
                 Criar Lead
               </Button>
