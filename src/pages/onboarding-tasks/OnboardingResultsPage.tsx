@@ -626,10 +626,10 @@ const OnboardingResultsPage = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div
-        className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-40 safe-area-top"
-        style={{ paddingTop: "max(env(safe-area-inset-top), 12px)" }}
+        className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-40"
+        style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 44px)" }}
       >
-        <div className="container mx-auto px-3 sm:px-4 py-2.5 sm:py-3 max-w-7xl">
+        <div className="container mx-auto px-3 sm:px-4 pt-2 pb-2.5 sm:pb-3 max-w-7xl">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
               <Button variant="ghost" size="icon" className="shrink-0 h-9 w-9" onClick={() => {
