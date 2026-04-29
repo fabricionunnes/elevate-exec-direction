@@ -7,6 +7,21 @@ const isSafari = () => {
 export function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
 
+  // Em preview/desenvolvimento, um Service Worker antigo pode servir chunks
+  // desatualizados do Vite e causar erro de React duplicado (dispatcher null).
+  if (!import.meta.env.PROD) {
+    navigator.serviceWorker.getRegistrations()
+      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+      .catch(() => undefined);
+
+    if ('caches' in window) {
+      caches.keys()
+        .then((keys) => Promise.all(keys.filter((key) => key.startsWith('unv-nexus-')).map((key) => caches.delete(key))))
+        .catch(() => undefined);
+    }
+    return;
+  }
+
   window.addEventListener('load', async () => {
     try {
       const registration = await navigator.serviceWorker.register('/sw.js', {
