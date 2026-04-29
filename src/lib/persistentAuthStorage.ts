@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { Preferences } from "@capacitor/preferences";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const SUPABASE_PROJECT_REF = import.meta.env.VITE_SUPABASE_PROJECT_ID || "czmyjgdixwhpfasfugkm";
 export const AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
@@ -45,7 +46,9 @@ const setLocalStorageItem = (key: string, value: string) => {
 const removeLocalStorageItem = (key: string) => {
   try {
     window.localStorage.removeItem(key);
-  } catch {}
+  } catch {
+    // Ignore storage removal failures in restricted WebViews.
+  }
 };
 
 const readCookie = (name: string) => {
@@ -110,7 +113,9 @@ export const persistentAuthStorage = {
           memoryCache.set(key, value);
           return value;
         }
-      } catch {}
+      } catch (error) {
+        console.warn("[persistentAuthStorage] Preferences.get error:", error);
+      }
     }
 
     const localValue = getLocalStorageItem(key);
@@ -152,7 +157,9 @@ export const persistentAuthStorage = {
     if (isNative) {
       try {
         await Preferences.remove({ key });
-      } catch {}
+      } catch (error) {
+        console.warn("[persistentAuthStorage] Preferences.remove error:", error);
+      }
     }
   },
 };
@@ -164,7 +171,7 @@ export async function syncPersistentAuthStorage(): Promise<void> {
   }
 }
 
-export async function restoreAuthSession(supabaseClient: any): Promise<void> {
+export async function restoreAuthSession(supabaseClient: SupabaseClient): Promise<void> {
   const { data } = await supabaseClient.auth.getSession();
   if (data?.session) return;
 
