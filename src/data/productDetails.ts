@@ -621,7 +621,7 @@ export const productDetails: Record<string, ProductDetail> = {
       "Comunidade ultra seletiva",
       "UNV AI Advisor Mastermind"
     ],
-    bestFor: "Empresários R$ 1M a R$ 10M/mês que já cresceram e querem decidir melhor com pares à altura",
+    bestFor: "Empresários a partir de R$ 100k/mês (ideal, não obrigatório) que já cresceram e querem decidir melhor com pares à altura",
     whyRecommended: "Você já passou da fase de execução. Agora precisa de um conselho de decisão com pares do seu nível.",
     problemsSolved: [
       {
@@ -652,8 +652,8 @@ export const productDetails: Record<string, ProductDetail> = {
       "Clareza estratégica de próximo nível"
     ],
     timeToResults: "Impacto nas decisões imediato, transformação em 12 meses",
-    idealProfile: [
-      "Faturamento R$ 1M-10M/mês",
+     idealProfile: [
+      "Faturamento ideal a partir de R$ 100k/mês (não obrigatório)",
       "Já cresceu e busca próximo nível",
       "Quer pares à altura",
       "Pode investir R$ 50k/ano"
