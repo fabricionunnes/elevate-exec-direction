@@ -400,7 +400,7 @@ export default function CRMApplicationsPage() {
                 <DialogTitle className="flex items-center gap-3 flex-wrap">
                   <Badge variant="outline" className={typeLabels[selected.type].className}>{typeLabels[selected.type].label}</Badge>
                   <span className="flex-1">{selected.full_name}</span>
-                  <Button size="sm" variant="hero" onClick={() => { setChosenPipelineId(""); setSendDialogOpen(true); }}>
+                  <Button size="sm" variant="hero" onClick={() => { setChosenPipelineId(""); setChosenStageId(""); setSendDialogOpen(true); }}>
                     <Send className="h-4 w-4 mr-2" />
                     Enviar para Funil
                   </Button>
