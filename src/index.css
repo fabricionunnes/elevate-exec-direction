@@ -430,3 +430,28 @@
     font-size: 16px !important; /* Prevents iOS zoom on focus */
   }
 }
+
+/* ============================================================
+ * Safari Performance Fix
+ * ------------------------------------------------------------
+ * backdrop-filter (backdrop-blur) é extremamente custoso no
+ * Safari (desktop e iOS), travando o app ou impedindo o carregamento.
+ * Desabilitamos o efeito apenas no Safari, mantendo um fallback
+ * sólido. Demais navegadores continuam com o efeito original.
+ * ============================================================ */
+@supports (-webkit-hyphens: none) and (not (translate: none)) {
+  /* Heurística para Safari */
+  *, *::before, *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* Detecção mais robusta via @supports do Safari */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari */
+  *, *::before, *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
