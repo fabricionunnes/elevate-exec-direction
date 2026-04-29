@@ -9,10 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Loader2, Search, Mail, Phone, Building2, ExternalLink, RefreshCw } from "lucide-react";
+import { Loader2, Search, Mail, Phone, Building2, ExternalLink, RefreshCw, Send, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
+
+interface Pipeline { id: string; name: string; }
 
 type AppType = "mastermind" | "diagnostic";
 
