@@ -782,7 +782,7 @@ const ClientOnboardingPage = () => {
           </div>
 
           {/* Navigation tabs - Desktop with dropdowns */}
-          <div className="hidden md:flex items-center gap-1 flex-wrap">
+          <div className="hidden lg:flex items-center gap-1 flex-wrap">
             {menuStructure.map((item) => {
               const Icon = item.icon;
               
@@ -859,7 +859,7 @@ const ClientOnboardingPage = () => {
       </header>
 
       {/* Bottom Navigation - Mobile Only */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background backdrop-blur-md border-t safe-area-bottom md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background backdrop-blur-md border-t safe-area-bottom lg:hidden">
         <div className="flex items-stretch overflow-x-auto">
           {menuStructure.map((item) => {
             const Icon = item.icon;
