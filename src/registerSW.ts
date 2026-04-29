@@ -72,7 +72,9 @@ export function registerServiceWorker() {
             window.location.reload();
             return;
           }
-        } catch {}
+        } catch (error) {
+          console.warn('[SW] Falha ao limpar cache antigo:', error);
+        }
       }
 
       console.log('[SW] Service Worker registrado.');
