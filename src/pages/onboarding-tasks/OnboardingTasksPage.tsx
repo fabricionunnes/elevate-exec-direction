@@ -3003,7 +3003,7 @@ const OnboardingTasksPage = () => {
                         .map((project) => (
                         <Card
                           key={project.id}
-                          className="cursor-pointer hover:shadow-md transition-all bg-white border border-muted hover:border-primary/50"
+                          className="cursor-pointer hover:shadow-md transition-all bg-card border border-muted hover:border-primary/50"
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/onboarding-tasks/${project.id}`);
