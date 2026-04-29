@@ -5,11 +5,6 @@ import { isCircleDomain } from "./lib/domainRouting";
 import { registerServiceWorker } from "./registerSW";
 import { setupNativeAuthPersistence } from "./lib/nativeAuthPersistence";
 
-// Em apps nativos (Capacitor), garante que a sessão de login persista
-// usando Capacitor Preferences (NSUserDefaults / SharedPreferences) em vez
-// de localStorage, que pode ser limpo pelo WebView entre sessões.
-setupNativeAuthPersistence();
-
 // Detecta Safari (desktop + iOS) e aplica classe no <html> para
 // desabilitar backdrop-filter via CSS — esse efeito trava o app no Safari.
 (() => {
@@ -63,7 +58,7 @@ const publicParam = urlSearch.get("public");
 
 const forceHashRoute = (routePath: string, query: string) => {
   // Clean query - remove public param since it's already been processed
-  let cleanQuery = query ? query.replace(/[?&]public=[^&]*/g, '').replace(/^\?&/, '?').replace(/^&/, '?').replace(/^\?$/, '') : '';
+  const cleanQuery = query ? query.replace(/[?&]public=[^&]*/g, '').replace(/^\?&/, '?').replace(/^&/, '?').replace(/^\?$/, '') : '';
   const target = `${window.location.origin}/#${routePath}${cleanQuery}`;
   
   // Force navigation immediately - always redirect for public routes
@@ -185,7 +180,14 @@ if (publicParam) {
   }
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+const bootstrap = async () => {
+  // Garante que a sessão seja restaurada antes das telas protegidas consultarem auth.
+  await setupNativeAuthPersistence();
 
-// Register PWA Service Worker
-registerServiceWorker();
+  createRoot(document.getElementById("root")!).render(<App />);
+
+  // Register PWA Service Worker
+  registerServiceWorker();
+};
+
+void bootstrap();
