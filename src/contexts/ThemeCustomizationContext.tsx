@@ -18,6 +18,32 @@ export interface ThemePreset {
 
 export const themePresets: ThemePreset[] = [
   {
+    id: "unv-brand-light",
+    name: "UNV Marca (Claro)",
+    isDark: false,
+    colors: {
+      primary: "355 85% 45%", // vermelho UNV
+      accent: "214 70% 22%", // azul marinho
+      background: "0 0% 100%", // branco
+      foreground: "214 65% 12%", // azul marinho escuro p/ texto
+      card: "0 0% 100%",
+      muted: "214 25% 94%",
+    },
+  },
+  {
+    id: "unv-brand-dark",
+    name: "UNV Marca (Escuro)",
+    isDark: true,
+    colors: {
+      primary: "355 85% 52%", // vermelho UNV
+      accent: "0 0% 100%", // branco como destaque
+      background: "214 70% 10%", // azul marinho profundo
+      foreground: "0 0% 98%",
+      card: "214 60% 14%",
+      muted: "214 45% 22%",
+    },
+  },
+  {
     id: "default-light",
     name: "UNV Clássico",
     isDark: false,
