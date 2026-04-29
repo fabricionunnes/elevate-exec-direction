@@ -66,6 +66,7 @@ const baseNavTabs = [
   { title: "Reuniões", href: "/crm/meetings" },
   { title: "Forecast", href: "/crm/forecast" },
   { title: "Cadências", href: "/crm/cadences" },
+  { title: "Aplicações", href: "/crm/applications" },
   { title: "Nota Fiscal", href: "/onboarding-tasks/nota-fiscal" },
   { title: "Escritório", href: "/crm/office" },
 ];
