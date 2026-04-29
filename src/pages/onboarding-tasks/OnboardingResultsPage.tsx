@@ -625,7 +625,7 @@ const OnboardingResultsPage = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-40">
+      <div className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-40 safe-area-top">
         <div className="container mx-auto px-4 py-3 max-w-7xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
