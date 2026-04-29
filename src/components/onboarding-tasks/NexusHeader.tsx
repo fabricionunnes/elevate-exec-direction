@@ -15,14 +15,14 @@ export const NexusHeader = ({ title, showTitle = true, className = "" }: NexusHe
   const displayName = title || platformName;
 
   return (
-    <Link to="/onboarding-tasks" className={`flex items-center gap-2 ${className}`}>
+    <Link to="/onboarding-tasks" className={`flex min-w-0 items-center gap-2 ${className}`}>
       <img 
         src={displayLogo} 
         alt={displayName} 
-        className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-contain bg-slate-900 p-1"
+        className="h-9 w-9 shrink-0 rounded-lg object-contain bg-muted p-1 sm:h-12 sm:w-12"
       />
       {showTitle && (
-        <span className="text-lg sm:text-xl font-bold text-foreground whitespace-nowrap">
+        <span className="min-w-0 truncate text-base font-bold text-foreground sm:text-xl">
           {displayName}
         </span>
       )}

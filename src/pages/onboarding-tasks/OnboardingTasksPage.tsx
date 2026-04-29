@@ -1774,11 +1774,11 @@ const OnboardingTasksPage = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Sticky mobile header - logo + action buttons */}
-      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/40 sm:static sm:border-b-0 sm:bg-transparent sm:backdrop-blur-none">
-        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-0 sm:pt-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <NexusHeader />
+      <div className="sticky top-0 z-50 overflow-visible border-b border-border/40 bg-background/95 pt-[max(env(safe-area-inset-top,0px),44px)] backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:static sm:border-b-0 sm:bg-transparent sm:pt-0 sm:backdrop-blur-none">
+        <div className="container mx-auto px-2 pb-2 pt-1 sm:px-4 sm:py-0 sm:pt-8">
+          <div className="flex min-w-0 items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              <NexusHeader className="min-w-0 flex-1" />
               <WelcomeHeader className="text-xs sm:text-sm text-muted-foreground hidden sm:block" />
             </div>
             
