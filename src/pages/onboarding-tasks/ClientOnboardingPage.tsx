@@ -649,7 +649,7 @@ const ClientOnboardingPage = () => {
       )}
       
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/98 backdrop-blur-md border-b safe-area-top">
+      <header className="sticky top-0 z-50 bg-background backdrop-blur-md border-b safe-area-top">
         <div className="px-4 py-3 max-w-7xl mx-auto">
           {/* Top row: Welcome + Actions */}
           <div className="flex items-center justify-between gap-3 mb-3">
