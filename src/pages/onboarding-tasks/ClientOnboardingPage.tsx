@@ -637,7 +637,7 @@ const ClientOnboardingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24 md:pb-4 safe-area-inset">
+    <div className="min-h-screen bg-background pb-24 lg:pb-4 safe-area-inset">
       {/* Goal Projection Alert Dialog for clients */}
       {projectId && project && (
         <GoalProjectionAlertDialog
