@@ -384,15 +384,25 @@ export const CRMLayout = () => {
           </div>
         </header>
 
-        {/* Main Content with Sidebar */}
-        <div className="flex flex-1 min-h-0 overflow-hidden">
+      {/* Main Content with Sidebar */}
+        <div className={cn(
+          "flex flex-1 min-h-0",
+          lockViewportHeight ? "overflow-hidden" : ""
+        )}>
           {/* Origins Sidebar - Hidden on Mobile, use Sheet instead */}
           {!isMobile && (location.pathname.includes("/crm/pipeline") || 
             location.pathname.includes("/crm/leads")) && (
-            <CRMOriginsSidebar
-              collapsed={sidebarCollapsed}
-              onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-            />
+            <div className={cn(
+              "shrink-0 self-start",
+              lockViewportHeight
+                ? "h-full"
+                : "sticky top-14 h-[calc(100dvh-3.5rem)]"
+            )}>
+              <CRMOriginsSidebar
+                collapsed={sidebarCollapsed}
+                onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+              />
+            </div>
           )}
 
           {/* Mobile Sidebar Sheet */}
