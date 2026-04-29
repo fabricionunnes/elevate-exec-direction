@@ -13,8 +13,8 @@ export function registerServiceWorker() {
     navigator.serviceWorker.getRegistrations()
       .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
       .then(() => {
-        if (navigator.serviceWorker.controller && !sessionStorage.getItem('sw-dev-cleaned')) {
-          sessionStorage.setItem('sw-dev-cleaned', '1');
+        if (navigator.serviceWorker.controller && !localStorage.getItem('sw-dev-cleaned')) {
+          localStorage.setItem('sw-dev-cleaned', '1');
           window.location.reload();
         }
       })
