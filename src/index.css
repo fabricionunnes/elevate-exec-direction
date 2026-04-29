@@ -463,3 +463,15 @@ html.is-safari *::after {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
+
+/* Safari: como o blur foi desabilitado, força fundo opaco em headers/navs sticky/fixed
+   para não vazar o conteúdo de baixo por trás de áreas semitransparentes (bg-*/80, /90, /95). */
+html.is-safari header.sticky,
+html.is-safari nav.fixed,
+html.is-safari header.fixed,
+html.is-safari .sticky.top-0,
+html.is-safari .fixed.bottom-0,
+html.is-safari .fixed.top-0 {
+  background-color: hsl(var(--background)) !important;
+}
+
