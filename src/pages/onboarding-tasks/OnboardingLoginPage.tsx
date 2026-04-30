@@ -28,7 +28,9 @@ const OnboardingLoginPage = () => {
   const [signupCompany, setSignupCompany] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
+  const [signupPasswordConfirm, setSignupPasswordConfirm] = useState("");
   const [signupShowPassword, setSignupShowPassword] = useState(false);
+  const [signupShowPasswordConfirm, setSignupShowPasswordConfirm] = useState(false);
   const [signupLoading, setSignupLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
