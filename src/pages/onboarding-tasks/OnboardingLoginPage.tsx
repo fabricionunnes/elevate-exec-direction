@@ -159,81 +159,229 @@ const OnboardingLoginPage = () => {
     }
   };
 
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!signupName || !signupEmail || !signupPassword) {
+      toast.error("Preencha nome, email e senha");
+      return;
+    }
+    if (signupPassword.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres");
+      return;
+    }
+
+    setSignupLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("self-service-signup", {
+        body: {
+          name: signupName.trim(),
+          email: signupEmail.trim().toLowerCase(),
+          password: signupPassword,
+          company_name: signupCompany.trim() || signupName.trim(),
+        },
+      });
+
+      if (error || (data && data.error)) {
+        toast.error(data?.error || error?.message || "Erro ao criar conta");
+        return;
+      }
+
+      // Login automático
+      const { error: loginErr } = await supabase.auth.signInWithPassword({
+        email: signupEmail.trim().toLowerCase(),
+        password: signupPassword,
+      });
+
+      if (loginErr) {
+        toast.success("Conta criada! Faça login para continuar.");
+        return;
+      }
+
+      toast.success("Conta criada com sucesso!");
+      navigate(`/onboarding-client/${data.project_id}`);
+    } catch (err: any) {
+      console.error("Signup error:", err);
+      toast.error(err?.message || "Erro ao criar conta. Tente novamente.");
+    } finally {
+      setSignupLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo UNV Nexus */}
         <div className="flex items-center justify-center mb-8">
-          <img 
-            src={logoNexus} 
-            alt="UNV Nexus" 
+          <img
+            src={logoNexus}
+            alt="UNV Nexus"
             className="h-16 w-auto"
           />
         </div>
 
         <Card className="bg-slate-900/80 border-slate-800 backdrop-blur-sm">
-          <CardHeader className="text-center pb-4">
-            <h2 className="text-lg font-semibold text-white">Entrar</h2>
-            <p className="text-sm text-slate-400">Acesse sua conta para gerenciar tarefas</p>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-slate-300">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
-                  disabled={loading}
-                />
-              </div>
+          <CardContent className="pt-6">
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 bg-slate-800/50 border border-slate-700">
+                <TabsTrigger value="login" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-slate-950">
+                  Entrar
+                </TabsTrigger>
+                <TabsTrigger value="signup" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-slate-950">
+                  Criar conta
+                </TabsTrigger>
+              </TabsList>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-slate-300">Senha</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 pr-10"
-                    disabled={loading}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+              <TabsContent value="login" className="mt-6">
+                <div className="text-center mb-4">
+                  <h2 className="text-lg font-semibold text-white">Entrar</h2>
+                  <p className="text-sm text-slate-400">Acesse sua conta</p>
                 </div>
-              </div>
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-slate-300">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                      disabled={loading}
+                    />
+                  </div>
 
-              <Button
-                type="submit"
-                className="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold"
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Entrando...
-                  </>
-                ) : (
-                  "Entrar"
-                )}
-              </Button>
-            </form>
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-slate-300">Senha</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 pr-10"
+                        disabled={loading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Entrando...
+                      </>
+                    ) : (
+                      "Entrar"
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="signup" className="mt-6">
+                <div className="text-center mb-4">
+                  <h2 className="text-lg font-semibold text-white">Criar conta</h2>
+                  <p className="text-sm text-slate-400">Acesso liberado ao Dashboard e KPIs</p>
+                </div>
+                <form onSubmit={handleSignup} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-name" className="text-slate-300">Nome completo</Label>
+                    <Input
+                      id="signup-name"
+                      type="text"
+                      placeholder="Seu nome"
+                      value={signupName}
+                      onChange={(e) => setSignupName(e.target.value)}
+                      className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                      disabled={signupLoading}
+                      maxLength={100}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-company" className="text-slate-300">Empresa (opcional)</Label>
+                    <Input
+                      id="signup-company"
+                      type="text"
+                      placeholder="Nome da empresa"
+                      value={signupCompany}
+                      onChange={(e) => setSignupCompany(e.target.value)}
+                      className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                      disabled={signupLoading}
+                      maxLength={150}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email" className="text-slate-300">Email</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={signupEmail}
+                      onChange={(e) => setSignupEmail(e.target.value)}
+                      className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                      disabled={signupLoading}
+                      maxLength={255}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password" className="text-slate-300">Senha</Label>
+                    <div className="relative">
+                      <Input
+                        id="signup-password"
+                        type={signupShowPassword ? "text" : "password"}
+                        placeholder="Mínimo 6 caracteres"
+                        value={signupPassword}
+                        onChange={(e) => setSignupPassword(e.target.value)}
+                        className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 pr-10"
+                        disabled={signupLoading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setSignupShowPassword(!signupShowPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                      >
+                        {signupShowPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold"
+                    disabled={signupLoading}
+                  >
+                    {signupLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Criando conta...
+                      </>
+                    ) : (
+                      "Criar conta gratuita"
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 
         <p className="text-center text-slate-500 text-xs mt-6">
-          UNV Nexus - Acesso restrito a membros do projeto.
+          UNV Nexus - Direção Comercial como Serviço.
         </p>
       </div>
     </div>
