@@ -345,6 +345,16 @@ const OnboardingLoginPage = () => {
                       "Entrar"
                     )}
                   </Button>
+
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => { setForgotEmail(email); setForgotOpen(true); }}
+                      className="text-sm text-emerald-400 hover:text-emerald-300 hover:underline"
+                    >
+                      Esqueci minha senha
+                    </button>
+                  </div>
                 </form>
               </TabsContent>
 
