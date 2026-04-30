@@ -290,8 +290,13 @@ const OnboardingLoginPage = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!signupName || !signupEmail || !signupPassword) {
-      toast.error("Preencha nome, email e senha");
+    if (!signupName || !signupEmail || !signupPassword || !signupPhone) {
+      toast.error("Preencha nome, telefone, email e senha");
+      return;
+    }
+    const phoneDigits = signupPhone.replace(/\D/g, "");
+    if (phoneDigits.length < 10) {
+      toast.error("Informe um telefone válido com DDD");
       return;
     }
     if (signupPassword.length < 6) {
@@ -311,6 +316,7 @@ const OnboardingLoginPage = () => {
           email: signupEmail.trim().toLowerCase(),
           password: signupPassword,
           company_name: signupCompany.trim() || signupName.trim(),
+          phone: phoneDigits,
         },
       });
 
