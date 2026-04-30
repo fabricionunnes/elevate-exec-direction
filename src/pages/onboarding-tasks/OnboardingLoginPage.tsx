@@ -28,6 +28,7 @@ const OnboardingLoginPage = () => {
   // Signup state
   const [signupName, setSignupName] = useState("");
   const [signupCompany, setSignupCompany] = useState("");
+  const [signupPhone, setSignupPhone] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupPasswordConfirm, setSignupPasswordConfirm] = useState("");
@@ -289,8 +290,13 @@ const OnboardingLoginPage = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!signupName || !signupEmail || !signupPassword) {
-      toast.error("Preencha nome, email e senha");
+    if (!signupName || !signupEmail || !signupPassword || !signupPhone) {
+      toast.error("Preencha nome, telefone, email e senha");
+      return;
+    }
+    const phoneDigits = signupPhone.replace(/\D/g, "");
+    if (phoneDigits.length < 10) {
+      toast.error("Informe um telefone válido com DDD");
       return;
     }
     if (signupPassword.length < 6) {
@@ -310,6 +316,7 @@ const OnboardingLoginPage = () => {
           email: signupEmail.trim().toLowerCase(),
           password: signupPassword,
           company_name: signupCompany.trim() || signupName.trim(),
+          phone: phoneDigits,
         },
       });
 
@@ -493,6 +500,20 @@ const OnboardingLoginPage = () => {
                       className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
                       disabled={signupLoading}
                       maxLength={150}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-phone" className="text-slate-300">Telefone (WhatsApp)</Label>
+                    <Input
+                      id="signup-phone"
+                      type="tel"
+                      placeholder="(11) 91234-5678"
+                      value={signupPhone}
+                      onChange={(e) => setSignupPhone(e.target.value)}
+                      className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                      disabled={signupLoading}
+                      maxLength={20}
                     />
                   </div>
 
