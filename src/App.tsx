@@ -338,6 +338,8 @@ const AppShell = () => {
               <Suspense fallback={<PageLoader />}>
               <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/onboarding-tasks/reset-password" element={<ResetPasswordPage />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/sales-acceleration" element={<SalesAccelerationPage />} />
