@@ -118,11 +118,14 @@ const OnboardingLoginPage = () => {
       setCheckingSavedLogin(false);
     };
 
-    void redirectSavedSession();
+    void redirectSavedSession().catch((error) => {
+      console.warn("Erro ao restaurar sessão salva:", error);
+      if (active) setCheckingSavedLogin(false);
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        setTimeout(() => void redirectSavedSession(), 0);
+        setTimeout(() => void redirectSavedSession().catch(() => undefined), 0);
       }
     });
 
@@ -358,6 +361,14 @@ const OnboardingLoginPage = () => {
       setSignupLoading(false);
     }
   };
+
+  if (checkingSavedLogin) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
