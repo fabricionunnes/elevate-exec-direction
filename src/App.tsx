@@ -125,6 +125,7 @@ const OnboardingCompanyDetailPage = lazy(() => import("./pages/onboarding-tasks/
 const OnboardingStaffPage = lazy(() => import("./pages/onboarding-tasks/OnboardingStaffPage"));
 const ClientOnboardingPage = lazy(() => import("./pages/onboarding-tasks/ClientOnboardingPage"));
 const OnboardingLoginPage = lazy(() => import("./pages/onboarding-tasks/OnboardingLoginPage"));
+const ResetPasswordPage = lazy(() => import("./pages/onboarding-tasks/ResetPasswordPage"));
 const OnboardingNewCompanyPage = lazy(() => import("./pages/onboarding-tasks/OnboardingNewCompanyPage"));
 const OnboardingServicesPage = lazy(() => import("./pages/onboarding-tasks/OnboardingServicesPage"));
 const OnboardingServiceTemplatesPage = lazy(() => import("./pages/onboarding-tasks/OnboardingServiceTemplatesPage"));
@@ -337,6 +338,8 @@ const AppShell = () => {
               <Suspense fallback={<PageLoader />}>
               <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/onboarding-tasks/reset-password" element={<ResetPasswordPage />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/sales-acceleration" element={<SalesAccelerationPage />} />
