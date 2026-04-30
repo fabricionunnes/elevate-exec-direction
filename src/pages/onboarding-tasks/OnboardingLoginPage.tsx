@@ -34,6 +34,34 @@ const OnboardingLoginPage = () => {
   const [signupShowPasswordConfirm, setSignupShowPasswordConfirm] = useState(false);
   const [signupLoading, setSignupLoading] = useState(false);
 
+  // Forgot password state
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) {
+      toast.error("Informe seu email");
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Enviamos um link de recuperação para seu email.");
+      setForgotOpen(false);
+      setForgotEmail("");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
