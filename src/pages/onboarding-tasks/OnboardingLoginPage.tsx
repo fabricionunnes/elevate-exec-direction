@@ -172,6 +172,10 @@ const OnboardingLoginPage = () => {
       toast.error("A senha deve ter pelo menos 6 caracteres");
       return;
     }
+    if (signupPassword !== signupPasswordConfirm) {
+      toast.error("As senhas não coincidem");
+      return;
+    }
 
     setSignupLoading(true);
     try {
@@ -383,6 +387,31 @@ const OnboardingLoginPage = () => {
                         {signupShowPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password-confirm" className="text-slate-300">Confirmar senha</Label>
+                    <div className="relative">
+                      <Input
+                        id="signup-password-confirm"
+                        type={signupShowPasswordConfirm ? "text" : "password"}
+                        placeholder="Repita a senha"
+                        value={signupPasswordConfirm}
+                        onChange={(e) => setSignupPasswordConfirm(e.target.value)}
+                        className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 pr-10"
+                        disabled={signupLoading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setSignupShowPasswordConfirm(!signupShowPasswordConfirm)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                      >
+                        {signupShowPasswordConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {signupPasswordConfirm.length > 0 && signupPassword !== signupPasswordConfirm && (
+                      <p className="text-xs text-red-400">As senhas não coincidem</p>
+                    )}
                   </div>
 
                   <Button
