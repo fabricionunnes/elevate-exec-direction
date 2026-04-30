@@ -1,6 +1,8 @@
 project_id = "czmyjgdixwhpfasfugkm"
 
 [functions]
+  [functions.self-service-signup]
+    verify_jwt = false
   [functions.academy-generate-quiz]
     verify_jwt = true
   [functions.analyze-meeting-sentiment]
