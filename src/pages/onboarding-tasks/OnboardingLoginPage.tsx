@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ const OnboardingLoginPage = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checkingSavedLogin, setCheckingSavedLogin] = useState(true);
 
   // Signup state
   const [signupName, setSignupName] = useState("");
@@ -38,6 +39,101 @@ const OnboardingLoginPage = () => {
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    const redirectSavedSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!active) return;
+
+      const user = session?.user;
+      if (!user) {
+        setCheckingSavedLogin(false);
+        return;
+      }
+
+      const { data: staffMember } = await supabase
+        .from("onboarding_staff")
+        .select("id, role")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!active) return;
+
+      if (staffMember) {
+        if (redirectTo) {
+          navigate(redirectTo, { replace: true });
+          return;
+        }
+
+        const { data: perms } = await supabase
+          .from("staff_menu_permissions")
+          .select("menu_key")
+          .eq("staff_id", staffMember.id);
+
+        if (!active) return;
+
+        const permKeys = (perms || []).map((p: any) => p.menu_key);
+        const commercialRoles = ["head_comercial", "closer", "sdr", "social_setter", "bdr"];
+
+        if (permKeys.includes("crm") && commercialRoles.includes(staffMember.role)) {
+          navigate("/crm", { replace: true });
+          return;
+        }
+
+        if (permKeys.includes("financial") && !permKeys.includes("crm")) {
+          navigate("/onboarding-tasks/financeiro/recorrencias", { replace: true });
+          return;
+        }
+
+        navigate("/onboarding-tasks", { replace: true });
+        return;
+      }
+
+      const { data: onboardingUsers } = await supabase
+        .from("onboarding_users")
+        .select("role, project_id")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (!active) return;
+
+      const onboardingUser = onboardingUsers?.[0];
+      if (onboardingUser) {
+        if (redirectTo) {
+          navigate(redirectTo, { replace: true });
+          return;
+        }
+
+        if (isClientRole(onboardingUser.role) && onboardingUser.project_id) {
+          navigate(`/onboarding-client/${onboardingUser.project_id}`, { replace: true });
+          return;
+        }
+
+        navigate("/onboarding-tasks", { replace: true });
+        return;
+      }
+
+      setCheckingSavedLogin(false);
+    };
+
+    void redirectSavedSession().catch((error) => {
+      console.warn("Erro ao restaurar sessão salva:", error);
+      if (active) setCheckingSavedLogin(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setTimeout(() => void redirectSavedSession().catch(() => undefined), 0);
+      }
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [navigate, redirectTo]);
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -265,6 +361,14 @@ const OnboardingLoginPage = () => {
       setSignupLoading(false);
     }
   };
+
+  if (checkingSavedLogin) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
