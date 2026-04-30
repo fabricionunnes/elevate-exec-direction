@@ -104,7 +104,6 @@ Deno.serve(async (req: Request) => {
         product_id: "self_service",
         product_name: "Self-Service KPIs",
         onboarding_company_id: company.id,
-        company_id: company.id,
         status: "active",
       })
       .select("id")
