@@ -477,6 +477,40 @@ const OnboardingLoginPage = () => {
           UNV Nexus - Direção Comercial como Serviço.
         </p>
       </div>
+
+      <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-white">
+          <DialogHeader>
+            <DialogTitle>Recuperar senha</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Informe seu email cadastrado e enviaremos um link para você redefinir a senha.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="forgot-email" className="text-slate-300">Email</Label>
+              <Input
+                id="forgot-email"
+                type="email"
+                placeholder="seu@email.com"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                disabled={forgotLoading}
+                autoFocus
+              />
+            </div>
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="ghost" onClick={() => setForgotOpen(false)} disabled={forgotLoading}>
+                Cancelar
+              </Button>
+              <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold" disabled={forgotLoading}>
+                {forgotLoading ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Enviando...</>) : "Enviar link"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
