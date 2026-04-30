@@ -504,6 +504,20 @@ const OnboardingLoginPage = () => {
                   </div>
 
                   <div className="space-y-2">
+                    <Label htmlFor="signup-phone" className="text-slate-300">Telefone (WhatsApp)</Label>
+                    <Input
+                      id="signup-phone"
+                      type="tel"
+                      placeholder="(11) 91234-5678"
+                      value={signupPhone}
+                      onChange={(e) => setSignupPhone(e.target.value)}
+                      className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                      disabled={signupLoading}
+                      maxLength={20}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="signup-email" className="text-slate-300">Email</Label>
                     <Input
                       id="signup-email"
