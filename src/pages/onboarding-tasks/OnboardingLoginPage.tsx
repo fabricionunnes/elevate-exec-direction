@@ -182,8 +182,31 @@ const OnboardingLoginPage = () => {
         },
       });
 
-      if (error || (data && data.error)) {
-        toast.error(data?.error || error?.message || "Erro ao criar conta");
+      // Edge function retornou status != 2xx → ler body do FunctionsHttpError
+      if (error) {
+        let serverMsg: string | undefined;
+        try {
+          const ctx: any = (error as any).context;
+          if (ctx && typeof ctx.json === "function") {
+            const body = await ctx.json();
+            serverMsg = body?.error;
+          } else if (ctx && typeof ctx.text === "function") {
+            const txt = await ctx.text();
+            try { serverMsg = JSON.parse(txt)?.error; } catch { serverMsg = txt; }
+          }
+        } catch { /* ignore */ }
+
+        const finalMsg = serverMsg || error.message || "Erro ao criar conta";
+        if (/já está cadastrado|already/i.test(finalMsg)) {
+          toast.error("Este email já está cadastrado. Faça login na aba \"Entrar\".");
+        } else {
+          toast.error(finalMsg);
+        }
+        return;
+      }
+
+      if (data?.error) {
+        toast.error(data.error);
         return;
       }
 
