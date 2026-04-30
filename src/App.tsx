@@ -125,6 +125,7 @@ const OnboardingCompanyDetailPage = lazy(() => import("./pages/onboarding-tasks/
 const OnboardingStaffPage = lazy(() => import("./pages/onboarding-tasks/OnboardingStaffPage"));
 const ClientOnboardingPage = lazy(() => import("./pages/onboarding-tasks/ClientOnboardingPage"));
 const OnboardingLoginPage = lazy(() => import("./pages/onboarding-tasks/OnboardingLoginPage"));
+const ResetPasswordPage = lazy(() => import("./pages/onboarding-tasks/ResetPasswordPage"));
 const OnboardingNewCompanyPage = lazy(() => import("./pages/onboarding-tasks/OnboardingNewCompanyPage"));
 const OnboardingServicesPage = lazy(() => import("./pages/onboarding-tasks/OnboardingServicesPage"));
 const OnboardingServiceTemplatesPage = lazy(() => import("./pages/onboarding-tasks/OnboardingServiceTemplatesPage"));
