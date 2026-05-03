@@ -397,22 +397,18 @@
   padding-top: env(safe-area-inset-top);
 }
 
-.safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
+.mobile-safe-header {
+  padding-top: 0.75rem;
 }
 
-/* Push the entire app down by the iOS status-bar height so sticky headers
-   and page titles never get clipped by the notch / Safari top chrome.
-   Applying it on #root (instead of individual headers) avoids breaking
-   layouts that depend on fixed header heights. */
-@supports (padding-top: env(safe-area-inset-top)) {
-  #root {
-    padding-top: env(safe-area-inset-top);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-    padding-bottom: env(safe-area-inset-bottom);
-    box-sizing: border-box;
+@media (max-width: 767px) {
+  .mobile-safe-header {
+    padding-top: max(calc(env(safe-area-inset-top, 0px) + 0.75rem), 2.75rem);
   }
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Touch Optimizations */

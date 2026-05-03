@@ -649,8 +649,8 @@ const ClientOnboardingPage = () => {
       )}
       
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background backdrop-blur-md border-b safe-area-top">
-        <div className="px-4 py-3 max-w-7xl mx-auto">
+      <header className="sticky top-0 z-50 bg-background backdrop-blur-md border-b">
+        <div className="mobile-safe-header px-4 pb-3 max-w-7xl mx-auto">
           {/* Top row: Welcome + Actions */}
           <div className="flex items-center justify-between gap-3 mb-3">
             {/* Left: Welcome + Company */}
@@ -693,7 +693,7 @@ const ClientOnboardingPage = () => {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <h1 className="text-base md:text-lg font-bold truncate leading-tight">
+                  <h1 className="text-base md:text-lg font-bold truncate leading-[1.35] py-0.5">
                   {company?.name || project.product_name}
                 </h1>
               )}
