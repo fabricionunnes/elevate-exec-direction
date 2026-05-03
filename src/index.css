@@ -411,13 +411,14 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 
-  /* Sticky/fixed top headers: push their inner content below the status bar
-     while still letting the background extend up under it. */
+  /* Sticky/fixed top headers: add status-bar padding so the title is never
+     hidden under the iOS notch / Safari top chrome. */
   header.sticky,
   header.fixed,
   .app-safe-header {
     padding-top: max(env(safe-area-inset-top), 0px);
-    box-sizing: content-box;
+    height: auto;
+    min-height: 3.5rem;
   }
 }
 
