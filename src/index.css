@@ -401,14 +401,23 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Apply safe-area globally so page headers (sticky or not) never get
-   cut off by the iOS status bar / Safari top chrome (viewport-fit=cover). */
+/* Apply safe-area to sticky/fixed headers so they never get clipped by the
+   iOS status bar / Safari top chrome (viewport-fit=cover). Targets common
+   header patterns: <header> elements and any element with class "sticky top-0". */
 @supports (padding-top: env(safe-area-inset-top)) {
   body {
-    padding-top: env(safe-area-inset-top);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Sticky/fixed top headers: push their inner content below the status bar
+     while still letting the background extend up under it. */
+  header.sticky,
+  header.fixed,
+  .app-safe-header {
+    padding-top: max(env(safe-area-inset-top), 0px);
+    box-sizing: content-box;
   }
 }
 
