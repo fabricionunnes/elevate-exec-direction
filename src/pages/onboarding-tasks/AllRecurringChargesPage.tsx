@@ -1223,7 +1223,7 @@ export default function AllRecurringChargesPage() {
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* Mobile Header */}
       {isMobile && (
-        <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-card px-4 pb-3 pt-[max(calc(env(safe-area-inset-top,0px)+0.75rem),2.75rem)]">
+        <header className="mobile-safe-header sticky top-0 z-40 flex items-center justify-between border-b bg-card px-4 pb-3">
           <div className="flex min-w-0 items-center gap-3">
             <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setSidebarOpen(true)}>
               <Menu className="h-5 w-5" />
