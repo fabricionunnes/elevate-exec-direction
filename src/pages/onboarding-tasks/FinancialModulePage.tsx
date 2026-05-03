@@ -149,7 +149,7 @@ export default function FinancialModulePage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-card sticky top-0 z-50">
-        <div className="container mx-auto px-4 pb-3 pt-[max(calc(env(safe-area-inset-top,0px)+0.75rem),2.75rem)] flex items-center justify-between">
+        <div className="mobile-safe-header container mx-auto px-4 pb-3 flex items-center justify-between">
           <div className="flex min-w-0 items-center gap-3 sm:gap-4">
             <Button 
               variant="ghost" 
