@@ -149,19 +149,20 @@ export default function FinancialModulePage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-card sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="container mx-auto px-4 pb-3 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] flex items-center justify-between">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={() => navigate("/onboarding/staff")}
+              className="shrink-0"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Nexus
             </Button>
             <div className="h-6 w-px bg-border" />
-            <h1 className="text-lg font-semibold flex items-center gap-2">
-              <Calculator className="h-5 w-5 text-primary" />
+            <h1 className="flex min-w-0 items-center gap-2 text-lg font-semibold leading-tight">
+              <Calculator className="h-5 w-5 shrink-0 text-primary" />
               Módulo Financeiro
             </h1>
           </div>
