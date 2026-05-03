@@ -1223,12 +1223,12 @@ export default function AllRecurringChargesPage() {
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* Mobile Header */}
       {isMobile && (
-        <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-card px-4 pb-3 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]">
+        <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-card px-4 pb-3 pt-[max(calc(env(safe-area-inset-top,0px)+0.75rem),2.75rem)]">
           <div className="flex min-w-0 items-center gap-3">
             <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setSidebarOpen(true)}>
               <Menu className="h-5 w-5" />
             </Button>
-            <h1 className="flex min-w-0 items-center gap-2 text-base font-bold leading-tight">
+            <h1 className="flex min-w-0 items-center gap-2 py-0.5 text-base font-bold leading-[1.35]">
               <Calculator className="h-4 w-4 shrink-0 text-primary" />
               Financeiro
             </h1>
