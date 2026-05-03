@@ -58,16 +58,16 @@ const MetricCard = ({
   badge?: React.ReactNode;
 }) => (
   <Card
-    className={`${onClick ? "cursor-pointer hover:border-primary/40 transition-colors" : ""}`}
+    className={`min-w-0 overflow-hidden ${onClick ? "cursor-pointer hover:border-primary/40 transition-colors" : ""}`}
     onClick={onClick}
   >
-    <CardContent className="p-4 space-y-1.5">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Icon className="h-3.5 w-3.5" />
-        <span className="text-xs font-medium">{label}</span>
+    <CardContent className="min-w-0 space-y-1.5 p-3 sm:p-4">
+      <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
+        <Icon className="h-3.5 w-3.5 shrink-0" />
+        <span className="min-w-0 truncate text-xs font-medium">{label}</span>
       </div>
-      <p className={`text-xl font-bold ${valueClass}`}>{value}</p>
-      {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
+      <p className={`min-w-0 break-words text-[clamp(1rem,4.2vw,1.25rem)] font-bold leading-tight ${valueClass}`}>{value}</p>
+      {sub && <p className="break-words text-[11px] leading-snug text-muted-foreground">{sub}</p>}
       {badge}
     </CardContent>
   </Card>
@@ -341,7 +341,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-3">
           <Section title="A Receber — Detalhamento" icon={ArrowDownRight} />
-          <div className="grid gap-3 grid-cols-3">
+          <div className="grid gap-3 grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3">
             <MetricCard
               label="Vencidos"
               value={formatCurrencyCents(sumCents(receivableBreakdown.overdue))}
@@ -372,7 +372,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
         {canSeePayables && (
           <div className="space-y-3">
             <Section title="A Pagar — Detalhamento" icon={ArrowUpRight} />
-            <div className="grid gap-3 grid-cols-3">
+            <div className="grid gap-3 grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3">
               <MetricCard
                 label="Vencidos"
                 value={formatCurrencyCents(sumPayable(payableBreakdown.overdue))}
