@@ -210,7 +210,7 @@ export const CRMLayout = () => {
         )}
       >
         {/* Top Header */}
-        <header className="h-14 border-b border-border bg-card flex items-center px-2 sm:px-4 gap-2 sm:gap-4 sticky top-0 z-50">
+        <header className="mobile-safe-header min-h-14 border-b border-border bg-card flex items-center px-2 sm:px-4 gap-2 sm:gap-4 sticky top-0 z-50">
           {/* Mobile Menu Toggle */}
           {isMobile && (
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
