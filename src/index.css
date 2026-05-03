@@ -398,7 +398,13 @@
 }
 
 .mobile-safe-header {
-  padding-top: max(calc(env(safe-area-inset-top, 0px) + 0.75rem), 2.75rem);
+  padding-top: 0.75rem;
+}
+
+@media (max-width: 767px) {
+  .mobile-safe-header {
+    padding-top: max(calc(env(safe-area-inset-top, 0px) + 0.75rem), 2.75rem);
+  }
 }
 
 .safe-area-bottom {
