@@ -397,6 +397,10 @@
   padding-top: env(safe-area-inset-top);
 }
 
+.mobile-safe-header {
+  padding-top: max(calc(env(safe-area-inset-top, 0px) + 0.75rem), 2.75rem);
+}
+
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }
