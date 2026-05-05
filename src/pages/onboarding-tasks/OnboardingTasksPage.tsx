@@ -1784,6 +1784,7 @@ const OnboardingTasksPage = () => {
             
             {/* Mobile Actions - Compact */}
             <div className="flex items-center gap-1 sm:hidden">
+              <ThemeToggle />
               {/* Quick action buttons visible on mobile */}
               {currentUserRole && currentStaffId && (
                 <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setShowMyTasks(true)} title="Minhas Tarefas">
