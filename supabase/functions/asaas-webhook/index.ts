@@ -36,7 +36,25 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
+    // Tolerate empty / non-JSON bodies (Asaas validation pings, GET checks, etc.)
+    const rawBody = await req.text();
+    if (!rawBody || !rawBody.trim()) {
+      console.log("[Asaas Webhook] Empty body received (likely a validation ping). Responding 200 OK.");
+      return new Response(JSON.stringify({ received: true, ping: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    let body: any;
+    try {
+      body = JSON.parse(rawBody);
+    } catch (parseErr) {
+      console.error("[Asaas Webhook] Invalid JSON body:", rawBody.substring(0, 300));
+      return new Response(JSON.stringify({ received: true, error: "invalid_json" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     console.log("[Asaas Webhook] Received:", JSON.stringify(body).substring(0, 800));
 
     const event = body.event;
