@@ -15,6 +15,7 @@ import { format, setHours, setMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Loader2, Video, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { buildProjectEventDescription } from "@/lib/projectMeetingDescription";
 
 interface StaffMember {
   id: string;
@@ -226,7 +227,7 @@ export const AddTaskDialog = ({
         },
         body: {
           title: meetingTitle,
-          description: description || `Reunião agendada para o projeto`,
+          description: buildProjectEventDescription(description || `Reunião agendada para o projeto`, projectId),
           startDateTime: startDateTime.toISOString(),
           endDateTime: endDateTime.toISOString(),
           target_user_id: staffData.user_id,

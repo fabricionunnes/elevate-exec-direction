@@ -25,6 +25,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import { buildProjectEventDescription } from "@/lib/projectMeetingDescription";
 
 interface StaffWithCalendar {
   id: string;
@@ -235,7 +236,7 @@ export const ScheduleMeetingDialog = ({
       const response = await supabase.functions.invoke("google-calendar?action=create-event", {
         body: {
           title,
-          description,
+          description: buildProjectEventDescription(description, projectId, { companyName }),
           startDateTime: startDate.toISOString(),
           endDateTime: endDate.toISOString(),
           target_user_id: targetStaff.user_id,

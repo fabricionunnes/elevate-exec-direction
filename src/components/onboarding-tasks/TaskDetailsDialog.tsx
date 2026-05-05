@@ -23,6 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { CalendarIcon, Loader2, Trash2, EyeOff, Video, ExternalLink, Clock } from "lucide-react";
+import { buildProjectEventDescription } from "@/lib/projectMeetingDescription";
 import { format, parseISO, addHours } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -224,7 +225,7 @@ export const TaskDetailsDialog = ({
       const response = await supabase.functions.invoke("google-calendar?action=create-event", {
         body: {
           title: editedTask.title || task?.title || "Reunião",
-          description: editedTask.description || task?.description || "",
+          description: buildProjectEventDescription(editedTask.description || task?.description || "", projectId || task?.project_id),
           startDateTime: startDate.toISOString(),
           endDateTime: endDate.toISOString(),
           target_user_id: targetUserId,
