@@ -236,7 +236,7 @@ export const ScheduleMeetingDialog = ({
       const response = await supabase.functions.invoke("google-calendar?action=create-event", {
         body: {
           title,
-          description,
+          description: buildProjectEventDescription(description, projectId, { companyName }),
           startDateTime: startDate.toISOString(),
           endDateTime: endDate.toISOString(),
           target_user_id: targetStaff.user_id,
