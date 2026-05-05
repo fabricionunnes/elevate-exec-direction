@@ -25,6 +25,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import { buildProjectEventDescription } from "@/lib/projectMeetingDescription";
 
 interface StaffWithCalendar {
   id: string;
