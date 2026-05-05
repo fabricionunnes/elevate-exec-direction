@@ -225,7 +225,7 @@ export const TaskDetailsDialog = ({
       const response = await supabase.functions.invoke("google-calendar?action=create-event", {
         body: {
           title: editedTask.title || task?.title || "Reunião",
-          description: editedTask.description || task?.description || "",
+          description: buildProjectEventDescription(editedTask.description || task?.description || "", projectId || task?.project_id),
           startDateTime: startDate.toISOString(),
           endDateTime: endDate.toISOString(),
           target_user_id: targetUserId,
