@@ -23,6 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { CalendarIcon, Loader2, Trash2, EyeOff, Video, ExternalLink, Clock } from "lucide-react";
+import { buildProjectEventDescription } from "@/lib/projectMeetingDescription";
 import { format, parseISO, addHours } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
