@@ -15,6 +15,7 @@ import { format, setHours, setMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Loader2, Video, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { buildProjectEventDescription } from "@/lib/projectMeetingDescription";
 
 interface StaffMember {
   id: string;
