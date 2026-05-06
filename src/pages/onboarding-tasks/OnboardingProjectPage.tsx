@@ -1369,14 +1369,14 @@ const OnboardingProjectPage = () => {
 
           {/* Project Settings Row - Only for admin/cs */}
           {(isAdmin || currentUserRole === "cs") && (
-            <div className="flex flex-wrap gap-2 sm:gap-4 pl-10 sm:pl-14 overflow-x-auto pb-1 -mx-2 px-2 sm:mx-0 sm:px-0">
-              <div className="flex items-center gap-1 sm:gap-2 min-w-fit">
-                <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Status:</span>
+            <div className="grid grid-cols-1 sm:flex sm:flex-wrap gap-2 sm:gap-4 sm:pl-14">
+              <div className="flex items-center gap-2 min-w-fit">
+                <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap w-20 sm:w-auto">Status:</span>
                 <Select 
                   value={project.status} 
                   onValueChange={handleProjectStatusChange}
                 >
-                  <SelectTrigger className="w-[130px] sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
+                  <SelectTrigger className="flex-1 sm:w-[180px] h-9 sm:h-10 text-xs sm:text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-background">
@@ -1388,13 +1388,13 @@ const OnboardingProjectPage = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center gap-1 sm:gap-2 min-w-fit">
-                <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Consultor:</span>
+              <div className="flex items-center gap-2 min-w-fit">
+                <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap w-20 sm:w-auto">Consultor:</span>
                 <Select 
                   value={project.consultant_id || "none"} 
                   onValueChange={(value) => handleProjectUpdate("consultant_id", value === "none" ? null : value)}
                 >
-                  <SelectTrigger className="w-[120px] sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
+                  <SelectTrigger className="flex-1 sm:w-[180px] h-9 sm:h-10 text-xs sm:text-sm">
                     <SelectValue placeholder="Selecionar..." />
                   </SelectTrigger>
                   <SelectContent className="bg-background">
@@ -1405,13 +1405,13 @@ const OnboardingProjectPage = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center gap-1 sm:gap-2 min-w-fit">
-                <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">CS:</span>
+              <div className="flex items-center gap-2 min-w-fit">
+                <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap w-20 sm:w-auto">CS:</span>
                 <Select 
                   value={project.cs_id || "none"} 
                   onValueChange={(value) => handleProjectUpdate("cs_id", value === "none" ? null : value)}
                 >
-                  <SelectTrigger className="w-[120px] sm:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
+                  <SelectTrigger className="flex-1 sm:w-[180px] h-9 sm:h-10 text-xs sm:text-sm">
                     <SelectValue placeholder="Selecionar..." />
                   </SelectTrigger>
                   <SelectContent className="bg-background">
