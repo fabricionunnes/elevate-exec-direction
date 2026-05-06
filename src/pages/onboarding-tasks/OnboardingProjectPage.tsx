@@ -1255,7 +1255,7 @@ const OnboardingProjectPage = () => {
 
           {/* Action buttons row - mobile optimized */}
           {project.onboarding_company?.name && (
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap pl-10 sm:pl-14">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:pl-14">
               {project.onboarding_company_id && (
                 <>
                   <Button 
