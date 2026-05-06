@@ -33318,6 +33318,27 @@ export type Database = {
           },
         ]
       }
+      telegram_sessions: {
+        Row: {
+          agent_type: string
+          chat_id: number
+          messages: Json
+          updated_at: string
+        }
+        Insert: {
+          agent_type: string
+          chat_id: number
+          messages?: Json
+          updated_at?: string
+        }
+        Update: {
+          agent_type?: string
+          chat_id?: number
+          messages?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       traffic_analysis_forms: {
         Row: {
           ab_testing: string | null
