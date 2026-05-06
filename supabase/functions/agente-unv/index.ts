@@ -785,7 +785,11 @@ Deno.serve(async (req) => {
       data.message?.extendedTextMessage?.text ||
       "";
 
-    const from: string = data.key?.remoteJid ?? "";
+    // LID addressing (novo formato WhatsApp): usa remoteJidAlt quando disponível
+    const from: string =
+      (data.key?.addressingMode === "lid" && data.key?.remoteJidAlt)
+        ? data.key.remoteJidAlt
+        : (data.key?.remoteJid ?? "");
 
     if (!text.trim() || !from) {
       EdgeRuntime.waitUntil(forwardToEvolutionWebhook(rawBody));
