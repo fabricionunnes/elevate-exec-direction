@@ -806,20 +806,29 @@ Deno.serve(async (req) => {
   try {
     const rawBody = await req.json();
 
-    // LOG DE DIAGNÓSTICO — remover após confirmar funcionamento
     const eventNorm = (rawBody.event || "").toUpperCase().replace(/\./g, "_");
-    const data = rawBody.data;
+
+    // webhookBase64:true faz o Stevo enviar rawBody.data como string base64
+    // Decodifica se necessário para garantir que data seja sempre um objeto
+    let data = rawBody.data;
+    if (typeof data === "string") {
+      try {
+        data = JSON.parse(atob(data));
+      } catch {
+        console.error("WEBHOOK_BASE64_DECODE_ERR", data.slice(0, 100));
+        return new Response("OK", { status: 200 });
+      }
+    }
+
     console.log("WEBHOOK_IN", JSON.stringify({
       event: rawBody.event,
       eventNorm,
+      dataType: typeof rawBody.data,
       fromMe: data?.key?.fromMe,
       remoteJid: data?.key?.remoteJid,
       remoteJidAlt: data?.key?.remoteJidAlt,
       addressingMode: data?.key?.addressingMode,
-      msgType: data?.messageType,
-      hasConversation: !!data?.message?.conversation,
-      hasExtended: !!data?.message?.extendedTextMessage,
-      textPreview: (data?.message?.conversation || data?.message?.extendedTextMessage?.text || "").slice(0, 50),
+      textPreview: (data?.message?.conversation || data?.message?.extendedTextMessage?.text || "").slice(0, 60),
     }));
 
     // Repassa eventos que não são mensagens direto para evolution-webhook
