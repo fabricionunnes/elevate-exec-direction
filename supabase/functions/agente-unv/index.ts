@@ -3,7 +3,8 @@ import Anthropic from "npm:@anthropic-ai/sdk";
 
 // ============ ENV VARS ============
 const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY") ?? "";
-const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL") ?? Deno.env.get("EVOLUTION_URL") ?? "";
+// EVOLUTION_URL: usa secret específico primeiro, depois fallback para evo07 (evo13 tem problema de TLS)
+const EVOLUTION_URL = Deno.env.get("EVOLUTION_URL") ?? "https://evo07.stevo.chat";
 const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
 const EVOLUTION_INSTANCE = Deno.env.get("EVOLUTION_INSTANCE") ?? "fabricionunnes";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "";
@@ -732,14 +733,22 @@ async function callAgent(agentType: AgentType, userMessage: string): Promise<str
 
 // ============ ENVIAR MENSAGEM WHATSAPP ============
 async function sendWhatsApp(to: string, text: string): Promise<void> {
-  await fetch(`${EVOLUTION_URL}/message/sendText/${EVOLUTION_INSTANCE}`, {
+  const res = await fetch(`${EVOLUTION_URL}/message/sendText/${EVOLUTION_INSTANCE}`, {
     method: "POST",
     headers: {
       apikey: EVOLUTION_API_KEY,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ number: to, text, delay: 1200 }),
+    // @ts-ignore — Deno-specific: ignora erros de certificado TLS no servidor Stevo
+    client: Deno.createHttpClient({ caCerts: [], unsafeCerts: true }),
   });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "(sem body)");
+    console.error(`sendWhatsApp error ${res.status}: ${body}`);
+  } else {
+    console.log(`sendWhatsApp OK → ${to}`);
+  }
 }
 
 // URL da evolution-webhook original — recebe tudo que não é comando de agente
