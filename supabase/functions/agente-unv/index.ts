@@ -726,9 +726,12 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
 }
 
 // ============ LOOP DO AGENTE ============
-async function callAgent(agentType: AgentType, userMessage: string): Promise<string> {
+async function callAgent(agentType: AgentType, userMessage: string, history: ChatMessage[] = []): Promise<string> {
   const config = AGENT_CONFIGS[agentType];
-  const messages: Anthropic.MessageParam[] = [{ role: "user", content: userMessage }];
+  const messages: Anthropic.MessageParam[] = [
+    ...history.map((m) => ({ role: m.role, content: m.content } as Anthropic.MessageParam)),
+    { role: "user", content: userMessage },
+  ];
 
   for (let i = 0; i < 10; i++) {
     let response!: Anthropic.Message;
@@ -842,14 +845,66 @@ const TELEGRAM_TOKENS: Record<AgentType, string> = {
   projetos:   Deno.env.get("TELEGRAM_TOKEN_PROJETOS")   ?? "8731972632:AAFUT8lkyxYrSaouq5lew9p9N-kCgsZdl5U",
 };
 
+const SUPABASE_URL = "https://czmyjgdixwhpfasfugkm.supabase.co";
+const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
 async function sendTelegram(chatId: number, text: string, agentType: AgentType): Promise<void> {
   const token = TELEGRAM_TOKENS[agentType];
   if (!token) return;
+  const safe = text.length > 4000 ? text.slice(0, 3990) + "…" : text;
   await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown" }),
-  });
+    body: JSON.stringify({ chat_id: chatId, text: safe, parse_mode: "Markdown" }),
+  }).catch(() =>
+    fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: safe }),
+    })
+  );
+}
+
+async function sendTyping(chatId: number, agentType: AgentType): Promise<void> {
+  const token = TELEGRAM_TOKENS[agentType];
+  if (!token) return;
+  await fetch(`https://api.telegram.org/bot${token}/sendChatAction`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, action: "typing" }),
+  }).catch(() => {});
+}
+
+// ── Memória de conversa (Supabase) ──
+type ChatMessage = { role: "user" | "assistant"; content: string };
+const MAX_HISTORY = 10; // últimas 10 trocas (20 mensagens)
+
+async function loadHistory(chatId: number, agentType: AgentType): Promise<ChatMessage[]> {
+  if (!SUPABASE_SERVICE_KEY) return [];
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/telegram_sessions?chat_id=eq.${chatId}&agent_type=eq.${agentType}&select=messages`,
+      { headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` } }
+    );
+    if (!res.ok) return [];
+    const rows = await res.json() as { messages: ChatMessage[] }[];
+    return rows[0]?.messages ?? [];
+  } catch { return []; }
+}
+
+async function saveHistory(chatId: number, agentType: AgentType, history: ChatMessage[]): Promise<void> {
+  if (!SUPABASE_SERVICE_KEY) return;
+  const trimmed = history.slice(-MAX_HISTORY * 2);
+  await fetch(`${SUPABASE_URL}/rest/v1/telegram_sessions`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_SERVICE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates",
+    },
+    body: JSON.stringify({ chat_id: chatId, agent_type: agentType, messages: trimmed, updated_at: new Date().toISOString() }),
+  }).catch(() => {});
 }
 
 // ============ HANDLER PRINCIPAL ============
@@ -881,12 +936,43 @@ Deno.serve(async (req) => {
       if (!agentType) return new Response("OK", { status: 200 });
 
       EdgeRuntime.waitUntil((async () => {
+        // Typing indicator imediato
+        await sendTyping(chatId, agentType);
+
+        // Carrega histórico de conversa
+        const history = await loadHistory(chatId, agentType);
+
+        // Inicia loop de typing enquanto processa (a cada 4s)
+        let processing = true;
+        const typingLoop = (async () => {
+          while (processing) {
+            await new Promise((r) => setTimeout(r, 4000));
+            if (processing) await sendTyping(chatId, agentType);
+          }
+        })();
+
         try {
-          const reply = await callAgent(agentType, text);
+          const reply = await callAgent(agentType, text, history);
+          processing = false;
+          await typingLoop;
+
+          // Salva histórico atualizado
+          await saveHistory(chatId, agentType, [
+            ...history,
+            { role: "user", content: text },
+            { role: "assistant", content: reply },
+          ]);
+
           await sendTelegram(chatId, reply, agentType);
         } catch (err) {
+          processing = false;
+          await typingLoop;
           const errMsg = err instanceof Error ? err.message : String(err);
-          await sendTelegram(chatId, `Erro: ${errMsg.slice(0, 300)}`, agentType);
+          const isRateLimit = errMsg.includes("rate_limit") || errMsg.includes("429");
+          const userMsg = isRateLimit
+            ? "Muitas consultas simultâneas. Aguarda 30 segundos e tenta de novo."
+            : `Erro ao processar. Tenta de novo.\n\n_${errMsg.slice(0, 200)}_`;
+          await sendTelegram(chatId, userMsg, agentType);
         }
       })());
 
