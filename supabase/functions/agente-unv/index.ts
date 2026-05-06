@@ -733,22 +733,38 @@ async function callAgent(agentType: AgentType, userMessage: string): Promise<str
 
 // ============ ENVIAR MENSAGEM WHATSAPP ============
 async function sendWhatsApp(to: string, text: string): Promise<void> {
-  const res = await fetch(`${EVOLUTION_URL}/message/sendText/${EVOLUTION_INSTANCE}`, {
-    method: "POST",
-    headers: {
-      apikey: EVOLUTION_API_KEY,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ number: to, text, delay: 1200 }),
-    // @ts-ignore — Deno-specific: ignora erros de certificado TLS no servidor Stevo
-    client: Deno.createHttpClient({ caCerts: [], unsafeCerts: true }),
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "(sem body)");
-    console.error(`sendWhatsApp error ${res.status}: ${body}`);
-  } else {
-    console.log(`sendWhatsApp OK → ${to}`);
+  // Tenta HTTPS primeiro; se falhar por TLS, tenta HTTP (para servidores Stevo com cert problemático)
+  const tryUrls = [
+    `${EVOLUTION_URL}/message/sendText/${EVOLUTION_INSTANCE}`,
+    `${EVOLUTION_URL.replace("https://", "http://")}/message/sendText/${EVOLUTION_INSTANCE}`,
+  ];
+
+  let lastErr = "";
+  for (const url of tryUrls) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          apikey: EVOLUTION_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ number: to, text, delay: 1200 }),
+      });
+      if (res.ok) {
+        console.log(`sendWhatsApp OK → ${to} via ${url}`);
+        return;
+      }
+      const body = await res.text().catch(() => "(sem body)");
+      lastErr = `HTTP ${res.status}: ${body}`;
+      console.error(`sendWhatsApp ${lastErr} via ${url}`);
+      return; // HTTP error não tenta fallback
+    } catch (err) {
+      lastErr = String(err);
+      console.error(`sendWhatsApp fetch error via ${url}: ${lastErr}`);
+      // Continua para o próximo URL apenas se for erro de conexão/TLS
+    }
   }
+  console.error(`sendWhatsApp falhou em todas as tentativas: ${lastErr}`);
 }
 
 // URL da evolution-webhook original — recebe tudo que não é comando de agente
