@@ -139,15 +139,19 @@ export function ReceivablePaymentDialog({
       const refType = isInvoice ? "invoice" : "receivable";
 
 
-      // DEDUPLICATION: Check if a bank credit already exists for this entity
-      const { data: existingCredits } = await supabase
+      // DEDUPLICATION: Compute NET balance (credits - debits) for this entity.
+      // Considering debits ensures that after a revert ("estorno"), a new payment
+      // credits the full amount instead of only the difference vs an already-reversed credit.
+      const { data: existingTxs } = await supabase
         .from("financial_bank_transactions")
-        .select("id, amount_cents, description")
+        .select("id, amount_cents, type, description")
         .eq("reference_type", refType)
-        .eq("reference_id", entityId)
-        .eq("type", "credit");
+        .eq("reference_id", entityId);
 
-      const existingTotal = (existingCredits || []).reduce((sum: number, tx: any) => sum + (tx.amount_cents || 0), 0);
+      const existingCredits = (existingTxs || []).filter((tx: any) => tx.type === "credit");
+      const creditsTotal = existingCredits.reduce((sum: number, tx: any) => sum + (tx.amount_cents || 0), 0);
+      const debitsTotal = (existingTxs || []).filter((tx: any) => tx.type === "debit").reduce((sum: number, tx: any) => sum + (tx.amount_cents || 0), 0);
+      const existingTotal = Math.max(0, creditsTotal - debitsTotal);
 
       if (isInvoice) {
         // Update company_invoices
