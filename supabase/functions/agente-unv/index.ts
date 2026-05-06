@@ -784,10 +784,16 @@ async function forwardToEvolutionWebhook(rawBody: unknown): Promise<void> {
 }
 
 // ============ TELEGRAM ============
-const TELEGRAM_TOKEN = Deno.env.get("TELEGRAM_TOKEN") ?? "8731972632:AAFUT8lkyxYrSaouq5lew9p9N-kCgsZdl5U";
+const TELEGRAM_TOKENS: Record<AgentType, string> = {
+  financeiro: Deno.env.get("TELEGRAM_TOKEN_FINANCEIRO") ?? "8731972632:AAFUT8lkyxYrSaouq5lew9p9N-kCgsZdl5U",
+  crm:        Deno.env.get("TELEGRAM_TOKEN_CRM")        ?? "",
+  projetos:   Deno.env.get("TELEGRAM_TOKEN_PROJETOS")   ?? "",
+};
 
-async function sendTelegram(chatId: number, text: string): Promise<void> {
-  await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+async function sendTelegram(chatId: number, text: string, agentType: AgentType): Promise<void> {
+  const token = TELEGRAM_TOKENS[agentType];
+  if (!token) return;
+  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown" }),
@@ -797,7 +803,7 @@ async function sendTelegram(chatId: number, text: string): Promise<void> {
 // ============ HANDLER PRINCIPAL ============
 Deno.serve(async (req) => {
   if (req.method === "GET") {
-    return new Response(JSON.stringify({ ok: true, version: "1.4-telegram" }), {
+    return new Response(JSON.stringify({ ok: true, version: "1.5-telegram-3bots" }), {
       status: 200, headers: { "Content-Type": "application/json" },
     });
   }
@@ -815,16 +821,20 @@ Deno.serve(async (req) => {
 
       if (!text.trim() || !chatId) return new Response("OK", { status: 200 });
 
-      const agentType = detectAgent(text);
+      // Verifica se a URL tem ?agent=xxx (bot dedicado) ou detecta pelo texto
+      const url = new URL(req.url);
+      const agentParam = url.searchParams.get("agent") as AgentType | null;
+      const agentType: AgentType | null = agentParam ?? detectAgent(text);
+
       if (!agentType) return new Response("OK", { status: 200 });
 
       EdgeRuntime.waitUntil((async () => {
         try {
           const reply = await callAgent(agentType, text);
-          await sendTelegram(chatId, reply);
+          await sendTelegram(chatId, reply, agentType);
         } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          await sendTelegram(chatId, `Erro: ${msg.slice(0, 300)}`);
+          const errMsg = err instanceof Error ? err.message : String(err);
+          await sendTelegram(chatId, `Erro: ${errMsg.slice(0, 300)}`, agentType);
         }
       })());
 
