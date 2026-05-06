@@ -62,12 +62,20 @@ export default function UNVProfileEmployeesPage() {
         supabase
           .from("profile_employees")
           .select(
-            "id,full_name,email,phone,avatar_url,status,employee_type,contract_type,hire_date,position_id,profile_positions(id,title)",
+            "id,full_name,email,phone,avatar_url,status,employee_type,contract_type,hire_date,position_id,staff_id,profile_positions(id,title)",
           )
-          .order("full_name"),
+          .order("created_at", { ascending: false }),
         supabase.from("profile_positions").select("id,title").order("title"),
       ]);
-      setList((emps || []) as any);
+      // Deduplica por staff_id mantendo o registro mais antigo
+      const seen = new Set<string>();
+      const deduped = (emps || []).filter((e: any) => {
+        const key = e.staff_id || e.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      setList(deduped as any);
       setPositions((pos || []) as any);
       setLoading(false);
     })();

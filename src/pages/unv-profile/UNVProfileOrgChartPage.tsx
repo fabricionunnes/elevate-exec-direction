@@ -79,21 +79,58 @@ function Tree({
   nodes,
   parentId = null,
   onEdit,
+  isRoot = false,
 }: {
   nodes: Node[];
   parentId?: string | null;
   onEdit: (n: Node) => void;
+  isRoot?: boolean;
 }) {
   const children = nodes.filter((n) => (n.manager_id || null) === parentId);
   if (children.length === 0) return null;
+
   return (
-    <div className="flex gap-4 justify-center flex-wrap">
-      {children.map((c) => (
-        <div key={c.id} className="flex flex-col items-center">
-          <NodeCard node={c} onEdit={onEdit} />
-          <Tree nodes={nodes} parentId={c.id} onEdit={onEdit} />
-        </div>
-      ))}
+    <div className="flex flex-col items-center">
+      {/* Linha descendo do pai */}
+      {!isRoot && <div className="w-px h-6 bg-border" />}
+
+      <div className="flex items-start justify-center gap-0">
+        {children.map((child, index) => {
+          const hasChildren = nodes.some((n) => n.manager_id === child.id);
+          const isFirst = index === 0;
+          const isLast = index === children.length - 1;
+          const isSingle = children.length === 1;
+
+          return (
+            <div key={child.id} className="flex flex-col items-center">
+              {/* Conector horizontal superior */}
+              {!isSingle && (
+                <div className="flex w-full h-6 items-end">
+                  <div
+                    className={`h-px bg-border flex-1 ${isFirst ? "invisible" : ""}`}
+                    style={{ minWidth: 32 }}
+                  />
+                  <div className="w-px h-6 bg-border" />
+                  <div
+                    className={`h-px bg-border flex-1 ${isLast ? "invisible" : ""}`}
+                    style={{ minWidth: 32 }}
+                  />
+                </div>
+              )}
+
+              {/* Card */}
+              <div className="px-3">
+                <NodeCard node={child} onEdit={onEdit} />
+              </div>
+
+              {/* Filhos recursivos */}
+              {hasChildren && (
+                <Tree nodes={nodes} parentId={child.id} onEdit={onEdit} />
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -110,16 +147,24 @@ export default function UNVProfileOrgChartPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("profile_employees")
-      .select("id, full_name, avatar_url, manager_id, profile_positions(title)")
+      .select("id, full_name, avatar_url, manager_id, staff_id, profile_positions(title)")
       .eq("status", "active")
-      .order("full_name");
+      .order("created_at", { ascending: false });
     if (error) {
       toast.error("Erro ao carregar: " + error.message);
       setLoading(false);
       return;
     }
+    // Deduplica por staff_id mantendo o mais recente (created_at DESC já aplicado)
+    const seen = new Set<string>();
+    const deduped = (data || []).filter((d: any) => {
+      const key = d.staff_id || d.id;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     setNodes(
-      (data || []).map((d: any) => ({
+      deduped.map((d: any) => ({
         id: d.id,
         full_name: d.full_name,
         avatar_url: d.avatar_url,
@@ -236,7 +281,7 @@ export default function UNVProfileOrgChartPage() {
         <>
           {/* Árvore */}
           <div className="overflow-auto pb-6">
-            <Tree nodes={normalizedNodes} parentId={null} onEdit={setEditing} />
+            <Tree nodes={normalizedNodes} parentId={null} onEdit={setEditing} isRoot={true} />
           </div>
 
           {/* Painel de não-vinculados (sem subordinados e sem gestor) */}
