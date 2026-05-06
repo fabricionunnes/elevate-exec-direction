@@ -910,7 +910,22 @@ async function saveHistory(chatId: number, agentType: AgentType, history: ChatMe
 // ============ HANDLER PRINCIPAL ============
 Deno.serve(async (req) => {
   if (req.method === "GET") {
-    return new Response(JSON.stringify({ ok: true, version: "1.5-telegram-3bots" }), {
+    // ?debug=crm ou ?debug=projetos testa o agente de forma síncrona
+    const debugAgent = new URL(req.url).searchParams.get("debug") as AgentType | null;
+    if (debugAgent && ["financeiro","crm","projetos"].includes(debugAgent)) {
+      try {
+        const reply = await callAgent(debugAgent, "qual sua função e o que você consegue fazer?");
+        return new Response(JSON.stringify({ ok: true, agent: debugAgent, reply: reply.slice(0, 500) }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return new Response(JSON.stringify({ ok: false, agent: debugAgent, error: msg }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+    return new Response(JSON.stringify({ ok: true, version: "1.6-debug" }), {
       status: 200, headers: { "Content-Type": "application/json" },
     });
   }
