@@ -741,18 +741,40 @@ async function sendWhatsApp(to: string, text: string): Promise<void> {
   });
 }
 
+// URL da evolution-webhook original — recebe tudo que não é comando de agente
+const EVOLUTION_WEBHOOK_URL = `${NEXUS_URL}/evolution-webhook`;
+const EVOLUTION_WEBHOOK_TOKEN = Deno.env.get("EVOLUTION_WEBHOOK_TOKEN") ?? "";
+
+// ============ FORWARD PARA EVOLUTION-WEBHOOK ============
+async function forwardToEvolutionWebhook(rawBody: unknown): Promise<void> {
+  await fetch(EVOLUTION_WEBHOOK_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(EVOLUTION_WEBHOOK_TOKEN ? { authorization: `Bearer ${EVOLUTION_WEBHOOK_TOKEN}` } : {}),
+    },
+    body: JSON.stringify(rawBody),
+  });
+}
+
 // ============ HANDLER PRINCIPAL ============
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("OK", { status: 200 });
 
   try {
-    const body = await req.json();
+    const rawBody = await req.json();
 
-    // Aceita apenas mensagens recebidas
-    if (body.event !== "messages.upsert") return new Response("OK", { status: 200 });
+    // Repassa eventos que não são mensagens direto para evolution-webhook
+    if (rawBody.event !== "messages.upsert") {
+      EdgeRuntime.waitUntil(forwardToEvolutionWebhook(rawBody));
+      return new Response("OK", { status: 200 });
+    }
 
-    const data = body.data;
-    if (!data || data.key?.fromMe) return new Response("OK", { status: 200 });
+    const data = rawBody.data;
+    if (!data || data.key?.fromMe) {
+      EdgeRuntime.waitUntil(forwardToEvolutionWebhook(rawBody));
+      return new Response("OK", { status: 200 });
+    }
 
     // Extrai texto (suporta mensagens simples e com formatação)
     const text: string =
@@ -760,24 +782,24 @@ Deno.serve(async (req) => {
       data.message?.extendedTextMessage?.text ||
       "";
 
-    if (!text.trim()) return new Response("OK", { status: 200 });
+    const from: string = data.key?.remoteJid ?? "";
 
-    const from: string = data.key?.remoteJid;
-    if (!from) return new Response("OK", { status: 200 });
+    if (!text.trim() || !from) {
+      EdgeRuntime.waitUntil(forwardToEvolutionWebhook(rawBody));
+      return new Response("OK", { status: 200 });
+    }
 
     const agentType = detectAgent(text);
 
-    // Processa em background para responder o webhook rápido
     EdgeRuntime.waitUntil(
       (async () => {
         if (!agentType) {
-          await sendWhatsApp(
-            from,
-            "Olá! Fale com um dos agentes:\n\n*Noah* — Financeiro\n*André* — CRM Comercial\n*Melissa* — Projetos e clientes\n\nEx: _\"Noah, qual o saldo atual?\"_"
-          );
+          // Não é comando de agente — repassa para evolution-webhook original
+          await forwardToEvolutionWebhook(rawBody);
           return;
         }
 
+        // É comando de agente — processa com Claude
         const reply = await callAgent(agentType, text);
         await sendWhatsApp(from, reply);
       })()
