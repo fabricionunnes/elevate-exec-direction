@@ -783,22 +783,23 @@ async function forwardToEvolutionWebhook(rawBody: unknown): Promise<void> {
   });
 }
 
+// ============ TELEGRAM ============
+const TELEGRAM_TOKEN = Deno.env.get("TELEGRAM_TOKEN") ?? "8731972632:AAFUT8lkyxYrSaouq5lew9p9N-kCgsZdl5U";
+
+async function sendTelegram(chatId: number, text: string): Promise<void> {
+  await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown" }),
+  });
+}
+
 // ============ HANDLER PRINCIPAL ============
 Deno.serve(async (req) => {
-  // GET — diagnóstico de secrets (sem expor valores)
   if (req.method === "GET") {
-    return new Response(JSON.stringify({
-      ok: true,
-      secrets: {
-        CLAUDE_API_KEY: !!CLAUDE_API_KEY,
-        EVOLUTION_URL: EVOLUTION_URL,
-        EVOLUTION_API_KEY: !!EVOLUTION_API_KEY,
-        EVOLUTION_INSTANCE: EVOLUTION_INSTANCE || "(vazio)",
-        SUPABASE_ANON_KEY: !!SUPABASE_ANON_KEY,
-        NEXUS_KEY_FINANCEIRO: !!NEXUS_KEY_FINANCEIRO,
-        NEXUS_KEY_DIRETOR: !!NEXUS_KEY_DIRETOR,
-      }
-    }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: true, version: "1.4-telegram" }), {
+      status: 200, headers: { "Content-Type": "application/json" },
+    });
   }
 
   if (req.method !== "POST") return new Response("OK", { status: 200 });
@@ -806,35 +807,40 @@ Deno.serve(async (req) => {
   try {
     const rawBody = await req.json();
 
-    const eventNorm = (rawBody.event || "").toUpperCase().replace(/\./g, "_");
+    // ── TELEGRAM ──
+    if (rawBody.message) {
+      const msg = rawBody.message;
+      const chatId: number = msg.chat?.id;
+      const text: string = msg.text ?? "";
 
-    // webhookBase64:true faz o Stevo enviar rawBody.data como string base64
-    // Decodifica se necessário para garantir que data seja sempre um objeto
-    let data = rawBody.data;
-    if (typeof data === "string") {
-      try {
-        data = JSON.parse(atob(data));
-      } catch {
-        console.error("WEBHOOK_BASE64_DECODE_ERR", data.slice(0, 100));
-        return new Response("OK", { status: 200 });
-      }
+      if (!text.trim() || !chatId) return new Response("OK", { status: 200 });
+
+      const agentType = detectAgent(text);
+      if (!agentType) return new Response("OK", { status: 200 });
+
+      EdgeRuntime.waitUntil((async () => {
+        try {
+          const reply = await callAgent(agentType, text);
+          await sendTelegram(chatId, reply);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          await sendTelegram(chatId, `Erro: ${msg.slice(0, 300)}`);
+        }
+      })());
+
+      return new Response("OK", { status: 200 });
     }
 
-    console.log("WEBHOOK_IN", JSON.stringify({
-      event: rawBody.event,
-      eventNorm,
-      dataType: typeof rawBody.data,
-      fromMe: data?.key?.fromMe,
-      remoteJid: data?.key?.remoteJid,
-      remoteJidAlt: data?.key?.remoteJidAlt,
-      addressingMode: data?.key?.addressingMode,
-      textPreview: (data?.message?.conversation || data?.message?.extendedTextMessage?.text || "").slice(0, 60),
-    }));
-
-    // Repassa eventos que não são mensagens direto para evolution-webhook
+    // ── WHATSAPP (Evolution) ──
+    const eventNorm = (rawBody.event || "").toUpperCase().replace(/\./g, "_");
     if (eventNorm !== "MESSAGES_UPSERT") {
       EdgeRuntime.waitUntil(forwardToEvolutionWebhook(rawBody));
       return new Response("OK", { status: 200 });
+    }
+
+    let data = rawBody.data;
+    if (typeof data === "string") {
+      try { data = JSON.parse(atob(data)); } catch { return new Response("OK", { status: 200 }); }
     }
 
     if (!data || data.key?.fromMe) {
@@ -842,56 +848,38 @@ Deno.serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // Extrai texto (suporta mensagens simples e com formatação)
     const text: string =
       data.message?.conversation ||
       data.message?.extendedTextMessage?.text ||
       "";
 
-    // LID addressing (novo formato WhatsApp): usa remoteJidAlt quando disponível
     const from: string =
       (data.key?.addressingMode === "lid" && data.key?.remoteJidAlt)
         ? data.key.remoteJidAlt
         : (data.key?.remoteJid ?? "");
 
-    console.log("PARSED", JSON.stringify({ text: text.slice(0, 50), from, agentDetected: detectAgent(text) }));
-
     if (!text.trim() || !from) {
-      console.log("DISCARD: texto ou from vazio");
       EdgeRuntime.waitUntil(forwardToEvolutionWebhook(rawBody));
       return new Response("OK", { status: 200 });
     }
 
     const agentType = detectAgent(text);
-
     if (!agentType) {
-      // Não é comando de agente — repassa para evolution-webhook (async, sem bloquear)
       EdgeRuntime.waitUntil(forwardToEvolutionWebhook(rawBody));
       return new Response("OK", { status: 200 });
     }
 
-    // Processa agente de forma síncrona — retorna OK só depois de enviar resposta
-    let debugResult = "ok";
-    try {
-      const reply = await callAgent(agentType, text);
-      debugResult = `reply_ok:${reply.slice(0, 100)}`;
+    EdgeRuntime.waitUntil((async () => {
       try {
+        const reply = await callAgent(agentType, text);
         await sendWhatsApp(from, reply);
-        debugResult += "|whatsapp_ok";
-      } catch (we) {
-        debugResult += `|whatsapp_err:${we instanceof Error ? we.message : String(we)}`;
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        await sendWhatsApp(from, `[ERRO] ${errMsg.slice(0, 300)}`);
       }
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      debugResult = `agent_err:${errMsg}`;
-      console.error("Erro no agente:", errMsg);
-      try {
-        await sendWhatsApp(from, `[ERRO AGENTE] ${errMsg.slice(0, 300)}`);
-        debugResult += "|err_whatsapp_ok";
-      } catch (we2) {
-        debugResult += `|err_whatsapp_err:${we2 instanceof Error ? we2.message : String(we2)}`;
-      }
-    }
+    })());
+
+    return new Response("OK", { status: 200 });
 
     return new Response(debugResult, { status: 200 });
   } catch (err) {
