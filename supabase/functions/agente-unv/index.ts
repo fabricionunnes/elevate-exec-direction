@@ -429,8 +429,8 @@ Regras:
     tools: FINANCIAL_TOOLS,
   },
   crm: {
-    name: "André",
-    systemPrompt: `Você é André, agente de CRM da UNV Holdings.
+    name: "Sophia",
+    systemPrompt: `Você é Sophia, agente de CRM da UNV Holdings.
 Você gerencia o pipeline comercial: leads, reuniões, atividades e negociações.
 
 Regras:
@@ -466,7 +466,7 @@ function detectAgent(message: string): AgentType | null {
   const lower = message.toLowerCase().trim();
 
   if (lower.startsWith("noah")) return "financeiro";
-  if (lower.startsWith("andré") || lower.startsWith("andre")) return "crm";
+  if (lower.startsWith("sophia")) return "crm";
   if (lower.startsWith("melissa")) return "projetos";
 
   const financialKw = ["saldo", "financeiro", "fatura", "receber", "pagar", "inadimplente", "dre", "fluxo de caixa", "mrr", "receita", "despesa", "cobrança"];
