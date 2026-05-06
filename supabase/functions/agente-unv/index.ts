@@ -785,9 +785,9 @@ async function forwardToEvolutionWebhook(rawBody: unknown): Promise<void> {
 
 // ============ TELEGRAM ============
 const TELEGRAM_TOKENS: Record<AgentType, string> = {
-  financeiro: Deno.env.get("TELEGRAM_TOKEN_FINANCEIRO") ?? "8731972632:AAFUT8lkyxYrSaouq5lew9p9N-kCgsZdl5U",
-  crm:        Deno.env.get("TELEGRAM_TOKEN_CRM")        ?? "",
-  projetos:   Deno.env.get("TELEGRAM_TOKEN_PROJETOS")   ?? "",
+  financeiro: Deno.env.get("TELEGRAM_TOKEN_FINANCEIRO") ?? "8302241725:AAG9FT9vUtWPhs4zE-0P2tp5-LJCnBorQtE",
+  crm:        Deno.env.get("TELEGRAM_TOKEN_CRM")        ?? "8690436126:AAED3kFZgonruvAZg9wVYt_ltcQ2fqGL_zI",
+  projetos:   Deno.env.get("TELEGRAM_TOKEN_PROJETOS")   ?? "8731972632:AAFUT8lkyxYrSaouq5lew9p9N-kCgsZdl5U",
 };
 
 async function sendTelegram(chatId: number, text: string, agentType: AgentType): Promise<void> {
