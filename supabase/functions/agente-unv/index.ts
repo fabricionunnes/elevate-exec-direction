@@ -814,24 +814,23 @@ Deno.serve(async (req) => {
 
     const agentType = detectAgent(text);
 
-    EdgeRuntime.waitUntil(
-      (async () => {
-        try {
-          if (!agentType) {
-            await forwardToEvolutionWebhook(rawBody);
-            return;
-          }
-          const reply = await callAgent(agentType, text);
-          await sendWhatsApp(from, reply);
-        } catch (err) {
-          const errMsg = err instanceof Error ? err.message : String(err);
-          console.error("Erro no agente:", errMsg);
-          try {
-            await sendWhatsApp(from, `[ERRO AGENTE] ${errMsg.slice(0, 300)}`);
-          } catch (_) { /* ignore */ }
-        }
-      })()
-    );
+    if (!agentType) {
+      // Não é comando de agente — repassa para evolution-webhook (async, sem bloquear)
+      EdgeRuntime.waitUntil(forwardToEvolutionWebhook(rawBody));
+      return new Response("OK", { status: 200 });
+    }
+
+    // Processa agente de forma síncrona — retorna OK só depois de enviar resposta
+    try {
+      const reply = await callAgent(agentType, text);
+      await sendWhatsApp(from, reply);
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error("Erro no agente:", errMsg);
+      try {
+        await sendWhatsApp(from, `[ERRO AGENTE] ${errMsg.slice(0, 300)}`);
+      } catch (_) { /* ignore */ }
+    }
 
     return new Response("OK", { status: 200 });
   } catch (err) {
