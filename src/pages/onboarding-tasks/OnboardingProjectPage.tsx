@@ -1137,7 +1137,7 @@ const OnboardingProjectPage = () => {
         />
       )}
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Support Banner - Shows when client is waiting */}
         {projectId && <ProjectSupportBanner projectId={projectId} />}
         
@@ -1151,7 +1151,7 @@ const OnboardingProjectPage = () => {
               <div className="flex flex-col min-w-0 flex-1">
                 <NexusHeader />
                 {project.onboarding_company?.name && (
-                  <p className="text-xs sm:text-sm text-muted-foreground ml-10 sm:ml-14 truncate">{project.onboarding_company.name}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground ml-11 sm:ml-14 truncate">{project.onboarding_company.name}</p>
                 )}
               </div>
             </div>
