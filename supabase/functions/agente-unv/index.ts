@@ -1,10 +1,10 @@
-// agente-unv v1.2
+// agente-unv v1.3
 import Anthropic from "npm:@anthropic-ai/sdk";
 
 // ============ ENV VARS ============
 const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY") ?? "";
-// EVOLUTION_URL: usa secret específico primeiro, depois fallback para evo07 (evo13 tem problema de TLS)
-const EVOLUTION_URL = Deno.env.get("EVOLUTION_URL") ?? "https://evo07.stevo.chat";
+// EVOLUTION_URL: secret EVOLUTION_URL aponta para evo13 (TLS quebrado) — ignora e força evo07
+const EVOLUTION_URL = "https://evo07.stevo.chat";
 const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
 const EVOLUTION_INSTANCE = Deno.env.get("EVOLUTION_INSTANCE") ?? "fabricionunnes";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "";
@@ -791,7 +791,7 @@ Deno.serve(async (req) => {
       ok: true,
       secrets: {
         CLAUDE_API_KEY: !!CLAUDE_API_KEY,
-        EVOLUTION_URL: !!EVOLUTION_URL,
+        EVOLUTION_URL: EVOLUTION_URL,
         EVOLUTION_API_KEY: !!EVOLUTION_API_KEY,
         EVOLUTION_INSTANCE: EVOLUTION_INSTANCE || "(vazio)",
         SUPABASE_ANON_KEY: !!SUPABASE_ANON_KEY,
