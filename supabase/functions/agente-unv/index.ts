@@ -806,15 +806,28 @@ Deno.serve(async (req) => {
   try {
     const rawBody = await req.json();
 
-    // Repassa eventos que não são mensagens direto para evolution-webhook
-    // Evolution envia "MESSAGES_UPSERT" (maiúsculo) ou "messages.upsert" (minúsculo)
+    // LOG DE DIAGNÓSTICO — remover após confirmar funcionamento
     const eventNorm = (rawBody.event || "").toUpperCase().replace(/\./g, "_");
+    const data = rawBody.data;
+    console.log("WEBHOOK_IN", JSON.stringify({
+      event: rawBody.event,
+      eventNorm,
+      fromMe: data?.key?.fromMe,
+      remoteJid: data?.key?.remoteJid,
+      remoteJidAlt: data?.key?.remoteJidAlt,
+      addressingMode: data?.key?.addressingMode,
+      msgType: data?.messageType,
+      hasConversation: !!data?.message?.conversation,
+      hasExtended: !!data?.message?.extendedTextMessage,
+      textPreview: (data?.message?.conversation || data?.message?.extendedTextMessage?.text || "").slice(0, 50),
+    }));
+
+    // Repassa eventos que não são mensagens direto para evolution-webhook
     if (eventNorm !== "MESSAGES_UPSERT") {
       EdgeRuntime.waitUntil(forwardToEvolutionWebhook(rawBody));
       return new Response("OK", { status: 200 });
     }
 
-    const data = rawBody.data;
     if (!data || data.key?.fromMe) {
       EdgeRuntime.waitUntil(forwardToEvolutionWebhook(rawBody));
       return new Response("OK", { status: 200 });
@@ -832,7 +845,10 @@ Deno.serve(async (req) => {
         ? data.key.remoteJidAlt
         : (data.key?.remoteJid ?? "");
 
+    console.log("PARSED", JSON.stringify({ text: text.slice(0, 50), from, agentDetected: detectAgent(text) }));
+
     if (!text.trim() || !from) {
+      console.log("DISCARD: texto ou from vazio");
       EdgeRuntime.waitUntil(forwardToEvolutionWebhook(rawBody));
       return new Response("OK", { status: 200 });
     }
