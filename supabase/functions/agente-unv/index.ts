@@ -766,7 +766,9 @@ Deno.serve(async (req) => {
     const rawBody = await req.json();
 
     // Repassa eventos que não são mensagens direto para evolution-webhook
-    if (rawBody.event !== "messages.upsert") {
+    // Evolution envia "MESSAGES_UPSERT" (maiúsculo) ou "messages.upsert" (minúsculo)
+    const eventNorm = (rawBody.event || "").toUpperCase().replace(/\./g, "_");
+    if (eventNorm !== "MESSAGES_UPSERT") {
       EdgeRuntime.waitUntil(forwardToEvolutionWebhook(rawBody));
       return new Response("OK", { status: 200 });
     }
