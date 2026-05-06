@@ -821,18 +821,29 @@ Deno.serve(async (req) => {
     }
 
     // Processa agente de forma síncrona — retorna OK só depois de enviar resposta
+    let debugResult = "ok";
     try {
       const reply = await callAgent(agentType, text);
-      await sendWhatsApp(from, reply);
+      debugResult = `reply_ok:${reply.slice(0, 100)}`;
+      try {
+        await sendWhatsApp(from, reply);
+        debugResult += "|whatsapp_ok";
+      } catch (we) {
+        debugResult += `|whatsapp_err:${we instanceof Error ? we.message : String(we)}`;
+      }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
+      debugResult = `agent_err:${errMsg}`;
       console.error("Erro no agente:", errMsg);
       try {
         await sendWhatsApp(from, `[ERRO AGENTE] ${errMsg.slice(0, 300)}`);
-      } catch (_) { /* ignore */ }
+        debugResult += "|err_whatsapp_ok";
+      } catch (we2) {
+        debugResult += `|err_whatsapp_err:${we2 instanceof Error ? we2.message : String(we2)}`;
+      }
     }
 
-    return new Response("OK", { status: 200 });
+    return new Response(debugResult, { status: 200 });
   } catch (err) {
     console.error("Erro no handler:", err);
     return new Response("OK", { status: 200 });
