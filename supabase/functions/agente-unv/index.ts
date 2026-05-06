@@ -693,13 +693,27 @@ async function callAgent(agentType: AgentType, userMessage: string): Promise<str
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: userMessage }];
 
   for (let i = 0; i < 10; i++) {
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1024,
-      system: config.systemPrompt,
-      tools: config.tools,
-      messages,
-    });
+    let response!: Anthropic.Message;
+    // Retry até 3x em caso de rate limit (429)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        response = await anthropic.messages.create({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1024,
+          system: config.systemPrompt,
+          tools: config.tools,
+          messages,
+        });
+        break;
+      } catch (err: unknown) {
+        const status = (err as { status?: number }).status;
+        if (status === 429 && attempt < 2) {
+          await new Promise((r) => setTimeout(r, (attempt + 1) * 10000));
+          continue;
+        }
+        throw err;
+      }
+    }
 
     if (response.stop_reason === "end_turn") {
       const text = response.content.find((c) => c.type === "text");
