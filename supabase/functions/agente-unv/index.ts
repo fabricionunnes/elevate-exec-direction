@@ -816,15 +816,20 @@ Deno.serve(async (req) => {
 
     EdgeRuntime.waitUntil(
       (async () => {
-        if (!agentType) {
-          // Não é comando de agente — repassa para evolution-webhook original
-          await forwardToEvolutionWebhook(rawBody);
-          return;
+        try {
+          if (!agentType) {
+            await forwardToEvolutionWebhook(rawBody);
+            return;
+          }
+          const reply = await callAgent(agentType, text);
+          await sendWhatsApp(from, reply);
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          console.error("Erro no agente:", errMsg);
+          try {
+            await sendWhatsApp(from, `[ERRO AGENTE] ${errMsg.slice(0, 300)}`);
+          } catch (_) { /* ignore */ }
         }
-
-        // É comando de agente — processa com Claude
-        const reply = await callAgent(agentType, text);
-        await sendWhatsApp(from, reply);
       })()
     );
 
