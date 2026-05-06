@@ -1,15 +1,15 @@
-// agente-unv v1.1
+// agente-unv v1.2
 import Anthropic from "npm:@anthropic-ai/sdk";
 
 // ============ ENV VARS ============
-const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY")!;
-const EVOLUTION_URL = Deno.env.get("EVOLUTION_URL")!;
-const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY")!;
-const EVOLUTION_INSTANCE = Deno.env.get("EVOLUTION_INSTANCE")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY") ?? "";
+const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL") ?? Deno.env.get("EVOLUTION_URL") ?? "";
+const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
+const EVOLUTION_INSTANCE = Deno.env.get("EVOLUTION_INSTANCE") ?? "fabricionunnes";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "";
 const NEXUS_URL = "https://czmyjgdixwhpfasfugkm.supabase.co/functions/v1";
-const NEXUS_KEY_FINANCEIRO = Deno.env.get("NEXUS_KEY_FINANCEIRO")!;
-const NEXUS_KEY_DIRETOR = Deno.env.get("NEXUS_KEY_DIRETOR")!;
+const NEXUS_KEY_FINANCEIRO = Deno.env.get("NEXUS_KEY_FINANCEIRO") ?? "";
+const NEXUS_KEY_DIRETOR = Deno.env.get("NEXUS_KEY_DIRETOR") ?? "";
 
 const anthropic = new Anthropic({ apiKey: CLAUDE_API_KEY });
 
@@ -760,6 +760,22 @@ async function forwardToEvolutionWebhook(rawBody: unknown): Promise<void> {
 
 // ============ HANDLER PRINCIPAL ============
 Deno.serve(async (req) => {
+  // GET — diagnóstico de secrets (sem expor valores)
+  if (req.method === "GET") {
+    return new Response(JSON.stringify({
+      ok: true,
+      secrets: {
+        CLAUDE_API_KEY: !!CLAUDE_API_KEY,
+        EVOLUTION_URL: !!EVOLUTION_URL,
+        EVOLUTION_API_KEY: !!EVOLUTION_API_KEY,
+        EVOLUTION_INSTANCE: EVOLUTION_INSTANCE || "(vazio)",
+        SUPABASE_ANON_KEY: !!SUPABASE_ANON_KEY,
+        NEXUS_KEY_FINANCEIRO: !!NEXUS_KEY_FINANCEIRO,
+        NEXUS_KEY_DIRETOR: !!NEXUS_KEY_DIRETOR,
+      }
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
+
   if (req.method !== "POST") return new Response("OK", { status: 200 });
 
   try {
