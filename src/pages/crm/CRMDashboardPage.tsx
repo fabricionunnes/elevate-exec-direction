@@ -16,22 +16,31 @@ import {
   Clock,
   DollarSign,
   Target,
-  CalendarDays,
   ArrowUpRight,
   ArrowDownRight,
   Flame,
-  Zap
+  Zap,
+  CheckCircle2,
+  XCircle,
+  Activity,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import { getRemainingBusinessDaysInMonth } from "@/lib/businessDays";
 import { ptBR } from "date-fns/locale";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, PieChart, Pie } from "recharts";
+import {
+  BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell,
+  RadialBarChart, RadialBar, PolarAngleAxis,
+  CartesianGrid,
+} from "recharts";
 import { Link } from "react-router-dom";
 import { MeetingDetailCards, type MeetingEventDetail } from "@/components/crm/MeetingDetailCards";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CRMTrafficTab } from "@/components/crm/traffic/CRMTrafficTab";
 import { useSearchParams } from "react-router-dom";
 import { Megaphone, BarChart3 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface DashboardMetrics {
   newLeads: number;
@@ -53,6 +62,31 @@ interface StageData {
   value: number;
   color: string;
 }
+
+// Custom 3D bar shape for recharts
+const Bar3D = (props: any) => {
+  const { x, y, width, height, fill } = props;
+  if (!height || height <= 0) return null;
+  const depth = 6;
+  return (
+    <g>
+      {/* Front face */}
+      <rect x={x} y={y} width={width} height={height} fill={fill} rx={3} />
+      {/* Top face */}
+      <polygon
+        points={`${x},${y} ${x + depth},${y - depth} ${x + width + depth},${y - depth} ${x + width},${y}`}
+        fill={fill}
+        opacity={0.7}
+      />
+      {/* Right face */}
+      <polygon
+        points={`${x + width},${y} ${x + width + depth},${y - depth} ${x + width + depth},${y + height - depth} ${x + width},${y + height}`}
+        fill={fill}
+        opacity={0.5}
+      />
+    </g>
+  );
+};
 
 export const CRMDashboardPage = () => {
   const { staffRole, isAdmin, staffId } = useOutletContext<{ staffRole: string; isAdmin: boolean; staffId: string | null }>();
@@ -149,7 +183,6 @@ export const CRMDashboardPage = () => {
           leadsQuery = leadsQuery.eq("owner_staff_id", selectedOwner);
         }
 
-        // Closers/SDRs only see their own leads
         if (!isAdmin && staffId) {
           leadsQuery = leadsQuery.eq("owner_staff_id", staffId);
         }
@@ -168,14 +201,12 @@ export const CRMDashboardPage = () => {
           .gte("created_at", start.toISOString())
           .lte("created_at", end.toISOString());
 
-        // Closers/SDRs only see their own activities
         if (!isAdmin && staffId) {
           activitiesQuery = activitiesQuery.eq("responsible_staff_id", staffId);
         }
 
         const { data: activitiesData } = await activitiesQuery;
 
-        // Load meeting events from CRM card buttons
         let meetingEventsQuery = supabase
           .from("crm_meeting_events")
           .select(`
@@ -192,7 +223,6 @@ export const CRMDashboardPage = () => {
 
         const { data: meetingEventsData } = await meetingEventsQuery;
 
-        // Filter meeting events by owner if needed
         let filteredMeetingEvents = meetingEventsData || [];
         if (selectedOwner !== "all" && isAdmin) {
           filteredMeetingEvents = filteredMeetingEvents.filter(e => e.lead?.owner_staff_id === selectedOwner);
@@ -201,7 +231,6 @@ export const CRMDashboardPage = () => {
           filteredMeetingEvents = filteredMeetingEvents.filter(e => e.lead?.owner_staff_id === staffId);
         }
 
-        // Build meeting event details for detail cards (deduplicate by lead_id + event_type)
         const seenKeys = new Set<string>();
         const eventDetails: MeetingEventDetail[] = filteredMeetingEvents
           .filter(e => ["scheduled", "realized", "no_show", "out_of_icp"].includes(e.event_type))
@@ -222,7 +251,6 @@ export const CRMDashboardPage = () => {
           }));
         setMeetingEventDetails(eventDetails);
 
-        // Use meeting events for meeting counts (deduplicate by lead_id to avoid double-counting dual-credit events)
         const uniqueScheduledLeads = new Set(filteredMeetingEvents.filter(e => e.event_type === "scheduled").map(e => e.lead_id));
         const uniqueRealizedLeads = new Set(filteredMeetingEvents.filter(e => e.event_type === "realized").map(e => e.lead_id));
         const meScheduled = uniqueScheduledLeads.size;
@@ -239,14 +267,14 @@ export const CRMDashboardPage = () => {
         const meetingsScheduledFromActivities = filteredActivities.filter(a =>
           a.type === "meeting" && a.scheduled_at
         ).length;
-        
+
         const meetingsHeldFromActivities = filteredActivities.filter(a =>
           a.type === "meeting" && a.status === "completed"
         ).length;
 
         const meetingsScheduled = meScheduled > 0 ? meScheduled : meetingsScheduledFromActivities;
         const meetingsHeld = meRealized > 0 ? meRealized : meetingsHeldFromActivities;
-        
+
         const proposalsSent = filteredActivities.filter(a =>
           a.type === "proposal" || a.title?.toLowerCase().includes("proposta")
         ).length;
@@ -296,7 +324,6 @@ export const CRMDashboardPage = () => {
         }, 0);
 
         const pipelineValue = activeLeads.reduce((sum, lead) => sum + parseNumeric(lead.opportunity_value), 0);
-
         const totalWonValue = wonLeadsInPeriod.reduce((sum, l) => sum + parseNumeric(l.opportunity_value), 0);
 
         setMetrics({
@@ -307,8 +334,8 @@ export const CRMDashboardPage = () => {
           proposalsSent,
           won: wonLeadsInPeriod.length,
           lost: lostLeadsInPeriod.length,
-          conversionRate: leadsInPeriod.length > 0 
-            ? Math.round((wonLeadsInPeriod.length / leadsInPeriod.length) * 100) 
+          conversionRate: leadsInPeriod.length > 0
+            ? Math.round((wonLeadsInPeriod.length / leadsInPeriod.length) * 100)
             : 0,
           pipelineValue,
           forecast,
@@ -381,7 +408,7 @@ export const CRMDashboardPage = () => {
 
           const monthStart = startOfMonth(now);
           const monthEnd = endOfMonth(now);
-          
+
           const { data: salesData } = await supabase
             .from("crm_sales")
             .select("billing_value, closer_staff_id")
@@ -432,30 +459,35 @@ export const CRMDashboardPage = () => {
     ? Math.min(100, Math.round(((dailyGoal?.achieved ?? 0) / (dailyGoal?.monthlyTarget ?? 1)) * 100))
     : 0;
 
+  // Radial chart data for goal visualization
+  const radialData = [{ name: "Meta", value: progressPercent, fill: "#3b82f6" }];
+
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Carregando dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
-      {/* Header */}
+
+      {/* ── Header ─────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-rose-500 via-fuchsia-500 via-violet-500 to-cyan-500 bg-clip-text text-transparent drop-shadow-sm">
-            Dashboard Comercial
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Visão geral do seu funil de vendas • {format(new Date(), "dd 'de' MMMM, yyyy", { locale: ptBR })}
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard Comercial</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {format(new Date(), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
           </p>
         </div>
 
         <div className="flex flex-wrap gap-2">
           <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[130px] h-9 text-xs rounded-full border-border/50 bg-card shadow-sm">
+            <SelectTrigger className="w-[130px] h-9 text-xs bg-card border-border/60">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -466,7 +498,7 @@ export const CRMDashboardPage = () => {
           </Select>
 
           <Select value={selectedPipeline} onValueChange={setSelectedPipeline}>
-            <SelectTrigger className="w-[150px] h-9 text-xs rounded-full border-border/50 bg-card shadow-sm">
+            <SelectTrigger className="w-[150px] h-9 text-xs bg-card border-border/60">
               <SelectValue placeholder="Pipeline" />
             </SelectTrigger>
             <SelectContent>
@@ -479,7 +511,7 @@ export const CRMDashboardPage = () => {
 
           {isAdmin && (
             <Select value={selectedOwner} onValueChange={setSelectedOwner}>
-              <SelectTrigger className="w-[150px] h-9 text-xs rounded-full border-border/50 bg-card shadow-sm">
+              <SelectTrigger className="w-[150px] h-9 text-xs bg-card border-border/60">
                 <SelectValue placeholder="Responsável" />
               </SelectTrigger>
               <SelectContent>
@@ -493,347 +525,466 @@ export const CRMDashboardPage = () => {
         </div>
       </div>
 
+      {/* ── Tabs ──────────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="bg-card border border-border/40 shadow-sm">
-          <TabsTrigger value="overview" className="gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+        <TabsList className="bg-card border border-border/40 h-9">
+          <TabsTrigger value="overview" className="gap-1.5 text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <BarChart3 className="h-3.5 w-3.5" /> Visão Geral
           </TabsTrigger>
           {isAdmin && (
-            <TabsTrigger value="traffic" className="gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+            <TabsTrigger value="traffic" className="gap-1.5 text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Megaphone className="h-3.5 w-3.5" /> Tráfego Pago
             </TabsTrigger>
           )}
         </TabsList>
 
-        <TabsContent value="overview" className="mt-5 space-y-6">
-          {/* Daily Goal - Hero Card - Ultra Vibrant */}
-      <div className="relative overflow-hidden rounded-3xl p-[3px] shadow-2xl shadow-fuchsia-500/30" style={{ background: 'linear-gradient(135deg, #f43f5e, #d946ef, #8b5cf6, #3b82f6, #06b6d4, #10b981)' }}>
-        <div className="relative rounded-[21px] overflow-hidden" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 30%, #4a1942 60%, #1e293b 100%)' }}>
-          {/* Animated glow orbs */}
-          <div className="absolute top-[-40px] right-[-20px] h-80 w-80 rounded-full bg-fuchsia-500/30 blur-[100px] animate-pulse" />
-          <div className="absolute bottom-[-30px] left-[-30px] h-64 w-64 rounded-full bg-cyan-500/25 blur-[80px]" />
-          <div className="absolute top-1/3 left-1/3 h-40 w-40 rounded-full bg-amber-500/20 blur-[60px]" />
-          <div className="absolute bottom-1/4 right-1/4 h-32 w-32 rounded-full bg-emerald-500/20 blur-[50px]" />
-          
-          <div className="relative z-10 p-6">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
-              <div className="flex items-center gap-4">
-                <div className="p-4 rounded-2xl shadow-2xl shadow-orange-500/50" style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444, #ec4899)' }}>
-                  <Flame className="h-8 w-8 text-white drop-shadow-lg" />
+        {/* ════════════════════ OVERVIEW TAB ════════════════════ */}
+        <TabsContent value="overview" className="mt-5 space-y-5">
+
+          {/* ── Goal Hero ─────────────────────────────────────── */}
+          <div className="rounded-2xl overflow-hidden border border-border/50 bg-card shadow-sm">
+            <div className="grid lg:grid-cols-[1fr_auto] divide-y lg:divide-y-0 lg:divide-x divide-border/50">
+
+              {/* Left — progress visual */}
+              <div className="p-5 flex flex-col sm:flex-row sm:items-center gap-6">
+                {/* Radial gauge */}
+                <div className="relative shrink-0 w-32 h-32">
+                  <RadialBarChart
+                    width={128}
+                    height={128}
+                    innerRadius={44}
+                    outerRadius={60}
+                    data={radialData}
+                    startAngle={210}
+                    endAngle={-30}
+                  >
+                    <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
+                    <RadialBar
+                      dataKey="value"
+                      cornerRadius={6}
+                      background={{ fill: "hsl(var(--muted))" }}
+                      fill="#3b82f6"
+                    />
+                  </RadialBarChart>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-2xl font-black tabular-nums">{progressPercent}%</span>
+                    <span className="text-[9px] text-muted-foreground uppercase tracking-widest">da meta</span>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white">Meta Diária</h3>
-                  <p className="text-sm text-cyan-200/80">
-                    {dailyGoal?.businessDaysLeft ?? 0} dia{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''} úte{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 'is' : 'il'} restante{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''}
-                  </p>
+
+                {/* Text info */}
+                <div className="flex-1 min-w-0 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-blue-500/10">
+                      <Flame className="h-4 w-4 text-blue-500" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-base">Meta do Mês</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {dailyGoal?.businessDaysLeft ?? 0} dia{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''} útil{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 'eis' : ''} restante{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Segmented progress bar */}
+                  <div>
+                    <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
+                      <span>{formatCurrency(dailyGoal?.achieved ?? 0)} realizados</span>
+                      <span>Meta: {formatCurrency(dailyGoal?.monthlyTarget ?? 0)}</span>
+                    </div>
+                    <div className="h-3 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-blue-500 transition-all duration-700 relative"
+                        style={{ width: `${progressPercent}%` }}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/20 rounded-full" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-                <div className="rounded-2xl p-3.5 text-center border border-white/10 shadow-inner backdrop-blur-md" style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.1))' }}>
-                  <p className="text-[10px] text-blue-300/70 mb-1 uppercase tracking-wider font-medium">Meta do Mês</p>
-                  <p className="text-lg font-bold text-white">{formatCurrency(dailyGoal?.monthlyTarget ?? 0)}</p>
-                </div>
-                <div className="rounded-2xl p-3.5 text-center border border-emerald-400/20 shadow-inner backdrop-blur-md" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(6,182,212,0.1))' }}>
-                  <p className="text-[10px] text-emerald-300/70 mb-1 uppercase tracking-wider font-medium">Realizado</p>
-                  <p className="text-lg font-bold text-emerald-300">{formatCurrency(dailyGoal?.achieved ?? 0)}</p>
-                </div>
-                <div className="rounded-2xl p-3.5 text-center border border-rose-400/20 shadow-inner backdrop-blur-md" style={{ background: 'linear-gradient(135deg, rgba(244,63,94,0.15), rgba(217,70,239,0.1))' }}>
-                  <p className="text-[10px] text-rose-300/70 mb-1 uppercase tracking-wider font-medium">Falta</p>
-                  <p className="text-lg font-bold text-rose-300">{formatCurrency(dailyGoal?.remaining ?? 0)}</p>
-                </div>
-                <div className="rounded-2xl p-3.5 text-center border border-amber-400/30 shadow-lg backdrop-blur-md" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.25), rgba(239,68,68,0.15))' }}>
-                  <p className="text-[10px] text-amber-200/80 mb-1 uppercase tracking-wider font-bold">Vender/Dia</p>
-                  <p className="text-xl font-extrabold text-amber-300 drop-shadow-lg">{formatCurrency(dailyGoal?.dailyTarget ?? 0)}</p>
-                </div>
+
+              {/* Right — 4 stat boxes */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4 divide-x divide-y sm:divide-y-0 lg:divide-x-0 lg:divide-y xl:divide-y-0 xl:divide-x divide-border/50">
+                {[
+                  { label: "Meta do Mês", value: formatCurrency(dailyGoal?.monthlyTarget ?? 0), sub: "alvo total", color: "text-foreground" },
+                  { label: "Realizado", value: formatCurrency(dailyGoal?.achieved ?? 0), sub: "até hoje", color: "text-emerald-600 dark:text-emerald-400" },
+                  { label: "Falta", value: formatCurrency(dailyGoal?.remaining ?? 0), sub: "para bater", color: "text-rose-600 dark:text-rose-400" },
+                  { label: "Vender/Dia", value: formatCurrency(dailyGoal?.dailyTarget ?? 0), sub: "por dia útil", color: "text-blue-600 dark:text-blue-400" },
+                ].map((item, idx) => (
+                  <div key={idx} className="p-4 flex flex-col justify-center">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{item.label}</p>
+                    <p className={cn("text-lg font-black tabular-nums", item.color)}>{item.value}</p>
+                    <p className="text-[10px] text-muted-foreground">{item.sub}</p>
+                  </div>
+                ))}
               </div>
             </div>
-            
-            {/* Progress bar - rainbow */}
-            <div className="mt-6">
-              <div className="flex justify-between text-xs text-blue-200/60 mb-2">
-                <span>Progresso</span>
-                <span className="font-bold text-white text-sm">{progressPercent}%</span>
-              </div>
-              <div className="h-5 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm border border-white/10">
-                <div 
-                  className="h-full rounded-full transition-all duration-1000 ease-out relative"
-                  style={{ width: `${progressPercent}%`, background: 'linear-gradient(90deg, #ef4444, #f59e0b, #10b981, #3b82f6, #8b5cf6, #ec4899)' }}
+          </div>
+
+          {/* ── Activity KPIs ─────────────────────────────────── */}
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2.5 px-0.5">Atividade do Período</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {[
+                { icon: Users, label: "Leads Novos", value: metrics.newLeads, accent: "bg-blue-500/10 text-blue-600 dark:text-blue-400", border: "border-blue-500/20" },
+                { icon: Phone, label: "Trabalhados", value: metrics.workedLeads, accent: "bg-violet-500/10 text-violet-600 dark:text-violet-400", border: "border-violet-500/20" },
+                { icon: Calendar, label: "Reuniões Agend.", value: metrics.meetingsScheduled, accent: "bg-pink-500/10 text-pink-600 dark:text-pink-400", border: "border-pink-500/20" },
+                { icon: Calendar, label: "Reuniões Realiz.", value: metrics.meetingsHeld, accent: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400", border: "border-cyan-500/20" },
+                { icon: FileText, label: "Propostas", value: metrics.proposalsSent, accent: "bg-amber-500/10 text-amber-600 dark:text-amber-400", border: "border-amber-500/20" },
+                { icon: Trophy, label: "Ganhos", value: metrics.won, accent: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", border: "border-emerald-500/20" },
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  className={cn(
+                    "rounded-xl border bg-card p-4 flex flex-col gap-3 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200",
+                    item.border
+                  )}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-transparent rounded-full" />
-                  <div className="absolute right-0 top-0 h-full w-10 bg-gradient-to-l from-white/50 to-transparent rounded-full animate-pulse" />
+                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", item.accent)}>
+                    <item.icon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black tabular-nums">{item.value}</p>
+                    <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{item.label}</p>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Main Metrics - Vivid 3D Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {[
-          { icon: Users, label: "Leads Novos", value: metrics.newLeads, gradient: "linear-gradient(135deg, #3b82f6, #06b6d4)", shadow: "0 8px 32px rgba(59,130,246,0.4)", bg: "rgba(59,130,246,0.08)" },
-          { icon: Phone, label: "Trabalhados", value: metrics.workedLeads, gradient: "linear-gradient(135deg, #8b5cf6, #d946ef)", shadow: "0 8px 32px rgba(139,92,246,0.4)", bg: "rgba(139,92,246,0.08)" },
-          { icon: Calendar, label: "Reuniões Agend.", value: metrics.meetingsScheduled, gradient: "linear-gradient(135deg, #ec4899, #f43f5e)", shadow: "0 8px 32px rgba(236,72,153,0.4)", bg: "rgba(236,72,153,0.08)" },
-          { icon: Calendar, label: "Reuniões Realiz.", value: metrics.meetingsHeld, gradient: "linear-gradient(135deg, #06b6d4, #14b8a6)", shadow: "0 8px 32px rgba(6,182,212,0.4)", bg: "rgba(6,182,212,0.08)" },
-          { icon: FileText, label: "Propostas", value: metrics.proposalsSent, gradient: "linear-gradient(135deg, #f59e0b, #ef4444)", shadow: "0 8px 32px rgba(245,158,11,0.4)", bg: "rgba(245,158,11,0.08)" },
-          { icon: Trophy, label: "Ganhos", value: metrics.won, gradient: "linear-gradient(135deg, #10b981, #059669)", shadow: "0 8px 32px rgba(16,185,129,0.4)", bg: "rgba(16,185,129,0.08)" },
-        ].map((item, idx) => (
-          <div
-            key={idx}
-            className="group relative overflow-hidden rounded-2xl border border-white/10 dark:border-white/5 p-4 transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] cursor-default"
-            style={{ background: item.bg, boxShadow: `0 4px 16px rgba(0,0,0,0.06)` }}
-          >
-            {/* Top gradient bar */}
-            <div className="absolute top-0 left-0 h-1.5 w-full rounded-t-2xl" style={{ background: item.gradient }} />
-            {/* Glow orb */}
-            <div className="absolute -bottom-8 -right-8 h-24 w-24 rounded-full blur-2xl opacity-40 group-hover:opacity-70 transition-opacity" style={{ background: item.gradient }} />
-            <div className="relative z-10 flex flex-col gap-3">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white" style={{ background: item.gradient, boxShadow: item.shadow }}>
-                <item.icon className="h-5 w-5 drop-shadow" />
-              </div>
-              <div>
-                <p className="text-3xl font-black tracking-tight">{item.value}</p>
-                <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{item.label}</p>
-              </div>
+          {/* ── Meeting Detail Cards ───────────────────────────── */}
+          <MeetingDetailCards events={meetingEventDetails} />
+
+          {/* ── Financial KPIs ────────────────────────────────── */}
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2.5 px-0.5">Financeiro</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {[
+                {
+                  icon: TrendingUp,
+                  label: "Taxa de Conversão",
+                  value: `${metrics.conversionRate}%`,
+                  sub: `${metrics.won} ganhos / ${metrics.lost} perdidos`,
+                  iconClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+                  trend: metrics.conversionRate >= 30 ? "up" : "down",
+                },
+                {
+                  icon: Activity,
+                  label: "Valor no Pipeline",
+                  value: formatCurrency(metrics.pipelineValue),
+                  sub: "oportunidades ativas",
+                  iconClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+                  trend: null,
+                },
+                {
+                  icon: Target,
+                  label: "Forecast Ponderado",
+                  value: formatCurrency(metrics.forecast),
+                  sub: "por probabilidade",
+                  iconClass: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+                  trend: null,
+                },
+                {
+                  icon: DollarSign,
+                  label: "Receita no Período",
+                  value: formatCurrency(metrics.totalRevenue),
+                  sub: "negócios fechados",
+                  iconClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                  highlight: true,
+                  trend: "up",
+                },
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  className={cn(
+                    "rounded-xl border bg-card p-4 flex gap-4 items-start hover:-translate-y-0.5 hover:shadow-md transition-all duration-200",
+                    item.highlight ? "border-emerald-500/30 bg-emerald-500/[0.03]" : "border-border/60"
+                  )}
+                >
+                  <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5", item.iconClass)}>
+                    <item.icon className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground">{item.label}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <p className={cn("text-xl font-black tabular-nums truncate", item.highlight && "text-emerald-600 dark:text-emerald-400")}>
+                        {item.value}
+                      </p>
+                      {item.trend === "up" && <ChevronUp className="h-4 w-4 text-emerald-500 shrink-0" />}
+                      {item.trend === "down" && <ChevronDown className="h-4 w-4 text-rose-500 shrink-0" />}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{item.sub}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
-      </div>
 
-      {/* Meeting Detail Cards */}
-      <MeetingDetailCards events={meetingEventDetails} />
+          {/* ── Commission Card ───────────────────────────────── */}
+          {(staffRole === "closer" || staffRole === "sdr" || staffRole === "master") && (
+            <CRMCommissionCard staffId={staffId} staffRole={staffRole} isMaster={staffRole === "master"} />
+          )}
 
-      {/* Financial Metrics Row - Glassmorphism with vivid accents */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { icon: TrendingUp, label: "Taxa de Conversão", value: `${metrics.conversionRate}%`, gradient: "linear-gradient(135deg, #f59e0b, #ef4444)", bg: "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(239,68,68,0.06))", border: "rgba(245,158,11,0.3)", shadow: "0 8px 24px rgba(245,158,11,0.2)" },
-          { icon: DollarSign, label: "Valor no Pipeline", value: formatCurrency(metrics.pipelineValue), gradient: "linear-gradient(135deg, #3b82f6, #8b5cf6)", bg: "linear-gradient(135deg, rgba(59,130,246,0.12), rgba(139,92,246,0.06))", border: "rgba(59,130,246,0.3)", shadow: "0 8px 24px rgba(59,130,246,0.2)" },
-          { icon: Target, label: "Forecast Ponderado", value: formatCurrency(metrics.forecast), gradient: "linear-gradient(135deg, #06b6d4, #8b5cf6)", bg: "linear-gradient(135deg, rgba(6,182,212,0.12), rgba(139,92,246,0.06))", border: "rgba(6,182,212,0.3)", shadow: "0 8px 24px rgba(6,182,212,0.2)" },
-          { icon: DollarSign, label: "Receita no Período", value: formatCurrency(metrics.totalRevenue), gradient: "linear-gradient(135deg, #10b981, #06b6d4)", bg: "linear-gradient(135deg, rgba(16,185,129,0.15), rgba(6,182,212,0.08))", border: "rgba(16,185,129,0.4)", shadow: "0 8px 24px rgba(16,185,129,0.25)", highlight: true },
-        ].map((item, idx) => (
-          <div
-            key={idx}
-            className="group relative overflow-hidden rounded-2xl p-5 transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02]"
-            style={{ background: item.bg, border: `1px solid ${item.border}`, boxShadow: item.shadow }}
-          >
-            {/* Decorative orb */}
-            <div className="absolute -top-10 -right-10 h-28 w-28 rounded-full opacity-15 blur-2xl group-hover:opacity-30 transition-opacity" style={{ background: item.gradient }} />
-            <div className="relative z-10 flex items-start gap-3">
-              <div className="p-2.5 rounded-xl text-white shadow-xl" style={{ background: item.gradient }}>
-                <item.icon className="h-5 w-5 drop-shadow" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`font-black tracking-tight truncate text-2xl ${(item as any).highlight ? '' : ''}`} style={(item as any).highlight ? { background: 'linear-gradient(90deg, #10b981, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' } : {}}>
-                  {item.value}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">{item.label}</p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+          {/* ── Charts ────────────────────────────────────────── */}
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2.5 px-0.5">Análise</p>
+            <div className="grid md:grid-cols-2 gap-4">
 
-      {/* Commission Card */}
-      {(staffRole === "closer" || staffRole === "sdr" || staffRole === "master") && (
-        <CRMCommissionCard staffId={staffId} staffRole={staffRole} isMaster={staffRole === "master"} />
-      )}
-
-      {/* Charts */}
-      <div className="grid md:grid-cols-2 gap-4">
-        {/* Funnel Chart */}
-        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
-          <div className="absolute top-0 left-0 h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #8b5cf6, #ec4899, #f43f5e, #f59e0b)' }} />
-          <div className="absolute -top-20 -right-20 h-40 w-40 rounded-full bg-violet-500/10 blur-3xl" />
-          <div className="p-5 pb-2">
-            <h3 className="text-base font-bold flex items-center gap-2">
-              <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)' }}>
-                <Zap className="h-3.5 w-3.5" />
-              </div>
-              Funil por Etapa
-            </h3>
-          </div>
-          <div className="px-5 pb-5">
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stageData} layout="vertical">
-                  <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11 }} />
-                  <Tooltip 
-                    formatter={(value: number, name: string) => [
-                      name === "count" ? `${value} leads` : formatCurrency(value),
-                      name === "count" ? "Quantidade" : "Valor"
-                    ]}
-                    contentStyle={{ borderRadius: "16px", border: "none", boxShadow: "0 8px 32px rgba(0,0,0,0.16)", backdropFilter: "blur(8px)" }}
-                  />
-                  <Bar dataKey="count" radius={[0, 10, 10, 0]}>
-                    {stageData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* Loss Reasons */}
-        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
-          <div className="absolute top-0 left-0 h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #ef4444, #f43f5e, #ec4899, #d946ef)' }} />
-          <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-rose-500/10 blur-3xl" />
-          <div className="p-5 pb-2">
-            <h3 className="text-base font-bold flex items-center gap-2">
-              <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #ef4444, #ec4899)' }}>
-                <ArrowDownRight className="h-3.5 w-3.5" />
-              </div>
-              Motivos de Perda
-            </h3>
-          </div>
-          <div className="px-5 pb-5">
-            <div className="space-y-4">
-              {lossReasons.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  Nenhum lead perdido ainda 🎉
-                </p>
-              ) : (
-                lossReasons.map((reason, idx) => {
-                  const maxCount = lossReasons[0]?.count || 1;
-                  const pct = Math.round((reason.count / maxCount) * 100);
-                  const barColors = [
-                    'linear-gradient(90deg, #ef4444, #ec4899)',
-                    'linear-gradient(90deg, #f43f5e, #d946ef)',
-                    'linear-gradient(90deg, #f59e0b, #ef4444)',
-                    'linear-gradient(90deg, #8b5cf6, #ec4899)',
-                    'linear-gradient(90deg, #06b6d4, #3b82f6)',
-                  ];
-                  return (
-                    <div key={idx} className="space-y-1.5">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-semibold">{reason.name}</span>
-                        <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{ background: barColors[idx % barColors.length] }}>{reason.count}</span>
+              {/* Funnel Chart — 3D bars */}
+              <Card className="border-border/50 shadow-sm overflow-hidden">
+                <CardHeader className="pb-2 pt-4 px-5">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <div className="p-1.5 rounded-md bg-violet-500/10">
+                      <Zap className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                    </div>
+                    Funil por Etapa
+                    <Badge variant="secondary" className="ml-auto text-[10px]">{stageData.length} etapas</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-5 pb-5">
+                  {/* 3D perspective wrapper */}
+                  <div
+                    style={{
+                      perspective: "800px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        transform: "rotateX(4deg)",
+                        transformOrigin: "50% 100%",
+                      }}
+                    >
+                      <div className="h-[280px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={stageData} layout="vertical" margin={{ left: 8, right: 16, top: 4, bottom: 4 }}>
+                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" opacity={0.5} />
+                            <XAxis
+                              type="number"
+                              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              dataKey="name"
+                              type="category"
+                              width={90}
+                              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <Tooltip
+                              formatter={(value: number, name: string) => [
+                                name === "count" ? `${value} leads` : formatCurrency(value),
+                                name === "count" ? "Quantidade" : "Valor",
+                              ]}
+                              contentStyle={{
+                                borderRadius: "10px",
+                                border: "1px solid hsl(var(--border))",
+                                background: "hsl(var(--card))",
+                                boxShadow: "0 4px 24px rgba(0,0,0,0.12)",
+                                fontSize: 12,
+                              }}
+                              cursor={{ fill: "hsl(var(--muted))", opacity: 0.5 }}
+                            />
+                            <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={24} shape={<Bar3D />}>
+                              {stageData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
                       </div>
-                      <div className="h-3.5 bg-muted/60 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all relative"
-                          style={{ width: `${pct}%`, background: barColors[idx % barColors.length] }}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Loss Reasons */}
+              <Card className="border-border/50 shadow-sm overflow-hidden">
+                <CardHeader className="pb-2 pt-4 px-5">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <div className="p-1.5 rounded-md bg-rose-500/10">
+                      <XCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                    </div>
+                    Motivos de Perda
+                    <Badge variant="secondary" className="ml-auto text-[10px]">{lossReasons.length} motivos</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-5 pb-5">
+                  {lossReasons.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <CheckCircle2 className="h-8 w-8 text-emerald-500 mb-2 opacity-60" />
+                      <p className="text-sm text-muted-foreground">Nenhum lead perdido ainda</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 pt-1">
+                      {lossReasons.map((reason, idx) => {
+                        const maxCount = lossReasons[0]?.count || 1;
+                        const pct = Math.round((reason.count / maxCount) * 100);
+                        const colors = ["#ef4444", "#f97316", "#f59e0b", "#8b5cf6", "#06b6d4"];
+                        return (
+                          <div key={idx} className="space-y-1.5">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-medium truncate max-w-[70%]">{reason.name}</span>
+                              <span
+                                className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white ml-2"
+                                style={{ background: colors[idx % colors.length] }}
+                              >
+                                {reason.count}
+                              </span>
+                            </div>
+                            {/* 3D-style progress bar */}
+                            <div className="h-3 bg-muted rounded-full overflow-hidden relative">
+                              <div
+                                className="h-full rounded-full transition-all duration-700"
+                                style={{
+                                  width: `${pct}%`,
+                                  background: colors[idx % colors.length],
+                                  boxShadow: `0 2px 6px ${colors[idx % colors.length]}60`,
+                                }}
+                              >
+                                <div className="absolute inset-0 bg-gradient-to-b from-white/25 to-transparent rounded-full" style={{ width: `${pct}%` }} />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* ── Smart Lists ───────────────────────────────────── */}
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2.5 px-0.5">Atenção Necessária</p>
+            <div className="grid md:grid-cols-3 gap-4">
+
+              {/* Overdue Leads */}
+              <Card className="border-rose-500/20 shadow-sm">
+                <CardHeader className="pb-2 pt-4 px-5">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <div className="p-1.5 rounded-md bg-rose-500/10">
+                      <AlertTriangle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                    </div>
+                    Leads Atrasados
+                    {overdueLeads.length > 0 && (
+                      <Badge className="ml-auto text-[10px] bg-rose-500 hover:bg-rose-500">{overdueLeads.length}</Badge>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  {overdueLeads.length === 0 ? (
+                    <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground justify-center">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      Nenhum lead atrasado
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border/40">
+                      {overdueLeads.map(lead => (
+                        <Link
+                          key={lead.id}
+                          to={`/crm/leads/${lead.id}`}
+                          className="flex items-center justify-between py-2.5 hover:bg-muted/40 -mx-1 px-1 rounded-lg transition-colors group"
                         >
-                          <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent rounded-full" />
-                        </div>
-                      </div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate group-hover:text-rose-600 transition-colors">{lead.name}</p>
+                            <p className="text-[11px] text-muted-foreground truncate">{lead.company}</p>
+                          </div>
+                          <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-rose-500 shrink-0 ml-2 transition-colors" />
+                        </Link>
+                      ))}
                     </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+                  )}
+                </CardContent>
+              </Card>
 
-      {/* Smart Lists - 3D Glassmorphism cards */}
-      <div className="grid md:grid-cols-3 gap-4">
-        {/* Overdue Leads */}
-        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
-          <div className="h-2 w-full" style={{ background: 'linear-gradient(90deg, #ef4444, #f43f5e, #ec4899)' }} />
-          <div className="absolute -bottom-12 -right-12 h-32 w-32 rounded-full bg-rose-500/10 blur-3xl" />
-          <div className="p-5 pb-2 relative z-10">
-            <h3 className="text-base font-bold flex items-center gap-2">
-              <div className="p-2 rounded-xl text-white shadow-lg" style={{ background: 'linear-gradient(135deg, #ef4444, #ec4899)', boxShadow: '0 8px 24px rgba(239,68,68,0.4)' }}>
-                <AlertTriangle className="h-4 w-4" />
-              </div>
-              Leads Atrasados
-              {overdueLeads.length > 0 && (
-                <span className="ml-auto text-xs font-bold text-white px-2 py-0.5 rounded-full shadow-lg" style={{ background: 'linear-gradient(135deg, #ef4444, #ec4899)', boxShadow: '0 4px 16px rgba(239,68,68,0.4)' }}>{overdueLeads.length}</span>
-              )}
-            </h3>
-          </div>
-          <div className="px-5 pb-5 relative z-10">
-            <div className="space-y-1">
-              {overdueLeads.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhum lead atrasado 🎉</p>
-              ) : (
-                overdueLeads.map(lead => (
-                  <Link key={lead.id} to={`/crm/leads/${lead.id}`} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-rose-500/5 transition-all group">
-                    <div>
-                      <p className="font-semibold text-sm truncate group-hover:text-rose-600 transition-colors">{lead.name}</p>
-                      <p className="text-xs text-muted-foreground">{lead.company}</p>
+              {/* No Activity */}
+              <Card className="border-amber-500/20 shadow-sm">
+                <CardHeader className="pb-2 pt-4 px-5">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <div className="p-1.5 rounded-md bg-amber-500/10">
+                      <Clock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                     </div>
-                    <ArrowUpRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-rose-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+                    Sem Atividade
+                    {noActivityLeads.length > 0 && (
+                      <Badge className="ml-auto text-[10px] bg-amber-500 hover:bg-amber-500">{noActivityLeads.length}</Badge>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  {noActivityLeads.length === 0 ? (
+                    <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground justify-center">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      Todos têm atividades
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border/40">
+                      {noActivityLeads.map(lead => (
+                        <Link
+                          key={lead.id}
+                          to={`/crm/leads/${lead.id}`}
+                          className="flex items-center justify-between py-2.5 hover:bg-muted/40 -mx-1 px-1 rounded-lg transition-colors group"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate group-hover:text-amber-600 transition-colors">{lead.name}</p>
+                            <p className="text-[11px] text-muted-foreground truncate">{lead.company}</p>
+                          </div>
+                          <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-amber-500 shrink-0 ml-2 transition-colors" />
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-        {/* No Activity */}
-        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
-          <div className="h-2 w-full" style={{ background: 'linear-gradient(90deg, #f59e0b, #f97316, #ef4444)' }} />
-          <div className="absolute -bottom-12 -left-12 h-32 w-32 rounded-full bg-amber-500/10 blur-3xl" />
-          <div className="p-5 pb-2 relative z-10">
-            <h3 className="text-base font-bold flex items-center gap-2">
-              <div className="p-2 rounded-xl text-white shadow-lg" style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)', boxShadow: '0 8px 24px rgba(245,158,11,0.4)' }}>
-                <Clock className="h-4 w-4" />
-              </div>
-              Sem Próxima Atividade
-              {noActivityLeads.length > 0 && (
-                <span className="ml-auto text-xs font-bold text-white px-2 py-0.5 rounded-full shadow-lg" style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)', boxShadow: '0 4px 16px rgba(245,158,11,0.4)' }}>{noActivityLeads.length}</span>
-              )}
-            </h3>
-          </div>
-          <div className="px-5 pb-5 relative z-10">
-            <div className="space-y-1">
-              {noActivityLeads.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Todos os leads têm atividades 🎉</p>
-              ) : (
-                noActivityLeads.map(lead => (
-                  <Link key={lead.id} to={`/crm/leads/${lead.id}`} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-amber-500/5 transition-all group">
-                    <div>
-                      <p className="font-semibold text-sm truncate group-hover:text-amber-600 transition-colors">{lead.name}</p>
-                      <p className="text-xs text-muted-foreground">{lead.company}</p>
+              {/* Top Opportunities */}
+              <Card className="border-emerald-500/20 shadow-sm">
+                <CardHeader className="pb-2 pt-4 px-5">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <div className="p-1.5 rounded-md bg-emerald-500/10">
+                      <Trophy className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                     </div>
-                    <ArrowUpRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-amber-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
-                  </Link>
-                ))
-              )}
+                    Top Oportunidades
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  {topOpportunities.length === 0 ? (
+                    <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground justify-center">
+                      Nenhuma oportunidade ativa
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border/40">
+                      {topOpportunities.map((lead, idx) => (
+                        <Link
+                          key={lead.id}
+                          to={`/crm/leads/${lead.id}`}
+                          className="flex items-center justify-between py-2.5 hover:bg-muted/40 -mx-1 px-1 rounded-lg transition-colors group"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-4 text-[10px] font-bold text-muted-foreground tabular-nums shrink-0">{idx + 1}</span>
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm truncate group-hover:text-emerald-600 transition-colors">{lead.name}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">{lead.company}</p>
+                            </div>
+                          </div>
+                          <span className="shrink-0 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 ml-2 tabular-nums">
+                            {formatCurrency(lead.opportunity_value || 0)}
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </div>
-        </div>
 
-        {/* Top Opportunities */}
-        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
-          <div className="h-2 w-full" style={{ background: 'linear-gradient(90deg, #10b981, #06b6d4, #3b82f6)' }} />
-          <div className="absolute -bottom-12 -right-12 h-32 w-32 rounded-full bg-emerald-500/10 blur-3xl" />
-          <div className="p-5 pb-2 relative z-10">
-            <h3 className="text-base font-bold flex items-center gap-2">
-              <div className="p-2 rounded-xl text-white shadow-lg" style={{ background: 'linear-gradient(135deg, #10b981, #3b82f6)', boxShadow: '0 8px 24px rgba(16,185,129,0.4)' }}>
-                <Trophy className="h-4 w-4" />
-              </div>
-              Top Oportunidades
-            </h3>
-          </div>
-          <div className="px-5 pb-5 relative z-10">
-            <div className="space-y-1">
-              {topOpportunities.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhuma oportunidade ainda</p>
-              ) : (
-                topOpportunities.map(lead => (
-                  <Link key={lead.id} to={`/crm/leads/${lead.id}`} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-emerald-500/5 transition-all group">
-                    <div className="min-w-0 flex-1 mr-2">
-                      <p className="font-semibold text-sm truncate group-hover:text-emerald-600 transition-colors">{lead.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{lead.company}</p>
-                    </div>
-                    <span className="shrink-0 text-xs font-bold text-white px-2.5 py-1 rounded-full shadow-md" style={{ background: 'linear-gradient(135deg, #10b981, #3b82f6)', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
-                      {formatCurrency(lead.opportunity_value || 0)}
-                    </span>
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
         </TabsContent>
 
+        {/* ═══════════════ TRAFFIC TAB ════════════════ */}
         {isAdmin && (
           <TabsContent value="traffic" className="mt-5">
             <CRMTrafficTab isAdmin={isAdmin} />
