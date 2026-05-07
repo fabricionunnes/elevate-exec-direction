@@ -883,6 +883,33 @@ export type Database = {
           },
         ]
       }
+      agent_messages: {
+        Row: {
+          agent: string
+          chat_id: number
+          content: string
+          created_at: string
+          id: string
+          role: string
+        }
+        Insert: {
+          agent: string
+          chat_id: number
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+        }
+        Update: {
+          agent?: string
+          chat_id?: number
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Relationships: []
+      }
       api_keys: {
         Row: {
           created_at: string
