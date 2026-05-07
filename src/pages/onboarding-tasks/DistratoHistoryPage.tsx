@@ -168,7 +168,58 @@ export default function DistratoHistoryPage() {
     }
   };
 
-  const getZapSignBadge = (d: DistratoRecord) => {
+  const handleSendToZapSign = async () => {
+    if (!selectedDistrato) return;
+    if (!selectedDistrato.pdf_url) {
+      toast.error("Distrato sem PDF salvo. Gere novamente pela tela de criação.");
+      return;
+    }
+    if (!signerName || !signerEmail) {
+      toast.error("Preencha nome e e-mail do signatário");
+      return;
+    }
+    setIsSendingZap(true);
+    try {
+      const documentName = `Distrato - ${selectedDistrato.company_name} - ${formatDate(new Date(selectedDistrato.distrato_date), "dd-MM-yyyy")}`;
+      const { data: zapData, error: zapError } = await supabase.functions.invoke("send-to-zapsign", {
+        body: {
+          pdfUrl: selectedDistrato.pdf_url,
+          documentName,
+          signers: [
+            { name: "Fabrício Nunnes", email: "fabricio@universidadevendas.com.br" },
+            { name: signerName, email: signerEmail, phone: signerPhone || undefined },
+          ],
+          sendAutomatically: true,
+        },
+      });
+      if (zapError) throw zapError;
+
+      await supabase.from("distratos").update({
+        zapsign_document_token: zapData.documentToken,
+        zapsign_document_url: zapData.documentUrl,
+        zapsign_signers: zapData.signers,
+        zapsign_sent_at: new Date().toISOString(),
+      }).eq("id", selectedDistrato.id);
+
+      toast.success("Distrato enviado para assinatura via ZapSign!");
+      setSignerName(""); setSignerEmail(""); setSignerPhone("");
+      const updated = { ...selectedDistrato,
+        zapsign_document_token: zapData.documentToken,
+        zapsign_document_url: zapData.documentUrl,
+        zapsign_signers: zapData.signers,
+        zapsign_sent_at: new Date().toISOString(),
+      };
+      setSelectedDistrato(updated);
+      setDistratos(prev => prev.map(d => d.id === updated.id ? updated : d));
+      await checkSignatureStatus(zapData.documentToken);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao enviar para ZapSign");
+    } finally {
+      setIsSendingZap(false);
+    }
+  };
+
     if (!d.zapsign_document_token) return null;
     const signers = (d.zapsign_signers || []) as any[];
     const allSigned = signers.length > 0 && signers.every(s => s.status === "signed");
