@@ -475,7 +475,7 @@ async function getChatId(agentType: AgentType): Promise<number | null> {
 }
 
 // ============ REUNIÃO DE ALINHAMENTO (sob demanda ou diária 7h) ============
-async function runAlignmentMeeting(mode: "daily" | "ondemand" = "daily"): Promise<void> {
+async function runAlignmentMeeting(mode: "daily" | "ondemand" = "daily", directCeoChatId?: number): Promise<void> {
   const dateBRT = new Date().toLocaleDateString("pt-BR", {
     timeZone: "America/Sao_Paulo", weekday: "long", day: "numeric", month: "long", year: "numeric"
   });
@@ -486,9 +486,20 @@ async function runAlignmentMeeting(mode: "daily" | "ondemand" = "daily"): Promis
     : `Reunião de alinhamento convocada por Max — ${dateBRT} às ${timeBRT}. Faça um relatório`;
 
   // Avisa nos 3 chats que a reunião começou
-  const [noahId, sophiaId, melissaId, ceoId] = await Promise.all([
+  const [noahId, sophiaId, melissaId, storedCeoId] = await Promise.all([
     getChatId("financeiro"), getChatId("crm"), getChatId("projetos"), getChatId("ceo"),
   ]);
+  // directCeoChatId garante que o CEO sempre recebe mesmo que o storeChatId não tenha rodado ainda
+  const ceoId = directCeoChatId ?? storedCeoId;
+
+  // Wrapper para enviar erros ao CEO se algo falhar
+  const safeRun = async (fn: () => Promise<void>) => {
+    try { await fn(); }
+    catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (ceoId) await sendTelegram(ceoId, `Erro na reunião: ${msg.slice(0, 300)}`, "ceo").catch(() => {});
+    }
+  };
 
   const aviso = mode === "ondemand"
     ? `*Reunião de Alinhamento — ${timeBRT}*\n\nMax convocou uma reunião com todos os setores. Aguarde o relatório consolidado.`
@@ -502,6 +513,8 @@ async function runAlignmentMeeting(mode: "daily" | "ondemand" = "daily"): Promis
       ceoId   ? sendTelegram(ceoId,    aviso, "ceo")        : Promise.resolve(),
     ]);
   }
+
+  await safeRun(async () => {
 
   // Consulta paralela nos 3 agentes
   const [noahStatus, sophiaStatus, melissaStatus] = await Promise.all([
@@ -614,6 +627,7 @@ Direto. Sem enrolação. Cada ação com responsável e prazo.
     `*Sophia:*\n${sophiaExec}\n\n` +
     `*Melissa:*\n${melissaExec}`;
   if (ceoId) await sendTelegram(ceoId, relatorio, "ceo");
+  }); // fim safeRun
 }
 
 // Alias para reunião diária agendada (mantém compatibilidade)
@@ -712,18 +726,19 @@ Deno.serve(async (req) => {
       const agentType = agentParam ?? detectAgent(text);
       if (!agentType) return new Response("OK", { status: 200 });
 
+      // Salva chat ID para mensagens proativas (sempre, inclusive antes de early returns)
+      EdgeRuntime.waitUntil(storeChatId(agentType, chatId));
+
       // CEO: comandos especiais — "reunião" ou "alinhamento" convoca os 3 agentes
       if (agentType === "ceo") {
         const lower = text.toLowerCase().trim();
         if (lower === "reunião" || lower === "reuniao" || lower === "alinhamento" || lower === "meeting") {
-          EdgeRuntime.waitUntil(runAlignmentMeeting("ondemand"));
-          await sendTelegram(chatId, "Convocando reunião de alinhamento com Noah, Sophia e Melissa. Aguarda — isso leva cerca de 1 minuto.", "ceo");
+          // Passa o chatId direto — não depende do banco pra entregar o resultado
+          EdgeRuntime.waitUntil(runAlignmentMeeting("ondemand", chatId));
+          await sendTelegram(chatId, "Convocando reunião de alinhamento com Noah, Sophia e Melissa. Aguarda — isso leva de 2 a 3 minutos.", "ceo");
           return new Response("OK", { status: 200 });
         }
       }
-
-      // Salva chat ID para mensagens proativas
-      EdgeRuntime.waitUntil(storeChatId(agentType, chatId));
 
       const isVoiceInput = !!voice && !text.trim();
 
