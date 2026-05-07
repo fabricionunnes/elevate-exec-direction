@@ -1,4 +1,4 @@
-// agente-unv v2.2 — CEO acesso total ao sistema + Áudio + Reunião Diária + Check-ins
+// agente-unv v2.4 — Melissa com cobertura total da API de Projetos
 import Anthropic from "npm:@anthropic-ai/sdk";
 
 // ============ ENV VARS ============
@@ -79,15 +79,41 @@ const CRM_TOOLS: Anthropic.Tool[] = [
 
 // ============ TOOLS — MELISSA (PROJETOS) ============
 const PROJECT_TOOLS: Anthropic.Tool[] = [
+  // Empresas
   { name: "listar_empresas", description: "Lista empresas clientes", input_schema: { type: "object", properties: { status: { type: "string", enum: ["active","inactive","churned"] } } } },
   { name: "detalhes_empresa", description: "Detalhes de uma empresa cliente", input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
+  { name: "criar_empresa", description: "Cria nova empresa cliente", input_schema: { type: "object", properties: { name: { type: "string" }, cnpj: { type: "string" }, segment: { type: "string" }, contract_value: { type: "number" }, billing_day: { type: "number" }, email: { type: "string" }, phone: { type: "string" }, website: { type: "string" }, address: { type: "string" }, notes: { type: "string" }, consultant_id: { type: "string" }, cs_id: { type: "string" }, kickoff_date: { type: "string" }, contract_start_date: { type: "string" }, contract_end_date: { type: "string" } }, required: ["name"] } },
+  { name: "atualizar_empresa", description: "Atualiza dados de empresa cliente (status, contrato, observações)", input_schema: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, status: { type: "string", enum: ["active","inactive","churned"] }, contract_value: { type: "number" }, billing_day: { type: "number" }, email: { type: "string" }, phone: { type: "string" }, notes: { type: "string" }, consultant_id: { type: "string" }, cs_id: { type: "string" }, contract_start_date: { type: "string" }, contract_end_date: { type: "string" } }, required: ["id"] } },
+  // Projetos
   { name: "listar_projetos", description: "Lista projetos com filtros", input_schema: { type: "object", properties: { status: { type: "string", enum: ["pending","active","completed","paused"] }, company_id: { type: "string" } } } },
-  { name: "listar_tarefas", description: "Lista tarefas com filtros", input_schema: { type: "object", properties: { project_id: { type: "string" }, status: { type: "string", enum: ["pending","in_progress","completed"] }, date_from: { type: "string" }, date_to: { type: "string" } } } },
-  { name: "atualizar_tarefa", description: "Atualiza status ou dados de tarefa", input_schema: { type: "object", properties: { id: { type: "string" }, status: { type: "string", enum: ["pending","in_progress","completed"] }, observations: { type: "string" }, due_date: { type: "string" } }, required: ["id"] } },
-  { name: "listar_kpis", description: "Lista KPIs de uma empresa", input_schema: { type: "object", properties: { company_id: { type: "string" }, month_year: { type: "string" } }, required: ["company_id"] } },
-  { name: "registrar_kpi", description: "Registra lançamento de KPI", input_schema: { type: "object", properties: { company_id: { type: "string" }, salesperson_id: { type: "string" }, kpi_id: { type: "string" }, value: { type: "number" }, entry_date: { type: "string" }, observations: { type: "string" } }, required: ["company_id","salesperson_id","kpi_id","value"] } },
-  { name: "listar_vendedores", description: "Lista vendedores de empresa cliente", input_schema: { type: "object", properties: { company_id: { type: "string" }, status: { type: "string", enum: ["active","inactive"] } }, required: ["company_id"] } },
-  { name: "listar_reunioes", description: "Lista reuniões de projeto", input_schema: { type: "object", properties: { project_id: { type: "string" }, company_id: { type: "string" }, is_finalized: { type: "boolean" }, date_from: { type: "string" }, date_to: { type: "string" } } } },
+  { name: "detalhes_projeto", description: "Detalhes completos de um projeto", input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
+  // Tarefas
+  { name: "listar_tarefas", description: "Lista tarefas com filtros (projeto, status, responsável, período)", input_schema: { type: "object", properties: { project_id: { type: "string" }, status: { type: "string", enum: ["pending","in_progress","completed"] }, staff_id: { type: "string" }, date_from: { type: "string" }, date_to: { type: "string" } } } },
+  { name: "criar_tarefa", description: "Cria nova tarefa em um projeto", input_schema: { type: "object", properties: { project_id: { type: "string" }, title: { type: "string" }, description: { type: "string" }, due_date: { type: "string" }, start_date: { type: "string" }, priority: { type: "string", enum: ["low","medium","high","urgent"] }, responsible_staff_id: { type: "string" }, assignee_id: { type: "string" }, tags: { type: "array", items: { type: "string" } }, estimated_hours: { type: "number" }, observations: { type: "string" } }, required: ["project_id","title"] } },
+  { name: "atualizar_tarefa", description: "Atualiza status, responsável ou dados de tarefa", input_schema: { type: "object", properties: { id: { type: "string" }, status: { type: "string", enum: ["pending","in_progress","completed"] }, title: { type: "string" }, description: { type: "string" }, observations: { type: "string" }, due_date: { type: "string" }, priority: { type: "string", enum: ["low","medium","high","urgent"] }, responsible_staff_id: { type: "string" } }, required: ["id"] } },
+  { name: "excluir_tarefa", description: "Exclui uma tarefa", input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
+  // Colaboradores (Staff)
+  { name: "listar_staff", description: "Lista colaboradores internos da UNV (consultores, CS, closers, SDRs)", input_schema: { type: "object", properties: { status: { type: "string", enum: ["active","inactive"] }, role: { type: "string" } } } },
+  // Vendas mensais
+  { name: "listar_vendas", description: "Lista histórico de vendas mensais de empresa cliente", input_schema: { type: "object", properties: { company_id: { type: "string" }, date_from: { type: "string" }, date_to: { type: "string" } } } },
+  { name: "registrar_venda", description: "Lança venda mensal de empresa cliente (upsert por empresa+mês)", input_schema: { type: "object", properties: { company_id: { type: "string" }, month_year: { type: "string" }, revenue: { type: "number" }, sales_count: { type: "number" }, target_revenue: { type: "number" }, notes: { type: "string" } }, required: ["company_id","month_year"] } },
+  { name: "atualizar_venda", description: "Atualiza registro de venda mensal", input_schema: { type: "object", properties: { id: { type: "string" }, revenue: { type: "number" }, sales_count: { type: "number" }, target_revenue: { type: "number" }, notes: { type: "string" } }, required: ["id"] } },
+  // KPIs — Dashboard
+  { name: "listar_kpis", description: "Lista KPIs configurados da empresa. target_value já reflete a meta do mês (se informado month_year)", input_schema: { type: "object", properties: { company_id: { type: "string" }, month_year: { type: "string" } }, required: ["company_id"] } },
+  { name: "entradas_kpi", description: "Lista lançamentos diários de KPI por vendedor — dados reais do dashboard. Use date_from/date_to para filtrar por mês", input_schema: { type: "object", properties: { company_id: { type: "string" }, kpi_id: { type: "string" }, salesperson_id: { type: "string" }, date_from: { type: "string" }, date_to: { type: "string" } }, required: ["company_id"] } },
+  { name: "metas_mensais_kpi", description: "Busca metas mensais reais de KPI. IMPORTANTE: meta real fica aqui, NÃO no target_value do KPI. Use level_name='Meta' para meta principal", input_schema: { type: "object", properties: { company_id: { type: "string" }, month_year: { type: "string" }, kpi_id: { type: "string" }, salesperson_id: { type: "string" } }, required: ["company_id"] } },
+  { name: "registrar_kpi", description: "Lança resultado diário de KPI para um vendedor (upsert por vendedor+KPI+data)", input_schema: { type: "object", properties: { company_id: { type: "string" }, salesperson_id: { type: "string" }, kpi_id: { type: "string" }, value: { type: "number" }, entry_date: { type: "string" }, observations: { type: "string" }, unit_id: { type: "string" }, team_id: { type: "string" }, sector_id: { type: "string" } }, required: ["company_id","salesperson_id","kpi_id","value"] } },
+  // Vendedores dos clientes
+  { name: "listar_vendedores", description: "Lista vendedores de empresa cliente — necessário para cruzar com lançamentos de KPI", input_schema: { type: "object", properties: { company_id: { type: "string" }, status: { type: "string", enum: ["active","inactive"] } }, required: ["company_id"] } },
+  { name: "criar_vendedor", description: "Cria novo vendedor para empresa cliente", input_schema: { type: "object", properties: { company_id: { type: "string" }, name: { type: "string" }, email: { type: "string" }, phone: { type: "string" }, unit_id: { type: "string" }, team_id: { type: "string" }, sector_id: { type: "string" } }, required: ["company_id","name"] } },
+  { name: "atualizar_vendedor", description: "Atualiza dados ou status de vendedor cliente", input_schema: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, email: { type: "string" }, phone: { type: "string" }, is_active: { type: "boolean" }, unit_id: { type: "string" }, team_id: { type: "string" }, sector_id: { type: "string" } }, required: ["id"] } },
+  // Reuniões de Projeto
+  { name: "listar_reunioes", description: "Lista reuniões de projeto com briefing IA, transcrição e participantes", input_schema: { type: "object", properties: { project_id: { type: "string" }, company_id: { type: "string" }, staff_id: { type: "string" }, is_finalized: { type: "boolean" }, is_internal: { type: "boolean" }, date_from: { type: "string" }, date_to: { type: "string" } } } },
+  { name: "detalhes_reuniao", description: "Detalhes completos de uma reunião de projeto (inclui transcrição, briefing IA, gravação)", input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
+  // Conversas WhatsApp
+  { name: "listar_conversas", description: "Lista conversas WhatsApp vinculadas a um projeto (contato, status, última mensagem)", input_schema: { type: "object", properties: { project_id: { type: "string" }, status: { type: "string", enum: ["open","closed","archived"] }, assigned_to: { type: "string" }, limit: { type: "number" } }, required: ["project_id"] } },
+  { name: "mensagens_conversa", description: "Lista histórico de mensagens de uma conversa WhatsApp (direction: incoming=cliente, outgoing=equipe)", input_schema: { type: "object", properties: { id: { type: "string" }, limit: { type: "number" } }, required: ["id"] } },
+  { name: "enviar_mensagem_conversa", description: "Envia mensagem de texto em uma conversa WhatsApp existente — envia via WhatsApp e salva no histórico", input_schema: { type: "object", properties: { conversation_id: { type: "string" }, message: { type: "string" } }, required: ["conversation_id","message"] } },
 ];
 
 // ============ TOOLS — CEO ============
@@ -247,15 +273,41 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
       case "listar_reunioes_crm": { const p: Record<string,string> = { module: "crm_meetings", action: "list" }; if (input.lead_id) p.lead_id = input.lead_id as string; if (input.pipeline_id) p.pipeline_id = input.pipeline_id as string; if (input.status) p.status = input.status as string; if (input.date_from) p.date_from = input.date_from as string; if (input.date_to) p.date_to = input.date_to as string; result = await nexusGet(SYS, p, apiKey); break; }
       case "finalizar_reuniao": { const { id, ...b } = input; result = await nexusPost(`${SYS}?module=crm_meetings&action=finalize&id=${id}`, b, apiKey); break; }
       case "listar_etapas": { const p: Record<string,string> = { module: "pipelines", action: "stages" }; if (input.pipeline_id) p.pipeline_id = input.pipeline_id as string; result = await nexusGet(SYS, p, apiKey); break; }
+      // ── MELISSA: Empresas ──
       case "listar_empresas": { const p: Record<string,string> = { module: "companies", action: "list" }; if (input.status) p.status = input.status as string; result = await nexusGet(SYS, p, apiKey); break; }
       case "detalhes_empresa": result = await nexusGet(SYS, { module: "companies", action: "get", id: input.id as string }, apiKey); break;
+      case "criar_empresa": result = await nexusPost(`${SYS}?module=companies&action=create`, input, apiKey); break;
+      case "atualizar_empresa": { const { id, ...b } = input; result = await nexusPost(`${SYS}?module=companies&action=update&id=${id}`, b, apiKey); break; }
+      // ── MELISSA: Projetos ──
       case "listar_projetos": { const p: Record<string,string> = { module: "projects", action: "list" }; if (input.status) p.status = input.status as string; if (input.company_id) p.company_id = input.company_id as string; result = await nexusGet(SYS, p, apiKey); break; }
-      case "listar_tarefas": { const p: Record<string,string> = { module: "tasks", action: "list" }; if (input.project_id) p.project_id = input.project_id as string; if (input.status) p.status = input.status as string; if (input.date_from) p.date_from = input.date_from as string; if (input.date_to) p.date_to = input.date_to as string; result = await nexusGet(SYS, p, apiKey); break; }
+      case "detalhes_projeto": result = await nexusGet(SYS, { module: "projects", action: "get", id: input.id as string }, apiKey); break;
+      // ── MELISSA: Tarefas ──
+      case "listar_tarefas": { const p: Record<string,string> = { module: "tasks", action: "list" }; if (input.project_id) p.project_id = input.project_id as string; if (input.status) p.status = input.status as string; if (input.staff_id) p.staff_id = input.staff_id as string; if (input.date_from) p.date_from = input.date_from as string; if (input.date_to) p.date_to = input.date_to as string; result = await nexusGet(SYS, p, apiKey); break; }
+      case "criar_tarefa": result = await nexusPost(`${SYS}?module=tasks&action=create`, input, apiKey); break;
       case "atualizar_tarefa": { const { id, ...b } = input; result = await nexusPost(`${SYS}?module=tasks&action=update&id=${id}`, b, apiKey); break; }
+      case "excluir_tarefa": { const { id } = input; result = await nexusPost(`${SYS}?module=tasks&action=delete&id=${id}`, {}, apiKey); break; }
+      // ── MELISSA: Staff ──
+      case "listar_staff": { const p: Record<string,string> = { module: "staff", action: "list" }; if (input.status) p.status = input.status as string; if (input.role) p.role = input.role as string; result = await nexusGet(SYS, p, apiKey); break; }
+      // ── MELISSA: Vendas mensais ──
+      case "listar_vendas": { const p: Record<string,string> = { module: "sales", action: "list" }; if (input.company_id) p.company_id = input.company_id as string; if (input.date_from) p.date_from = input.date_from as string; if (input.date_to) p.date_to = input.date_to as string; result = await nexusGet(SYS, p, apiKey); break; }
+      case "registrar_venda": result = await nexusPost(`${SYS}?module=sales&action=create`, input, apiKey); break;
+      case "atualizar_venda": { const { id, ...b } = input; result = await nexusPost(`${SYS}?module=sales&action=update&id=${id}`, b, apiKey); break; }
+      // ── MELISSA: KPIs ──
       case "listar_kpis": { const p: Record<string,string> = { module: "kpis", action: "list", company_id: input.company_id as string }; if (input.month_year) p.month_year = input.month_year as string; result = await nexusGet(SYS, p, apiKey); break; }
+      case "entradas_kpi": { const p: Record<string,string> = { module: "kpis", action: "entries", company_id: input.company_id as string }; if (input.kpi_id) p.kpi_id = input.kpi_id as string; if (input.salesperson_id) p.salesperson_id = input.salesperson_id as string; if (input.date_from) p.date_from = input.date_from as string; if (input.date_to) p.date_to = input.date_to as string; result = await nexusGet(SYS, p, apiKey); break; }
+      case "metas_mensais_kpi": { const p: Record<string,string> = { module: "kpis", action: "monthly_targets", company_id: input.company_id as string }; if (input.month_year) p.month_year = input.month_year as string; if (input.kpi_id) p.kpi_id = input.kpi_id as string; if (input.salesperson_id) p.salesperson_id = input.salesperson_id as string; result = await nexusGet(SYS, p, apiKey); break; }
       case "registrar_kpi": result = await nexusPost(`${SYS}?module=kpis&action=create_entry`, input, apiKey); break;
+      // ── MELISSA: Vendedores dos clientes ──
       case "listar_vendedores": { const p: Record<string,string> = { module: "salespeople", action: "list", company_id: input.company_id as string }; if (input.status) p.status = input.status as string; result = await nexusGet(SYS, p, apiKey); break; }
-      case "listar_reunioes": { const p: Record<string,string> = { module: "project_meetings", action: "list" }; if (input.project_id) p.project_id = input.project_id as string; if (input.company_id) p.company_id = input.company_id as string; if (input.is_finalized !== undefined) p.is_finalized = String(input.is_finalized); if (input.date_from) p.date_from = input.date_from as string; if (input.date_to) p.date_to = input.date_to as string; result = await nexusGet(SYS, p, apiKey); break; }
+      case "criar_vendedor": result = await nexusPost(`${SYS}?module=salespeople&action=create`, input, apiKey); break;
+      case "atualizar_vendedor": { const { id, ...b } = input; result = await nexusPost(`${SYS}?module=salespeople&action=update&id=${id}`, b, apiKey); break; }
+      // ── MELISSA: Reuniões de Projeto ──
+      case "listar_reunioes": { const p: Record<string,string> = { module: "project_meetings", action: "list" }; if (input.project_id) p.project_id = input.project_id as string; if (input.company_id) p.company_id = input.company_id as string; if (input.staff_id) p.staff_id = input.staff_id as string; if (input.is_finalized !== undefined) p.is_finalized = String(input.is_finalized); if (input.is_internal !== undefined) p.is_internal = String(input.is_internal); if (input.date_from) p.date_from = input.date_from as string; if (input.date_to) p.date_to = input.date_to as string; result = await nexusGet(SYS, p, apiKey); break; }
+      case "detalhes_reuniao": result = await nexusGet(SYS, { module: "project_meetings", action: "get", id: input.id as string }, apiKey); break;
+      // ── MELISSA: Conversas WhatsApp ──
+      case "listar_conversas": { const p: Record<string,string> = { module: "conversations", action: "list", project_id: input.project_id as string }; if (input.status) p.status = input.status as string; if (input.assigned_to) p.assigned_to = input.assigned_to as string; if (input.limit) p.limit = String(input.limit); result = await nexusGet(SYS, p, apiKey); break; }
+      case "mensagens_conversa": { const p: Record<string,string> = { module: "conversations", action: "messages", id: input.id as string }; if (input.limit) p.limit = String(input.limit); result = await nexusGet(SYS, p, apiKey); break; }
+      case "enviar_mensagem_conversa": result = await nexusPost(`${SYS}?module=conversations&action=send_message`, input, apiKey); break;
       case "consultar_financeiro": result = await callAgent("financeiro", input.pergunta as string); break;
       case "consultar_crm": result = await callAgent("crm", input.pergunta as string); break;
       case "consultar_projetos": result = await callAgent("projetos", input.pergunta as string); break;
@@ -509,7 +561,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ ok: false, agent: dbg, error: String(err) }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
     }
-    return new Response(JSON.stringify({ ok: true, version: "2.3-sophia-full" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: true, version: "2.4-melissa-full" }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
 
   if (req.method !== "POST") return new Response("OK", { status: 200 });
