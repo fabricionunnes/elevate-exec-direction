@@ -49,6 +49,7 @@ export const TaskNotificationsDialog = () => {
         .maybeSingle();
 
       if (!staffMember) return;
+      if (staffMember.role === "master") return;
 
       const today = new Date();
       const todayStr = format(today, "yyyy-MM-dd");
