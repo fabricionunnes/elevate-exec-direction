@@ -573,24 +573,47 @@ Direto. Sem enrolação. Cada ação com responsável e prazo.
     .replace(/---DIRECIONAMENTO_MELISSA---[\s\S]*?---FIM_MELISSA---/g, "")
     .trim();
 
-  // Monta mensagem completa para o CEO (ATA + resumo dos direcionamentos)
-  const msgCeo = `*${title} — ${dateBRT}*\n\n${ataCeo}\n\n*DIRECIONAMENTOS ENVIADOS:*\n- Noah: ${dirNoah ? "✓" : "—"}\n- Sophia: ${dirSophia ? "✓" : "—"}\n- Melissa: ${dirMelissa ? "✓" : "—"}`;
+  // Avisa no CEO que a ATA está pronta e a execução vai começar
+  const msgCeoAta = `*${title} — ${dateBRT}*\n\n${ataCeo}\n\n_Executando direcionamentos com Noah, Sophia e Melissa..._`;
+  if (ceoId) {
+    await (OPENAI_API_KEY
+      ? synthesizeSpeech(ataCeo, "ceo").then(a => a ? sendVoice(ceoId, a, "ceo") : sendTelegram(ceoId, msgCeoAta, "ceo"))
+      : sendTelegram(ceoId, msgCeoAta, "ceo"));
+  }
 
-  // Monta mensagem de direcionamento para cada agente
-  const msgNoah    = `*${title} — Direcionamento do Max*\n\n*Seu relatório:*\n${noahStatus}\n\n*O que Max quer que você faça:*\n${dirNoah || "Sem direcionamento específico nesta rodada."}`;
-  const msgSophia  = `*${title} — Direcionamento do Max*\n\n*Seu relatório:*\n${sophiaStatus}\n\n*O que Max quer que você faça:*\n${dirSophia || "Sem direcionamento específico nesta rodada."}`;
-  const msgMelissa = `*${title} — Direcionamento do Max*\n\n*Seu relatório:*\n${melissaStatus}\n\n*O que Max quer que você faça:*\n${dirMelissa || "Sem direcionamento específico nesta rodada."}`;
-
-  // Envia para todos em paralelo
+  // Avisa cada agente que recebeu ordem e vai executar
   await Promise.all([
-    ceoId    ? (OPENAI_API_KEY
-      ? synthesizeSpeech(ataCeo, "ceo").then(a => a ? sendVoice(ceoId, a, "ceo") : sendTelegram(ceoId, msgCeo, "ceo"))
-      : sendTelegram(ceoId, msgCeo, "ceo"))
-      : Promise.resolve(),
-    noahId    ? sendTelegram(noahId,    msgNoah,    "financeiro") : Promise.resolve(),
-    sophiaId  ? sendTelegram(sophiaId,  msgSophia,  "crm")        : Promise.resolve(),
-    melissaId ? sendTelegram(melissaId, msgMelissa, "projetos")   : Promise.resolve(),
+    noahId    && dirNoah    ? sendTelegram(noahId,    `*Ordem do Max recebida — executando agora...*\n\n${dirNoah}`,    "financeiro") : Promise.resolve(),
+    sophiaId  && dirSophia  ? sendTelegram(sophiaId,  `*Ordem do Max recebida — executando agora...*\n\n${dirSophia}`,  "crm")        : Promise.resolve(),
+    melissaId && dirMelissa ? sendTelegram(melissaId, `*Ordem do Max recebida — executando agora...*\n\n${dirMelissa}`, "projetos")   : Promise.resolve(),
   ]);
+
+  // Executa os direcionamentos em paralelo — cada agente usa suas ferramentas
+  const execPrompt = (dir: string) =>
+    `O CEO Max te deu as seguintes ordens:\n\n${dir}\n\n` +
+    `Execute tudo o que for possível agora usando suas ferramentas. ` +
+    `Para cada item: tente executar, confirme o que conseguiu fazer e indique claramente o que NÃO conseguiu executar automaticamente e precisa de ação humana. ` +
+    `Seja objetivo — liste ações executadas e pendentes.`;
+
+  const [noahExec, sophiaExec, melissaExec] = await Promise.all([
+    dirNoah    ? callAgent("financeiro", execPrompt(dirNoah))    : Promise.resolve("Sem direcionamento."),
+    dirSophia  ? callAgent("crm",        execPrompt(dirSophia))  : Promise.resolve("Sem direcionamento."),
+    dirMelissa ? callAgent("projetos",   execPrompt(dirMelissa)) : Promise.resolve("Sem direcionamento."),
+  ]);
+
+  // Envia resultado da execução para cada agente
+  await Promise.all([
+    noahId    ? sendTelegram(noahId,    `*Execução concluída*\n\n${noahExec}`,    "financeiro") : Promise.resolve(),
+    sophiaId  ? sendTelegram(sophiaId,  `*Execução concluída*\n\n${sophiaExec}`,  "crm")        : Promise.resolve(),
+    melissaId ? sendTelegram(melissaId, `*Execução concluída*\n\n${melissaExec}`, "projetos")   : Promise.resolve(),
+  ]);
+
+  // Relatório final de execução para o CEO
+  const relatorio = `*Relatório de Execução — ${timeBRT}*\n\n` +
+    `*Noah:*\n${noahExec}\n\n` +
+    `*Sophia:*\n${sophiaExec}\n\n` +
+    `*Melissa:*\n${melissaExec}`;
+  if (ceoId) await sendTelegram(ceoId, relatorio, "ceo");
 }
 
 // Alias para reunião diária agendada (mantém compatibilidade)
