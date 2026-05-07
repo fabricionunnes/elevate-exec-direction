@@ -837,7 +837,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ ok: false, agent: dbg, error: String(err) }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
     }
-    return new Response(JSON.stringify({ ok: true, version: "2.5-auth-fix" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: true, version: "2.6-memory" }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
 
   if (req.method !== "POST") return new Response("OK", { status: 200 });
