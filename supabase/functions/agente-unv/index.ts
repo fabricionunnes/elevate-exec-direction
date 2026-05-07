@@ -338,8 +338,9 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
 }
 
 // ============ LOOP DO AGENTE ============
-async function callAgent(agentType: AgentType, userMessage: string): Promise<string> {
-  const messages: Anthropic.MessageParam[] = [{ role: "user", content: userMessage }];
+async function callAgent(agentType: AgentType, userMessage: string, history: Anthropic.MessageParam[] = []): Promise<string> {
+  // Combina histórico anterior + nova mensagem do usuário
+  const messages: Anthropic.MessageParam[] = [...history, { role: "user", content: userMessage }];
   for (let i = 0; i < 10; i++) {
     let response!: Anthropic.Message;
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -479,6 +480,35 @@ async function getChatId(agentType: AgentType): Promise<number | null> {
     const data = await res.json();
     return (data as Array<{ chat_id: number }>)[0]?.chat_id ?? null;
   } catch { return null; }
+}
+
+// ============ MEMÓRIA — HISTÓRICO DE CONVERSA ============
+const MEMORY_LIMIT = 20; // últimas 20 mensagens (10 trocas) por agente+chat
+
+async function saveMessage(agentType: AgentType, chatId: number, role: "user" | "assistant", content: string): Promise<void> {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/agent_messages`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ agent: agentType, chat_id: chatId, role, content }),
+    });
+  } catch { /* silent */ }
+}
+
+async function loadHistory(agentType: AgentType, chatId: number): Promise<Anthropic.MessageParam[]> {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/agent_messages?agent=eq.${agentType}&chat_id=eq.${chatId}&order=created_at.desc&limit=${MEMORY_LIMIT}&select=role,content`,
+      { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+    );
+    const data = await res.json() as Array<{ role: string; content: string }>;
+    // Retorna em ordem cronológica (invertendo o DESC)
+    return data.reverse().map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+  } catch { return []; }
 }
 
 // ============ REUNIÃO DE ALINHAMENTO (sob demanda ou diária 7h) ============
@@ -886,11 +916,18 @@ Deno.serve(async (req) => {
               return;
             }
             inputText = transcription;
-            // Mostra o que foi entendido
             await sendTelegram(chatId, `_Entendi: "${inputText}"_`, agentType);
           }
 
-          const reply = await callAgent(agentType, inputText);
+          // Carrega histórico da conversa e chama o agente com contexto
+          const history = await loadHistory(agentType, chatId);
+          const reply = await callAgent(agentType, inputText, history);
+
+          // Salva a troca no banco (user + assistant)
+          await Promise.all([
+            saveMessage(agentType, chatId, "user", inputText),
+            saveMessage(agentType, chatId, "assistant", reply),
+          ]);
 
           // CEO: verifica se Max quer disparar uma reunião temática
           if (agentType === "ceo") {
