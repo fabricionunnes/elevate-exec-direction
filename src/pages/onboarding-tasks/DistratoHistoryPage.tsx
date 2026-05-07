@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { generateDistratoPDF } from "@/components/distrato/generateDistratoPDF";
+import { getDefaultDistratoClauses } from "@/components/distrato/DistratoClausesEditor";
 
 
 interface DistratoRecord {
