@@ -1,0 +1,2 @@
+DELETE FROM public.financial_bank_transactions WHERE id = 'ff534b4c-8196-4462-a9da-b12a983a5326';
+UPDATE public.financial_banks SET current_balance_cents = current_balance_cents + 400000 WHERE id = 'cb223279-5087-47ec-bd02-2b7b412cf21a';
