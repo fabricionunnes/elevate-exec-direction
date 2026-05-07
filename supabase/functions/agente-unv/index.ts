@@ -916,7 +916,6 @@ Deno.serve(async (req) => {
               return;
             }
             inputText = transcription;
-            await sendTelegram(chatId, `_Entendi: "${inputText}"_`, agentType);
           }
 
           // Carrega histórico da conversa e chama o agente com contexto
