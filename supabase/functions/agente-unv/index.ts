@@ -380,19 +380,56 @@ async function callAgent(agentType: AgentType, userMessage: string, history: Ant
 }
 
 // ============ TELEGRAM — TEXTO ============
+async function sendTelegramChunk(token: string, chatId: number, chunk: string): Promise<void> {
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text: chunk, parse_mode: "Markdown" }),
+  });
+  if (!res.ok) {
+    // fallback sem Markdown
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: chunk }),
+    });
+  }
+}
+
 async function sendTelegram(chatId: number, text: string, agentType: AgentType): Promise<void> {
   const token = TELEGRAM_TOKENS[agentType];
   if (!token) return;
-  const safe = text.length > 4000 ? text.slice(0, 3990) + "…" : text;
-  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text: safe, parse_mode: "Markdown" }),
-  });
-  if (!res.ok) {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: safe }),
-    });
+  const MAX = 3900; // margem abaixo do limite de 4096 do Telegram
+  if (text.length <= MAX) {
+    await sendTelegramChunk(token, chatId, text);
+    return;
+  }
+  // Divide por parágrafos ("\n\n"), sem quebrar no meio de uma linha
+  const parts: string[] = [];
+  let current = "";
+  for (const paragraph of text.split("\n\n")) {
+    const candidate = current ? current + "\n\n" + paragraph : paragraph;
+    if (candidate.length > MAX) {
+      if (current) parts.push(current);
+      // parágrafo individual maior que MAX → divide por linha
+      if (paragraph.length > MAX) {
+        let line = "";
+        for (const row of paragraph.split("\n")) {
+          const c = line ? line + "\n" + row : row;
+          if (c.length > MAX) { if (line) parts.push(line); line = row; }
+          else line = c;
+        }
+        if (line) parts.push(line);
+        current = "";
+      } else {
+        current = paragraph;
+      }
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) parts.push(current);
+  for (let i = 0; i < parts.length; i++) {
+    if (i > 0) await new Promise(r => setTimeout(r, 300)); // pequeno delay entre partes
+    await sendTelegramChunk(token, chatId, parts[i]);
   }
 }
 
@@ -837,7 +874,8 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ ok: false, agent: dbg, error: String(err) }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
     }
-    return new Response(JSON.stringify({ ok: true, version: "2.6-memory-deploy" }), { status: 200, headers: { "Content-Type": "application/json" } });
+
+    return new Response(JSON.stringify({ ok: true, version: "2.7-chunked-messages" }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
 
   if (req.method !== "POST") return new Response("OK", { status: 200 });
