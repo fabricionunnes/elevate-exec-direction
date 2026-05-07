@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { generateDistratoPDF } from "@/components/distrato/generateDistratoPDF";
+import { getDefaultDistratoClauses } from "@/components/distrato/DistratoClausesEditor";
 
 
 interface DistratoRecord {
@@ -168,22 +170,73 @@ export default function DistratoHistoryPage() {
     }
   };
 
+  const ensurePdfUrl = async (distratoId: string): Promise<string | null> => {
+    // Fetch full distrato record
+    const { data: full, error } = await supabase
+      .from("distratos")
+      .select("*")
+      .eq("id", distratoId)
+      .single();
+    if (error || !full) {
+      toast.error("Erro ao carregar dados do distrato");
+      return null;
+    }
+    if (full.pdf_url) return full.pdf_url as string;
+
+    // Regenerate PDF from snapshot
+    try {
+      const formData: any = {
+        companyId: full.company_id || "",
+        companyName: full.company_name || "",
+        companyCnpj: full.company_cnpj || "",
+        companyAddress: full.company_address || "",
+        legalRepName: full.legal_rep_name || "",
+        projectId: full.project_id || "",
+        projectName: full.project_name || "",
+        contractDate: full.contract_date || "",
+        serviceDescription: full.service_description || "",
+        distratoDate: new Date(full.distrato_date),
+        additionalNotes: full.additional_notes || "",
+      };
+      const clauses = (full.clauses_snapshot as any[]) || getDefaultDistratoClauses();
+      const blob = await generateDistratoPDF({ formData, clauses });
+      const fileName = `distratos/${Date.now()}_${(full.company_name || "distrato").replace(/\s+/g, "_")}.pdf`;
+      const { error: upErr } = await supabase.storage
+        .from("contract-pdfs")
+        .upload(fileName, blob, { contentType: "application/pdf", upsert: false });
+      if (upErr) {
+        console.error(upErr);
+        toast.error("Erro ao salvar PDF no storage");
+        return null;
+      }
+      const { data: pub } = supabase.storage.from("contract-pdfs").getPublicUrl(fileName);
+      const url = pub.publicUrl;
+      await supabase.from("distratos").update({ pdf_url: url }).eq("id", distratoId);
+      return url;
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao gerar PDF do distrato");
+      return null;
+    }
+  };
+
   const handleSendToZapSign = async () => {
     if (!selectedDistrato) return;
-    if (!selectedDistrato.pdf_url) {
-      toast.error("Distrato sem PDF salvo. Gere novamente pela tela de criação.");
-      return;
-    }
     if (!signerName || !signerEmail) {
       toast.error("Preencha nome e e-mail do signatário");
       return;
     }
     setIsSendingZap(true);
     try {
+      const pdfUrl = selectedDistrato.pdf_url || await ensurePdfUrl(selectedDistrato.id);
+      if (!pdfUrl) {
+        setIsSendingZap(false);
+        return;
+      }
       const documentName = `Distrato - ${selectedDistrato.company_name} - ${format(new Date(selectedDistrato.distrato_date), "dd-MM-yyyy")}`;
       const { data: zapData, error: zapError } = await supabase.functions.invoke("send-to-zapsign", {
         body: {
-          pdfUrl: selectedDistrato.pdf_url,
+          pdfUrl,
           documentName,
           signers: [
             { name: "Fabrício Nunnes", email: "fabricio@universidadevendas.com.br" },
@@ -204,6 +257,7 @@ export default function DistratoHistoryPage() {
       toast.success("Distrato enviado para assinatura via ZapSign!");
       setSignerName(""); setSignerEmail(""); setSignerPhone("");
       const updated = { ...selectedDistrato,
+        pdf_url: pdfUrl,
         zapsign_document_token: zapData.documentToken,
         zapsign_document_url: zapData.documentUrl,
         zapsign_signers: zapData.signers,
