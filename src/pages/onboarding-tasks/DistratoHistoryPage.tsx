@@ -63,6 +63,11 @@ export default function DistratoHistoryPage() {
   const [signatureStatus, setSignatureStatus] = useState<SignatureStatus | null>(null);
   const [isLoadingSignatures, setIsLoadingSignatures] = useState(false);
 
+  const [isSendingZap, setIsSendingZap] = useState(false);
+  const [signerName, setSignerName] = useState("");
+  const [signerEmail, setSignerEmail] = useState("");
+  const [signerPhone, setSignerPhone] = useState("");
+
   const fetchDistratos = async () => {
     setLoading(true);
     const { data, error } = await supabase
