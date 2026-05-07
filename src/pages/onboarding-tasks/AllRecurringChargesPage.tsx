@@ -1718,6 +1718,10 @@ export default function AllRecurringChargesPage() {
                               const legacyIds = invoices.filter(inv => ids.includes(inv.id) && inv.source_table === "company_invoices").map(inv => inv.id);
                               const centralIds = invoices.filter(inv => ids.includes(inv.id) && inv.source_table === "financial_receivables").map(inv => inv.id);
                               if (legacyIds.length > 0) {
+                                // Excluir cobranças correspondentes no Asaas (best-effort, não bloqueia)
+                                try {
+                                  await supabase.functions.invoke("asaas-delete-payment", { body: { invoice_ids: legacyIds } });
+                                } catch (e) { console.warn("[asaas-delete-payment] falha:", e); }
                                 const { error } = await supabase.from("company_invoices").delete().in("id", legacyIds);
                                 if (error) throw error;
                               }
