@@ -1897,6 +1897,12 @@ export default function AllRecurringChargesPage() {
                                         if (!confirm(`Excluir fatura avulsa "${inv.description}"?`)) return;
                                         try {
                                           const table = inv.source_table === "financial_receivables" ? "financial_receivables" : "company_invoices";
+                                          // Excluir no Asaas primeiro (best-effort)
+                                          if (table === "company_invoices") {
+                                            try {
+                                              await supabase.functions.invoke("asaas-delete-payment", { body: { invoice_ids: [inv.id] } });
+                                            } catch (e) { console.warn("[asaas-delete-payment] falha:", e); }
+                                          }
                                           const { error } = await supabase.from(table).delete().eq("id", inv.id);
                                           if (error) throw error;
                                           toast.success("Fatura excluída!");
