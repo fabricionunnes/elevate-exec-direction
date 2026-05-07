@@ -485,15 +485,46 @@ export default function DistratoHistoryPage() {
                 </>
               )}
 
-              {/* No ZapSign */}
+              {/* Send to ZapSign (when not yet sent) */}
               {!selectedDistrato.zapsign_document_token && (
                 <>
                   <Separator />
-                  <p className="text-sm text-muted-foreground text-center">
-                    Este distrato não foi enviado para assinatura digital.
-                  </p>
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <Send className="h-4 w-4 text-primary" />
+                      Enviar para assinatura (ZapSign)
+                    </h4>
+                    {!selectedDistrato.pdf_url && (
+                      <p className="text-xs text-amber-600">
+                        Este distrato não tem PDF salvo. Abra-o em "Visualizar / Imprimir" para gerar o PDF antes de enviar.
+                      </p>
+                    )}
+                    <div className="space-y-2">
+                      <div>
+                        <Label htmlFor="signer-name" className="text-xs">Nome do signatário *</Label>
+                        <Input id="signer-name" value={signerName} onChange={(e) => setSignerName(e.target.value)} placeholder="Nome completo" />
+                      </div>
+                      <div>
+                        <Label htmlFor="signer-email" className="text-xs">E-mail *</Label>
+                        <Input id="signer-email" type="email" value={signerEmail} onChange={(e) => setSignerEmail(e.target.value)} placeholder="email@empresa.com" />
+                      </div>
+                      <div>
+                        <Label htmlFor="signer-phone" className="text-xs">Telefone (opcional)</Label>
+                        <Input id="signer-phone" value={signerPhone} onChange={(e) => setSignerPhone(e.target.value)} placeholder="(11) 99999-9999" />
+                      </div>
+                    </div>
+                    <Button
+                      onClick={handleSendToZapSign}
+                      disabled={isSendingZap || !selectedDistrato.pdf_url}
+                      className="w-full gap-2"
+                    >
+                      {isSendingZap ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                      Enviar para ZapSign
+                    </Button>
+                  </div>
                 </>
               )}
+
             </div>
           )}
         </DialogContent>
