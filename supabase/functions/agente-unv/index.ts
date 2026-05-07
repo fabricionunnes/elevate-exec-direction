@@ -1,4 +1,4 @@
-// agente-unv v2.1 — CEO + 3 agentes + Áudio + Reunião Diária + Check-ins
+// agente-unv v2.2 — CEO acesso total ao sistema + Áudio + Reunião Diária + Check-ins
 import Anthropic from "npm:@anthropic-ai/sdk";
 
 // ============ ENV VARS ============
@@ -47,17 +47,34 @@ const FINANCIAL_TOOLS: Anthropic.Tool[] = [
 
 // ============ TOOLS — SOPHIA (CRM) ============
 const CRM_TOOLS: Anthropic.Tool[] = [
-  { name: "listar_leads", description: "Lista leads do CRM com filtros", input_schema: { type: "object", properties: { pipeline_id: { type: "string" }, stage_id: { type: "string" }, search: { type: "string" }, date_from: { type: "string" }, date_to: { type: "string" } } } },
-  { name: "detalhes_lead", description: "Detalhes de um lead", input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
-  { name: "criar_lead", description: "Cria um novo lead", input_schema: { type: "object", properties: { name: { type: "string" }, phone: { type: "string" }, email: { type: "string" }, company: { type: "string" }, pipeline_id: { type: "string" }, stage_id: { type: "string" }, opportunity_value: { type: "number" }, segment: { type: "string" }, main_pain: { type: "string" }, notes: { type: "string" }, origin: { type: "string" } }, required: ["name"] } },
-  { name: "atualizar_lead", description: "Atualiza campos de um lead", input_schema: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, phone: { type: "string" }, email: { type: "string" }, company: { type: "string" }, opportunity_value: { type: "number" }, segment: { type: "string" }, main_pain: { type: "string" }, notes: { type: "string" } }, required: ["id"] } },
+  // Leads
+  { name: "listar_leads", description: "Lista leads do CRM com filtros", input_schema: { type: "object", properties: { pipeline_id: { type: "string" }, stage_id: { type: "string" }, search: { type: "string" }, owner_id: { type: "string" }, date_from: { type: "string" }, date_to: { type: "string" } } } },
+  { name: "detalhes_lead", description: "Detalhes completos de um lead", input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
+  { name: "criar_lead", description: "Cria um novo lead no CRM", input_schema: { type: "object", properties: { name: { type: "string" }, phone: { type: "string" }, email: { type: "string" }, cpf: { type: "string" }, company: { type: "string" }, pipeline_id: { type: "string" }, stage_id: { type: "string" }, opportunity_value: { type: "number" }, segment: { type: "string" }, main_pain: { type: "string" }, notes: { type: "string" }, origin: { type: "string" }, city: { type: "string" }, state: { type: "string" }, zip_code: { type: "string" }, address: { type: "string" }, address_number: { type: "string" }, address_complement: { type: "string" }, neighborhood: { type: "string" }, tag_ids: { type: "array", items: { type: "string" } }, closer_staff_id: { type: "string" }, utm_source: { type: "string" }, utm_medium: { type: "string" }, utm_campaign: { type: "string" }, utm_content: { type: "string" }, utm_term: { type: "string" } }, required: ["name"] } },
+  { name: "atualizar_lead", description: "Atualiza campos de um lead existente", input_schema: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, phone: { type: "string" }, email: { type: "string" }, cpf: { type: "string" }, company: { type: "string" }, opportunity_value: { type: "number" }, segment: { type: "string" }, main_pain: { type: "string" }, notes: { type: "string" }, origin: { type: "string" }, city: { type: "string" }, state: { type: "string" }, zip_code: { type: "string" }, address: { type: "string" }, tag_ids: { type: "array", items: { type: "string" } }, closer_staff_id: { type: "string" } }, required: ["id"] } },
   { name: "mover_etapa", description: "Move lead para outra etapa do pipeline", input_schema: { type: "object", properties: { id: { type: "string" }, stage_id: { type: "string" } }, required: ["id","stage_id"] } },
-  { name: "dar_ganho", description: "Marca lead como GANHO", input_schema: { type: "object", properties: { id: { type: "string" }, opportunity_value: { type: "number" }, paid_value: { type: "number" }, payment_method: { type: "string" }, notes: { type: "string" } }, required: ["id"] } },
-  { name: "dar_perda", description: "Marca lead como PERDIDO", input_schema: { type: "object", properties: { id: { type: "string" }, notes: { type: "string" } }, required: ["id"] } },
-  { name: "adicionar_nota", description: "Adiciona nota ao lead", input_schema: { type: "object", properties: { id: { type: "string" }, content: { type: "string" } }, required: ["id","content"] } },
-  { name: "criar_atividade", description: "Cria atividade ou follow-up para lead", input_schema: { type: "object", properties: { lead_id: { type: "string" }, type: { type: "string", enum: ["call","whatsapp","email","meeting","followup","proposal","note","other"] }, title: { type: "string" }, description: { type: "string" }, scheduled_at: { type: "string" } }, required: ["lead_id","type","title"] } },
-  { name: "agendar_reuniao", description: "Agenda reunião de vendas para lead", input_schema: { type: "object", properties: { lead_id: { type: "string" }, pipeline_id: { type: "string" }, credited_staff_id: { type: "string" }, event_date: { type: "string" } }, required: ["lead_id","pipeline_id","credited_staff_id"] } },
-  { name: "listar_pipelines", description: "Lista pipelines e etapas do CRM", input_schema: { type: "object", properties: {} } },
+  { name: "dar_ganho", description: "Marca lead como GANHO/fechado", input_schema: { type: "object", properties: { id: { type: "string" }, opportunity_value: { type: "number" }, paid_value: { type: "number" }, payment_method: { type: "string" }, notes: { type: "string" }, bank_id: { type: "string" }, company_id: { type: "string" }, closer_staff_id: { type: "string" } }, required: ["id"] } },
+  { name: "dar_perda", description: "Marca lead como PERDIDO", input_schema: { type: "object", properties: { id: { type: "string" }, notes: { type: "string" }, loss_reason_id: { type: "string" } }, required: ["id"] } },
+  { name: "adicionar_nota", description: "Adiciona nota ao lead", input_schema: { type: "object", properties: { id: { type: "string" }, content: { type: "string" }, author_name: { type: "string" }, staff_id: { type: "string" } }, required: ["id","content"] } },
+  { name: "excluir_lead", description: "Remove um lead do CRM", input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
+  // Tags
+  { name: "listar_tags", description: "Lista todas as tags disponíveis no CRM", input_schema: { type: "object", properties: {} } },
+  { name: "criar_tag", description: "Cria uma nova tag no CRM", input_schema: { type: "object", properties: { name: { type: "string" }, color: { type: "string" } }, required: ["name"] } },
+  { name: "vincular_tag", description: "Vincula uma tag a um lead", input_schema: { type: "object", properties: { lead_id: { type: "string" }, tag_id: { type: "string" } }, required: ["lead_id","tag_id"] } },
+  { name: "desvincular_tag", description: "Remove uma tag de um lead", input_schema: { type: "object", properties: { lead_id: { type: "string" }, tag_id: { type: "string" } }, required: ["lead_id","tag_id"] } },
+  { name: "tags_do_lead", description: "Lista tags de um lead específico", input_schema: { type: "object", properties: { lead_id: { type: "string" } }, required: ["lead_id"] } },
+  // Atividades
+  { name: "listar_atividades", description: "Lista atividades com filtros por lead, status ou responsável", input_schema: { type: "object", properties: { lead_id: { type: "string" }, status: { type: "string", enum: ["pending","completed","overdue"] }, staff_id: { type: "string" }, date_from: { type: "string" }, date_to: { type: "string" } } } },
+  { name: "criar_atividade", description: "Cria atividade ou follow-up para lead", input_schema: { type: "object", properties: { lead_id: { type: "string" }, type: { type: "string", enum: ["call","whatsapp","email","meeting","followup","proposal","note","other"] }, title: { type: "string" }, description: { type: "string" }, scheduled_at: { type: "string" }, responsible_staff_id: { type: "string" }, meeting_link: { type: "string" } }, required: ["lead_id","type","title"] } },
+  { name: "concluir_atividade", description: "Marca uma atividade como concluída", input_schema: { type: "object", properties: { id: { type: "string" }, notes: { type: "string" } }, required: ["id"] } },
+  { name: "excluir_atividade", description: "Remove uma atividade do CRM", input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
+  // Reuniões CRM
+  { name: "listar_reunioes_crm", description: "Lista reuniões de vendas do CRM (diferente de reuniões de projetos)", input_schema: { type: "object", properties: { lead_id: { type: "string" }, pipeline_id: { type: "string" }, status: { type: "string" }, date_from: { type: "string" }, date_to: { type: "string" } } } },
+  { name: "agendar_reuniao", description: "Agenda reunião de vendas para lead", input_schema: { type: "object", properties: { lead_id: { type: "string" }, pipeline_id: { type: "string" }, credited_staff_id: { type: "string" }, triggered_by_staff_id: { type: "string" }, stage_id: { type: "string" }, event_date: { type: "string" } }, required: ["lead_id","pipeline_id","credited_staff_id"] } },
+  { name: "finalizar_reuniao", description: "Finaliza uma reunião de vendas registrando resultado", input_schema: { type: "object", properties: { id: { type: "string" }, outcome: { type: "string" }, notes: { type: "string" } }, required: ["id"] } },
+  // Pipelines
+  { name: "listar_pipelines", description: "Lista pipelines do CRM", input_schema: { type: "object", properties: {} } },
+  { name: "listar_etapas", description: "Lista etapas/stages de um pipeline específico", input_schema: { type: "object", properties: { pipeline_id: { type: "string" } }, required: ["pipeline_id"] } },
 ];
 
 // ============ TOOLS — MELISSA (PROJETOS) ============
@@ -116,7 +133,7 @@ Mentalidade dos melhores gestores do mundo:
 
 Regras: proativa nos alertas, destaque itens críticos, listas resumidas, sem "Perfeito!", sem emojis. Data: ${TODAY}`,
 
-  ceo: `Você é o CEO virtual da UNV Holdings — orquestrador estratégico. Consulta Noah (financeiro), Sophia (comercial) e Melissa (projetos/CS) para cruzar dados e orientar o Fabrício.
+  ceo: `Você é o CEO virtual da UNV Holdings — tem acesso DIRETO a todo o sistema financeiro, comercial e operacional, e também pode convocar Noah, Sophia ou Melissa quando precisar de análise especializada.
 
 Mentalidade dos melhores CEOs do mundo:
 - Jeff Bezos: decisões de longo prazo, obsessão com o cliente, dados antes de opinião.
@@ -128,10 +145,11 @@ Mentalidade dos melhores CEOs do mundo:
 - Elon Musk: raciocínio por primeiros princípios, urgência real, elimine o que não escala.
 
 Como você opera:
-1. Consulte só os especialistas relevantes para a pergunta
-2. Cruze dados: financeiro + comercial + operacional = visão estratégica real
-3. Sempre entregue: situação atual, principal risco, ação recomendada
-4. Nunca seja operacional — você orienta, não executa
+1. Para dados factuais (saldo, leads, tarefas): busque diretamente no sistema via ferramentas
+2. Para análise, interpretação ou decisão complexa: convoque o especialista (consultar_financeiro, consultar_crm, consultar_projetos)
+3. Cruze sempre os três pilares: financeiro + comercial + operacional = visão real da empresa
+4. Sempre entregue: situação atual, principal risco, ação recomendada
+5. Seja direto — uma decisão clara vale mais que 5 opções vagas
 
 Regras: sem "Perfeito!", sem emojis excessivos, linguagem direta e estratégica. Data: ${TODAY}`,
 };
@@ -140,14 +158,18 @@ const AGENT_API_KEYS: Record<AgentType, string> = {
   financeiro: NEXUS_KEY_FINANCEIRO,
   crm: NEXUS_KEY_DIRETOR,
   projetos: NEXUS_KEY_DIRETOR,
-  ceo: NEXUS_KEY_DIRETOR,
+  ceo: NEXUS_KEY_DIRETOR, // fallback; tools financeiras usam NEXUS_KEY_FINANCEIRO diretamente
 };
+
+// Tools financeiras que precisam de NEXUS_KEY_FINANCEIRO mesmo quando chamadas pelo CEO
+const FINANCIAL_TOOL_NAMES = new Set(["resumo_financeiro","contas_bancarias","fluxo_caixa","inadimplentes","dre","criar_conta_receber","marcar_recebido","criar_conta_pagar","marcar_pago","criar_fatura"]);
 
 const AGENT_TOOLS: Record<AgentType, Anthropic.Tool[]> = {
   financeiro: FINANCIAL_TOOLS,
   crm: CRM_TOOLS,
   projetos: PROJECT_TOOLS,
-  ceo: CEO_TOOLS,
+  // CEO tem acesso a TODO o sistema + pode convocar sub-agentes
+  ceo: [...FINANCIAL_TOOLS, ...CRM_TOOLS, ...PROJECT_TOOLS, ...CEO_TOOLS],
 };
 
 // ============ DETECÇÃO DE AGENTE ============
@@ -183,7 +205,10 @@ async function nexusPost(url: string, body: Record<string, unknown>, apiKey: str
 
 // ============ EXECUÇÃO DE TOOLS ============
 async function executeTool(toolName: string, input: Record<string, unknown>, agentType: AgentType): Promise<string> {
-  const apiKey = AGENT_API_KEYS[agentType];
+  // CEO usa NEXUS_KEY_FINANCEIRO para tools financeiras, NEXUS_KEY_DIRETOR para as demais
+  const apiKey = (agentType === "ceo" && FINANCIAL_TOOL_NAMES.has(toolName))
+    ? NEXUS_KEY_FINANCEIRO
+    : AGENT_API_KEYS[agentType];
   const FIN = `${NEXUS_URL}/financial-api`;
   const SYS = `${NEXUS_URL}/system-api`;
   try {
@@ -210,6 +235,18 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
       case "criar_atividade": result = await nexusPost(`${SYS}?module=activities&action=create`, input, apiKey); break;
       case "agendar_reuniao": result = await nexusPost(`${SYS}?module=meetings&action=schedule`, input, apiKey); break;
       case "listar_pipelines": result = await nexusGet(SYS, { module: "pipelines", action: "list" }, apiKey); break;
+      case "excluir_lead": { const { id } = input; result = await nexusPost(`${SYS}?module=leads&action=delete&id=${id}`, {}, apiKey); break; }
+      case "listar_tags": result = await nexusGet(SYS, { module: "tags", action: "list" }, apiKey); break;
+      case "criar_tag": result = await nexusPost(`${SYS}?module=tags&action=create`, input, apiKey); break;
+      case "vincular_tag": result = await nexusPost(`${SYS}?module=tags&action=add_to_lead`, input, apiKey); break;
+      case "desvincular_tag": result = await nexusPost(`${SYS}?module=tags&action=remove_from_lead`, input, apiKey); break;
+      case "tags_do_lead": result = await nexusGet(SYS, { module: "tags", action: "lead_tags", lead_id: input.lead_id as string }, apiKey); break;
+      case "listar_atividades": { const p: Record<string,string> = { module: "activities", action: "list" }; if (input.lead_id) p.lead_id = input.lead_id as string; if (input.status) p.status = input.status as string; if (input.staff_id) p.staff_id = input.staff_id as string; if (input.date_from) p.date_from = input.date_from as string; if (input.date_to) p.date_to = input.date_to as string; result = await nexusGet(SYS, p, apiKey); break; }
+      case "concluir_atividade": { const { id, ...b } = input; result = await nexusPost(`${SYS}?module=activities&action=complete&id=${id}`, b, apiKey); break; }
+      case "excluir_atividade": { const { id } = input; result = await nexusPost(`${SYS}?module=activities&action=delete&id=${id}`, {}, apiKey); break; }
+      case "listar_reunioes_crm": { const p: Record<string,string> = { module: "crm_meetings", action: "list" }; if (input.lead_id) p.lead_id = input.lead_id as string; if (input.pipeline_id) p.pipeline_id = input.pipeline_id as string; if (input.status) p.status = input.status as string; if (input.date_from) p.date_from = input.date_from as string; if (input.date_to) p.date_to = input.date_to as string; result = await nexusGet(SYS, p, apiKey); break; }
+      case "finalizar_reuniao": { const { id, ...b } = input; result = await nexusPost(`${SYS}?module=crm_meetings&action=finalize&id=${id}`, b, apiKey); break; }
+      case "listar_etapas": { const p: Record<string,string> = { module: "pipelines", action: "stages" }; if (input.pipeline_id) p.pipeline_id = input.pipeline_id as string; result = await nexusGet(SYS, p, apiKey); break; }
       case "listar_empresas": { const p: Record<string,string> = { module: "companies", action: "list" }; if (input.status) p.status = input.status as string; result = await nexusGet(SYS, p, apiKey); break; }
       case "detalhes_empresa": result = await nexusGet(SYS, { module: "companies", action: "get", id: input.id as string }, apiKey); break;
       case "listar_projetos": { const p: Record<string,string> = { module: "projects", action: "list" }; if (input.status) p.status = input.status as string; if (input.company_id) p.company_id = input.company_id as string; result = await nexusGet(SYS, p, apiKey); break; }
@@ -472,7 +509,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ ok: false, agent: dbg, error: String(err) }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
     }
-    return new Response(JSON.stringify({ ok: true, version: "2.1-audio-cron" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: true, version: "2.3-sophia-full" }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
 
   if (req.method !== "POST") return new Response("OK", { status: 200 });
