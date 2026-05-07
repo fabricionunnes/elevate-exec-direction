@@ -24,9 +24,21 @@ import {
   User,
   LogOut,
   HelpCircle,
-  Plus,
-  Bell,
   Menu,
+  LayoutDashboard,
+  Kanban,
+  Users,
+  ListTodo,
+  MessageSquare,
+  FileText,
+  CalendarDays,
+  TrendingUp,
+  Repeat2,
+  ClipboardList,
+  Building2,
+  BarChart3,
+  Phone,
+  ChevronDown,
 } from "lucide-react";
 import logoUnv from "@/assets/logo-unv-nexus.png";
 import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
@@ -56,31 +68,40 @@ export const useCRMContext = () => {
 };
 
 const baseNavTabs = [
-  { title: "Dashboard", href: "/crm/reports" },
-  { title: "Negócios", href: "/crm/pipeline" },
-  { title: "Contatos", href: "/crm/leads" },
-  { title: "Atividades", href: "/crm/activities" },
-  { title: "Atendimento", href: "/crm/inbox", badge: true },
-  { title: "Transcrições", href: "/crm/transcriptions" },
-  { title: "Contratos", href: "/contratos" },
-  { title: "Reuniões", href: "/crm/meetings" },
-  { title: "Forecast", href: "/crm/forecast" },
-  { title: "Cadências", href: "/crm/cadences" },
-  { title: "Aplicações", href: "/crm/applications" },
-  { title: "Nota Fiscal", href: "/onboarding-tasks/nota-fiscal" },
-  { title: "Escritório", href: "/crm/office" },
+  { title: "Dashboard", href: "/crm/reports", icon: LayoutDashboard },
+  { title: "Negócios", href: "/crm/pipeline", icon: Kanban },
+  { title: "Contatos", href: "/crm/leads", icon: Users },
+  { title: "Atividades", href: "/crm/activities", icon: ListTodo },
+  { title: "Atendimento", href: "/crm/inbox", icon: MessageSquare, badge: true },
+  { title: "Transcrições", href: "/crm/transcriptions", icon: FileText },
+  { title: "Contratos", href: "/contratos", icon: ClipboardList },
+  { title: "Reuniões", href: "/crm/meetings", icon: CalendarDays },
+  { title: "Forecast", href: "/crm/forecast", icon: TrendingUp },
+  { title: "Cadências", href: "/crm/cadences", icon: Repeat2 },
+  { title: "Aplicações", href: "/crm/applications", icon: BarChart3 },
+  { title: "Nota Fiscal", href: "/onboarding-tasks/nota-fiscal", icon: FileText },
+  { title: "Escritório", href: "/crm/office", icon: Building2 },
 ];
 
 const getNavTabs = (role: string | null) => {
   const tabs = [...baseNavTabs];
   if (role === "master" || role === "head_comercial") {
-    tabs.push({ title: "Head Comercial", href: "/crm/head" });
+    tabs.push({ title: "Head Comercial", href: "/crm/head", icon: BarChart3 });
   }
   if (role === "master" || role === "admin" || role === "head_comercial") {
-    tabs.push({ title: "Resumo Calls", href: "/crm/call-summary" });
+    tabs.push({ title: "Resumo Calls", href: "/crm/call-summary", icon: Phone });
   }
   return tabs;
 };
+
+// Tabs principais visíveis na navbar (sem overflow)
+const MAIN_TAB_HREFS = [
+  "/crm/reports",
+  "/crm/pipeline",
+  "/crm/leads",
+  "/crm/activities",
+  "/crm/inbox",
+];
 
 export const CRMLayout = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -190,6 +211,10 @@ export const CRMLayout = () => {
   const isPipelineRoute = location.pathname.includes("/crm/pipeline");
   const lockViewportHeight = isInboxRoute || isPipelineRoute;
 
+  const mainTabs = navTabs.filter((t) => MAIN_TAB_HREFS.includes(t.href));
+  const moreTabs = navTabs.filter((t) => !MAIN_TAB_HREFS.includes(t.href));
+  const isMoreActive = moreTabs.some((t) => isTabActive(t.href));
+
   return (
     <CRMContext.Provider value={{
       staffRole,
@@ -205,182 +230,216 @@ export const CRMLayout = () => {
       <div
         className={cn(
           "bg-background flex flex-col",
-          // Inbox must not allow body/page scroll; keep scroll inside the inbox panes.
           lockViewportHeight ? "h-dvh overflow-hidden" : "min-h-screen",
         )}
       >
         {/* Top Header */}
-        <header className="mobile-safe-header min-h-14 border-b border-border bg-card flex items-center px-2 sm:px-4 gap-2 sm:gap-4 sticky top-0 z-50">
-          {/* Mobile Menu Toggle */}
-          {isMobile && (
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="shrink-0">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-[280px] p-0">
-                <SheetHeader className="p-4 border-b border-border">
-                  <SheetTitle className="flex items-center gap-2">
-                    <img src={logoUnv} alt="UNV Nexus" className="h-6" />
-                  </SheetTitle>
-                </SheetHeader>
-                <nav className="flex flex-col p-2">
-                  {navTabs.map((tab) => (
-                    <Link
-                      key={tab.href}
-                      to={tab.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={cn(
-                        "px-4 py-3 text-sm font-medium rounded-md transition-colors relative flex items-center gap-2",
-                        isTabActive(tab.href)
-                          ? "text-primary bg-primary/10"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      )}
-                    >
-                      {tab.title}
-                      {tab.badge && (
-                        <span className="w-2 h-2 bg-green-500 rounded-full" />
-                      )}
-                    </Link>
-                  ))}
+        <header className="mobile-safe-header sticky top-0 z-50 border-b border-border/60 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+          <div className="flex items-center h-14 px-3 sm:px-5 gap-3">
+
+            {/* Mobile Menu Toggle */}
+            {isMobile && (
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8">
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[280px] p-0">
+                  <SheetHeader className="p-4 border-b border-border">
+                    <SheetTitle className="flex items-center gap-2">
+                      <img src={logoUnv} alt="UNV Nexus" className="h-6" />
+                    </SheetTitle>
+                  </SheetHeader>
+                  <nav className="flex flex-col p-2 gap-0.5">
+                    {navTabs.map((tab) => {
+                      const Icon = tab.icon;
+                      return (
+                        <Link
+                          key={tab.href}
+                          to={tab.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={cn(
+                            "px-3 py-2.5 text-sm font-medium rounded-lg transition-all flex items-center gap-3",
+                            isTabActive(tab.href)
+                              ? "text-primary bg-primary/10"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                          )}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          {tab.title}
+                          {tab.badge && (
+                            <span className="ml-auto w-2 h-2 bg-emerald-500 rounded-full" />
+                          )}
+                        </Link>
+                      );
+                    })}
+                    {isAdmin && (
+                      <Link
+                        to="/crm/settings"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="px-3 py-2.5 text-sm font-medium rounded-lg transition-all text-muted-foreground hover:text-foreground hover:bg-muted/60 flex items-center gap-3"
+                      >
+                        <Settings className="h-4 w-4" />
+                        Configurações
+                      </Link>
+                    )}
+                  </nav>
+                </SheetContent>
+              </Sheet>
+            )}
+
+            {/* Logo */}
+            <Link to="/crm" className="flex items-center gap-2 shrink-0 mr-1">
+              <img src={logoUnv} alt="UNV Nexus" className="h-6 sm:h-7" />
+            </Link>
+
+            {/* Divider */}
+            <div className="hidden md:block h-5 w-px bg-border/70 shrink-0" />
+
+            {/* Navigation Tabs - Desktop */}
+            <nav className="hidden md:flex items-stretch h-14 gap-0.5 flex-1">
+              {mainTabs.map((tab) => {
+                const Icon = tab.icon;
+                const active = isTabActive(tab.href);
+                return (
+                  <Link
+                    key={tab.href}
+                    to={tab.href}
+                    className={cn(
+                      "relative flex items-center gap-1.5 px-3.5 text-sm font-medium transition-all",
+                      "border-b-2 -mb-px",
+                      active
+                        ? "text-primary border-primary"
+                        : "text-muted-foreground border-transparent hover:text-foreground hover:border-border"
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    {tab.title}
+                    {tab.badge && (
+                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                    )}
+                  </Link>
+                );
+              })}
+
+              {/* Mais dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={cn(
+                      "relative flex items-center gap-1.5 px-3.5 text-sm font-medium transition-all outline-none",
+                      "border-b-2 -mb-px",
+                      isMoreActive
+                        ? "text-primary border-primary"
+                        : "text-muted-foreground border-transparent hover:text-foreground hover:border-border"
+                    )}
+                  >
+                    Mais
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-52">
+                  {moreTabs.map((tab) => {
+                    const Icon = tab.icon;
+                    return (
+                      <DropdownMenuItem key={tab.href} asChild>
+                        <Link to={tab.href} className="flex items-center gap-2">
+                          <Icon className="h-4 w-4 text-muted-foreground" />
+                          {tab.title}
+                        </Link>
+                      </DropdownMenuItem>
+                    );
+                  })}
                   {isAdmin && (
-                    <Link
-                      to="/crm/settings"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="px-4 py-3 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted flex items-center gap-2"
-                    >
-                      <Settings className="h-4 w-4" />
-                      Configurações
-                    </Link>
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link to="/crm/settings" className="flex items-center gap-2">
+                          <Settings className="h-4 w-4 text-muted-foreground" />
+                          Configurações
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
                   {isMaster && (
-                    <Link
-                      to="/crm/api"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="px-4 py-3 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted flex items-center gap-2"
-                    >
-                      API
-                    </Link>
-                  )}
-                </nav>
-              </SheetContent>
-            </Sheet>
-          )}
-
-          {/* Logo */}
-          <Link to="/crm" className="flex items-center gap-2 shrink-0">
-            <img src={logoUnv} alt="UNV Nexus" className="h-6 sm:h-7" />
-          </Link>
-
-          {/* Navigation Tabs - Hidden on Mobile */}
-          <nav className="hidden md:flex items-center gap-1 flex-1">
-            {navTabs.map((tab) => (
-              <Link
-                key={tab.href}
-                to={tab.href}
-                className={cn(
-                  "px-4 py-2 text-sm font-medium rounded-md transition-colors relative",
-                  isTabActive(tab.href)
-                    ? "text-primary bg-primary/10"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-              >
-                {tab.title}
-                {tab.badge && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full" />
-                )}
-              </Link>
-            ))}
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-muted-foreground">
-                  ⋮ Mais
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem asChild>
-                  <Link to="/crm">Dashboard</Link>
-                </DropdownMenuItem>
-                {isAdmin && (
-                  <DropdownMenuItem asChild>
-                    <Link to="/crm/settings">Configurações</Link>
-                  </DropdownMenuItem>
-                )}
-                {isMaster && (
-                  <DropdownMenuItem asChild>
-                    <Link to="/crm/api">API</Link>
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </nav>
-
-          {/* Right Actions */}
-          <div className="flex items-center gap-1 sm:gap-2 ml-auto">
-            <CRMNotificationsBell staffId={staffId} />
-
-
-            {/* Profile Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-9 sm:w-9">
-                  <Avatar className="h-7 w-7 sm:h-8 sm:w-8">
-                    {staffAvatarUrl && <AvatarImage src={staffAvatarUrl} alt={staffName || ""} />}
-                    <AvatarFallback className="bg-primary/10 text-primary text-xs sm:text-sm">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <div className="px-2 py-1.5">
-                  <p className="font-medium text-sm">{staffName}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{staffRole}</p>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/crm/settings" className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    Conta
-                  </Link>
-                </DropdownMenuItem>
-                {isAdmin && (
-                  <DropdownMenuItem asChild>
-                    <Link to="/crm/settings" className="flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      Configurações
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem className="flex items-center gap-2">
-                  <HelpCircle className="h-4 w-4" />
-                  Ajuda
-                </DropdownMenuItem>
-                {isAdmin && (
-                  <>
-                    <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link to="/onboarding-tasks" className="flex items-center gap-2">
-                        <ChevronLeft className="h-4 w-4" />
-                        Voltar ao Nexus
+                      <Link to="/crm/api" className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        API
                       </Link>
                     </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuItem 
-                  className="flex items-center gap-2 text-red-600"
-                  onClick={() => {
-                    supabase.auth.signOut();
-                    navigate("/onboarding-tasks/login");
-                  }}
-                >
-                  <LogOut className="h-4 w-4" />
-                  Sair
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </nav>
+
+            {/* Right Actions */}
+            <div className="flex items-center gap-1.5 ml-auto">
+              <CRMNotificationsBell staffId={staffId} />
+
+              {/* Profile Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="flex items-center gap-2 h-8 px-2 rounded-lg hover:bg-muted/60"
+                  >
+                    <Avatar className="h-6 w-6">
+                      {staffAvatarUrl && <AvatarImage src={staffAvatarUrl} alt={staffName || ""} />}
+                      <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-semibold">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="hidden sm:block text-sm font-medium max-w-[120px] truncate">
+                      {staffName?.split(" ")[0]}
+                    </span>
+                    <ChevronDown className="h-3 w-3 text-muted-foreground hidden sm:block" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="px-3 py-2 border-b border-border mb-1">
+                    <p className="font-semibold text-sm">{staffName}</p>
+                    <p className="text-xs text-muted-foreground capitalize mt-0.5">{staffRole?.replace("_", " ")}</p>
+                  </div>
+                  <DropdownMenuItem asChild>
+                    <Link to="/crm/settings" className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Conta
+                    </Link>
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/crm/settings" className="flex items-center gap-2">
+                        <Settings className="h-4 w-4" />
+                        Configurações
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem className="flex items-center gap-2">
+                    <HelpCircle className="h-4 w-4" />
+                    Ajuda
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/onboarding-tasks" className="flex items-center gap-2">
+                      <ChevronLeft className="h-4 w-4" />
+                      Voltar ao Nexus
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="flex items-center gap-2 text-destructive focus:text-destructive"
+                    onClick={() => {
+                      supabase.auth.signOut();
+                      navigate("/onboarding-tasks/login");
+                    }}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sair
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </header>
 
