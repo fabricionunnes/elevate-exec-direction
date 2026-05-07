@@ -635,6 +635,117 @@ async function runDailyMeeting(): Promise<void> {
   return runAlignmentMeeting("daily");
 }
 
+// ============ REUNIÃO TEMÁTICA ============
+async function runTopicMeeting(topic: string, ceoChatId: number): Promise<void> {
+  const dateBRT = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  const timeBRT = new Date().toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
+  const AGENT_NAMES: Record<AgentType, string> = { financeiro: "Noah", crm: "Sophia", projetos: "Melissa", ceo: "Max" };
+
+  try {
+    // 1. Max decide quais agentes consultar com base no tema (usa haiku pra ser rápido e barato)
+    const routingResp = await anthropic.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 150,
+      system: "Roteador de perguntas. Retorne APENAS JSON, sem explicação.",
+      messages: [{
+        role: "user",
+        content: `Tema da reunião: "${topic}"\n\nAgentes:\n- financeiro: saldo, MRR, inadimplência, fluxo de caixa, contas a pagar/receber, DRE\n- crm: leads, pipeline, conversão, follow-ups, negociações, reuniões de venda\n- projetos: clientes ativos, tarefas, KPIs, churn, CS, vendas mensais\n\nRetorne JSON: {"agents": ["financeiro","crm","projetos"]} com apenas os agentes relevantes.`,
+      }],
+    });
+    const routingText = routingResp.content.find((c) => c.type === "text")?.text ?? "";
+    let agentsToConsult: AgentType[] = [];
+    try {
+      const match = routingText.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(match?.[0] ?? "{}");
+      agentsToConsult = ((parsed.agents ?? []) as string[]).filter((a) =>
+        ["financeiro", "crm", "projetos"].includes(a)
+      ) as AgentType[];
+    } catch { /* fallback abaixo */ }
+    if (agentsToConsult.length === 0) agentsToConsult = ["financeiro", "crm", "projetos"];
+
+    // 2. Notifica CEO quem vai ser consultado
+    const consultingNames = agentsToConsult.map((a) => AGENT_NAMES[a]).join(", ");
+    await sendTelegram(ceoChatId, `*Reunião — ${topic}*\n\nConsultando: ${consultingNames}...`, "ceo");
+
+    // 3. Consulta os agentes relevantes em paralelo com prompt focado no tema
+    const agentResults = await Promise.all(
+      agentsToConsult.map(async (agent) => {
+        const result = await callAgent(agent,
+          `Reunião temática solicitada pelo CEO Max sobre: "${topic}".\n\nTraga todos os dados do seu setor relevantes para este tema. Seja direto, objetivo e foque apenas no que importa para o assunto.`
+        );
+        return { agent, result };
+      })
+    );
+
+    // 4. CEO sintetiza com foco total no tema
+    const dadosText = agentResults
+      .map(({ agent, result }) => `${AGENT_NAMES[agent]}:\n${result}`)
+      .join("\n\n---\n\n");
+
+    const ceoSynthPrompt = `${dateBRT} — ${timeBRT}
+Reunião sobre: "${topic}"
+
+Dados dos agentes:
+${dadosText}
+
+Como Max, CEO da UNV Holdings, conduza esta reunião com foco total em "${topic}":
+
+*DIAGNÓSTICO*
+(o que os dados mostram sobre este tema — sem rodeios)
+
+*CAUSA RAIZ*
+(por que está assim)
+
+*DECISÃO*
+(uma decisão clara — não 5 opções)
+
+*AÇÕES IMEDIATAS*
+${agentsToConsult.map((a) => `---ACAO_${a.toUpperCase()}---\n(ação específica para ${AGENT_NAMES[a]} — o que fazer hoje/amanhã com prazo)\n---FIM_${a.toUpperCase()}---`).join("\n")}
+
+Direto. Sem enrolação.`.trim();
+
+    const synthesis = await callAgent("ceo", ceoSynthPrompt);
+
+    // Helper para extrair seções
+    const extract = (text: string, agent: string) => {
+      const s = text.indexOf(`---ACAO_${agent.toUpperCase()}---`);
+      const e = text.indexOf(`---FIM_${agent.toUpperCase()}---`);
+      return s !== -1 && e !== -1 ? text.slice(s + `---ACAO_${agent.toUpperCase()}---`.length, e).trim() : "";
+    };
+
+    // Remove marcadores do texto do CEO
+    let synthesisClean = synthesis;
+    for (const agent of agentsToConsult) {
+      synthesisClean = synthesisClean
+        .replace(new RegExp(`---ACAO_${agent.toUpperCase()}---[\\s\\S]*?---FIM_${agent.toUpperCase()}---`, "g"), "")
+        .trim();
+    }
+
+    // 5. Envia síntese ao CEO
+    await sendTelegram(ceoChatId, `*Reunião — ${topic}*\n\n${synthesisClean}`, "ceo");
+
+    // 6. Envia ação + executa para cada agente consultado
+    for (const { agent } of agentResults) {
+      const agentChatId = await getChatId(agent);
+      const acao = extract(synthesis, agent);
+      if (!agentChatId || !acao) continue;
+
+      // Notifica a ação
+      await sendTelegram(agentChatId, `*Reunião — ${topic}*\n\n*Max determinou:*\n${acao}`, agent);
+
+      // Executa
+      const execResult = await callAgent(agent,
+        `Max determinou na reunião sobre "${topic}":\n\n${acao}\n\nExecute o que for possível agora usando suas ferramentas. Reporte: o que foi feito e o que precisa de ação humana.`
+      );
+      await sendTelegram(agentChatId, `*Execução:*\n${execResult}`, agent);
+    }
+
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await sendTelegram(ceoChatId, `Erro na reunião sobre "${topic}": ${msg.slice(0, 300)}`, "ceo").catch(() => {});
+  }
+}
+
 // ============ CHECK-IN (5x/dia) ============
 async function runCheckIn(): Promise<void> {
   const timeBRT = new Date().toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
@@ -729,13 +840,23 @@ Deno.serve(async (req) => {
       // Salva chat ID para mensagens proativas (sempre, inclusive antes de early returns)
       EdgeRuntime.waitUntil(storeChatId(agentType, chatId));
 
-      // CEO: comandos especiais — "reunião" ou "alinhamento" convoca os 3 agentes
+      // CEO: comandos especiais de reunião
       if (agentType === "ceo") {
         const lower = text.toLowerCase().trim();
+
+        // "reunião" ou "alinhamento" sem tema → reunião geral com todos os agentes
         if (lower === "reunião" || lower === "reuniao" || lower === "alinhamento" || lower === "meeting") {
-          // Passa o chatId direto — não depende do banco pra entregar o resultado
           EdgeRuntime.waitUntil(runAlignmentMeeting("ondemand", chatId));
           await sendTelegram(chatId, "Convocando reunião de alinhamento com Noah, Sophia e Melissa. Aguarda — isso leva de 2 a 3 minutos.", "ceo");
+          return new Response("OK", { status: 200 });
+        }
+
+        // "reunião sobre [tema]" / "reuniao [tema]" / "pauta [tema]" → reunião temática
+        const topicMatch = text.match(/^(?:reunião|reuniao|pauta|meeting)\s+(?:sobre\s+|about\s+)?(.+)/i);
+        if (topicMatch) {
+          const topic = topicMatch[1].trim();
+          EdgeRuntime.waitUntil(runTopicMeeting(topic, chatId));
+          await sendTelegram(chatId, `Iniciando reunião sobre "${topic}". Aguarda — 2 a 3 minutos.`, "ceo");
           return new Response("OK", { status: 200 });
         }
       }
