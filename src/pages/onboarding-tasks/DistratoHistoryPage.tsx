@@ -18,8 +18,11 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
 
 interface DistratoRecord {
   id: string;
@@ -59,6 +62,11 @@ export default function DistratoHistoryPage() {
   const [showDialog, setShowDialog] = useState(false);
   const [signatureStatus, setSignatureStatus] = useState<SignatureStatus | null>(null);
   const [isLoadingSignatures, setIsLoadingSignatures] = useState(false);
+
+  const [isSendingZap, setIsSendingZap] = useState(false);
+  const [signerName, setSignerName] = useState("");
+  const [signerEmail, setSignerEmail] = useState("");
+  const [signerPhone, setSignerPhone] = useState("");
 
   const fetchDistratos = async () => {
     setLoading(true);
@@ -157,6 +165,58 @@ export default function DistratoHistoryPage() {
       console.error(err);
     } finally {
       setIsLoadingSignatures(false);
+    }
+  };
+
+  const handleSendToZapSign = async () => {
+    if (!selectedDistrato) return;
+    if (!selectedDistrato.pdf_url) {
+      toast.error("Distrato sem PDF salvo. Gere novamente pela tela de criação.");
+      return;
+    }
+    if (!signerName || !signerEmail) {
+      toast.error("Preencha nome e e-mail do signatário");
+      return;
+    }
+    setIsSendingZap(true);
+    try {
+      const documentName = `Distrato - ${selectedDistrato.company_name} - ${format(new Date(selectedDistrato.distrato_date), "dd-MM-yyyy")}`;
+      const { data: zapData, error: zapError } = await supabase.functions.invoke("send-to-zapsign", {
+        body: {
+          pdfUrl: selectedDistrato.pdf_url,
+          documentName,
+          signers: [
+            { name: "Fabrício Nunnes", email: "fabricio@universidadevendas.com.br" },
+            { name: signerName, email: signerEmail, phone: signerPhone || undefined },
+          ],
+          sendAutomatically: true,
+        },
+      });
+      if (zapError) throw zapError;
+
+      await supabase.from("distratos").update({
+        zapsign_document_token: zapData.documentToken,
+        zapsign_document_url: zapData.documentUrl,
+        zapsign_signers: zapData.signers,
+        zapsign_sent_at: new Date().toISOString(),
+      }).eq("id", selectedDistrato.id);
+
+      toast.success("Distrato enviado para assinatura via ZapSign!");
+      setSignerName(""); setSignerEmail(""); setSignerPhone("");
+      const updated = { ...selectedDistrato,
+        zapsign_document_token: zapData.documentToken,
+        zapsign_document_url: zapData.documentUrl,
+        zapsign_signers: zapData.signers,
+        zapsign_sent_at: new Date().toISOString(),
+      };
+      setSelectedDistrato(updated);
+      setDistratos(prev => prev.map(d => d.id === updated.id ? updated : d));
+      await checkSignatureStatus(zapData.documentToken);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao enviar para ZapSign");
+    } finally {
+      setIsSendingZap(false);
     }
   };
 
@@ -425,15 +485,46 @@ export default function DistratoHistoryPage() {
                 </>
               )}
 
-              {/* No ZapSign */}
+              {/* Send to ZapSign (when not yet sent) */}
               {!selectedDistrato.zapsign_document_token && (
                 <>
                   <Separator />
-                  <p className="text-sm text-muted-foreground text-center">
-                    Este distrato não foi enviado para assinatura digital.
-                  </p>
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <Send className="h-4 w-4 text-primary" />
+                      Enviar para assinatura (ZapSign)
+                    </h4>
+                    {!selectedDistrato.pdf_url && (
+                      <p className="text-xs text-amber-600">
+                        Este distrato não tem PDF salvo. Abra-o em "Visualizar / Imprimir" para gerar o PDF antes de enviar.
+                      </p>
+                    )}
+                    <div className="space-y-2">
+                      <div>
+                        <Label htmlFor="signer-name" className="text-xs">Nome do signatário *</Label>
+                        <Input id="signer-name" value={signerName} onChange={(e) => setSignerName(e.target.value)} placeholder="Nome completo" />
+                      </div>
+                      <div>
+                        <Label htmlFor="signer-email" className="text-xs">E-mail *</Label>
+                        <Input id="signer-email" type="email" value={signerEmail} onChange={(e) => setSignerEmail(e.target.value)} placeholder="email@empresa.com" />
+                      </div>
+                      <div>
+                        <Label htmlFor="signer-phone" className="text-xs">Telefone (opcional)</Label>
+                        <Input id="signer-phone" value={signerPhone} onChange={(e) => setSignerPhone(e.target.value)} placeholder="(11) 99999-9999" />
+                      </div>
+                    </div>
+                    <Button
+                      onClick={handleSendToZapSign}
+                      disabled={isSendingZap || !selectedDistrato.pdf_url}
+                      className="w-full gap-2"
+                    >
+                      {isSendingZap ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                      Enviar para ZapSign
+                    </Button>
+                  </div>
                 </>
               )}
+
             </div>
           )}
         </DialogContent>
