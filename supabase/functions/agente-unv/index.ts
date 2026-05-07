@@ -463,48 +463,101 @@ async function getChatId(agentType: AgentType): Promise<number | null> {
   } catch { return null; }
 }
 
-// ============ REUNIÃO DIÁRIA (7h) ============
-async function runDailyMeeting(): Promise<void> {
+// ============ REUNIÃO DE ALINHAMENTO (sob demanda ou diária 7h) ============
+async function runAlignmentMeeting(mode: "daily" | "ondemand" = "daily"): Promise<void> {
   const dateBRT = new Date().toLocaleDateString("pt-BR", {
     timeZone: "America/Sao_Paulo", weekday: "long", day: "numeric", month: "long", year: "numeric"
   });
+  const timeBRT = new Date().toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
+
+  const prefix = mode === "daily"
+    ? `Hoje é ${dateBRT}. Briefing matinal`
+    : `Reunião de alinhamento convocada por Max — ${dateBRT} às ${timeBRT}. Faça um relatório`;
+
+  // Avisa nos 3 chats que a reunião começou
+  const [noahId, sophiaId, melissaId, ceoId] = await Promise.all([
+    getChatId("financeiro"), getChatId("crm"), getChatId("projetos"), getChatId("ceo"),
+  ]);
+
+  const aviso = mode === "ondemand"
+    ? `*Reunião de Alinhamento — ${timeBRT}*\n\nMax convocou uma reunião com todos os setores. Aguarde o relatório consolidado.`
+    : null;
+
+  if (aviso) {
+    await Promise.all([
+      noahId  ? sendTelegram(noahId,   aviso, "financeiro") : Promise.resolve(),
+      sophiaId? sendTelegram(sophiaId, aviso, "crm")        : Promise.resolve(),
+      melissaId?sendTelegram(melissaId,aviso, "projetos")   : Promise.resolve(),
+      ceoId   ? sendTelegram(ceoId,    aviso, "ceo")        : Promise.resolve(),
+    ]);
+  }
 
   // Consulta paralela nos 3 agentes
   const [noahStatus, sophiaStatus, melissaStatus] = await Promise.all([
-    callAgent("financeiro", `Hoje é ${dateBRT}. Briefing matinal financeiro: saldo atual, inadimplência crítica, contas vencendo hoje e previsão de caixa da semana. Máximo 5 itens. Seja objetivo.`),
-    callAgent("crm", `Hoje é ${dateBRT}. Briefing matinal comercial: leads quentes, follow-ups críticos para hoje, reuniões agendadas e oportunidades que podem fechar esta semana. Máximo 5 itens. Seja objetivo.`),
-    callAgent("projetos", `Hoje é ${dateBRT}. Briefing matinal de CS/Projetos: clientes com sinal de churn, entregas do dia, tarefas atrasadas e KPIs não lançados. Máximo 5 itens. Seja objetivo.`),
+    callAgent("financeiro", `${prefix} financeiro: saldo atual, MRR, inadimplência crítica, contas vencendo esta semana e projeção de caixa. Máximo 6 itens. Objetivo e direto.`),
+    callAgent("crm", `${prefix} comercial: leads quentes, follow-ups críticos, reuniões agendadas, oportunidades próximas de fechar e conversão do mês. Máximo 6 itens. Objetivo e direto.`),
+    callAgent("projetos", `${prefix} de CS/Projetos: clientes ativos, sinais de churn, entregas pendentes, tarefas atrasadas e KPIs não lançados. Máximo 6 itens. Objetivo e direto.`),
   ]);
 
-  // CEO sintetiza e prioriza
-  const briefing = await callAgent("ceo", `
-Hoje é ${dateBRT}. Recebi os briefings matinais da equipe:
+  // CEO (Max) sintetiza e prioriza
+  const title = mode === "daily" ? "BRIEFING MATINAL" : "REUNIÃO DE ALINHAMENTO";
+  const ceoPrompt = `
+${dateBRT} — ${timeBRT}. Relatórios dos setores:
 
-NOAH (CFO): ${noahStatus}
+*NOAH — Financeiro:*
+${noahStatus}
 
-SOPHIA (Comercial): ${sophiaStatus}
+*SOPHIA — Comercial:*
+${sophiaStatus}
 
-MELISSA (Projetos/CS): ${melissaStatus}
+*MELISSA — Projetos/CS:*
+${melissaStatus}
 
-Gere o BRIEFING EXECUTIVO DO DIA para o CEO Fabrício no formato:
+Como Max, CEO da UNV Holdings, gere a ATA DE ALINHAMENTO no formato:
 
-1. SITUAÇÃO GERAL (2-3 linhas — snapshot da empresa hoje)
-2. TOP 3 PRIORIDADES DO DIA (ações específicas e acionáveis)
-3. RISCOS QUE NÃO PODEM ESPERAR (se houver)
-4. DECISÕES QUE PRECISAM DE VOCÊ
+*SITUAÇÃO GERAL*
+(2-3 linhas — snapshot real da empresa agora)
 
-Seja direto. Uma ação clara vale mais que 5 vagas.
-  `.trim());
+*PRIORIDADES IMEDIATAS*
+(top 3 ações que precisam acontecer hoje — específicas e acionáveis)
 
-  const ceoChatId = await getChatId("ceo");
-  if (ceoChatId) {
-    const msg = `*BRIEFING MATINAL — ${dateBRT}*\n\n${briefing}`;
-    if (OPENAI_API_KEY) {
-      const audio = await synthesizeSpeech(`Bom dia, Fabrício. ${briefing}`, "ceo");
-      if (audio) { await sendVoice(ceoChatId, audio, "ceo"); return; }
-    }
-    await sendTelegram(ceoChatId, msg, "ceo");
-  }
+*RISCOS NO RADAR*
+(o que não pode ser ignorado)
+
+*DECISÕES NECESSÁRIAS*
+(o que precisa de decisão do Fabrício agora)
+
+*ALINHAMENTOS ENTRE SETORES*
+(o que Sophia precisa saber do Noah, o que Melissa precisa saber da Sophia, etc.)
+
+Direto. Sem enrolação. Cada ponto com responsável e prazo quando possível.
+  `.trim();
+
+  const ata = await callAgent("ceo", ceoPrompt);
+
+  // Monta mensagem completa para o CEO
+  const msgCeo = `*${title} — ${dateBRT}*\n\n${ata}`;
+
+  // Monta resumo por setor (cada agente recebe só o seu briefing + os alinhamentos)
+  const msgNoah    = `*${title} — Setor Financeiro*\n\n*Seu relatório:*\n${noahStatus}\n\n*Alinhamentos do Max:*\n${ata.split("ALINHAMENTOS")[1]?.split("\n\n")[0] ?? ""}`;
+  const msgSophia  = `*${title} — Setor Comercial*\n\n*Seu relatório:*\n${sophiaStatus}\n\n*Alinhamentos do Max:*\n${ata.split("ALINHAMENTOS")[1]?.split("\n\n")[0] ?? ""}`;
+  const msgMelissa = `*${title} — Projetos/CS*\n\n*Seu relatório:*\n${melissaStatus}\n\n*Alinhamentos do Max:*\n${ata.split("ALINHAMENTOS")[1]?.split("\n\n")[0] ?? ""}`;
+
+  // Envia para todos em paralelo
+  await Promise.all([
+    ceoId    ? (OPENAI_API_KEY
+      ? synthesizeSpeech(ata, "ceo").then(a => a ? sendVoice(ceoId, a, "ceo") : sendTelegram(ceoId, msgCeo, "ceo"))
+      : sendTelegram(ceoId, msgCeo, "ceo"))
+      : Promise.resolve(),
+    noahId    ? sendTelegram(noahId,    msgNoah,    "financeiro") : Promise.resolve(),
+    sophiaId  ? sendTelegram(sophiaId,  msgSophia,  "crm")        : Promise.resolve(),
+    melissaId ? sendTelegram(melissaId, msgMelissa, "projetos")   : Promise.resolve(),
+  ]);
+}
+
+// Alias para reunião diária agendada (mantém compatibilidade)
+async function runDailyMeeting(): Promise<void> {
+  return runAlignmentMeeting("daily");
 }
 
 // ============ CHECK-IN (5x/dia) ============
@@ -569,8 +622,12 @@ Deno.serve(async (req) => {
   // ── AÇÕES DE CRON ──
   const action = url.searchParams.get("action");
   if (action === "daily-meeting") {
-    EdgeRuntime.waitUntil(runDailyMeeting());
+    EdgeRuntime.waitUntil(runAlignmentMeeting("daily"));
     return new Response(JSON.stringify({ ok: true, started: "daily-meeting" }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
+  if (action === "reuniao" || action === "alinhamento") {
+    EdgeRuntime.waitUntil(runAlignmentMeeting("ondemand"));
+    return new Response(JSON.stringify({ ok: true, started: "reuniao-alinhamento" }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   if (action === "check-in") {
     EdgeRuntime.waitUntil(runCheckIn());
@@ -593,6 +650,16 @@ Deno.serve(async (req) => {
       const agentParam = url.searchParams.get("agent") as AgentType | null;
       const agentType = agentParam ?? detectAgent(text);
       if (!agentType) return new Response("OK", { status: 200 });
+
+      // CEO: comandos especiais — "reunião" ou "alinhamento" convoca os 3 agentes
+      if (agentType === "ceo") {
+        const lower = text.toLowerCase().trim();
+        if (lower === "reunião" || lower === "reuniao" || lower === "alinhamento" || lower === "meeting") {
+          EdgeRuntime.waitUntil(runAlignmentMeeting("ondemand"));
+          await sendTelegram(chatId, "Convocando reunião de alinhamento com Noah, Sophia e Melissa. Aguarda — isso leva cerca de 1 minuto.", "ceo");
+          return new Response("OK", { status: 200 });
+        }
+      }
 
       // Salva chat ID para mensagens proativas
       EdgeRuntime.waitUntil(storeChatId(agentType, chatId));
