@@ -1,4 +1,4 @@
-// agente-unv v2.4 — Melissa com cobertura total da API de Projetos
+// agente-unv v2.5 — fix: remove apikey header do nexusGet/nexusPost (causava JWT 401)
 import Anthropic from "npm:@anthropic-ai/sdk";
 
 // ============ ENV VARS ============
@@ -218,13 +218,13 @@ function detectAgent(message: string): AgentType | null {
 async function nexusGet(path: string, params: Record<string, string>, apiKey: string): Promise<unknown> {
   const url = new URL(path);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  const res = await fetch(url.toString(), { headers: { "x-api-key": apiKey, "apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json" } });
+  const res = await fetch(url.toString(), { headers: { "x-api-key": apiKey, "Content-Type": "application/json" } });
   if (!res.ok) throw new Error(`Nexus GET ${res.status}: ${await res.text()}`);
   return res.json();
 }
 
 async function nexusPost(url: string, body: Record<string, unknown>, apiKey: string): Promise<unknown> {
-  const res = await fetch(url, { method: "POST", headers: { "x-api-key": apiKey, "apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const res = await fetch(url, { method: "POST", headers: { "x-api-key": apiKey, "Content-Type": "application/json" }, body: JSON.stringify(body) });
   if (!res.ok) throw new Error(`Nexus POST ${res.status}: ${await res.text()}`);
   return res.json();
 }
@@ -561,7 +561,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ ok: false, agent: dbg, error: String(err) }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
     }
-    return new Response(JSON.stringify({ ok: true, version: "2.4-melissa-full" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: true, version: "2.5-auth-fix" }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
 
   if (req.method !== "POST") return new Response("OK", { status: 200 });
