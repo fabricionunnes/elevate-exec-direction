@@ -180,7 +180,7 @@ export default function DistratoHistoryPage() {
     }
     setIsSendingZap(true);
     try {
-      const documentName = `Distrato - ${selectedDistrato.company_name} - ${formatDate(new Date(selectedDistrato.distrato_date), "dd-MM-yyyy")}`;
+      const documentName = `Distrato - ${selectedDistrato.company_name} - ${format(new Date(selectedDistrato.distrato_date), "dd-MM-yyyy")}`;
       const { data: zapData, error: zapError } = await supabase.functions.invoke("send-to-zapsign", {
         body: {
           pdfUrl: selectedDistrato.pdf_url,
