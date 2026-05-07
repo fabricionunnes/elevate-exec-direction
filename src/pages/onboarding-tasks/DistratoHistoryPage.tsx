@@ -220,6 +220,7 @@ export default function DistratoHistoryPage() {
     }
   };
 
+  const getZapSignBadge = (d: DistratoRecord) => {
     if (!d.zapsign_document_token) return null;
     const signers = (d.zapsign_signers || []) as any[];
     const allSigned = signers.length > 0 && signers.every(s => s.status === "signed");
