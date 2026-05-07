@@ -510,54 +510,81 @@ async function runAlignmentMeeting(mode: "daily" | "ondemand" = "daily"): Promis
     callAgent("projetos", `${prefix} de CS/Projetos: clientes ativos, sinais de churn, entregas pendentes, tarefas atrasadas e KPIs não lançados. Máximo 6 itens. Objetivo e direto.`),
   ]);
 
-  // CEO (Max) sintetiza e prioriza
+  // CEO (Max) sintetiza, prioriza e direciona cada agente
   const title = mode === "daily" ? "BRIEFING MATINAL" : "REUNIÃO DE ALINHAMENTO";
   const ceoPrompt = `
 ${dateBRT} — ${timeBRT}. Relatórios dos setores:
 
-*NOAH — Financeiro:*
+NOAH — Financeiro:
 ${noahStatus}
 
-*SOPHIA — Comercial:*
+SOPHIA — Comercial:
 ${sophiaStatus}
 
-*MELISSA — Projetos/CS:*
+MELISSA — Projetos/CS:
 ${melissaStatus}
 
-Como Max, CEO da UNV Holdings, gere a ATA DE ALINHAMENTO no formato:
+Como Max, CEO da UNV Holdings, gere a ATA DE ALINHAMENTO no formato exato abaixo (use os marcadores exatamente como estão):
 
 *SITUAÇÃO GERAL*
 (2-3 linhas — snapshot real da empresa agora)
 
 *PRIORIDADES IMEDIATAS*
-(top 3 ações que precisam acontecer hoje — específicas e acionáveis)
+(top 3 ações que precisam acontecer hoje — específicas e acionáveis, com responsável)
 
 *RISCOS NO RADAR*
-(o que não pode ser ignorado)
+(o que não pode ser ignorado — com prazo para resolver)
 
 *DECISÕES NECESSÁRIAS*
-(o que precisa de decisão do Fabrício agora)
+(o que precisa de decisão do Fabrício agora — seja direto)
 
-*ALINHAMENTOS ENTRE SETORES*
-(o que Sophia precisa saber do Noah, o que Melissa precisa saber da Sophia, etc.)
+---DIRECIONAMENTO_NOAH---
+(ordens diretas para Noah executar hoje/esta semana: o que cobrar, o que registrar, o que resolver, o que monitorar — mínimo 3 ações específicas com prazo)
+---FIM_NOAH---
 
-Direto. Sem enrolação. Cada ponto com responsável e prazo quando possível.
+---DIRECIONAMENTO_SOPHIA---
+(ordens diretas para Sophia executar hoje/esta semana: quais leads trabalhar, quais follow-ups fazer, o que priorizar no pipeline — mínimo 3 ações específicas com prazo)
+---FIM_SOPHIA---
+
+---DIRECIONAMENTO_MELISSA---
+(ordens diretas para Melissa executar hoje/esta semana: quais clientes visitar/contatar, quais tarefas urgentes, o que monitorar em risco de churn — mínimo 3 ações específicas com prazo)
+---FIM_MELISSA---
+
+Direto. Sem enrolação. Cada ação com responsável e prazo.
   `.trim();
 
   const ata = await callAgent("ceo", ceoPrompt);
 
-  // Monta mensagem completa para o CEO
-  const msgCeo = `*${title} — ${dateBRT}*\n\n${ata}`;
+  // Extrai os direcionamentos por agente
+  function extractSection(text: string, start: string, end: string): string {
+    const s = text.indexOf(start);
+    const e = text.indexOf(end);
+    if (s === -1 || e === -1) return "";
+    return text.slice(s + start.length, e).trim();
+  }
+  const dirNoah    = extractSection(ata, "---DIRECIONAMENTO_NOAH---",    "---FIM_NOAH---");
+  const dirSophia  = extractSection(ata, "---DIRECIONAMENTO_SOPHIA---",  "---FIM_SOPHIA---");
+  const dirMelissa = extractSection(ata, "---DIRECIONAMENTO_MELISSA---", "---FIM_MELISSA---");
 
-  // Monta resumo por setor (cada agente recebe só o seu briefing + os alinhamentos)
-  const msgNoah    = `*${title} — Setor Financeiro*\n\n*Seu relatório:*\n${noahStatus}\n\n*Alinhamentos do Max:*\n${ata.split("ALINHAMENTOS")[1]?.split("\n\n")[0] ?? ""}`;
-  const msgSophia  = `*${title} — Setor Comercial*\n\n*Seu relatório:*\n${sophiaStatus}\n\n*Alinhamentos do Max:*\n${ata.split("ALINHAMENTOS")[1]?.split("\n\n")[0] ?? ""}`;
-  const msgMelissa = `*${title} — Projetos/CS*\n\n*Seu relatório:*\n${melissaStatus}\n\n*Alinhamentos do Max:*\n${ata.split("ALINHAMENTOS")[1]?.split("\n\n")[0] ?? ""}`;
+  // Remove os blocos de direcionamento da ATA do CEO para ficar limpa
+  const ataCeo = ata
+    .replace(/---DIRECIONAMENTO_NOAH---[\s\S]*?---FIM_NOAH---/g, "")
+    .replace(/---DIRECIONAMENTO_SOPHIA---[\s\S]*?---FIM_SOPHIA---/g, "")
+    .replace(/---DIRECIONAMENTO_MELISSA---[\s\S]*?---FIM_MELISSA---/g, "")
+    .trim();
+
+  // Monta mensagem completa para o CEO (ATA + resumo dos direcionamentos)
+  const msgCeo = `*${title} — ${dateBRT}*\n\n${ataCeo}\n\n*DIRECIONAMENTOS ENVIADOS:*\n- Noah: ${dirNoah ? "✓" : "—"}\n- Sophia: ${dirSophia ? "✓" : "—"}\n- Melissa: ${dirMelissa ? "✓" : "—"}`;
+
+  // Monta mensagem de direcionamento para cada agente
+  const msgNoah    = `*${title} — Direcionamento do Max*\n\n*Seu relatório:*\n${noahStatus}\n\n*O que Max quer que você faça:*\n${dirNoah || "Sem direcionamento específico nesta rodada."}`;
+  const msgSophia  = `*${title} — Direcionamento do Max*\n\n*Seu relatório:*\n${sophiaStatus}\n\n*O que Max quer que você faça:*\n${dirSophia || "Sem direcionamento específico nesta rodada."}`;
+  const msgMelissa = `*${title} — Direcionamento do Max*\n\n*Seu relatório:*\n${melissaStatus}\n\n*O que Max quer que você faça:*\n${dirMelissa || "Sem direcionamento específico nesta rodada."}`;
 
   // Envia para todos em paralelo
   await Promise.all([
     ceoId    ? (OPENAI_API_KEY
-      ? synthesizeSpeech(ata, "ceo").then(a => a ? sendVoice(ceoId, a, "ceo") : sendTelegram(ceoId, msgCeo, "ceo"))
+      ? synthesizeSpeech(ataCeo, "ceo").then(a => a ? sendVoice(ceoId, a, "ceo") : sendTelegram(ceoId, msgCeo, "ceo"))
       : sendTelegram(ceoId, msgCeo, "ceo"))
       : Promise.resolve(),
     noahId    ? sendTelegram(noahId,    msgNoah,    "financeiro") : Promise.resolve(),
