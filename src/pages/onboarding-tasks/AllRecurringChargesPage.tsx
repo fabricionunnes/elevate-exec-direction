@@ -1421,7 +1421,7 @@ export default function AllRecurringChargesPage() {
             );
           })}
         </nav>
-        <div className="p-3 border-t">
+        <div className="p-3 border-t space-y-2">
           <div className="flex gap-2">
             <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={exportCSV}>
               <Download className="h-3.5 w-3.5 mr-1" />
@@ -1431,6 +1431,29 @@ export default function AllRecurringChargesPage() {
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
           </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="w-full text-xs"
+            onClick={async () => {
+              const t = toast.loading("Sincronizando com Asaas...");
+              try {
+                const { data, error } = await supabase.functions.invoke("asaas-sync", { body: { days: 7 } });
+                if (error) throw error;
+                toast.success(
+                  `Sync OK • ${data?.credited ?? 0} novas, ${data?.skipped ?? 0} já ok, ${data?.divergences ?? 0} divergências`,
+                  { id: t },
+                );
+                setIsLoading(true);
+                loadData().finally(() => setIsLoading(false));
+              } catch (e: any) {
+                toast.error(`Falha no sync: ${e.message}`, { id: t });
+              }
+            }}
+          >
+            <RefreshCw className="h-3.5 w-3.5 mr-1" />
+            Sync Asaas
+          </Button>
         </div>
       </aside>
 

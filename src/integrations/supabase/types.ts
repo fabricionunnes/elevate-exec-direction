@@ -1515,6 +1515,42 @@ export type Database = {
           },
         ]
       }
+      asaas_sync_runs: {
+        Row: {
+          credited: number
+          divergences: number
+          errors: number
+          id: string
+          processed: number
+          ran_at: string
+          skipped: number
+          summary: Json | null
+          window_days: number
+        }
+        Insert: {
+          credited?: number
+          divergences?: number
+          errors?: number
+          id?: string
+          processed?: number
+          ran_at?: string
+          skipped?: number
+          summary?: Json | null
+          window_days: number
+        }
+        Update: {
+          credited?: number
+          divergences?: number
+          errors?: number
+          id?: string
+          processed?: number
+          ran_at?: string
+          skipped?: number
+          summary?: Json | null
+          window_days?: number
+        }
+        Relationships: []
+      }
       assessment_360_evaluations: {
         Row: {
           additional_comments: string | null
