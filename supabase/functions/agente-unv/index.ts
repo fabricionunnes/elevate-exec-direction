@@ -22,10 +22,10 @@ const TELEGRAM_TOKENS: Record<string, string> = {
 
 // Voz por agente (OpenAI TTS)
 const TTS_VOICES: Record<string, string> = {
-  financeiro: "onyx",    // Noah — voz grave, profissional
-  crm:        "nova",    // Sophia — voz feminina, confiante
-  projetos:   "shimmer", // Melissa — voz feminina, calorosa
-  ceo:        "fable",   // CEO — voz autoritativa
+  financeiro: "echo",    // Noah — masculino claro, profissional
+  crm:        "nova",    // Sophia — feminino confiante
+  projetos:   "shimmer", // Melissa — feminino caloroso
+  ceo:        "onyx",    // Max — grave, autoritativo
 };
 
 const anthropic = new Anthropic({ apiKey: CLAUDE_API_KEY });
