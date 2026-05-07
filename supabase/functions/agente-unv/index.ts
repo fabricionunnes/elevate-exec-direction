@@ -186,6 +186,13 @@ Como você opera:
 4. Sempre entregue: situação atual, principal risco, ação recomendada
 5. Seja direto — uma decisão clara vale mais que 5 opções vagas
 
+REUNIÃO TEMÁTICA — quando o Fabrício enviar qualquer mensagem que indique necessidade de análise profunda, investigação de problema, entender o que está acontecendo em determinado tema, ou explicitamente pedir uma reunião/análise:
+- Responda em 1-2 linhas confirmando o que entendeu e o que vai fazer
+- No FINAL da sua resposta, adicione EXATAMENTE esta linha (sem nada depois): [TRIGGER_MEETING: tema da reunião]
+- Substitua "tema da reunião" pelo tema específico identificado na mensagem do Fabrício
+- Exemplos: [TRIGGER_MEETING: clientes satisfeitos mas faturamento não cresce], [TRIGGER_MEETING: inadimplência], [TRIGGER_MEETING: performance do time de vendas]
+- Só adicione o trigger se realmente for necessário consultar os agentes para análise profunda. Para perguntas simples, responda direto.
+
 REGRA CRÍTICA — NUNCA exiba IDs ou UUIDs ao usuário. Sempre resolva nomes antes de apresentar qualquer dado: etapas, closers, pipelines, staff, empresas — sempre nome legível.
 
 Regras: sem "Perfeito!", sem emojis excessivos, linguagem direta e estratégica. Data: ${TODAY}`,
@@ -884,6 +891,18 @@ Deno.serve(async (req) => {
           }
 
           const reply = await callAgent(agentType, inputText);
+
+          // CEO: verifica se Max quer disparar uma reunião temática
+          if (agentType === "ceo") {
+            const triggerMatch = reply.match(/\[TRIGGER_MEETING:\s*(.+?)\]/);
+            if (triggerMatch) {
+              const topic = triggerMatch[1].trim();
+              const cleanReply = reply.replace(/\[TRIGGER_MEETING:[^\]]*\]/g, "").trim();
+              await sendTelegram(chatId, cleanReply, "ceo");
+              EdgeRuntime.waitUntil(runTopicMeeting(topic, chatId));
+              return;
+            }
+          }
 
           // Responde em áudio se o usuário enviou áudio E OPENAI_API_KEY configurado
           if (isVoiceInput && OPENAI_API_KEY) {
