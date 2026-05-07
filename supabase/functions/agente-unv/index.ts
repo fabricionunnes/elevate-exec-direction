@@ -1,13 +1,15 @@
-// agente-unv v2.0 — CEO + 3 agentes + Telegram confiável
+// agente-unv v2.1 — CEO + 3 agentes + Áudio + Reunião Diária + Check-ins
 import Anthropic from "npm:@anthropic-ai/sdk";
 
 // ============ ENV VARS ============
 const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY") ?? "";
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? ""; // opcional — habilita voz
 const EVOLUTION_URL = "https://evo07.stevo.chat";
 const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
 const EVOLUTION_INSTANCE = Deno.env.get("EVOLUTION_INSTANCE") ?? "fabricionunnes";
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "";
-const NEXUS_URL = "https://czmyjgdixwhpfasfugkm.supabase.co/functions/v1";
+const SUPABASE_URL = "https://czmyjgdixwhpfasfugkm.supabase.co";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6bXlqZ2RpeHdocGZhc2Z1Z2ttIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3MzI4MTksImV4cCI6MjA4MTMwODgxOX0.1mzzTilIbJPCxgBBCUK5diMsjUGalKRm78ZzZl8JyzY";
+const NEXUS_URL = `${SUPABASE_URL}/functions/v1`;
 const NEXUS_KEY_FINANCEIRO = Deno.env.get("NEXUS_KEY_FINANCEIRO") ?? "";
 const NEXUS_KEY_DIRETOR = Deno.env.get("NEXUS_KEY_DIRETOR") ?? "";
 
@@ -16,6 +18,14 @@ const TELEGRAM_TOKENS: Record<string, string> = {
   crm:        Deno.env.get("TELEGRAM_TOKEN_CRM")        ?? "8690436126:AAED3kFZgonruvAZg9wVYt_ltcQ2fqGL_zI",
   projetos:   Deno.env.get("TELEGRAM_TOKEN_PROJETOS")   ?? "8731972632:AAFUT8lkyxYrSaouq5lew9p9N-kCgsZdl5U",
   ceo:        Deno.env.get("TELEGRAM_TOKEN_CEO")        ?? "8663785814:AAESc_KL4xMLQlwbrFNYI6WlZocZlMkWAKk",
+};
+
+// Voz por agente (OpenAI TTS)
+const TTS_VOICES: Record<string, string> = {
+  financeiro: "onyx",    // Noah — voz grave, profissional
+  crm:        "nova",    // Sophia — voz feminina, confiante
+  projetos:   "shimmer", // Melissa — voz feminina, calorosa
+  ceo:        "fable",   // CEO — voz autoritativa
 };
 
 const anthropic = new Anthropic({ apiKey: CLAUDE_API_KEY });
@@ -65,13 +75,13 @@ const PROJECT_TOOLS: Anthropic.Tool[] = [
 
 // ============ TOOLS — CEO ============
 const CEO_TOOLS: Anthropic.Tool[] = [
-  { name: "consultar_financeiro", description: "Consulta Noah (CFO) sobre dados financeiros da empresa: saldo, caixa, inadimplência, MRR, DRE", input_schema: { type: "object", properties: { pergunta: { type: "string", description: "Pergunta específica para o CFO" } }, required: ["pergunta"] } },
-  { name: "consultar_crm", description: "Consulta Sophia (Diretora Comercial) sobre pipeline, leads, conversão e negociações em andamento", input_schema: { type: "object", properties: { pergunta: { type: "string", description: "Pergunta específica sobre comercial" } }, required: ["pergunta"] } },
-  { name: "consultar_projetos", description: "Consulta Melissa (Gestora de CS/Projetos) sobre clientes ativos, tarefas, KPIs e risco de churn", input_schema: { type: "object", properties: { pergunta: { type: "string", description: "Pergunta específica sobre projetos e clientes" } }, required: ["pergunta"] } },
+  { name: "consultar_financeiro", description: "Consulta Noah (CFO) sobre dados financeiros: saldo, caixa, inadimplência, MRR, DRE", input_schema: { type: "object", properties: { pergunta: { type: "string" } }, required: ["pergunta"] } },
+  { name: "consultar_crm", description: "Consulta Sophia (Diretora Comercial) sobre pipeline, leads, conversão e negociações", input_schema: { type: "object", properties: { pergunta: { type: "string" } }, required: ["pergunta"] } },
+  { name: "consultar_projetos", description: "Consulta Melissa (Gestora CS/Projetos) sobre clientes, tarefas, KPIs e churn", input_schema: { type: "object", properties: { pergunta: { type: "string" } }, required: ["pergunta"] } },
 ];
 
 // ============ SYSTEM PROMPTS ============
-const TODAY = new Date().toLocaleDateString("pt-BR");
+const TODAY = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
 const SYSTEM_PROMPTS: Record<AgentType, string> = {
   financeiro: `Você é Noah, CFO virtual da UNV Holdings. Acessa o Nexus para consultar e registrar dados financeiros.
@@ -106,23 +116,22 @@ Mentalidade dos melhores gestores do mundo:
 
 Regras: proativa nos alertas, destaque itens críticos, listas resumidas, sem "Perfeito!", sem emojis. Data: ${TODAY}`,
 
-  ceo: `Você é o CEO virtual da UNV Holdings — o orquestrador estratégico. Você consulta Noah (financeiro), Sophia (comercial) e Melissa (projetos/CS) para cruzar dados e dar orientação estratégica ao Fabrício.
+  ceo: `Você é o CEO virtual da UNV Holdings — orquestrador estratégico. Consulta Noah (financeiro), Sophia (comercial) e Melissa (projetos/CS) para cruzar dados e orientar o Fabrício.
 
 Mentalidade dos melhores CEOs do mundo:
-- Jeff Bezos: decisões de longo prazo, obsessão com o cliente, dados antes de opinião. "Discorde e comprometa" — não paralise por falta de consenso.
+- Jeff Bezos: decisões de longo prazo, obsessão com o cliente, dados antes de opinião.
 - Steve Jobs: simplicidade e foco. Diga não para 1000 coisas para dizer sim para a que importa.
 - Jack Welch: pessoas + estratégia + execução. O CEO que não cuida dos três perde em todos.
-- Reed Hastings: transparência radical, cultura como vantagem competitiva. Contexto beats controle.
+- Reed Hastings: transparência radical, cultura como vantagem competitiva.
 - Brian Chesky: mentalidade de fundador, obsessão com produto e experiência.
 - Larry Fink: gestão de risco sistêmica, visão de portfólio, impacto de longo prazo.
 - Elon Musk: raciocínio por primeiros princípios, urgência real, elimine o que não escala.
 
 Como você opera:
-1. Consulte os especialistas necessários (não todos — só os relevantes para a pergunta)
-2. Cruze os dados: financeiro + comercial + operacional = visão estratégica real
-3. Sempre entregue 3 coisas: situação atual, principal risco, ação recomendada
+1. Consulte só os especialistas relevantes para a pergunta
+2. Cruze dados: financeiro + comercial + operacional = visão estratégica real
+3. Sempre entregue: situação atual, principal risco, ação recomendada
 4. Nunca seja operacional — você orienta, não executa
-5. Seja direto: uma recomendação clara vale mais que 5 opções vagas
 
 Regras: sem "Perfeito!", sem emojis excessivos, linguagem direta e estratégica. Data: ${TODAY}`,
 };
@@ -148,7 +157,6 @@ function detectAgent(message: string): AgentType | null {
   if (lower.startsWith("sophia")) return "crm";
   if (lower.startsWith("melissa")) return "projetos";
   if (lower.startsWith("ceo") || lower.startsWith("board")) return "ceo";
-
   const fin = ["saldo","financeiro","fatura","receber","pagar","inadimplente","dre","fluxo de caixa","mrr","receita","despesa"];
   const crm = ["lead","crm","pipeline","funil","negoci","ganho","perda","prospect","oportunidade","proposta","closer","sdr"];
   const proj = ["cliente ativo","tarefa","kpi","projeto","vendedor","churn","nps","empresa ativa","reunião de projeto"];
@@ -178,11 +186,9 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
   const apiKey = AGENT_API_KEYS[agentType];
   const FIN = `${NEXUS_URL}/financial-api`;
   const SYS = `${NEXUS_URL}/system-api`;
-
   try {
     let result: unknown;
     switch (toolName) {
-      // FINANCEIRO
       case "resumo_financeiro": result = await nexusGet(FIN, { endpoint: "summary" }, apiKey); break;
       case "contas_bancarias": result = await nexusGet(FIN, { endpoint: "banks" }, apiKey); break;
       case "fluxo_caixa": { const p: Record<string,string> = { endpoint: "cashflow" }; if (input.date_from) p.date_from = input.date_from as string; if (input.date_to) p.date_to = input.date_to as string; result = await nexusGet(FIN, p, apiKey); break; }
@@ -193,7 +199,6 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
       case "criar_conta_pagar": result = await nexusPost(`${SYS}?module=payables&action=create`, input, apiKey); break;
       case "marcar_pago": { const { id, ...b } = input; result = await nexusPost(`${SYS}?module=payables&action=mark_paid&id=${id}`, b, apiKey); break; }
       case "criar_fatura": result = await nexusPost(`${SYS}?module=invoices&action=create`, input, apiKey); break;
-      // CRM
       case "listar_leads": { const p: Record<string,string> = { module: "leads", action: "list" }; if (input.pipeline_id) p.pipeline_id = input.pipeline_id as string; if (input.stage_id) p.stage_id = input.stage_id as string; if (input.search) p.search = input.search as string; if (input.date_from) p.date_from = input.date_from as string; if (input.date_to) p.date_to = input.date_to as string; result = await nexusGet(SYS, p, apiKey); break; }
       case "detalhes_lead": result = await nexusGet(SYS, { module: "leads", action: "get", id: input.id as string }, apiKey); break;
       case "criar_lead": result = await nexusPost(`${SYS}?module=leads&action=create`, input, apiKey); break;
@@ -205,7 +210,6 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
       case "criar_atividade": result = await nexusPost(`${SYS}?module=activities&action=create`, input, apiKey); break;
       case "agendar_reuniao": result = await nexusPost(`${SYS}?module=meetings&action=schedule`, input, apiKey); break;
       case "listar_pipelines": result = await nexusGet(SYS, { module: "pipelines", action: "list" }, apiKey); break;
-      // PROJETOS
       case "listar_empresas": { const p: Record<string,string> = { module: "companies", action: "list" }; if (input.status) p.status = input.status as string; result = await nexusGet(SYS, p, apiKey); break; }
       case "detalhes_empresa": result = await nexusGet(SYS, { module: "companies", action: "get", id: input.id as string }, apiKey); break;
       case "listar_projetos": { const p: Record<string,string> = { module: "projects", action: "list" }; if (input.status) p.status = input.status as string; if (input.company_id) p.company_id = input.company_id as string; result = await nexusGet(SYS, p, apiKey); break; }
@@ -215,7 +219,6 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
       case "registrar_kpi": result = await nexusPost(`${SYS}?module=kpis&action=create_entry`, input, apiKey); break;
       case "listar_vendedores": { const p: Record<string,string> = { module: "salespeople", action: "list", company_id: input.company_id as string }; if (input.status) p.status = input.status as string; result = await nexusGet(SYS, p, apiKey); break; }
       case "listar_reunioes": { const p: Record<string,string> = { module: "project_meetings", action: "list" }; if (input.project_id) p.project_id = input.project_id as string; if (input.company_id) p.company_id = input.company_id as string; if (input.is_finalized !== undefined) p.is_finalized = String(input.is_finalized); if (input.date_from) p.date_from = input.date_from as string; if (input.date_to) p.date_to = input.date_to as string; result = await nexusGet(SYS, p, apiKey); break; }
-      // CEO — chama sub-agentes
       case "consultar_financeiro": result = await callAgent("financeiro", input.pergunta as string); break;
       case "consultar_crm": result = await callAgent("crm", input.pergunta as string); break;
       case "consultar_projetos": result = await callAgent("projetos", input.pergunta as string); break;
@@ -230,7 +233,6 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
 // ============ LOOP DO AGENTE ============
 async function callAgent(agentType: AgentType, userMessage: string): Promise<string> {
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: userMessage }];
-
   for (let i = 0; i < 10; i++) {
     let response!: Anthropic.Message;
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -251,7 +253,6 @@ async function callAgent(agentType: AgentType, userMessage: string): Promise<str
         throw err;
       }
     }
-
     if (response.stop_reason === "end_turn") {
       return response.content.find((c) => c.type === "text")?.text ?? "Pronto.";
     }
@@ -270,12 +271,11 @@ async function callAgent(agentType: AgentType, userMessage: string): Promise<str
   return "Não consegui processar. Tenta de novo.";
 }
 
-// ============ TELEGRAM ============
+// ============ TELEGRAM — TEXTO ============
 async function sendTelegram(chatId: number, text: string, agentType: AgentType): Promise<void> {
   const token = TELEGRAM_TOKENS[agentType];
   if (!token) return;
   const safe = text.length > 4000 ? text.slice(0, 3990) + "…" : text;
-  // Tenta com Markdown, fallback para texto plano se falhar
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text: safe, parse_mode: "Markdown" }),
@@ -285,6 +285,161 @@ async function sendTelegram(chatId: number, text: string, agentType: AgentType):
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text: safe }),
     });
+  }
+}
+
+// ============ VOZ — TRANSCRIÇÃO (Whisper) ============
+async function transcribeVoice(fileId: string, agentType: AgentType): Promise<string | null> {
+  if (!OPENAI_API_KEY) return null;
+  try {
+    const token = TELEGRAM_TOKENS[agentType];
+    // 1. Pegar URL do arquivo no Telegram
+    const fileInfoRes = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`);
+    const fileInfo = await fileInfoRes.json();
+    if (!fileInfo.ok) return null;
+    const fileUrl = `https://api.telegram.org/file/bot${token}/${fileInfo.result.file_path}`;
+    // 2. Baixar o OGG
+    const audioRes = await fetch(fileUrl);
+    const audioBuffer = await audioRes.arrayBuffer();
+    // 3. Transcrever com Whisper
+    const form = new FormData();
+    form.append("file", new Blob([audioBuffer], { type: "audio/ogg" }), "voice.ogg");
+    form.append("model", "whisper-1");
+    form.append("language", "pt");
+    const transcRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${OPENAI_API_KEY}` },
+      body: form,
+    });
+    if (!transcRes.ok) return null;
+    const data = await transcRes.json();
+    return (data.text as string) ?? null;
+  } catch { return null; }
+}
+
+// ============ VOZ — TTS (OpenAI) ============
+async function synthesizeSpeech(text: string, agentType: AgentType): Promise<ArrayBuffer | null> {
+  if (!OPENAI_API_KEY) return null;
+  try {
+    const res = await fetch("https://api.openai.com/v1/audio/speech", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "tts-1",
+        input: text.slice(0, 4000),
+        voice: TTS_VOICES[agentType] ?? "alloy",
+        response_format: "opus",
+      }),
+    });
+    if (!res.ok) return null;
+    return await res.arrayBuffer();
+  } catch { return null; }
+}
+
+async function sendVoice(chatId: number, audioBuffer: ArrayBuffer, agentType: AgentType): Promise<boolean> {
+  const token = TELEGRAM_TOKENS[agentType];
+  if (!token) return false;
+  try {
+    const form = new FormData();
+    form.append("chat_id", String(chatId));
+    form.append("voice", new Blob([audioBuffer], { type: "audio/ogg" }), "resposta.ogg");
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendVoice`, { method: "POST", body: form });
+    return res.ok;
+  } catch { return false; }
+}
+
+// ============ CHAT IDS — PERSISTÊNCIA ============
+async function storeChatId(agentType: AgentType, chatId: number): Promise<void> {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/agent_chat_ids`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates",
+      },
+      body: JSON.stringify({ agent: agentType, chat_id: chatId, updated_at: new Date().toISOString() }),
+    });
+  } catch { /* silent */ }
+}
+
+async function getChatId(agentType: AgentType): Promise<number | null> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/agent_chat_ids?agent=eq.${agentType}&select=chat_id&limit=1`, {
+      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
+    });
+    const data = await res.json();
+    return (data as Array<{ chat_id: number }>)[0]?.chat_id ?? null;
+  } catch { return null; }
+}
+
+// ============ REUNIÃO DIÁRIA (7h) ============
+async function runDailyMeeting(): Promise<void> {
+  const dateBRT = new Date().toLocaleDateString("pt-BR", {
+    timeZone: "America/Sao_Paulo", weekday: "long", day: "numeric", month: "long", year: "numeric"
+  });
+
+  // Consulta paralela nos 3 agentes
+  const [noahStatus, sophiaStatus, melissaStatus] = await Promise.all([
+    callAgent("financeiro", `Hoje é ${dateBRT}. Briefing matinal financeiro: saldo atual, inadimplência crítica, contas vencendo hoje e previsão de caixa da semana. Máximo 5 itens. Seja objetivo.`),
+    callAgent("crm", `Hoje é ${dateBRT}. Briefing matinal comercial: leads quentes, follow-ups críticos para hoje, reuniões agendadas e oportunidades que podem fechar esta semana. Máximo 5 itens. Seja objetivo.`),
+    callAgent("projetos", `Hoje é ${dateBRT}. Briefing matinal de CS/Projetos: clientes com sinal de churn, entregas do dia, tarefas atrasadas e KPIs não lançados. Máximo 5 itens. Seja objetivo.`),
+  ]);
+
+  // CEO sintetiza e prioriza
+  const briefing = await callAgent("ceo", `
+Hoje é ${dateBRT}. Recebi os briefings matinais da equipe:
+
+NOAH (CFO): ${noahStatus}
+
+SOPHIA (Comercial): ${sophiaStatus}
+
+MELISSA (Projetos/CS): ${melissaStatus}
+
+Gere o BRIEFING EXECUTIVO DO DIA para o CEO Fabrício no formato:
+
+1. SITUAÇÃO GERAL (2-3 linhas — snapshot da empresa hoje)
+2. TOP 3 PRIORIDADES DO DIA (ações específicas e acionáveis)
+3. RISCOS QUE NÃO PODEM ESPERAR (se houver)
+4. DECISÕES QUE PRECISAM DE VOCÊ
+
+Seja direto. Uma ação clara vale mais que 5 vagas.
+  `.trim());
+
+  const ceoChatId = await getChatId("ceo");
+  if (ceoChatId) {
+    const msg = `*BRIEFING MATINAL — ${dateBRT}*\n\n${briefing}`;
+    if (OPENAI_API_KEY) {
+      const audio = await synthesizeSpeech(`Bom dia, Fabrício. ${briefing}`, "ceo");
+      if (audio) { await sendVoice(ceoChatId, audio, "ceo"); return; }
+    }
+    await sendTelegram(ceoChatId, msg, "ceo");
+  }
+}
+
+// ============ CHECK-IN (5x/dia) ============
+async function runCheckIn(): Promise<void> {
+  const timeBRT = new Date().toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
+
+  const [noahUpdate, sophiaUpdate, melissaUpdate] = await Promise.all([
+    callAgent("financeiro", `Check-in das ${timeBRT}. Alguma atualização financeira crítica nas últimas 2 horas? Pagamento recebido, novo inadimplente, ou urgência de caixa? Se não houver nada crítico, diga "sem novidades financeiras".`),
+    callAgent("crm", `Check-in das ${timeBRT}. Alguma atualização comercial crítica nas últimas 2 horas? Lead quente, reunião realizada, negócio fechado ou perdido? Se não houver nada crítico, diga "sem novidades comerciais".`),
+    callAgent("projetos", `Check-in das ${timeBRT}. Alguma atualização crítica em projetos/clientes nas últimas 2 horas? Cliente insatisfeito, entrega feita, tarefa atrasada? Se não houver nada crítico, diga "sem novidades operacionais".`),
+  ]);
+
+  const summary = await callAgent("ceo", `
+Check-in das ${timeBRT}. Status da equipe:
+- Noah: ${noahUpdate}
+- Sophia: ${sophiaUpdate}
+- Melissa: ${melissaUpdate}
+
+Resumo executivo em 2-3 linhas: o que é crítico agora e o que pode esperar?
+  `.trim());
+
+  const ceoChatId = await getChatId("ceo");
+  if (ceoChatId) {
+    await sendTelegram(ceoChatId, `*Check-in ${timeBRT}*\n\n${summary}`, "ceo");
   }
 }
 
@@ -305,8 +460,10 @@ async function forwardToEvolutionWebhook(rawBody: unknown): Promise<void> {
 
 // ============ HANDLER ============
 Deno.serve(async (req) => {
+  const url = new URL(req.url);
+
   if (req.method === "GET") {
-    const dbg = new URL(req.url).searchParams.get("debug") as AgentType | null;
+    const dbg = url.searchParams.get("debug") as AgentType | null;
     if (dbg && ["financeiro","crm","projetos","ceo"].includes(dbg)) {
       try {
         const reply = await callAgent(dbg, "qual sua função e o que você consegue fazer?");
@@ -315,10 +472,21 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ ok: false, agent: dbg, error: String(err) }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
     }
-    return new Response(JSON.stringify({ ok: true, version: "2.0-ceo" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: true, version: "2.1-audio-cron" }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
 
   if (req.method !== "POST") return new Response("OK", { status: 200 });
+
+  // ── AÇÕES DE CRON ──
+  const action = url.searchParams.get("action");
+  if (action === "daily-meeting") {
+    EdgeRuntime.waitUntil(runDailyMeeting());
+    return new Response(JSON.stringify({ ok: true, started: "daily-meeting" }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
+  if (action === "check-in") {
+    EdgeRuntime.waitUntil(runCheckIn());
+    return new Response(JSON.stringify({ ok: true, started: "check-in" }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
 
   try {
     const body = await req.json();
@@ -326,21 +494,58 @@ Deno.serve(async (req) => {
     // ── TELEGRAM ──
     if (body.message) {
       const chatId: number = body.message.chat?.id;
-      const text: string = body.message.text ?? "";
-      if (!text.trim() || !chatId) return new Response("OK", { status: 200 });
+      if (!chatId) return new Response("OK", { status: 200 });
 
-      const agentParam = new URL(req.url).searchParams.get("agent") as AgentType | null;
+      const text: string = body.message.text ?? "";
+      const voice = body.message.voice ?? body.message.audio ?? null;
+      const hasContent = text.trim() || voice;
+      if (!hasContent) return new Response("OK", { status: 200 });
+
+      const agentParam = url.searchParams.get("agent") as AgentType | null;
       const agentType = agentParam ?? detectAgent(text);
       if (!agentType) return new Response("OK", { status: 200 });
 
+      // Salva chat ID para mensagens proativas
+      EdgeRuntime.waitUntil(storeChatId(agentType, chatId));
+
+      const isVoiceInput = !!voice && !text.trim();
+
       EdgeRuntime.waitUntil((async () => {
         try {
-          const reply = await callAgent(agentType, text);
+          let inputText = text;
+
+          // Transcreve áudio se necessário
+          if (isVoiceInput) {
+            if (!OPENAI_API_KEY) {
+              await sendTelegram(chatId, "Recebi seu áudio, mas o serviço de transcrição não está configurado. Envie por texto por enquanto.", agentType);
+              return;
+            }
+            const transcription = await transcribeVoice(voice.file_id, agentType);
+            if (!transcription) {
+              await sendTelegram(chatId, "Não consegui transcrever o áudio. Tente novamente ou envie por texto.", agentType);
+              return;
+            }
+            inputText = transcription;
+            // Mostra o que foi entendido
+            await sendTelegram(chatId, `_Entendi: "${inputText}"_`, agentType);
+          }
+
+          const reply = await callAgent(agentType, inputText);
+
+          // Responde em áudio se o usuário enviou áudio E OPENAI_API_KEY configurado
+          if (isVoiceInput && OPENAI_API_KEY) {
+            const audio = await synthesizeSpeech(reply, agentType);
+            if (audio) {
+              const sent = await sendVoice(chatId, audio, agentType);
+              if (sent) return;
+            }
+          }
+
           await sendTelegram(chatId, reply, agentType);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           const isRate = msg.includes("rate_limit") || msg.includes("429");
-          await sendTelegram(chatId, isRate ? "Muitas consultas simultâneas. Aguarda 30s e tenta de novo." : `Erro ao processar: ${msg.slice(0, 200)}`, agentType);
+          await sendTelegram(chatId, isRate ? "Muitas consultas simultâneas. Aguarda 30s e tenta de novo." : `Erro: ${msg.slice(0, 200)}`, agentType);
         }
       })());
 
@@ -350,27 +555,22 @@ Deno.serve(async (req) => {
     // ── WHATSAPP ──
     const eventNorm = (body.event || "").toUpperCase().replace(/\./g, "_");
     if (eventNorm !== "MESSAGES_UPSERT") { EdgeRuntime.waitUntil(forwardToEvolutionWebhook(body)); return new Response("OK", { status: 200 }); }
-
     let data = body.data;
     if (typeof data === "string") { try { data = JSON.parse(atob(data)); } catch { return new Response("OK", { status: 200 }); } }
     if (!data || data.key?.fromMe) { EdgeRuntime.waitUntil(forwardToEvolutionWebhook(body)); return new Response("OK", { status: 200 }); }
-
-    const text: string = data.message?.conversation || data.message?.extendedTextMessage?.text || "";
+    const waText: string = data.message?.conversation || data.message?.extendedTextMessage?.text || "";
     const from: string = (data.key?.addressingMode === "lid" && data.key?.remoteJidAlt) ? data.key.remoteJidAlt : (data.key?.remoteJid ?? "");
-    if (!text.trim() || !from) { EdgeRuntime.waitUntil(forwardToEvolutionWebhook(body)); return new Response("OK", { status: 200 }); }
-
-    const agentType = detectAgent(text);
-    if (!agentType) { EdgeRuntime.waitUntil(forwardToEvolutionWebhook(body)); return new Response("OK", { status: 200 }); }
-
+    if (!waText.trim() || !from) { EdgeRuntime.waitUntil(forwardToEvolutionWebhook(body)); return new Response("OK", { status: 200 }); }
+    const waAgentType = detectAgent(waText);
+    if (!waAgentType) { EdgeRuntime.waitUntil(forwardToEvolutionWebhook(body)); return new Response("OK", { status: 200 }); }
     EdgeRuntime.waitUntil((async () => {
       try {
-        const reply = await callAgent(agentType, text);
+        const reply = await callAgent(waAgentType, waText);
         await sendWhatsApp(from, reply);
       } catch (err) {
         await sendWhatsApp(from, `Erro: ${String(err).slice(0, 200)}`);
       }
     })());
-
     return new Response("OK", { status: 200 });
   } catch {
     return new Response("OK", { status: 200 });
