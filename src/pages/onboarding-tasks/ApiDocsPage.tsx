@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Code2, DollarSign, Target, Briefcase, MessageSquare, Video, BarChart3, LayoutGrid } from "lucide-react";
+import { ArrowLeft, Code2, DollarSign, Target, Briefcase, MessageSquare, Video, BarChart3, LayoutGrid, Download, Loader2 } from "lucide-react";
 import { FinancialApiDocs } from "@/components/financial-api/FinancialApiDocs";
 import { CrmApiDocs } from "@/components/financial-api/CrmApiDocs";
 import { ProductApiDocs } from "@/components/financial-api/ProductApiDocs";
@@ -8,9 +9,57 @@ import { ConversationsApiDocs } from "@/components/financial-api/ConversationsAp
 import { ProjectMeetingsApiDocs } from "@/components/financial-api/ProjectMeetingsApiDocs";
 import { CRMTrafficApiDocs } from "@/components/crm/traffic/CRMTrafficApiDocs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import { toast } from "sonner";
 
 export default function ApiDocsPage() {
   const navigate = useNavigate();
+  const allRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    if (!allRef.current) return;
+    setDownloading(true);
+    try {
+      toast.info("Gerando PDF, aguarde...");
+      const canvas = await html2canvas(allRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        windowWidth: allRef.current.scrollWidth,
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const date = new Date().toISOString().split("T")[0];
+      pdf.save(`documentacao-api-unv-nexus-${date}.pdf`);
+      toast.success("PDF baixado com sucesso!");
+    } catch (err) {
+      console.error("Erro ao gerar PDF:", err);
+      toast.error("Erro ao gerar PDF");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -34,44 +83,57 @@ export default function ApiDocsPage() {
 
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="all" className="space-y-6">
-          <TabsList className="grid w-full max-w-5xl grid-cols-4 sm:grid-cols-7 h-auto">
-            <TabsTrigger value="all" className="gap-2">
-              <LayoutGrid className="h-4 w-4" />
-              <span className="hidden sm:inline">Geral</span>
-            </TabsTrigger>
-            <TabsTrigger value="financial" className="gap-2">
-              <DollarSign className="h-4 w-4" />
-              <span className="hidden sm:inline">Financeiro</span>
-            </TabsTrigger>
-            <TabsTrigger value="crm" className="gap-2">
-              <Target className="h-4 w-4" />
-              <span className="hidden sm:inline">CRM Comercial</span>
-            </TabsTrigger>
-            <TabsTrigger value="traffic" className="gap-2">
-              <BarChart3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Tráfego Pago</span>
-            </TabsTrigger>
-            <TabsTrigger value="project_meetings" className="gap-2">
-              <Video className="h-4 w-4" />
-              <span className="hidden sm:inline">Reuniões</span>
-            </TabsTrigger>
-            <TabsTrigger value="product" className="gap-2">
-              <Briefcase className="h-4 w-4" />
-              <span className="hidden sm:inline">Produto</span>
-            </TabsTrigger>
-            <TabsTrigger value="conversations" className="gap-2">
-              <MessageSquare className="h-4 w-4" />
-              <span className="hidden sm:inline">Conversas</span>
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex flex-wrap items-center gap-3 justify-between">
+            <TabsList className="grid w-full max-w-5xl grid-cols-4 sm:grid-cols-7 h-auto">
+              <TabsTrigger value="all" className="gap-2">
+                <LayoutGrid className="h-4 w-4" />
+                <span className="hidden sm:inline">Geral</span>
+              </TabsTrigger>
+              <TabsTrigger value="financial" className="gap-2">
+                <DollarSign className="h-4 w-4" />
+                <span className="hidden sm:inline">Financeiro</span>
+              </TabsTrigger>
+              <TabsTrigger value="crm" className="gap-2">
+                <Target className="h-4 w-4" />
+                <span className="hidden sm:inline">CRM Comercial</span>
+              </TabsTrigger>
+              <TabsTrigger value="traffic" className="gap-2">
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Tráfego Pago</span>
+              </TabsTrigger>
+              <TabsTrigger value="project_meetings" className="gap-2">
+                <Video className="h-4 w-4" />
+                <span className="hidden sm:inline">Reuniões</span>
+              </TabsTrigger>
+              <TabsTrigger value="product" className="gap-2">
+                <Briefcase className="h-4 w-4" />
+                <span className="hidden sm:inline">Produto</span>
+              </TabsTrigger>
+              <TabsTrigger value="conversations" className="gap-2">
+                <MessageSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">Conversas</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          <TabsContent value="all" className="space-y-12">
-            <section><FinancialApiDocs /></section>
-            <section><CrmApiDocs /></section>
-            <section><CRMTrafficApiDocs /></section>
-            <section><ProjectMeetingsApiDocs /></section>
-            <section><ProductApiDocs /></section>
-            <section><ConversationsApiDocs /></section>
+          <TabsContent value="all" className="space-y-4">
+            <div className="flex justify-end">
+              <Button onClick={handleDownloadPdf} disabled={downloading} size="sm">
+                {downloading ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Gerando PDF...</>
+                ) : (
+                  <><Download className="h-4 w-4 mr-2" /> Baixar documentação completa (PDF)</>
+                )}
+              </Button>
+            </div>
+            <div ref={allRef} className="space-y-12 bg-background p-4">
+              <section><FinancialApiDocs /></section>
+              <section><CrmApiDocs /></section>
+              <section><CRMTrafficApiDocs /></section>
+              <section><ProjectMeetingsApiDocs /></section>
+              <section><ProductApiDocs /></section>
+              <section><ConversationsApiDocs /></section>
+            </div>
           </TabsContent>
 
           <TabsContent value="financial">
