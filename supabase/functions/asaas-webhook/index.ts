@@ -198,7 +198,7 @@ Deno.serve(async (req) => {
               paid_at: new Date().toISOString(),
               paid_amount_cents: actualPaidCents,
               discount_cents: discountCents,
-              payment_fee_cents: 199,
+              payment_fee_cents: 0,
             })
             .eq("id", invoice.id);
           matched = true;
@@ -290,7 +290,7 @@ Deno.serve(async (req) => {
                   paid_amount_cents: actualPaidCents,
                   discount_cents: discountCents,
                   pagarme_charge_id: paymentId,
-                  payment_fee_cents: 199,
+                  payment_fee_cents: 0,
                 })
                 .eq("id", invoice.id);
 
@@ -541,7 +541,7 @@ async function markInvoicesPaid(supabase: any, orders: any[], paymentValueCents:
         paid_at: new Date().toISOString(),
         paid_amount_cents: actualPaidCents,
         discount_cents: discountCents,
-        payment_fee_cents: 199,
+        payment_fee_cents: 0,
       })
       .eq("payment_link_id", order.payment_link_id);
 
@@ -688,7 +688,7 @@ async function handleServicePurchasePermissions(supabase: any, subscriptionId: s
                 paid_amount_cents: actualPaidCents,
                 discount_cents: discountCents,
                 pagarme_charge_id: paymentId,
-                payment_fee_cents: 199,
+                payment_fee_cents: 0,
               })
               .eq("id", invoice.id);
 
