@@ -1,13 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Code2, DollarSign, Target, Briefcase, MessageSquare, Video, BarChart3, LayoutGrid, Download, Loader2, Copy } from "lucide-react";
+import { ArrowLeft, Code2, DollarSign, Target, Briefcase, MessageSquare, Video, BarChart3, LayoutGrid, Download, Loader2, Copy, Send } from "lucide-react";
 import { FinancialApiDocs } from "@/components/financial-api/FinancialApiDocs";
 import { CrmApiDocs } from "@/components/financial-api/CrmApiDocs";
 import { ProductApiDocs } from "@/components/financial-api/ProductApiDocs";
 import { ConversationsApiDocs } from "@/components/financial-api/ConversationsApiDocs";
 import { ProjectMeetingsApiDocs } from "@/components/financial-api/ProjectMeetingsApiDocs";
 import { CRMTrafficApiDocs } from "@/components/crm/traffic/CRMTrafficApiDocs";
+import { WhatsAppSendApiDocs } from "@/components/financial-api/WhatsAppSendApiDocs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
