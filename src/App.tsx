@@ -281,6 +281,7 @@ const CRMHeadComercialPage = lazy(() => import("./pages/crm").then(m => ({ defau
 const CRMCallSummaryPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMCallSummaryPage })));
 const CRMMeetingsPage = lazy(() => import("./pages/crm/CRMMeetingsPage"));
 const CRMApiPage = lazy(() => import("./pages/crm/CRMApiPage"));
+const CRMTrafficApiPage = lazy(() => import("./pages/crm/CRMTrafficApiPage"));
 const CRMForecastPage = lazy(() => import("./pages/crm/CRMForecastPage"));
 const CRMCadencesPage = lazy(() => import("./pages/crm/CRMCadencesPage"));
 const CRMApplicationsPage = lazy(() => import("./pages/crm/CRMApplicationsPage"));
