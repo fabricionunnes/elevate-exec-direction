@@ -2159,6 +2159,19 @@ const OnboardingTasksPage = () => {
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp-hub")}>
                   <MessageSquare className="h-4 w-4 mr-2" /> WhatsApp Hub
                 </DropdownMenuItem>
+                {(isAdmin || isCS) && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations-retention")} className="text-red-600 focus:text-red-600">
+                      <AlertTriangle className="h-4 w-4 mr-2" /> Cancelamentos
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {isAdmin && (
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/api-docs")}>
+                    <Code2 className="h-4 w-4 mr-2" /> API
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -2196,19 +2209,6 @@ const OnboardingTasksPage = () => {
                   {canAccessFinancial && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro/recorrencias")}>
                       <Calculator className="h-4 w-4 mr-2" /> Financeiro
-                    </DropdownMenuItem>
-                  )}
-                  {(isAdmin || isCS) && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations-retention")} className="text-red-600 focus:text-red-600">
-                        <AlertTriangle className="h-4 w-4 mr-2" /> Cancelamentos
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  {isAdmin && (
-                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/api-docs")}>
-                      <Code2 className="h-4 w-4 mr-2" /> API
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
