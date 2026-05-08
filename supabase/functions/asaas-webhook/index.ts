@@ -417,10 +417,10 @@ async function creditAsaasBank(supabase: any, amountCents: number, description: 
       bankId = banks[0].id;
     }
 
-    // Dynamic fee: R$ 0.99 for UNV Social, R$ 1.99 for default UNV
-    const feeCents = isSocialAccount ? 99 : 199;
-    const feeLabel = isSocialAccount ? "R$0,99" : "R$1,99";
-    const netAmount = amountCents - feeCents;
+    // Credit GROSS amount — fees are no longer deducted automatically.
+    // If the operator wants to register a fee, they should do it manually in the baixa dialog.
+    const feeCents = 0;
+    const netAmount = amountCents;
     if (netAmount <= 0) return;
 
     // Deduplication: check if ANY credit already exists for this invoice (manual or Asaas)
