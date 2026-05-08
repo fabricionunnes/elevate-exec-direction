@@ -20,16 +20,53 @@ export default function ApiDocsPage() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfFilename, setPdfFilename] = useState("");
 
+  const createExpandedPdfClone = (element: HTMLDivElement) => {
+    const clone = element.cloneNode(true) as HTMLDivElement;
+    const width = Math.max(element.scrollWidth, 1100);
+
+    clone.style.position = "absolute";
+    clone.style.left = "-99999px";
+    clone.style.top = "0";
+    clone.style.width = `${width}px`;
+    clone.style.height = "auto";
+    clone.style.maxHeight = "none";
+    clone.style.overflow = "visible";
+    clone.style.backgroundColor = "hsl(var(--background))";
+
+    clone.querySelectorAll<HTMLElement>("[hidden]").forEach((node) => {
+      node.removeAttribute("hidden");
+      node.style.display = "block";
+    });
+
+    clone.querySelectorAll<HTMLElement>('[data-state="inactive"], [data-state="closed"]').forEach((node) => {
+      node.setAttribute("data-state", "open");
+      node.style.display = "block";
+      node.style.height = "auto";
+      node.style.maxHeight = "none";
+      node.style.overflow = "visible";
+    });
+
+    clone.querySelectorAll<HTMLElement>('[role="tablist"]').forEach((node) => {
+      node.style.display = "none";
+    });
+
+    document.body.appendChild(clone);
+    return clone;
+  };
+
   const preparePdf = useCallback(async () => {
     const element = allRef.current;
     if (!element) return;
+    let expandedElement: HTMLDivElement | null = null;
     try {
       if (pdfObjectUrlRef.current) URL.revokeObjectURL(pdfObjectUrlRef.current);
-      const canvas = await html2canvas(element, {
+      expandedElement = createExpandedPdfClone(element);
+      const canvas = await html2canvas(expandedElement, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
-        windowWidth: element.scrollWidth,
+        windowWidth: expandedElement.scrollWidth,
+        windowHeight: expandedElement.scrollHeight,
       });
 
       const imgData = canvas.toDataURL("image/jpeg", 0.92);
@@ -62,6 +99,8 @@ export default function ApiDocsPage() {
     } catch (err) {
       console.error("Erro ao gerar PDF:", err);
       toast.error("Erro ao gerar PDF");
+    } finally {
+      expandedElement?.remove();
     }
   }, []);
 
