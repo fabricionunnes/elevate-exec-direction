@@ -562,13 +562,33 @@ async function sendWhatsAppNotification(
     return;
   }
 
-  // Get phone numbers from staff with roles: master, head_comercial, sdr
-  const { data: staffNumbers } = await supabase
+  // Get staff that should be notified:
+  // - role = 'master' (always notified)
+  // - OR role in (head_comercial, sdr) AND has CRM Comercial menu liberado (staff_menu_permissions.menu_key = 'crm')
+  const { data: candidateStaff } = await supabase
     .from('onboarding_staff')
-    .select('phone')
+    .select('id, role, phone')
     .eq('is_active', true)
     .in('role', ['master', 'head_comercial', 'sdr'])
     .not('phone', 'is', null);
+
+  const nonMasterIds = (candidateStaff || [])
+    .filter((s: any) => s.role !== 'master')
+    .map((s: any) => s.id);
+
+  let crmEnabledIds = new Set<string>();
+  if (nonMasterIds.length > 0) {
+    const { data: menuPerms } = await supabase
+      .from('staff_menu_permissions')
+      .select('staff_id')
+      .eq('menu_key', 'crm')
+      .in('staff_id', nonMasterIds);
+    crmEnabledIds = new Set((menuPerms || []).map((p: any) => p.staff_id));
+  }
+
+  const staffNumbers = (candidateStaff || []).filter(
+    (s: any) => s.role === 'master' || crmEnabledIds.has(s.id)
+  );
 
   const numbersToNotify: string[] = [];
 
