@@ -1308,6 +1308,7 @@ serve(async (req) => {
               invoices: { actions: ["list", "get", "create", "mark_paid", "mark_unpaid"], description: "Faturas de empresas" },
               asaas: { actions: ["create_charge"], description: "Criar cobrança no Asaas (PIX/Boleto/Cartão)" },
               conversations: { actions: ["list", "get", "messages", "send_message"], description: "Conversas WhatsApp dos projetos" },
+              whatsapp: { actions: ["list_instances", "send"], description: "Enviar mensagens WhatsApp escolhendo a instância" },
               project_meetings: { actions: ["list", "get"], description: "Reuniões de projetos (atas, participantes, transcrições, briefings)" },
             },
             usage: "?module=<module>&action=<action>&id=<id>",
