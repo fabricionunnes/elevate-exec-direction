@@ -319,10 +319,15 @@ Deno.serve(async (req) => {
                 }).catch((e: any) => console.error("[Asaas Webhook] WhatsApp notify error:", e));
 
                 if (invoice.installment_number === invoice.total_installments) {
-                  console.log(`[Asaas Webhook] Last installment paid, triggering auto-renew`);
-                  await supabase.functions.invoke("generate-invoices", {
-                    body: { action: "auto_renew", recurring_charge_id: recurringChargeId },
-                  });
+                  const skip = await hasEquivalentPendingElsewhere(supabase, invoice.company_id, invoice.amount_cents, recurringChargeId);
+                  if (skip) {
+                    console.log(`[Asaas Webhook] Skipping auto-renew for ${recurringChargeId}: equivalent pending invoice already exists for company ${invoice.company_id}`);
+                  } else {
+                    console.log(`[Asaas Webhook] Last installment paid, triggering auto-renew`);
+                    await supabase.functions.invoke("generate-invoices", {
+                      body: { action: "auto_renew", recurring_charge_id: recurringChargeId },
+                    });
+                  }
                 }
               }
             } else {
