@@ -2159,6 +2159,24 @@ const OnboardingTasksPage = () => {
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp-hub")}>
                   <MessageSquare className="h-4 w-4 mr-2" /> WhatsApp Hub
                 </DropdownMenuItem>
+                {canCreateCompany && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/consultorias")}>
+                      <Briefcase className="h-4 w-4 mr-2" /> Consultorias
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {(isAdmin || isCS || currentUserRole === "closer") && (
+                  <DropdownMenuItem onClick={() => navigate("/contratos?history=true")}>
+                    <FileText className="h-4 w-4 mr-2" /> Contratos
+                  </DropdownMenuItem>
+                )}
+                {canAccessHR && (
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/vagas")}>
+                    <Briefcase className="h-4 w-4 mr-2" /> Vagas (RH)
+                  </DropdownMenuItem>
+                )}
                 {(isAdmin || isCS) && (
                   <>
                     <DropdownMenuSeparator />
@@ -2175,44 +2193,20 @@ const OnboardingTasksPage = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* ── Comercial ───────────────────────────────── */}
-            {(canAccessCRM || canCreateCompany || isAdmin || isCS || currentUserRole === "closer") && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60">
-                    <Target className="h-4 w-4" />
-                    Comercial
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-52">
-                  {canAccessCRM && (
-                    <DropdownMenuItem onClick={() => navigate("/crm")}>
-                      <Target className="h-4 w-4 mr-2" /> CRM Comercial
-                    </DropdownMenuItem>
-                  )}
-                  {canCreateCompany && (
-                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/consultorias")}>
-                      <Briefcase className="h-4 w-4 mr-2" /> Consultorias
-                    </DropdownMenuItem>
-                  )}
-                  {(isAdmin || isCS || currentUserRole === "closer") && (
-                    <DropdownMenuItem onClick={() => navigate("/contratos?history=true")}>
-                      <FileText className="h-4 w-4 mr-2" /> Contratos
-                    </DropdownMenuItem>
-                  )}
-                  {canAccessHR && (
-                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/vagas")}>
-                      <Briefcase className="h-4 w-4 mr-2" /> Vagas (RH)
-                    </DropdownMenuItem>
-                  )}
-                  {canAccessFinancial && (
-                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro/recorrencias")}>
-                      <Calculator className="h-4 w-4 mr-2" /> Financeiro
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+            {/* ── CRM Comercial — botão direto ─────────────── */}
+            {canAccessCRM && (
+              <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60" onClick={() => navigate("/crm")}>
+                <Target className="h-4 w-4" />
+                CRM
+              </Button>
+            )}
+
+            {/* ── Financeiro — botão direto ────────────────── */}
+            {canAccessFinancial && (
+              <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60" onClick={() => navigate("/onboarding-tasks/financeiro/recorrencias")}>
+                <Calculator className="h-4 w-4" />
+                Financeiro
+              </Button>
             )}
 
             {/* ── Engajamento ─────────────────────────────── */}
