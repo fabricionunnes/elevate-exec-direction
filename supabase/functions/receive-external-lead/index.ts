@@ -255,12 +255,27 @@ Deno.serve(async (req) => {
 
     if (instance?.api_url && instance?.api_key && instance?.instance_name) {
       // Get phone numbers from staff with roles: master, head_comercial, sdr
+      // SDRs are only notified if they have CRM Comercial menu access
       const { data: staffNumbers } = await supabase
         .from('onboarding_staff')
-        .select('phone')
+        .select('id, phone, role')
         .eq('is_active', true)
         .in('role', ['master', 'head_comercial', 'sdr'])
         .not('phone', 'is', null);
+
+      const sdrIds = (staffNumbers || [])
+        .filter((s: any) => s.role === 'sdr')
+        .map((s: any) => s.id);
+
+      let sdrsWithCrmAccess = new Set<string>();
+      if (sdrIds.length > 0) {
+        const { data: crmPerms } = await supabase
+          .from('staff_menu_permissions')
+          .select('staff_id')
+          .eq('menu_key', 'crm')
+          .in('staff_id', sdrIds);
+        sdrsWithCrmAccess = new Set((crmPerms || []).map((p: any) => p.staff_id));
+      }
 
       const numbersToNotify: string[] = [];
 
@@ -275,6 +290,7 @@ Deno.serve(async (req) => {
 
       if (staffNumbers) {
         for (const s of staffNumbers) {
+          if (s.role === 'sdr' && !sdrsWithCrmAccess.has(s.id)) continue;
           const clean = normalizeBRPhone(s.phone || '');
           if (clean && !numbersToNotify.includes(clean)) numbersToNotify.push(clean);
         }
