@@ -347,7 +347,7 @@ async function callAgent(agentType: AgentType, userMessage: string, history: Ant
       try {
         response = await anthropic.messages.create({
           model: "claude-sonnet-4-6",
-          max_tokens: 1024,
+          max_tokens: 4096,
           system: SYSTEM_PROMPTS[agentType],
           tools: AGENT_TOOLS[agentType],
           messages,
