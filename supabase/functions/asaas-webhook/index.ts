@@ -370,6 +370,31 @@ Deno.serve(async (req) => {
   }
 });
 
+async function hasEquivalentPendingElsewhere(
+  supabase: any,
+  companyId: string | null | undefined,
+  amountCents: number,
+  excludeRecurringChargeId: string,
+): Promise<boolean> {
+  if (!companyId || !amountCents) return false;
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data } = await supabase
+      .from("company_invoices")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("amount_cents", amountCents)
+      .in("status", ["pending", "overdue"])
+      .gte("due_date", today)
+      .neq("recurring_charge_id", excludeRecurringChargeId)
+      .limit(1);
+    return !!(data && data.length);
+  } catch (e) {
+    console.error("[Asaas Webhook] hasEquivalentPendingElsewhere error:", e);
+    return false;
+  }
+}
+
 async function creditAsaasBank(supabase: any, amountCents: number, description: string, invoiceId: string, recurringChargeId?: string | null) {
   try {
     // Determine which bank to credit based on the Asaas account used
