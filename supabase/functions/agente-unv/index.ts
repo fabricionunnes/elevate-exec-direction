@@ -952,6 +952,78 @@ Direto. Sem enrolação.`.trim();
   }
 }
 
+// ============ ALERTA SALDO META ADS ============
+const META_BALANCE_THRESHOLD_CENTS = 7000; // R$ 70,00
+const META_BALANCE_ALERT_KEY = "meta_balance_alert_sent";
+
+async function getLastAlertTime(): Promise<number> {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/agent_messages?agent=eq.marketing&role=eq.assistant&content=like.${encodeURIComponent("__META_BALANCE_ALERT__%")}&order=created_at.desc&limit=1&select=created_at`,
+      { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+    );
+    const data = await res.json() as Array<{ created_at: string }>;
+    if (!data || data.length === 0) return 0;
+    return new Date(data[0].created_at).getTime();
+  } catch { return 0; }
+}
+
+async function saveAlertSent(): Promise<void> {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/agent_messages`, {
+      method: "POST",
+      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ agent: "marketing", chat_id: 0, role: "assistant", content: `__META_BALANCE_ALERT__${new Date().toISOString()}` }),
+    });
+  } catch { /* silent */ }
+}
+
+async function runMetaBalanceCheck(): Promise<void> {
+  try {
+    // Busca saldo da conta no Meta Ads
+    const metaUrl = new URL(`${NEXUS_URL}/meta-ads-sync`);
+    metaUrl.searchParams.set("action", "account");
+    const metaRes = await fetch(metaUrl.toString(), {
+      headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }
+    });
+    if (!metaRes.ok) return;
+    const data = await metaRes.json() as Record<string, unknown>;
+
+    // Tenta extrair saldo — Meta Ads retorna balance em centavos ou como string "70.00"
+    let balanceCents = 0;
+    const raw = data?.balance ?? data?.account?.balance ?? data?.data?.balance ?? null;
+    if (raw !== null && raw !== undefined) {
+      const parsed = parseFloat(String(raw));
+      // Se vier em formato de moeda (ex: "70.50"), converte pra centavos
+      balanceCents = isNaN(parsed) ? 0 : Math.round(parsed * 100);
+    }
+
+    if (balanceCents === 0) return; // não conseguiu ler — silencioso
+
+    if (balanceCents < META_BALANCE_THRESHOLD_CENTS) {
+      // Verifica se já enviou alerta nas últimas 4 horas (evita spam)
+      const lastAlert = await getLastAlertTime();
+      const fourHoursAgo = Date.now() - 4 * 60 * 60 * 1000;
+      if (lastAlert > fourHoursAgo) return; // já alertou recentemente
+
+      const saldoFormatado = (balanceCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+      const ceoChatId = await getChatId("ceo");
+      const lunaToken = TELEGRAM_TOKENS["marketing"];
+
+      const alerta = `*ALERTA — Saldo Meta Ads Baixo*\n\nFabrício, o saldo da sua conta no Meta Ads está em *${saldoFormatado}*.\n\nAbaixo do limite de R$ 70,00 — campanhas podem pausar automaticamente. Recarregue agora para não perder veiculação.`;
+
+      // Envia pelo bot da Luna
+      if (lunaToken && ceoChatId) {
+        await fetch(`https://api.telegram.org/bot${lunaToken}/sendMessage`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: ceoChatId, text: alerta, parse_mode: "Markdown" }),
+        });
+        await saveAlertSent();
+      }
+    }
+  } catch { /* silent — não quebra o cron */ }
+}
+
 // ============ CHECK-IN (5x/dia) ============
 async function runCheckIn(): Promise<void> {
   const timeBRT = new Date().toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
@@ -1025,6 +1097,10 @@ Deno.serve(async (req) => {
   if (action === "check-in") {
     EdgeRuntime.waitUntil(runCheckIn());
     return new Response(JSON.stringify({ ok: true, started: "check-in" }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
+  if (action === "check-meta-balance") {
+    EdgeRuntime.waitUntil(runMetaBalanceCheck());
+    return new Response(JSON.stringify({ ok: true, started: "check-meta-balance" }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
 
   try {
