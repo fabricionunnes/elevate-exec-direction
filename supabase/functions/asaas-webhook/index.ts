@@ -451,7 +451,7 @@ async function creditAsaasBank(supabase: any, amountCents: number, description: 
       bank_id: bankId,
       type: "credit",
       amount_cents: netAmount,
-      description: `Recebimento Asaas: ${description} (taxa ${feeLabel} deduzida)`,
+      description: `Recebimento Asaas: ${description}`,
       reference_type: "invoice",
       reference_id: invoiceId,
     });
