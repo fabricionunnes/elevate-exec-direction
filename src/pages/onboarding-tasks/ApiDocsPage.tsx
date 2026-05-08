@@ -1,11 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Code2, DollarSign, Target, Briefcase, MessageSquare, Video } from "lucide-react";
+import { ArrowLeft, Code2, DollarSign, Target, Briefcase, MessageSquare, Video, BarChart3 } from "lucide-react";
 import { FinancialApiDocs } from "@/components/financial-api/FinancialApiDocs";
 import { CrmApiDocs } from "@/components/financial-api/CrmApiDocs";
 import { ProductApiDocs } from "@/components/financial-api/ProductApiDocs";
 import { ConversationsApiDocs } from "@/components/financial-api/ConversationsApiDocs";
 import { ProjectMeetingsApiDocs } from "@/components/financial-api/ProjectMeetingsApiDocs";
+import { CRMTrafficApiDocs } from "@/components/crm/traffic/CRMTrafficApiDocs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ApiDocsPage() {
@@ -33,26 +34,30 @@ export default function ApiDocsPage() {
 
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="crm" className="space-y-6">
-          <TabsList className="grid w-full max-w-3xl grid-cols-5">
+          <TabsList className="grid w-full max-w-4xl grid-cols-3 sm:grid-cols-6 h-auto">
             <TabsTrigger value="financial" className="gap-2">
               <DollarSign className="h-4 w-4" />
-              Financeiro
+              <span className="hidden sm:inline">Financeiro</span>
             </TabsTrigger>
             <TabsTrigger value="crm" className="gap-2">
               <Target className="h-4 w-4" />
-              CRM Comercial
+              <span className="hidden sm:inline">CRM Comercial</span>
+            </TabsTrigger>
+            <TabsTrigger value="traffic" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Tráfego Pago</span>
             </TabsTrigger>
             <TabsTrigger value="project_meetings" className="gap-2">
               <Video className="h-4 w-4" />
-              Reuniões
+              <span className="hidden sm:inline">Reuniões</span>
             </TabsTrigger>
             <TabsTrigger value="product" className="gap-2">
               <Briefcase className="h-4 w-4" />
-              Produto
+              <span className="hidden sm:inline">Produto</span>
             </TabsTrigger>
             <TabsTrigger value="conversations" className="gap-2">
               <MessageSquare className="h-4 w-4" />
-              Conversas
+              <span className="hidden sm:inline">Conversas</span>
             </TabsTrigger>
           </TabsList>
 
@@ -66,6 +71,10 @@ export default function ApiDocsPage() {
 
           <TabsContent value="product">
             <ProductApiDocs />
+          </TabsContent>
+
+          <TabsContent value="traffic">
+            <CRMTrafficApiDocs />
           </TabsContent>
 
           <TabsContent value="project_meetings">
