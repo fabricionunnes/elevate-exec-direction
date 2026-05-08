@@ -18,7 +18,7 @@ const TELEGRAM_TOKENS: Record<string, string> = {
   crm:        Deno.env.get("TELEGRAM_TOKEN_CRM")        ?? "8690436126:AAED3kFZgonruvAZg9wVYt_ltcQ2fqGL_zI",
   projetos:   Deno.env.get("TELEGRAM_TOKEN_PROJETOS")   ?? "8731972632:AAFUT8lkyxYrSaouq5lew9p9N-kCgsZdl5U",
   ceo:        Deno.env.get("TELEGRAM_TOKEN_CEO")        ?? "8663785814:AAESc_KL4xMLQlwbrFNYI6WlZocZlMkWAKk",
-  marketing:  Deno.env.get("TELEGRAM_TOKEN_MARKETING")  ?? "",
+  marketing:  Deno.env.get("TELEGRAM_TOKEN_MARKETING")  ?? "8340028321:AAH-tSxNw4BpEPgWVdibo5m1HSlDDrZarwc",
 };
 
 // Voz por agente (OpenAI TTS)
