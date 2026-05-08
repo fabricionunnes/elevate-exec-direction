@@ -63,15 +63,30 @@ async function sendWhatsAppToTeam(supabase: any, message: string) {
     .maybeSingle();
   if (!instance?.api_url || !instance?.api_key) return;
 
+  // SDRs and head_comercial only notified if they have CRM Comercial menu access
   const { data: staffNumbers } = await supabase
     .from("onboarding_staff")
-    .select("phone")
+    .select("id, role, phone")
     .eq("is_active", true)
     .in("role", ["master", "head_comercial", "sdr"])
     .not("phone", "is", null);
 
+  const nonMasterIds = (staffNumbers || [])
+    .filter((s: any) => s.role !== "master")
+    .map((s: any) => s.id);
+  let crmEnabled = new Set<string>();
+  if (nonMasterIds.length > 0) {
+    const { data: perms } = await supabase
+      .from("staff_menu_permissions")
+      .select("staff_id")
+      .eq("menu_key", "crm")
+      .in("staff_id", nonMasterIds);
+    crmEnabled = new Set((perms || []).map((p: any) => p.staff_id));
+  }
+
   const numbers: string[] = [];
   for (const s of staffNumbers || []) {
+    if (s.role !== "master" && !crmEnabled.has(s.id)) continue;
     const n = normalizeBRPhone(s.phone || "");
     if (n && !numbers.includes(n)) numbers.push(n);
   }
