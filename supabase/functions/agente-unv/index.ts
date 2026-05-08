@@ -1,4 +1,4 @@
-// agente-unv v2.5 — fix: remove apikey header do nexusGet/nexusPost (causava JWT 401)
+// agente-unv v2.8 — marketing agent Luna (Meta Ads + UTM analytics)
 import Anthropic from "npm:@anthropic-ai/sdk";
 
 // ============ ENV VARS ============
@@ -18,6 +18,7 @@ const TELEGRAM_TOKENS: Record<string, string> = {
   crm:        Deno.env.get("TELEGRAM_TOKEN_CRM")        ?? "8690436126:AAED3kFZgonruvAZg9wVYt_ltcQ2fqGL_zI",
   projetos:   Deno.env.get("TELEGRAM_TOKEN_PROJETOS")   ?? "8731972632:AAFUT8lkyxYrSaouq5lew9p9N-kCgsZdl5U",
   ceo:        Deno.env.get("TELEGRAM_TOKEN_CEO")        ?? "8663785814:AAESc_KL4xMLQlwbrFNYI6WlZocZlMkWAKk",
+  marketing:  Deno.env.get("TELEGRAM_TOKEN_MARKETING")  ?? "",
 };
 
 // Voz por agente (OpenAI TTS)
@@ -26,10 +27,11 @@ const TTS_VOICES: Record<string, string> = {
   crm:        "nova",    // Sophia — feminino confiante
   projetos:   "shimmer", // Melissa — feminino caloroso
   ceo:        "onyx",    // Max — grave, autoritativo
+  marketing:  "alloy",   // Luna — feminino energético
 };
 
 const anthropic = new Anthropic({ apiKey: CLAUDE_API_KEY });
-type AgentType = "financeiro" | "crm" | "projetos" | "ceo";
+type AgentType = "financeiro" | "crm" | "projetos" | "ceo" | "marketing";
 
 // ============ TOOLS — NOAH (FINANCEIRO) ============
 const FINANCIAL_TOOLS: Anthropic.Tool[] = [
@@ -116,11 +118,22 @@ const PROJECT_TOOLS: Anthropic.Tool[] = [
   { name: "enviar_mensagem_conversa", description: "Envia mensagem de texto em uma conversa WhatsApp existente — envia via WhatsApp e salva no histórico", input_schema: { type: "object", properties: { conversation_id: { type: "string" }, message: { type: "string" } }, required: ["conversation_id","message"] } },
 ];
 
+// ============ TOOLS — LUNA (MARKETING) ============
+const MARKETING_TOOLS: Anthropic.Tool[] = [
+  { name: "leads_por_campanha", description: "Analisa leads do CRM agrupados por campanha/UTM — origem, quantidade, conversão por fonte de tráfego pago. Filtre por data ou utm_source.", input_schema: { type: "object", properties: { date_from: { type: "string" }, date_to: { type: "string" }, utm_source: { type: "string" }, utm_campaign: { type: "string" } } } },
+  { name: "campanhas_meta", description: "Lista campanhas no Meta Ads Manager com status, gasto total, alcance e resultado", input_schema: { type: "object", properties: { status: { type: "string", enum: ["ACTIVE","PAUSED","ALL"] }, date_from: { type: "string" }, date_to: { type: "string" } } } },
+  { name: "metricas_meta", description: "Métricas detalhadas de campanhas Meta Ads — gasto, alcance, impressões, cliques, CPM, CPC, CPL, frequência, ROAS por período", input_schema: { type: "object", properties: { date_from: { type: "string" }, date_to: { type: "string" }, campaign_id: { type: "string" }, level: { type: "string", enum: ["campaign","adset","ad"] } } } },
+  { name: "conjuntos_anuncios", description: "Lista conjuntos de anúncios (ad sets) de uma campanha Meta Ads com gasto e performance", input_schema: { type: "object", properties: { campaign_id: { type: "string" }, date_from: { type: "string" }, date_to: { type: "string" } }, required: ["campaign_id"] } },
+  { name: "desempenho_criativo", description: "Analisa performance dos criativos (anúncios) — CTR, CPM, frequência, melhor e pior criativo por campanha ou conta toda", input_schema: { type: "object", properties: { campaign_id: { type: "string" }, adset_id: { type: "string" }, date_from: { type: "string" }, date_to: { type: "string" } } } },
+  { name: "resumo_financeiro", description: "Retorna receita, MRR e ticket médio para calcular ROAS e impacto de marketing na receita", input_schema: { type: "object", properties: {} } },
+];
+
 // ============ TOOLS — CEO ============
 const CEO_TOOLS: Anthropic.Tool[] = [
   { name: "consultar_financeiro", description: "Consulta Noah (CFO) sobre dados financeiros: saldo, caixa, inadimplência, MRR, DRE", input_schema: { type: "object", properties: { pergunta: { type: "string" } }, required: ["pergunta"] } },
   { name: "consultar_crm", description: "Consulta Sophia (Diretora Comercial) sobre pipeline, leads, conversão e negociações", input_schema: { type: "object", properties: { pergunta: { type: "string" } }, required: ["pergunta"] } },
   { name: "consultar_projetos", description: "Consulta Melissa (Gestora CS/Projetos) sobre clientes, tarefas, KPIs e churn", input_schema: { type: "object", properties: { pergunta: { type: "string" } }, required: ["pergunta"] } },
+  { name: "consultar_marketing", description: "Consulta Luna (Head de Marketing) sobre tráfego pago, campanhas Meta Ads, performance de criativos e estratégia de conteúdo", input_schema: { type: "object", properties: { pergunta: { type: "string" } }, required: ["pergunta"] } },
 ];
 
 // ============ SYSTEM PROMPTS ============
@@ -168,7 +181,28 @@ REGRA CRÍTICA — NUNCA exiba IDs ou UUIDs ao usuário. Sempre resolva nomes an
 
 Regras: proativa nos alertas, destaque itens críticos, listas resumidas, sem "Perfeito!", sem emojis. Data: ${TODAY}`,
 
-  ceo: `Você é o CEO virtual da UNV Holdings — tem acesso DIRETO a todo o sistema financeiro, comercial e operacional, e também pode convocar Noah, Sophia ou Melissa quando precisar de análise especializada.
+  marketing: `Você é Luna, Head de Marketing virtual da UNV Holdings. Especialista em tráfego pago, performance digital, Meta Ads e estratégia de conteúdo.
+
+Mentalidade dos melhores profissionais de marketing do mundo:
+- David Ogilvy: copy que vende. Criatividade sem resultado é arte, não marketing.
+- Seth Godin: seja notável ou invisível. Permissão > interrupção. Nicho claro ganha sempre.
+- Ryan Deiss: funil de cliente é a espinha dorsal. ROAS é a linguagem do CEO — conecte tudo a receita.
+- Neil Patel: dados antes de opinião. Todo criativo, canal e campanha é testável. Teste rápido, escale o que funciona.
+- Ann Handley: conteúdo que educa E converte. Qualidade e consistência batem volume sem propósito.
+
+Como você opera:
+1. Analise dados antes de recomendar — nunca achismo
+2. Cruze CPL com conversão real: lead barato que não converte é custo, não performance
+3. Pense em CAC real: custo de aquisição total, não só o gasto em mídia
+4. Conecte marketing com receita: ROAS, receita atribuída, impacto no MRR
+5. Sugira experimentos testáveis com hipótese clara e métrica de sucesso definida
+6. Quando identificar campanhas com CPL alto ou criativo em fadiga, recomende ação específica
+
+REGRA CRÍTICA — NUNCA exiba IDs de campanha, adset ou ad ao usuário final. Apresente sempre nomes legíveis e métricas com contexto (ex: "CTR 3,2% — acima da média do setor para B2B").
+
+Regras: direta, orientada a dados, sem jargão vazio ("engajamento" sem número é nada), confirme antes de recomendar pausar ou criar campanhas, sem "Perfeito!", sem emojis. Data: ${TODAY}`,
+
+  ceo: `Você é o CEO virtual da UNV Holdings — tem acesso DIRETO a todo o sistema financeiro, comercial e operacional, e também pode convocar Noah, Sophia, Melissa ou Luna quando precisar de análise especializada.
 
 Mentalidade dos melhores CEOs do mundo:
 - Jeff Bezos: decisões de longo prazo, obsessão com o cliente, dados antes de opinião.
@@ -181,7 +215,7 @@ Mentalidade dos melhores CEOs do mundo:
 
 Como você opera:
 1. Para dados factuais (saldo, leads, tarefas): busque diretamente no sistema via ferramentas
-2. Para análise, interpretação ou decisão complexa: convoque o especialista (consultar_financeiro, consultar_crm, consultar_projetos)
+2. Para análise, interpretação ou decisão complexa: convoque o especialista (consultar_financeiro, consultar_crm, consultar_projetos, consultar_marketing)
 3. Cruze sempre os três pilares: financeiro + comercial + operacional = visão real da empresa
 4. Sempre entregue: situação atual, principal risco, ação recomendada
 5. Seja direto — uma decisão clara vale mais que 5 opções vagas
@@ -203,6 +237,7 @@ const AGENT_API_KEYS: Record<AgentType, string> = {
   crm: NEXUS_KEY_DIRETOR,
   projetos: NEXUS_KEY_DIRETOR,
   ceo: NEXUS_KEY_DIRETOR, // fallback; tools financeiras usam NEXUS_KEY_FINANCEIRO diretamente
+  marketing: NEXUS_KEY_DIRETOR,
 };
 
 // Tools financeiras que precisam de NEXUS_KEY_FINANCEIRO mesmo quando chamadas pelo CEO
@@ -212,8 +247,9 @@ const AGENT_TOOLS: Record<AgentType, Anthropic.Tool[]> = {
   financeiro: FINANCIAL_TOOLS,
   crm: CRM_TOOLS,
   projetos: PROJECT_TOOLS,
+  marketing: MARKETING_TOOLS,
   // CEO tem acesso a TODO o sistema + pode convocar sub-agentes
-  ceo: [...FINANCIAL_TOOLS, ...CRM_TOOLS, ...PROJECT_TOOLS, ...CEO_TOOLS],
+  ceo: [...FINANCIAL_TOOLS, ...CRM_TOOLS, ...PROJECT_TOOLS, ...MARKETING_TOOLS, ...CEO_TOOLS],
 };
 
 // ============ DETECÇÃO DE AGENTE ============
@@ -222,13 +258,16 @@ function detectAgent(message: string): AgentType | null {
   if (lower.startsWith("noah")) return "financeiro";
   if (lower.startsWith("sophia")) return "crm";
   if (lower.startsWith("melissa")) return "projetos";
+  if (lower.startsWith("luna")) return "marketing";
   if (lower.startsWith("ceo") || lower.startsWith("board")) return "ceo";
   const fin = ["saldo","financeiro","fatura","receber","pagar","inadimplente","dre","fluxo de caixa","mrr","receita","despesa"];
   const crm = ["lead","crm","pipeline","funil","negoci","ganho","perda","prospect","oportunidade","proposta","closer","sdr"];
   const proj = ["cliente ativo","tarefa","kpi","projeto","vendedor","churn","nps","empresa ativa","reunião de projeto"];
+  const mkt = ["campanha","tráfego","meta ads","facebook ads","instagram ads","criativo","anúncio","cpl","roas","cpc","cpm","utm","trafego pago","marketing","impulsionar"];
   if (fin.some((k) => lower.includes(k))) return "financeiro";
   if (crm.some((k) => lower.includes(k))) return "crm";
   if (proj.some((k) => lower.includes(k))) return "projetos";
+  if (mkt.some((k) => lower.includes(k))) return "marketing";
   return null;
 }
 
@@ -326,9 +365,65 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
       case "listar_conversas": { const p: Record<string,string> = { module: "conversations", action: "list", project_id: input.project_id as string }; if (input.status) p.status = input.status as string; if (input.assigned_to) p.assigned_to = input.assigned_to as string; if (input.limit) p.limit = String(input.limit); result = await nexusGet(SYS, p, apiKey); break; }
       case "mensagens_conversa": { const p: Record<string,string> = { module: "conversations", action: "messages", id: input.id as string }; if (input.limit) p.limit = String(input.limit); result = await nexusGet(SYS, p, apiKey); break; }
       case "enviar_mensagem_conversa": result = await nexusPost(`${SYS}?module=conversations&action=send_message`, input, apiKey); break;
+      // ── LUNA: Marketing / Meta Ads ──
+      case "leads_por_campanha": {
+        const p: Record<string,string> = { module: "marketing", action: "leads_by_campaign" };
+        if (input.date_from) p.date_from = input.date_from as string;
+        if (input.date_to) p.date_to = input.date_to as string;
+        if (input.utm_source) p.utm_source = input.utm_source as string;
+        if (input.utm_campaign) p.utm_campaign = input.utm_campaign as string;
+        result = await nexusGet(SYS, p, apiKey);
+        break;
+      }
+      case "campanhas_meta": {
+        const p: Record<string,string> = { action: "campaigns" };
+        if (input.status) p.status = input.status as string;
+        if (input.date_from) p.date_from = input.date_from as string;
+        if (input.date_to) p.date_to = input.date_to as string;
+        const metaUrl = new URL(`${NEXUS_URL}/meta-ads-sync`);
+        for (const [k,v] of Object.entries(p)) metaUrl.searchParams.set(k, v);
+        const metaRes = await fetch(metaUrl.toString(), { headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } });
+        result = metaRes.ok ? await metaRes.json() : { error: `meta-ads-sync ${metaRes.status}` };
+        break;
+      }
+      case "metricas_meta": {
+        const p: Record<string,string> = { action: "metrics" };
+        if (input.date_from) p.date_from = input.date_from as string;
+        if (input.date_to) p.date_to = input.date_to as string;
+        if (input.campaign_id) p.campaign_id = input.campaign_id as string;
+        if (input.level) p.level = input.level as string;
+        const metaUrl = new URL(`${NEXUS_URL}/meta-ads-sync`);
+        for (const [k,v] of Object.entries(p)) metaUrl.searchParams.set(k, v);
+        const metaRes = await fetch(metaUrl.toString(), { headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } });
+        result = metaRes.ok ? await metaRes.json() : { error: `meta-ads-sync ${metaRes.status}` };
+        break;
+      }
+      case "conjuntos_anuncios": {
+        const p: Record<string,string> = { action: "adsets", campaign_id: input.campaign_id as string };
+        if (input.date_from) p.date_from = input.date_from as string;
+        if (input.date_to) p.date_to = input.date_to as string;
+        const metaUrl = new URL(`${NEXUS_URL}/meta-ads-sync`);
+        for (const [k,v] of Object.entries(p)) metaUrl.searchParams.set(k, v);
+        const metaRes = await fetch(metaUrl.toString(), { headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } });
+        result = metaRes.ok ? await metaRes.json() : { error: `meta-ads-sync ${metaRes.status}` };
+        break;
+      }
+      case "desempenho_criativo": {
+        const p: Record<string,string> = { action: "creatives" };
+        if (input.campaign_id) p.campaign_id = input.campaign_id as string;
+        if (input.adset_id) p.adset_id = input.adset_id as string;
+        if (input.date_from) p.date_from = input.date_from as string;
+        if (input.date_to) p.date_to = input.date_to as string;
+        const metaUrl = new URL(`${NEXUS_URL}/meta-ads-sync`);
+        for (const [k,v] of Object.entries(p)) metaUrl.searchParams.set(k, v);
+        const metaRes = await fetch(metaUrl.toString(), { headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } });
+        result = metaRes.ok ? await metaRes.json() : { error: `meta-ads-sync ${metaRes.status}` };
+        break;
+      }
       case "consultar_financeiro": result = await callAgent("financeiro", input.pergunta as string); break;
       case "consultar_crm": result = await callAgent("crm", input.pergunta as string); break;
       case "consultar_projetos": result = await callAgent("projetos", input.pergunta as string); break;
+      case "consultar_marketing": result = await callAgent("marketing", input.pergunta as string); break;
       default: return JSON.stringify({ error: `Tool desconhecida: ${toolName}` });
     }
     return JSON.stringify(result);
@@ -552,7 +647,7 @@ async function loadHistory(agentType: AgentType, chatId: number): Promise<Anthro
 const PENDING_MARKER = "__PENDING_APPROVAL__";
 const EXECUTED_MARKER = "__APPROVAL_EXECUTED__";
 
-async function savePendingApproval(chatId: number, directives: { noah: string; sophia: string; melissa: string }): Promise<void> {
+async function savePendingApproval(chatId: number, directives: { noah: string; sophia: string; melissa: string; luna: string }): Promise<void> {
   try {
     await fetch(`${SUPABASE_URL}/rest/v1/agent_messages`, {
       method: "POST",
@@ -566,7 +661,7 @@ async function savePendingApproval(chatId: number, directives: { noah: string; s
   } catch { /* silent */ }
 }
 
-async function getPendingApproval(chatId: number): Promise<{ noah: string; sophia: string; melissa: string } | null> {
+async function getPendingApproval(chatId: number): Promise<{ noah: string; sophia: string; melissa: string; luna: string } | null> {
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/agent_messages?agent=eq.ceo&chat_id=eq.${chatId}&role=eq.assistant&content=like.${encodeURIComponent(PENDING_MARKER + "%")}&order=created_at.desc&limit=1&select=id,content`,
@@ -601,9 +696,9 @@ async function runAlignmentMeeting(mode: "daily" | "ondemand" = "daily", directC
     ? `Hoje é ${dateBRT}. Briefing matinal`
     : `Reunião de alinhamento convocada por Max — ${dateBRT} às ${timeBRT}. Faça um relatório`;
 
-  // Avisa nos 3 chats que a reunião começou
-  const [noahId, sophiaId, melissaId, storedCeoId] = await Promise.all([
-    getChatId("financeiro"), getChatId("crm"), getChatId("projetos"), getChatId("ceo"),
+  // Avisa nos 4 chats que a reunião começou
+  const [noahId, sophiaId, melissaId, lunaId, storedCeoId] = await Promise.all([
+    getChatId("financeiro"), getChatId("crm"), getChatId("projetos"), getChatId("marketing"), getChatId("ceo"),
   ]);
   // directCeoChatId garante que o CEO sempre recebe mesmo que o storeChatId não tenha rodado ainda
   const ceoId = directCeoChatId ?? storedCeoId;
@@ -623,20 +718,22 @@ async function runAlignmentMeeting(mode: "daily" | "ondemand" = "daily", directC
 
   if (aviso) {
     await Promise.all([
-      noahId  ? sendTelegram(noahId,   aviso, "financeiro") : Promise.resolve(),
-      sophiaId? sendTelegram(sophiaId, aviso, "crm")        : Promise.resolve(),
-      melissaId?sendTelegram(melissaId,aviso, "projetos")   : Promise.resolve(),
-      ceoId   ? sendTelegram(ceoId,    aviso, "ceo")        : Promise.resolve(),
+      noahId    ? sendTelegram(noahId,    aviso, "financeiro") : Promise.resolve(),
+      sophiaId  ? sendTelegram(sophiaId,  aviso, "crm")        : Promise.resolve(),
+      melissaId ? sendTelegram(melissaId, aviso, "projetos")   : Promise.resolve(),
+      lunaId    ? sendTelegram(lunaId,    aviso, "marketing")  : Promise.resolve(),
+      ceoId     ? sendTelegram(ceoId,     aviso, "ceo")        : Promise.resolve(),
     ]);
   }
 
   await safeRun(async () => {
 
-  // Consulta paralela nos 3 agentes — sem limite artificial de itens para relatório completo
-  const [noahStatus, sophiaStatus, melissaStatus] = await Promise.all([
+  // Consulta paralela nos 4 agentes — sem limite artificial de itens para relatório completo
+  const [noahStatus, sophiaStatus, melissaStatus, lunaStatus] = await Promise.all([
     callAgent("financeiro", `${prefix} financeiro: saldo atual, MRR, inadimplência (todos os clientes com valor e dias de atraso), contas vencendo esta semana, projeção de caixa e alertas críticos. Seja completo e detalhado — não omita nenhum inadimplente.`),
     callAgent("crm", `${prefix} comercial: leads quentes, follow-ups críticos, reuniões agendadas, oportunidades próximas de fechar, conversão do mês e próximos passos de cada lead relevante. Seja completo e detalhado.`),
     callAgent("projetos", `${prefix} de CS/Projetos: todos os clientes ativos com status, sinais de churn, entregas pendentes, tarefas atrasadas, KPIs não lançados e pontos de atenção. Seja completo e detalhado — não omita nenhum cliente com risco.`),
+    callAgent("marketing", `${prefix} de marketing: status das campanhas ativas no Meta Ads (gasto, CPL, ROAS), leads por canal de origem no CRM, criativos com melhor e pior performance, oportunidades de otimização e próximas ações recomendadas.`),
   ]);
 
   // Envia relatório de cada agente como mensagem separada para o CEO
@@ -646,6 +743,8 @@ async function runAlignmentMeeting(mode: "daily" | "ondemand" = "daily", directC
     await sendTelegram(ceoId, `*📈 COMERCIAL — Sophia*\n\n${sophiaStatus}`, "ceo");
     await new Promise(r => setTimeout(r, 500));
     await sendTelegram(ceoId, `*⚙️ OPERACIONAL — Melissa*\n\n${melissaStatus}`, "ceo");
+    await new Promise(r => setTimeout(r, 500));
+    await sendTelegram(ceoId, `*🎯 MARKETING — Luna*\n\n${lunaStatus}`, "ceo");
     await new Promise(r => setTimeout(r, 500));
   }
 
@@ -662,6 +761,9 @@ ${sophiaStatus}
 
 MELISSA — Projetos/CS:
 ${melissaStatus}
+
+LUNA — Marketing:
+${lunaStatus}
 
 Como Max, CEO da UNV Holdings, gere a ATA DE ALINHAMENTO no formato exato abaixo (use os marcadores exatamente como estão):
 
@@ -689,6 +791,10 @@ Como Max, CEO da UNV Holdings, gere a ATA DE ALINHAMENTO no formato exato abaixo
 (ordens diretas para Melissa executar hoje/esta semana: quais clientes visitar/contatar, quais tarefas urgentes, o que monitorar em risco de churn — mínimo 3 ações específicas com prazo)
 ---FIM_MELISSA---
 
+---DIRECIONAMENTO_LUNA---
+(ordens diretas para Luna executar hoje/esta semana: quais campanhas otimizar, quais criativos pausar ou escalar, o que testar, ajustes de orçamento recomendados — mínimo 3 ações específicas com prazo)
+---FIM_LUNA---
+
 Direto. Sem enrolação. Cada ação com responsável e prazo.
   `.trim();
 
@@ -704,12 +810,14 @@ Direto. Sem enrolação. Cada ação com responsável e prazo.
   const dirNoah    = extractSection(ata, "---DIRECIONAMENTO_NOAH---",    "---FIM_NOAH---");
   const dirSophia  = extractSection(ata, "---DIRECIONAMENTO_SOPHIA---",  "---FIM_SOPHIA---");
   const dirMelissa = extractSection(ata, "---DIRECIONAMENTO_MELISSA---", "---FIM_MELISSA---");
+  const dirLuna    = extractSection(ata, "---DIRECIONAMENTO_LUNA---",    "---FIM_LUNA---");
 
   // Remove os blocos de direcionamento da ATA do CEO para ficar limpa
   const ataCeo = ata
     .replace(/---DIRECIONAMENTO_NOAH---[\s\S]*?---FIM_NOAH---/g, "")
     .replace(/---DIRECIONAMENTO_SOPHIA---[\s\S]*?---FIM_SOPHIA---/g, "")
     .replace(/---DIRECIONAMENTO_MELISSA---[\s\S]*?---FIM_MELISSA---/g, "")
+    .replace(/---DIRECIONAMENTO_LUNA---[\s\S]*?---FIM_LUNA---/g, "")
     .trim();
 
   // Envia decisões do Max como mensagem separada
@@ -721,8 +829,8 @@ Direto. Sem enrolação. Cada ação com responsável e prazo.
   }
 
   // Salva direcionamentos pendentes de aprovação — NÃO executa ainda
-  if (ceoId && (dirNoah || dirSophia || dirMelissa)) {
-    await savePendingApproval(ceoId, { noah: dirNoah, sophia: dirSophia, melissa: dirMelissa });
+  if (ceoId && (dirNoah || dirSophia || dirMelissa || dirLuna)) {
+    await savePendingApproval(ceoId, { noah: dirNoah, sophia: dirSophia, melissa: dirMelissa, luna: dirLuna });
     await sendTelegram(ceoId, `_Direcionamentos prontos para Noah, Sophia e Melissa. Responda *ok* para eu executar._`, "ceo");
   }
   }); // fim safeRun
@@ -737,7 +845,7 @@ async function runDailyMeeting(): Promise<void> {
 async function runTopicMeeting(topic: string, ceoChatId: number): Promise<void> {
   const dateBRT = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
   const timeBRT = new Date().toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
-  const AGENT_NAMES: Record<AgentType, string> = { financeiro: "Noah", crm: "Sophia", projetos: "Melissa", ceo: "Max" };
+  const AGENT_NAMES: Record<AgentType, string> = { financeiro: "Noah", crm: "Sophia", projetos: "Melissa", ceo: "Max", marketing: "Luna" };
 
   try {
     // 1. Max decide quais agentes consultar com base no tema (usa haiku pra ser rápido e barato)
@@ -747,7 +855,7 @@ async function runTopicMeeting(topic: string, ceoChatId: number): Promise<void> 
       system: "Roteador de perguntas. Retorne APENAS JSON, sem explicação.",
       messages: [{
         role: "user",
-        content: `Tema da reunião: "${topic}"\n\nAgentes:\n- financeiro: saldo, MRR, inadimplência, fluxo de caixa, contas a pagar/receber, DRE\n- crm: leads, pipeline, conversão, follow-ups, negociações, reuniões de venda\n- projetos: clientes ativos, tarefas, KPIs, churn, CS, vendas mensais\n\nRetorne JSON: {"agents": ["financeiro","crm","projetos"]} com apenas os agentes relevantes.`,
+        content: `Tema da reunião: "${topic}"\n\nAgentes:\n- financeiro: saldo, MRR, inadimplência, fluxo de caixa, contas a pagar/receber, DRE\n- crm: leads, pipeline, conversão, follow-ups, negociações, reuniões de venda\n- projetos: clientes ativos, tarefas, KPIs, churn, CS, vendas mensais\n- marketing: campanhas Meta Ads, tráfego pago, CPL, ROAS, criativos, UTM, performance de anúncios\n\nRetorne JSON: {"agents": ["financeiro","crm","projetos","marketing"]} com apenas os agentes relevantes.`,
       }],
     });
     const routingText = routingResp.content.find((c) => c.type === "text")?.text ?? "";
@@ -756,7 +864,7 @@ async function runTopicMeeting(topic: string, ceoChatId: number): Promise<void> 
       const match = routingText.match(/\{[\s\S]*\}/);
       const parsed = JSON.parse(match?.[0] ?? "{}");
       agentsToConsult = ((parsed.agents ?? []) as string[]).filter((a) =>
-        ["financeiro", "crm", "projetos"].includes(a)
+        ["financeiro", "crm", "projetos", "marketing"].includes(a)
       ) as AgentType[];
     } catch { /* fallback abaixo */ }
     if (agentsToConsult.length === 0) agentsToConsult = ["financeiro", "crm", "projetos"];
@@ -890,7 +998,7 @@ Deno.serve(async (req) => {
 
   if (req.method === "GET") {
     const dbg = url.searchParams.get("debug") as AgentType | null;
-    if (dbg && ["financeiro","crm","projetos","ceo"].includes(dbg)) {
+    if (dbg && ["financeiro","crm","projetos","ceo","marketing"].includes(dbg)) {
       try {
         const reply = await callAgent(dbg, "qual sua função e o que você consegue fazer?");
         return new Response(JSON.stringify({ ok: true, agent: dbg, reply: reply.slice(0, 500) }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -899,7 +1007,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, version: "2.7-chunked-messages" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: true, version: "2.8-luna-marketing" }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
 
   if (req.method !== "POST") return new Response("OK", { status: 200 });
@@ -948,31 +1056,34 @@ Deno.serve(async (req) => {
         if (isApproval) {
           const pending = await getPendingApproval(chatId);
           if (pending) {
-            await sendTelegram(chatId, `*Aprovado. Acionando Noah, Sophia e Melissa agora...*`, "ceo");
+            await sendTelegram(chatId, `*Aprovado. Acionando Noah, Sophia, Melissa e Luna agora...*`, "ceo");
             EdgeRuntime.waitUntil((async () => {
-              const [noahId, sophiaId, melissaId] = await Promise.all([
-                getChatId("financeiro"), getChatId("crm"), getChatId("projetos"),
+              const [noahId, sophiaId, melissaId, lunaId] = await Promise.all([
+                getChatId("financeiro"), getChatId("crm"), getChatId("projetos"), getChatId("marketing"),
               ]);
               await Promise.all([
                 noahId    && pending.noah    ? sendTelegram(noahId,    `*Ordem do Max — executando agora...*\n\n${pending.noah}`,    "financeiro") : Promise.resolve(),
                 sophiaId  && pending.sophia  ? sendTelegram(sophiaId,  `*Ordem do Max — executando agora...*\n\n${pending.sophia}`,  "crm")        : Promise.resolve(),
                 melissaId && pending.melissa ? sendTelegram(melissaId, `*Ordem do Max — executando agora...*\n\n${pending.melissa}`, "projetos")   : Promise.resolve(),
+                lunaId    && pending.luna    ? sendTelegram(lunaId,    `*Ordem do Max — executando agora...*\n\n${pending.luna}`,    "marketing")  : Promise.resolve(),
               ]);
               const execPrompt = (dir: string) =>
                 `O CEO Max aprovou e te deu as seguintes ordens:\n\n${dir}\n\n` +
                 `Execute tudo o que for possível agora usando suas ferramentas. ` +
                 `Liste o que foi executado e o que precisa de ação humana. Seja objetivo.`;
-              const [noahExec, sophiaExec, melissaExec] = await Promise.all([
+              const [noahExec, sophiaExec, melissaExec, lunaExec] = await Promise.all([
                 pending.noah    ? callAgent("financeiro", execPrompt(pending.noah))    : Promise.resolve("Sem direcionamento."),
                 pending.sophia  ? callAgent("crm",        execPrompt(pending.sophia))  : Promise.resolve("Sem direcionamento."),
                 pending.melissa ? callAgent("projetos",   execPrompt(pending.melissa)) : Promise.resolve("Sem direcionamento."),
+                pending.luna    ? callAgent("marketing",  execPrompt(pending.luna))    : Promise.resolve("Sem direcionamento."),
               ]);
               await Promise.all([
                 noahId    ? sendTelegram(noahId,    `*Execução concluída*\n\n${noahExec}`,    "financeiro") : Promise.resolve(),
                 sophiaId  ? sendTelegram(sophiaId,  `*Execução concluída*\n\n${sophiaExec}`,  "crm")        : Promise.resolve(),
                 melissaId ? sendTelegram(melissaId, `*Execução concluída*\n\n${melissaExec}`, "projetos")   : Promise.resolve(),
+                lunaId    ? sendTelegram(lunaId,    `*Execução concluída*\n\n${lunaExec}`,    "marketing")  : Promise.resolve(),
               ]);
-              await sendTelegram(chatId, `_Execução concluída. Noah, Sophia e Melissa foram acionados._`, "ceo");
+              await sendTelegram(chatId, `_Execução concluída. Noah, Sophia, Melissa e Luna foram acionados._`, "ceo");
             })());
             return new Response("OK", { status: 200 });
           }
