@@ -307,9 +307,11 @@ async function getBillingRules(sb: any) {
 // ===== OVERDUE CLIENTS =====
 async function getOverdueClients(sb: any) {
   const today = new Date().toISOString().split("T")[0];
+  // Inclui status 'pending' e 'overdue' (asaas pode marcar como overdue automaticamente)
+  // Usa lte para incluir faturas que vencem hoje
   const { data: overdueInvoices, error } = await sb.from("company_invoices")
     .select("id, company_id, description, amount_cents, due_date, status")
-    .eq("status", "pending").lt("due_date", today).order("due_date");
+    .in("status", ["pending", "overdue"]).lte("due_date", today).order("due_date");
   if (error) throw error;
 
   // Group by company
@@ -323,29 +325,30 @@ async function getOverdueClients(sb: any) {
 
   const grouped: Record<string, any> = {};
   (overdueInvoices || []).forEach((inv: any) => {
-    if (!inv.company_id) return;
-    if (!grouped[inv.company_id]) {
+    // faturas sem company_id são agrupadas como "sem_vinculo"
+    const groupKey = inv.company_id || "sem_vinculo";
+    if (!grouped[groupKey]) {
       const co = companiesMap[inv.company_id] || {};
-      grouped[inv.company_id] = {
-        company_id: inv.company_id,
+      grouped[groupKey] = {
+        company_id: inv.company_id || null,
         company_name: co.name || "Desconhecida",
-        contact_email: co.contact_email,
-        contact_phone: co.contact_phone,
-        cnpj: co.cnpj,
-        segment: co.segment,
+        contact_email: co.contact_email || null,
+        contact_phone: co.contact_phone || null,
+        cnpj: co.cnpj || null,
+        segment: co.segment || null,
         total_overdue: 0,
         invoices_count: 0,
         oldest_due_date: inv.due_date,
         invoices: [],
       };
     }
-    grouped[inv.company_id].total_overdue += centsToReal(inv.amount_cents);
-    grouped[inv.company_id].invoices_count++;
-    grouped[inv.company_id].invoices.push({
-      id: inv.id, description: inv.description, amount: centsToReal(inv.amount_cents), due_date: inv.due_date,
+    grouped[groupKey].total_overdue += centsToReal(inv.amount_cents);
+    grouped[groupKey].invoices_count++;
+    grouped[groupKey].invoices.push({
+      id: inv.id, description: inv.description, amount: centsToReal(inv.amount_cents), due_date: inv.due_date, status: inv.status,
     });
-    if (inv.due_date < grouped[inv.company_id].oldest_due_date) {
-      grouped[inv.company_id].oldest_due_date = inv.due_date;
+    if (inv.due_date < grouped[groupKey].oldest_due_date) {
+      grouped[groupKey].oldest_due_date = inv.due_date;
     }
   });
 
