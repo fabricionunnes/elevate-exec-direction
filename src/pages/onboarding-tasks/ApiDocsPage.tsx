@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Code2, DollarSign, Target, Briefcase, MessageSquare, Video, BarChart3 } from "lucide-react";
+import { ArrowLeft, Code2, DollarSign, Target, Briefcase, MessageSquare, Video, BarChart3, LayoutGrid } from "lucide-react";
 import { FinancialApiDocs } from "@/components/financial-api/FinancialApiDocs";
 import { CrmApiDocs } from "@/components/financial-api/CrmApiDocs";
 import { ProductApiDocs } from "@/components/financial-api/ProductApiDocs";
@@ -33,8 +33,12 @@ export default function ApiDocsPage() {
       </header>
 
       <main className="container mx-auto px-4 py-6">
-        <Tabs defaultValue="crm" className="space-y-6">
-          <TabsList className="grid w-full max-w-4xl grid-cols-3 sm:grid-cols-6 h-auto">
+        <Tabs defaultValue="all" className="space-y-6">
+          <TabsList className="grid w-full max-w-5xl grid-cols-4 sm:grid-cols-7 h-auto">
+            <TabsTrigger value="all" className="gap-2">
+              <LayoutGrid className="h-4 w-4" />
+              <span className="hidden sm:inline">Geral</span>
+            </TabsTrigger>
             <TabsTrigger value="financial" className="gap-2">
               <DollarSign className="h-4 w-4" />
               <span className="hidden sm:inline">Financeiro</span>
@@ -60,6 +64,15 @@ export default function ApiDocsPage() {
               <span className="hidden sm:inline">Conversas</span>
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="all" className="space-y-12">
+            <section><FinancialApiDocs /></section>
+            <section><CrmApiDocs /></section>
+            <section><CRMTrafficApiDocs /></section>
+            <section><ProjectMeetingsApiDocs /></section>
+            <section><ProductApiDocs /></section>
+            <section><ConversationsApiDocs /></section>
+          </TabsContent>
 
           <TabsContent value="financial">
             <FinancialApiDocs />
