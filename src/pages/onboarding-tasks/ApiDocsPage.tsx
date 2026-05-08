@@ -1,11 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Code2, DollarSign, Target, Briefcase, MessageSquare, Video } from "lucide-react";
+import { ArrowLeft, Code2, DollarSign, Target, Briefcase, MessageSquare, Video, BarChart3 } from "lucide-react";
 import { FinancialApiDocs } from "@/components/financial-api/FinancialApiDocs";
 import { CrmApiDocs } from "@/components/financial-api/CrmApiDocs";
 import { ProductApiDocs } from "@/components/financial-api/ProductApiDocs";
 import { ConversationsApiDocs } from "@/components/financial-api/ConversationsApiDocs";
 import { ProjectMeetingsApiDocs } from "@/components/financial-api/ProjectMeetingsApiDocs";
+import { CRMTrafficApiDocs } from "@/components/crm/traffic/CRMTrafficApiDocs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ApiDocsPage() {
