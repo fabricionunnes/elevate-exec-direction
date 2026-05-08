@@ -560,6 +560,7 @@ const AppShell = () => {
               <Route path="head" element={<CRMHeadComercialPage />} />
               <Route path="call-summary" element={<CRMCallSummaryPage />} />
               <Route path="api" element={<CRMApiPage />} />
+              <Route path="trafego-pago/api" element={<CRMTrafficApiPage />} />
               <Route path="forecast" element={<CRMForecastPage />} />
               <Route path="cadences" element={<CRMCadencesPage />} />
               <Route path="applications" element={<CRMApplicationsPage />} />
