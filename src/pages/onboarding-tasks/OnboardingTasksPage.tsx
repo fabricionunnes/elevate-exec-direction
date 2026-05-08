@@ -2035,15 +2035,15 @@ const OnboardingTasksPage = () => {
       <div className="container mx-auto px-2 sm:px-4 pb-4 sm:pb-8">
         <div className="flex flex-col gap-3 mb-4 sm:mb-6">
 
-          {/* Desktop Actions - Second Row */}
-          <div className="hidden sm:flex items-center gap-2 flex-wrap">
-            {/* Primary Actions */}
+          {/* Desktop Navigation — clean grouped nav */}
+          <div className="hidden sm:flex items-center gap-0.5 border-b border-border/50 pb-2">
+            {/* Empresas dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Building2 className="h-4 w-4 mr-2" />
+                <Button variant="ghost" size="sm" className="gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60">
+                  <Building2 className="h-4 w-4" />
                   Empresas
-                  <ChevronDown className="h-4 w-4 ml-2" />
+                  <ChevronDown className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-72">
@@ -2111,218 +2111,146 @@ const OnboardingTasksPage = () => {
             </DropdownMenuContent>
             </DropdownMenu>
             
-            <Button size="sm" onClick={() => setShowCreateDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Projeto
-            </Button>
-
-            <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/task-manager")}>
-              <LayoutGrid className="h-4 w-4 mr-2" />
-              Gerenciador
-            </Button>
-
-            <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/office")}>
-              <Video className="h-4 w-4 mr-2" />
-              Escritório
-            </Button>
-
-            <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/unv-office")}>
-              <Building2 className="h-4 w-4 mr-2" />
-              UNV Office
-            </Button>
-
             {canCreateCompany && (
-              <Button variant="outline" size="sm" onClick={() => navigate("/onboarding")}>
-                <BookOpen className="h-4 w-4 mr-2" />
-                Onboarding
+              <Button size="sm" className="gap-1.5 ml-1" onClick={() => setShowCreateDialog(true)}>
+                <Plus className="h-4 w-4" />
+                Novo Projeto
               </Button>
             )}
 
-            {/* NPS, CSAT and Results Buttons - Admin/CS only, Resultados for all staff */}
+            {/* Separator */}
+            <div className="w-px h-5 bg-border/60 mx-1.5" />
+
+            {/* ── Operações ───────────────────────────────── */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60">
+                  <LayoutGrid className="h-4 w-4" />
+                  Operações
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52">
+                <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/task-manager")}>
+                  <LayoutGrid className="h-4 w-4 mr-2" /> Gerenciador
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/office")}>
+                  <Video className="h-4 w-4 mr-2" /> Escritório
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/unv-office")}>
+                  <Building2 className="h-4 w-4 mr-2" /> UNV Office
+                </DropdownMenuItem>
+                {currentUserRole && currentStaffId && (
+                  <DropdownMenuItem onClick={() => setShowMyTasks(true)}>
+                    <CheckCircle2 className="h-4 w-4 mr-2" /> Minhas Tarefas
+                  </DropdownMenuItem>
+                )}
+                {(canAccessCalendar || isConsultant || isCS) && currentStaffId && (
+                  <DropdownMenuItem onClick={() => setShowMeetings(true)}>
+                    <Video className="h-4 w-4 mr-2" /> Reuniões
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/nota-fiscal")}>
+                  <FileText className="h-4 w-4 mr-2" /> Nota Fiscal
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp")}>
+                  <MessageSquare className="h-4 w-4 mr-2" /> UNV Disparador
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp-hub")}>
+                  <MessageSquare className="h-4 w-4 mr-2" /> WhatsApp Hub
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* ── Comercial ───────────────────────────────── */}
+            {(canAccessCRM || canCreateCompany || isAdmin || isCS || currentUserRole === "closer") && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60">
+                    <Target className="h-4 w-4" />
+                    Comercial
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-52">
+                  {canAccessCRM && (
+                    <DropdownMenuItem onClick={() => navigate("/crm")}>
+                      <Target className="h-4 w-4 mr-2" /> CRM Comercial
+                    </DropdownMenuItem>
+                  )}
+                  {canCreateCompany && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/consultorias")}>
+                      <Briefcase className="h-4 w-4 mr-2" /> Consultorias
+                    </DropdownMenuItem>
+                  )}
+                  {(isAdmin || isCS || currentUserRole === "closer") && (
+                    <DropdownMenuItem onClick={() => navigate("/contratos?history=true")}>
+                      <FileText className="h-4 w-4 mr-2" /> Contratos
+                    </DropdownMenuItem>
+                  )}
+                  {canAccessHR && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/vagas")}>
+                      <Briefcase className="h-4 w-4 mr-2" /> Vagas (RH)
+                    </DropdownMenuItem>
+                  )}
+                  {canAccessFinancial && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro/recorrencias")}>
+                      <Calculator className="h-4 w-4 mr-2" /> Financeiro
+                    </DropdownMenuItem>
+                  )}
+                  {(isAdmin || isCS) && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations-retention")} className="text-red-600 focus:text-red-600">
+                        <AlertTriangle className="h-4 w-4 mr-2" /> Cancelamentos
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/api-docs")}>
+                      <Code2 className="h-4 w-4 mr-2" /> API
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            {/* ── Engajamento ─────────────────────────────── */}
             {canCreateCompany && (
-              <>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setShowNPSGlobalDialog(true)}
-                  className="gap-2"
-                >
-                  <TrendingUp className="h-4 w-4" />
-                  NPS
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setShowCSATGlobalDialog(true)}
-                  className="gap-2"
-                >
-                  <MessageSquareHeart className="h-4 w-4" />
-                  CSAT
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => navigate("/onboarding-tasks/hotseat")}
-                  className="gap-2 border-orange-300 text-orange-600 hover:bg-orange-50"
-                >
-                  <Heart className="h-4 w-4" />
-                  Hotseat
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => navigate("/onboarding-tasks/consultorias")}
-                  className="gap-2 border-primary/30 text-primary hover:bg-primary/5"
-                >
-                  <Briefcase className="h-4 w-4" />
-                  Consultorias
-                </Button>
-              </>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60">
+                    <TrendingUp className="h-4 w-4" />
+                    Engajamento
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-52">
+                  <DropdownMenuItem onClick={() => setShowNPSGlobalDialog(true)}>
+                    <TrendingUp className="h-4 w-4 mr-2" /> NPS
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowCSATGlobalDialog(true)}>
+                    <MessageSquareHeart className="h-4 w-4 mr-2" /> CSAT
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/hotseat")}>
+                    <Heart className="h-4 w-4 mr-2" /> Hotseat
+                  </DropdownMenuItem>
+                  {canAccessResults && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/results")}>
+                      <BarChart3 className="h-4 w-4 mr-2" /> Resultados
+                    </DropdownMenuItem>
+                  )}
+                  {canAccessCircle && (
+                    <DropdownMenuItem onClick={() => navigate("/circle")}>
+                      <Sparkles className="h-4 w-4 mr-2 text-violet-500" /> UNV Circle
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => navigate("/onboarding")}>
+                    <BookOpen className="h-4 w-4 mr-2" /> Onboarding
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
-            {/* Contratos button - Admin, CS and Closer */}
-            {(isAdmin || isCS || currentUserRole === "closer") && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => navigate("/contratos?history=true")}
-                className="gap-2"
-              >
-                <FileText className="h-4 w-4" />
-                Contratos
-              </Button>
-            )}
-            {/* Minhas Tarefas button - visible for all staff */}
-            {currentUserRole && currentStaffId && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setShowMyTasks(true)}
-                className="gap-2"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                Minhas Tarefas
-              </Button>
-            )}
-            {/* Reuniões button - visible for all staff */}
-            {(canAccessCalendar || isConsultant || isCS) && currentStaffId && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setShowMeetings(true)}
-                className="gap-2"
-              >
-                <Video className="h-4 w-4" />
-                Reuniões
-              </Button>
-            )}
-            {/* Resultados button - permission-gated */}
-            {canAccessResults && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => navigate("/onboarding-tasks/results")}
-                className="gap-2"
-              >
-                <BarChart3 className="h-4 w-4" />
-                Resultados
-              </Button>
-            )}
-            {/* UNV Circle button - permission-gated */}
-            {canAccessCircle && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => navigate("/circle")}
-                className="gap-2 border-violet-300 text-violet-600 hover:bg-violet-50"
-              >
-                <Sparkles className="h-4 w-4" />
-                UNV Circle
-              </Button>
-            )}
-            {/* Vagas (RH) button - permission-gated */}
-            {canAccessHR && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => navigate("/onboarding-tasks/vagas")}
-                className="gap-2"
-              >
-                <Briefcase className="h-4 w-4" />
-                Vagas (RH)
-              </Button>
-            )}
-            {/* UNV Disparador button - visible for all staff */}
-            {currentUserRole && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate("/onboarding-tasks/whatsapp")}
-                className="gap-2"
-              >
-                <MessageSquare className="h-4 w-4" />
-                UNV Disparador
-              </Button>
-            )}
-            {/* CRM Comercial button - visible for admin, head_comercial, closer, sdr */}
-            {canAccessCRM && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => navigate("/crm")}
-                className="gap-2"
-              >
-                <Target className="h-4 w-4" />
-                CRM Comercial
-              </Button>
-            )}
-            {/* Financeiro button - visible for admin, master, and users with financial permission */}
-            {canAccessFinancial && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => navigate("/onboarding-tasks/financeiro/recorrencias")}
-                className="gap-2"
-              >
-                <Calculator className="h-4 w-4" />
-                Financeiro
-              </Button>
-            )}
-
-            {/* API Docs button - visible for admin and master only */}
-            {isAdmin && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => navigate("/onboarding-tasks/api-docs")}
-                className="gap-2"
-              >
-                <Code2 className="h-4 w-4" />
-                API
-              </Button>
-            )}
-
-            {(isAdmin || isCS) && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => navigate("/onboarding-tasks/cancellations-retention")}
-                className="gap-2 border-red-300 text-red-600 hover:bg-red-50"
-              >
-                <AlertTriangle className="h-4 w-4" />
-                Cancelamentos
-              </Button>
-            )}
-
-            {/* Nota Fiscal button - visible for all staff */}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => navigate("/onboarding-tasks/nota-fiscal")}
-              className="gap-2"
-            >
-              <FileText className="h-4 w-4" />
-              Nota Fiscal
-            </Button>
 
             {/* Admin/CS/Consultant Actions Menu - Reorganized with submenus */}
             {canAccessAnalytics && (
@@ -2597,28 +2525,31 @@ const OnboardingTasksPage = () => {
               </DropdownMenu>
             )}
 
-            <ThemeToggle />
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setShowStaffSettings(true)}
-              title="Meu Perfil"
-            >
-              <User className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="h-8 w-8"
-              onClick={async () => {
-                await supabase.auth.signOut();
-                navigate("/onboarding-tasks/login");
-              }}
-              title="Sair"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
+            {/* ── Right side ──────────────────────────────── */}
+            <div className="ml-auto flex items-center gap-0.5">
+              <ThemeToggle />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setShowStaffSettings(true)}
+                title="Meu Perfil"
+              >
+                <User className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  navigate("/onboarding-tasks/login");
+                }}
+                title="Sair"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Staff Settings Sheet */}
