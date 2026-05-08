@@ -590,12 +590,22 @@ async function runAlignmentMeeting(mode: "daily" | "ondemand" = "daily", directC
 
   await safeRun(async () => {
 
-  // Consulta paralela nos 3 agentes
+  // Consulta paralela nos 3 agentes — sem limite artificial de itens para relatório completo
   const [noahStatus, sophiaStatus, melissaStatus] = await Promise.all([
-    callAgent("financeiro", `${prefix} financeiro: saldo atual, MRR, inadimplência crítica, contas vencendo esta semana e projeção de caixa. Máximo 6 itens. Objetivo e direto.`),
-    callAgent("crm", `${prefix} comercial: leads quentes, follow-ups críticos, reuniões agendadas, oportunidades próximas de fechar e conversão do mês. Máximo 6 itens. Objetivo e direto.`),
-    callAgent("projetos", `${prefix} de CS/Projetos: clientes ativos, sinais de churn, entregas pendentes, tarefas atrasadas e KPIs não lançados. Máximo 6 itens. Objetivo e direto.`),
+    callAgent("financeiro", `${prefix} financeiro: saldo atual, MRR, inadimplência (todos os clientes com valor e dias de atraso), contas vencendo esta semana, projeção de caixa e alertas críticos. Seja completo e detalhado — não omita nenhum inadimplente.`),
+    callAgent("crm", `${prefix} comercial: leads quentes, follow-ups críticos, reuniões agendadas, oportunidades próximas de fechar, conversão do mês e próximos passos de cada lead relevante. Seja completo e detalhado.`),
+    callAgent("projetos", `${prefix} de CS/Projetos: todos os clientes ativos com status, sinais de churn, entregas pendentes, tarefas atrasadas, KPIs não lançados e pontos de atenção. Seja completo e detalhado — não omita nenhum cliente com risco.`),
   ]);
+
+  // Envia relatório de cada agente como mensagem separada para o CEO
+  if (ceoId) {
+    await sendTelegram(ceoId, `*📊 FINANCEIRO — Noah*\n\n${noahStatus}`, "ceo");
+    await new Promise(r => setTimeout(r, 500));
+    await sendTelegram(ceoId, `*📈 COMERCIAL — Sophia*\n\n${sophiaStatus}`, "ceo");
+    await new Promise(r => setTimeout(r, 500));
+    await sendTelegram(ceoId, `*⚙️ OPERACIONAL — Melissa*\n\n${melissaStatus}`, "ceo");
+    await new Promise(r => setTimeout(r, 500));
+  }
 
   // CEO (Max) sintetiza, prioriza e direciona cada agente
   const title = mode === "daily" ? "BRIEFING MATINAL" : "REUNIÃO DE ALINHAMENTO";
@@ -660,8 +670,8 @@ Direto. Sem enrolação. Cada ação com responsável e prazo.
     .replace(/---DIRECIONAMENTO_MELISSA---[\s\S]*?---FIM_MELISSA---/g, "")
     .trim();
 
-  // Avisa no CEO que a ATA está pronta e a execução vai começar
-  const msgCeoAta = `*${title} — ${dateBRT}*\n\n${ataCeo}\n\n_Executando direcionamentos com Noah, Sophia e Melissa..._`;
+  // Envia decisões do Max como mensagem separada
+  const msgCeoAta = `*🧠 MAX — Decisões e Prioridades*\n\n${ataCeo}`;
   if (ceoId) {
     await (OPENAI_API_KEY
       ? synthesizeSpeech(ataCeo, "ceo").then(a => a ? sendVoice(ceoId, a, "ceo") : sendTelegram(ceoId, msgCeoAta, "ceo"))
@@ -695,12 +705,8 @@ Direto. Sem enrolação. Cada ação com responsável e prazo.
     melissaId ? sendTelegram(melissaId, `*Execução concluída*\n\n${melissaExec}`, "projetos")   : Promise.resolve(),
   ]);
 
-  // Relatório final de execução para o CEO
-  const relatorio = `*Relatório de Execução — ${timeBRT}*\n\n` +
-    `*Noah:*\n${noahExec}\n\n` +
-    `*Sophia:*\n${sophiaExec}\n\n` +
-    `*Melissa:*\n${melissaExec}`;
-  if (ceoId) await sendTelegram(ceoId, relatorio, "ceo");
+  // Confirmação final para o CEO — execução concluída
+  if (ceoId) await sendTelegram(ceoId, `_Direcionamentos enviados a Noah, Sophia e Melissa. Execução em andamento._`, "ceo");
   }); // fim safeRun
 }
 
