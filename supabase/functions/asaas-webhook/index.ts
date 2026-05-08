@@ -219,9 +219,14 @@ Deno.serve(async (req) => {
           }).catch((e: any) => console.error("[Asaas Webhook] WhatsApp notify error:", e));
 
           if (invoice.installment_number === invoice.total_installments && invoice.recurring_charge_id) {
-            await supabase.functions.invoke("generate-invoices", {
-              body: { action: "auto_renew", recurring_charge_id: invoice.recurring_charge_id },
-            });
+            const skip = await hasEquivalentPendingElsewhere(supabase, invoice.company_id, invoice.amount_cents, invoice.recurring_charge_id);
+            if (skip) {
+              console.log(`[Asaas Webhook] Skipping auto-renew for ${invoice.recurring_charge_id}: equivalent pending invoice already exists for company ${invoice.company_id}`);
+            } else {
+              await supabase.functions.invoke("generate-invoices", {
+                body: { action: "auto_renew", recurring_charge_id: invoice.recurring_charge_id },
+              });
+            }
           }
         } else if (invoice.status === "paid" || invoice.status === "partial") {
           // Never overwrite a manually-paid invoice with overdue/pending from Asaas
@@ -314,10 +319,15 @@ Deno.serve(async (req) => {
                 }).catch((e: any) => console.error("[Asaas Webhook] WhatsApp notify error:", e));
 
                 if (invoice.installment_number === invoice.total_installments) {
-                  console.log(`[Asaas Webhook] Last installment paid, triggering auto-renew`);
-                  await supabase.functions.invoke("generate-invoices", {
-                    body: { action: "auto_renew", recurring_charge_id: recurringChargeId },
-                  });
+                  const skip = await hasEquivalentPendingElsewhere(supabase, invoice.company_id, invoice.amount_cents, recurringChargeId);
+                  if (skip) {
+                    console.log(`[Asaas Webhook] Skipping auto-renew for ${recurringChargeId}: equivalent pending invoice already exists for company ${invoice.company_id}`);
+                  } else {
+                    console.log(`[Asaas Webhook] Last installment paid, triggering auto-renew`);
+                    await supabase.functions.invoke("generate-invoices", {
+                      body: { action: "auto_renew", recurring_charge_id: recurringChargeId },
+                    });
+                  }
                 }
               }
             } else {
@@ -359,6 +369,31 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+async function hasEquivalentPendingElsewhere(
+  supabase: any,
+  companyId: string | null | undefined,
+  amountCents: number,
+  excludeRecurringChargeId: string,
+): Promise<boolean> {
+  if (!companyId || !amountCents) return false;
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data } = await supabase
+      .from("company_invoices")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("amount_cents", amountCents)
+      .in("status", ["pending", "overdue"])
+      .gte("due_date", today)
+      .neq("recurring_charge_id", excludeRecurringChargeId)
+      .limit(1);
+    return !!(data && data.length);
+  } catch (e) {
+    console.error("[Asaas Webhook] hasEquivalentPendingElsewhere error:", e);
+    return false;
+  }
+}
 
 async function creditAsaasBank(supabase: any, amountCents: number, description: string, invoiceId: string, recurringChargeId?: string | null) {
   try {
