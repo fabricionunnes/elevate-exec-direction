@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Code2, DollarSign, Target, Briefcase, MessageSquare, Video, BarChart3, LayoutGrid, Download, Loader2 } from "lucide-react";
 import { FinancialApiDocs } from "@/components/financial-api/FinancialApiDocs";
@@ -16,18 +16,22 @@ import { toast } from "sonner";
 export default function ApiDocsPage() {
   const navigate = useNavigate();
   const allRef = useRef<HTMLDivElement>(null);
+  const downloadLinkRef = useRef<HTMLAnchorElement>(null);
   const [downloading, setDownloading] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfFilename, setPdfFilename] = useState("");
 
-  const handleDownloadPdf = async () => {
-    if (!allRef.current) return;
+  const preparePdf = useCallback(async () => {
+    const element = allRef.current;
+    if (!element) return;
     setDownloading(true);
     try {
-      toast.info("Gerando PDF, aguarde...");
-      const canvas = await html2canvas(allRef.current, {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
-        windowWidth: allRef.current.scrollWidth,
+        windowWidth: element.scrollWidth,
       });
 
       const imgData = canvas.toDataURL("image/jpeg", 0.92);
@@ -54,24 +58,36 @@ export default function ApiDocsPage() {
       const filename = `documentacao-api-unv-nexus-${date}.pdf`;
       const blob = pdf.output("blob");
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.target = "_blank";
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
-      // Fallback: also open in a new tab in case the iframe blocks the download
-      window.open(url, "_blank", "noopener");
-      toast.success("PDF gerado! Se o download não iniciar, abra a aba que foi exibida.");
+      setPdfUrl(url);
+      setPdfFilename(filename);
     } catch (err) {
       console.error("Erro ao gerar PDF:", err);
       toast.error("Erro ao gerar PDF");
     } finally {
       setDownloading(false);
     }
+  }, [pdfUrl]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void preparePdf();
+    }, 400);
+
+    return () => {
+      window.clearTimeout(timer);
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    };
+  }, []);
+
+  const handleDownloadPdf = async () => {
+    if (pdfUrl && downloadLinkRef.current) {
+      downloadLinkRef.current.click();
+      toast.success("Download iniciado.");
+      return;
+    }
+
+    toast.info("Preparando PDF, aguarde...");
+    await preparePdf();
   };
 
   return (
@@ -131,9 +147,10 @@ export default function ApiDocsPage() {
 
           <TabsContent value="all" className="space-y-4">
             <div className="flex justify-end">
-              <Button onClick={handleDownloadPdf} disabled={downloading} size="sm">
+              <a ref={downloadLinkRef} href={pdfUrl ?? undefined} download={pdfFilename} className="hidden" aria-hidden="true" />
+              <Button onClick={handleDownloadPdf} disabled={downloading || !pdfUrl} size="sm">
                 {downloading ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Gerando PDF...</>
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Preparando PDF...</>
                 ) : (
                   <><Download className="h-4 w-4 mr-2" /> Baixar documentação completa (PDF)</>
                 )}
