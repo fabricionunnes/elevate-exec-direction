@@ -599,7 +599,7 @@ async function runAlignmentMeeting(mode: "daily" | "ondemand" = "daily", directC
 
   // Envia relatório de cada agente como mensagem separada para o CEO
   if (ceoId) {
-    await sendTelegram(ceoId, `*📊 FINANCEIRO — Noah*\n\n${noahStatus}`, "ceo");
+    await sendTelegram(ceoId, `*📉 FINANCEIRO — Noah*\n\n${noahStatus}`, "ceo");
     await new Promise(r => setTimeout(r, 500));
     await sendTelegram(ceoId, `*📈 COMERCIAL — Sophia*\n\n${sophiaStatus}`, "ceo");
     await new Promise(r => setTimeout(r, 500));
