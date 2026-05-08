@@ -392,11 +392,27 @@ async function sendInternalNotifications(
   empresa?: string, originName?: string
 ) {
   try {
-    const { data: staffToNotify } = await supabase
+    const { data: rawStaff } = await supabase
       .from('onboarding_staff')
-      .select('id')
+      .select('id, role')
       .eq('is_active', true)
       .in('role', ['master', 'head_comercial', 'sdr']);
+
+    const nonMasterIds = (rawStaff || [])
+      .filter((s: any) => s.role !== 'master')
+      .map((s: any) => s.id);
+    let crmEnabledIds = new Set<string>();
+    if (nonMasterIds.length > 0) {
+      const { data: perms } = await supabase
+        .from('staff_menu_permissions')
+        .select('staff_id')
+        .eq('menu_key', 'crm')
+        .in('staff_id', nonMasterIds);
+      crmEnabledIds = new Set((perms || []).map((p: any) => p.staff_id));
+    }
+    const staffToNotify = (rawStaff || []).filter(
+      (s: any) => s.role === 'master' || crmEnabledIds.has(s.id)
+    );
 
     if (!staffToNotify || staffToNotify.length === 0) return;
 
