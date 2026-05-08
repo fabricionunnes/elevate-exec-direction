@@ -108,7 +108,7 @@ export default function ApiDocsPage() {
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="all" className="space-y-6">
           <div className="flex flex-wrap items-center gap-3 justify-between">
-            <TabsList className="grid w-full max-w-5xl grid-cols-4 sm:grid-cols-7 h-auto">
+            <TabsList className="grid w-full max-w-5xl grid-cols-4 sm:grid-cols-8 h-auto">
               <TabsTrigger value="all" className="gap-2">
                 <LayoutGrid className="h-4 w-4" />
                 <span className="hidden sm:inline">Geral</span>
