@@ -168,7 +168,12 @@ export default function ApiDocsPage() {
               <section><ProjectMeetingsApiDocs /></section>
               <section><ProductApiDocs /></section>
               <section><ConversationsApiDocs /></section>
+              <section><WhatsAppSendApiDocs /></section>
             </div>
+          </TabsContent>
+
+          <TabsContent value="whatsapp_send">
+            <WhatsAppSendApiDocs />
           </TabsContent>
 
           <TabsContent value="financial">
