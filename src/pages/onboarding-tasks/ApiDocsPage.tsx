@@ -16,7 +16,7 @@ import { toast } from "sonner";
 export default function ApiDocsPage() {
   const navigate = useNavigate();
   const allRef = useRef<HTMLDivElement>(null);
-  const downloadLinkRef = useRef<HTMLAnchorElement>(null);
+  const pdfObjectUrlRef = useRef<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfFilename, setPdfFilename] = useState("");
@@ -26,7 +26,7 @@ export default function ApiDocsPage() {
     if (!element) return;
     setDownloading(true);
     try {
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      if (pdfObjectUrlRef.current) URL.revokeObjectURL(pdfObjectUrlRef.current);
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
@@ -58,6 +58,7 @@ export default function ApiDocsPage() {
       const filename = `documentacao-api-unv-nexus-${date}.pdf`;
       const blob = pdf.output("blob");
       const url = URL.createObjectURL(blob);
+      pdfObjectUrlRef.current = url;
       setPdfUrl(url);
       setPdfFilename(filename);
     } catch (err) {
@@ -66,7 +67,7 @@ export default function ApiDocsPage() {
     } finally {
       setDownloading(false);
     }
-  }, [pdfUrl]);
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -75,20 +76,9 @@ export default function ApiDocsPage() {
 
     return () => {
       window.clearTimeout(timer);
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      if (pdfObjectUrlRef.current) URL.revokeObjectURL(pdfObjectUrlRef.current);
     };
-  }, []);
-
-  const handleDownloadPdf = async () => {
-    if (pdfUrl && downloadLinkRef.current) {
-      downloadLinkRef.current.click();
-      toast.success("Download iniciado.");
-      return;
-    }
-
-    toast.info("Preparando PDF, aguarde...");
-    await preparePdf();
-  };
+  }, [preparePdf]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -147,14 +137,17 @@ export default function ApiDocsPage() {
 
           <TabsContent value="all" className="space-y-4">
             <div className="flex justify-end">
-              <a ref={downloadLinkRef} href={pdfUrl ?? undefined} download={pdfFilename} className="hidden" aria-hidden="true" />
-              <Button onClick={handleDownloadPdf} disabled={downloading || !pdfUrl} size="sm">
-                {downloading ? (
+              {pdfUrl ? (
+                <Button asChild size="sm">
+                  <a href={pdfUrl} download={pdfFilename}>
+                    <Download className="h-4 w-4 mr-2" /> Baixar documentação completa (PDF)
+                  </a>
+                </Button>
+              ) : (
+                <Button disabled size="sm">
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Preparando PDF...</>
-                ) : (
-                  <><Download className="h-4 w-4 mr-2" /> Baixar documentação completa (PDF)</>
-                )}
-              </Button>
+                </Button>
+              )}
             </div>
             <div ref={allRef} className="space-y-12 bg-background p-4">
               <section><FinancialApiDocs /></section>
