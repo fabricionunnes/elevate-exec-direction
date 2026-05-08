@@ -77,6 +77,9 @@ const CRM_TOOLS: Anthropic.Tool[] = [
   // Pipelines
   { name: "listar_pipelines", description: "Lista pipelines do CRM", input_schema: { type: "object", properties: {} } },
   { name: "listar_etapas", description: "Lista etapas/stages de um pipeline específico", input_schema: { type: "object", properties: { pipeline_id: { type: "string" } }, required: ["pipeline_id"] } },
+  // WhatsApp Direto
+  { name: "listar_instancias_whatsapp", description: "Lista instâncias WhatsApp disponíveis com id, nome e status. Use para descobrir o UUID da instância antes de enviar.", input_schema: { type: "object", properties: {} } },
+  { name: "enviar_whatsapp_lead", description: "Envia mensagem de texto via WhatsApp para o telefone de um lead, usando a instância Natalia Amador (ou outra escolhida). Cria contato/conversa automaticamente se não existirem.", input_schema: { type: "object", properties: { instance_id: { type: "string", description: "UUID da instância WhatsApp (obtenha com listar_instancias_whatsapp)" }, phone: { type: "string", description: "Telefone do destinatário — qualquer formato, o sistema normaliza" }, message: { type: "string", description: "Texto da mensagem a enviar" }, lead_id: { type: "string", description: "UUID do lead para vincular a conversa (opcional)" } }, required: ["instance_id", "phone", "message"] } },
 ];
 
 // ============ TOOLS — MELISSA (PROJETOS) ============
@@ -166,7 +169,13 @@ REGRA CRÍTICA — NUNCA exiba IDs ou UUIDs ao usuário. Sempre resolva antes de
 Exemplo correto: "Douglas — R$ 20.000 | Etapa: Proposta Enviada | Closer: Marcos" (NUNCA "Etapa: 2429c538 | Closer: bbf63ab8")
 Se os dados retornados já contiverem o nome (campo name/title), use direto. Só chame a ferramenta de resolução se o campo retornado for um ID.
 
-Regras: ágil, respostas curtas, confirme antes de criar/mover, máx 5 itens por lista, sem "Perfeito!", sem emojis. Data: ${TODAY}`,
+WHATSAPP DIRETO — você pode enviar mensagens para leads via WhatsApp:
+1. Chame listar_instancias_whatsapp para obter o UUID da instância "Natalia Amador" (ou a disponível)
+2. Use enviar_whatsapp_lead com instance_id + phone + message + lead_id
+3. SEMPRE confirme com o usuário o texto da mensagem antes de enviar
+4. Após enviar, informe: instância usada, telefone e confirmação de envio
+
+Regras: ágil, respostas curtas, confirme antes de criar/mover/enviar, máx 5 itens por lista, sem "Perfeito!", sem emojis. Data: ${TODAY}`,
 
   projetos: `Você é Melissa, Gestora de Projetos e CS virtual da UNV Holdings. Acompanha clientes, tarefas, KPIs e risco de churn.
 
@@ -420,6 +429,9 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
         result = metaRes.ok ? await metaRes.json() : { error: `meta-ads-sync ${metaRes.status}` };
         break;
       }
+      // ── SOPHIA: WhatsApp Direto ──
+      case "listar_instancias_whatsapp": result = await nexusGet(SYS, { module: "whatsapp", action: "list_instances" }, apiKey); break;
+      case "enviar_whatsapp_lead": result = await nexusPost(`${SYS}?module=whatsapp&action=send`, input, apiKey); break;
       case "consultar_financeiro": result = await callAgent("financeiro", input.pergunta as string); break;
       case "consultar_crm": result = await callAgent("crm", input.pergunta as string); break;
       case "consultar_projetos": result = await callAgent("projetos", input.pergunta as string); break;
