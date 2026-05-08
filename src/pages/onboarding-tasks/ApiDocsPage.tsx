@@ -51,8 +51,21 @@ export default function ApiDocsPage() {
       }
 
       const date = new Date().toISOString().split("T")[0];
-      pdf.save(`documentacao-api-unv-nexus-${date}.pdf`);
-      toast.success("PDF baixado com sucesso!");
+      const filename = `documentacao-api-unv-nexus-${date}.pdf`;
+      const blob = pdf.output("blob");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.target = "_blank";
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      // Fallback: also open in a new tab in case the iframe blocks the download
+      window.open(url, "_blank", "noopener");
+      toast.success("PDF gerado! Se o download não iniciar, abra a aba que foi exibida.");
     } catch (err) {
       console.error("Erro ao gerar PDF:", err);
       toast.error("Erro ao gerar PDF");
