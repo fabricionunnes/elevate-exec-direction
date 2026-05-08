@@ -130,7 +130,7 @@ const MARKETING_TOOLS: Anthropic.Tool[] = [
   { name: "metricas_meta", description: "Métricas detalhadas de campanhas Meta Ads — gasto, alcance, impressões, cliques, CPM, CPC, CPL, frequência, ROAS por período", input_schema: { type: "object", properties: { date_from: { type: "string" }, date_to: { type: "string" }, campaign_id: { type: "string" }, level: { type: "string", enum: ["campaign","adset","ad"] } } } },
   { name: "conjuntos_anuncios", description: "Lista conjuntos de anúncios (ad sets) de uma campanha Meta Ads com gasto e performance", input_schema: { type: "object", properties: { campaign_id: { type: "string" }, date_from: { type: "string" }, date_to: { type: "string" } }, required: ["campaign_id"] } },
   { name: "desempenho_criativo", description: "Analisa performance dos criativos (anúncios) — CTR, CPM, frequência, melhor e pior criativo por campanha ou conta toda", input_schema: { type: "object", properties: { campaign_id: { type: "string" }, adset_id: { type: "string" }, date_from: { type: "string" }, date_to: { type: "string" } } } },
-  { name: "resumo_financeiro", description: "Retorna receita, MRR e ticket médio para calcular ROAS e impacto de marketing na receita", input_schema: { type: "object", properties: {} } },
+  { name: "receita_para_roas", description: "Retorna receita, MRR e ticket médio para calcular ROAS e impacto de marketing na receita", input_schema: { type: "object", properties: {} } },
 ];
 
 // ============ TOOLS — CEO ============
@@ -139,7 +139,7 @@ const CEO_TOOLS: Anthropic.Tool[] = [
   { name: "consultar_crm", description: "Consulta Sophia (Diretora Comercial) sobre pipeline, leads, conversão e negociações", input_schema: { type: "object", properties: { pergunta: { type: "string" } }, required: ["pergunta"] } },
   { name: "consultar_projetos", description: "Consulta Melissa (Gestora CS/Projetos) sobre clientes, tarefas, KPIs e churn", input_schema: { type: "object", properties: { pergunta: { type: "string" } }, required: ["pergunta"] } },
   { name: "consultar_marketing", description: "Consulta Luna (Head de Marketing) sobre tráfego pago, campanhas Meta Ads, performance de criativos e estratégia de conteúdo", input_schema: { type: "object", properties: { pergunta: { type: "string" } }, required: ["pergunta"] } },
-  { name: "listar_colaboradores", description: "Lista colaboradores internos da UNV. Use quando o usuário mencionar nome de um colaborador para resolver o ID sem pedir ao usuário.", input_schema: { type: "object", properties: { search: { type: "string", description: "Busca por nome parcial" }, role: { type: "string" }, status: { type: "string", enum: ["active","inactive"] } } } },
+  // listar_colaboradores já vem de CRM_TOOLS via spread — não duplicar aqui
 ];
 
 // ============ SYSTEM PROMPTS ============
@@ -319,7 +319,8 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
   try {
     let result: unknown;
     switch (toolName) {
-      case "resumo_financeiro": result = await nexusGet(FIN, { endpoint: "summary" }, apiKey); break;
+      case "resumo_financeiro":
+      case "receita_para_roas": result = await nexusGet(FIN, { endpoint: "summary" }, NEXUS_KEY_FINANCEIRO); break;
       case "contas_bancarias": result = await nexusGet(FIN, { endpoint: "banks" }, apiKey); break;
       case "fluxo_caixa": { const p: Record<string,string> = { endpoint: "cashflow" }; if (input.date_from) p.date_from = input.date_from as string; if (input.date_to) p.date_to = input.date_to as string; result = await nexusGet(FIN, p, apiKey); break; }
       case "inadimplentes": result = await nexusGet(FIN, { endpoint: "overdue_clients" }, apiKey); break;
