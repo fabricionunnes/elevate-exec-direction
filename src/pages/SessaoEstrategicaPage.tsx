@@ -20,6 +20,7 @@ import {
   Star,
   MessageCircle,
   Lock,
+  AlertTriangle,
 } from "lucide-react";
 import fabricioHero from "@/assets/fabricio-hero.webp";
 import fabricioMentor from "@/assets/fabricio-mentor.webp";
@@ -71,9 +72,9 @@ function AnimatedSection({ children, className = "" }: { children: React.ReactNo
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       className={className}
     >
       {children}
@@ -105,10 +106,10 @@ function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
       className="relative aspect-video w-full rounded-2xl overflow-hidden border border-white/10 bg-white/5 group cursor-pointer"
       aria-label={`Reproduzir ${title}`}
     >
-      <img src={thumbUrl} alt={title} className="w-full h-full object-cover" loading="lazy" />
-      <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
-        <div className="w-14 h-10 bg-red-600 rounded-xl flex items-center justify-center shadow-lg">
-          <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6 ml-0.5"><path d="M8 5v14l11-7z"/></svg>
+      <img src={thumbUrl} alt={title} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" loading="lazy" />
+      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-black/70 via-black/20 to-transparent">
+        <div className="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center shadow-2xl shadow-red-500/40 group-hover:scale-110 transition-transform">
+          <svg viewBox="0 0 24 24" fill="white" className="w-7 h-7 ml-1"><path d="M8 5v14l11-7z" /></svg>
         </div>
       </div>
     </button>
@@ -225,44 +226,82 @@ const SessaoEstrategicaPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 overflow-x-hidden selection:bg-red-500/20 -mt-16 md:-mt-20">
+    <div className="min-h-screen bg-[#0a0a0b] text-white overflow-x-hidden selection:bg-red-500/30 selection:text-white -mt-16 md:-mt-20 antialiased">
       {/* ── HERO ── */}
-      <section className="relative min-h-[100dvh] flex flex-col justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-red-50/40">
-        {/* Decorative blob (apenas 1 leve) */}
-        <div className="absolute top-0 right-0 w-[420px] h-[420px] bg-red-500/[0.05] rounded-full blur-[100px] pointer-events-none" />
+      <section className="relative min-h-[100dvh] flex flex-col justify-center overflow-hidden">
+        {/* Background grid + glow */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(239,68,68,0.18),transparent_55%),radial-gradient(ellipse_at_bottom,rgba(0,0,0,1),transparent_70%)]" />
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
+            backgroundSize: "44px 44px",
+          }}
+        />
+        <div className="absolute -top-32 -right-20 w-[480px] h-[480px] rounded-full bg-red-600/15 blur-[120px] pointer-events-none" />
 
-        <div className="relative z-10 max-w-6xl mx-auto w-full px-5 sm:px-8">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+        <div className="relative z-10 max-w-6xl mx-auto w-full px-5 sm:px-8 pt-28 sm:pt-24 lg:pt-0 pb-32 lg:pb-0">
+          <div className="grid lg:grid-cols-[1.15fr_1fr] gap-10 lg:gap-16 items-center">
             {/* Copy */}
-            <div className="pt-24 sm:pt-20 lg:pt-0 pb-8 lg:pb-0 space-y-4">
-              <div>
-                <span className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs uppercase tracking-[0.15em] text-red-600 font-bold bg-red-50 border border-red-100 rounded-full px-3 py-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+            <div className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <span className="inline-flex items-center gap-2 text-[10px] sm:text-xs uppercase tracking-[0.18em] text-red-400 font-semibold bg-red-500/10 border border-red-500/20 rounded-full px-3 py-1.5 backdrop-blur-sm">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
+                  </span>
                   Sessão estratégica gratuita · Vagas limitadas
                 </span>
-              </div>
+              </motion.div>
 
-              <h1 className="text-[1.75rem] sm:text-4xl lg:text-[2.85rem] font-black leading-[1.15] sm:leading-[1.12] tracking-[-0.01em]">
-                <span className="text-slate-900">Tenha um </span>
-                <span className="text-red-600">Diretor Comercial</span>
-                <span className="text-slate-900"> dedicado fazendo seu time </span>
-                <span className="text-red-600">bater meta todo mês.</span>
-              </h1>
+              <motion.h1
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.05 }}
+                className="font-serif text-[2rem] xs:text-[2.4rem] sm:text-5xl lg:text-[3.4rem] xl:text-6xl font-bold leading-[1.05] tracking-[-0.02em] text-white"
+              >
+                Tenha um{" "}
+                <span className="relative inline-block text-transparent bg-clip-text bg-gradient-to-br from-red-400 via-red-500 to-orange-400">
+                  Diretor Comercial
+                </span>{" "}
+                dedicado fazendo seu time{" "}
+                <span className="italic text-red-400">bater meta todo mês.</span>
+              </motion.h1>
 
-              <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-md">
-                Eu entro como <strong className="text-slate-900">seu Diretor Comercial</strong>, treino e acompanho seus vendedores <strong className="text-slate-900">todos os dias</strong> até a meta virar rotina — não exceção.
-              </p>
+              <motion.p
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.12 }}
+                className="text-base sm:text-lg text-white/70 leading-relaxed max-w-lg"
+              >
+                Eu entro como <strong className="text-white font-semibold">seu Diretor Comercial</strong>, treino e acompanho seus vendedores <strong className="text-white font-semibold">todos os dias</strong> até a meta virar rotina — não exceção.
+              </motion.p>
 
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs sm:text-sm text-slate-700">
-                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-red-500" /> Treinamento diário</span>
-                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-red-500" /> Cobrança de meta</span>
-                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-red-500" /> Processo comercial</span>
-              </div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.18 }}
+                className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs sm:text-sm text-white/80"
+              >
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-red-400" /> Treinamento diário</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-red-400" /> Cobrança de meta</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-red-400" /> Processo comercial</span>
+              </motion.div>
 
-              <div className="space-y-3 pt-1">
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.24 }}
+                className="space-y-3 pt-1"
+              >
                 <Button
                   onClick={openPopup}
-                  className="group w-full sm:w-auto bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-bold text-sm sm:text-base px-8 py-6 rounded-2xl shadow-xl shadow-red-500/25 hover:shadow-2xl hover:shadow-red-500/30 transition-all duration-300"
+                  className="group w-full sm:w-auto bg-red-600 hover:bg-red-500 text-white font-bold text-sm sm:text-base px-8 py-7 rounded-2xl shadow-[0_20px_60px_-15px_rgba(239,68,68,0.5)] hover:shadow-[0_25px_70px_-15px_rgba(239,68,68,0.7)] hover:-translate-y-0.5 transition-all duration-300 ring-1 ring-red-400/30"
                 >
                   <span className="flex items-center gap-2">
                     QUERO MEU DIRETOR COMERCIAL
@@ -270,86 +309,90 @@ const SessaoEstrategicaPage = () => {
                   </span>
                 </Button>
 
-                <div className="flex items-center gap-4 text-[11px] sm:text-xs text-slate-500">
-                  <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-green-600" /> Sem compromisso</span>
-                  <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-green-600" /> Resposta em até 24h</span>
+                <div className="flex items-center gap-4 text-[11px] sm:text-xs text-white/50">
+                  <span className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> Sem compromisso</span>
+                  <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-emerald-400" /> Resposta em até 24h</span>
                 </div>
-              </div>
+              </motion.div>
 
-              {/* PROVA SOCIAL ACIMA DA DOBRA */}
-              <div className="pt-5 mt-2 border-t border-slate-100">
-                <div className="grid grid-cols-3 gap-2 sm:gap-4">
+              {/* PROVA SOCIAL */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.32 }}
+                className="pt-6 mt-2 border-t border-white/10"
+              >
+                <div className="grid grid-cols-3 divide-x divide-white/10">
                   {[
                     { v: "+1 Bi", l: "em vendas" },
                     { v: "+500", l: "empresas" },
                     { v: "+20 anos", l: "no comercial" },
-                  ].map((s) => (
-                    <div key={s.l} className="text-center sm:text-left">
-                      <div className="text-base sm:text-xl font-black text-slate-900 leading-none">{s.v}</div>
-                      <div className="text-[10px] sm:text-xs text-slate-500 mt-1 uppercase tracking-wider">{s.l}</div>
+                  ].map((s, i) => (
+                    <div key={s.l} className={`${i === 0 ? "pr-3" : i === 2 ? "pl-3" : "px-3"} text-center sm:text-left`}>
+                      <div className="font-serif text-xl sm:text-2xl font-bold text-white leading-none tracking-tight">{s.v}</div>
+                      <div className="text-[10px] sm:text-[11px] text-white/50 mt-1.5 uppercase tracking-[0.15em]">{s.l}</div>
                     </div>
                   ))}
                 </div>
-                <div className="flex items-center gap-2 mt-3">
+                <div className="flex items-center gap-2 mt-4">
                   <div className="flex">
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
                     ))}
                   </div>
-                  <span className="text-xs text-slate-500">4,9/5 · centenas de empresas atendidas</span>
+                  <span className="text-xs text-white/50">4,9/5 · centenas de empresas atendidas</span>
                 </div>
-              </div>
+              </motion.div>
             </div>
 
             {/* Image */}
             <div className="hidden lg:flex justify-center items-end">
-              <div className="relative">
-                <div className="absolute -inset-4 bg-gradient-to-br from-red-100/60 to-orange-50/40 rounded-[2rem] -rotate-2" />
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[80%] h-16 bg-red-500/[0.08] blur-[40px] rounded-full" />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.7, delay: 0.2 }}
+                className="relative"
+              >
+                <div className="absolute -inset-6 bg-gradient-to-br from-red-500/30 via-orange-500/10 to-transparent rounded-[2.5rem] blur-2xl" />
+                <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-white/10 to-white/0 backdrop-blur-sm border border-white/10 -rotate-3" />
                 <img
                   src={fabricioHero}
                   alt="Fabrício Nunnes - Diretor Comercial"
-                  className="relative z-10 w-auto max-w-[380px] xl:max-w-[420px] h-auto max-h-[480px] object-contain rounded-3xl"
+                  className="relative z-10 w-auto max-w-[400px] xl:max-w-[440px] h-auto max-h-[520px] object-contain rounded-3xl"
                   loading="eager"
                   fetchPriority="high"
-                  width={420}
-                  height={480}
+                  width={440}
+                  height={520}
                 />
-              </div>
+              </motion.div>
             </div>
           </div>
-        </div>
-
-        {/* Bottom curve */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto" aria-hidden="true">
-            <path d="M0 48L1440 48L1440 0C1440 0 1080 36 720 36C360 36 0 0 0 0L0 48Z" fill="#f8fafc" />
-          </svg>
         </div>
       </section>
 
       {/* ── COMO FUNCIONA ── */}
-      <section className="bg-slate-50 py-16 sm:py-20 px-5 sm:px-8">
-        <div className="max-w-5xl mx-auto">
-          <AnimatedSection className="text-center mb-10">
-            <p className="text-xs uppercase tracking-[0.2em] text-red-500 font-bold mb-2">Como funciona</p>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight text-slate-900">
-              Direção comercial em <span className="text-red-600">3 passos</span>
+      <section className="relative py-20 sm:py-28 px-5 sm:px-8 bg-[#0a0a0b] border-t border-white/5">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(239,68,68,0.06),transparent_60%)]" />
+        <div className="relative max-w-5xl mx-auto">
+          <AnimatedSection className="text-center mb-14">
+            <p className="text-xs uppercase tracking-[0.25em] text-red-400 font-semibold mb-3">Como funciona</p>
+            <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold leading-[1.1] tracking-tight text-white">
+              Direção comercial em <span className="italic text-red-400">3 passos</span>
             </h2>
           </AnimatedSection>
 
-          <div className="grid md:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid md:grid-cols-3 gap-4 sm:gap-5">
             {howItWorks.map((step) => (
               <AnimatedSection key={step.num}>
-                <div className="relative h-full p-6 rounded-2xl bg-white border border-slate-100 shadow-sm">
-                  <div className="absolute -top-3 left-6 text-xs font-black text-red-600 bg-white border border-red-100 rounded-full px-3 py-1">
-                    PASSO {step.num}
+                <div className="relative h-full p-7 rounded-3xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/10 hover:border-red-500/30 hover:from-white/[0.06] transition-all duration-500 group">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center group-hover:bg-red-500 group-hover:border-red-400 transition-all duration-500">
+                      <step.icon className="h-5 w-5 text-red-400 group-hover:text-white transition-colors" strokeWidth={2} />
+                    </div>
+                    <span className="font-serif text-5xl font-bold text-white/5 group-hover:text-red-500/20 transition-colors">{step.num}</span>
                   </div>
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center mb-4 mt-2">
-                    <step.icon className="h-6 w-6 text-white" strokeWidth={2} />
-                  </div>
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-2">{step.title}</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">{step.desc}</p>
+                  <h3 className="font-serif text-lg sm:text-xl font-bold text-white mb-2 leading-snug">{step.title}</h3>
+                  <p className="text-sm text-white/60 leading-relaxed">{step.desc}</p>
                 </div>
               </AnimatedSection>
             ))}
@@ -358,26 +401,26 @@ const SessaoEstrategicaPage = () => {
       </section>
 
       {/* ── PAIN POINTS ── */}
-      <section className="py-16 sm:py-20 px-5 sm:px-8 bg-white">
+      <section className="py-20 sm:py-28 px-5 sm:px-8 bg-gradient-to-b from-[#0a0a0b] to-[#0f0f11] border-t border-white/5">
         <div className="max-w-5xl mx-auto">
-          <AnimatedSection className="text-center mb-10 sm:mb-14">
-            <p className="text-xs uppercase tracking-[0.2em] text-red-500 font-bold mb-2">Você se identifica?</p>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight text-slate-900">
-              Essa direção é para quem vive isso:
+          <AnimatedSection className="text-center mb-12 sm:mb-16">
+            <p className="text-xs uppercase tracking-[0.25em] text-red-400 font-semibold mb-3">Você se identifica?</p>
+            <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold leading-[1.1] tracking-tight text-white">
+              Essa direção é para quem <span className="italic text-red-400">vive isso:</span>
             </h2>
           </AnimatedSection>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {painPoints.map((card, i) => (
               <AnimatedSection key={i}>
-                <div className="p-5 rounded-2xl border border-slate-100 bg-gradient-to-br from-white to-slate-50/50 shadow-sm hover:shadow-md hover:border-red-100 transition-all duration-300">
+                <div className="h-full p-5 sm:p-6 rounded-2xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.05] hover:border-red-500/30 transition-all duration-300">
                   <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-red-50 flex items-center justify-center mt-0.5">
-                      <span className="text-red-600 font-black text-xs">✓</span>
+                    <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mt-0.5">
+                      <AlertTriangle className="h-4 w-4 text-red-400" strokeWidth={2.5} />
                     </div>
                     <div>
-                      <h3 className="text-sm sm:text-base font-bold text-slate-900 mb-1">{card.title}</h3>
-                      <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">{card.desc}</p>
+                      <h3 className="font-serif text-base sm:text-lg font-bold text-white mb-1 leading-tight">{card.title}</h3>
+                      <p className="text-xs sm:text-sm text-white/55 leading-relaxed">{card.desc}</p>
                     </div>
                   </div>
                 </div>
@@ -385,13 +428,13 @@ const SessaoEstrategicaPage = () => {
             ))}
           </div>
 
-          <AnimatedSection className="text-center mt-10 sm:mt-14">
-            <p className="text-sm text-slate-500 mb-4">
-              Marcou <strong className="text-slate-900">2 ou mais</strong>? Sua sessão estratégica gratuita está esperando.
+          <AnimatedSection className="text-center mt-12 sm:mt-16">
+            <p className="text-sm text-white/60 mb-5">
+              Marcou <strong className="text-white font-semibold">2 ou mais</strong>? Sua sessão estratégica gratuita está esperando.
             </p>
             <Button
               onClick={openPopup}
-              className="group w-full sm:w-auto bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-bold text-sm sm:text-base px-6 sm:px-8 py-5 sm:py-6 rounded-2xl shadow-lg shadow-red-500/20 hover:shadow-xl hover:shadow-red-500/25 transition-all duration-300"
+              className="group w-full sm:w-auto bg-red-600 hover:bg-red-500 text-white font-bold text-sm sm:text-base px-8 py-7 rounded-2xl shadow-[0_20px_50px_-12px_rgba(239,68,68,0.5)] hover:-translate-y-0.5 transition-all duration-300 ring-1 ring-red-400/30"
             >
               <span className="flex items-center justify-center gap-2">
                 AGENDAR SESSÃO ESTRATÉGICA
@@ -403,45 +446,47 @@ const SessaoEstrategicaPage = () => {
       </section>
 
       {/* ── MENTOR ── */}
-      <section className="py-16 sm:py-20 px-5 sm:px-8 bg-gradient-to-br from-slate-50 to-red-50/30">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center">
+      <section className="relative py-20 sm:py-28 px-5 sm:px-8 bg-[#0f0f11] border-t border-white/5 overflow-hidden">
+        <div className="absolute -left-20 top-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full bg-red-600/10 blur-[120px]" />
+        <div className="relative max-w-5xl mx-auto">
+          <div className="grid lg:grid-cols-[1fr_1.1fr] gap-10 lg:gap-16 items-center">
             <AnimatedSection className="flex justify-center lg:order-2">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-red-50 to-orange-50 rounded-3xl -rotate-2 scale-105" />
+                <div className="absolute -inset-4 bg-gradient-to-br from-red-500/20 to-orange-500/10 rounded-[2.5rem] blur-2xl" />
+                <div className="absolute inset-0 rounded-3xl border border-white/10 -rotate-3" />
                 <img
                   src={fabricioMentor}
                   alt="Fabrício Nunnes - Diretor Comercial"
-                  className="relative z-10 max-h-[400px] object-contain rounded-2xl"
+                  className="relative z-10 max-h-[440px] object-contain rounded-2xl"
                   loading="lazy"
                 />
               </div>
             </AnimatedSection>
 
-            <AnimatedSection className="space-y-4 lg:order-1">
-              <p className="text-xs uppercase tracking-[0.2em] text-red-500 font-bold">Seu Diretor Comercial</p>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight text-slate-900">
-                Fabrício <span className="text-red-600">Nunnes</span>
+            <AnimatedSection className="space-y-5 lg:order-1">
+              <p className="text-xs uppercase tracking-[0.25em] text-red-400 font-semibold">Seu Diretor Comercial</p>
+              <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold leading-[1.05] tracking-tight text-white">
+                Fabrício <span className="italic text-red-400">Nunnes</span>
               </h2>
-              <div className="space-y-3 text-slate-600 text-sm sm:text-base leading-relaxed">
+              <div className="space-y-4 text-white/70 text-base leading-relaxed">
                 <p>
-                  Mais de <strong className="text-slate-900">20 anos dirigindo operações comerciais</strong> e mais de <strong className="text-slate-900">1 bilhão em vendas geradas</strong> para empresas que faturam de 6 a 7 dígitos por mês.
+                  Mais de <strong className="text-white font-semibold">20 anos dirigindo operações comerciais</strong> e mais de <strong className="text-white font-semibold">1 bilhão em vendas geradas</strong> para empresas que faturam de 6 a 7 dígitos por mês.
                 </p>
                 <p>
-                  Não é mentoria solta. É <strong className="text-slate-900">direção comercial executiva:</strong> entro no seu time, monto o processo, treino diariamente e cobro a meta como se fosse meu próprio CNPJ.
+                  Não é mentoria solta. É <strong className="text-white font-semibold">direção comercial executiva:</strong> entro no seu time, monto o processo, treino diariamente e cobro a meta como se fosse meu próprio CNPJ.
                 </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 pt-2">
+              <div className="grid grid-cols-3 gap-3 pt-4">
                 {[
                   { icon: TrendingUp, v: "+1 Bi", l: "vendas" },
                   { icon: Users, v: "+500", l: "empresas" },
                   { icon: Target, v: "+20", l: "anos" },
                 ].map((b) => (
-                  <div key={b.l} className="text-center p-3 rounded-xl bg-white border border-slate-100">
-                    <b.icon className="h-4 w-4 text-red-500 mx-auto mb-1" />
-                    <div className="text-sm font-black text-slate-900">{b.v}</div>
-                    <div className="text-[10px] text-slate-500 uppercase">{b.l}</div>
+                  <div key={b.l} className="text-center p-4 rounded-2xl bg-white/[0.03] border border-white/10">
+                    <b.icon className="h-4 w-4 text-red-400 mx-auto mb-2" />
+                    <div className="font-serif text-base font-bold text-white">{b.v}</div>
+                    <div className="text-[10px] text-white/50 uppercase tracking-wider mt-0.5">{b.l}</div>
                   </div>
                 ))}
               </div>
@@ -451,12 +496,12 @@ const SessaoEstrategicaPage = () => {
       </section>
 
       {/* ── DEPOIMENTOS ── */}
-      <section className="py-16 sm:py-20 px-5 sm:px-8 bg-slate-900">
+      <section className="py-20 sm:py-28 px-5 sm:px-8 bg-[#0a0a0b] border-t border-white/5">
         <div className="max-w-5xl mx-auto">
-          <AnimatedSection className="text-center mb-10 sm:mb-14">
-            <p className="text-xs uppercase tracking-[0.2em] text-red-400 font-bold mb-2">Quem já é dirigido</p>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight text-white">
-              Empresas que pararam de <span className="text-red-400">depender da sorte</span>
+          <AnimatedSection className="text-center mb-12 sm:mb-16">
+            <p className="text-xs uppercase tracking-[0.25em] text-red-400 font-semibold mb-3">Quem já é dirigido</p>
+            <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold leading-[1.1] tracking-tight text-white">
+              Empresas que pararam de <span className="italic text-red-400">depender da sorte</span>
             </h2>
           </AnimatedSection>
 
@@ -471,26 +516,26 @@ const SessaoEstrategicaPage = () => {
       </section>
 
       {/* ── GARANTIA + ESCASSEZ ── */}
-      <section className="py-16 sm:py-20 px-5 sm:px-8 bg-white">
+      <section className="py-20 sm:py-28 px-5 sm:px-8 bg-[#0f0f11] border-t border-white/5">
         <div className="max-w-4xl mx-auto">
           <AnimatedSection>
-            <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
-              <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100">
-                <div className="w-12 h-12 rounded-xl bg-green-500 flex items-center justify-center mb-4">
-                  <ShieldCheck className="h-6 w-6 text-white" />
+            <div className="grid md:grid-cols-2 gap-4 sm:gap-5">
+              <div className="p-7 sm:p-8 rounded-3xl bg-gradient-to-br from-emerald-500/[0.08] to-emerald-500/[0.02] border border-emerald-500/20">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mb-5">
+                  <ShieldCheck className="h-5 w-5 text-emerald-400" />
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">Garantia da sessão</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Se ao final da sessão estratégica você não sair com <strong>clareza absoluta</strong> dos 3 gargalos do seu comercial e o caminho pra resolver, a conversa não custa nada — e nunca custou.
+                <h3 className="font-serif text-xl sm:text-2xl font-bold text-white mb-3">Garantia da sessão</h3>
+                <p className="text-sm sm:text-base text-white/65 leading-relaxed">
+                  Se ao final da sessão estratégica você não sair com <strong className="text-white">clareza absoluta</strong> dos 3 gargalos do seu comercial e o caminho pra resolver, a conversa não custa nada — e nunca custou.
                 </p>
               </div>
-              <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-red-50 to-orange-50 border border-red-100">
-                <div className="w-12 h-12 rounded-xl bg-red-500 flex items-center justify-center mb-4">
-                  <Lock className="h-6 w-6 text-white" />
+              <div className="p-7 sm:p-8 rounded-3xl bg-gradient-to-br from-red-500/[0.08] to-red-500/[0.02] border border-red-500/20">
+                <div className="w-12 h-12 rounded-2xl bg-red-500/15 border border-red-500/30 flex items-center justify-center mb-5">
+                  <Lock className="h-5 w-5 text-red-400" />
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">Vagas limitadas</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Atendo pessoalmente apenas <strong>poucas empresas por mês</strong> como Diretor Comercial. As sessões gratuitas são o filtro — e elas se esgotam rápido.
+                <h3 className="font-serif text-xl sm:text-2xl font-bold text-white mb-3">Vagas limitadas</h3>
+                <p className="text-sm sm:text-base text-white/65 leading-relaxed">
+                  Atendo pessoalmente apenas <strong className="text-white">poucas empresas por mês</strong> como Diretor Comercial. As sessões gratuitas são o filtro — e elas se esgotam rápido.
                 </p>
               </div>
             </div>
@@ -499,62 +544,85 @@ const SessaoEstrategicaPage = () => {
       </section>
 
       {/* ── FINAL CTA ── */}
-      <section className="py-16 sm:py-24 px-5 sm:px-8 bg-gradient-to-br from-white via-red-50/30 to-orange-50/20">
-        <AnimatedSection className="max-w-xl mx-auto text-center space-y-5">
-          <div className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-red-600 font-bold bg-red-50 border border-red-100 rounded-full px-3 py-1.5">
+      <section className="relative py-20 sm:py-32 px-5 sm:px-8 bg-[#0a0a0b] border-t border-white/5 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(239,68,68,0.15),transparent_60%)]" />
+        <AnimatedSection className="relative max-w-2xl mx-auto text-center space-y-6">
+          <div className="inline-flex items-center gap-2 text-[10px] sm:text-xs uppercase tracking-[0.18em] text-red-400 font-semibold bg-red-500/10 border border-red-500/20 rounded-full px-3 py-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
             Últimas vagas do mês
           </div>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight text-slate-900">
-            Pare de carregar o comercial <span className="text-red-600">sozinho.</span>
+          <h2 className="font-serif text-3xl sm:text-5xl lg:text-6xl font-bold leading-[1.05] tracking-tight text-white">
+            Pare de carregar o comercial <span className="italic text-red-400">sozinho.</span>
           </h2>
-          <p className="text-slate-600 text-sm sm:text-base">
+          <p className="text-white/65 text-base sm:text-lg max-w-lg mx-auto">
             Agende agora sua sessão estratégica e descubra como ter um Diretor Comercial dedicado treinando seu time todos os dias.
           </p>
           <Button
             onClick={openPopup}
-            className="group bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-bold text-sm sm:text-base px-8 py-6 rounded-2xl shadow-xl shadow-red-500/25 hover:shadow-2xl hover:shadow-red-500/30 transition-all duration-300"
+            className="group bg-red-600 hover:bg-red-500 text-white font-bold text-sm sm:text-base px-8 sm:px-10 py-7 rounded-2xl shadow-[0_25px_70px_-15px_rgba(239,68,68,0.6)] hover:-translate-y-0.5 transition-all duration-300 ring-1 ring-red-400/30"
           >
             <span className="flex items-center gap-2">
               QUERO MEU DIRETOR COMERCIAL
               <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </span>
           </Button>
-          <div className="flex items-center justify-center gap-4 text-[11px] text-slate-500">
-            <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-green-500" /> Sem compromisso</span>
-            <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-green-500" /> 100% gratuito</span>
+          <div className="flex items-center justify-center gap-5 text-[11px] text-white/50">
+            <span className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> Sem compromisso</span>
+            <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> 100% gratuito</span>
           </div>
         </AnimatedSection>
       </section>
 
       {/* ── FOOTER ── */}
-      <footer className="py-6 bg-slate-900 text-center text-xs text-slate-500 px-5">
+      <footer className="py-8 bg-black text-center text-xs text-white/40 px-5 border-t border-white/5">
         Todos os direitos reservados · Universidade Nacional de Vendas LTDA
       </footer>
 
-      {/* ── FLOATING WHATSAPP ── */}
+      {/* ── STICKY MOBILE CTA BAR ── */}
+      <div className="fixed bottom-0 inset-x-0 z-40 lg:hidden bg-gradient-to-t from-[#0a0a0b] via-[#0a0a0b]/95 to-[#0a0a0b]/0 pt-6 pb-3 px-4">
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={openPopup}
+            className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold text-sm py-6 rounded-2xl shadow-[0_15px_40px_-10px_rgba(239,68,68,0.6)] ring-1 ring-red-400/30"
+          >
+            QUERO MEU DIRETOR
+            <ArrowRight className="h-4 w-4 ml-1.5" />
+          </Button>
+          <a
+            href={WHATSAPP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Falar no WhatsApp"
+            className="flex-shrink-0 w-14 h-14 flex items-center justify-center bg-emerald-500 hover:bg-emerald-400 text-white rounded-2xl shadow-[0_15px_40px_-10px_rgba(16,185,129,0.5)] transition-colors"
+          >
+            <MessageCircle className="h-6 w-6" />
+          </a>
+        </div>
+      </div>
+
+      {/* ── FLOATING WHATSAPP (desktop only) ── */}
       <a
         href={WHATSAPP_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold text-sm px-5 py-3.5 rounded-full shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 transition-all duration-300"
+        className="hidden lg:flex fixed bottom-6 right-6 z-50 items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-sm px-5 py-3.5 rounded-full shadow-[0_15px_40px_-10px_rgba(16,185,129,0.5)] transition-all duration-300"
       >
         <MessageCircle className="h-5 w-5" />
-        <span className="hidden sm:inline">Falar comigo</span>
+        <span>Falar comigo</span>
       </a>
 
       {/* ── POPUP FORM ── */}
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
-        <DialogContent className="sm:max-w-md bg-white border-slate-200 text-slate-900 rounded-2xl shadow-2xl">
+        <DialogContent className="sm:max-w-md bg-[#111114] border-white/10 text-white rounded-3xl shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-center text-slate-900">
+            <DialogTitle className="font-serif text-2xl font-bold text-center text-white">
               Agende sua sessão estratégica
             </DialogTitle>
-            <p className="text-sm text-center text-slate-500 mt-1">É gratuito. Vou avaliar pessoalmente seu cenário comercial.</p>
+            <p className="text-sm text-center text-white/60 mt-1">É gratuito. Vou avaliar pessoalmente seu cenário comercial.</p>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <Label htmlFor="popup-nome" className="text-slate-600 text-sm font-medium">Nome completo *</Label>
+              <Label htmlFor="popup-nome" className="text-white/70 text-sm font-medium">Nome completo *</Label>
               <Input
                 id="popup-nome"
                 value={nome}
@@ -563,21 +631,21 @@ const SessaoEstrategicaPage = () => {
                 maxLength={200}
                 placeholder="Seu nome"
                 autoComplete="name"
-                className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 h-12 rounded-xl focus:border-red-500 focus:ring-red-500/20"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/30 h-12 rounded-xl focus:border-red-500 focus:ring-red-500/20"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="popup-telefone" className="text-slate-600 text-sm font-medium">WhatsApp com DDD *</Label>
+              <Label htmlFor="popup-telefone" className="text-white/70 text-sm font-medium">WhatsApp com DDD *</Label>
               <PhoneInput
                 id="popup-telefone"
                 value={telefone}
                 onChange={setTelefone}
                 required
-                className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 h-12 rounded-xl focus:border-red-500 focus:ring-red-500/20"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/30 h-12 rounded-xl focus:border-red-500 focus:ring-red-500/20"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="popup-email" className="text-slate-600 text-sm font-medium">E-mail *</Label>
+              <Label htmlFor="popup-email" className="text-white/70 text-sm font-medium">E-mail *</Label>
               <Input
                 id="popup-email"
                 type="email"
@@ -587,23 +655,23 @@ const SessaoEstrategicaPage = () => {
                 maxLength={255}
                 placeholder="seu@email.com"
                 autoComplete="email"
-                className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 h-12 rounded-xl focus:border-red-500 focus:ring-red-500/20"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/30 h-12 rounded-xl focus:border-red-500 focus:ring-red-500/20"
               />
             </div>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-red-400">{error}</p>}
 
             <Button
               type="submit"
               disabled={submitting}
-              className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-bold py-6 text-base rounded-xl shadow-lg shadow-red-500/20 transition-all duration-300"
+              className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-6 text-base rounded-xl shadow-[0_15px_40px_-10px_rgba(239,68,68,0.5)] ring-1 ring-red-400/30 transition-all duration-300"
             >
               {submitting ? "ENVIANDO..." : "QUERO MINHA SESSÃO"}
             </Button>
 
-            <div className="flex items-center justify-center gap-4 pt-1 text-[11px] text-slate-400">
-              <span className="flex items-center gap-1"><Lock className="h-3 w-3 text-green-500" /> Seus dados protegidos</span>
-              <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-green-500" /> 100% gratuito</span>
+            <div className="flex items-center justify-center gap-4 pt-1 text-[11px] text-white/40">
+              <span className="flex items-center gap-1"><Lock className="h-3 w-3 text-emerald-400" /> Seus dados protegidos</span>
+              <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-emerald-400" /> 100% gratuito</span>
             </div>
           </form>
         </DialogContent>
