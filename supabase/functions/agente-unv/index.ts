@@ -77,6 +77,8 @@ const CRM_TOOLS: Anthropic.Tool[] = [
   // Pipelines
   { name: "listar_pipelines", description: "Lista pipelines do CRM", input_schema: { type: "object", properties: {} } },
   { name: "listar_etapas", description: "Lista etapas/stages de um pipeline específico", input_schema: { type: "object", properties: { pipeline_id: { type: "string" } }, required: ["pipeline_id"] } },
+  // Colaboradores
+  { name: "listar_colaboradores", description: "Lista colaboradores internos da UNV (consultores, CS, closers, SDRs, admins). USE SEMPRE que o usuário mencionar o nome de um responsável, closer ou consultor — busque o ID antes de usar em qualquer ação. Filtre por nome parcial com o campo search.", input_schema: { type: "object", properties: { search: { type: "string", description: "Busca por nome (parcial, case-insensitive). Ex: 'Fabricio', 'Ana'" }, role: { type: "string", description: "Filtra por cargo: admin, master, cs, consultant, closer, sdr" }, status: { type: "string", enum: ["active","inactive"] } } } },
   // WhatsApp Direto
   { name: "listar_instancias_whatsapp", description: "Lista instâncias WhatsApp disponíveis com id, nome e status. Use para descobrir o UUID da instância antes de enviar.", input_schema: { type: "object", properties: {} } },
   { name: "enviar_whatsapp_lead", description: "Envia mensagem de texto via WhatsApp para o telefone de um lead, usando a instância Natalia Amador (ou outra escolhida). Cria contato/conversa automaticamente se não existirem.", input_schema: { type: "object", properties: { instance_id: { type: "string", description: "UUID da instância WhatsApp (obtenha com listar_instancias_whatsapp)" }, phone: { type: "string", description: "Telefone do destinatário — qualquer formato, o sistema normaliza" }, message: { type: "string", description: "Texto da mensagem a enviar" }, lead_id: { type: "string", description: "UUID do lead para vincular a conversa (opcional)" } }, required: ["instance_id", "phone", "message"] } },
@@ -98,7 +100,7 @@ const PROJECT_TOOLS: Anthropic.Tool[] = [
   { name: "atualizar_tarefa", description: "Atualiza status, responsável ou dados de tarefa", input_schema: { type: "object", properties: { id: { type: "string" }, status: { type: "string", enum: ["pending","in_progress","completed"] }, title: { type: "string" }, description: { type: "string" }, observations: { type: "string" }, due_date: { type: "string" }, priority: { type: "string", enum: ["low","medium","high","urgent"] }, responsible_staff_id: { type: "string" } }, required: ["id"] } },
   { name: "excluir_tarefa", description: "Exclui uma tarefa", input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
   // Colaboradores (Staff)
-  { name: "listar_staff", description: "Lista colaboradores internos da UNV (consultores, CS, closers, SDRs)", input_schema: { type: "object", properties: { status: { type: "string", enum: ["active","inactive"] }, role: { type: "string" } } } },
+  { name: "listar_staff", description: "Lista colaboradores internos da UNV (consultores, CS, closers, SDRs). Filtre por nome parcial com search para resolver nomes → IDs sem perguntar ao usuário.", input_schema: { type: "object", properties: { search: { type: "string", description: "Busca por nome parcial (ex: 'Fabricio', 'Ana')" }, status: { type: "string", enum: ["active","inactive"] }, role: { type: "string" } } } },
   // Vendas mensais
   { name: "listar_vendas", description: "Lista histórico de vendas mensais de empresa cliente", input_schema: { type: "object", properties: { company_id: { type: "string" }, date_from: { type: "string" }, date_to: { type: "string" } } } },
   { name: "registrar_venda", description: "Lança venda mensal de empresa cliente (upsert por empresa+mês)", input_schema: { type: "object", properties: { company_id: { type: "string" }, month_year: { type: "string" }, revenue: { type: "number" }, sales_count: { type: "number" }, target_revenue: { type: "number" }, notes: { type: "string" } }, required: ["company_id","month_year"] } },
@@ -137,6 +139,7 @@ const CEO_TOOLS: Anthropic.Tool[] = [
   { name: "consultar_crm", description: "Consulta Sophia (Diretora Comercial) sobre pipeline, leads, conversão e negociações", input_schema: { type: "object", properties: { pergunta: { type: "string" } }, required: ["pergunta"] } },
   { name: "consultar_projetos", description: "Consulta Melissa (Gestora CS/Projetos) sobre clientes, tarefas, KPIs e churn", input_schema: { type: "object", properties: { pergunta: { type: "string" } }, required: ["pergunta"] } },
   { name: "consultar_marketing", description: "Consulta Luna (Head de Marketing) sobre tráfego pago, campanhas Meta Ads, performance de criativos e estratégia de conteúdo", input_schema: { type: "object", properties: { pergunta: { type: "string" } }, required: ["pergunta"] } },
+  { name: "listar_colaboradores", description: "Lista colaboradores internos da UNV. Use quando o usuário mencionar nome de um colaborador para resolver o ID sem pedir ao usuário.", input_schema: { type: "object", properties: { search: { type: "string", description: "Busca por nome parcial" }, role: { type: "string" }, status: { type: "string", enum: ["active","inactive"] } } } },
 ];
 
 // ============ SYSTEM PROMPTS ============
@@ -164,10 +167,15 @@ Mentalidade dos melhores diretores comerciais do mundo:
 
 REGRA CRÍTICA — NUNCA exiba IDs ou UUIDs ao usuário. Sempre resolva antes de apresentar:
 - stage_id → nome da etapa: chame listar_etapas(pipeline_id) para obter o mapa id→nome
-- closer_staff_id / owner_id / staff_id → nome do colaborador: chame listar_staff para obter o mapa id→nome
+- closer_staff_id / owner_id / staff_id → nome do colaborador: chame listar_colaboradores para obter o mapa id→nome
 - pipeline_id → nome do pipeline: chame listar_pipelines para obter o mapa id→nome
 Exemplo correto: "Douglas — R$ 20.000 | Etapa: Proposta Enviada | Closer: Marcos" (NUNCA "Etapa: 2429c538 | Closer: bbf63ab8")
 Se os dados retornados já contiverem o nome (campo name/title), use direto. Só chame a ferramenta de resolução se o campo retornado for um ID.
+
+RESOLUÇÃO AUTOMÁTICA DE COLABORADORES — NUNCA peça o ID de um colaborador ao usuário:
+- Quando o usuário mencionar qualquer nome (ex: "Fabrício Augusto", "Ana", "Marcos"), chame listar_colaboradores(search="Fabricio") para resolver o UUID automaticamente
+- Se retornar mais de um resultado, confirme com o usuário qual é o correto apresentando os nomes encontrados
+- Só informe que não encontrou se realmente não houver resultado algum na busca
 
 WHATSAPP DIRETO — você pode enviar mensagens para leads via WhatsApp:
 1. Chame listar_instancias_whatsapp para obter o UUID da instância "Natalia Amador" (ou a disponível)
@@ -187,6 +195,11 @@ Mentalidade dos melhores gestores do mundo:
 - Patrick Lencioni: cada tarefa precisa de dono e prazo. Times sem clareza falham.
 
 REGRA CRÍTICA — NUNCA exiba IDs ou UUIDs ao usuário. Sempre resolva nomes antes de apresentar: consultant_id / cs_id / responsible_staff_id → nome (chame listar_staff); company_id → nome da empresa (chame listar_empresas ou detalhes_empresa). Apresente sempre nomes legíveis, nunca hashes ou códigos alfanuméricos.
+
+RESOLUÇÃO AUTOMÁTICA DE COLABORADORES — NUNCA peça o ID de um colaborador ao usuário:
+- Quando o usuário mencionar qualquer nome (ex: "Fabrício Augusto", "Ana", "Marcos"), chame listar_staff(search="Fabricio") para resolver o UUID automaticamente
+- Se retornar mais de um resultado, confirme qual é o correto apresentando os nomes
+- Só informe que não encontrou se realmente não houver resultado algum na busca
 
 Regras: proativa nos alertas, destaque itens críticos, listas resumidas, sem "Perfeito!", sem emojis. Data: ${TODAY}`,
 
@@ -353,7 +366,8 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
       case "atualizar_tarefa": { const { id, ...b } = input; result = await nexusPost(`${SYS}?module=tasks&action=update&id=${id}`, b, apiKey); break; }
       case "excluir_tarefa": { const { id } = input; result = await nexusPost(`${SYS}?module=tasks&action=delete&id=${id}`, {}, apiKey); break; }
       // ── MELISSA: Staff ──
-      case "listar_staff": { const p: Record<string,string> = { module: "staff", action: "list" }; if (input.status) p.status = input.status as string; if (input.role) p.role = input.role as string; result = await nexusGet(SYS, p, apiKey); break; }
+      case "listar_staff":
+      case "listar_colaboradores": { const p: Record<string,string> = { module: "staff", action: "list" }; if (input.status) p.status = input.status as string; if (input.role) p.role = input.role as string; if (input.search) p.search = input.search as string; result = await nexusGet(SYS, p, apiKey); break; }
       // ── MELISSA: Vendas mensais ──
       case "listar_vendas": { const p: Record<string,string> = { module: "sales", action: "list" }; if (input.company_id) p.company_id = input.company_id as string; if (input.date_from) p.date_from = input.date_from as string; if (input.date_to) p.date_to = input.date_to as string; result = await nexusGet(SYS, p, apiKey); break; }
       case "registrar_venda": result = await nexusPost(`${SYS}?module=sales&action=create`, input, apiKey); break;
