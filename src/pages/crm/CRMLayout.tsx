@@ -363,12 +363,20 @@ export const CRMLayout = () => {
                     </>
                   )}
                   {isMaster && (
-                    <DropdownMenuItem asChild>
-                      <Link to="/crm/api" className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        API
-                      </Link>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/crm/api" className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          API
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/crm/trafego-pago/api" className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          API · Tráfego Pago
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
