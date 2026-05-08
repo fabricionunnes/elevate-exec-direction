@@ -198,7 +198,7 @@ Deno.serve(async (req) => {
               paid_at: new Date().toISOString(),
               paid_amount_cents: actualPaidCents,
               discount_cents: discountCents,
-              payment_fee_cents: 199,
+              payment_fee_cents: 0,
             })
             .eq("id", invoice.id);
           matched = true;
@@ -290,7 +290,7 @@ Deno.serve(async (req) => {
                   paid_amount_cents: actualPaidCents,
                   discount_cents: discountCents,
                   pagarme_charge_id: paymentId,
-                  payment_fee_cents: 199,
+                  payment_fee_cents: 0,
                 })
                 .eq("id", invoice.id);
 
@@ -417,10 +417,10 @@ async function creditAsaasBank(supabase: any, amountCents: number, description: 
       bankId = banks[0].id;
     }
 
-    // Dynamic fee: R$ 0.99 for UNV Social, R$ 1.99 for default UNV
-    const feeCents = isSocialAccount ? 99 : 199;
-    const feeLabel = isSocialAccount ? "R$0,99" : "R$1,99";
-    const netAmount = amountCents - feeCents;
+    // Credit GROSS amount — fees are no longer deducted automatically.
+    // If the operator wants to register a fee, they should do it manually in the baixa dialog.
+    const feeCents = 0;
+    const netAmount = amountCents;
     if (netAmount <= 0) return;
 
     // Deduplication: check if ANY credit already exists for this invoice (manual or Asaas)
@@ -451,7 +451,7 @@ async function creditAsaasBank(supabase: any, amountCents: number, description: 
       bank_id: bankId,
       type: "credit",
       amount_cents: netAmount,
-      description: `Recebimento Asaas: ${description} (taxa ${feeLabel} deduzida)`,
+      description: `Recebimento Asaas: ${description}`,
       reference_type: "invoice",
       reference_id: invoiceId,
     });
@@ -541,7 +541,7 @@ async function markInvoicesPaid(supabase: any, orders: any[], paymentValueCents:
         paid_at: new Date().toISOString(),
         paid_amount_cents: actualPaidCents,
         discount_cents: discountCents,
-        payment_fee_cents: 199,
+        payment_fee_cents: 0,
       })
       .eq("payment_link_id", order.payment_link_id);
 
@@ -688,7 +688,7 @@ async function handleServicePurchasePermissions(supabase: any, subscriptionId: s
                 paid_amount_cents: actualPaidCents,
                 discount_cents: discountCents,
                 pagarme_charge_id: paymentId,
-                payment_fee_cents: 199,
+                payment_fee_cents: 0,
               })
               .eq("id", invoice.id);
 
