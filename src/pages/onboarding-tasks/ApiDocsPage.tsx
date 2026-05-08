@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Code2, DollarSign, Target, Briefcase, MessageSquare, Video, BarChart3, LayoutGrid, Download, Loader2 } from "lucide-react";
+import { ArrowLeft, Code2, DollarSign, Target, Briefcase, MessageSquare, Video, BarChart3, LayoutGrid, Download, Loader2, Copy } from "lucide-react";
 import { FinancialApiDocs } from "@/components/financial-api/FinancialApiDocs";
 import { CrmApiDocs } from "@/components/financial-api/CrmApiDocs";
 import { ProductApiDocs } from "@/components/financial-api/ProductApiDocs";
@@ -9,111 +9,80 @@ import { ConversationsApiDocs } from "@/components/financial-api/ConversationsAp
 import { ProjectMeetingsApiDocs } from "@/components/financial-api/ProjectMeetingsApiDocs";
 import { CRMTrafficApiDocs } from "@/components/crm/traffic/CRMTrafficApiDocs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 import { toast } from "sonner";
 
 export default function ApiDocsPage() {
   const navigate = useNavigate();
   const allRef = useRef<HTMLDivElement>(null);
-  const pdfObjectUrlRef = useRef<string | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [pdfFilename, setPdfFilename] = useState("");
+  const textUrlRef = useRef<string | null>(null);
+  const [textUrl, setTextUrl] = useState<string | null>(null);
+  const [textFilename, setTextFilename] = useState("");
+  const [fullText, setFullText] = useState("");
 
-  const createExpandedPdfClone = (element: HTMLDivElement) => {
+  const extractText = useCallback(() => {
+    const element = allRef.current;
+    if (!element) return;
+
+    // Clone to expand all hidden/collapsed nodes before extraction
     const clone = element.cloneNode(true) as HTMLDivElement;
-    const width = Math.max(element.scrollWidth, 1100);
-
     clone.style.position = "absolute";
     clone.style.left = "-99999px";
     clone.style.top = "0";
-    clone.style.width = `${width}px`;
-    clone.style.height = "auto";
-    clone.style.maxHeight = "none";
-    clone.style.overflow = "visible";
-    clone.style.backgroundColor = "hsl(var(--background))";
 
-    clone.querySelectorAll<HTMLElement>("[hidden]").forEach((node) => {
-      node.removeAttribute("hidden");
-      node.style.display = "block";
+    clone.querySelectorAll<HTMLElement>("[hidden]").forEach((n) => {
+      n.removeAttribute("hidden");
+      n.style.display = "block";
     });
-
-    clone.querySelectorAll<HTMLElement>('[data-state="inactive"], [data-state="closed"]').forEach((node) => {
-      node.setAttribute("data-state", "open");
-      node.style.display = "block";
-      node.style.height = "auto";
-      node.style.maxHeight = "none";
-      node.style.overflow = "visible";
-    });
-
-    clone.querySelectorAll<HTMLElement>('[role="tablist"]').forEach((node) => {
-      node.style.display = "none";
+    clone.querySelectorAll<HTMLElement>('[data-state="inactive"], [data-state="closed"]').forEach((n) => {
+      n.setAttribute("data-state", "open");
+      n.style.display = "block";
+      n.style.height = "auto";
+      n.style.maxHeight = "none";
+      n.style.overflow = "visible";
     });
 
     document.body.appendChild(clone);
-    return clone;
-  };
+    // Force layout so innerText respects line breaks
+    void clone.offsetHeight;
+    let text = (clone.innerText || clone.textContent || "").trim();
+    clone.remove();
 
-  const preparePdf = useCallback(async () => {
-    const element = allRef.current;
-    if (!element) return;
-    let expandedElement: HTMLDivElement | null = null;
-    try {
-      if (pdfObjectUrlRef.current) URL.revokeObjectURL(pdfObjectUrlRef.current);
-      expandedElement = createExpandedPdfClone(element);
-      const canvas = await html2canvas(expandedElement, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        windowWidth: expandedElement.scrollWidth,
-        windowHeight: expandedElement.scrollHeight,
-      });
+    // Normalize: collapse 3+ blank lines into 2
+    text = text.replace(/\n{3,}/g, "\n\n");
 
-      const imgData = canvas.toDataURL("image/jpeg", 0.92);
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const header = `DOCUMENTAÇÃO COMPLETA DA API - UNV NEXUS\nGerado em: ${new Date().toLocaleString("pt-BR")}\n${"=".repeat(60)}\n\n`;
+    const finalText = header + text;
 
-      let heightLeft = imgHeight;
-      let position = 0;
+    setFullText(finalText);
 
-      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      const date = new Date().toISOString().split("T")[0];
-      const filename = `documentacao-api-unv-nexus-${date}.pdf`;
-      const blob = pdf.output("blob");
-      const url = URL.createObjectURL(blob);
-      pdfObjectUrlRef.current = url;
-      setPdfUrl(url);
-      setPdfFilename(filename);
-    } catch (err) {
-      console.error("Erro ao gerar PDF:", err);
-      toast.error("Erro ao gerar PDF");
-    } finally {
-      expandedElement?.remove();
-    }
+    if (textUrlRef.current) URL.revokeObjectURL(textUrlRef.current);
+    const blob = new Blob([finalText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    textUrlRef.current = url;
+    setTextUrl(url);
+    const date = new Date().toISOString().split("T")[0];
+    setTextFilename(`documentacao-api-unv-nexus-${date}.txt`);
   }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      void preparePdf();
+      extractText();
     }, 400);
-
     return () => {
       window.clearTimeout(timer);
-      if (pdfObjectUrlRef.current) URL.revokeObjectURL(pdfObjectUrlRef.current);
+      if (textUrlRef.current) URL.revokeObjectURL(textUrlRef.current);
     };
-  }, [preparePdf]);
+  }, [extractText]);
+
+  const handleCopy = async () => {
+    if (!fullText) return;
+    try {
+      await navigator.clipboard.writeText(fullText);
+      toast.success("Documentação copiada para a área de transferência");
+    } catch {
+      toast.error("Não foi possível copiar");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -171,16 +140,19 @@ export default function ApiDocsPage() {
           </div>
 
           <TabsContent value="all" className="space-y-4">
-            <div className="flex justify-end">
-              {pdfUrl ? (
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="outline" onClick={handleCopy} disabled={!fullText}>
+                <Copy className="h-4 w-4 mr-2" /> Copiar tudo
+              </Button>
+              {textUrl ? (
                 <Button asChild size="sm">
-                  <a href={pdfUrl} download={pdfFilename}>
-                    <Download className="h-4 w-4 mr-2" /> Baixar documentação completa (PDF)
+                  <a href={textUrl} download={textFilename}>
+                    <Download className="h-4 w-4 mr-2" /> Baixar (.txt)
                   </a>
                 </Button>
               ) : (
                 <Button disabled size="sm">
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Preparando PDF...</>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Preparando...
                 </Button>
               )}
             </div>
