@@ -73,6 +73,10 @@ export default function ApiDocsPage() {
             <ProductApiDocs />
           </TabsContent>
 
+          <TabsContent value="traffic">
+            <CRMTrafficApiDocs />
+          </TabsContent>
+
           <TabsContent value="project_meetings">
             <ProjectMeetingsApiDocs />
           </TabsContent>
