@@ -1691,7 +1691,7 @@ export default function AllRecurringChargesPage() {
                             for (const inv of selected) {
                               const paidAmount = inv.status === "overdue" ? inv.total_with_fees_cents : inv.amount_cents;
                               await supabase.from("company_invoices").update({
-                                status: "paid", paid_at: today, paid_amount_cents: paidAmount, payment_fee_cents: 199,
+                                status: "paid", paid_at: today, paid_amount_cents: paidAmount, payment_fee_cents: 0,
                               } as any).eq("id", inv.id);
                               // Sync to Conta Azul
                               const invAny = inv as any;
