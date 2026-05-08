@@ -1103,6 +1103,144 @@ serve(async (req) => {
         },
       },
 
+      // ===== WHATSAPP DIRECT SEND =====
+      whatsapp: {
+        list_instances: async (c) => {
+          const { data, error } = await c.supabase.from("whatsapp_instances")
+            .select("id, instance_name, status, phone_number")
+            .order("instance_name");
+          if (error) throw error;
+          return json({ data: data || [] });
+        },
+        send: async (c) => {
+          const { instance_id, phone, message, lead_id, project_id } = c.body;
+          if (!instance_id || !phone || !message) {
+            return json({ error: "Campos 'instance_id', 'phone' e 'message' são obrigatórios" }, 400);
+          }
+
+          // Normalize BR phone (E.164, 13 digits)
+          let digits = String(phone).replace(/\D/g, "");
+          if (!digits) return json({ error: "Telefone inválido" }, 400);
+          if (!digits.startsWith("55")) digits = `55${digits}`;
+          if (digits.length === 12) {
+            const ddd = digits.slice(2, 4);
+            const rest = digits.slice(4);
+            digits = `55${ddd}9${rest}`;
+          }
+          const formatted = digits;
+          const suffix8 = digits.slice(-8);
+          const suffix9 = digits.slice(-9);
+
+          // Validate instance
+          const { data: instance } = await c.supabase.from("whatsapp_instances")
+            .select("id, instance_name, status").eq("id", instance_id).maybeSingle();
+          if (!instance) return json({ error: "Instância WhatsApp não encontrada" }, 404);
+
+          // Find or create contact
+          const { data: suffixMatches } = await c.supabase
+            .from("crm_whatsapp_contacts")
+            .select("id, phone, lead_id, name")
+            .or(`phone.ilike.%${suffix8},phone.ilike.%${suffix9}`);
+
+          const contactMatch = (suffixMatches || []).find((ct: any) => {
+            const cd = (ct.phone || "").replace(/\D/g, "");
+            if (cd.length > 13 || cd.length < 8) return false;
+            if ((ct.phone || "").includes("@") || (ct.phone || "").includes("-")) return false;
+            return cd.slice(-8) === suffix8 || cd.slice(-9) === suffix9;
+          });
+
+          let contactId: string;
+          if (contactMatch?.id) {
+            contactId = contactMatch.id;
+            const updates: Record<string, any> = {};
+            if (lead_id && !contactMatch.lead_id) updates.lead_id = lead_id;
+            if (Object.keys(updates).length) {
+              await c.supabase.from("crm_whatsapp_contacts").update(updates).eq("id", contactId);
+            }
+          } else {
+            const { data: created, error: createErr } = await c.supabase
+              .from("crm_whatsapp_contacts")
+              .insert({ phone: formatted, lead_id: lead_id || null })
+              .select("id").single();
+            if (createErr) return json({ error: "Erro ao criar contato", details: createErr.message }, 500);
+            contactId = created.id;
+          }
+
+          // Find or create conversation (scoped to instance)
+          const { data: existingConv } = await c.supabase
+            .from("crm_whatsapp_conversations")
+            .select("id")
+            .eq("contact_id", contactId)
+            .eq("instance_id", instance_id)
+            .order("last_message_at", { ascending: false, nullsFirst: false })
+            .limit(1).maybeSingle();
+
+          let conversationId = existingConv?.id as string | undefined;
+          if (!conversationId) {
+            const { data: createdConv, error: createConvErr } = await c.supabase
+              .from("crm_whatsapp_conversations")
+              .insert({
+                contact_id: contactId,
+                instance_id,
+                status: "open",
+                unread_count: 0,
+                lead_id: lead_id || null,
+                project_id: project_id || null,
+              })
+              .select("id").single();
+            if (createConvErr) return json({ error: "Erro ao criar conversa", details: createConvErr.message }, 500);
+            conversationId = createdConv.id;
+          } else if (lead_id) {
+            await c.supabase.from("crm_whatsapp_conversations").update({ lead_id }).eq("id", conversationId);
+          }
+
+          // Send via Evolution API
+          const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+          const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+          const evoResponse = await fetch(`${supabaseUrl}/functions/v1/evolution-api`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${supabaseKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "sendText", instanceId: instance_id, phone: formatted, message }),
+          });
+          const evoData = await evoResponse.json();
+          if (!evoResponse.ok || evoData?.error) {
+            return json({ error: "Erro ao enviar mensagem", details: evoData }, evoResponse.status || 500);
+          }
+
+          const remoteId = evoData?.key?.id || null;
+
+          // Save message
+          const { data: savedMsg } = await c.supabase.from("crm_whatsapp_messages").insert({
+            conversation_id: conversationId,
+            content: message,
+            type: "text",
+            direction: "outbound",
+            status: "sent",
+            sent_by: c.staffId || null,
+            remote_id: remoteId,
+          }).select().single();
+
+          await c.supabase.from("crm_whatsapp_conversations").update({
+            last_message: message,
+            last_message_at: new Date().toISOString(),
+          }).eq("id", conversationId);
+
+          return json({
+            data: {
+              conversation_id: conversationId,
+              contact_id: contactId,
+              instance_id,
+              instance_name: instance.instance_name,
+              phone: formatted,
+              message_id: savedMsg?.id,
+              remote_id: remoteId,
+            },
+            evolution_response: evoData,
+          }, 201);
+        },
+      },
+
       // ===== PROJECT MEETINGS (onboarding_meeting_notes) =====
       project_meetings: {
         list: async (c) => {
