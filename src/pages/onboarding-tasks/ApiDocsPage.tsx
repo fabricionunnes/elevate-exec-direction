@@ -17,14 +17,12 @@ export default function ApiDocsPage() {
   const navigate = useNavigate();
   const allRef = useRef<HTMLDivElement>(null);
   const pdfObjectUrlRef = useRef<string | null>(null);
-  const [downloading, setDownloading] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfFilename, setPdfFilename] = useState("");
 
   const preparePdf = useCallback(async () => {
     const element = allRef.current;
     if (!element) return;
-    setDownloading(true);
     try {
       if (pdfObjectUrlRef.current) URL.revokeObjectURL(pdfObjectUrlRef.current);
       const canvas = await html2canvas(element, {
@@ -64,8 +62,6 @@ export default function ApiDocsPage() {
     } catch (err) {
       console.error("Erro ao gerar PDF:", err);
       toast.error("Erro ao gerar PDF");
-    } finally {
-      setDownloading(false);
     }
   }, []);
 
