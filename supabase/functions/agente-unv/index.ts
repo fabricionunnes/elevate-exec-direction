@@ -548,6 +548,48 @@ async function loadHistory(agentType: AgentType, chatId: number): Promise<Anthro
   } catch { return []; }
 }
 
+// ============ APROVAÇÃO HUMANA — DIRECIONAMENTOS DO MAX ============
+const PENDING_MARKER = "__PENDING_APPROVAL__";
+const EXECUTED_MARKER = "__APPROVAL_EXECUTED__";
+
+async function savePendingApproval(chatId: number, directives: { noah: string; sophia: string; melissa: string }): Promise<void> {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/agent_messages`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ agent: "ceo", chat_id: chatId, role: "assistant", content: `${PENDING_MARKER}${JSON.stringify(directives)}` }),
+    });
+  } catch { /* silent */ }
+}
+
+async function getPendingApproval(chatId: number): Promise<{ noah: string; sophia: string; melissa: string } | null> {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/agent_messages?agent=eq.ceo&chat_id=eq.${chatId}&role=eq.assistant&content=like.${encodeURIComponent(PENDING_MARKER + "%")}&order=created_at.desc&limit=1&select=id,content`,
+      { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+    );
+    const data = await res.json() as Array<{ id: string; content: string }>;
+    if (!data || data.length === 0) return null;
+    const record = data[0];
+    // Marca como executado para não reaproveitar
+    await fetch(`${SUPABASE_URL}/rest/v1/agent_messages?id=eq.${record.id}`, {
+      method: "PATCH",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+      },
+      body: JSON.stringify({ content: record.content.replace(PENDING_MARKER, EXECUTED_MARKER) }),
+    });
+    return JSON.parse(record.content.replace(PENDING_MARKER, ""));
+  } catch { return null; }
+}
+
 // ============ REUNIÃO DE ALINHAMENTO (sob demanda ou diária 7h) ============
 async function runAlignmentMeeting(mode: "daily" | "ondemand" = "daily", directCeoChatId?: number): Promise<void> {
   const dateBRT = new Date().toLocaleDateString("pt-BR", {
@@ -678,35 +720,11 @@ Direto. Sem enrolação. Cada ação com responsável e prazo.
       : sendTelegram(ceoId, msgCeoAta, "ceo"));
   }
 
-  // Avisa cada agente que recebeu ordem e vai executar
-  await Promise.all([
-    noahId    && dirNoah    ? sendTelegram(noahId,    `*Ordem do Max recebida — executando agora...*\n\n${dirNoah}`,    "financeiro") : Promise.resolve(),
-    sophiaId  && dirSophia  ? sendTelegram(sophiaId,  `*Ordem do Max recebida — executando agora...*\n\n${dirSophia}`,  "crm")        : Promise.resolve(),
-    melissaId && dirMelissa ? sendTelegram(melissaId, `*Ordem do Max recebida — executando agora...*\n\n${dirMelissa}`, "projetos")   : Promise.resolve(),
-  ]);
-
-  // Executa os direcionamentos em paralelo — cada agente usa suas ferramentas
-  const execPrompt = (dir: string) =>
-    `O CEO Max te deu as seguintes ordens:\n\n${dir}\n\n` +
-    `Execute tudo o que for possível agora usando suas ferramentas. ` +
-    `Para cada item: tente executar, confirme o que conseguiu fazer e indique claramente o que NÃO conseguiu executar automaticamente e precisa de ação humana. ` +
-    `Seja objetivo — liste ações executadas e pendentes.`;
-
-  const [noahExec, sophiaExec, melissaExec] = await Promise.all([
-    dirNoah    ? callAgent("financeiro", execPrompt(dirNoah))    : Promise.resolve("Sem direcionamento."),
-    dirSophia  ? callAgent("crm",        execPrompt(dirSophia))  : Promise.resolve("Sem direcionamento."),
-    dirMelissa ? callAgent("projetos",   execPrompt(dirMelissa)) : Promise.resolve("Sem direcionamento."),
-  ]);
-
-  // Envia resultado da execução para cada agente
-  await Promise.all([
-    noahId    ? sendTelegram(noahId,    `*Execução concluída*\n\n${noahExec}`,    "financeiro") : Promise.resolve(),
-    sophiaId  ? sendTelegram(sophiaId,  `*Execução concluída*\n\n${sophiaExec}`,  "crm")        : Promise.resolve(),
-    melissaId ? sendTelegram(melissaId, `*Execução concluída*\n\n${melissaExec}`, "projetos")   : Promise.resolve(),
-  ]);
-
-  // Confirmação final para o CEO — execução concluída
-  if (ceoId) await sendTelegram(ceoId, `_Direcionamentos enviados a Noah, Sophia e Melissa. Execução em andamento._`, "ceo");
+  // Salva direcionamentos pendentes de aprovação — NÃO executa ainda
+  if (ceoId && (dirNoah || dirSophia || dirMelissa)) {
+    await savePendingApproval(ceoId, { noah: dirNoah, sophia: dirSophia, melissa: dirMelissa });
+    await sendTelegram(ceoId, `_Direcionamentos prontos para Noah, Sophia e Melissa. Responda *ok* para eu executar._`, "ceo");
+  }
   }); // fim safeRun
 }
 
@@ -921,9 +939,55 @@ Deno.serve(async (req) => {
       // Salva chat ID para mensagens proativas (sempre, inclusive antes de early returns)
       EdgeRuntime.waitUntil(storeChatId(agentType, chatId));
 
-      // CEO: comandos especiais de reunião
+      // CEO: comandos especiais de reunião e aprovação
       if (agentType === "ceo") {
         const lower = text.toLowerCase().trim();
+
+        // Aprovação de direcionamentos pendentes
+        const isApproval = /^(ok|sim|pode|bora|vai|confirmo|confirmado|aprovado|aprovar|executar|execute|autorizo|autorizado)[\s!.]*$/i.test(lower);
+        if (isApproval) {
+          const pending = await getPendingApproval(chatId);
+          if (pending) {
+            await sendTelegram(chatId, `*Aprovado. Acionando Noah, Sophia e Melissa agora...*`, "ceo");
+            EdgeRuntime.waitUntil((async () => {
+              const [noahId, sophiaId, melissaId] = await Promise.all([
+                getChatId("financeiro"), getChatId("crm"), getChatId("projetos"),
+              ]);
+              await Promise.all([
+                noahId    && pending.noah    ? sendTelegram(noahId,    `*Ordem do Max — executando agora...*\n\n${pending.noah}`,    "financeiro") : Promise.resolve(),
+                sophiaId  && pending.sophia  ? sendTelegram(sophiaId,  `*Ordem do Max — executando agora...*\n\n${pending.sophia}`,  "crm")        : Promise.resolve(),
+                melissaId && pending.melissa ? sendTelegram(melissaId, `*Ordem do Max — executando agora...*\n\n${pending.melissa}`, "projetos")   : Promise.resolve(),
+              ]);
+              const execPrompt = (dir: string) =>
+                `O CEO Max aprovou e te deu as seguintes ordens:\n\n${dir}\n\n` +
+                `Execute tudo o que for possível agora usando suas ferramentas. ` +
+                `Liste o que foi executado e o que precisa de ação humana. Seja objetivo.`;
+              const [noahExec, sophiaExec, melissaExec] = await Promise.all([
+                pending.noah    ? callAgent("financeiro", execPrompt(pending.noah))    : Promise.resolve("Sem direcionamento."),
+                pending.sophia  ? callAgent("crm",        execPrompt(pending.sophia))  : Promise.resolve("Sem direcionamento."),
+                pending.melissa ? callAgent("projetos",   execPrompt(pending.melissa)) : Promise.resolve("Sem direcionamento."),
+              ]);
+              await Promise.all([
+                noahId    ? sendTelegram(noahId,    `*Execução concluída*\n\n${noahExec}`,    "financeiro") : Promise.resolve(),
+                sophiaId  ? sendTelegram(sophiaId,  `*Execução concluída*\n\n${sophiaExec}`,  "crm")        : Promise.resolve(),
+                melissaId ? sendTelegram(melissaId, `*Execução concluída*\n\n${melissaExec}`, "projetos")   : Promise.resolve(),
+              ]);
+              await sendTelegram(chatId, `_Execução concluída. Noah, Sophia e Melissa foram acionados._`, "ceo");
+            })());
+            return new Response("OK", { status: 200 });
+          }
+          // Se não tem nada pendente, deixa o Max responder normalmente
+        }
+
+        // Rejeição de direcionamentos pendentes
+        const isRejection = /^(não|nao|cancela|cancelar|recusar|recusa|abortar|abort|pare|para)[\s!.]*$/i.test(lower);
+        if (isRejection) {
+          const pending = await getPendingApproval(chatId);
+          if (pending) {
+            await sendTelegram(chatId, `_Direcionamentos cancelados. Os agentes não serão acionados._`, "ceo");
+            return new Response("OK", { status: 200 });
+          }
+        }
 
         // "reunião" ou "alinhamento" sem tema → reunião geral com todos os agentes
         if (lower === "reunião" || lower === "reuniao" || lower === "alinhamento" || lower === "meeting") {
