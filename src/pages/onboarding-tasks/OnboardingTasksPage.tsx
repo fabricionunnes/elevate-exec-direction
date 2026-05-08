@@ -2334,7 +2334,7 @@ const OnboardingTasksPage = () => {
                     <ChevronDown className="h-4 w-4 ml-2" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent align="end" className="w-56 max-h-[80vh] overflow-y-auto">
                   {/* CEO Panel - First item for CEO */}
                   {currentUserEmail === "fabricio@universidadevendas.com.br" && (
                     <>
