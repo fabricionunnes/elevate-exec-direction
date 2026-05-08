@@ -137,6 +137,10 @@ export default function ApiDocsPage() {
                 <MessageSquare className="h-4 w-4" />
                 <span className="hidden sm:inline">Conversas</span>
               </TabsTrigger>
+              <TabsTrigger value="whatsapp_send" className="gap-2">
+                <Send className="h-4 w-4" />
+                <span className="hidden sm:inline">Enviar WhatsApp</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
