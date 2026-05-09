@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -132,6 +133,8 @@ export const CRMSettingsPage = () => {
   const [pipelineGroupFilter, setPipelineGroupFilter] = useState<string>("all");
   const [draggedPipelineId, setDraggedPipelineId] = useState<string | null>(null);
   const [dragOverPipelineId, setDragOverPipelineId] = useState<string | null>(null);
+  const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
+  const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
 
   // Dialogs
   const [newPipelineOpen, setNewPipelineOpen] = useState(false);
@@ -465,6 +468,52 @@ export const CRMSettingsPage = () => {
     } catch (err) {
       console.error("Erro ao reordenar pipelines", err);
       toast.error("Erro ao salvar nova ordem");
+      loadData();
+    }
+  };
+
+  // Drag-and-drop reorder for stages within a pipeline
+  const handleStageDragStart = (id: string) => setDraggedStageId(id);
+  const handleStageDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    if (draggedStageId && draggedStageId !== id) setDragOverStageId(id);
+  };
+  const handleStageDragEnd = () => {
+    setDraggedStageId(null);
+    setDragOverStageId(null);
+  };
+  const handleStageDrop = async (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const sourceId = draggedStageId;
+    setDraggedStageId(null);
+    setDragOverStageId(null);
+    if (!sourceId || sourceId === targetId) return;
+
+    const pipelineStagesList = stages
+      .filter(s => s.pipeline_id === selectedPipeline)
+      .sort((a, b) => a.sort_order - b.sort_order);
+    const fromIdx = pipelineStagesList.findIndex(s => s.id === sourceId);
+    const toIdx = pipelineStagesList.findIndex(s => s.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const [moved] = pipelineStagesList.splice(fromIdx, 1);
+    pipelineStagesList.splice(toIdx, 0, moved);
+
+    const updatedStages = stages.map(s => {
+      if (s.pipeline_id !== selectedPipeline) return s;
+      const idx = pipelineStagesList.findIndex(ps => ps.id === s.id);
+      return idx === -1 ? s : { ...s, sort_order: idx };
+    });
+    setStages(updatedStages);
+
+    try {
+      await Promise.all(
+        pipelineStagesList.map((s, idx) =>
+          supabase.from("crm_stages").update({ sort_order: idx }).eq("id", s.id)
+        )
+      );
+    } catch (err) {
+      console.error("Erro ao reordenar etapas", err);
+      toast.error("Erro ao salvar nova ordem das etapas");
       loadData();
     }
   };
@@ -1466,7 +1515,16 @@ export const CRMSettingsPage = () => {
                   pipelineStages.map(stage => (
                     <div
                       key={stage.id}
-                      className="p-3 rounded-lg border border-border flex items-center gap-3 hover:bg-muted/50 transition-colors group"
+                      draggable
+                      onDragStart={() => handleStageDragStart(stage.id)}
+                      onDragOver={(e) => handleStageDragOver(e, stage.id)}
+                      onDragEnd={handleStageDragEnd}
+                      onDrop={(e) => handleStageDrop(e, stage.id)}
+                      className={cn(
+                        "p-3 rounded-lg border border-border flex items-center gap-3 hover:bg-muted/50 transition-colors group",
+                        draggedStageId === stage.id && "opacity-50",
+                        dragOverStageId === stage.id && "border-primary border-2"
+                      )}
                     >
                       <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing group-hover:text-foreground transition-colors" />
                       <div
