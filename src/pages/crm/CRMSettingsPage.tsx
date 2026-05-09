@@ -1514,7 +1514,16 @@ export const CRMSettingsPage = () => {
                   pipelineStages.map(stage => (
                     <div
                       key={stage.id}
-                      className="p-3 rounded-lg border border-border flex items-center gap-3 hover:bg-muted/50 transition-colors group"
+                      draggable
+                      onDragStart={() => handleStageDragStart(stage.id)}
+                      onDragOver={(e) => handleStageDragOver(e, stage.id)}
+                      onDragEnd={handleStageDragEnd}
+                      onDrop={(e) => handleStageDrop(e, stage.id)}
+                      className={cn(
+                        "p-3 rounded-lg border border-border flex items-center gap-3 hover:bg-muted/50 transition-colors group",
+                        draggedStageId === stage.id && "opacity-50",
+                        dragOverStageId === stage.id && "border-primary border-2"
+                      )}
                     >
                       <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing group-hover:text-foreground transition-colors" />
                       <div
