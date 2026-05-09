@@ -1046,7 +1046,9 @@ export const CRMSettingsPage = () => {
 
   const copySourceStages = stages.filter(s => s.pipeline_id === copySourcePipeline);
 
-  const pipelineStages = stages.filter(s => s.pipeline_id === selectedPipeline);
+  const pipelineStages = stages
+    .filter(s => s.pipeline_id === selectedPipeline)
+    .sort((a, b) => a.sort_order - b.sort_order);
   const groupOrigins = origins.filter(o => o.group_id === selectedOriginGroup);
 
   if (loading) {
