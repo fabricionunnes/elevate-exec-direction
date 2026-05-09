@@ -41,7 +41,7 @@ async function runSync(days: number) {
   const errors: any[] = [];
 
   try {
-    for (const status of ["RECEIVED", "CONFIRMED"]) {
+    for (const status of ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"]) {
       let offset = 0;
       const limit = 100;
       while (true) {
@@ -67,7 +67,11 @@ async function runSync(days: number) {
 
               const replay = await supabase.functions.invoke("asaas-webhook", {
                 body: {
-                  event: payment.status === "RECEIVED" ? "PAYMENT_RECEIVED" : "PAYMENT_CONFIRMED",
+                  event: payment.status === "RECEIVED_IN_CASH"
+                    ? "PAYMENT_RECEIVED_IN_CASH"
+                    : payment.status === "RECEIVED"
+                      ? "PAYMENT_RECEIVED"
+                      : "PAYMENT_CONFIRMED",
                   payment,
                 },
               });
