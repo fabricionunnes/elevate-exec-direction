@@ -516,6 +516,8 @@ export const CRMSettingsPage = () => {
       loadData();
     }
   };
+
+  const handleTogglePipelineActive = async (pipeline: Pipeline) => {
     const newActive = !((pipeline as any).is_active ?? true);
     // Optimistic update
     setPipelines((prev) =>
