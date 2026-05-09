@@ -132,6 +132,8 @@ export const CRMSettingsPage = () => {
   const [pipelineGroupFilter, setPipelineGroupFilter] = useState<string>("all");
   const [draggedPipelineId, setDraggedPipelineId] = useState<string | null>(null);
   const [dragOverPipelineId, setDragOverPipelineId] = useState<string | null>(null);
+  const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
+  const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
 
   // Dialogs
   const [newPipelineOpen, setNewPipelineOpen] = useState(false);
