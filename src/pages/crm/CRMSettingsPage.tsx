@@ -471,7 +471,51 @@ export const CRMSettingsPage = () => {
     }
   };
 
-  const handleTogglePipelineActive = async (pipeline: Pipeline) => {
+  // Drag-and-drop reorder for stages within a pipeline
+  const handleStageDragStart = (id: string) => setDraggedStageId(id);
+  const handleStageDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    if (draggedStageId && draggedStageId !== id) setDragOverStageId(id);
+  };
+  const handleStageDragEnd = () => {
+    setDraggedStageId(null);
+    setDragOverStageId(null);
+  };
+  const handleStageDrop = async (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const sourceId = draggedStageId;
+    setDraggedStageId(null);
+    setDragOverStageId(null);
+    if (!sourceId || sourceId === targetId) return;
+
+    const pipelineStagesList = stages
+      .filter(s => s.pipeline_id === selectedPipeline)
+      .sort((a, b) => a.sort_order - b.sort_order);
+    const fromIdx = pipelineStagesList.findIndex(s => s.id === sourceId);
+    const toIdx = pipelineStagesList.findIndex(s => s.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const [moved] = pipelineStagesList.splice(fromIdx, 1);
+    pipelineStagesList.splice(toIdx, 0, moved);
+
+    const updatedStages = stages.map(s => {
+      if (s.pipeline_id !== selectedPipeline) return s;
+      const idx = pipelineStagesList.findIndex(ps => ps.id === s.id);
+      return idx === -1 ? s : { ...s, sort_order: idx };
+    });
+    setStages(updatedStages);
+
+    try {
+      await Promise.all(
+        pipelineStagesList.map((s, idx) =>
+          supabase.from("crm_stages").update({ sort_order: idx }).eq("id", s.id)
+        )
+      );
+    } catch (err) {
+      console.error("Erro ao reordenar etapas", err);
+      toast.error("Erro ao salvar nova ordem das etapas");
+      loadData();
+    }
+  };
     const newActive = !((pipeline as any).is_active ?? true);
     // Optimistic update
     setPipelines((prev) =>
