@@ -157,29 +157,7 @@ export default function PaymentLinkPage() {
             <CardDescription>Configure o valor e a forma de pagamento</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            {/* Provider Selection */}
-            <div>
-              <Label className="text-sm font-medium mb-2 block">Provedor de Pagamento</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {providers.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => setProvider(p.id)}
-                    className={cn(
-                      "flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all text-sm",
-                      provider === p.id
-                        ? "border-primary bg-primary/5 text-primary shadow-sm"
-                        : "border-border hover:border-primary/30 text-muted-foreground"
-                    )}
-                  >
-                    <Building2 className="h-5 w-5" />
-                    <span className="font-medium">{p.label}</span>
-                    <span className="text-[10px] text-muted-foreground leading-tight">{p.description}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
+            {/* Provider fixo: Asaas */}
             {/* Description */}
             <div>
               <Label htmlFor="pay-desc">Descrição do Pagamento *</Label>
