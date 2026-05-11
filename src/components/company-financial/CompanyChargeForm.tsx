@@ -164,28 +164,7 @@ export function CompanyChargeForm({ companyId, companyName, contractValue, custo
         <CardDescription>Cobre via PIX, cartão de crédito ou boleto</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Provider selector */}
-        <div className="space-y-2">
-          <Label>Integração de Pagamento</Label>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {providers.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setProvider(p.id)}
-                className={cn(
-                  "flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all",
-                  provider === p.id
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-card text-muted-foreground hover:border-primary/50"
-                )}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
+        {/* Provider fixo: Asaas */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Descrição</Label>
