@@ -330,8 +330,13 @@ export function CheckoutModal({
         throw new Error(data.details || "A operadora recusou a cobrança.");
       }
 
-      if (method === "credit_card" && !data?.paid && !data?.checkout_url && !data?.order_id) {
+      if (method === "credit_card" && provider !== "asaas" && !data?.paid && !data?.checkout_url && !data?.order_id) {
         throw new Error(data?.details || "A operadora não confirmou a cobrança no cartão.");
+      }
+
+      // Asaas hosts the credit-card form on its own invoice page
+      if (provider === "asaas" && method === "credit_card" && data?.invoice_url) {
+        window.open(data.invoice_url, "_blank", "noopener,noreferrer");
       }
 
       setResult(data as CheckoutResult);
@@ -410,7 +415,7 @@ export function CheckoutModal({
               </div>
             </div>
 
-            {method === "credit_card" && (
+            {method === "credit_card" && provider !== "asaas" && (
               <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border/50">
                 <div>
                   <Label htmlFor="card-number">Número do Cartão</Label>
