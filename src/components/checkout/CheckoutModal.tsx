@@ -281,7 +281,7 @@ export function CheckoutModal({
           payload.card_token = tokenizedCard.token;
           payload.card_brand = tokenizedCard.brand;
           payload.card_bin = tokenizedCard.bin;
-        } else {
+        } else if (provider !== "asaas") {
           payload.card_number = cardNumber.replace(/\s/g, "");
           payload.card_expiry = cardExpiry;
           payload.card_cvv = cardCvv;
@@ -293,7 +293,9 @@ export function CheckoutModal({
         ? "mercadopago-checkout"
         : provider === "dompagamentos"
           ? "dompagamentos-checkout"
-          : "pagarme-checkout";
+          : provider === "asaas"
+            ? "asaas-checkout"
+            : "pagarme-checkout";
 
       console.log("Checkout payload:", JSON.stringify(payload));
       console.log("Edge function:", edgeFunctionName);
