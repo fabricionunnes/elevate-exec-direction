@@ -90,7 +90,7 @@ export function CheckoutModal({
   amountCents,
   priceLabel,
   paymentLinkId,
-  provider = "pagarme",
+  provider = "asaas",
   fixedMethod,
 }: CheckoutModalProps) {
   const [step, setStep] = useState<"form" | "result">("form");

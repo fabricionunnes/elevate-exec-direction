@@ -10,20 +10,14 @@ import { toast } from "sonner";
 import { Loader2, Send, CreditCard, QrCode, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type PaymentProvider = "asaas" | "pagarme" | "mercadopago" | "dompagamentos";
+type PaymentProvider = "asaas";
 
 const providers: { id: PaymentProvider; label: string; color: string }[] = [
   { id: "asaas", label: "Asaas", color: "hsl(142 76% 36%)" },
-  { id: "pagarme", label: "Pagar.me", color: "hsl(var(--primary))" },
-  { id: "mercadopago", label: "Mercado Pago", color: "hsl(199 89% 48%)" },
-  { id: "dompagamentos", label: "Dom Pagamentos", color: "hsl(262 80% 50%)" },
 ];
 
 const edgeFunctionMap: Record<PaymentProvider, string> = {
   asaas: "asaas-checkout",
-  pagarme: "pagarme-checkout",
-  mercadopago: "mercadopago-checkout",
-  dompagamentos: "dompagamentos-checkout",
 };
 
 interface Props {

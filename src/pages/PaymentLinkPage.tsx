@@ -11,13 +11,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { CurrencyInput } from "@/components/ui/currency-input";
 
 type PaymentMethod = "credit_card" | "pix" | "boleto";
-type PaymentProvider = "pagarme" | "asaas" | "mercadopago" | "dompagamentos";
+type PaymentProvider = "asaas";
 
 const providers: { id: PaymentProvider; label: string; description: string; color: string }[] = [
-  { id: "pagarme", label: "Pagar.me", description: "Cartão, PIX e Boleto", color: "hsl(var(--primary))" },
-  { id: "asaas", label: "Asaas", description: "PIX, Boleto e Cartão", color: "hsl(142 76% 36%)" },
-  { id: "mercadopago", label: "Mercado Pago", description: "PIX, Cartão e Boleto", color: "hsl(199 89% 48%)" },
-  { id: "dompagamentos", label: "Dom Pagamentos", description: "PIX, Cartão e Boleto", color: "hsl(262 80% 50%)" },
+  { id: "asaas", label: "Asaas", description: "Cartão, PIX e Boleto", color: "hsl(142 76% 36%)" },
 ];
 
 const paymentMethods = [
@@ -36,7 +33,7 @@ interface GeneratedLink {
 
 export default function PaymentLinkPage() {
   const navigate = useNavigate();
-  const [provider, setProvider] = useState<PaymentProvider>("mercadopago");
+  const [provider, setProvider] = useState<PaymentProvider>("asaas");
   const [amount, setAmount] = useState<number>(0);
   const [description, setDescription] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("pix");

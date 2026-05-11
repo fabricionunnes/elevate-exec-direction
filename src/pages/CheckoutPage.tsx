@@ -22,7 +22,7 @@ export default function CheckoutPage() {
   const directProduct = searchParams.get("product") || "Pagamento";
   const directMethodParam = searchParams.get("method");
   const directInstallments = Number(searchParams.get("installments")) || 1;
-  const directProvider = searchParams.get("provider") || "pagarme";
+  const directProvider = searchParams.get("provider") || "asaas";
 
   useEffect(() => {
     const resolveLinkData = async () => {
@@ -42,7 +42,7 @@ export default function CheckoutPage() {
             linkId: (data as any).id,
             paymentMethod: (data as any).payment_method,
             installments: (data as any).installments,
-            provider: (data as any).provider || "pagarme",
+            provider: (data as any).provider || "asaas",
           });
           setLoading(false);
           return;
