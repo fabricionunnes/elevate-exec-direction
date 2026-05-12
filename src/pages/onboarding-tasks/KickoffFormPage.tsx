@@ -43,6 +43,10 @@ interface SalesHistoryEntry {
 }
 
 interface KickoffFormData {
+  // Norte Estratégico (NSM)
+  north_star_metric_cents: number;
+  north_star_metric_label: string;
+  
   // Diagnóstico Comercial
   main_challenges: string;
   sales_team_size: string;
