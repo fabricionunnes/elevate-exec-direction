@@ -38,6 +38,7 @@ import { MonthlySalesChart } from "./MonthlySalesChart";
 import { PerformanceComparisonCard } from "./PerformanceComparisonCard";
 import { DailyGoalCard } from "./DailyGoalCard";
 import { ProjectTermVisionCard } from "./ProjectTermVisionCard";
+import { NorthStarMetricCard } from "./NorthStarMetricCard";
 import { SalesHeatmapCharts } from "./SalesHeatmapCharts";
 import { PeriodComparisonCard } from "./PeriodComparisonCard";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
