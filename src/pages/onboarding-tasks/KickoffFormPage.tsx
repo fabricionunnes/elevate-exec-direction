@@ -686,6 +686,40 @@ const KickoffFormPage = () => {
             </div>
 
             <div className="border-t pt-6">
+              <Card className="border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Target className="h-5 w-5 text-amber-600" />
+                    Norte Estratégico (NSM) *
+                  </CardTitle>
+                  <CardDescription>
+                    Qual a meta principal de <strong>faturamento mensal</strong> que você quer atingir com o nosso serviço? Esse é o número que guiará 100% do nosso foco.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nsm_value">Meta de Faturamento Mensal *</Label>
+                    <CurrencyInput
+                      id="nsm_value"
+                      value={formData.north_star_metric_cents}
+                      onChange={(v) => updateField("north_star_metric_cents", v)}
+                      placeholder="R$ 0,00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="nsm_label">Como você descreve essa meta? (opcional)</Label>
+                    <Input
+                      id="nsm_label"
+                      value={formData.north_star_metric_label}
+                      onChange={(e) => updateField("north_star_metric_label", e.target.value)}
+                      placeholder="Ex: Bater R$ 500 mil/mês até dezembro"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="border-t pt-6">
               <h3 className="text-lg font-semibold mb-4">OKRs</h3>
               <div className="space-y-4">
                 <div className="space-y-2">
