@@ -108,6 +108,8 @@ const generateLast12Months = (): SalesHistoryEntry[] => {
 };
 
 const initialFormData: KickoffFormData = {
+  north_star_metric_cents: 0,
+  north_star_metric_label: "",
   main_challenges: "",
   sales_team_size: "",
   conversion_rate: "",
