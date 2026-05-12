@@ -43,6 +43,10 @@ interface SalesHistoryEntry {
 }
 
 interface KickoffFormData {
+  // Norte Estratégico (NSM)
+  north_star_metric_cents: number;
+  north_star_metric_label: string;
+  
   // Diagnóstico Comercial
   main_challenges: string;
   sales_team_size: string;
@@ -104,6 +108,8 @@ const generateLast12Months = (): SalesHistoryEntry[] => {
 };
 
 const initialFormData: KickoffFormData = {
+  north_star_metric_cents: 0,
+  north_star_metric_label: "",
   main_challenges: "",
   sales_team_size: "",
   conversion_rate: "",
@@ -207,6 +213,8 @@ const KickoffFormPage = () => {
           : initialFormData.quarterly_goals;
 
         setFormData({
+          north_star_metric_cents: Number((data as any).north_star_metric_cents) || 0,
+          north_star_metric_label: (data as any).north_star_metric_label || "",
           main_challenges: data.main_challenges || "",
           sales_team_size: (data as any).sales_team_size || "",
           conversion_rate: (data as any).conversion_rate || "",
@@ -289,6 +297,8 @@ const KickoffFormPage = () => {
       const { error } = await supabase
         .from("onboarding_companies")
         .update({
+          north_star_metric_cents: formData.north_star_metric_cents || null,
+          north_star_metric_label: formData.north_star_metric_label || null,
           main_challenges: formData.main_challenges || null,
           sales_team_size: formData.sales_team_size || null,
           conversion_rate: formData.conversion_rate || null,
@@ -378,6 +388,12 @@ const KickoffFormPage = () => {
         }
       }
       return true;
+    }
+
+    // Step 3: validate NSM
+    if (step === 3 && (!formData.north_star_metric_cents || formData.north_star_metric_cents <= 0)) {
+      toast.error("Informe a Meta NSM (faturamento mensal) antes de avançar");
+      return false;
     }
 
     // Step 5: validate sales history
@@ -673,6 +689,40 @@ const KickoffFormPage = () => {
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="border-t pt-6">
+              <Card className="border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Target className="h-5 w-5 text-amber-600" />
+                    Norte Estratégico (NSM) *
+                  </CardTitle>
+                  <CardDescription>
+                    Qual a meta principal de <strong>faturamento mensal</strong> que você quer atingir com o nosso serviço? Esse é o número que guiará 100% do nosso foco.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nsm_value">Meta de Faturamento Mensal *</Label>
+                    <CurrencyInput
+                      id="nsm_value"
+                      value={formData.north_star_metric_cents}
+                      onChange={(v) => updateField("north_star_metric_cents", v)}
+                      placeholder="R$ 0,00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="nsm_label">Como você descreve essa meta? (opcional)</Label>
+                    <Input
+                      id="nsm_label"
+                      value={formData.north_star_metric_label}
+                      onChange={(e) => updateField("north_star_metric_label", e.target.value)}
+                      placeholder="Ex: Bater R$ 500 mil/mês até dezembro"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             <div className="border-t pt-6">
