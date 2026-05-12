@@ -1555,6 +1555,9 @@ export const KPIDashboardTab = ({
         </CardContent>
       </Card>
 
+      {/* Norte Estratégico (NSM) — em destaque, acima da Projeção do Mês */}
+      <NorthStarMetricCard companyId={companyId} />
+
       {/* Monthly Projection Card - Shows individual main goals when there are multiple */}
       {(projection.target > 0 || projection.hasDistinctCategories || projection.hasMultipleMainGoals) && (
         <div className="space-y-4">
@@ -2005,8 +2008,6 @@ export const KPIDashboardTab = ({
         />
       )}
 
-      {/* Norte Estratégico (NSM) */}
-      <NorthStarMetricCard companyId={companyId} />
 
       {/* Term Vision Card - QTR/YTD/MAT */}
       {hasMultipleMainGoalsForCharts ? (
