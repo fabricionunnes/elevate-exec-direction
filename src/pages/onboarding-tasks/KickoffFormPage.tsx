@@ -390,6 +390,12 @@ const KickoffFormPage = () => {
       return true;
     }
 
+    // Step 3: validate NSM
+    if (step === 3 && (!formData.north_star_metric_cents || formData.north_star_metric_cents <= 0)) {
+      toast.error("Informe a Meta NSM (faturamento mensal) antes de avançar");
+      return false;
+    }
+
     // Step 5: validate sales history
     if (step === 5) {
       return validateSalesHistory();
