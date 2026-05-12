@@ -2005,6 +2005,9 @@ export const KPIDashboardTab = ({
         />
       )}
 
+      {/* Norte Estratégico (NSM) */}
+      <NorthStarMetricCard companyId={companyId} />
+
       {/* Term Vision Card - QTR/YTD/MAT */}
       {hasMultipleMainGoalsForCharts ? (
         mainGoalKpisForCharts.map((kpi) => (
