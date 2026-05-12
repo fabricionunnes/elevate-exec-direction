@@ -193,9 +193,7 @@ async function sendWhatsAppInvoiceNotification(
 
     const amountFormatted = (invoice.amount_cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     const dueDateFormatted = invoice.due_date.split("-").reverse().join("/");
-    const installmentInfo = invoice.total_installments && invoice.total_installments > 1
-      ? `\n📌 *Parcela:* ${invoice.installment_number}/${invoice.total_installments}`
-      : "";
+    const installmentInfo = "";
 
     // Calculate discount date (1 day before due date) and discounted amount (5%)
     // If discount date is today or in the past, do NOT show the discount line

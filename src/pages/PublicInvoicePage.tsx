@@ -111,7 +111,7 @@ export default function PublicInvoicePage() {
             <CardTitle className="text-xl">Fatura</CardTitle>
           </div>
           <p className="text-sm text-muted-foreground">
-            Parcela {invoice.installment_number} de {invoice.total_installments}
+            Mensalidade
           </p>
         </CardHeader>
         <CardContent className="pt-6 space-y-6">
