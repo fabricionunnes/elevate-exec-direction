@@ -297,6 +297,8 @@ const KickoffFormPage = () => {
       const { error } = await supabase
         .from("onboarding_companies")
         .update({
+          north_star_metric_cents: formData.north_star_metric_cents || null,
+          north_star_metric_label: formData.north_star_metric_label || null,
           main_challenges: formData.main_challenges || null,
           sales_team_size: formData.sales_team_size || null,
           conversion_rate: formData.conversion_rate || null,
