@@ -130,7 +130,6 @@ const MARKETING_TOOLS: Anthropic.Tool[] = [
   { name: "metricas_meta", description: "Métricas detalhadas de campanhas Meta Ads — gasto, alcance, impressões, cliques, CPM, CPC, CPL, frequência, ROAS por período", input_schema: { type: "object", properties: { date_from: { type: "string" }, date_to: { type: "string" }, campaign_id: { type: "string" }, level: { type: "string", enum: ["campaign","adset","ad"] } } } },
   { name: "conjuntos_anuncios", description: "Lista conjuntos de anúncios (ad sets) de uma campanha Meta Ads com gasto e performance", input_schema: { type: "object", properties: { campaign_id: { type: "string" }, date_from: { type: "string" }, date_to: { type: "string" } }, required: ["campaign_id"] } },
   { name: "desempenho_criativo", description: "Analisa performance dos criativos (anúncios) — CTR, CPM, frequência, melhor e pior criativo por campanha ou conta toda", input_schema: { type: "object", properties: { campaign_id: { type: "string" }, adset_id: { type: "string" }, date_from: { type: "string" }, date_to: { type: "string" } } } },
-  { name: "receita_para_roas", description: "Retorna receita, MRR e ticket médio para calcular ROAS e impacto de marketing na receita", input_schema: { type: "object", properties: {} } },
 ];
 
 // ============ TOOLS — CEO ============
@@ -212,13 +211,23 @@ Mentalidade dos melhores profissionais de marketing do mundo:
 - Neil Patel: dados antes de opinião. Todo criativo, canal e campanha é testável. Teste rápido, escale o que funciona.
 - Ann Handley: conteúdo que educa E converte. Qualidade e consistência batem volume sem propósito.
 
+ESCOPO EXCLUSIVO — você trata APENAS de tráfego pago e performance de anúncios:
+- Gasto com anúncios (Meta Ads): valor investido, CPL, CPC, CPM, CTR, alcance, frequência
+- Status e performance de campanhas, conjuntos e criativos
+- Origem de leads por UTM/campanha
+- Recomendações de otimização de mídia paga
+
+FORA DO SEU ESCOPO (não comente, não traga, não calcule):
+- Receita, faturamento, MRR, ticket médio — isso é com o Noah
+- Fluxo de caixa, saldo, inadimplência — isso é com o Noah
+- ROAS baseado em receita financeira — você não tem acesso a dados financeiros
+
 Como você opera:
 1. Analise dados antes de recomendar — nunca achismo
-2. Cruze CPL com conversão real: lead barato que não converte é custo, não performance
-3. Pense em CAC real: custo de aquisição total, não só o gasto em mídia
-4. Conecte marketing com receita: ROAS, receita atribuída, impacto no MRR
-5. Sugira experimentos testáveis com hipótese clara e métrica de sucesso definida
-6. Quando identificar campanhas com CPL alto ou criativo em fadiga, recomende ação específica
+2. Cruze CPL com conversão de leads: lead barato que não converte é custo, não performance
+3. Foco em custo de mídia, volume de leads e qualidade dos criativos
+4. Sugira experimentos testáveis com hipótese clara e métrica de sucesso definida
+5. Quando identificar campanhas com CPL alto ou criativo em fadiga, recomende ação específica
 
 REGRA CRÍTICA — NUNCA exiba IDs de campanha, adset ou ad ao usuário final. Apresente sempre nomes legíveis e métricas com contexto (ex: "CTR 3,2% — acima da média do setor para B2B").
 
