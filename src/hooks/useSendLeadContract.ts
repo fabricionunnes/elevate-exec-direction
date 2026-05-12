@@ -162,11 +162,12 @@ export function useSendLeadContract() {
       // Use contractual data: company (razão social), trade_name, legal representative info
       const clientName = lead.company || lead.trade_name || lead.name;
 
-      // Check if there's already a contract for this lead
+      // Check if there's already a contract for this lead (same document AND same product)
       const { data: existingContract } = await supabase
         .from("generated_contracts")
         .select("id, pdf_url, zapsign_document_token")
         .eq("client_document", lead.document)
+        .eq("product_id", lead.product_id)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
