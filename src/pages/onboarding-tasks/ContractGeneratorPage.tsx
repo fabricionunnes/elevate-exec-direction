@@ -216,7 +216,13 @@ export default function ContractGeneratorPage() {
         .limit(50);
 
       if (error) throw error;
-      const contracts = data || [];
+      // Reordena pela data mais recente (envio ao ZapSign ou criação) para que
+      // contratos reenviados subam ao topo do histórico
+      const contracts = (data || []).slice().sort((a: any, b: any) => {
+        const aDate = new Date(a.zapsign_sent_at || a.created_at).getTime();
+        const bDate = new Date(b.zapsign_sent_at || b.created_at).getTime();
+        return bDate - aDate;
+      });
       setSavedContracts(contracts);
 
       // Batch-check ZapSign status for contracts that were sent
