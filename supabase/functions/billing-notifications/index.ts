@@ -316,9 +316,7 @@ function buildMessage(
   const formatBRL = (cents: number) =>
     (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-  const parcela = invoice.installment_number && invoice.total_installments
-    ? `${invoice.installment_number}/${invoice.total_installments}`
-    : "";
+  const parcela = "";
 
   let msg = rule.message_template;
   msg = msg.replace(/\{\{nome_cliente\}\}/g, company.name || "");
