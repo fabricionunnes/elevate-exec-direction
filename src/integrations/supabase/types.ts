@@ -23258,6 +23258,44 @@ export type Database = {
           },
         ]
       }
+      north_star_alerts_sent: {
+        Row: {
+          achieved_value_cents: number
+          company_id: string
+          created_at: string
+          id: string
+          month_year: string
+          target_value_cents: number
+          threshold: number
+        }
+        Insert: {
+          achieved_value_cents?: number
+          company_id: string
+          created_at?: string
+          id?: string
+          month_year: string
+          target_value_cents?: number
+          threshold: number
+        }
+        Update: {
+          achieved_value_cents?: number
+          company_id?: string
+          created_at?: string
+          id?: string
+          month_year?: string
+          target_value_cents?: number
+          threshold?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "north_star_alerts_sent_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       office_activity_logs: {
         Row: {
           action: string
@@ -23816,6 +23854,8 @@ export type Database = {
           kickoff_date: string | null
           main_challenges: string | null
           name: string
+          north_star_metric_cents: number | null
+          north_star_metric_label: string | null
           notes: string | null
           objectives_with_unv: string | null
           owner_cpf: string | null
@@ -23891,6 +23931,8 @@ export type Database = {
           kickoff_date?: string | null
           main_challenges?: string | null
           name: string
+          north_star_metric_cents?: number | null
+          north_star_metric_label?: string | null
           notes?: string | null
           objectives_with_unv?: string | null
           owner_cpf?: string | null
@@ -23966,6 +24008,8 @@ export type Database = {
           kickoff_date?: string | null
           main_challenges?: string | null
           name?: string
+          north_star_metric_cents?: number | null
+          north_star_metric_label?: string | null
           notes?: string | null
           objectives_with_unv?: string | null
           owner_cpf?: string | null
