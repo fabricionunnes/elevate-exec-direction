@@ -213,6 +213,8 @@ const KickoffFormPage = () => {
           : initialFormData.quarterly_goals;
 
         setFormData({
+          north_star_metric_cents: Number((data as any).north_star_metric_cents) || 0,
+          north_star_metric_label: (data as any).north_star_metric_label || "",
           main_challenges: data.main_challenges || "",
           sales_team_size: (data as any).sales_team_size || "",
           conversion_rate: (data as any).conversion_rate || "",
