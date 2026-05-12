@@ -1114,11 +1114,12 @@ Deno.serve(async (req) => {
   // ── AÇÕES DE CRON ──
   const action = url.searchParams.get("action");
   if (action === "daily-meeting") {
-    EdgeRuntime.waitUntil(runAlignmentMeeting("daily"));
+    // Síncrono: aguarda a reunião completa antes de responder (evita timeout do waitUntil)
+    await runAlignmentMeeting("daily");
     return new Response(JSON.stringify({ ok: true, started: "daily-meeting" }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   if (action === "reuniao" || action === "alinhamento") {
-    EdgeRuntime.waitUntil(runAlignmentMeeting("ondemand"));
+    await runAlignmentMeeting("ondemand");
     return new Response(JSON.stringify({ ok: true, started: "reuniao-alinhamento" }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   if (action === "check-in") {
