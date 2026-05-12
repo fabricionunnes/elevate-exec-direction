@@ -72,7 +72,24 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
     load();
   }, [companyId]);
 
-  if (loading || !targetCents) return null;
+  if (loading) return null;
+
+  if (!targetCents) {
+    return (
+      <Card className="border-2 border-dashed border-primary/40 bg-primary/5">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Compass className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base">Norte Estratégico (NSM)</CardTitle>
+            <Badge variant="outline" className="uppercase tracking-wide text-[10px]">Não definido</Badge>
+          </div>
+          <CardDescription className="mt-1">
+            Defina a meta principal de faturamento mensal no formulário de Kickoff para acompanhar o NSM aqui e receber alertas em 70%, 90% e 100%.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
 
   const targetValue = targetCents / 100;
   const pct = targetValue > 0 ? Math.min(999, Math.round((achievedValue / targetValue) * 100)) : 0;
