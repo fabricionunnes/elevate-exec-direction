@@ -132,6 +132,120 @@ const endpoints: EndpointDoc[] = [
   }
 }`,
   },
+  {
+    action: "create",
+    method: "POST",
+    description: "Criar uma nova reunião dentro de um projeto",
+    params: [
+      { name: "project_id", desc: "UUID do projeto (body)", required: true },
+      { name: "meeting_title", desc: "Título da reunião (body)", required: true },
+      { name: "meeting_date", desc: "Data/hora ISO 8601 (body)", required: true },
+      { name: "subject", desc: "Assunto (body)", required: true },
+      { name: "staff_id", desc: "UUID do responsável (body)", required: false },
+      { name: "scheduled_by", desc: "UUID de quem agendou (body)", required: false },
+      { name: "attendees", desc: "Participantes em texto (body)", required: false },
+      { name: "meeting_link", desc: "Link da reunião (body)", required: false },
+      { name: "notes", desc: "Anotações iniciais (body)", required: false },
+      { name: "is_internal", desc: "Reunião interna - não visível ao cliente (body)", required: false },
+    ],
+    example: `POST ${API_URL}?module=project_meetings&action=create
+Content-Type: application/json
+
+{
+  "project_id": "UUID-DO-PROJETO",
+  "meeting_title": "Kickoff - Empresa X",
+  "meeting_date": "2026-05-20T14:00:00-03:00",
+  "subject": "Reunião de kickoff",
+  "staff_id": "UUID-DO-CONSULTOR",
+  "attendees": "João, Maria",
+  "meeting_link": "https://meet.google.com/abc-def-ghi",
+  "is_internal": false
+}`,
+    response: `{
+  "data": {
+    "id": "uuid-gerado",
+    "project_id": "uuid",
+    "meeting_title": "Kickoff - Empresa X",
+    "meeting_date": "2026-05-20T17:00:00Z",
+    "is_finalized": false,
+    "created_at": "2026-05-13T10:00:00Z"
+  }
+}`,
+  },
+  {
+    action: "update",
+    method: "POST",
+    description: "Editar/alterar dados de uma reunião existente (envie só os campos que quer mudar)",
+    params: [
+      { name: "id", desc: "UUID da reunião (query)", required: true },
+      { name: "meeting_title", desc: "Novo título (body)", required: false },
+      { name: "meeting_date", desc: "Nova data ISO 8601 (body)", required: false },
+      { name: "subject", desc: "Novo assunto (body)", required: false },
+      { name: "notes", desc: "Anotações (body)", required: false },
+      { name: "live_notes", desc: "Notas ao vivo (body)", required: false },
+      { name: "attendees", desc: "Participantes (body)", required: false },
+      { name: "meeting_link", desc: "Link da reunião (body)", required: false },
+      { name: "recording_link", desc: "Link da gravação (body)", required: false },
+      { name: "transcript", desc: "Transcrição (body)", required: false },
+      { name: "staff_id", desc: "Trocar responsável (body)", required: false },
+      { name: "is_no_show", desc: "Marcar como no-show (body)", required: false },
+      { name: "is_internal", desc: "Marcar como interna (body)", required: false },
+    ],
+    example: `POST ${API_URL}?module=project_meetings&action=update&id=UUID
+Content-Type: application/json
+
+{
+  "meeting_date": "2026-05-21T15:00:00-03:00",
+  "notes": "Cliente solicitou remarcar"
+}`,
+    response: `{
+  "data": {
+    "id": "uuid",
+    "meeting_date": "2026-05-21T18:00:00Z",
+    "notes": "Cliente solicitou remarcar",
+    "updated_at": "2026-05-13T10:30:00Z"
+  }
+}`,
+  },
+  {
+    action: "complete",
+    method: "POST",
+    description: "Concluir/finalizar uma reunião (marca is_finalized=true). Pode enviar notas, transcrição, gravação ou no-show no mesmo passo.",
+    params: [
+      { name: "id", desc: "UUID da reunião (query)", required: true },
+      { name: "notes", desc: "Ata/anotações finais (body)", required: false },
+      { name: "live_notes", desc: "Notas feitas durante (body)", required: false },
+      { name: "transcript", desc: "Transcrição completa (body)", required: false },
+      { name: "recording_link", desc: "Link da gravação (body)", required: false },
+      { name: "is_no_show", desc: "Marcar como no-show (body)", required: false },
+    ],
+    example: `POST ${API_URL}?module=project_meetings&action=complete&id=UUID
+Content-Type: application/json
+
+{
+  "notes": "Definimos próximos passos e responsáveis",
+  "recording_link": "https://drive.google.com/file/d/..."
+}`,
+    response: `{
+  "data": {
+    "id": "uuid",
+    "is_finalized": true,
+    "notes": "Definimos próximos passos e responsáveis",
+    "recording_link": "https://drive.google.com/file/d/...",
+    "updated_at": "2026-05-13T16:00:00Z"
+  }
+}`,
+  },
+  {
+    action: "delete",
+    method: "POST",
+    description: "Excluir permanentemente uma reunião (remove também briefings, slides e respostas CSAT vinculadas)",
+    params: [
+      { name: "id", desc: "UUID da reunião (query)", required: true },
+    ],
+    example: `POST ${API_URL}?module=project_meetings&action=delete&id=UUID`,
+    response: `{ "success": true }`,
+  },
 ];
 
 export function ProjectMeetingsApiDocs() {
