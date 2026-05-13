@@ -5,6 +5,8 @@ project_id = "czmyjgdixwhpfasfugkm"
     verify_jwt = false
   [functions.nsm-progress-check]
     verify_jwt = false
+  [functions.nsm-api]
+    verify_jwt = false
   [functions.self-service-signup]
     verify_jwt = false
   [functions.academy-generate-quiz]
