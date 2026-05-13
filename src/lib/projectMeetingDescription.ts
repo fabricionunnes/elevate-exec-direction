@@ -16,7 +16,7 @@ export function buildProjectEventDescription(
       typeof window !== "undefined" && window.location?.origin
         ? window.location.origin
         : "https://unvholdings.com.br";
-    const link = `${origin}/onboarding-tasks/${projectId}`;
+    const link = `${origin}/#/onboarding-tasks/${projectId}`;
 
     if (lines.length) lines.push("");
     lines.push("──────────────");
