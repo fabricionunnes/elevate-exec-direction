@@ -169,6 +169,46 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
     }
   };
 
+  const archiveAndCreateNew = async () => {
+    if (!newTargetValue || newTargetValue <= 0) {
+      toast({ title: "Defina o novo valor da meta", variant: "destructive" });
+      return;
+    }
+    setArchiving(true);
+    try {
+      const monthYear = format(startOfMonth(new Date()), "yyyy-MM-dd");
+      // 1. Arquiva NSM atual no histórico
+      const { error: insErr } = await supabase.from("north_star_achievements" as any).insert({
+        company_id: companyId,
+        target_cents: targetCents,
+        achieved_cents: Math.round(achievedValue * 100),
+        month_year: monthYear,
+        label: label || null,
+      });
+      if (insErr) throw insErr;
+
+      // 2. Define nova meta manual (override sobre o melhor mês)
+      const newCents = Math.round(newTargetValue * 100);
+      const { error: upErr } = await supabase
+        .from("onboarding_companies")
+        .update({ north_star_metric_cents: newCents } as any)
+        .eq("id", companyId);
+      if (upErr) throw upErr;
+
+      toast({
+        title: "🎯 Nova North Star Metric definida!",
+        description: "A meta anterior foi salva no histórico de conquistas.",
+      });
+      setCreatingNew(false);
+      setNewTargetValue(0);
+      await load();
+    } catch (e: any) {
+      toast({ title: "Erro ao criar nova NSM", description: e.message || "Tente novamente", variant: "destructive" });
+    } finally {
+      setArchiving(false);
+    }
+  };
+
   if (loading) return null;
 
   const targetValue = targetCents / 100;
