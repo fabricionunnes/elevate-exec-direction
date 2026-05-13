@@ -2203,6 +2203,14 @@ const OnboardingTasksPage = () => {
                     <Code2 className="h-4 w-4 mr-2" /> API
                   </DropdownMenuItem>
                 )}
+                {isMaster && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/mrr")}>
+                      <TrendingUp className="h-4 w-4 mr-2" /> MRR do Mês
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
