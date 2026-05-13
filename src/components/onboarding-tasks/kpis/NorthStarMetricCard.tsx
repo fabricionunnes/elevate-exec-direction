@@ -22,7 +22,9 @@ const formatBRLFromValue = (val: number) =>
 
 export const NorthStarMetricCard = ({ companyId }: Props) => {
   const [loading, setLoading] = useState(true);
-  const [targetCents, setTargetCents] = useState<number>(0);
+  const [manualTargetCents, setManualTargetCents] = useState<number>(0);
+  const [bestMonthCents, setBestMonthCents] = useState<number>(0);
+  const [bestMonthRef, setBestMonthRef] = useState<string>("");
   const [label, setLabel] = useState<string>("");
   const [achievedValue, setAchievedValue] = useState<number>(0);
   const [editing, setEditing] = useState(false);
@@ -36,7 +38,7 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
       const [companyRes, kpisRes] = await Promise.all([
         supabase
           .from("onboarding_companies")
-          .select("north_star_metric_cents, north_star_metric_label")
+          .select("north_star_metric_cents, north_star_metric_label, kickoff_date, contract_start_date, created_at")
           .eq("id", companyId)
           .maybeSingle(),
         supabase
@@ -48,28 +50,65 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
           .eq("kpi_type", "monetary"),
       ]);
 
-      const target = Number((companyRes.data as any)?.north_star_metric_cents) || 0;
-      setTargetCents(target);
-      setLabel((companyRes.data as any)?.north_star_metric_label || "");
+      const company: any = companyRes.data || {};
+      setManualTargetCents(Number(company.north_star_metric_cents) || 0);
+      setLabel(company.north_star_metric_label || "");
 
       const kpiIds = (kpisRes.data || []).map((k: any) => k.id);
       if (kpiIds.length === 0) {
         setAchievedValue(0);
+        setBestMonthCents(0);
         return;
       }
 
-      const start = format(startOfMonth(new Date()), "yyyy-MM-dd");
-      const end = format(endOfMonth(new Date()), "yyyy-MM-dd");
-      const { data: entries } = await supabase
-        .from("kpi_entries")
-        .select("value")
-        .eq("company_id", companyId)
-        .in("kpi_id", kpiIds)
-        .gte("entry_date", start)
-        .lte("entry_date", end);
+      // Data de início do relacionamento UNV
+      const unvStart =
+        company.kickoff_date ||
+        company.contract_start_date ||
+        (company.created_at ? format(new Date(company.created_at), "yyyy-MM-dd") : null);
 
-      const total = (entries || []).reduce((s: number, e: any) => s + Number(e.value || 0), 0);
+      // Mês atual: realizado
+      const monthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
+      const monthEnd = format(endOfMonth(new Date()), "yyyy-MM-dd");
+
+      // Histórico desde UNV para calcular o melhor mês
+      const histStart = unvStart || "1970-01-01";
+      const [{ data: monthEntries }, { data: histEntries }] = await Promise.all([
+        supabase
+          .from("kpi_entries")
+          .select("value")
+          .eq("company_id", companyId)
+          .in("kpi_id", kpiIds)
+          .gte("entry_date", monthStart)
+          .lte("entry_date", monthEnd),
+        supabase
+          .from("kpi_entries")
+          .select("value, entry_date")
+          .eq("company_id", companyId)
+          .in("kpi_id", kpiIds)
+          .gte("entry_date", histStart),
+      ]);
+
+      const total = (monthEntries || []).reduce((s: number, e: any) => s + Number(e.value || 0), 0);
       setAchievedValue(total);
+
+      // Agrupa por mês (yyyy-MM) e encontra o pico (excluindo o mês corrente para servir de meta)
+      const byMonth = new Map<string, number>();
+      (histEntries || []).forEach((e: any) => {
+        const ym = String(e.entry_date).slice(0, 7);
+        byMonth.set(ym, (byMonth.get(ym) || 0) + Number(e.value || 0));
+      });
+      const currentYM = format(new Date(), "yyyy-MM");
+      let best = 0;
+      let bestYM = "";
+      byMonth.forEach((v, ym) => {
+        if (ym !== currentYM && v > best) {
+          best = v;
+          bestYM = ym;
+        }
+      });
+      setBestMonthCents(Math.round(best * 100));
+      setBestMonthRef(bestYM);
     } finally {
       setLoading(false);
     }
