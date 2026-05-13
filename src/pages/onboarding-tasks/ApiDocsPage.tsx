@@ -167,6 +167,7 @@ export default function ApiDocsPage() {
               )}
             </div>
             <div ref={allRef} className="space-y-12 bg-background p-4">
+              <section><NSMApiDocs /></section>
               <section><FinancialApiDocs /></section>
               <section><CrmApiDocs /></section>
               <section><CRMTrafficApiDocs /></section>
@@ -175,6 +176,10 @@ export default function ApiDocsPage() {
               <section><ConversationsApiDocs /></section>
               <section><WhatsAppSendApiDocs /></section>
             </div>
+          </TabsContent>
+
+          <TabsContent value="nsm">
+            <NSMApiDocs />
           </TabsContent>
 
           <TabsContent value="whatsapp_send">
