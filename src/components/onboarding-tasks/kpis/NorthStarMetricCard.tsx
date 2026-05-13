@@ -320,9 +320,16 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
                   </Button>
                 </div>
               ) : (
-                <p className="text-xl md:text-2xl font-black text-white drop-shadow mt-1">
-                  {targetCents > 0 ? formatBRL(targetCents) : "Defina a meta"}
-                </p>
+                <>
+                  <p className="text-xl md:text-2xl font-black text-white drop-shadow mt-1">
+                    {targetCents > 0 ? formatBRL(targetCents) : "Sem histórico"}
+                  </p>
+                  {bestMonthCents > 0 && (
+                    <p className="text-[10px] uppercase tracking-wider text-white/70 font-semibold mt-1">
+                      Melhor mês após UNV{bestMonthLabel ? ` · ${bestMonthLabel}` : ""}
+                    </p>
+                  )}
+                </>
               )}
             </div>
 
