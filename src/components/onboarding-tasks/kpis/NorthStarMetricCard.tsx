@@ -4,10 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import { Compass, TrendingUp, Trophy, Flame, Sparkles, Pencil, Check, X, Star } from "lucide-react";
+import { TrendingUp, Trophy, Flame, Sparkles, Pencil, Check, X, Star } from "lucide-react";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
+import northStarImg from "@/assets/north-star.png";
 
 interface Props {
   companyId: string;
@@ -115,7 +116,7 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
   const close70 = pct >= 70 && pct < 90;
   const remaining = Math.max(0, targetValue - achievedValue);
 
-  const Icon = reached ? Trophy : close90 ? Flame : close70 ? TrendingUp : Compass;
+  const Icon = reached ? Trophy : close90 ? Flame : close70 ? TrendingUp : Star;
 
   // Paleta VIBRANTE roxa/violeta como cor principal de destaque (diferente dos outros cards)
   const palette = reached
@@ -183,23 +184,35 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
           {/* Header */}
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-4">
-              <div className="relative rounded-2xl p-4 bg-white/15 backdrop-blur-md ring-2 ring-white/30 shadow-2xl">
-                <Icon className="h-7 w-7 text-white drop-shadow-lg" />
+              <div className="relative shrink-0">
+                <div
+                  aria-hidden
+                  className="absolute inset-0 rounded-full bg-amber-300/40 blur-2xl animate-pulse"
+                />
+                <img
+                  src={northStarImg}
+                  alt="North Star"
+                  width={96}
+                  height={96}
+                  loading="lazy"
+                  className="relative h-20 w-20 md:h-24 md:w-24 drop-shadow-[0_0_25px_rgba(255,215,0,0.6)]"
+                />
                 {reached && (
-                  <Sparkles className="absolute -top-1.5 -right-1.5 h-4 w-4 text-amber-200 animate-pulse" />
+                  <Sparkles className="absolute -top-1 -right-1 h-5 w-5 text-amber-200 animate-pulse" />
                 )}
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="uppercase tracking-[0.25em] text-[11px] font-bold text-white/90 drop-shadow">
-                    ⭐ North Star Metric
+                  <span className="uppercase tracking-[0.25em] text-[11px] font-bold text-white/90 drop-shadow inline-flex items-center gap-1.5">
+                    <Icon className="h-3.5 w-3.5" />
+                    North Star Metric
                   </span>
                   <Badge className="bg-white/20 text-white border-white/40 hover:bg-white/30 text-[10px] uppercase tracking-wider backdrop-blur">
                     {format(new Date(), "MMMM yyyy", { locale: ptBR })}
                   </Badge>
                 </div>
                 <h2 className="text-2xl md:text-3xl font-black tracking-tight leading-tight mt-1 drop-shadow-lg">
-                  Norte Estratégico do Mês
+                  North Star Metric
                 </h2>
                 {label && <p className="text-sm text-white/80 mt-1 font-medium">{label}</p>}
               </div>
@@ -240,14 +253,14 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
                   <CurrencyInput
                     value={editValue}
                     onChange={setEditValue}
-                    className="h-9 bg-white/90 text-foreground border-0 font-bold"
+                    className="h-9 bg-white text-slate-900 placeholder:text-slate-400 border-0 font-bold"
                     autoFocus
                   />
                   <Button
                     size="icon"
                     onClick={saveEdit}
                     disabled={saving}
-                    className="h-9 w-9 bg-white text-foreground hover:bg-white/90 shrink-0"
+                    className="h-9 w-9 bg-white text-slate-900 hover:bg-white/90 shrink-0"
                   >
                     <Check className="h-4 w-4" />
                   </Button>
