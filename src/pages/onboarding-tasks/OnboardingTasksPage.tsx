@@ -1963,6 +1963,10 @@ const OnboardingTasksPage = () => {
                             <Crown className="h-4 w-4 mr-2" />
                             Painel do CEO
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/mrr")}>
+                            <DollarSign className="h-4 w-4 mr-2" />
+                            MRR
+                          </DropdownMenuItem>
                         </>
                       )}
                       {canAccessFinancial && (
@@ -2276,6 +2280,10 @@ const OnboardingTasksPage = () => {
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/ceo")}>
                         <Crown className="h-4 w-4 mr-2" />
                         Painel do CEO
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/mrr")}>
+                        <DollarSign className="h-4 w-4 mr-2" />
+                        MRR
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate("/whitelabel-gestao")}>
                         <Building2 className="h-4 w-4 mr-2" />
