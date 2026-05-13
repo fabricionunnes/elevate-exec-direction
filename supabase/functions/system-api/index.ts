@@ -1383,7 +1383,7 @@ serve(async (req) => {
               asaas: { actions: ["create_charge"], description: "Criar cobrança no Asaas (PIX/Boleto/Cartão)" },
               conversations: { actions: ["list", "get", "messages", "send_message"], description: "Conversas WhatsApp dos projetos" },
               whatsapp: { actions: ["list_instances", "send"], description: "Enviar mensagens WhatsApp escolhendo a instância" },
-              project_meetings: { actions: ["list", "get"], description: "Reuniões de projetos (atas, participantes, transcrições, briefings)" },
+              project_meetings: { actions: ["list", "get", "create", "update", "complete", "delete"], description: "Reuniões de projetos (CRUD + finalizar)" },
             },
             usage: "?module=<module>&action=<action>&id=<id>",
             auth: "Authorization: Bearer <jwt> OU x-api-key: <key>",
