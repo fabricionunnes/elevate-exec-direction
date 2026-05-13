@@ -340,6 +340,73 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Strategy 3: Match by Asaas invoiceUrl against company_invoices.payment_link_url.
+    // Catches standalone payments (no subscription field) that were created by asaas-sync
+    // for recurring charges.
+    if (!matched && payment.invoiceUrl) {
+      const { data: urlMatches } = await supabase
+        .from("company_invoices")
+        .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id, status, description, company_id")
+        .eq("payment_link_url", payment.invoiceUrl)
+        .limit(1);
+
+      if (urlMatches?.length) {
+        const invoice = urlMatches[0];
+        console.log(`[Asaas Webhook] Matched invoice ${invoice.id} by invoiceUrl (status: ${invoice.status})`);
+
+        if (newStatus === "paid" && (invoice.status === "paid" || invoice.status === "partial")) {
+          console.log(`[Asaas Webhook] Invoice ${invoice.id} already has payment, skipping`);
+          matched = true;
+        } else if (newStatus === "paid") {
+          const discountCents = paymentValueCents > 0 && paymentValueCents < invoice.amount_cents
+            ? invoice.amount_cents - paymentValueCents
+            : 0;
+          const actualPaidCents = paymentValueCents > 0 ? paymentValueCents : invoice.amount_cents;
+
+          await supabase
+            .from("company_invoices")
+            .update({
+              status: "paid",
+              paid_at: new Date().toISOString(),
+              paid_amount_cents: actualPaidCents,
+              discount_cents: discountCents,
+              pagarme_charge_id: paymentId,
+              payment_fee_cents: 0,
+            })
+            .eq("id", invoice.id);
+          matched = true;
+          console.log(`[Asaas Webhook] Invoice ${invoice.id} marked paid via invoiceUrl${discountCents > 0 ? ` (discount ${discountCents} cents)` : ''}`);
+
+          await creditAsaasBank(supabase, actualPaidCents, `Fatura ${invoice.id}${invoice.installment_number ? ` (parcela ${invoice.installment_number}/${invoice.total_installments})` : ''}${discountCents > 0 ? ` desconto R$${(discountCents/100).toFixed(2)}` : ''}`, invoice.id, invoice.recurring_charge_id);
+          reconcileReceivable(supabase, invoice.id, null, actualPaidCents, invoice.description || '', dueDate).catch(() => {});
+
+          supabase.functions.invoke("notify-payment-confirmed", {
+            body: { invoice_id: invoice.id },
+          }).catch((e: any) => console.error("[Asaas Webhook] WhatsApp notify error:", e));
+
+          if (invoice.installment_number === invoice.total_installments && invoice.recurring_charge_id) {
+            const skip = await hasEquivalentPendingElsewhere(supabase, invoice.company_id, invoice.amount_cents, invoice.recurring_charge_id);
+            if (!skip) {
+              await supabase.functions.invoke("generate-invoices", {
+                body: { action: "auto_renew", recurring_charge_id: invoice.recurring_charge_id },
+              });
+            }
+          }
+        } else if (newStatus === "pending") {
+          const due = new Date(dueDate + "T12:00:00");
+          const revertStatus = due < new Date() ? "overdue" : "pending";
+          await supabase
+            .from("company_invoices")
+            .update({ status: revertStatus, paid_at: null, paid_amount_cents: null, pagarme_charge_id: null })
+            .eq("id", invoice.id);
+          matched = true;
+        } else {
+          await supabase.from("company_invoices").update({ status: newStatus }).eq("id", invoice.id);
+          matched = true;
+        }
+      }
+    }
+
     if (!matched) {
       console.log(`[Asaas Webhook] No match found for payment ${paymentId}`);
     }
