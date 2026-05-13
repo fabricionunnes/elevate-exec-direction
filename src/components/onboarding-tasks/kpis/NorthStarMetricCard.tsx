@@ -365,6 +365,72 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
             </div>
           )}
 
+          {/* Comparativo: Recorde pós UNV x Mês atual */}
+          {(bestMonthCents > 0 || achievedValue > 0) && (() => {
+            const recordValue = bestMonthCents / 100;
+            const maxScale = Math.max(recordValue, achievedValue, 1);
+            const recordPct = (recordValue / maxScale) * 100;
+            const currentPct = (achievedValue / maxScale) * 100;
+            const beatRecord = achievedValue > recordValue && recordValue > 0;
+            return (
+              <div className="rounded-2xl bg-black/25 backdrop-blur-md p-4 ring-1 ring-white/20 shadow-inner space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] uppercase tracking-wider text-white/90 font-bold inline-flex items-center gap-1.5">
+                    <Trophy className="h-3.5 w-3.5 text-amber-200" />
+                    Recorde pós UNV vs Mês atual
+                  </p>
+                  {beatRecord && (
+                    <Badge className="bg-amber-300 text-amber-950 border-0 text-[10px] uppercase tracking-wider font-black">
+                      🔥 Novo recorde!
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Recorde histórico */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-white/80 font-semibold inline-flex items-center gap-1">
+                      <Trophy className="h-3 w-3 text-amber-200" />
+                      Maior resultado{bestMonthLabel ? ` · ${bestMonthLabel}` : " pós UNV"}
+                    </span>
+                    <span className="font-black text-white drop-shadow">
+                      {recordValue > 0 ? formatBRLFromValue(recordValue) : "—"}
+                    </span>
+                  </div>
+                  <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="h-full bg-gradient-to-r from-amber-300 to-amber-200 transition-all duration-700"
+                      style={{ width: `${recordPct}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Mês atual */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-white/80 font-semibold inline-flex items-center gap-1">
+                      <TrendingUp className="h-3 w-3 text-white" />
+                      Mês atual · {format(new Date(), "MMM/yyyy", { locale: ptBR })}
+                    </span>
+                    <span className="font-black text-white drop-shadow">
+                      {formatBRLFromValue(achievedValue)}
+                    </span>
+                  </div>
+                  <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="h-full bg-gradient-to-r from-white via-white to-white/80 transition-all duration-700"
+                      style={{ width: `${currentPct}%` }}
+                    />
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-white/60 leading-relaxed">
+                  O mês atual zera todo dia 1º. O recorde permanece como referência histórica desde o início UNV.
+                </p>
+              </div>
+            );
+          })()}
+
           {reached && (
             <div className="flex items-center justify-center gap-2 rounded-2xl bg-white/20 backdrop-blur-md ring-2 ring-white/40 py-3 shadow-xl">
               <Trophy className="h-5 w-5 text-amber-200" />
