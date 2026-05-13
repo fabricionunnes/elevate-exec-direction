@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import { TrendingUp, Trophy, Flame, Sparkles, Pencil, Check, X, Star } from "lucide-react";
+import { TrendingUp, Trophy, Flame, Sparkles, Pencil, Check, X, Star, History, Plus, Target } from "lucide-react";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
@@ -20,6 +20,15 @@ const formatBRL = (cents: number) =>
 const formatBRLFromValue = (val: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val || 0);
 
+interface Achievement {
+  id: string;
+  target_cents: number;
+  achieved_cents: number;
+  month_year: string;
+  label: string | null;
+  archived_at: string;
+}
+
 export const NorthStarMetricCard = ({ companyId }: Props) => {
   const [loading, setLoading] = useState(true);
   const [manualTargetCents, setManualTargetCents] = useState<number>(0);
@@ -30,12 +39,17 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState<number>(0);
   const [saving, setSaving] = useState(false);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [creatingNew, setCreatingNew] = useState(false);
+  const [newTargetValue, setNewTargetValue] = useState<number>(0);
+  const [archiving, setArchiving] = useState(false);
 
   const load = async () => {
     if (!companyId) return;
     setLoading(true);
     try {
-      const [companyRes, kpisRes] = await Promise.all([
+      const [companyRes, kpisRes, achRes] = await Promise.all([
         supabase
           .from("onboarding_companies")
           .select("north_star_metric_cents, north_star_metric_label, kickoff_date, contract_start_date, created_at")
@@ -48,7 +62,13 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
           .eq("is_active", true)
           .eq("is_main_goal", true)
           .eq("kpi_type", "monetary"),
+        supabase
+          .from("north_star_achievements" as any)
+          .select("id, target_cents, achieved_cents, month_year, label, archived_at")
+          .eq("company_id", companyId)
+          .order("archived_at", { ascending: false }),
       ]);
+      setAchievements(((achRes.data as any) || []) as Achievement[]);
 
       const company: any = companyRes.data || {};
       setManualTargetCents(Number(company.north_star_metric_cents) || 0);
@@ -146,6 +166,46 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
       toast({ title: "Erro ao salvar", description: e.message || "Tente novamente", variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const archiveAndCreateNew = async () => {
+    if (!newTargetValue || newTargetValue <= 0) {
+      toast({ title: "Defina o novo valor da meta", variant: "destructive" });
+      return;
+    }
+    setArchiving(true);
+    try {
+      const monthYear = format(startOfMonth(new Date()), "yyyy-MM-dd");
+      // 1. Arquiva NSM atual no histórico
+      const { error: insErr } = await supabase.from("north_star_achievements" as any).insert({
+        company_id: companyId,
+        target_cents: targetCents,
+        achieved_cents: Math.round(achievedValue * 100),
+        month_year: monthYear,
+        label: label || null,
+      });
+      if (insErr) throw insErr;
+
+      // 2. Define nova meta manual (override sobre o melhor mês)
+      const newCents = Math.round(newTargetValue * 100);
+      const { error: upErr } = await supabase
+        .from("onboarding_companies")
+        .update({ north_star_metric_cents: newCents } as any)
+        .eq("id", companyId);
+      if (upErr) throw upErr;
+
+      toast({
+        title: "🎯 Nova North Star Metric definida!",
+        description: "A meta anterior foi salva no histórico de conquistas.",
+      });
+      setCreatingNew(false);
+      setNewTargetValue(0);
+      await load();
+    } catch (e: any) {
+      toast({ title: "Erro ao criar nova NSM", description: e.message || "Tente novamente", variant: "destructive" });
+    } finally {
+      setArchiving(false);
     }
   };
 
@@ -432,12 +492,110 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
           })()}
 
           {reached && (
-            <div className="flex items-center justify-center gap-2 rounded-2xl bg-white/20 backdrop-blur-md ring-2 ring-white/40 py-3 shadow-xl">
-              <Trophy className="h-5 w-5 text-amber-200" />
-              <p className="text-base font-black text-white drop-shadow">
-                🎉 Norte Estratégico atingido neste mês!
-              </p>
-              <Sparkles className="h-5 w-5 text-amber-200 animate-pulse" />
+            <div className="rounded-2xl bg-gradient-to-br from-amber-300/30 via-yellow-200/20 to-amber-300/30 backdrop-blur-md ring-2 ring-amber-200/60 p-4 shadow-2xl space-y-3">
+              <div className="flex items-center justify-center gap-2">
+                <Trophy className="h-5 w-5 text-amber-200" />
+                <p className="text-base font-black text-white drop-shadow">
+                  🎉 North Star Metric atingida! Hora de elevar a régua.
+                </p>
+                <Sparkles className="h-5 w-5 text-amber-200 animate-pulse" />
+              </div>
+
+              {!creatingNew ? (
+                <Button
+                  onClick={() => {
+                    setNewTargetValue(Math.max(targetValue * 1.2, achievedValue * 1.1));
+                    setCreatingNew(true);
+                  }}
+                  className="w-full bg-white text-amber-900 hover:bg-amber-50 font-black gap-2 shadow-xl"
+                >
+                  <Plus className="h-4 w-4" />
+                  Definir nova North Star Metric
+                </Button>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[11px] uppercase tracking-wider text-white/90 font-bold inline-flex items-center gap-1.5">
+                    <Target className="h-3.5 w-3.5" /> Novo valor da meta
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <CurrencyInput
+                      value={newTargetValue}
+                      onChange={setNewTargetValue}
+                      className="h-10 bg-white text-slate-900 placeholder:text-slate-400 border-0 font-bold flex-1"
+                      autoFocus
+                    />
+                    <Button
+                      onClick={archiveAndCreateNew}
+                      disabled={archiving}
+                      className="h-10 bg-amber-400 text-amber-950 hover:bg-amber-300 font-black gap-1 shrink-0"
+                    >
+                      <Check className="h-4 w-4" /> Confirmar
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => setCreatingNew(false)}
+                      disabled={archiving}
+                      className="h-10 text-white hover:bg-white/20 shrink-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-white/70">
+                    A meta atual ({formatBRL(targetCents)}) será arquivada no histórico de conquistas.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Histórico de NSMs atingidas */}
+          {achievements.length > 0 && (
+            <div className="rounded-2xl bg-black/25 backdrop-blur-md p-4 ring-1 ring-white/20 shadow-inner">
+              <button
+                onClick={() => setShowHistory((v) => !v)}
+                className="w-full flex items-center justify-between text-white hover:opacity-90 transition-opacity"
+              >
+                <p className="text-[11px] uppercase tracking-wider font-bold inline-flex items-center gap-1.5">
+                  <History className="h-3.5 w-3.5 text-amber-200" />
+                  Histórico de NSMs atingidas
+                  <Badge className="bg-amber-300 text-amber-950 border-0 text-[10px] font-black ml-1">
+                    {achievements.length}
+                  </Badge>
+                </p>
+                <span className="text-xs font-bold opacity-80">{showHistory ? "Ocultar" : "Ver"}</span>
+              </button>
+
+              {showHistory && (
+                <ul className="mt-3 space-y-2">
+                  {achievements.map((a) => {
+                    const ach = (a.achieved_cents || 0) / 100;
+                    const tgt = (a.target_cents || 0) / 100;
+                    const p = tgt > 0 ? Math.round((ach / tgt) * 100) : 0;
+                    return (
+                      <li
+                        key={a.id}
+                        className="flex items-center justify-between gap-3 rounded-xl bg-white/10 px-3 py-2 ring-1 ring-white/15"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Trophy className="h-4 w-4 text-amber-200 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-white truncate">
+                              {format(new Date(a.month_year), "MMM/yyyy", { locale: ptBR })}
+                              {a.label ? ` · ${a.label}` : ""}
+                            </p>
+                            <p className="text-[10px] text-white/70">
+                              Meta {formatBRL(a.target_cents)} · Realizado {formatBRL(a.achieved_cents)}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge className="bg-amber-300 text-amber-950 border-0 text-[10px] font-black shrink-0">
+                          {p}%
+                        </Badge>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           )}
 
