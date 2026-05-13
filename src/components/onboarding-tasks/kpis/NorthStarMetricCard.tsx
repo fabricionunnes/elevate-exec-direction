@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Compass, TrendingUp, Trophy, Flame, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CurrencyInput } from "@/components/ui/currency-input";
+import { Compass, TrendingUp, Trophy, Flame, Sparkles, Pencil, Check, X, Star } from "lucide-react";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { toast } from "@/hooks/use-toast";
 
 interface Props {
   companyId: string;
@@ -22,79 +24,89 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
   const [targetCents, setTargetCents] = useState<number>(0);
   const [label, setLabel] = useState<string>("");
   const [achievedValue, setAchievedValue] = useState<number>(0);
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState<number>(0);
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    if (!companyId) return;
+    setLoading(true);
+    try {
+      const [companyRes, kpisRes] = await Promise.all([
+        supabase
+          .from("onboarding_companies")
+          .select("north_star_metric_cents, north_star_metric_label")
+          .eq("id", companyId)
+          .maybeSingle(),
+        supabase
+          .from("company_kpis")
+          .select("id")
+          .eq("company_id", companyId)
+          .eq("is_active", true)
+          .eq("is_main_goal", true)
+          .eq("kpi_type", "monetary"),
+      ]);
+
+      const target = Number((companyRes.data as any)?.north_star_metric_cents) || 0;
+      setTargetCents(target);
+      setLabel((companyRes.data as any)?.north_star_metric_label || "");
+
+      const kpiIds = (kpisRes.data || []).map((k: any) => k.id);
+      if (kpiIds.length === 0) {
+        setAchievedValue(0);
+        return;
+      }
+
+      const start = format(startOfMonth(new Date()), "yyyy-MM-dd");
+      const end = format(endOfMonth(new Date()), "yyyy-MM-dd");
+      const { data: entries } = await supabase
+        .from("kpi_entries")
+        .select("value")
+        .eq("company_id", companyId)
+        .in("kpi_id", kpiIds)
+        .gte("entry_date", start)
+        .lte("entry_date", end);
+
+      const total = (entries || []).reduce((s: number, e: any) => s + Number(e.value || 0), 0);
+      setAchievedValue(total);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const load = async () => {
-      if (!companyId) return;
-      setLoading(true);
-      try {
-        const [companyRes, kpisRes] = await Promise.all([
-          supabase
-            .from("onboarding_companies")
-            .select("north_star_metric_cents, north_star_metric_label")
-            .eq("id", companyId)
-            .maybeSingle(),
-          supabase
-            .from("company_kpis")
-            .select("id")
-            .eq("company_id", companyId)
-            .eq("is_active", true)
-            .eq("is_main_goal", true)
-            .eq("kpi_type", "monetary"),
-        ]);
-
-        const target = Number((companyRes.data as any)?.north_star_metric_cents) || 0;
-        setTargetCents(target);
-        setLabel((companyRes.data as any)?.north_star_metric_label || "");
-
-        const kpiIds = (kpisRes.data || []).map((k: any) => k.id);
-        if (kpiIds.length === 0) {
-          setAchievedValue(0);
-          return;
-        }
-
-        const start = format(startOfMonth(new Date()), "yyyy-MM-dd");
-        const end = format(endOfMonth(new Date()), "yyyy-MM-dd");
-        const { data: entries } = await supabase
-          .from("kpi_entries")
-          .select("value")
-          .eq("company_id", companyId)
-          .in("kpi_id", kpiIds)
-          .gte("entry_date", start)
-          .lte("entry_date", end);
-
-        const total = (entries || []).reduce((s: number, e: any) => s + Number(e.value || 0), 0);
-        setAchievedValue(total);
-      } finally {
-        setLoading(false);
-      }
-    };
     load();
   }, [companyId]);
 
-  if (loading) return null;
+  const startEdit = () => {
+    setEditValue(targetCents / 100);
+    setEditing(true);
+  };
 
-  // Estado: NSM não definido — placeholder elegante com CTA
-  if (!targetCents) {
-    return (
-      <Card className="relative overflow-hidden border-2 border-dashed border-primary/40 bg-gradient-to-br from-primary/5 via-background to-primary/10">
-        <CardContent className="p-6 flex items-start gap-4">
-          <div className="rounded-xl bg-primary/10 p-3">
-            <Compass className="h-6 w-6 text-primary" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-lg font-bold tracking-tight">Norte Estratégico (NSM)</h3>
-              <Badge variant="outline" className="uppercase tracking-wider text-[10px]">Não definido</Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Defina a meta principal de faturamento mensal no formulário de Kickoff para acompanhar o NSM aqui e receber alertas em 70%, 90% e 100%.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const cancelEdit = () => {
+    setEditing(false);
+  };
+
+  const saveEdit = async () => {
+    setSaving(true);
+    try {
+      const newCents = Math.round((editValue || 0) * 100);
+      const { error } = await supabase
+        .from("onboarding_companies")
+        .update({ north_star_metric_cents: newCents } as any)
+        .eq("id", companyId);
+      if (error) throw error;
+      setTargetCents(newCents);
+      setEditing(false);
+      toast({ title: "Norte Estratégico atualizado", description: "Nova meta salva com sucesso." });
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e.message || "Tente novamente", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return null;
 
   const targetValue = targetCents / 100;
   const pct = targetValue > 0 ? Math.min(999, Math.round((achievedValue / targetValue) * 100)) : 0;
@@ -105,142 +117,203 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
 
   const Icon = reached ? Trophy : close90 ? Flame : close70 ? TrendingUp : Compass;
 
-  // Paleta dramática por estado
+  // Paleta VIBRANTE roxa/violeta como cor principal de destaque (diferente dos outros cards)
   const palette = reached
     ? {
-        gradient: "from-emerald-500/25 via-emerald-400/10 to-teal-500/25",
-        ring: "ring-emerald-400/60",
-        glow: "shadow-[0_0_60px_-12px_hsl(142_76%_45%/0.55)]",
-        accent: "text-emerald-400",
-        bar: "bg-gradient-to-r from-emerald-400 to-teal-400",
-        chip: "bg-emerald-500/20 text-emerald-300 border-emerald-400/40",
+        gradient: "from-emerald-500 via-teal-500 to-green-500",
+        ring: "ring-emerald-300/70",
+        glow: "shadow-[0_0_80px_-10px_hsl(142_76%_45%/0.7)]",
+        accent: "text-emerald-100",
+        bar: "bg-gradient-to-r from-emerald-300 via-teal-200 to-green-300",
+        chip: "bg-white/25 text-white border-white/40",
       }
     : close90
     ? {
-        gradient: "from-amber-500/25 via-orange-400/10 to-rose-500/25",
-        ring: "ring-amber-400/60",
-        glow: "shadow-[0_0_60px_-12px_hsl(38_95%_55%/0.55)]",
-        accent: "text-amber-300",
-        bar: "bg-gradient-to-r from-amber-400 to-orange-400",
-        chip: "bg-amber-500/20 text-amber-200 border-amber-400/40",
+        gradient: "from-orange-500 via-amber-500 to-rose-500",
+        ring: "ring-amber-300/70",
+        glow: "shadow-[0_0_80px_-10px_hsl(38_95%_55%/0.7)]",
+        accent: "text-amber-50",
+        bar: "bg-gradient-to-r from-amber-200 via-orange-200 to-rose-200",
+        chip: "bg-white/25 text-white border-white/40",
       }
     : close70
     ? {
-        gradient: "from-sky-500/25 via-blue-400/10 to-indigo-500/25",
-        ring: "ring-sky-400/60",
-        glow: "shadow-[0_0_60px_-12px_hsl(217_91%_60%/0.5)]",
-        accent: "text-sky-300",
-        bar: "bg-gradient-to-r from-sky-400 to-indigo-400",
-        chip: "bg-sky-500/20 text-sky-200 border-sky-400/40",
+        gradient: "from-blue-600 via-indigo-600 to-cyan-500",
+        ring: "ring-sky-300/70",
+        glow: "shadow-[0_0_80px_-10px_hsl(217_91%_60%/0.7)]",
+        accent: "text-sky-50",
+        bar: "bg-gradient-to-r from-sky-200 via-blue-200 to-indigo-200",
+        chip: "bg-white/25 text-white border-white/40",
       }
     : {
-        gradient: "from-primary/25 via-primary/5 to-primary/20",
-        ring: "ring-primary/40",
-        glow: "shadow-[0_0_60px_-12px_hsl(var(--primary)/0.45)]",
-        accent: "text-primary",
-        bar: "bg-gradient-to-r from-primary to-primary/70",
-        chip: "bg-primary/15 text-primary border-primary/40",
+        // Destaque principal: violeta/fúcsia vibrante
+        gradient: "from-violet-600 via-fuchsia-600 to-purple-700",
+        ring: "ring-fuchsia-300/70",
+        glow: "shadow-[0_0_80px_-10px_hsl(292_84%_61%/0.7)]",
+        accent: "text-fuchsia-50",
+        bar: "bg-gradient-to-r from-fuchsia-200 via-violet-200 to-purple-200",
+        chip: "bg-white/25 text-white border-white/40",
       };
 
   return (
     <div className="relative">
-      {/* Halo / glow externo */}
+      {/* Halo / glow externo intenso */}
       <div
         aria-hidden
-        className={`absolute -inset-[2px] rounded-2xl bg-gradient-to-r ${palette.gradient} blur-xl opacity-70`}
+        className={`absolute -inset-1 rounded-3xl bg-gradient-to-r ${palette.gradient} blur-2xl opacity-80 animate-pulse`}
       />
       <Card
-        className={`relative overflow-hidden rounded-2xl border-0 ring-2 ${palette.ring} ${palette.glow} bg-gradient-to-br from-background via-background to-background/80`}
+        className={`relative overflow-hidden rounded-3xl border-0 ring-2 ${palette.ring} ${palette.glow} bg-gradient-to-br ${palette.gradient}`}
       >
-        {/* Pattern decorativo */}
+        {/* Brilho decorativo */}
         <div
           aria-hidden
-          className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${palette.gradient} opacity-60`}
+          className="pointer-events-none absolute -top-32 -right-32 h-96 w-96 rounded-full bg-white/20 blur-3xl"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-white/5 blur-3xl"
+          className="pointer-events-none absolute -bottom-32 -left-32 h-80 w-80 rounded-full bg-black/20 blur-3xl"
         />
+        {/* Estrelas decorativas */}
+        <Star className="absolute top-4 right-8 h-3 w-3 text-white/40 animate-pulse" />
+        <Sparkles className="absolute top-12 right-20 h-4 w-4 text-white/50 animate-pulse" style={{ animationDelay: "0.5s" }} />
+        <Star className="absolute bottom-8 right-12 h-2 w-2 text-white/40 animate-pulse" style={{ animationDelay: "1s" }} />
 
-        <CardContent className="relative p-6 md:p-7 space-y-5">
+        <CardContent className="relative p-7 md:p-8 space-y-6 text-white">
           {/* Header */}
           <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-3">
-              <div className={`relative rounded-xl p-3 bg-background/40 backdrop-blur ring-1 ${palette.ring}`}>
-                <Icon className={`h-6 w-6 ${palette.accent}`} />
+            <div className="flex items-center gap-4">
+              <div className="relative rounded-2xl p-4 bg-white/15 backdrop-blur-md ring-2 ring-white/30 shadow-2xl">
+                <Icon className="h-7 w-7 text-white drop-shadow-lg" />
                 {reached && (
-                  <Sparkles className="absolute -top-1 -right-1 h-3.5 w-3.5 text-amber-300 animate-pulse" />
+                  <Sparkles className="absolute -top-1.5 -right-1.5 h-4 w-4 text-amber-200 animate-pulse" />
                 )}
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="uppercase tracking-[0.2em] text-[10px] font-semibold text-muted-foreground">
-                    North Star Metric
+                  <span className="uppercase tracking-[0.25em] text-[11px] font-bold text-white/90 drop-shadow">
+                    ⭐ North Star Metric
                   </span>
-                  <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                  <Badge className="bg-white/20 text-white border-white/40 hover:bg-white/30 text-[10px] uppercase tracking-wider backdrop-blur">
                     {format(new Date(), "MMMM yyyy", { locale: ptBR })}
                   </Badge>
                 </div>
-                <h2 className="text-xl md:text-2xl font-extrabold tracking-tight leading-tight mt-0.5">
+                <h2 className="text-2xl md:text-3xl font-black tracking-tight leading-tight mt-1 drop-shadow-lg">
                   Norte Estratégico do Mês
                 </h2>
-                {label && <p className="text-sm text-muted-foreground mt-0.5">{label}</p>}
+                {label && <p className="text-sm text-white/80 mt-1 font-medium">{label}</p>}
               </div>
             </div>
 
-            <div className={`px-4 py-2 rounded-xl border ${palette.chip} backdrop-blur`}>
-              <p className="text-[10px] uppercase tracking-wider opacity-80">Atingido</p>
-              <p className="text-2xl font-black leading-none">{pct}%</p>
-            </div>
+            {targetCents > 0 && (
+              <div className={`px-5 py-3 rounded-2xl border-2 ${palette.chip} backdrop-blur-md shadow-xl`}>
+                <p className="text-[10px] uppercase tracking-wider opacity-90 font-bold">Atingido</p>
+                <p className="text-3xl font-black leading-none drop-shadow">{pct}%</p>
+              </div>
+            )}
           </div>
 
-          {/* Métricas */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl bg-background/50 backdrop-blur p-3 ring-1 ring-border/50">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Realizado</p>
-              <p className={`text-lg md:text-xl font-bold ${palette.accent}`}>
+          {/* Métricas / Edição da Meta */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="rounded-2xl bg-white/15 backdrop-blur-md p-4 ring-1 ring-white/30 shadow-lg">
+              <p className="text-[10px] uppercase tracking-wider text-white/80 font-bold">Realizado</p>
+              <p className="text-xl md:text-2xl font-black text-white drop-shadow mt-1">
                 {formatBRLFromValue(achievedValue)}
               </p>
             </div>
-            <div className="rounded-xl bg-background/50 backdrop-blur p-3 ring-1 ring-border/50">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Meta NSM</p>
-              <p className="text-lg md:text-xl font-bold">{formatBRL(targetCents)}</p>
+
+            <div className="rounded-2xl bg-white/20 backdrop-blur-md p-4 ring-2 ring-white/40 shadow-lg relative">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] uppercase tracking-wider text-white/90 font-bold">Meta NSM</p>
+                {!editing && (
+                  <button
+                    onClick={startEdit}
+                    className="text-white/80 hover:text-white transition-colors p-1 rounded hover:bg-white/20"
+                    title="Editar meta"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              {editing ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <CurrencyInput
+                    value={editValue}
+                    onChange={setEditValue}
+                    className="h-9 bg-white/90 text-foreground border-0 font-bold"
+                    autoFocus
+                  />
+                  <Button
+                    size="icon"
+                    onClick={saveEdit}
+                    disabled={saving}
+                    className="h-9 w-9 bg-white text-foreground hover:bg-white/90 shrink-0"
+                  >
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={cancelEdit}
+                    disabled={saving}
+                    className="h-9 w-9 text-white hover:bg-white/20 shrink-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xl md:text-2xl font-black text-white drop-shadow mt-1">
+                  {targetCents > 0 ? formatBRL(targetCents) : "Defina a meta"}
+                </p>
+              )}
             </div>
-            <div className="rounded-xl bg-background/50 backdrop-blur p-3 ring-1 ring-border/50">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+
+            <div className="rounded-2xl bg-white/15 backdrop-blur-md p-4 ring-1 ring-white/30 shadow-lg">
+              <p className="text-[10px] uppercase tracking-wider text-white/80 font-bold">
                 {reached ? "Excedeu" : "Faltam"}
               </p>
-              <p className="text-lg md:text-xl font-bold">
-                {formatBRLFromValue(reached ? achievedValue - targetValue : remaining)}
+              <p className="text-xl md:text-2xl font-black text-white drop-shadow mt-1">
+                {targetCents > 0
+                  ? formatBRLFromValue(reached ? achievedValue - targetValue : remaining)
+                  : "—"}
               </p>
             </div>
           </div>
 
           {/* Progresso custom */}
-          <div className="space-y-2">
-            <div className="relative h-3 w-full overflow-hidden rounded-full bg-background/60 ring-1 ring-border/50">
-              <div
-                className={`h-full ${palette.bar} transition-all duration-700 ease-out`}
-                style={{ width: `${Math.min(100, pct)}%` }}
-              />
-              {/* marcos 70% / 90% */}
-              <div className="absolute inset-y-0 left-[70%] w-px bg-foreground/20" />
-              <div className="absolute inset-y-0 left-[90%] w-px bg-foreground/20" />
+          {targetCents > 0 && (
+            <div className="space-y-2">
+              <div className="relative h-4 w-full overflow-hidden rounded-full bg-black/25 ring-1 ring-white/30 shadow-inner">
+                <div
+                  className={`h-full ${palette.bar} transition-all duration-700 ease-out shadow-lg`}
+                  style={{ width: `${Math.min(100, pct)}%` }}
+                />
+                <div className="absolute inset-y-0 left-[70%] w-px bg-white/40" />
+                <div className="absolute inset-y-0 left-[90%] w-px bg-white/40" />
+              </div>
+              <div className="flex justify-between text-[10px] uppercase tracking-wider text-white/80 font-bold">
+                <span>0%</span>
+                <span>70%</span>
+                <span>90%</span>
+                <span className="text-white">100%</span>
+              </div>
             </div>
-            <div className="flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-              <span>0%</span>
-              <span>70%</span>
-              <span>90%</span>
-              <span className={reached ? palette.accent : ""}>100%</span>
-            </div>
-          </div>
+          )}
 
           {reached && (
-            <div className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-400/40 py-2">
-              <Trophy className="h-4 w-4 text-emerald-300" />
-              <p className="text-sm font-bold text-emerald-300">Norte Estratégico atingido neste mês!</p>
-              <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
+            <div className="flex items-center justify-center gap-2 rounded-2xl bg-white/20 backdrop-blur-md ring-2 ring-white/40 py-3 shadow-xl">
+              <Trophy className="h-5 w-5 text-amber-200" />
+              <p className="text-base font-black text-white drop-shadow">
+                🎉 Norte Estratégico atingido neste mês!
+              </p>
+              <Sparkles className="h-5 w-5 text-amber-200 animate-pulse" />
             </div>
+          )}
+
+          {!targetCents && !editing && (
+            <p className="text-sm text-white/90 text-center font-medium">
+              Defina a meta principal de faturamento mensal clicando no ícone de edição acima ou no formulário de Kickoff.
+            </p>
           )}
         </CardContent>
       </Card>
