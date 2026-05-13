@@ -453,13 +453,22 @@ const OnboardingTasksPage = () => {
 
   const fetchCompanyKpis = async () => {
     try {
-      const { data, error } = await supabase
-        .from("company_kpis")
-        .select("id, company_id, target_value, kpi_type, periodicity, is_main_goal")
-        .eq("is_active", true);
-
-      if (error) throw error;
-      setCompanyKpis(data || []);
+      const pageSize = 1000;
+      let from = 0;
+      let all: any[] = [];
+      while (true) {
+        const { data, error } = await supabase
+          .from("company_kpis")
+          .select("id, company_id, target_value, kpi_type, periodicity, is_main_goal")
+          .eq("is_active", true)
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        const batch = data || [];
+        all = all.concat(batch);
+        if (batch.length < pageSize) break;
+        from += pageSize;
+      }
+      setCompanyKpis(all);
     } catch (error) {
       console.error("Error fetching company KPIs:", error);
     }
