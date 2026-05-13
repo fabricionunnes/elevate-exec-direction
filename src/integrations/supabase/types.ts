@@ -23258,6 +23258,50 @@ export type Database = {
           },
         ]
       }
+      north_star_achievements: {
+        Row: {
+          achieved_cents: number
+          archived_at: string
+          archived_by: string | null
+          company_id: string
+          created_at: string
+          id: string
+          label: string | null
+          month_year: string
+          target_cents: number
+        }
+        Insert: {
+          achieved_cents?: number
+          archived_at?: string
+          archived_by?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          month_year: string
+          target_cents: number
+        }
+        Update: {
+          achieved_cents?: number
+          archived_at?: string
+          archived_by?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          month_year?: string
+          target_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "north_star_achievements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       north_star_alerts_sent: {
         Row: {
           achieved_value_cents: number
