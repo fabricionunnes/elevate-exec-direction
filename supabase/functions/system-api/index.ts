@@ -1284,6 +1284,80 @@ serve(async (req) => {
           if (!data) return json({ error: "Reunião não encontrada" }, 404);
           return json({ data });
         },
+        create: async (c) => {
+          const b = c.body || {};
+          const { project_id, meeting_title, meeting_date, subject } = b;
+          if (!project_id) return json({ error: "Campo 'project_id' obrigatório" }, 400);
+          if (!meeting_title) return json({ error: "Campo 'meeting_title' obrigatório" }, 400);
+          if (!meeting_date) return json({ error: "Campo 'meeting_date' obrigatório (ISO 8601)" }, 400);
+          if (!subject) return json({ error: "Campo 'subject' obrigatório" }, 400);
+          const payload: any = {
+            project_id,
+            meeting_title,
+            meeting_date,
+            subject,
+            staff_id: b.staff_id ?? null,
+            scheduled_by: b.scheduled_by ?? null,
+            calendar_owner_id: b.calendar_owner_id ?? null,
+            calendar_owner_name: b.calendar_owner_name ?? null,
+            notes: b.notes ?? null,
+            attendees: b.attendees ?? null,
+            meeting_link: b.meeting_link ?? null,
+            recording_link: b.recording_link ?? null,
+            transcript: b.transcript ?? null,
+            live_notes: b.live_notes ?? null,
+            google_event_id: b.google_event_id ?? null,
+            is_finalized: b.is_finalized ?? false,
+            is_no_show: b.is_no_show ?? false,
+            is_internal: b.is_internal ?? false,
+          };
+          const { data, error } = await c.supabase.from("onboarding_meeting_notes").insert(payload).select().single();
+          if (error) throw error;
+          return json({ data }, 201);
+        },
+        update: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const allowed = [
+            "meeting_title", "meeting_date", "subject", "notes", "attendees",
+            "meeting_link", "recording_link", "transcript", "live_notes",
+            "staff_id", "scheduled_by", "calendar_owner_id", "calendar_owner_name",
+            "google_event_id", "is_finalized", "is_no_show", "is_internal",
+          ];
+          const updates: any = { updated_at: new Date().toISOString() };
+          for (const k of allowed) if (k in (c.body || {})) updates[k] = (c.body as any)[k];
+          if (Object.keys(updates).length === 1) return json({ error: "Nenhum campo para atualizar" }, 400);
+          const { data, error } = await c.supabase
+            .from("onboarding_meeting_notes")
+            .update(updates).eq("id", c.id).select().single();
+          if (error) throw error;
+          if (!data) return json({ error: "Reunião não encontrada" }, 404);
+          return json({ data });
+        },
+        complete: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const b = c.body || {};
+          const updates: any = {
+            is_finalized: true,
+            updated_at: new Date().toISOString(),
+          };
+          if (typeof b.notes === "string") updates.notes = b.notes;
+          if (typeof b.live_notes === "string") updates.live_notes = b.live_notes;
+          if (typeof b.transcript === "string") updates.transcript = b.transcript;
+          if (typeof b.recording_link === "string") updates.recording_link = b.recording_link;
+          if (typeof b.is_no_show === "boolean") updates.is_no_show = b.is_no_show;
+          const { data, error } = await c.supabase
+            .from("onboarding_meeting_notes")
+            .update(updates).eq("id", c.id).select().single();
+          if (error) throw error;
+          if (!data) return json({ error: "Reunião não encontrada" }, 404);
+          return json({ data });
+        },
+        delete: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { error } = await c.supabase.from("onboarding_meeting_notes").delete().eq("id", c.id);
+          if (error) throw error;
+          return json({ success: true });
+        },
       },
 
       // ===== SYSTEM INFO =====
@@ -1309,7 +1383,7 @@ serve(async (req) => {
               asaas: { actions: ["create_charge"], description: "Criar cobrança no Asaas (PIX/Boleto/Cartão)" },
               conversations: { actions: ["list", "get", "messages", "send_message"], description: "Conversas WhatsApp dos projetos" },
               whatsapp: { actions: ["list_instances", "send"], description: "Enviar mensagens WhatsApp escolhendo a instância" },
-              project_meetings: { actions: ["list", "get"], description: "Reuniões de projetos (atas, participantes, transcrições, briefings)" },
+              project_meetings: { actions: ["list", "get", "create", "update", "complete", "delete"], description: "Reuniões de projetos (CRUD + finalizar)" },
             },
             usage: "?module=<module>&action=<action>&id=<id>",
             auth: "Authorization: Bearer <jwt> OU x-api-key: <key>",
