@@ -116,7 +116,7 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
   const close70 = pct >= 70 && pct < 90;
   const remaining = Math.max(0, targetValue - achievedValue);
 
-  const Icon = reached ? Trophy : close90 ? Flame : close70 ? TrendingUp : Compass;
+  const Icon = reached ? Trophy : close90 ? Flame : close70 ? TrendingUp : Star;
 
   // Paleta VIBRANTE roxa/violeta como cor principal de destaque (diferente dos outros cards)
   const palette = reached
