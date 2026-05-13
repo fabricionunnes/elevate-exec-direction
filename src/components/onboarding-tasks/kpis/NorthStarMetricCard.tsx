@@ -49,7 +49,7 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
     if (!companyId) return;
     setLoading(true);
     try {
-      const [companyRes, kpisRes] = await Promise.all([
+      const [companyRes, kpisRes, achRes] = await Promise.all([
         supabase
           .from("onboarding_companies")
           .select("north_star_metric_cents, north_star_metric_label, kickoff_date, contract_start_date, created_at")
@@ -62,7 +62,13 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
           .eq("is_active", true)
           .eq("is_main_goal", true)
           .eq("kpi_type", "monetary"),
+        supabase
+          .from("north_star_achievements" as any)
+          .select("id, target_cents, achieved_cents, month_year, label, archived_at")
+          .eq("company_id", companyId)
+          .order("archived_at", { ascending: false }),
       ]);
+      setAchievements(((achRes.data as any) || []) as Achievement[]);
 
       const company: any = companyRes.data || {};
       setManualTargetCents(Number(company.north_star_metric_cents) || 0);
