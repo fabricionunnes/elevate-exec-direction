@@ -260,7 +260,7 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
                     size="icon"
                     onClick={saveEdit}
                     disabled={saving}
-                    className="h-9 w-9 bg-white text-foreground hover:bg-white/90 shrink-0"
+                    className="h-9 w-9 bg-white text-slate-900 hover:bg-white/90 shrink-0"
                   >
                     <Check className="h-4 w-4" />
                   </Button>
