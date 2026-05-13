@@ -118,6 +118,9 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
     load();
   }, [companyId]);
 
+  // Meta efetiva: sempre o melhor mês após início UNV (com override manual se for maior)
+  const targetCents = Math.max(manualTargetCents, bestMonthCents);
+
   const startEdit = () => {
     setEditValue(targetCents / 100);
     setEditing(true);
@@ -136,7 +139,7 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
         .update({ north_star_metric_cents: newCents } as any)
         .eq("id", companyId);
       if (error) throw error;
-      setTargetCents(newCents);
+      setManualTargetCents(newCents);
       setEditing(false);
       toast({ title: "Norte Estratégico atualizado", description: "Nova meta salva com sucesso." });
     } catch (e: any) {
@@ -154,6 +157,9 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
   const close90 = pct >= 90 && pct < 100;
   const close70 = pct >= 70 && pct < 90;
   const remaining = Math.max(0, targetValue - achievedValue);
+  const bestMonthLabel = bestMonthRef
+    ? format(new Date(bestMonthRef + "-02"), "MMM/yyyy", { locale: ptBR })
+    : "";
 
   const Icon = reached ? Trophy : close90 ? Flame : close70 ? TrendingUp : Star;
 
