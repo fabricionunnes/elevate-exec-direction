@@ -12,6 +12,8 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUP
 const NEXUS_URL = `${SUPABASE_URL}/functions/v1`;
 const NEXUS_KEY_FINANCEIRO = Deno.env.get("NEXUS_KEY_FINANCEIRO") ?? "";
 const NEXUS_KEY_DIRETOR = Deno.env.get("NEXUS_KEY_DIRETOR") ?? "";
+const NSM_API_KEY = Deno.env.get("NSM_API_KEY") ?? "";
+const NSM_URL = `${SUPABASE_URL}/functions/v1/nsm-api`;
 
 const TELEGRAM_TOKENS: Record<string, string> = {
   financeiro: Deno.env.get("TELEGRAM_TOKEN_FINANCEIRO") ?? "8302241725:AAG9FT9vUtWPhs4zE-0P2tp5-LJCnBorQtE",
@@ -121,6 +123,9 @@ const PROJECT_TOOLS: Anthropic.Tool[] = [
   { name: "listar_conversas", description: "Lista conversas WhatsApp vinculadas a um projeto (contato, status, última mensagem)", input_schema: { type: "object", properties: { project_id: { type: "string" }, status: { type: "string", enum: ["open","closed","archived"] }, assigned_to: { type: "string" }, limit: { type: "number" } }, required: ["project_id"] } },
   { name: "mensagens_conversa", description: "Lista histórico de mensagens de uma conversa WhatsApp (direction: incoming=cliente, outgoing=equipe)", input_schema: { type: "object", properties: { id: { type: "string" }, limit: { type: "number" } }, required: ["id"] } },
   { name: "enviar_mensagem_conversa", description: "Envia mensagem de texto em uma conversa WhatsApp existente — envia via WhatsApp e salva no histórico", input_schema: { type: "object", properties: { conversation_id: { type: "string" }, message: { type: "string" } }, required: ["conversation_id","message"] } },
+  // NSM — North Star Metric
+  { name: "consultar_nsm", description: "Consulta a North Star Metric (NSM) de uma empresa cliente — meta mensal de faturamento, valor realizado e percentual de progresso no mês atual. Identifique a empresa por company_id ou company_name.", input_schema: { type: "object", properties: { company_id: { type: "string", description: "UUID da empresa (prioridade sobre company_name)" }, company_name: { type: "string", description: "Nome parcial da empresa (busca case-insensitive)" } } } },
+  { name: "definir_nsm", description: "Define ou atualiza a meta mensal de faturamento (NSM) de uma empresa cliente. Após atualizar, alertas de 70%/90%/100% são disparados automaticamente pelo sistema.", input_schema: { type: "object", properties: { company_id: { type: "string", description: "UUID da empresa (prioridade)" }, company_name: { type: "string", description: "Nome parcial da empresa" }, target_value: { type: "number", description: "Meta em REAIS (ex: 500000). Use este OU target_value_cents" }, target_value_cents: { type: "number", description: "Meta em CENTAVOS — alternativa precisa ao target_value" }, label: { type: "string", description: "Rótulo da meta (padrão: 'Meta Mensal de Faturamento')" } } } },
 ];
 
 // ============ TOOLS — LUNA (MARKETING) ============
@@ -199,6 +204,12 @@ RESOLUÇÃO AUTOMÁTICA DE COLABORADORES — NUNCA peça o ID de um colaborador 
 - Quando o usuário mencionar qualquer nome (ex: "Fabrício Augusto", "Ana", "Marcos"), chame listar_staff(search="Fabricio") para resolver o UUID automaticamente
 - Se retornar mais de um resultado, confirme qual é o correto apresentando os nomes
 - Só informe que não encontrou se realmente não houver resultado algum na busca
+
+NSM — NORTH STAR METRIC:
+- Use consultar_nsm para ver a meta mensal de faturamento de uma empresa cliente e o progresso atual
+- Use definir_nsm para cadastrar ou atualizar a meta — confirme sempre o valor com o usuário antes de salvar
+- Após definir a meta, informe que os alertas de 70%/90%/100% serão disparados automaticamente
+- Apresente o progresso em formato legível: "R$ 312.450 de R$ 500.000 — 62,5% da meta"
 
 Regras: proativa nos alertas, destaque itens críticos, listas resumidas, sem "Perfeito!", sem emojis. Data: ${TODAY}`,
 
@@ -456,6 +467,20 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
       // ── SOPHIA: WhatsApp Direto ──
       case "listar_instancias_whatsapp": result = await nexusGet(SYS, { module: "whatsapp", action: "list_instances" }, apiKey); break;
       case "enviar_whatsapp_lead": result = await nexusPost(`${SYS}?module=whatsapp&action=send`, input, apiKey); break;
+      // ── NSM — North Star Metric ──
+      case "consultar_nsm": {
+        const params = new URLSearchParams();
+        if (input.company_id) params.set("company_id", input.company_id as string);
+        if (input.company_name) params.set("company_name", input.company_name as string);
+        const nsmRes = await fetch(`${NSM_URL}?${params.toString()}`, { headers: { "x-api-key": NSM_API_KEY, "Content-Type": "application/json" } });
+        result = nsmRes.ok ? await nsmRes.json() : { error: `nsm-api ${nsmRes.status}: ${await nsmRes.text()}` };
+        break;
+      }
+      case "definir_nsm": {
+        const nsmRes = await fetch(NSM_URL, { method: "POST", headers: { "x-api-key": NSM_API_KEY, "Content-Type": "application/json" }, body: JSON.stringify(input) });
+        result = nsmRes.ok ? await nsmRes.json() : { error: `nsm-api ${nsmRes.status}: ${await nsmRes.text()}` };
+        break;
+      }
       case "consultar_financeiro": result = await callAgent("financeiro", input.pergunta as string); break;
       case "consultar_crm": result = await callAgent("crm", input.pergunta as string); break;
       case "consultar_projetos": result = await callAgent("projetos", input.pergunta as string); break;
