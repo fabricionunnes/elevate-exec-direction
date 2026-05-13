@@ -253,7 +253,7 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
                   <CurrencyInput
                     value={editValue}
                     onChange={setEditValue}
-                    className="h-9 bg-white/90 text-foreground border-0 font-bold"
+                    className="h-9 bg-white text-slate-900 placeholder:text-slate-400 border-0 font-bold"
                     autoFocus
                   />
                   <Button
