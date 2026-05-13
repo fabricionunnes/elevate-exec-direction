@@ -373,6 +373,7 @@ const MastermindApplyPage = () => {
                           className="grid gap-3"
                         >
                           {[
+                            "Abaixo de R$ 300k",
                             "R$ 300k a R$ 500k",
                             "R$ 500k a R$ 1M",
                             "R$ 1M a R$ 3M",
