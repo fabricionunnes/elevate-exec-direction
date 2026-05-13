@@ -203,7 +203,7 @@ export const KPIDashboardTab = ({
         supabase.from("company_kpis").select("*").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
         salespersonId 
           ? supabase.from("company_salespeople").select("*").eq("id", salespersonId)
-          : supabase.from("company_salespeople").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
+          : supabase.from("company_salespeople").select("*").eq("company_id", companyId).order("name"),
         entriesQuery,
         supabase.from("company_units").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         supabase.from("company_teams").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
