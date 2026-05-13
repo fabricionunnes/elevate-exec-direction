@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import { TrendingUp, Trophy, Flame, Sparkles, Pencil, Check, X, Star } from "lucide-react";
+import { TrendingUp, Trophy, Flame, Sparkles, Pencil, Check, X, Star, History, Plus, Target } from "lucide-react";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
