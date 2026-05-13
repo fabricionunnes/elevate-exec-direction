@@ -261,7 +261,7 @@ export const PerformanceComparisonCard = ({
       });
     } else if (comparisonType === "salespeople") {
       // Compare salespeople
-      let salespeopleToShow = salespeople.filter(sp => sp.is_active);
+      let salespeopleToShow = salespeople; // active + inactive-with-sales already filtered upstream
       
       // Apply filters
       if (selectedTeam && selectedTeam !== "all") {
