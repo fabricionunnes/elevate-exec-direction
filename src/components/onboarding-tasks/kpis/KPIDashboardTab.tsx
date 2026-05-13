@@ -265,8 +265,15 @@ export const KPIDashboardTab = ({
       });
 
       setKpis(kpisWithTargets as KPI[]);
-      setSalespeople(salespeopleRes.data || []);
-      setEntries(entriesRes.data || []);
+      // Hide inactive salespeople UNLESS they have entries within the selected period
+      // (so a vendor that left mid-month still appears for that month, but disappears once they have no sales)
+      const entriesData = entriesRes.data || [];
+      const salespeopleWithEntries = new Set(entriesData.map((e: any) => e.salesperson_id).filter(Boolean));
+      const visibleSalespeople = (salespeopleRes.data || []).filter(
+        (sp: any) => sp.is_active || salespeopleWithEntries.has(sp.id)
+      );
+      setSalespeople(visibleSalespeople);
+      setEntries(entriesData);
       setUnits(unitsRes.data || []);
       setTeams(teamsRes.data || []);
       setSectors(sectorsRes.data || []);
