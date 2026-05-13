@@ -20,6 +20,15 @@ const formatBRL = (cents: number) =>
 const formatBRLFromValue = (val: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val || 0);
 
+interface Achievement {
+  id: string;
+  target_cents: number;
+  achieved_cents: number;
+  month_year: string;
+  label: string | null;
+  archived_at: string;
+}
+
 export const NorthStarMetricCard = ({ companyId }: Props) => {
   const [loading, setLoading] = useState(true);
   const [manualTargetCents, setManualTargetCents] = useState<number>(0);
@@ -30,6 +39,11 @@ export const NorthStarMetricCard = ({ companyId }: Props) => {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState<number>(0);
   const [saving, setSaving] = useState(false);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [creatingNew, setCreatingNew] = useState(false);
+  const [newTargetValue, setNewTargetValue] = useState<number>(0);
+  const [archiving, setArchiving] = useState(false);
 
   const load = async () => {
     if (!companyId) return;
