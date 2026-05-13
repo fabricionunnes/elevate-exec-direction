@@ -361,23 +361,29 @@ Deno.serve(async (req) => {
           const discountCents = paymentValueCents > 0 && paymentValueCents < invoice.amount_cents
             ? invoice.amount_cents - paymentValueCents
             : 0;
+          const interestCents = paymentValueCents > invoice.amount_cents
+            ? paymentValueCents - invoice.amount_cents
+            : 0;
           const actualPaidCents = paymentValueCents > 0 ? paymentValueCents : invoice.amount_cents;
+
+          const updatePayload: any = {
+            status: "paid",
+            paid_at: new Date().toISOString(),
+            paid_amount_cents: actualPaidCents,
+            discount_cents: discountCents,
+            pagarme_charge_id: paymentId,
+            payment_fee_cents: 0,
+          };
+          if (interestCents > 0) updatePayload.interest_cents = interestCents;
 
           await supabase
             .from("company_invoices")
-            .update({
-              status: "paid",
-              paid_at: new Date().toISOString(),
-              paid_amount_cents: actualPaidCents,
-              discount_cents: discountCents,
-              pagarme_charge_id: paymentId,
-              payment_fee_cents: 0,
-            })
+            .update(updatePayload)
             .eq("id", invoice.id);
           matched = true;
-          console.log(`[Asaas Webhook] Invoice ${invoice.id} marked paid via invoiceUrl${discountCents > 0 ? ` (discount ${discountCents} cents)` : ''}`);
+          console.log(`[Asaas Webhook] Invoice ${invoice.id} marked paid via invoiceUrl${discountCents > 0 ? ` (discount ${discountCents} cents)` : ''}${interestCents > 0 ? ` (interest ${interestCents} cents)` : ''}`);
 
-          await creditAsaasBank(supabase, actualPaidCents, `Fatura ${invoice.id}${invoice.installment_number ? ` (parcela ${invoice.installment_number}/${invoice.total_installments})` : ''}${discountCents > 0 ? ` desconto R$${(discountCents/100).toFixed(2)}` : ''}`, invoice.id, invoice.recurring_charge_id);
+          await creditAsaasBank(supabase, actualPaidCents, `Fatura ${invoice.id}${invoice.installment_number ? ` (parcela ${invoice.installment_number}/${invoice.total_installments})` : ''}${discountCents > 0 ? ` desconto R$${(discountCents/100).toFixed(2)}` : ''}${interestCents > 0 ? ` juros R$${(interestCents/100).toFixed(2)}` : ''}`, invoice.id, invoice.recurring_charge_id);
           reconcileReceivable(supabase, invoice.id, null, actualPaidCents, invoice.description || '', dueDate).catch(() => {});
 
           supabase.functions.invoke("notify-payment-confirmed", {
