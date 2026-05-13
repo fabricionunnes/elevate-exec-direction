@@ -22,6 +22,8 @@ import {
   DollarSign,
   Activity,
   Minus,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -36,9 +38,11 @@ import {
   startOfMonth,
   endOfMonth,
   subMonths,
+  addMonths,
   format,
   isBefore,
   isAfter,
+  isSameMonth,
   isWithinInterval,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -240,10 +244,40 @@ export default function MRRDashboardPage() {
             </p>
           </div>
         </div>
-        <MonthYearPicker
-          value={selectedMonth}
-          onChange={({ start }) => setSelectedMonth(start)}
-        />
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10"
+            onClick={() => setSelectedMonth((m) => startOfMonth(subMonths(m, 1)))}
+            aria-label="Mês anterior"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <MonthYearPicker
+            value={selectedMonth}
+            onChange={({ start }) => setSelectedMonth(start)}
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10"
+            onClick={() => setSelectedMonth((m) => startOfMonth(addMonths(m, 1)))}
+            aria-label="Próximo mês"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          {!isSameMonth(selectedMonth, new Date()) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-10 px-2 text-xs text-muted-foreground"
+              onClick={() => setSelectedMonth(startOfMonth(new Date()))}
+            >
+              Atual
+            </Button>
+          )}
+        </div>
       </div>
 
       {loading ? (
