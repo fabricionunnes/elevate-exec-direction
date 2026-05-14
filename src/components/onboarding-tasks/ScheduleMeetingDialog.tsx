@@ -88,6 +88,7 @@ export const ScheduleMeetingDialog = ({
   const [targetStaffId, setTargetStaffId] = useState<string>("");
   const [attendeeEmails, setAttendeeEmails] = useState<string>("");
   const [isInternal, setIsInternal] = useState(false);
+  const [recurrence, setRecurrence] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
