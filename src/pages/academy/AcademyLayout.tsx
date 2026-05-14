@@ -68,6 +68,7 @@ export const AcademyLayout = () => {
     companyId: null,
     projectId: null,
     userName: "",
+    userRole: null,
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
