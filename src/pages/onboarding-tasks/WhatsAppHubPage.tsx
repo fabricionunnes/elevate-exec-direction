@@ -60,7 +60,7 @@ const WhatsAppHubPage = () => {
   const isMobile = useIsMobile();
   const { currentStaff, isMaster } = useStaffPermissions();
   const [selectedConversation, setSelectedConversation] = useState<HubConversation | null>(null);
-  const [showContactPanel, setShowContactPanel] = useState(false);
+  const [showContactPanel, setShowContactPanel] = useState(true);
   const [showConnectDialog, setShowConnectDialog] = useState(false);
   const [showBulkSend, setShowBulkSend] = useState(false);
   const [instances, setInstances] = useState<StaffInstance[]>([]);
