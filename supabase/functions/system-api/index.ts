@@ -86,7 +86,7 @@ serve(async (req) => {
       // ===== COMPANIES =====
       companies: {
         list: async (c) => {
-          let q = c.supabase.from("onboarding_companies").select("id, name, cnpj, segment, status, contract_value, billing_day, email, phone, website, address, cs_id, consultant_id, kickoff_date, contract_start_date, contract_end_date, notes, created_at, updated_at").eq("is_simulator", false).order("name").range(c.offset, c.offset + c.limit - 1);
+          let q = c.supabase.from("onboarding_companies").select("id, name, cnpj, segment, status, contract_value, billing_day, email, phone, owner_phone, website, address, cs_id, consultant_id, kickoff_date, contract_start_date, contract_end_date, notes, created_at, updated_at").eq("is_simulator", false).order("name").range(c.offset, c.offset + c.limit - 1);
           if (c.status) q = q.eq("status", c.status);
           const { data, error } = await q;
           if (error) throw error;
