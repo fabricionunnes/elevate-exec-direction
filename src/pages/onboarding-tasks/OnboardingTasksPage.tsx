@@ -2272,6 +2272,65 @@ const OnboardingTasksPage = () => {
               </DropdownMenu>
             )}
 
+            {/* Sucesso do Cliente Menu */}
+            {canAccessAnalytics && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Heart className="h-4 w-4 mr-2" />
+                    Sucesso do Cliente
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 max-h-[80vh] overflow-y-auto">
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations-retention")}>
+                      <AlertTriangle className="h-4 w-4 mr-2" />
+                      Cancelamento & Retenção
+                    </DropdownMenuItem>
+                  )}
+
+                  {/* Análises */}
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <TrendingDown className="h-4 w-4 mr-2" />
+                      Análises
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-48">
+                      {isAdmin && (
+                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/executive")}>
+                          <Activity className="h-4 w-4 mr-2" />
+                          Dashboard Executivo
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/churn-prediction")}>
+                        <TrendingDown className="h-4 w-4 mr-2" />
+                        Previsão de Churn
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cohort-retention")}>
+                        <Users2 className="h-4 w-4 mr-2" />
+                        Análise de Cohort
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+
+                  {(isAdmin || isCS) && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp")}>
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        UNV Disparador
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp-hub")}>
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        WhatsApp Hub
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
             {/* Admin/CS/Consultant Actions Menu - Reorganized with submenus */}
             {canAccessAnalytics && (
               <DropdownMenu>
@@ -2317,13 +2376,7 @@ const OnboardingTasksPage = () => {
                       Financeiro
                     </DropdownMenuItem>
                   )}
-                  {isAdmin && (
-                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations-retention")}>
-                      <AlertTriangle className="h-4 w-4 mr-2" />
-                      Cancelamentos & Retenção
-                    </DropdownMenuItem>
-                  )}
-                  {(currentUserEmail === "fabricio@universidadevendas.com.br" || canAccessFinancial || isAdmin) && (
+                  {(currentUserEmail === "fabricio@universidadevendas.com.br" || canAccessFinancial) && (
                     <DropdownMenuSeparator />
                   )}
 
@@ -2337,30 +2390,6 @@ const OnboardingTasksPage = () => {
                       <DropdownMenuSeparator />
                     </>
                   )}
-
-                  {/* Análises - Available to Admin, CS, and Consultants */}
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      <TrendingDown className="h-4 w-4 mr-2" />
-                      Análises
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="w-48">
-                      {isAdmin && (
-                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/executive")}>
-                          <Activity className="h-4 w-4 mr-2" />
-                          Dashboard Executivo
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/churn-prediction")}>
-                        <TrendingDown className="h-4 w-4 mr-2" />
-                        Previsão de Churn
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cohort-retention")}>
-                        <Users2 className="h-4 w-4 mr-2" />
-                        Análise de Cohort
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
 
                   {/* Cadastros - Admin and CS only */}
                   {canCreateCompany && (
@@ -2515,15 +2544,6 @@ const OnboardingTasksPage = () => {
                         <Users className="h-4 w-4 mr-2" />
                         UNV Circle
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp")}>
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        UNV Disparador
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp-hub")}>
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        WhatsApp Hub
-                      </DropdownMenuItem>
-
                       {isAdmin && (
                         <>
                           <DropdownMenuSeparator />
