@@ -63,7 +63,7 @@ const buildVisibilityFilter = ({ allowedInstanceIds, allowedOfficialInstanceIds 
   return clauses.join(",");
 };
 
-export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selectedId, filterProjectId }: Props) => {
+export const WhatsAppHubConversationList = ({ staffId, isMaster, staffRole, onSelect, selectedId, filterProjectId }: Props) => {
   const [conversations, setConversations] = useState<HubConversation[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
