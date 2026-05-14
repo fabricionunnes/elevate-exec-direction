@@ -58,9 +58,11 @@ import {
   Repeat,
   CalendarDays,
   Copy,
-  Pencil
+  Pencil,
+  Filter
 } from "lucide-react";
 import { PayableEditDialog } from "./PayableActionDialogs";
+import { EditPaymentsDialog } from "./EditPaymentsDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
