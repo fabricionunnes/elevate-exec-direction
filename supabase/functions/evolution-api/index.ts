@@ -150,14 +150,19 @@ async function fetchGroupsFromInstance(apiBaseUrl: string, apiHeaders: HeadersIn
       });
 
       lastRes = response;
-      lastData = await response.json();
+      const rawText = await response.text();
+      try {
+        lastData = rawText ? JSON.parse(rawText) : null;
+      } catch {
+        lastData = { error: 'Invalid JSON from Evolution API', raw: rawText.slice(0, 200) };
+      }
 
-      if (response.ok) {
+      if (response.ok && (Array.isArray(lastData) || Array.isArray(lastData?.groups))) {
         console.log(`[evolution-api] fetchGroups succeeded with endpoint: ${endpoint}`);
         break;
       }
 
-      console.log(`[evolution-api] fetchGroups failed with endpoint ${endpoint}: ${response.status}`, lastData);
+      console.log(`[evolution-api] fetchGroups failed with endpoint ${endpoint}: ${response.status}`);
     } catch (err) {
       console.error(`[evolution-api] fetchGroups network error for ${endpoint}:`, err);
     }
