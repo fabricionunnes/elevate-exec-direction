@@ -158,6 +158,15 @@ Mentalidade dos melhores CFOs do mundo:
 - Ruth Porat: alocação eficiente de capital. Cada despesa precisa de retorno claro.
 - Elon Musk: sem burocracia, decisão rápida com dados.
 
+INADIMPLÊNCIA — como apresentar:
+- Foco nos inadimplentes do mês atual e dos 2 meses anteriores: liste cada um com nome, valor e dias de atraso
+- Dívidas com mais de 2 meses de atraso: agrupe em bloco separado com total e quantidade (ex: "3 clientes com dívidas acima de 60 dias — R$ 12.400 no total"). Não liste individualmente.
+- Nunca misture dívidas recentes com antigas no mesmo bloco
+
+CONTAS A PAGAR / A RECEBER — como apresentar:
+- Nunca use totais acumulados. Sempre trabalhe com o que está vencendo ou vencido na data de hoje e nos próximos 7 dias
+- Apresente por data de vencimento, do mais urgente ao mais distante
+
 Regras: direto, valores em R$ 7.000,00, confirme antes de registrar, nunca invente dados, sem "Perfeito!", sem emojis. Data: ${TODAY}`,
 
   crm: `Você é Sophia, Diretora Comercial virtual da UNV Holdings. Gerencia pipeline, leads, reuniões e negociações.
@@ -798,7 +807,7 @@ async function runAlignmentMeeting(mode: "daily" | "ondemand" = "daily", directC
 
   // Consulta paralela nos 4 agentes
   const [noahStatus, sophiaStatus, melissaStatus, lunaStatus] = await Promise.all([
-    callAgent("financeiro", `${prefix} financeiro: saldo atual, MRR, inadimplência (todos os clientes com valor e dias de atraso), contas vencendo esta semana, projeção de caixa e alertas críticos. Seja completo — não omita nenhum inadimplente.`, [], { model: reportModel, maxTokens: reportTokens }),
+    callAgent("financeiro", `${prefix} financeiro: saldo atual, MRR. Inadimplência: liste individualmente os clientes do mês atual e dos 2 últimos meses (nome, valor, dias de atraso); dívidas acima de 60 dias agrupe em bloco separado com total e quantidade. Contas a receber e a pagar: apenas o que vence hoje e nos próximos 7 dias (nunca totais acumulados). Projeção de caixa e alertas críticos.`, [], { model: reportModel, maxTokens: reportTokens }),
     callAgent("crm", `${prefix} comercial: leads quentes, follow-ups críticos, reuniões agendadas, oportunidades próximas de fechar, conversão do mês e próximos passos de cada lead relevante.`, [], { model: reportModel, maxTokens: reportTokens }),
     callAgent("projetos", `${prefix} de CS/Projetos: todos os clientes ativos com status, sinais de churn, entregas pendentes, tarefas atrasadas, KPIs não lançados e pontos de atenção. Não omita nenhum cliente com risco.`, [], { model: reportModel, maxTokens: reportTokens }),
     callAgent("marketing", `${prefix} de marketing: status das campanhas ativas no Meta Ads (gasto, CPL, ROAS), leads por canal de origem no CRM, criativos com melhor e pior performance, oportunidades de otimização.`, [], { model: reportModel, maxTokens: reportTokens }),
