@@ -49,6 +49,8 @@ const normalizeMessage = (message: any): HubMessage => ({
   created_at: message.created_at,
   remote_id: message.remote_id ?? null,
   sent_by: message.sent_by ?? null,
+  sender_phone: message.sender_phone ?? null,
+  sender_name: message.sender_name ?? null,
 });
 
 export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact }: Props) => {
