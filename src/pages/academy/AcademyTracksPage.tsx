@@ -262,7 +262,7 @@ export const AcademyTracksPage = () => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-zinc-800 border-zinc-700">
-              {CATEGORIES.map(cat => (
+              {CATEGORIES.filter(cat => !(isVendedor && cat.value === "gestao")).map(cat => (
                 <SelectItem key={cat.value} value={cat.value} className="text-white hover:bg-zinc-700">
                   {cat.label}
                 </SelectItem>
