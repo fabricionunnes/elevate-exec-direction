@@ -73,6 +73,12 @@ const DURATION_OPTIONS = [
   { value: "60", label: "1 hora" },
   { value: "90", label: "1h 30min" },
   { value: "120", label: "2 horas" },
+  { value: "180", label: "3 horas" },
+  { value: "240", label: "4 horas" },
+  { value: "300", label: "5 horas" },
+  { value: "360", label: "6 horas" },
+  { value: "420", label: "7 horas" },
+  { value: "480", label: "8 horas" },
 ];
 
 export const AddTaskDialog = ({

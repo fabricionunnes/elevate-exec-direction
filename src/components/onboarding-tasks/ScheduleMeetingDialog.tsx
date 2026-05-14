@@ -434,6 +434,12 @@ export const ScheduleMeetingDialog = ({
                 <SelectItem value="60">1 hora</SelectItem>
                 <SelectItem value="90">1h30</SelectItem>
                 <SelectItem value="120">2 horas</SelectItem>
+                <SelectItem value="180">3 horas</SelectItem>
+                <SelectItem value="240">4 horas</SelectItem>
+                <SelectItem value="300">5 horas</SelectItem>
+                <SelectItem value="360">6 horas</SelectItem>
+                <SelectItem value="420">7 horas</SelectItem>
+                <SelectItem value="480">8 horas</SelectItem>
               </SelectContent>
             </Select>
           </div>
