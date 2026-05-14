@@ -18,6 +18,7 @@ import type { HubConversation } from "@/pages/onboarding-tasks/WhatsAppHubPage";
 interface Props {
   staffId: string;
   isMaster: boolean;
+  staffRole?: string | null;
   onSelect: (conv: HubConversation) => void;
   selectedId?: string;
   filterProjectId?: string;
