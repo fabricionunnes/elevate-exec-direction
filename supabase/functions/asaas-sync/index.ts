@@ -50,15 +50,32 @@ async function reconcileAsaasBankBalance(supabase: any, apiKey: string) {
   if (updateErr) throw updateErr;
   if (!updated?.length) return { adjusted: false, reason: "concurrent_update", diff_cents: diffCents };
 
+  const adjustmentDescription = `Ajuste automático Asaas: saldo oficial R$ ${(actualBalanceCents / 100).toFixed(2)} (${diffCents > 0 ? "+" : "-"}R$ ${(Math.abs(diffCents) / 100).toFixed(2)})`;
+  const today = new Date().toISOString().slice(0, 10);
+
   await supabase.from("financial_bank_transactions").insert({
     bank_id: bank.id,
     type: diffCents > 0 ? "credit" : "debit",
     amount_cents: Math.abs(diffCents),
-    description: `Ajuste automático Asaas: saldo oficial R$ ${(actualBalanceCents / 100).toFixed(2)} (${diffCents > 0 ? "+" : "-"}R$ ${(Math.abs(diffCents) / 100).toFixed(2)})`,
+    description: adjustmentDescription,
     reference_type: "asaas_balance_reconciliation",
   });
 
-  return { adjusted: true, diff_cents: diffCents, actual_balance_cents: actualBalanceCents };
+  // Se for débito (saída de dinheiro), cria conta a pagar para revisão manual
+  let payableId: string | null = null;
+  if (diffCents < 0) {
+    const { data: payable } = await supabase.from("financial_payables").insert({
+      supplier_name: "Asaas",
+      description: adjustmentDescription,
+      amount: Math.abs(diffCents) / 100,
+      due_date: today,
+      status: "pending",
+      notes: "Criado automaticamente pela conciliação bancária. Edite o fornecedor, descrição, categoria e centro de custo conforme necessário.",
+    }).select("id").single();
+    payableId = payable?.id ?? null;
+  }
+
+  return { adjusted: true, diff_cents: diffCents, actual_balance_cents: actualBalanceCents, payable_id: payableId };
 }
 
 async function runSync(days: number) {

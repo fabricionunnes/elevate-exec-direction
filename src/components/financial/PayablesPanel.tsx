@@ -59,7 +59,8 @@ import {
   CalendarDays,
   Copy,
   Pencil,
-  Filter
+  Filter,
+  Bot
 } from "lucide-react";
 import { PayableEditDialog } from "./PayableActionDialogs";
 import { EditPaymentsDialog } from "./EditPaymentsDialog";
@@ -494,6 +495,13 @@ export function PayablesPanel() {
     }).format(value);
   };
 
+  const isAutoAdjustment = (payable: Payable) =>
+    !!payable.notes?.includes("conciliação bancária");
+
+  const autoAdjustmentsPending = payables.filter(
+    (p) => isAutoAdjustment(p) && p.status === "pending"
+  );
+
   const getStatusBadge = (status: string, dueDate?: string) => {
     const today = format(new Date(), "yyyy-MM-dd");
     const isOverduePartial = status === "partial" && dueDate && dueDate < today;
@@ -563,6 +571,34 @@ export function PayablesPanel() {
 
   return (
     <div className="space-y-6">
+      {/* Banner: ajustes automáticos pendentes de revisão */}
+      {autoAdjustmentsPending.length > 0 && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+          <Bot className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-amber-700">
+              {autoAdjustmentsPending.length === 1
+                ? "1 ajuste automático da conciliação bancária precisa de revisão"
+                : `${autoAdjustmentsPending.length} ajustes automáticos da conciliação bancária precisam de revisão`}
+            </p>
+            <p className="text-xs text-amber-600 mt-0.5">
+              Edite a descrição, fornecedor, categoria e centro de custo para classificar corretamente.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0 border-amber-500/40 text-amber-700 hover:bg-amber-500/10 text-xs h-7"
+            onClick={() => {
+              setSelectedPayable(autoAdjustmentsPending[0]);
+              setIsEditPayableOpen(true);
+            }}
+          >
+            Revisar agora
+          </Button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -917,7 +953,11 @@ export function PayablesPanel() {
                 </TableRow>
               ) : (
                 paginatedPayables.map((payable) => (
-                  <TableRow key={payable.id} data-state={selectedIds.has(payable.id) ? "selected" : undefined}>
+                  <TableRow
+                    key={payable.id}
+                    data-state={selectedIds.has(payable.id) ? "selected" : undefined}
+                    className={isAutoAdjustment(payable) && payable.status === "pending" ? "bg-amber-500/5 border-l-2 border-l-amber-400" : undefined}
+                  >
                     <TableCell>
                       <Checkbox
                         checked={selectedIds.has(payable.id)}
@@ -934,7 +974,14 @@ export function PayablesPanel() {
                           <Repeat className="h-3 w-3 text-muted-foreground" />
                         )}
                         <div>
-                          <p className="font-medium">{payable.description}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium">{payable.description}</p>
+                            {isAutoAdjustment(payable) && payable.status === "pending" && (
+                              <Badge className="bg-amber-500/10 text-amber-600 border-amber-400/30 text-[10px] px-1.5 py-0 h-4 gap-0.5">
+                                <Bot className="h-2.5 w-2.5" /> Revisar
+                              </Badge>
+                            )}
+                          </div>
                           {payable.category && (
                             <p className="text-xs text-muted-foreground">{payable.category.name}</p>
                           )}
