@@ -134,6 +134,7 @@ export function PayablesPanel() {
   const [deleteTarget, setDeleteTarget] = useState<Payable | null>(null);
   const [deleteScope, setDeleteScope] = useState<"single" | "future">("single");
   const [isEditPayableOpen, setIsEditPayableOpen] = useState(false);
+  const [isEditPaymentsOpen, setIsEditPaymentsOpen] = useState(false);
   const [costCenters, setCostCenters] = useState<any[]>([]);
   const { isMaster } = useFinancialPermissions();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
