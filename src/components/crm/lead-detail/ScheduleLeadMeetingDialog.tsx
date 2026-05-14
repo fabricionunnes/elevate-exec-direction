@@ -564,6 +564,7 @@ export const ScheduleLeadMeetingDialog = ({
                 <Label>Início *</Label>
                 <Input
                   type="time"
+                  step={900}
                   value={formData.startTime}
                   onChange={(e) =>
                     setFormData((p) => ({ ...p, startTime: e.target.value }))
@@ -574,6 +575,7 @@ export const ScheduleLeadMeetingDialog = ({
                 <Label>Fim *</Label>
                 <Input
                   type="time"
+                  step={900}
                   value={formData.endTime}
                   onChange={(e) =>
                     setFormData((p) => ({ ...p, endTime: e.target.value }))

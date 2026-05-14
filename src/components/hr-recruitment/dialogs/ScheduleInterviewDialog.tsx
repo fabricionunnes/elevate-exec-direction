@@ -257,6 +257,7 @@ export function ScheduleInterviewDialog({
               <Label>Data e Hora *</Label>
               <Input
                 type="datetime-local"
+                step={900}
                 value={formData.scheduledAt}
                 onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
               />

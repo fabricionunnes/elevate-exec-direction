@@ -400,6 +400,7 @@ export const ScheduleMeetingDialog = ({
               <Label>Horário *</Label>
               <Input
                 type="time"
+                step={900}
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
               />
