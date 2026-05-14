@@ -742,6 +742,17 @@ Deno.serve(async (req) => {
         eventData.attendees = attendees.map((email: string) => ({ email }));
       }
 
+      // Add recurrence rule if provided (string RRULE or array)
+      if (recurrence) {
+        const rules = Array.isArray(recurrence) ? recurrence : [recurrence];
+        const normalized = rules
+          .filter((r: unknown) => typeof r === "string" && r.length > 0)
+          .map((r: string) => (r.startsWith("RRULE:") || r.startsWith("EXDATE:") || r.startsWith("RDATE:") ? r : `RRULE:${r}`));
+        if (normalized.length > 0) {
+          eventData.recurrence = normalized;
+        }
+      }
+
       console.log("Creating calendar event with Meet link...", eventData);
 
       const createUrl = "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all";
