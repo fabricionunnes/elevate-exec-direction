@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader2, Pencil, Trash2, Save, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -65,6 +65,104 @@ export function PayablePaymentDialog({ open, onOpenChange, payable, banks, onSuc
     description: string | null;
   }>>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState(0);
+  const [rowSaving, setRowSaving] = useState(false);
+
+  const reloadHistory = async () => {
+    if (!payable) return;
+    setLoadingHistory(true);
+    try {
+      const { data } = await supabase
+        .from("financial_bank_transactions")
+        .select("id, amount_cents, bank_id, created_at, description")
+        .eq("reference_type", "payable")
+        .eq("reference_id", payable.id)
+        .eq("type", "debit")
+        .order("created_at", { ascending: true }) as any;
+      const history = (data || []).map((tx: any) => ({
+        ...tx,
+        bank_name: banks.find(b => b.id === tx.bank_id)?.name || "Banco removido",
+      }));
+      setPaymentHistory(history);
+    } catch {
+      setPaymentHistory([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const recalcPayableTotals = async () => {
+    if (!payable) return;
+    const { data: remaining } = await supabase
+      .from("financial_bank_transactions")
+      .select("amount_cents")
+      .eq("reference_type", "payable")
+      .eq("reference_id", payable.id)
+      .eq("type", "debit") as any;
+    const totalPaid = ((remaining as any) || []).reduce((s: number, t: any) => s + t.amount_cents, 0) / 100;
+    const isFullyPaid = totalPaid >= payable.amount;
+    await supabase
+      .from("financial_payables")
+      .update({
+        paid_amount: totalPaid > 0 ? totalPaid : null,
+        paid_date: totalPaid > 0 ? undefined : null,
+        status: totalPaid <= 0 ? "pending" : isFullyPaid ? "paid" : "partial",
+      } as any)
+      .eq("id", payable.id);
+  };
+
+  const handleEditRow = async (txId: string, oldCents: number, bankIdRow: string) => {
+    setRowSaving(true);
+    try {
+      const newCents = Math.round(editAmount * 100);
+      const diff = newCents - oldCents;
+      const { error } = await supabase
+        .from("financial_bank_transactions")
+        .update({ amount_cents: newCents } as any)
+        .eq("id", txId);
+      if (error) throw error;
+      if (diff !== 0 && bankIdRow) {
+        // payable = debit; increasing debit means subtract more from bank
+        await supabase.rpc("increment_bank_balance" as any, {
+          p_bank_id: bankIdRow,
+          p_amount: -diff,
+        });
+      }
+      await recalcPayableTotals();
+      toast.success("Pagamento atualizado!");
+      setEditingId(null);
+      await reloadHistory();
+      onSuccess();
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || "erro"));
+    } finally {
+      setRowSaving(false);
+    }
+  };
+
+  const handleDeleteRow = async (txId: string, amountCents: number, bankIdRow: string) => {
+    if (!confirm("Excluir este pagamento? O saldo bancário será ajustado.")) return;
+    setRowSaving(true);
+    try {
+      await supabase.from("financial_bank_transactions").delete().eq("id", txId);
+      if (bankIdRow) {
+        // reverse debit: add back to bank
+        await supabase.rpc("increment_bank_balance" as any, {
+          p_bank_id: bankIdRow,
+          p_amount: amountCents,
+        });
+      }
+      await recalcPayableTotals();
+      toast.success("Pagamento removido e saldo ajustado!");
+      await reloadHistory();
+      onSuccess();
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || "erro"));
+    } finally {
+      setRowSaving(false);
+    }
+  };
 
   // Pre-fill form and load payment history when dialog opens
   useEffect(() => {
@@ -195,14 +293,52 @@ export function PayablePaymentDialog({ open, onOpenChange, payable, banks, onSuc
               ) : (
                 <div className="space-y-1.5">
                   {paymentHistory.map((tx) => (
-                    <div key={tx.id} className="flex items-center justify-between text-xs bg-background rounded px-2.5 py-1.5 border">
-                      <div className="flex flex-col">
-                        <span className="font-medium">{fmt(tx.amount_cents / 100)}</span>
-                        <span className="text-muted-foreground">{tx.bank_name}</span>
-                      </div>
-                      <span className="text-muted-foreground">
-                        {format(new Date(tx.created_at), "dd/MM/yyyy")}
-                      </span>
+                    <div key={tx.id} className="flex items-center justify-between text-xs bg-background rounded px-2.5 py-1.5 border gap-2">
+                      {editingId === tx.id ? (
+                        <>
+                          <div className="flex-1 min-w-0">
+                            <CurrencyInput value={editAmount} onChange={setEditAmount} />
+                            <div className="text-[10px] text-muted-foreground mt-0.5">{tx.bank_name}</div>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <Button size="icon" variant="ghost" className="h-7 w-7" disabled={rowSaving} onClick={() => setEditingId(null)}>
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button size="icon" className="h-7 w-7" disabled={rowSaving} onClick={() => handleEditRow(tx.id, tx.amount_cents, tx.bank_id)}>
+                              {rowSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{fmt(tx.amount_cents / 100)}</span>
+                            <span className="text-muted-foreground">{tx.bank_name}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-muted-foreground mr-1">
+                              {format(new Date(tx.created_at), "dd/MM/yyyy")}
+                            </span>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              onClick={() => { setEditingId(tx.id); setEditAmount(tx.amount_cents / 100); }}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 text-destructive hover:text-destructive"
+                              disabled={rowSaving}
+                              onClick={() => handleDeleteRow(tx.id, tx.amount_cents, tx.bank_id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
