@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Phone, Building2, Link2, Search } from "lucide-react";
+import { HubKPIMiniDashboard } from "./HubKPIMiniDashboard";
 import { Input } from "@/components/ui/input";
 import {
   Select,
