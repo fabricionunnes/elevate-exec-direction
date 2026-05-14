@@ -16194,6 +16194,8 @@ export type Database = {
           media_url: string | null
           quoted_message_id: string | null
           remote_id: string | null
+          sender_name: string | null
+          sender_phone: string | null
           sent_by: string | null
           status: string | null
           type: string | null
@@ -16209,6 +16211,8 @@ export type Database = {
           media_url?: string | null
           quoted_message_id?: string | null
           remote_id?: string | null
+          sender_name?: string | null
+          sender_phone?: string | null
           sent_by?: string | null
           status?: string | null
           type?: string | null
@@ -16224,6 +16228,8 @@ export type Database = {
           media_url?: string | null
           quoted_message_id?: string | null
           remote_id?: string | null
+          sender_name?: string | null
+          sender_phone?: string | null
           sent_by?: string | null
           status?: string | null
           type?: string | null
