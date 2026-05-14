@@ -65,6 +65,104 @@ export function PayablePaymentDialog({ open, onOpenChange, payable, banks, onSuc
     description: string | null;
   }>>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState(0);
+  const [rowSaving, setRowSaving] = useState(false);
+
+  const reloadHistory = async () => {
+    if (!payable) return;
+    setLoadingHistory(true);
+    try {
+      const { data } = await supabase
+        .from("financial_bank_transactions")
+        .select("id, amount_cents, bank_id, created_at, description")
+        .eq("reference_type", "payable")
+        .eq("reference_id", payable.id)
+        .eq("type", "debit")
+        .order("created_at", { ascending: true }) as any;
+      const history = (data || []).map((tx: any) => ({
+        ...tx,
+        bank_name: banks.find(b => b.id === tx.bank_id)?.name || "Banco removido",
+      }));
+      setPaymentHistory(history);
+    } catch {
+      setPaymentHistory([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const recalcPayableTotals = async () => {
+    if (!payable) return;
+    const { data: remaining } = await supabase
+      .from("financial_bank_transactions")
+      .select("amount_cents")
+      .eq("reference_type", "payable")
+      .eq("reference_id", payable.id)
+      .eq("type", "debit") as any;
+    const totalPaid = ((remaining as any) || []).reduce((s: number, t: any) => s + t.amount_cents, 0) / 100;
+    const isFullyPaid = totalPaid >= payable.amount;
+    await supabase
+      .from("financial_payables")
+      .update({
+        paid_amount: totalPaid > 0 ? totalPaid : null,
+        paid_date: totalPaid > 0 ? undefined : null,
+        status: totalPaid <= 0 ? "pending" : isFullyPaid ? "paid" : "partial",
+      } as any)
+      .eq("id", payable.id);
+  };
+
+  const handleEditRow = async (txId: string, oldCents: number, bankIdRow: string) => {
+    setRowSaving(true);
+    try {
+      const newCents = Math.round(editAmount * 100);
+      const diff = newCents - oldCents;
+      const { error } = await supabase
+        .from("financial_bank_transactions")
+        .update({ amount_cents: newCents } as any)
+        .eq("id", txId);
+      if (error) throw error;
+      if (diff !== 0 && bankIdRow) {
+        // payable = debit; increasing debit means subtract more from bank
+        await supabase.rpc("increment_bank_balance" as any, {
+          p_bank_id: bankIdRow,
+          p_amount: -diff,
+        });
+      }
+      await recalcPayableTotals();
+      toast.success("Pagamento atualizado!");
+      setEditingId(null);
+      await reloadHistory();
+      onSuccess();
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || "erro"));
+    } finally {
+      setRowSaving(false);
+    }
+  };
+
+  const handleDeleteRow = async (txId: string, amountCents: number, bankIdRow: string) => {
+    if (!confirm("Excluir este pagamento? O saldo bancário será ajustado.")) return;
+    setRowSaving(true);
+    try {
+      await supabase.from("financial_bank_transactions").delete().eq("id", txId);
+      if (bankIdRow) {
+        // reverse debit: add back to bank
+        await supabase.rpc("increment_bank_balance" as any, {
+          p_bank_id: bankIdRow,
+          p_amount: amountCents,
+        });
+      }
+      await recalcPayableTotals();
+      toast.success("Pagamento removido e saldo ajustado!");
+      await reloadHistory();
+      onSuccess();
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || "erro"));
+    } finally {
+      setRowSaving(false);
+    }
+  };
 
   // Pre-fill form and load payment history when dialog opens
   useEffect(() => {
