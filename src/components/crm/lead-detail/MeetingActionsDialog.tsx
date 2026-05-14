@@ -473,6 +473,7 @@ export function MeetingActionsDialog({
                   <Label>Início *</Label>
                   <Input
                     type="time"
+                    step={900}
                     value={rescheduleData.startTime}
                     onChange={(e) => setRescheduleData((p) => ({ ...p, startTime: e.target.value }))}
                   />
@@ -481,6 +482,7 @@ export function MeetingActionsDialog({
                   <Label>Fim *</Label>
                   <Input
                     type="time"
+                    step={900}
                     value={rescheduleData.endTime}
                     onChange={(e) => setRescheduleData((p) => ({ ...p, endTime: e.target.value }))}
                   />
