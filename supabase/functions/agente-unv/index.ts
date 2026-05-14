@@ -494,7 +494,9 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
 }
 
 // ============ LOOP DO AGENTE ============
-async function callAgent(agentType: AgentType, userMessage: string, history: Anthropic.MessageParam[] = []): Promise<string> {
+async function callAgent(agentType: AgentType, userMessage: string, history: Anthropic.MessageParam[] = [], opts: { model?: string; maxTokens?: number } = {}): Promise<string> {
+  const agentModel = opts.model ?? "claude-sonnet-4-6";
+  const agentMaxTokens = opts.maxTokens ?? 4096;
   // Combina histórico anterior + nova mensagem do usuário
   const messages: Anthropic.MessageParam[] = [...history, { role: "user", content: userMessage }];
   for (let i = 0; i < 10; i++) {
@@ -502,8 +504,8 @@ async function callAgent(agentType: AgentType, userMessage: string, history: Ant
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         response = await anthropic.messages.create({
-          model: "claude-sonnet-4-6",
-          max_tokens: 4096,
+          model: agentModel,
+          max_tokens: agentMaxTokens,
           system: SYSTEM_PROMPTS[agentType],
           tools: AGENT_TOOLS[agentType],
           messages,
@@ -789,12 +791,17 @@ async function runAlignmentMeeting(mode: "daily" | "ondemand" = "daily", directC
 
   await safeRun(async () => {
 
-  // Consulta paralela nos 4 agentes — sem limite artificial de itens para relatório completo
+  // Daily: usa Haiku nos 4 relatórios iniciais (3-4× mais rápido, cabe nos 150s da edge function)
+  // Ondemand: usa Sonnet para maior qualidade (chamado via Telegram, sem restrição de tempo)
+  const reportModel  = mode === "daily" ? "claude-haiku-4-5" : "claude-sonnet-4-6";
+  const reportTokens = mode === "daily" ? 1500 : 4096;
+
+  // Consulta paralela nos 4 agentes
   const [noahStatus, sophiaStatus, melissaStatus, lunaStatus] = await Promise.all([
-    callAgent("financeiro", `${prefix} financeiro: saldo atual, MRR, inadimplência (todos os clientes com valor e dias de atraso), contas vencendo esta semana, projeção de caixa e alertas críticos. Seja completo e detalhado — não omita nenhum inadimplente.`),
-    callAgent("crm", `${prefix} comercial: leads quentes, follow-ups críticos, reuniões agendadas, oportunidades próximas de fechar, conversão do mês e próximos passos de cada lead relevante. Seja completo e detalhado.`),
-    callAgent("projetos", `${prefix} de CS/Projetos: todos os clientes ativos com status, sinais de churn, entregas pendentes, tarefas atrasadas, KPIs não lançados e pontos de atenção. Seja completo e detalhado — não omita nenhum cliente com risco.`),
-    callAgent("marketing", `${prefix} de marketing: status das campanhas ativas no Meta Ads (gasto, CPL, ROAS), leads por canal de origem no CRM, criativos com melhor e pior performance, oportunidades de otimização e próximas ações recomendadas.`),
+    callAgent("financeiro", `${prefix} financeiro: saldo atual, MRR, inadimplência (todos os clientes com valor e dias de atraso), contas vencendo esta semana, projeção de caixa e alertas críticos. Seja completo — não omita nenhum inadimplente.`, [], { model: reportModel, maxTokens: reportTokens }),
+    callAgent("crm", `${prefix} comercial: leads quentes, follow-ups críticos, reuniões agendadas, oportunidades próximas de fechar, conversão do mês e próximos passos de cada lead relevante.`, [], { model: reportModel, maxTokens: reportTokens }),
+    callAgent("projetos", `${prefix} de CS/Projetos: todos os clientes ativos com status, sinais de churn, entregas pendentes, tarefas atrasadas, KPIs não lançados e pontos de atenção. Não omita nenhum cliente com risco.`, [], { model: reportModel, maxTokens: reportTokens }),
+    callAgent("marketing", `${prefix} de marketing: status das campanhas ativas no Meta Ads (gasto, CPL, ROAS), leads por canal de origem no CRM, criativos com melhor e pior performance, oportunidades de otimização.`, [], { model: reportModel, maxTokens: reportTokens }),
   ]);
 
   // Envia relatório de cada agente como mensagem separada para o CEO
@@ -1148,12 +1155,13 @@ Deno.serve(async (req) => {
   // ── AÇÕES DE CRON ──
   const action = url.searchParams.get("action");
   if (action === "daily-meeting") {
-    // Síncrono: aguarda a reunião completa antes de responder (evita timeout do waitUntil)
-    await runAlignmentMeeting("daily");
+    // Fire-and-forget: retorna 200 imediatamente, executa em background (waitUntil)
+    // Reunião usa Haiku nos 4 relatórios → cabe nos 150s de wall-clock da edge function
+    EdgeRuntime.waitUntil(runAlignmentMeeting("daily"));
     return new Response(JSON.stringify({ ok: true, started: "daily-meeting" }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   if (action === "reuniao" || action === "alinhamento") {
-    await runAlignmentMeeting("ondemand");
+    EdgeRuntime.waitUntil(runAlignmentMeeting("ondemand"));
     return new Response(JSON.stringify({ ok: true, started: "reuniao-alinhamento" }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   if (action === "check-in") {
