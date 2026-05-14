@@ -17,6 +17,19 @@ import { CalendarIcon, Loader2, Video, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildProjectEventDescription } from "@/lib/projectMeetingDescription";
 
+// Maps internal recurrence values to Google Calendar RRULE strings.
+function recurrenceToRRule(recurrence: string | null): string | null {
+  switch (recurrence) {
+    case "daily_weekdays": return "RRULE:FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR";
+    case "daily_all_days": return "RRULE:FREQ=DAILY";
+    case "weekly":         return "RRULE:FREQ=WEEKLY";
+    case "biweekly":       return "RRULE:FREQ=WEEKLY;INTERVAL=2";
+    case "monthly":        return "RRULE:FREQ=MONTHLY";
+    case "quarterly":      return "RRULE:FREQ=MONTHLY;INTERVAL=3";
+    default: return null;
+  }
+}
+
 interface StaffMember {
   id: string;
   name: string;
