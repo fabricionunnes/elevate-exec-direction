@@ -2272,6 +2272,158 @@ const OnboardingTasksPage = () => {
               </DropdownMenu>
             )}
 
+            {/* Sucesso do Cliente Menu */}
+            {canAccessAnalytics && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Heart className="h-4 w-4 mr-2" />
+                    Sucesso do Cliente
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 max-h-[80vh] overflow-y-auto">
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations-retention")}>
+                      <AlertTriangle className="h-4 w-4 mr-2" />
+                      Cancelamento & Retenção
+                    </DropdownMenuItem>
+                  )}
+
+                  {/* Análises */}
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <TrendingDown className="h-4 w-4 mr-2" />
+                      Análises
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-48">
+                      {isAdmin && (
+                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/executive")}>
+                          <Activity className="h-4 w-4 mr-2" />
+                          Dashboard Executivo
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/churn-prediction")}>
+                        <TrendingDown className="h-4 w-4 mr-2" />
+                        Previsão de Churn
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cohort-retention")}>
+                        <Users2 className="h-4 w-4 mr-2" />
+                        Análise de Cohort
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+
+                  {(isAdmin || isCS) && (
+                    <>
+                      {/* Relatórios */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <FileBarChart className="h-4 w-4 mr-2" />
+                          Relatórios
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-52">
+                          {isAdmin && (
+                            <DropdownMenuItem onClick={() => navigate("/sales-report")}>
+                              <TrendingUp className="h-4 w-4 mr-2" />
+                              Relatório de Vendas do Mês
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies-report")}>
+                            <FileBarChart className="h-4 w-4 mr-2" />
+                            Relatório de Empresas
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/activity-history")}>
+                            <History className="h-4 w-4 mr-2" />
+                            Histórico de Atividades
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/engagement")}>
+                            <Award className="h-4 w-4 mr-2" />
+                            Ranking de Engajamento
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/client-access")}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Acessos dos Clientes
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/segments")}>
+                            <BarChart3 className="h-4 w-4 mr-2" />
+                            Segmentos
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/gamificacao-geral")}>
+                            <Gamepad2 className="h-4 w-4 mr-2" />
+                            Gamificação Geral
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/commercial-actions")}>
+                            <Target className="h-4 w-4 mr-2" />
+                            Ações Comerciais
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+
+                      {/* Operacional */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Operacional
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-56">
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/renewals")}>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Renovações
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations")}>
+                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            Cancelamentos & Retenção
+                          </DropdownMenuItem>
+                          {isAdmin && (
+                            <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/reschedule")}>
+                              <CalendarClock className="h-4 w-4 mr-2" />
+                              Reagendar Tarefas
+                            </DropdownMenuItem>
+                          )}
+                          {isAdmin && (
+                            <DropdownMenuItem
+                              onClick={handleUpdateAllHealthScores}
+                              disabled={updatingAllHealthScores}
+                            >
+                              <Heart className={`h-4 w-4 mr-2 ${updatingAllHealthScores ? "animate-pulse" : ""}`} />
+                              {updatingAllHealthScores ? "Atualizando..." : "Atualizar Saúde Global"}
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onClick={() => setShowUnassignedTasks(true)}>
+                            <UserX className="h-4 w-4 mr-2" />
+                            Tarefas sem Responsável
+                          </DropdownMenuItem>
+                          {(isAdmin || hasMenuPerm("financial")) && (
+                            <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/billing-rules")}>
+                              <Bell className="h-4 w-4 mr-2" />
+                              Régua de Cobranças
+                            </DropdownMenuItem>
+                          )}
+                          {(isAdmin || hasMenuPerm("financial")) && (
+                            <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/survey-send-config")}>
+                              <MessageSquare className="h-4 w-4 mr-2" />
+                              Régua de Pesquisas
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp")}>
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        UNV Disparador
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp-hub")}>
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        WhatsApp Hub
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
             {/* Admin/CS/Consultant Actions Menu - Reorganized with submenus */}
             {canAccessAnalytics && (
               <DropdownMenu>
