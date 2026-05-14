@@ -63,6 +63,8 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
   const [isRecording, setIsRecording] = useState(false);
   const [mentioned, setMentioned] = useState<string[]>([]);
   const [mentionPickerOpen, setMentionPickerOpen] = useState(false);
+  const [groupParticipants, setGroupParticipants] = useState<{ phone: string; name: string }[]>([]);
+  const [loadingParticipants, setLoadingParticipants] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -71,8 +73,9 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
 
   const isGroup = isGroupJid(conversation.contact_phone);
 
-  // Build participant list from received messages (deduped by phone)
+  // Build participant list: prefer fetched group participants, fallback to senders from history
   const participants = useMemo(() => {
+    if (groupParticipants.length > 0) return groupParticipants;
     const map = new Map<string, string>();
     for (const m of messages) {
       if (m.sender_phone) {
@@ -83,7 +86,7 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
       }
     }
     return Array.from(map.entries()).map(([phone, name]) => ({ phone, name }));
-  }, [messages]);
+  }, [messages, groupParticipants]);
 
   const activeInstance = instance ?? (conversation.instance_id && conversation.instance
     ? {
@@ -95,6 +98,36 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
         qr_code: null,
       }
     : null);
+
+  const fetchGroupParticipants = async () => {
+    if (!isGroup || !activeInstance?.id) return;
+    setLoadingParticipants(true);
+    try {
+      const groupJid = conversation.contact_phone.includes("@")
+        ? conversation.contact_phone
+        : `${conversation.contact_phone.replace(/\D/g, "")}@g.us`;
+      const { data, error } = await supabase.functions.invoke("evolution-api", {
+        body: { action: "fetchGroupParticipants", instanceId: activeInstance.id, groupJid },
+      });
+      if (error) throw error;
+      const list = Array.isArray((data as any)?.participants) ? (data as any).participants : [];
+      const seen = new Map<string, string>();
+      for (const p of list) {
+        const jid = p.id || p.jid || p.participant || "";
+        const phone = String(jid).split("@")[0].replace(/\D/g, "");
+        const name = p.name || p.notify || p.pushName || p.subject || phone;
+        if (phone && !seen.has(phone)) seen.set(phone, name);
+      }
+      const mapped = Array.from(seen.entries()).map(([phone, name]) => ({ phone, name }));
+      setGroupParticipants(mapped);
+      if (mapped.length === 0) toast.info("Nenhum participante retornado pela Evolution");
+    } catch (e) {
+      console.error("[WhatsAppHubChat] fetchGroupParticipants error:", e);
+      toast.error("Não foi possível carregar participantes");
+    } finally {
+      setLoadingParticipants(false);
+    }
+  };
 
   const fetchMessages = async () => {
     setLoading(true);
@@ -491,18 +524,40 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
             {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
           </Button>
           {isGroup && (
-            <Popover open={mentionPickerOpen} onOpenChange={setMentionPickerOpen}>
+            <Popover
+              open={mentionPickerOpen}
+              onOpenChange={(o) => {
+                setMentionPickerOpen(o);
+                if (o && groupParticipants.length === 0 && !loadingParticipants) {
+                  fetchGroupParticipants();
+                }
+              }}
+            >
               <PopoverTrigger asChild>
                 <Button type="button" variant="ghost" size="icon" className="shrink-0" disabled={sending} title="Marcar pessoa">
                   <AtSign className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-64 p-2" align="start">
-                <p className="text-xs text-muted-foreground mb-2 px-2">Marcar participante</p>
+                <div className="flex items-center justify-between mb-2 px-2">
+                  <p className="text-xs text-muted-foreground">Marcar participante</p>
+                  <button
+                    type="button"
+                    className="text-[10px] text-primary hover:underline"
+                    onClick={fetchGroupParticipants}
+                    disabled={loadingParticipants}
+                  >
+                    {loadingParticipants ? "Carregando..." : "Atualizar"}
+                  </button>
+                </div>
                 <div className="max-h-60 overflow-y-auto space-y-1">
-                  {participants.length === 0 ? (
+                  {loadingParticipants && participants.length === 0 ? (
                     <p className="text-xs text-muted-foreground px-2 py-4 text-center">
-                      Aguarde mensagens do grupo para listar participantes.
+                      Carregando participantes...
+                    </p>
+                  ) : participants.length === 0 ? (
+                    <p className="text-xs text-muted-foreground px-2 py-4 text-center">
+                      Nenhum participante encontrado.
                     </p>
                   ) : (
                     participants.map((p) => (
