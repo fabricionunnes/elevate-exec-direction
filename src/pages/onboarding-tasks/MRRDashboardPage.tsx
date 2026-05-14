@@ -178,14 +178,11 @@ export default function MRRDashboardPage() {
     () =>
       charges.filter((c) => {
         if (!isMRREligible(c)) return false;
-        if (c.is_active) return false;
         const created = new Date(c.created_at);
-        const updated = new Date(c.updated_at);
-        // Was active before the period start, deactivated within period
-        return (
-          isBefore(created, periodStart) &&
-          isWithinInterval(updated, { start: periodStart, end: periodEnd })
-        );
+        if (!isBefore(created, periodStart)) return false;
+        const churned = churnDate(c);
+        if (!churned) return false;
+        return isWithinInterval(churned, { start: periodStart, end: periodEnd });
       }),
     [charges, periodStart, periodEnd]
   );
