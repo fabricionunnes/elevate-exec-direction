@@ -242,7 +242,7 @@ export const AddTaskDialog = ({
         },
         body: {
           title: meetingTitle,
-          description: buildProjectEventDescription(description || `Reunião agendada para o projeto`, projectId),
+          description: buildProjectEventDescription(description || `Reunião agendada para o projeto`, projectId, { companyName }),
           startDateTime: startDateTime.toISOString(),
           endDateTime: endDateTime.toISOString(),
           target_user_id: staffData.user_id,

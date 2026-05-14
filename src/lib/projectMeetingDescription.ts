@@ -1,6 +1,9 @@
 /**
  * Builds a Google Calendar event description that includes a deep link
  * to the related project inside the system.
+ *
+ * Google Calendar's description field supports a limited subset of HTML
+ * (including <b>), so we use it to highlight the company name.
  */
 export function buildProjectEventDescription(
   baseDescription: string | null | undefined,
@@ -20,8 +23,9 @@ export function buildProjectEventDescription(
 
     if (lines.length) lines.push("");
     lines.push("──────────────");
-    lines.push("🔗 Acessar projeto no sistema:");
-    if (options?.companyName) lines.push(options.companyName);
+    if (options?.companyName) {
+      lines.push(`<b>${options.companyName}</b>`);
+    }
     lines.push(link);
   }
 
