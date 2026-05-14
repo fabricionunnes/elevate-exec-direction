@@ -119,6 +119,36 @@ const readEndpoints = [
     example: `GET ${API_URL}?endpoint=overdue_clients`,
     response: `{ "data": [{ "company_name": "Empresa ABC", "total_overdue": 15000 }], "total_overdue": 75000 }`,
   },
+  {
+    name: "Cobranças (com link de pagamento)",
+    endpoint: "receivables",
+    icon: Link2,
+    method: "GET",
+    description: "Lista cobranças de uma empresa com o link de pagamento de cada uma. Ideal para enviar via WhatsApp ou N8N.",
+    params: [
+      { name: "company_id", desc: "UUID da empresa (obrigatório para filtrar por cliente)", required: true },
+      { name: "status", desc: "pending, paid, overdue, cancelled", required: false },
+      { name: "date_from", desc: "Vencimento a partir de (YYYY-MM-DD)", required: false },
+      { name: "date_to", desc: "Vencimento até (YYYY-MM-DD)", required: false },
+    ],
+    example: `GET ${SYSTEM_API_URL}?module=invoices&action=list&company_id=UUID&status=pending`,
+    response: `{
+  "data": [
+    {
+      "id": "uuid",
+      "description": "Mensalidade Maio/2026",
+      "amount_cents": 700000,
+      "amount": 7000.00,
+      "due_date": "2026-05-15",
+      "status": "pending",
+      "payment_link_url": "https://link-de-pagamento...",
+      "payment_method": "pix",
+      "installment_number": 5,
+      "total_installments": 12
+    }
+  ]
+}`,
+  },
 ];
 
 const writeEndpoints = [
