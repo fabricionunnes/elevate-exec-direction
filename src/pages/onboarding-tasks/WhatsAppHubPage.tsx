@@ -53,6 +53,8 @@ export interface HubMessage {
   created_at: string;
   remote_id?: string | null;
   sent_by?: string | null;
+  sender_phone?: string | null;
+  sender_name?: string | null;
 }
 
 const WhatsAppHubPage = () => {
