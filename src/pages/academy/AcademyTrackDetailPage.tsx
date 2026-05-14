@@ -103,6 +103,11 @@ export const AcademyTrackDetailPage = () => {
         .single();
 
       if (!trackData) return;
+      // Bloqueio: vendedor não acessa trilhas de Gestão
+      if (userContext.userRole === "vendedor" && trackData.category === "gestao") {
+        navigate("/academy/tracks", { replace: true });
+        return;
+      }
       setTrack(trackData);
 
       // Load modules
