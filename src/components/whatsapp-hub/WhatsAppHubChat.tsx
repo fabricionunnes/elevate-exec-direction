@@ -207,12 +207,15 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
 
       if (insertError) throw insertError;
 
+      const validMentioned = mentioned.filter((p) => newMessage.includes(`@${p}`));
+
       const { data: sendData, error: sendError } = await supabase.functions.invoke("evolution-api", {
         body: {
           action: "sendText",
           instanceId: sendTarget.instanceId,
           phone: sendTarget.phone,
           message: newMessage.trim(),
+          mentioned: isGroup && validMentioned.length > 0 ? validMentioned : undefined,
         },
       });
 
