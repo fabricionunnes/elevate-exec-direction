@@ -242,6 +242,7 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
         .eq("id", conversation.id);
 
       setNewMessage("");
+      setMentioned([]);
       // Realtime subscription handles new message display
     } catch (err) {
       console.error("Error sending message:", err);
