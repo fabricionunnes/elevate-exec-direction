@@ -58,9 +58,11 @@ import {
   Repeat,
   CalendarDays,
   Copy,
-  Pencil
+  Pencil,
+  Filter
 } from "lucide-react";
 import { PayableEditDialog } from "./PayableActionDialogs";
+import { EditPaymentsDialog } from "./EditPaymentsDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -132,6 +134,7 @@ export function PayablesPanel() {
   const [deleteTarget, setDeleteTarget] = useState<Payable | null>(null);
   const [deleteScope, setDeleteScope] = useState<"single" | "future">("single");
   const [isEditPayableOpen, setIsEditPayableOpen] = useState(false);
+  const [isEditPaymentsOpen, setIsEditPaymentsOpen] = useState(false);
   const [costCenters, setCostCenters] = useState<any[]>([]);
   const { isMaster } = useFinancialPermissions();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -999,6 +1002,17 @@ export function PayablesPanel() {
                               Reabrir
                             </DropdownMenuItem>
                           )}
+                          {(payable.status === "partial" || payable.status === "paid") && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedPayable(payable);
+                                setIsEditPaymentsOpen(true);
+                              }}
+                            >
+                              <Filter className="h-4 w-4 mr-2" />
+                              Editar Pagamentos
+                            </DropdownMenuItem>
+                          )}
                           {isMaster && (
                             <DropdownMenuItem
                               className="text-red-600"
@@ -1227,6 +1241,21 @@ export function PayablesPanel() {
         onSuccess={() => { loadData(); }}
         onSuppliersRefresh={() => { loadData(); }}
         onCostCentersRefresh={() => { loadData(); }}
+      />
+
+      {/* Edit Payments Dialog */}
+      <EditPaymentsDialog
+        open={isEditPaymentsOpen}
+        onOpenChange={setIsEditPaymentsOpen}
+        type="payable"
+        receivable={selectedPayable ? {
+          id: selectedPayable.id,
+          description: selectedPayable.description,
+          amount: Number(selectedPayable.amount),
+          paid_amount: selectedPayable.paid_amount ?? null,
+          status: selectedPayable.status || "pending",
+        } : null}
+        onSuccess={() => { loadData(); }}
       />
     </div>
   );
