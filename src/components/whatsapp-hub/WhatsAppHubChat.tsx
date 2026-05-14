@@ -430,6 +430,11 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
                     : "bg-background border rounded-bl-sm"
                 )}
               >
+                {isGroup && msg.direction === "incoming" && (msg.sender_name || msg.sender_phone) && (
+                  <p className="text-[11px] font-semibold text-primary mb-0.5">
+                    {msg.sender_name || msg.sender_phone}
+                  </p>
+                )}
                 {msg.media_url && (
                   <div className="mb-1">
                     {msg.media_type?.startsWith("image") ? (
