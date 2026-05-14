@@ -115,7 +115,7 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
           </h2>
           <p className="text-xs text-muted-foreground">Gerencie seus negócios, contatos e atividades comerciais</p>
         </div>
-        {!isPipelineTab && owners.length > 0 && (
+        {!isPipelineTab && !isVendedor && owners.length > 0 && (
           <Select value={selectedOwnerId} onValueChange={setSelectedOwnerId}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Filtrar por closer" />
@@ -127,6 +127,11 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
               ))}
             </SelectContent>
           </Select>
+        )}
+        {isVendedor && (
+          <span className="text-xs text-muted-foreground px-3 py-1.5 rounded-md bg-muted">
+            Visualizando apenas seus dados
+          </span>
         )}
       </div>
 
