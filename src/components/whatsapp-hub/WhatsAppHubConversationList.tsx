@@ -180,6 +180,22 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, staffRole, onSe
         query = query.or(buildVisibilityFilter(access));
       }
 
+      // Consultor: vê apenas conversas vinculadas a projetos onde ele é o consultor.
+      // Conversas sem projeto e projetos de outros consultores ficam ocultos.
+      if (!isMaster && staffRole === "consultant") {
+        const { data: ownedProjects } = await supabase
+          .from("onboarding_projects")
+          .select("id")
+          .eq("consultant_id", staffId);
+        const ownedIds = (ownedProjects || []).map((p: any) => p.id);
+        if (ownedIds.length === 0) {
+          setConversations([]);
+          setLoading(false);
+          return;
+        }
+        query = query.in("project_id", ownedIds);
+      }
+
       if (filterProjectId) {
         query = query.eq("project_id", filterProjectId);
       }
