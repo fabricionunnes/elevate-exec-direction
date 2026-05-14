@@ -447,18 +447,12 @@ export const AddTaskDialog = ({
                     <Clock className="h-3.5 w-3.5" />
                     Horário
                   </Label>
-                  <Select value={meetingTime} onValueChange={setMeetingTime}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {TIME_OPTIONS.map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {time}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    type="time"
+                    step={60}
+                    value={meetingTime}
+                    onChange={(e) => setMeetingTime(e.target.value)}
+                  />
                 </div>
 
                 <div className="space-y-2">
