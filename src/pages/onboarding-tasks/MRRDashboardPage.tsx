@@ -59,12 +59,7 @@ interface RecurringCharge {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  company?: {
-    id: string;
-    name: string;
-    status?: string | null;
-    status_changed_at?: string | null;
-  } | null;
+  company?: { id: string; name: string } | null;
 }
 
 const recurrenceToMonthlyFactor = (recurrence: string): number => {
@@ -92,28 +87,13 @@ const recurrenceToMonthlyFactor = (recurrence: string): number => {
 const monthlyCents = (c: RecurringCharge): number =>
   Math.round(c.amount_cents * recurrenceToMonthlyFactor(c.recurrence));
 
-// Only contracts with installments >= 12 are considered true recurring MRR.
-const isMRREligible = (c: RecurringCharge): boolean => (c.installments || 0) >= 12;
-
-// Effective deactivation date: earliest moment the charge OR its company stopped being active.
-const churnDate = (c: RecurringCharge): Date | null => {
-  const dates: number[] = [];
-  if (!c.is_active) dates.push(new Date(c.updated_at).getTime());
-  if (c.company?.status && c.company.status !== "active") {
-    const d = c.company.status_changed_at || c.updated_at;
-    dates.push(new Date(d).getTime());
-  }
-  if (dates.length === 0) return null;
-  return new Date(Math.min(...dates));
-};
-
 const isActiveAt = (c: RecurringCharge, date: Date): boolean => {
-  if (!isMRREligible(c)) return false;
   const created = new Date(c.created_at);
   if (isAfter(created, date)) return false;
-  const churned = churnDate(c);
-  if (churned && !isAfter(churned, date)) return false;
-  return true;
+  if (c.is_active) return true;
+  // Was deactivated; consider it active until updated_at
+  const updated = new Date(c.updated_at);
+  return isAfter(updated, date);
 };
 
 const fmtBRL = (cents: number) =>
@@ -137,7 +117,7 @@ export default function MRRDashboardPage() {
         const { data, error } = await supabase
           .from("company_recurring_charges")
           .select(
-            "id, company_id, description, amount_cents, installments, recurrence, is_active, created_at, updated_at, company:onboarding_companies(id, name, status, status_changed_at)"
+            "id, company_id, description, amount_cents, installments, recurrence, is_active, created_at, updated_at, company:onboarding_companies(id, name)"
           )
           .order("created_at", { ascending: false });
 
@@ -167,7 +147,6 @@ export default function MRRDashboardPage() {
   const newCharges = useMemo(
     () =>
       charges.filter((c) => {
-        if (!isMRREligible(c)) return false;
         const d = new Date(c.created_at);
         return isWithinInterval(d, { start: periodStart, end: periodEnd });
       }),
@@ -177,12 +156,14 @@ export default function MRRDashboardPage() {
   const churnedCharges = useMemo(
     () =>
       charges.filter((c) => {
-        if (!isMRREligible(c)) return false;
+        if (c.is_active) return false;
         const created = new Date(c.created_at);
-        if (!isBefore(created, periodStart)) return false;
-        const churned = churnDate(c);
-        if (!churned) return false;
-        return isWithinInterval(churned, { start: periodStart, end: periodEnd });
+        const updated = new Date(c.updated_at);
+        // Was active before the period start, deactivated within period
+        return (
+          isBefore(created, periodStart) &&
+          isWithinInterval(updated, { start: periodStart, end: periodEnd })
+        );
       }),
     [charges, periodStart, periodEnd]
   );
