@@ -87,7 +87,12 @@ const recurrenceToMonthlyFactor = (recurrence: string): number => {
 const monthlyCents = (c: RecurringCharge): number =>
   Math.round(c.amount_cents * recurrenceToMonthlyFactor(c.recurrence));
 
+// Only contracts with installments >= 12 are considered true recurring MRR.
+// Shorter parcelamentos (1, 3, 6) are treated as one-time / non-recurring sales.
+const isMRREligible = (c: RecurringCharge): boolean => (c.installments || 0) >= 12;
+
 const isActiveAt = (c: RecurringCharge, date: Date): boolean => {
+  if (!isMRREligible(c)) return false;
   const created = new Date(c.created_at);
   if (isAfter(created, date)) return false;
   if (c.is_active) return true;
