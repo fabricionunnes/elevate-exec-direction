@@ -26,6 +26,19 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { buildProjectEventDescription } from "@/lib/projectMeetingDescription";
+import { RecurrenceSelector } from "@/components/onboarding-tasks/RecurrenceSelector";
+
+function recurrenceToRRule(recurrence: string | null): string | null {
+  switch (recurrence) {
+    case "daily_weekdays": return "RRULE:FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR";
+    case "daily_all_days": return "RRULE:FREQ=DAILY";
+    case "weekly":         return "RRULE:FREQ=WEEKLY";
+    case "biweekly":       return "RRULE:FREQ=WEEKLY;INTERVAL=2";
+    case "monthly":        return "RRULE:FREQ=MONTHLY";
+    case "quarterly":      return "RRULE:FREQ=MONTHLY;INTERVAL=3";
+    default: return null;
+  }
+}
 
 interface StaffWithCalendar {
   id: string;
