@@ -1885,6 +1885,78 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'fetchGroupParticipants': {
+        const { instanceId, groupJid } = body;
+        if (!instanceId || !groupJid) {
+          return new Response(
+            JSON.stringify({ error: 'instanceId and groupJid are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const supabaseService2 = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+
+        const { data: instance, error: instanceError } = await supabaseService2
+          .from('whatsapp_instances')
+          .select('instance_name, api_url, api_key')
+          .eq('id', instanceId)
+          .single();
+
+        if (instanceError || !instance) {
+          return new Response(
+            JSON.stringify({ error: 'Instance not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const apiBaseUrl = instance.api_url ? normalizeBaseUrl(instance.api_url) : evolutionBaseUrl;
+        const apiHeaders = instance.api_key ? buildEvolutionHeaders(instance.api_key) : evolutionHeaders;
+
+        // Try multiple endpoint variants used by Evolution API versions
+        const attempts = [
+          { method: 'GET',  url: `${apiBaseUrl}/group/participants/${instance.instance_name}?groupJid=${encodeURIComponent(groupJid)}` },
+          { method: 'POST', url: `${apiBaseUrl}/group/participants/${instance.instance_name}`, body: JSON.stringify({ groupJid }) },
+          { method: 'GET',  url: `${apiBaseUrl}/group/findGroupInfos/${instance.instance_name}?groupJid=${encodeURIComponent(groupJid)}` },
+        ];
+
+        let lastStatus = 500;
+        let lastBody: any = null;
+        for (const a of attempts) {
+          try {
+            const res = await fetch(a.url, {
+              method: a.method,
+              headers: { ...apiHeaders, 'Content-Type': 'application/json' },
+              body: a.body,
+            });
+            const text = await res.text();
+            let parsed: any = null;
+            try { parsed = JSON.parse(text); } catch { parsed = text; }
+            lastStatus = res.status;
+            lastBody = parsed;
+            console.log(`[evolution-api] fetchGroupParticipants ${a.method} ${a.url} -> ${res.status}`);
+            if (res.ok) {
+              const participants = Array.isArray(parsed?.participants)
+                ? parsed.participants
+                : (Array.isArray(parsed) ? parsed : (parsed?.data?.participants ?? []));
+              return new Response(
+                JSON.stringify({ participants, raw: parsed }),
+                { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+          } catch (e) {
+            console.error('[evolution-api] fetchGroupParticipants attempt error:', e);
+          }
+        }
+
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch participants', detail: lastBody }),
+          { status: lastStatus, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'sendGroupText': {
         // Send text message to a WhatsApp group
         const { instanceId, groupJid, message } = body;
