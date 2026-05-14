@@ -137,7 +137,7 @@ export default function MRRDashboardPage() {
         const { data, error } = await supabase
           .from("company_recurring_charges")
           .select(
-            "id, company_id, description, amount_cents, installments, recurrence, is_active, created_at, updated_at, company:onboarding_companies(id, name)"
+            "id, company_id, description, amount_cents, installments, recurrence, is_active, created_at, updated_at, company:onboarding_companies(id, name, status, status_changed_at)"
           )
           .order("created_at", { ascending: false });
 
