@@ -213,6 +213,7 @@ const WhatsAppHubPage = () => {
             <WhatsAppHubConversationList
               staffId={currentStaff?.id || ""}
               isMaster={isMaster}
+              staffRole={currentStaff?.role}
               onSelect={handleSelectConversation}
               selectedId={selectedConversation?.id}
             />
@@ -289,6 +290,7 @@ const WhatsAppHubPage = () => {
           <WhatsAppHubConversationList
             staffId={currentStaff?.id || ""}
             isMaster={isMaster}
+            staffRole={currentStaff?.role}
             onSelect={handleSelectConversation}
             selectedId={selectedConversation?.id}
           />

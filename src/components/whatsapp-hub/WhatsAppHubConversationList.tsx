@@ -18,6 +18,7 @@ import type { HubConversation } from "@/pages/onboarding-tasks/WhatsAppHubPage";
 interface Props {
   staffId: string;
   isMaster: boolean;
+  staffRole?: string | null;
   onSelect: (conv: HubConversation) => void;
   selectedId?: string;
   filterProjectId?: string;
@@ -62,7 +63,7 @@ const buildVisibilityFilter = ({ allowedInstanceIds, allowedOfficialInstanceIds 
   return clauses.join(",");
 };
 
-export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selectedId, filterProjectId }: Props) => {
+export const WhatsAppHubConversationList = ({ staffId, isMaster, staffRole, onSelect, selectedId, filterProjectId }: Props) => {
   const [conversations, setConversations] = useState<HubConversation[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -179,6 +180,22 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
         query = query.or(buildVisibilityFilter(access));
       }
 
+      // Consultor: vê apenas conversas vinculadas a projetos onde ele é o consultor.
+      // Conversas sem projeto e projetos de outros consultores ficam ocultos.
+      if (!isMaster && staffRole === "consultant") {
+        const { data: ownedProjects } = await supabase
+          .from("onboarding_projects")
+          .select("id")
+          .eq("consultant_id", staffId);
+        const ownedIds = (ownedProjects || []).map((p: any) => p.id);
+        if (ownedIds.length === 0) {
+          setConversations([]);
+          setLoading(false);
+          return;
+        }
+        query = query.in("project_id", ownedIds);
+      }
+
       if (filterProjectId) {
         query = query.eq("project_id", filterProjectId);
       }
@@ -265,7 +282,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [staffId, isMaster, filterProjectId]);
+  }, [staffId, isMaster, staffRole, filterProjectId]);
 
   const filtered = useMemo(() => {
     return conversations.filter((conversation) => {
