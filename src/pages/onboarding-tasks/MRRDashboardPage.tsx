@@ -152,6 +152,7 @@ export default function MRRDashboardPage() {
   const newCharges = useMemo(
     () =>
       charges.filter((c) => {
+        if (!isMRREligible(c)) return false;
         const d = new Date(c.created_at);
         return isWithinInterval(d, { start: periodStart, end: periodEnd });
       }),
@@ -161,6 +162,7 @@ export default function MRRDashboardPage() {
   const churnedCharges = useMemo(
     () =>
       charges.filter((c) => {
+        if (!isMRREligible(c)) return false;
         if (c.is_active) return false;
         const created = new Date(c.created_at);
         const updated = new Date(c.updated_at);
