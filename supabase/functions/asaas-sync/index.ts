@@ -61,8 +61,9 @@ async function reconcileAsaasBankBalance(supabase: any, apiKey: string) {
     reference_type: "asaas_balance_reconciliation",
   });
 
-  // Se for débito (saída de dinheiro), cria conta a pagar JÁ PAGA para categorização manual.
-  // O banco já foi ajustado pela transaction acima — NÃO debitar novamente ao pagar a conta.
+  const reconciliationNote = "Criado automaticamente pela conciliação bancária. Edite o fornecedor, descrição, categoria e centro de custo conforme necessário.";
+
+  // Débito (saída): cria conta a pagar JÁ PAGA — o banco já foi ajustado acima, não debitar de novo
   let payableId: string | null = null;
   if (diffCents < 0) {
     const { data: payable } = await supabase.from("financial_payables").insert({
@@ -73,12 +74,28 @@ async function reconcileAsaasBankBalance(supabase: any, apiKey: string) {
       status: "paid",
       paid_date: today,
       paid_amount: Math.abs(diffCents) / 100,
-      notes: "Criado automaticamente pela conciliação bancária. Edite o fornecedor, descrição, categoria e centro de custo conforme necessário.",
+      notes: reconciliationNote,
     }).select("id").single();
     payableId = payable?.id ?? null;
   }
 
-  return { adjusted: true, diff_cents: diffCents, actual_balance_cents: actualBalanceCents, payable_id: payableId };
+  // Crédito (entrada): cria conta a receber JÁ RECEBIDA — o banco já foi ajustado acima
+  let receivableId: string | null = null;
+  if (diffCents > 0) {
+    const { data: receivable } = await supabase.from("financial_receivables").insert({
+      custom_receiver_name: "Asaas",
+      description: adjustmentDescription,
+      amount: Math.abs(diffCents) / 100,
+      due_date: today,
+      status: "paid",
+      paid_date: today,
+      paid_amount: Math.abs(diffCents) / 100,
+      notes: reconciliationNote,
+    }).select("id").single();
+    receivableId = receivable?.id ?? null;
+  }
+
+  return { adjusted: true, diff_cents: diffCents, actual_balance_cents: actualBalanceCents, payable_id: payableId, receivable_id: receivableId };
 }
 
 async function runSync(days: number) {

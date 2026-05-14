@@ -26,7 +26,11 @@ import {
   Search,
   ArrowLeft,
   ArrowRight,
+  Trash2,
+  ArrowUpCircle,
+  ArrowDownCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface BankTransaction {
   id: string;
@@ -62,6 +66,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && bank) {
@@ -90,6 +95,48 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
       console.error("Error loading bank transactions:", err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteReconciliation = async (t: BankTransaction) => {
+    setDeletingId(t.id);
+    try {
+      const note = "Criado automaticamente pela conciliação bancária. Edite o fornecedor, descrição, categoria e centro de custo conforme necessário.";
+      const amount = t.amount_cents / 100;
+      const today = new Date().toISOString().slice(0, 10);
+
+      if (t.type === "debit") {
+        await supabase.from("financial_payables").insert({
+          supplier_name: "Asaas",
+          description: t.description || "Ajuste automático Asaas",
+          amount,
+          due_date: today,
+          status: "paid",
+          paid_date: today,
+          paid_amount: amount,
+          notes: note,
+        });
+      } else {
+        await supabase.from("financial_receivables").insert({
+          custom_receiver_name: "Asaas",
+          description: t.description || "Ajuste automático Asaas",
+          amount,
+          due_date: today,
+          status: "paid",
+          paid_date: today,
+          paid_amount: amount,
+          notes: note,
+        });
+      }
+
+      await supabase.from("financial_bank_transactions").delete().eq("id", t.id);
+      toast.success(`Movido para ${t.type === "debit" ? "Contas a Pagar" : "Contas a Receber"} para categorização`);
+      await loadTransactions();
+    } catch (err) {
+      toast.error("Erro ao mover lançamento");
+      console.error(err);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -197,6 +244,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
                           <TrendingUp className="h-4 w-4 text-emerald-500 shrink-0" />
                         ) : (
                           <TrendingDown className="h-4 w-4 text-destructive shrink-0" />
+
                         )}
                         <div className="min-w-0">
                           <p className="text-sm truncate">{t.description || "Sem descrição"}</p>
@@ -208,9 +256,27 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
                           </p>
                         </div>
                       </div>
-                      <span className={`text-sm font-medium whitespace-nowrap ${t.type === "credit" ? "text-emerald-600" : "text-destructive"}`}>
-                        {t.type === "credit" ? "+" : "-"}{formatCurrencyCents(t.amount_cents)}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className={`text-sm font-medium whitespace-nowrap ${t.type === "credit" ? "text-emerald-600" : "text-destructive"}`}>
+                          {t.type === "credit" ? "+" : "-"}{formatCurrencyCents(t.amount_cents)}
+                        </span>
+                        {t.reference_type === "asaas_balance_reconciliation" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 shrink-0"
+                            disabled={deletingId === t.id}
+                            onClick={() => handleDeleteReconciliation(t)}
+                          >
+                            {deletingId === t.id
+                              ? <Loader2 className="h-3 w-3 animate-spin" />
+                              : t.type === "debit"
+                                ? <ArrowDownCircle className="h-3 w-3 text-amber-500" />
+                                : <ArrowUpCircle className="h-3 w-3 text-emerald-500" />
+                            }
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -224,6 +290,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
                       <TableHead>Cliente/Fornecedor</TableHead>
                       <TableHead className="w-[80px]">Tipo</TableHead>
                       <TableHead className="text-right w-[130px]">Valor</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -239,6 +306,25 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
                         </TableCell>
                         <TableCell className={`text-right text-sm font-medium whitespace-nowrap ${t.type === "credit" ? "text-emerald-600" : "text-destructive"}`}>
                           {t.type === "credit" ? "+" : "-"}{formatCurrencyCents(t.amount_cents)}
+                        </TableCell>
+                        <TableCell>
+                          {t.reference_type === "asaas_balance_reconciliation" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              title={`Mover para ${t.type === "debit" ? "Contas a Pagar" : "Contas a Receber"}`}
+                              disabled={deletingId === t.id}
+                              onClick={() => handleDeleteReconciliation(t)}
+                            >
+                              {deletingId === t.id
+                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                : t.type === "debit"
+                                  ? <ArrowDownCircle className="h-3.5 w-3.5 text-amber-500" />
+                                  : <ArrowUpCircle className="h-3.5 w-3.5 text-emerald-500" />
+                              }
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
