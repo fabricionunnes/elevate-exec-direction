@@ -54,6 +54,8 @@ import { CompanyFinancialPanel } from "@/components/company-financial/CompanyFin
 import { AddressFields } from "@/components/ui/address-fields";
 import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
+import { CompanyDataView } from "@/components/company/CompanyDataView";
+import { Database } from "lucide-react";
 
 
 interface Staff {
@@ -616,6 +618,13 @@ const OnboardingCompanyDetailPage = () => {
                     <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     <span className="hidden sm:inline">Financeiro</span>
                     <span className="sm:hidden">Fin.</span>
+                  </TabsTrigger>
+                )}
+                {!isNew && (
+                  <TabsTrigger value="dados" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                    <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Dados</span>
+                    <span className="sm:hidden">Dados</span>
                   </TabsTrigger>
                 )}
               </TabsList>
@@ -1328,6 +1337,17 @@ const OnboardingCompanyDetailPage = () => {
                   customerEmail={form.email}
                   customerPhone={form.phone}
                   customerDocument={form.cnpj}
+                />
+              </TabsContent>
+            )}
+
+            {!isNew && (
+              <TabsContent value="dados">
+                <CompanyDataView
+                  form={form}
+                  staffList={staffList}
+                  csId={form.cs_id}
+                  consultantId={form.consultant_id}
                 />
               </TabsContent>
             )}
