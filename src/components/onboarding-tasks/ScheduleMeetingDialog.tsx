@@ -243,12 +243,38 @@ export const ScheduleMeetingDialog = ({
         attendees.push(...additionalEmails);
       }
 
+      // Resolve company name from project (fallback when prop is not provided)
+      let resolvedCompanyName: string | null = companyName || null;
+      if (!resolvedCompanyName && projectId) {
+        const { data: projectRow } = await supabase
+          .from("onboarding_projects")
+          .select("onboarding_company_id, company_id")
+          .eq("id", projectId)
+          .maybeSingle();
+        if (projectRow?.onboarding_company_id) {
+          const { data: oc } = await supabase
+            .from("onboarding_companies")
+            .select("name")
+            .eq("id", projectRow.onboarding_company_id)
+            .maybeSingle();
+          if (oc?.name) resolvedCompanyName = oc.name;
+        }
+        if (!resolvedCompanyName && projectRow?.company_id) {
+          const { data: pc } = await supabase
+            .from("portal_companies")
+            .select("name")
+            .eq("id", projectRow.company_id)
+            .maybeSingle();
+          if (pc?.name) resolvedCompanyName = pc.name;
+        }
+      }
+
       // Create event in target staff's calendar
       const recurrenceRule = recurrenceToRRule(recurrence);
       const response = await supabase.functions.invoke("google-calendar?action=create-event", {
         body: {
           title,
-          description: buildProjectEventDescription(description, projectId, { companyName }),
+          description: buildProjectEventDescription(description, projectId, { companyName: resolvedCompanyName }),
           startDateTime: startDate.toISOString(),
           endDateTime: endDate.toISOString(),
           target_user_id: targetStaff.user_id,
