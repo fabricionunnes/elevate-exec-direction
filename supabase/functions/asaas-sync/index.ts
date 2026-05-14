@@ -18,6 +18,49 @@ async function asaasGet(path: string, apiKey: string) {
   return r.json();
 }
 
+function toCents(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value ?? 0);
+  return Number.isFinite(n) ? Math.round(n * 100) : 0;
+}
+
+async function reconcileAsaasBankBalance(supabase: any, apiKey: string) {
+  const balanceData = await asaasGet("/finance/balance", apiKey);
+  const actualBalanceCents = toCents(balanceData?.balance);
+
+  const { data: bank } = await supabase
+    .from("financial_banks")
+    .select("id, name, current_balance_cents")
+    .eq("name", "Asaas")
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (!bank) return { adjusted: false, reason: "bank_not_found", diff_cents: 0 };
+
+  const storedBalanceCents = Number(bank.current_balance_cents || 0);
+  const diffCents = actualBalanceCents - storedBalanceCents;
+  if (diffCents === 0) return { adjusted: false, diff_cents: 0, actual_balance_cents: actualBalanceCents };
+
+  const { data: updated, error: updateErr } = await supabase
+    .from("financial_banks")
+    .update({ current_balance_cents: actualBalanceCents, updated_at: new Date().toISOString() })
+    .eq("id", bank.id)
+    .eq("current_balance_cents", storedBalanceCents)
+    .select("id");
+
+  if (updateErr) throw updateErr;
+  if (!updated?.length) return { adjusted: false, reason: "concurrent_update", diff_cents: diffCents };
+
+  await supabase.from("financial_bank_transactions").insert({
+    bank_id: bank.id,
+    type: diffCents > 0 ? "credit" : "debit",
+    amount_cents: Math.abs(diffCents),
+    description: `Ajuste automático Asaas: saldo oficial R$ ${(actualBalanceCents / 100).toFixed(2)} (${diffCents > 0 ? "+" : "-"}R$ ${(Math.abs(diffCents) / 100).toFixed(2)})`,
+    reference_type: "asaas_balance_reconciliation",
+  });
+
+  return { adjusted: true, diff_cents: diffCents, actual_balance_cents: actualBalanceCents };
+}
+
 async function runSync(days: number) {
   const startedAt = Date.now();
   const ASAAS_API_KEY = Deno.env.get("ASAAS_API_KEY");
@@ -39,6 +82,7 @@ async function runSync(days: number) {
   let skipped = 0;
   const divergences: any[] = [];
   const errors: any[] = [];
+  let balanceReconciliation: any = null;
 
   try {
     for (const status of ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"]) {
@@ -123,6 +167,16 @@ async function runSync(days: number) {
       } catch (_) { /* best effort */ }
     }
 
+    try {
+      balanceReconciliation = await reconcileAsaasBankBalance(supabase, ASAAS_API_KEY);
+      if (balanceReconciliation?.adjusted) {
+        console.log("[asaas-sync] Balance reconciled", balanceReconciliation);
+      }
+    } catch (e: any) {
+      errors.push({ step: "balance_reconciliation", error: e.message });
+      console.error("[asaas-sync] Balance reconciliation failed", e);
+    }
+
     const summary = {
       ok: true,
       duration_ms: Date.now() - startedAt,
@@ -132,6 +186,7 @@ async function runSync(days: number) {
       skipped,
       divergences: divergences.length,
       errors: errors.length,
+      balance_reconciliation: balanceReconciliation,
       divergence_details: divergences,
       error_details: errors.slice(0, 10),
     };
