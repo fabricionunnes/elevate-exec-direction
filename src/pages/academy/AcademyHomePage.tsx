@@ -61,8 +61,9 @@ export const AcademyHomePage = () => {
 
   const loadData = async () => {
     try {
+      const isVendedor = userContext.userRole === "vendedor";
       // Load tracks with lesson counts
-      const { data: tracksData } = await supabase
+      let tracksQuery = supabase
         .from("academy_tracks")
         .select(`
           id, name, description, category, cover_image_url, level,
@@ -72,6 +73,13 @@ export const AcademyHomePage = () => {
         .order("level", { ascending: true })
         .order("sort_order", { ascending: true })
         .limit(6);
+
+      // Vendedor não vê trilhas da categoria Gestão
+      if (isVendedor) {
+        tracksQuery = tracksQuery.neq("category", "gestao");
+      }
+
+      const { data: tracksData } = await tracksQuery;
 
       if (tracksData) {
         // Get progress for each track if user is logged in

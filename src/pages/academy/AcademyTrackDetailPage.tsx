@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useOutletContext } from "react-router-dom";
+import { useParams, Link, useOutletContext, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -80,6 +80,7 @@ interface Quiz {
 export const AcademyTrackDetailPage = () => {
   const { trackId } = useParams();
   const userContext = useOutletContext<AcademyUserContext>();
+  const navigate = useNavigate();
   const [track, setTrack] = useState<Track | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [lessonsWithoutModule, setLessonsWithoutModule] = useState<Lesson[]>([]);
@@ -102,6 +103,11 @@ export const AcademyTrackDetailPage = () => {
         .single();
 
       if (!trackData) return;
+      // Bloqueio: vendedor não acessa trilhas de Gestão
+      if (userContext.userRole === "vendedor" && trackData.category === "gestao") {
+        navigate("/academy/tracks", { replace: true });
+        return;
+      }
       setTrack(trackData);
 
       // Load modules

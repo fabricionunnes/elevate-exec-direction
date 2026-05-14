@@ -53,6 +53,7 @@ export interface AcademyUserContext {
   companyId: string | null;
   projectId: string | null;
   userName: string;
+  userRole: string | null;
 }
 
 export const AcademyLayout = () => {
@@ -67,6 +68,7 @@ export const AcademyLayout = () => {
     companyId: null,
     projectId: null,
     userName: "",
+    userRole: null,
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
@@ -100,6 +102,7 @@ export const AcademyLayout = () => {
             companyId: null,
             projectId: null,
             userName: staff.name,
+            userRole: staff.role,
           });
           setHasAccess(true);
           setIsLoading(false);
@@ -119,6 +122,7 @@ export const AcademyLayout = () => {
         if (onboardingUser) {
           const project = onboardingUser.onboarding_projects as any;
           const isClientManager = onboardingUser.role === "client" || onboardingUser.role === "gerente";
+          const isVendedor = onboardingUser.role === "vendedor";
           
           // Check if user has academy access
           const { data: accessData } = await supabase
@@ -128,8 +132,8 @@ export const AcademyLayout = () => {
             .eq("is_active", true)
             .limit(1);
 
-          // Allow client managers or users with explicit access
-          if (isClientManager || (accessData && accessData.length > 0)) {
+          // Allow client managers, vendedores, or users with explicit access
+          if (isClientManager || isVendedor || (accessData && accessData.length > 0)) {
             setUserContext({
               isAdmin: false,
               isClientManager,
@@ -139,6 +143,7 @@ export const AcademyLayout = () => {
               companyId: project?.onboarding_company_id || null,
               projectId: onboardingUser.project_id,
               userName: onboardingUser.name,
+              userRole: onboardingUser.role,
             });
             setHasAccess(true);
             setIsLoading(false);

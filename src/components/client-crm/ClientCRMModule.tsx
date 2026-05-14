@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -29,12 +29,20 @@ interface ClientCRMModuleProps {
 }
 
 export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps) => {
-  const { hasPermission } = useClientPermissions(projectId);
+  const { hasPermission, currentUser: clientUser } = useClientPermissions(projectId);
   const { isMaster } = useStaffPermissions();
   const crm = useClientCRM(projectId);
   const pipeline = useClientCRMPipeline(projectId);
-  const [selectedOwnerId, setSelectedOwnerId] = useState<string>("all");
+  const isVendedor = clientUser?.role === "vendedor";
+  const [selectedOwnerId, setSelectedOwnerId] = useState<string>(isVendedor ? clientUser!.id : "all");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Vendedor: força filtro por si mesmo (não pode ver dados de outros)
+  useEffect(() => {
+    if (isVendedor && clientUser?.id) {
+      setSelectedOwnerId(clientUser.id);
+    }
+  }, [isVendedor, clientUser?.id]);
 
   const tabs = [
     { key: CLIENT_MENU_KEYS.crm_comercial_dashboard, id: "dashboard", label: "Dashboard", icon: BarChart3 },
@@ -107,7 +115,7 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
           </h2>
           <p className="text-xs text-muted-foreground">Gerencie seus negócios, contatos e atividades comerciais</p>
         </div>
-        {!isPipelineTab && owners.length > 0 && (
+        {!isPipelineTab && !isVendedor && owners.length > 0 && (
           <Select value={selectedOwnerId} onValueChange={setSelectedOwnerId}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Filtrar por closer" />
@@ -119,6 +127,11 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
               ))}
             </SelectContent>
           </Select>
+        )}
+        {isVendedor && (
+          <span className="text-xs text-muted-foreground px-3 py-1.5 rounded-md bg-muted">
+            Visualizando apenas seus dados
+          </span>
         )}
       </div>
 
