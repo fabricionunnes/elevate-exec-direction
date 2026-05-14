@@ -228,10 +228,14 @@ export const TaskDetailsDialog = ({
       if (effectiveProjectId) {
         const { data: projectRow } = await supabase
           .from("onboarding_projects")
-          .select("company:onboarding_companies!onboarding_company_id(name)")
+          .select("onboarding_company_id, company_id, onboarding_company:onboarding_companies!onboarding_company_id(name), portal_company:portal_companies!company_id(name)")
           .eq("id", effectiveProjectId)
           .maybeSingle();
-        companyName = (projectRow as any)?.company?.name || null;
+        companyName =
+          (projectRow as any)?.onboarding_company?.name ||
+          (projectRow as any)?.portal_company?.name ||
+          null;
+        console.log("[TaskDetailsDialog] companyName resolved:", companyName, "project:", effectiveProjectId);
       }
 
       const response = await supabase.functions.invoke("google-calendar?action=create-event", {
