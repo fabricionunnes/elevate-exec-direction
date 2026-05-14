@@ -117,7 +117,7 @@ export default function ApiDocsPage() {
               </TabsTrigger>
               <TabsTrigger value="companies" className="gap-2">
                 <Building2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Empresas</span>
+                <span className="hidden sm:inline">Sistema</span>
               </TabsTrigger>
               <TabsTrigger value="nsm" className="gap-2">
                 <Star className="h-4 w-4" />
