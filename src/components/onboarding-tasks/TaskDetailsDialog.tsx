@@ -222,10 +222,22 @@ export const TaskDetailsDialog = ({
         }
       }
 
+      // Fetch company name for the calendar event description
+      let companyName: string | null = null;
+      const effectiveProjectId = projectId || task?.project_id;
+      if (effectiveProjectId) {
+        const { data: projectRow } = await supabase
+          .from("onboarding_projects")
+          .select("company:onboarding_companies!onboarding_company_id(name)")
+          .eq("id", effectiveProjectId)
+          .maybeSingle();
+        companyName = (projectRow as any)?.company?.name || null;
+      }
+
       const response = await supabase.functions.invoke("google-calendar?action=create-event", {
         body: {
           title: editedTask.title || task?.title || "Reunião",
-          description: buildProjectEventDescription(editedTask.description || task?.description || "", projectId || task?.project_id),
+          description: buildProjectEventDescription(editedTask.description || task?.description || "", effectiveProjectId, { companyName }),
           startDateTime: startDate.toISOString(),
           endDateTime: endDate.toISOString(),
           target_user_id: targetUserId,
