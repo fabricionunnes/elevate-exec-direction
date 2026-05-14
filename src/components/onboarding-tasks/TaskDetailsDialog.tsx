@@ -226,15 +226,29 @@ export const TaskDetailsDialog = ({
       let companyName: string | null = null;
       const effectiveProjectId = projectId || task?.project_id;
       if (effectiveProjectId) {
-        const { data: projectRow } = await supabase
+        const { data: projectRow, error: projectErr } = await supabase
           .from("onboarding_projects")
-          .select("onboarding_company_id, company_id, onboarding_company:onboarding_companies!onboarding_company_id(name), portal_company:portal_companies!company_id(name)")
+          .select("onboarding_company_id, company_id")
           .eq("id", effectiveProjectId)
           .maybeSingle();
-        companyName =
-          (projectRow as any)?.onboarding_company?.name ||
-          (projectRow as any)?.portal_company?.name ||
-          null;
+        console.log("[TaskDetailsDialog] projectRow:", projectRow, "err:", projectErr);
+
+        if (projectRow?.onboarding_company_id) {
+          const { data: oc } = await supabase
+            .from("onboarding_companies")
+            .select("name")
+            .eq("id", projectRow.onboarding_company_id)
+            .maybeSingle();
+          if (oc?.name) companyName = oc.name;
+        }
+        if (!companyName && projectRow?.company_id) {
+          const { data: pc } = await supabase
+            .from("portal_companies")
+            .select("name")
+            .eq("id", projectRow.company_id)
+            .maybeSingle();
+          if (pc?.name) companyName = pc.name;
+        }
         console.log("[TaskDetailsDialog] companyName resolved:", companyName, "project:", effectiveProjectId);
       }
 
