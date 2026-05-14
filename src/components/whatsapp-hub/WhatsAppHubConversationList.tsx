@@ -282,7 +282,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, staffRole, onSe
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [staffId, isMaster, filterProjectId]);
+  }, [staffId, isMaster, staffRole, filterProjectId]);
 
   const filtered = useMemo(() => {
     return conversations.filter((conversation) => {
