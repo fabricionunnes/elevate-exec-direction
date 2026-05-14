@@ -80,6 +80,7 @@ interface Quiz {
 export const AcademyTrackDetailPage = () => {
   const { trackId } = useParams();
   const userContext = useOutletContext<AcademyUserContext>();
+  const navigate = useNavigate();
   const [track, setTrack] = useState<Track | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [lessonsWithoutModule, setLessonsWithoutModule] = useState<Lesson[]>([]);
