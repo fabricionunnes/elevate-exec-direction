@@ -61,7 +61,8 @@ async function reconcileAsaasBankBalance(supabase: any, apiKey: string) {
     reference_type: "asaas_balance_reconciliation",
   });
 
-  // Se for débito (saída de dinheiro), cria conta a pagar para revisão manual
+  // Se for débito (saída de dinheiro), cria conta a pagar JÁ PAGA para categorização manual.
+  // O banco já foi ajustado pela transaction acima — NÃO debitar novamente ao pagar a conta.
   let payableId: string | null = null;
   if (diffCents < 0) {
     const { data: payable } = await supabase.from("financial_payables").insert({
@@ -69,7 +70,9 @@ async function reconcileAsaasBankBalance(supabase: any, apiKey: string) {
       description: adjustmentDescription,
       amount: Math.abs(diffCents) / 100,
       due_date: today,
-      status: "pending",
+      status: "paid",
+      paid_date: today,
+      paid_amount: Math.abs(diffCents) / 100,
       notes: "Criado automaticamente pela conciliação bancária. Edite o fornecedor, descrição, categoria e centro de custo conforme necessário.",
     }).select("id").single();
     payableId = payable?.id ?? null;

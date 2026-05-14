@@ -498,8 +498,9 @@ export function PayablesPanel() {
   const isAutoAdjustment = (payable: Payable) =>
     !!payable.notes?.includes("conciliação bancária");
 
+  // Mostra alerta enquanto não tiver categoria ou fornecedor diferente de "Asaas"
   const autoAdjustmentsPending = payables.filter(
-    (p) => isAutoAdjustment(p) && p.status === "pending"
+    (p) => isAutoAdjustment(p) && (!p.category_id || p.supplier_name === "Asaas")
   );
 
   const getStatusBadge = (status: string, dueDate?: string) => {
@@ -578,11 +579,11 @@ export function PayablesPanel() {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-amber-700">
               {autoAdjustmentsPending.length === 1
-                ? "1 ajuste automático da conciliação bancária precisa de revisão"
-                : `${autoAdjustmentsPending.length} ajustes automáticos da conciliação bancária precisam de revisão`}
+                ? "1 ajuste automático da conciliação Asaas aguarda categorização"
+                : `${autoAdjustmentsPending.length} ajustes automáticos da conciliação Asaas aguardam categorização`}
             </p>
             <p className="text-xs text-amber-600 mt-0.5">
-              Edite a descrição, fornecedor, categoria e centro de custo para classificar corretamente.
+              Já lançado como pago. Edite fornecedor, descrição, categoria e centro de custo para classificar corretamente.
             </p>
           </div>
           <Button
@@ -956,7 +957,7 @@ export function PayablesPanel() {
                   <TableRow
                     key={payable.id}
                     data-state={selectedIds.has(payable.id) ? "selected" : undefined}
-                    className={isAutoAdjustment(payable) && payable.status === "pending" ? "bg-amber-500/5 border-l-2 border-l-amber-400" : undefined}
+                    className={isAutoAdjustment(payable) && (!payable.category_id || payable.supplier_name === "Asaas") ? "bg-amber-500/5 border-l-2 border-l-amber-400" : undefined}
                   >
                     <TableCell>
                       <Checkbox
@@ -976,7 +977,7 @@ export function PayablesPanel() {
                         <div>
                           <div className="flex items-center gap-1.5">
                             <p className="font-medium">{payable.description}</p>
-                            {isAutoAdjustment(payable) && payable.status === "pending" && (
+                            {isAutoAdjustment(payable) && (!payable.category_id || payable.supplier_name === "Asaas") && (
                               <Badge className="bg-amber-500/10 text-amber-600 border-amber-400/30 text-[10px] px-1.5 py-0 h-4 gap-0.5">
                                 <Bot className="h-2.5 w-2.5" /> Revisar
                               </Badge>
