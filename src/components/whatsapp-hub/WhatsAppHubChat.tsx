@@ -524,18 +524,40 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
             {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
           </Button>
           {isGroup && (
-            <Popover open={mentionPickerOpen} onOpenChange={setMentionPickerOpen}>
+            <Popover
+              open={mentionPickerOpen}
+              onOpenChange={(o) => {
+                setMentionPickerOpen(o);
+                if (o && groupParticipants.length === 0 && !loadingParticipants) {
+                  fetchGroupParticipants();
+                }
+              }}
+            >
               <PopoverTrigger asChild>
                 <Button type="button" variant="ghost" size="icon" className="shrink-0" disabled={sending} title="Marcar pessoa">
                   <AtSign className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-64 p-2" align="start">
-                <p className="text-xs text-muted-foreground mb-2 px-2">Marcar participante</p>
+                <div className="flex items-center justify-between mb-2 px-2">
+                  <p className="text-xs text-muted-foreground">Marcar participante</p>
+                  <button
+                    type="button"
+                    className="text-[10px] text-primary hover:underline"
+                    onClick={fetchGroupParticipants}
+                    disabled={loadingParticipants}
+                  >
+                    {loadingParticipants ? "Carregando..." : "Atualizar"}
+                  </button>
+                </div>
                 <div className="max-h-60 overflow-y-auto space-y-1">
-                  {participants.length === 0 ? (
+                  {loadingParticipants && participants.length === 0 ? (
                     <p className="text-xs text-muted-foreground px-2 py-4 text-center">
-                      Aguarde mensagens do grupo para listar participantes.
+                      Carregando participantes...
+                    </p>
+                  ) : participants.length === 0 ? (
+                    <p className="text-xs text-muted-foreground px-2 py-4 text-center">
+                      Nenhum participante encontrado.
                     </p>
                   ) : (
                     participants.map((p) => (
