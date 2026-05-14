@@ -319,7 +319,12 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, staffRole, onSe
       }
 
       if (filterType !== "all") {
-        const isGroup = conversation.contact_phone.includes("-");
+        const phone = conversation.contact_phone || "";
+        const digits = phone.replace(/\D/g, "");
+        const isGroup =
+          phone.includes("@g.us") ||
+          phone.includes("-") ||
+          (digits.startsWith("120363") && digits.length > 15);
         if (filterType === "group" && !isGroup) return false;
         if (filterType === "individual" && isGroup) return false;
       }
