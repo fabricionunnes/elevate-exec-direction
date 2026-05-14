@@ -1803,6 +1803,11 @@ const OnboardingTasksPage = () => {
               <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate("/onboarding-tasks/task-manager")} title="Gerenciador">
                 <LayoutGrid className="h-4 w-4" />
               </Button>
+              {(currentUserEmail === "fabricio@universidadevendas.com.br" || isMaster) && (
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate("/onboarding-tasks/mrr")} title="MRR">
+                  <DollarSign className="h-4 w-4" />
+                </Button>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="icon" className="h-8 w-8">
