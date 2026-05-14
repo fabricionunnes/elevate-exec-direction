@@ -102,6 +102,7 @@ export const AcademyLayout = () => {
             companyId: null,
             projectId: null,
             userName: staff.name,
+            userRole: staff.role,
           });
           setHasAccess(true);
           setIsLoading(false);
