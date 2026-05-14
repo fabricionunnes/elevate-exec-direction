@@ -137,6 +137,7 @@ const WhatsAppHubPage = () => {
 
   const handleSelectConversation = (conv: HubConversation) => {
     setSelectedConversation(conv);
+    setShowContactPanel(true);
     if (isMobile) setMobileView("chat");
   };
 
