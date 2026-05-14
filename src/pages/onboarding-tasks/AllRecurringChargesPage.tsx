@@ -39,7 +39,7 @@ import {
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
   ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
   TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays, Bell, Truck, MessageSquare, ChevronDown, ChevronRight, Headphones,
-  ArrowUpDown, ArrowUp, ArrowDown, FileCheck, Link2,
+  ArrowUpDown, ArrowUp, ArrowDown, FileCheck, Link2, DollarSign,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -1331,6 +1331,15 @@ export default function AllRecurringChargesPage() {
                 </div>
               );
             })}
+            {isMaster && (
+              <button
+                onClick={() => { setSidebarOpen(false); navigate("/onboarding-tasks/mrr"); }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <DollarSign className="h-4 w-4 shrink-0" />
+                <span className="truncate">MRR</span>
+              </button>
+            )}
           </nav>
         </SheetContent>
       </Sheet>
