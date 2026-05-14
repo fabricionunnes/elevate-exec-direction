@@ -26,9 +26,12 @@ interface PaymentTransaction {
   fee_cents: number;
 }
 
+type EntryType = "receivable" | "payable";
+
 interface EditPaymentsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  type?: EntryType;
   receivable: {
     id: string;
     description: string;
@@ -42,9 +45,20 @@ interface EditPaymentsDialogProps {
 export function EditPaymentsDialog({
   open,
   onOpenChange,
+  type = "receivable",
   receivable,
   onSuccess,
 }: EditPaymentsDialogProps) {
+  const isPayable = type === "payable";
+  const txType = isPayable ? "debit" : "credit";
+  const referenceType = isPayable ? "payable" : "receivable";
+  const targetTable = isPayable ? "financial_payables" : "financial_receivables";
+  const titleLabel = isPayable ? "Pagamentos" : "Recebimentos";
+  const valueLabel = isPayable ? "Valor Pago" : "Valor Recebido";
+  // For receivable: credit increases bank, so positive diff = +diff to bank.
+  // For payable: debit decreases bank, so positive diff = -diff to bank.
+  const balanceSign = isPayable ? -1 : 1;
+
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
   const [banks, setBanks] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
@@ -75,9 +89,9 @@ export function EditPaymentsDialog({
     const { data } = await supabase
       .from("financial_bank_transactions")
       .select("id, amount_cents, bank_id, created_at, discount_cents, interest_cents, fee_cents")
-      .eq("reference_type", "receivable")
+      .eq("reference_type", referenceType)
       .eq("reference_id", receivable.id)
-      .eq("type", "credit")
+      .eq("type", txType)
       .order("created_at", { ascending: true });
     setTransactions((data as any) || []);
     setLoading(false);
@@ -106,24 +120,25 @@ export function EditPaymentsDialog({
       const oldAmountCents = tx.amount_cents;
       const diff = newAmountCents - oldAmountCents;
 
-      // Update the transaction
+      const txUpdate: any = { amount_cents: newAmountCents };
+      if (!isPayable) {
+        txUpdate.discount_cents = Math.round(editDiscount * 100);
+        txUpdate.interest_cents = Math.round(editInterest * 100);
+        txUpdate.fee_cents = Math.round(editFees * 100);
+      }
+
       const { error: txError } = await supabase
         .from("financial_bank_transactions")
-        .update({
-          amount_cents: newAmountCents,
-          discount_cents: Math.round(editDiscount * 100),
-          interest_cents: Math.round(editInterest * 100),
-          fee_cents: Math.round(editFees * 100),
-        } as any)
+        .update(txUpdate)
         .eq("id", tx.id);
 
       if (txError) throw txError;
 
-      // Adjust bank balance
+      // Adjust bank balance (sign depends on entry type)
       if (diff !== 0) {
         await supabase.rpc("increment_bank_balance" as any, {
           p_bank_id: tx.bank_id,
-          p_amount: diff,
+          p_amount: diff * balanceSign,
         });
       }
 
@@ -131,29 +146,29 @@ export function EditPaymentsDialog({
       const { data: allTx } = await supabase
         .from("financial_bank_transactions")
         .select("amount_cents")
-        .eq("reference_type", "receivable")
+        .eq("reference_type", referenceType)
         .eq("reference_id", receivable.id)
-        .eq("type", "credit");
+        .eq("type", txType);
 
       const totalPaid = ((allTx as any) || []).reduce(
         (s: number, t: any) => s + (t.id === tx.id ? newAmountCents : t.amount_cents),
         0
       ) / 100;
 
-      // Update receivable paid_amount and status
       const isFullyPaid = totalPaid >= receivable.amount;
-      await supabase
-        .from("financial_receivables")
-        .update({
-          paid_amount: totalPaid,
-          status: totalPaid <= 0 ? "pending" : isFullyPaid ? "paid" : "partial",
-          interest_amount: editInterest,
-          discount_amount: editDiscount,
-          fee_amount: editFees,
-        })
-        .eq("id", receivable.id);
+      const updateData: any = {
+        paid_amount: totalPaid,
+        status: totalPaid <= 0 ? "pending" : isFullyPaid ? "paid" : "partial",
+      };
+      if (!isPayable) {
+        updateData.interest_amount = editInterest;
+        updateData.discount_amount = editDiscount;
+        updateData.fee_amount = editFees;
+      }
 
-      toast.success("Pagamento atualizado!");
+      await supabase.from(targetTable as any).update(updateData).eq("id", receivable.id);
+
+      toast.success(`${isPayable ? "Pagamento" : "Recebimento"} atualizado!`);
       setEditingId(null);
       loadTransactions();
       onSuccess();
@@ -166,7 +181,13 @@ export function EditPaymentsDialog({
 
   const deletePayment = async (tx: PaymentTransaction) => {
     if (!receivable) return;
-    if (!confirm("Deseja realmente excluir este pagamento? O saldo bancário será ajustado."))
+    if (
+      !confirm(
+        `Deseja realmente excluir este ${
+          isPayable ? "pagamento" : "recebimento"
+        }? O saldo bancário será ajustado.`
+      )
+    )
       return;
 
     setSaving(true);
@@ -174,19 +195,19 @@ export function EditPaymentsDialog({
       // Delete transaction
       await supabase.from("financial_bank_transactions").delete().eq("id", tx.id);
 
-      // Debit bank balance
+      // Reverse bank balance: receivable→subtract, payable→add back
       await supabase.rpc("increment_bank_balance" as any, {
         p_bank_id: tx.bank_id,
-        p_amount: -tx.amount_cents,
+        p_amount: -tx.amount_cents * balanceSign,
       });
 
       // Recalculate total paid
       const { data: remainingTx } = await supabase
         .from("financial_bank_transactions")
         .select("amount_cents")
-        .eq("reference_type", "receivable")
+        .eq("reference_type", referenceType)
         .eq("reference_id", receivable.id)
-        .eq("type", "credit");
+        .eq("type", txType);
 
       const totalPaid =
         ((remainingTx as any) || []).reduce(
@@ -196,15 +217,17 @@ export function EditPaymentsDialog({
 
       const isFullyPaid = totalPaid >= receivable.amount;
       await supabase
-        .from("financial_receivables")
+        .from(targetTable as any)
         .update({
           paid_amount: totalPaid > 0 ? totalPaid : null,
           paid_date: totalPaid > 0 ? undefined : null,
           status: totalPaid <= 0 ? "pending" : isFullyPaid ? "paid" : "partial",
-        })
+        } as any)
         .eq("id", receivable.id);
 
-      toast.success("Pagamento removido e saldo ajustado!");
+      toast.success(
+        `${isPayable ? "Pagamento" : "Recebimento"} removido e saldo ajustado!`
+      );
       loadTransactions();
       onSuccess();
     } catch (err: any) {
@@ -222,11 +245,12 @@ export function EditPaymentsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Editar Pagamentos</DialogTitle>
+          <DialogTitle>Editar {titleLabel}</DialogTitle>
           <DialogDescription>
             {receivable.description} — Total: {fmt(receivable.amount)}
             <span className="block mt-1">
-              Pago: {fmt(totalPaidFromTx)} • Restante: {fmt(Math.max(0, receivable.amount - totalPaidFromTx))}
+              {isPayable ? "Pago" : "Recebido"}: {fmt(totalPaidFromTx)} • Restante:{" "}
+              {fmt(Math.max(0, receivable.amount - totalPaidFromTx))}
             </span>
           </DialogDescription>
         </DialogHeader>
@@ -238,7 +262,7 @@ export function EditPaymentsDialog({
             </div>
           ) : transactions.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
-              Nenhum pagamento registrado
+              Nenhum {isPayable ? "pagamento" : "recebimento"} registrado
             </p>
           ) : (
             transactions.map((tx) => (
@@ -255,23 +279,25 @@ export function EditPaymentsDialog({
                       </span>
                     </div>
                     <div>
-                      <Label className="text-xs">Valor Recebido</Label>
+                      <Label className="text-xs">{valueLabel}</Label>
                       <CurrencyInput value={editAmount} onChange={setEditAmount} />
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <Label className="text-xs">Desconto</Label>
-                        <CurrencyInput value={editDiscount} onChange={setEditDiscount} />
+                    {!isPayable && (
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <Label className="text-xs">Desconto</Label>
+                          <CurrencyInput value={editDiscount} onChange={setEditDiscount} />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Juros</Label>
+                          <CurrencyInput value={editInterest} onChange={setEditInterest} />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Taxas</Label>
+                          <CurrencyInput value={editFees} onChange={setEditFees} />
+                        </div>
                       </div>
-                      <div>
-                        <Label className="text-xs">Juros</Label>
-                        <CurrencyInput value={editInterest} onChange={setEditInterest} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Taxas</Label>
-                        <CurrencyInput value={editFees} onChange={setEditFees} />
-                      </div>
-                    </div>
+                    )}
                     <div className="flex gap-2 justify-end">
                       <Button
                         variant="ghost"
