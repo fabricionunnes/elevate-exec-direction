@@ -1242,6 +1242,21 @@ export function PayablesPanel() {
         onSuppliersRefresh={() => { loadData(); }}
         onCostCentersRefresh={() => { loadData(); }}
       />
+
+      {/* Edit Payments Dialog */}
+      <EditPaymentsDialog
+        open={isEditPaymentsOpen}
+        onOpenChange={setIsEditPaymentsOpen}
+        type="payable"
+        receivable={selectedPayable ? {
+          id: selectedPayable.id,
+          description: selectedPayable.description,
+          amount: Number(selectedPayable.amount),
+          paid_amount: selectedPayable.paid_amount ?? null,
+          status: selectedPayable.status || "pending",
+        } : null}
+        onSuccess={() => { loadData(); }}
+      />
     </div>
   );
 }
