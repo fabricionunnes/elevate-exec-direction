@@ -622,8 +622,8 @@ Deno.serve(async (req) => {
         );
       }
       
-      const { title, description, startDateTime, endDateTime, attendees, target_user_id } = body;
-      console.log("create-event body:", { title, startDateTime, endDateTime, target_user_id });
+      const { title, description, startDateTime, endDateTime, attendees, target_user_id, recurrence } = body;
+      console.log("create-event body:", { title, startDateTime, endDateTime, target_user_id, recurrence });
 
       if (!title || !startDateTime || !endDateTime) {
         console.error("Missing required fields:", { title, startDateTime, endDateTime });
@@ -740,6 +740,17 @@ Deno.serve(async (req) => {
       // Add attendees if provided
       if (attendees && Array.isArray(attendees) && attendees.length > 0) {
         eventData.attendees = attendees.map((email: string) => ({ email }));
+      }
+
+      // Add recurrence rule if provided (string RRULE or array)
+      if (recurrence) {
+        const rules = Array.isArray(recurrence) ? recurrence : [recurrence];
+        const normalized = rules
+          .filter((r: unknown) => typeof r === "string" && r.length > 0)
+          .map((r: string) => (r.startsWith("RRULE:") || r.startsWith("EXDATE:") || r.startsWith("RDATE:") ? r : `RRULE:${r}`));
+        if (normalized.length > 0) {
+          eventData.recurrence = normalized;
+        }
       }
 
       console.log("Creating calendar event with Meet link...", eventData);

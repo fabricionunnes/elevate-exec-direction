@@ -17,6 +17,19 @@ import { CalendarIcon, Loader2, Video, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildProjectEventDescription } from "@/lib/projectMeetingDescription";
 
+// Maps internal recurrence values to Google Calendar RRULE strings.
+function recurrenceToRRule(recurrence: string | null): string | null {
+  switch (recurrence) {
+    case "daily_weekdays": return "RRULE:FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR";
+    case "daily_all_days": return "RRULE:FREQ=DAILY";
+    case "weekly":         return "RRULE:FREQ=WEEKLY";
+    case "biweekly":       return "RRULE:FREQ=WEEKLY;INTERVAL=2";
+    case "monthly":        return "RRULE:FREQ=MONTHLY";
+    case "quarterly":      return "RRULE:FREQ=MONTHLY;INTERVAL=3";
+    default: return null;
+  }
+}
+
 interface StaffMember {
   id: string;
   name: string;
@@ -221,6 +234,8 @@ export const AddTaskDialog = ({
         throw new Error("Usuário do staff não encontrado");
       }
 
+      const recurrenceRule = recurrenceToRRule(recurrence);
+
       const { data, error } = await supabase.functions.invoke("google-calendar?action=create-event", {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -231,6 +246,7 @@ export const AddTaskDialog = ({
           startDateTime: startDateTime.toISOString(),
           endDateTime: endDateTime.toISOString(),
           target_user_id: staffData.user_id,
+          recurrence: recurrenceRule ? [recurrenceRule] : undefined,
         },
       });
 
