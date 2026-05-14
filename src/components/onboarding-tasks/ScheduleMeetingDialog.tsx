@@ -244,6 +244,7 @@ export const ScheduleMeetingDialog = ({
       }
 
       // Create event in target staff's calendar
+      const recurrenceRule = recurrenceToRRule(recurrence);
       const response = await supabase.functions.invoke("google-calendar?action=create-event", {
         body: {
           title,
@@ -252,6 +253,7 @@ export const ScheduleMeetingDialog = ({
           endDateTime: endDate.toISOString(),
           target_user_id: targetStaff.user_id,
           attendees,
+          recurrence: recurrenceRule ? [recurrenceRule] : undefined,
         },
         headers: {
           Authorization: `Bearer ${session.access_token}`,
