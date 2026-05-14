@@ -2316,6 +2316,55 @@ const OnboardingTasksPage = () => {
 
                   {(isAdmin || isCS) && (
                     <>
+                      {/* Operacional */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Operacional
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-56">
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/renewals")}>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Renovações
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations")}>
+                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            Cancelamentos & Retenção
+                          </DropdownMenuItem>
+                          {isAdmin && (
+                            <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/reschedule")}>
+                              <CalendarClock className="h-4 w-4 mr-2" />
+                              Reagendar Tarefas
+                            </DropdownMenuItem>
+                          )}
+                          {isAdmin && (
+                            <DropdownMenuItem 
+                              onClick={handleUpdateAllHealthScores}
+                              disabled={updatingAllHealthScores}
+                            >
+                              <Heart className={`h-4 w-4 mr-2 ${updatingAllHealthScores ? "animate-pulse" : ""}`} />
+                              {updatingAllHealthScores ? "Atualizando..." : "Atualizar Saúde Global"}
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onClick={() => setShowUnassignedTasks(true)}>
+                            <UserX className="h-4 w-4 mr-2" />
+                            Tarefas sem Responsável
+                          </DropdownMenuItem>
+                          {(isAdmin || hasMenuPerm("financial")) && (
+                            <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/billing-rules")}>
+                              <Bell className="h-4 w-4 mr-2" />
+                              Régua de Cobranças
+                            </DropdownMenuItem>
+                          )}
+                          {(isAdmin || hasMenuPerm("financial")) && (
+                            <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/survey-send-config")}>
+                              <MessageSquare className="h-4 w-4 mr-2" />
+                              Régua de Pesquisas
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp")}>
                         <MessageSquare className="h-4 w-4 mr-2" />
