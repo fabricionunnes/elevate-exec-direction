@@ -166,7 +166,10 @@ export const AcademyTracksPage = () => {
     ));
   };
 
+  const isVendedor = userContext.userRole === "vendedor";
   const filteredTracks = tracks.filter(track => {
+    // Vendedor não vê trilhas da categoria Gestão
+    if (isVendedor && track.category === "gestao") return false;
     const matchesSearch = track.name.toLowerCase().includes(search.toLowerCase()) ||
       track.description.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = categoryFilter === "all" || track.category === categoryFilter;
