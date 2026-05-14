@@ -463,6 +463,15 @@ export const ScheduleMeetingDialog = ({
             />
           </div>
 
+          {/* Recurrence */}
+          <div className="space-y-2">
+            <Label>Recorrência</Label>
+            <RecurrenceSelector value={recurrence} onChange={setRecurrence} />
+            <p className="text-xs text-muted-foreground">
+              Se selecionar, a reunião será criada como recorrente no Google Calendar.
+            </p>
+          </div>
+
           {/* Internal Meeting Checkbox */}
           <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg">
             <Checkbox
