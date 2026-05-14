@@ -99,13 +99,15 @@ export interface MgrAction {
 }
 
 export const ManagerV2 = {
-  async sendText(target: MgrAction, payload: { number: string; text: string; delay?: number }) {
+  async sendText(target: MgrAction, payload: { number: string; text: string; delay?: number; mentioned?: string[] }) {
     // Manager V2 expects raw number (no @s.whatsapp.net for users; group JIDs end with @g.us)
-    return callManagerV2(target.baseUrl, target.apiKey, 'POST', '/send/text', {
+    const body: any = {
       number: payload.number,
       text: payload.text,
       delay: payload.delay ?? 0,
-    });
+    };
+    if (payload.mentioned && payload.mentioned.length > 0) body.mentioned = payload.mentioned;
+    return callManagerV2(target.baseUrl, target.apiKey, 'POST', '/send/text', body);
   },
 
   async sendMedia(target: MgrAction, payload: { number: string; media: string; mediatype: string; caption?: string; fileName?: string }) {
