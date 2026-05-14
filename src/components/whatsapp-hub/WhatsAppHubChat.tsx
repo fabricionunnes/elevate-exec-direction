@@ -490,6 +490,41 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
           >
             {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
           </Button>
+          {isGroup && (
+            <Popover open={mentionPickerOpen} onOpenChange={setMentionPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="ghost" size="icon" className="shrink-0" disabled={sending} title="Marcar pessoa">
+                  <AtSign className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2" align="start">
+                <p className="text-xs text-muted-foreground mb-2 px-2">Marcar participante</p>
+                <div className="max-h-60 overflow-y-auto space-y-1">
+                  {participants.length === 0 ? (
+                    <p className="text-xs text-muted-foreground px-2 py-4 text-center">
+                      Aguarde mensagens do grupo para listar participantes.
+                    </p>
+                  ) : (
+                    participants.map((p) => (
+                      <button
+                        key={p.phone}
+                        type="button"
+                        className="w-full text-left px-2 py-1.5 rounded hover:bg-muted text-sm flex items-center justify-between gap-2"
+                        onClick={() => {
+                          setNewMessage((prev) => `${prev}${prev && !prev.endsWith(" ") ? " " : ""}@${p.phone} `);
+                          setMentioned((prev) => Array.from(new Set([...prev, p.phone])));
+                          setMentionPickerOpen(false);
+                        }}
+                      >
+                        <span className="truncate">{p.name}</span>
+                        <span className="text-[10px] text-muted-foreground shrink-0">@{p.phone.slice(-4)}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
           <Input
             placeholder="Digite uma mensagem..."
             value={newMessage}
