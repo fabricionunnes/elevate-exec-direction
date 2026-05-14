@@ -151,7 +151,7 @@ export const EditActivityDialog = ({ open, onOpenChange, activity, onSuccess }: 
           </div>
           <div>
             <Label>Data/Hora</Label>
-            <Input type="datetime-local" value={formData.scheduled_at} onChange={(e) => setFormData(p => ({ ...p, scheduled_at: e.target.value }))} />
+            <Input type="datetime-local" step={900} value={formData.scheduled_at} onChange={(e) => setFormData(p => ({ ...p, scheduled_at: e.target.value }))} />
           </div>
           <div>
             <Label>Descrição</Label>
