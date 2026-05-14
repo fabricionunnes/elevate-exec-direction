@@ -61,11 +61,29 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
   const [loading, setLoading] = useState(true);
   const [showActionDialog, setShowActionDialog] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [mentioned, setMentioned] = useState<string[]>([]);
+  const [mentionPickerOpen, setMentionPickerOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  const isGroup = isGroupJid(conversation.contact_phone);
+
+  // Build participant list from received messages (deduped by phone)
+  const participants = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of messages) {
+      if (m.sender_phone) {
+        const existing = map.get(m.sender_phone);
+        if (!existing || (m.sender_name && !existing)) {
+          map.set(m.sender_phone, m.sender_name || m.sender_phone);
+        }
+      }
+    }
+    return Array.from(map.entries()).map(([phone, name]) => ({ phone, name }));
+  }, [messages]);
 
   const activeInstance = instance ?? (conversation.instance_id && conversation.instance
     ? {
