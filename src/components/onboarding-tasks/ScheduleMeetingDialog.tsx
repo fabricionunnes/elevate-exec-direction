@@ -26,6 +26,19 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { buildProjectEventDescription } from "@/lib/projectMeetingDescription";
+import { RecurrenceSelector } from "@/components/onboarding-tasks/RecurrenceSelector";
+
+function recurrenceToRRule(recurrence: string | null): string | null {
+  switch (recurrence) {
+    case "daily_weekdays": return "RRULE:FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR";
+    case "daily_all_days": return "RRULE:FREQ=DAILY";
+    case "weekly":         return "RRULE:FREQ=WEEKLY";
+    case "biweekly":       return "RRULE:FREQ=WEEKLY;INTERVAL=2";
+    case "monthly":        return "RRULE:FREQ=MONTHLY";
+    case "quarterly":      return "RRULE:FREQ=MONTHLY;INTERVAL=3";
+    default: return null;
+  }
+}
 
 interface StaffWithCalendar {
   id: string;
@@ -75,6 +88,7 @@ export const ScheduleMeetingDialog = ({
   const [targetStaffId, setTargetStaffId] = useState<string>("");
   const [attendeeEmails, setAttendeeEmails] = useState<string>("");
   const [isInternal, setIsInternal] = useState(false);
+  const [recurrence, setRecurrence] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -230,6 +244,7 @@ export const ScheduleMeetingDialog = ({
       }
 
       // Create event in target staff's calendar
+      const recurrenceRule = recurrenceToRRule(recurrence);
       const response = await supabase.functions.invoke("google-calendar?action=create-event", {
         body: {
           title,
@@ -238,6 +253,7 @@ export const ScheduleMeetingDialog = ({
           endDateTime: endDate.toISOString(),
           target_user_id: targetStaff.user_id,
           attendees,
+          recurrence: recurrenceRule ? [recurrenceRule] : undefined,
         },
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -445,6 +461,15 @@ export const ScheduleMeetingDialog = ({
               placeholder="Pauta ou observações da reunião..."
               rows={3}
             />
+          </div>
+
+          {/* Recurrence */}
+          <div className="space-y-2">
+            <Label>Recorrência</Label>
+            <RecurrenceSelector value={recurrence} onChange={setRecurrence} />
+            <p className="text-xs text-muted-foreground">
+              Se selecionar, a reunião será criada como recorrente no Google Calendar.
+            </p>
           </div>
 
           {/* Internal Meeting Checkbox */}
