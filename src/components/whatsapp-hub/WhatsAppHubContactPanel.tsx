@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Phone, Building2, Link2, Search } from "lucide-react";
+import { HubKPIMiniDashboard } from "./HubKPIMiniDashboard";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -252,6 +253,18 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
             <p className="text-sm text-muted-foreground">{conversation.project.product_name}</p>
           </div>
         )}
+
+        {/* Mini Dashboard de KPIs */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Building2 className="h-4 w-4" />
+            KPIs do Mês
+          </div>
+          <HubKPIMiniDashboard
+            companyId={selectedCompany !== "none" ? selectedCompany : null}
+            projectId={selectedProject !== "none" ? selectedProject : null}
+          />
+        </div>
       </div>
     </ScrollArea>
   );
