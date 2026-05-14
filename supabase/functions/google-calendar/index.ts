@@ -622,8 +622,8 @@ Deno.serve(async (req) => {
         );
       }
       
-      const { title, description, startDateTime, endDateTime, attendees, target_user_id } = body;
-      console.log("create-event body:", { title, startDateTime, endDateTime, target_user_id });
+      const { title, description, startDateTime, endDateTime, attendees, target_user_id, recurrence } = body;
+      console.log("create-event body:", { title, startDateTime, endDateTime, target_user_id, recurrence });
 
       if (!title || !startDateTime || !endDateTime) {
         console.error("Missing required fields:", { title, startDateTime, endDateTime });
