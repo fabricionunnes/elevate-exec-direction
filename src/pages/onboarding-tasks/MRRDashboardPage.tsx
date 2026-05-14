@@ -59,7 +59,12 @@ interface RecurringCharge {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  company?: { id: string; name: string } | null;
+  company?: {
+    id: string;
+    name: string;
+    status?: string | null;
+    status_changed_at?: string | null;
+  } | null;
 }
 
 const recurrenceToMonthlyFactor = (recurrence: string): number => {
@@ -88,17 +93,28 @@ const monthlyCents = (c: RecurringCharge): number =>
   Math.round(c.amount_cents * recurrenceToMonthlyFactor(c.recurrence));
 
 // Only contracts with installments >= 12 are considered true recurring MRR.
-// Shorter parcelamentos (1, 3, 6) are treated as one-time / non-recurring sales.
 const isMRREligible = (c: RecurringCharge): boolean => (c.installments || 0) >= 12;
+
+// Effective deactivation date: when the charge OR its company stopped being active.
+const churnDate = (c: RecurringCharge): Date | null => {
+  const dates: Date[] = [];
+  if (!c.is_active) dates.push(new Date(c.updated_at));
+  if (c.company?.status && c.company.status !== "active") {
+    dates.push(new Date(c.company.status_changed_at || c.company_id ? c.updated_at : c.updated_at));
+    if (c.company.status_changed_at) dates.push(new Date(c.company.status_changed_at));
+  }
+  if (dates.length === 0) return null;
+  // Earliest deactivation event marks the churn moment.
+  return new Date(Math.min(...dates.map((d) => d.getTime())));
+};
 
 const isActiveAt = (c: RecurringCharge, date: Date): boolean => {
   if (!isMRREligible(c)) return false;
   const created = new Date(c.created_at);
   if (isAfter(created, date)) return false;
-  if (c.is_active) return true;
-  // Was deactivated; consider it active until updated_at
-  const updated = new Date(c.updated_at);
-  return isAfter(updated, date);
+  const churned = churnDate(c);
+  if (churned && !isAfter(churned, date)) return false;
+  return true;
 };
 
 const fmtBRL = (cents: number) =>
