@@ -2484,30 +2484,6 @@ const OnboardingTasksPage = () => {
                     </>
                   )}
 
-                  {/* Análises - Available to Admin, CS, and Consultants */}
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      <TrendingDown className="h-4 w-4 mr-2" />
-                      Análises
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="w-48">
-                      {isAdmin && (
-                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/executive")}>
-                          <Activity className="h-4 w-4 mr-2" />
-                          Dashboard Executivo
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/churn-prediction")}>
-                        <TrendingDown className="h-4 w-4 mr-2" />
-                        Previsão de Churn
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cohort-retention")}>
-                        <Users2 className="h-4 w-4 mr-2" />
-                        Análise de Cohort
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-
                   {/* Cadastros - Admin and CS only */}
                   {canCreateCompany && (
                     <DropdownMenuSub>
