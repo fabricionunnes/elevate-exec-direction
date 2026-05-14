@@ -31,6 +31,16 @@ import {
   ArrowDownCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface BankTransaction {
   id: string;
@@ -67,6 +77,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
   const [search, setSearch] = useState("");
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<BankTransaction | null>(null);
 
   useEffect(() => {
     if (open && bank) {
@@ -137,6 +148,21 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
       console.error(err);
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleDeleteAny = async (t: BankTransaction) => {
+    setDeletingId(t.id);
+    try {
+      await supabase.from("financial_bank_transactions").delete().eq("id", t.id);
+      toast.success("Lançamento excluído do extrato");
+      await loadTransactions();
+    } catch (err) {
+      toast.error("Erro ao excluir lançamento");
+      console.error(err);
+    } finally {
+      setDeletingId(null);
+      setConfirmDelete(null);
     }
   };
 
@@ -308,7 +334,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
                           {t.type === "credit" ? "+" : "-"}{formatCurrencyCents(t.amount_cents)}
                         </TableCell>
                         <TableCell>
-                          {t.reference_type === "asaas_balance_reconciliation" && (
+                          {t.reference_type === "asaas_balance_reconciliation" ? (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -322,6 +348,20 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
                                 : t.type === "debit"
                                   ? <ArrowDownCircle className="h-3.5 w-3.5 text-amber-500" />
                                   : <ArrowUpCircle className="h-3.5 w-3.5 text-emerald-500" />
+                              }
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              title="Excluir lançamento"
+                              disabled={deletingId === t.id}
+                              onClick={() => setConfirmDelete(t)}
+                            >
+                              {deletingId === t.id
+                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                : <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
                               }
                             </Button>
                           )}
@@ -342,5 +382,27 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir lançamento do extrato?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Isso remove apenas o registro do extrato bancário. O lançamento original (conta a pagar/receber) não é afetado.
+            <br /><br />
+            <strong>{confirmDelete?.description}</strong> — {confirmDelete ? (confirmDelete.type === "credit" ? "+" : "-") : ""}{confirmDelete ? formatCurrencyCents(confirmDelete.amount_cents) : ""}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={() => confirmDelete && handleDeleteAny(confirmDelete)}
+          >
+            Excluir
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
