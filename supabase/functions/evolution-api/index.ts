@@ -806,7 +806,7 @@ Deno.serve(async (req) => {
 
       case 'sendText': {
         // Send text message (alias for send-text, used by frontend)
-        const { instanceId, phone, message } = body;
+        const { instanceId, phone, message, mentioned } = body;
         const digitsOnlyPhone = String(phone || '').replace(/\D/g, '');
 
         // Detect group JIDs (LID format starts with 120363 and is long)
@@ -821,7 +821,11 @@ Deno.serve(async (req) => {
           );
         }
 
-        console.log(`[evolution-api] sendText provider=${instance.providerType} instance=${instance.instance_name}, isGroup=${isGroup}`);
+        console.log(`[evolution-api] sendText provider=${instance.providerType} instance=${instance.instance_name}, isGroup=${isGroup}, mentioned=${mentioned?.length || 0}`);
+
+        const mentionedJids = Array.isArray(mentioned) && mentioned.length > 0
+          ? mentioned.map((p: string) => `${String(p).replace(/\D/g, '')}@s.whatsapp.net`)
+          : undefined;
 
         let status: number;
         let ok: boolean;
@@ -830,14 +834,16 @@ Deno.serve(async (req) => {
         if (instance.providerType === 'manager_v2') {
           const result = await ManagerV2.sendText(
             { baseUrl: instance.apiBaseUrl, apiKey: instance.apiKey },
-            { number: numberToSend, text: message }
+            { number: numberToSend, text: message, mentioned: mentionedJids } as any
           );
           status = result.status; ok = result.ok; data = result.data;
         } else {
+          const payload: any = { number: numberToSend, text: message };
+          if (mentionedJids) payload.mentioned = mentionedJids;
           const response = await fetch(`${instance.apiBaseUrl}/message/sendText/${instance.instance_name}`, {
             method: 'POST',
             headers: instance.apiHeaders,
-            body: JSON.stringify({ number: numberToSend, text: message }),
+            body: JSON.stringify(payload),
           });
           status = response.status; ok = response.ok; data = await response.json();
         }

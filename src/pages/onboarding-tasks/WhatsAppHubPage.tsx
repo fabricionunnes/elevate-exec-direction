@@ -53,6 +53,8 @@ export interface HubMessage {
   created_at: string;
   remote_id?: string | null;
   sent_by?: string | null;
+  sender_phone?: string | null;
+  sender_name?: string | null;
 }
 
 const WhatsAppHubPage = () => {
@@ -60,7 +62,7 @@ const WhatsAppHubPage = () => {
   const isMobile = useIsMobile();
   const { currentStaff, isMaster } = useStaffPermissions();
   const [selectedConversation, setSelectedConversation] = useState<HubConversation | null>(null);
-  const [showContactPanel, setShowContactPanel] = useState(false);
+  const [showContactPanel, setShowContactPanel] = useState(true);
   const [showConnectDialog, setShowConnectDialog] = useState(false);
   const [showBulkSend, setShowBulkSend] = useState(false);
   const [instances, setInstances] = useState<StaffInstance[]>([]);
@@ -137,6 +139,7 @@ const WhatsAppHubPage = () => {
 
   const handleSelectConversation = (conv: HubConversation) => {
     setSelectedConversation(conv);
+    setShowContactPanel(true);
     if (isMobile) setMobileView("chat");
   };
 

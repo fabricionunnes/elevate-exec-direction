@@ -507,6 +507,21 @@ async function handleIncomingMessage(
     }
   }
 
+  // Extract sender info for group messages (from participant field)
+  let senderPhone: string | null = null;
+  let senderName: string | null = null;
+  if (isGroup && !fromMe) {
+    const participantRaw = key.participant || key.participantAlt || '';
+    const participantClean = participantRaw
+      .replace(/:\d+@/, '@')
+      .replace('@s.whatsapp.net', '')
+      .replace('@lid', '');
+    if (participantClean && /^\d+$/.test(participantClean)) {
+      senderPhone = participantClean;
+    }
+    senderName = data.pushName || message.pushName || null;
+  }
+
   // Insert message
   const { error: msgError } = await supabase
     .from('crm_whatsapp_messages')
@@ -519,6 +534,8 @@ async function handleIncomingMessage(
       status: 'delivered',
       media_url: storedMediaUrl,
       media_mimetype: mediaMimetype,
+      sender_phone: senderPhone,
+      sender_name: senderName,
     });
 
   if (msgError) {

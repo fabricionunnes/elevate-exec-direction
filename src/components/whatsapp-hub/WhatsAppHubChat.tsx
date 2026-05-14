@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Paperclip, Image, Mic, MicOff, User, Check, CheckCheck, ClipboardCheck, FileText, ExternalLink } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Send, Paperclip, Image, Mic, MicOff, User, Check, CheckCheck, ClipboardCheck, FileText, ExternalLink, AtSign } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -48,6 +49,8 @@ const normalizeMessage = (message: any): HubMessage => ({
   created_at: message.created_at,
   remote_id: message.remote_id ?? null,
   sent_by: message.sent_by ?? null,
+  sender_phone: message.sender_phone ?? null,
+  sender_name: message.sender_name ?? null,
 });
 
 export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact }: Props) => {
@@ -58,11 +61,29 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
   const [loading, setLoading] = useState(true);
   const [showActionDialog, setShowActionDialog] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [mentioned, setMentioned] = useState<string[]>([]);
+  const [mentionPickerOpen, setMentionPickerOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  const isGroup = isGroupJid(conversation.contact_phone);
+
+  // Build participant list from received messages (deduped by phone)
+  const participants = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of messages) {
+      if (m.sender_phone) {
+        const existing = map.get(m.sender_phone);
+        if (!existing || (m.sender_name && !existing)) {
+          map.set(m.sender_phone, m.sender_name || m.sender_phone);
+        }
+      }
+    }
+    return Array.from(map.entries()).map(([phone, name]) => ({ phone, name }));
+  }, [messages]);
 
   const activeInstance = instance ?? (conversation.instance_id && conversation.instance
     ? {
@@ -186,12 +207,15 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
 
       if (insertError) throw insertError;
 
+      const validMentioned = mentioned.filter((p) => newMessage.includes(`@${p}`));
+
       const { data: sendData, error: sendError } = await supabase.functions.invoke("evolution-api", {
         body: {
           action: "sendText",
           instanceId: sendTarget.instanceId,
           phone: sendTarget.phone,
           message: newMessage.trim(),
+          mentioned: isGroup && validMentioned.length > 0 ? validMentioned : undefined,
         },
       });
 
@@ -218,6 +242,7 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
         .eq("id", conversation.id);
 
       setNewMessage("");
+      setMentioned([]);
       // Realtime subscription handles new message display
     } catch (err) {
       console.error("Error sending message:", err);
@@ -405,6 +430,11 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
                     : "bg-background border rounded-bl-sm"
                 )}
               >
+                {isGroup && msg.direction === "incoming" && (msg.sender_name || msg.sender_phone) && (
+                  <p className="text-[11px] font-semibold text-primary mb-0.5">
+                    {msg.sender_name || msg.sender_phone}
+                  </p>
+                )}
                 {msg.media_url && (
                   <div className="mb-1">
                     {msg.media_type?.startsWith("image") ? (
@@ -460,6 +490,41 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
           >
             {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
           </Button>
+          {isGroup && (
+            <Popover open={mentionPickerOpen} onOpenChange={setMentionPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="ghost" size="icon" className="shrink-0" disabled={sending} title="Marcar pessoa">
+                  <AtSign className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2" align="start">
+                <p className="text-xs text-muted-foreground mb-2 px-2">Marcar participante</p>
+                <div className="max-h-60 overflow-y-auto space-y-1">
+                  {participants.length === 0 ? (
+                    <p className="text-xs text-muted-foreground px-2 py-4 text-center">
+                      Aguarde mensagens do grupo para listar participantes.
+                    </p>
+                  ) : (
+                    participants.map((p) => (
+                      <button
+                        key={p.phone}
+                        type="button"
+                        className="w-full text-left px-2 py-1.5 rounded hover:bg-muted text-sm flex items-center justify-between gap-2"
+                        onClick={() => {
+                          setNewMessage((prev) => `${prev}${prev && !prev.endsWith(" ") ? " " : ""}@${p.phone} `);
+                          setMentioned((prev) => Array.from(new Set([...prev, p.phone])));
+                          setMentionPickerOpen(false);
+                        }}
+                      >
+                        <span className="truncate">{p.name}</span>
+                        <span className="text-[10px] text-muted-foreground shrink-0">@{p.phone.slice(-4)}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
           <Input
             placeholder="Digite uma mensagem..."
             value={newMessage}
