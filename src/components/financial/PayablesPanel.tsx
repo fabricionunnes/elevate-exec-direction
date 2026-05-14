@@ -1002,6 +1002,17 @@ export function PayablesPanel() {
                               Reabrir
                             </DropdownMenuItem>
                           )}
+                          {(payable.status === "partial" || payable.status === "paid") && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedPayable(payable);
+                                setIsEditPaymentsOpen(true);
+                              }}
+                            >
+                              <Filter className="h-4 w-4 mr-2" />
+                              Editar Pagamentos
+                            </DropdownMenuItem>
+                          )}
                           {isMaster && (
                             <DropdownMenuItem
                               className="text-red-600"
