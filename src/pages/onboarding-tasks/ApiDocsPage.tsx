@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Code2, DollarSign, Target, Briefcase, MessageSquare, Video, BarChart3, LayoutGrid, Download, Loader2, Copy, Send, Star } from "lucide-react";
+import { ArrowLeft, Code2, DollarSign, Target, Briefcase, MessageSquare, Video, BarChart3, LayoutGrid, Download, Loader2, Copy, Send, Star, Building2 } from "lucide-react";
 import { FinancialApiDocs } from "@/components/financial-api/FinancialApiDocs";
 import { CrmApiDocs } from "@/components/financial-api/CrmApiDocs";
 import { ProductApiDocs } from "@/components/financial-api/ProductApiDocs";
@@ -10,6 +10,7 @@ import { ProjectMeetingsApiDocs } from "@/components/financial-api/ProjectMeetin
 import { CRMTrafficApiDocs } from "@/components/crm/traffic/CRMTrafficApiDocs";
 import { WhatsAppSendApiDocs } from "@/components/financial-api/WhatsAppSendApiDocs";
 import { NSMApiDocs } from "@/components/financial-api/NSMApiDocs";
+import { SystemApiDocs } from "@/components/financial-api/SystemApiDocs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
@@ -109,10 +110,14 @@ export default function ApiDocsPage() {
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="all" className="space-y-6">
           <div className="flex flex-wrap items-center gap-3 justify-between">
-          <TabsList className="grid w-full max-w-5xl grid-cols-5 sm:grid-cols-9 h-auto">
+          <TabsList className="grid w-full max-w-5xl grid-cols-5 sm:grid-cols-10 h-auto">
               <TabsTrigger value="all" className="gap-2">
                 <LayoutGrid className="h-4 w-4" />
                 <span className="hidden sm:inline">Geral</span>
+              </TabsTrigger>
+              <TabsTrigger value="companies" className="gap-2">
+                <Building2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Empresas</span>
               </TabsTrigger>
               <TabsTrigger value="nsm" className="gap-2">
                 <Star className="h-4 w-4" />
@@ -167,6 +172,7 @@ export default function ApiDocsPage() {
               )}
             </div>
             <div ref={allRef} className="space-y-12 bg-background p-4">
+              <section><SystemApiDocs /></section>
               <section><NSMApiDocs /></section>
               <section><FinancialApiDocs /></section>
               <section><CrmApiDocs /></section>
@@ -176,6 +182,10 @@ export default function ApiDocsPage() {
               <section><ConversationsApiDocs /></section>
               <section><WhatsAppSendApiDocs /></section>
             </div>
+          </TabsContent>
+
+          <TabsContent value="companies">
+            <SystemApiDocs />
           </TabsContent>
 
           <TabsContent value="nsm">
