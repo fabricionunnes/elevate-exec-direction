@@ -221,6 +221,8 @@ export const AddTaskDialog = ({
         throw new Error("Usuário do staff não encontrado");
       }
 
+      const recurrenceRule = recurrenceToRRule(recurrence);
+
       const { data, error } = await supabase.functions.invoke("google-calendar?action=create-event", {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -231,6 +233,7 @@ export const AddTaskDialog = ({
           startDateTime: startDateTime.toISOString(),
           endDateTime: endDateTime.toISOString(),
           target_user_id: staffData.user_id,
+          recurrence: recurrenceRule ? [recurrenceRule] : undefined,
         },
       });
 
