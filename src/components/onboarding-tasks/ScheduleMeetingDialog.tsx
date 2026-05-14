@@ -215,15 +215,12 @@ export const ScheduleMeetingDialog = ({
       const durationMinutes = parseInt(duration);
       const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000);
 
-      // Build attendees list
+      // Build attendees list — apenas convidados explícitos.
+      // Não adicionamos o criador automaticamente, para que ao agendar na
+      // agenda de outro usuário (ex: Natallia), o evento NÃO apareça também
+      // na agenda do criador (ex: Fabrício).
       const attendees: string[] = [];
-      
-      // Add creator as attendee if they're not the target
-      if (currentUserEmail && targetStaff.user_id !== session.user.id) {
-        attendees.push(currentUserEmail);
-      }
 
-      // Add additional attendees
       if (attendeeEmails.trim()) {
         const additionalEmails = attendeeEmails
           .split(/[,;\s]+/)
