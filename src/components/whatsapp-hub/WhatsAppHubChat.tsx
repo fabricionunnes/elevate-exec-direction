@@ -99,6 +99,36 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
       }
     : null);
 
+  const fetchGroupParticipants = async () => {
+    if (!isGroup || !activeInstance?.id) return;
+    setLoadingParticipants(true);
+    try {
+      const groupJid = conversation.contact_phone.includes("@")
+        ? conversation.contact_phone
+        : `${conversation.contact_phone.replace(/\D/g, "")}@g.us`;
+      const { data, error } = await supabase.functions.invoke("evolution-api", {
+        body: { action: "fetchGroupParticipants", instanceId: activeInstance.id, groupJid },
+      });
+      if (error) throw error;
+      const list = Array.isArray((data as any)?.participants) ? (data as any).participants : [];
+      const seen = new Map<string, string>();
+      for (const p of list) {
+        const jid = p.id || p.jid || p.participant || "";
+        const phone = String(jid).split("@")[0].replace(/\D/g, "");
+        const name = p.name || p.notify || p.pushName || p.subject || phone;
+        if (phone && !seen.has(phone)) seen.set(phone, name);
+      }
+      const mapped = Array.from(seen.entries()).map(([phone, name]) => ({ phone, name }));
+      setGroupParticipants(mapped);
+      if (mapped.length === 0) toast.info("Nenhum participante retornado pela Evolution");
+    } catch (e) {
+      console.error("[WhatsAppHubChat] fetchGroupParticipants error:", e);
+      toast.error("Não foi possível carregar participantes");
+    } finally {
+      setLoadingParticipants(false);
+    }
+  };
+
   const fetchMessages = async () => {
     setLoading(true);
     const { data } = await supabase
