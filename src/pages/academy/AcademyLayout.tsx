@@ -53,6 +53,7 @@ export interface AcademyUserContext {
   companyId: string | null;
   projectId: string | null;
   userName: string;
+  userRole: string | null;
 }
 
 export const AcademyLayout = () => {
