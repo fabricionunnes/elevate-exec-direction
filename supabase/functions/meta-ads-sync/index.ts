@@ -550,7 +550,7 @@ Deno.serve(async (req) => {
       const pid = await getConnectedProjectId();
       if (!pid) return new Response(JSON.stringify({ error: "Nenhuma conta Meta Ads conectada" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       let q = supabase.from("meta_ads_campaigns")
-        .select("campaign_id,campaign_name,status,objective,impressions,reach,clicks,spend,cpc,cpm,ctr,conversions,roas,frequency,leads,messaging_conversations_started,cost_per_messaging_conversation,date_start,date_stop,synced_at")
+        .select("campaign_id,campaign_name,status,objective,daily_budget,lifetime_budget,impressions,reach,clicks,spend,cpc,cpm,ctr,conversions,conversion_value,roas,frequency,leads,messaging_conversations_started,cost_per_messaging_conversation,date_start,date_stop,synced_at")
         .eq("project_id", pid)
         .order("spend", { ascending: false })
         .limit(50);
@@ -582,7 +582,7 @@ Deno.serve(async (req) => {
       const pid = await getConnectedProjectId();
       if (!pid) return new Response(JSON.stringify({ error: "Nenhuma conta Meta Ads conectada" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       let q = supabase.from("meta_ads_ads")
-        .select("ad_id,ad_name,adset_name,campaign_name,status,creative_body,creative_title,creative_thumbnail_url,impressions,reach,clicks,spend,cpc,cpm,ctr,conversions,roas,frequency,date_start,date_stop")
+        .select("ad_id,ad_name,adset_name,campaign_name,status,creative_body,creative_title,creative_thumbnail_url,creative_image_url,creative_video_url,impressions,reach,clicks,spend,cpc,cpm,ctr,conversions,conversion_value,roas,frequency,date_start,date_stop")
         .eq("project_id", pid)
         .order("ctr", { ascending: false })
         .limit(50);
