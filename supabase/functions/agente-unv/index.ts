@@ -1030,7 +1030,7 @@ Direto. Sem enrolação.`.trim();
 }
 
 // ============ ALERTA SALDO META ADS ============
-const META_BALANCE_THRESHOLD_CENTS = 7000; // R$ 70,00
+const META_BALANCE_THRESHOLD_CENTS = 5000; // R$ 50,00
 const META_BALANCE_ALERT_KEY = "meta_balance_alert_sent";
 
 async function getLastAlertTime(): Promise<number> {
@@ -1084,16 +1084,16 @@ async function runMetaBalanceCheck(): Promise<void> {
       if (lastAlert > fourHoursAgo) return; // já alertou recentemente
 
       const saldoFormatado = (balanceCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-      const ceoChatId = await getChatId("ceo");
+      const lunaChatId = await getChatId("marketing");
       const lunaToken = TELEGRAM_TOKENS["marketing"];
 
-      const alerta = `*ALERTA — Saldo Meta Ads Baixo*\n\nFabrício, o saldo da sua conta no Meta Ads está em *${saldoFormatado}*.\n\nAbaixo do limite de R$ 70,00 — campanhas podem pausar automaticamente. Recarregue agora para não perder veiculação.`;
+      const alerta = `*ALERTA — Saldo Meta Ads Baixo*\n\nFabrício, o saldo da sua conta no Meta Ads está em *${saldoFormatado}*.\n\nAbaixo de R$ 50,00 — campanhas podem pausar automaticamente. Recarregue agora para não perder veiculação.`;
 
-      // Envia pelo bot da Luna
-      if (lunaToken && ceoChatId) {
+      // Envia pelo bot da Luna no chat da Luna
+      if (lunaToken && lunaChatId) {
         await fetch(`https://api.telegram.org/bot${lunaToken}/sendMessage`, {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: ceoChatId, text: alerta, parse_mode: "Markdown" }),
+          body: JSON.stringify({ chat_id: lunaChatId, text: alerta, parse_mode: "Markdown" }),
         });
         await saveAlertSent();
       }
