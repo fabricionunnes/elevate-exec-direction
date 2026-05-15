@@ -147,9 +147,14 @@ const CEO_TOOLS: Anthropic.Tool[] = [
 ];
 
 // ============ SYSTEM PROMPTS ============
-const TODAY = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+// Data computada dinamicamente a cada chamada — evita cache de data em funções "quentes"
+function getToday(): string {
+  return new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+}
 
-const SYSTEM_PROMPTS: Record<AgentType, string> = {
+function getSystemPrompts(): Record<AgentType, string> {
+  const TODAY = getToday();
+  return {
   financeiro: `Você é Noah, CFO virtual da UNV Holdings. Acessa o Nexus para consultar e registrar dados financeiros.
 
 Mentalidade dos melhores CFOs do mundo:
@@ -281,7 +286,8 @@ REUNIÃO TEMÁTICA — quando o Fabrício enviar qualquer mensagem que indique n
 REGRA CRÍTICA — NUNCA exiba IDs ou UUIDs ao usuário. Sempre resolva nomes antes de apresentar qualquer dado: etapas, closers, pipelines, staff, empresas — sempre nome legível.
 
 Regras: sem "Perfeito!", sem emojis excessivos, linguagem direta e estratégica. Data: ${TODAY}`,
-};
+  };
+}
 
 const AGENT_API_KEYS: Record<AgentType, string> = {
   financeiro: NEXUS_KEY_FINANCEIRO,
@@ -515,7 +521,7 @@ async function callAgent(agentType: AgentType, userMessage: string, history: Ant
         response = await anthropic.messages.create({
           model: agentModel,
           max_tokens: agentMaxTokens,
-          system: SYSTEM_PROMPTS[agentType],
+          system: getSystemPrompts()[agentType],
           tools: AGENT_TOOLS[agentType],
           messages,
         });
