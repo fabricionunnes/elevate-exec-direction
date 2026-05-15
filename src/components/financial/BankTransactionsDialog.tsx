@@ -190,6 +190,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
   if (!bank) return null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-4 pt-4 sm:px-6 sm:pt-6 pb-0">
@@ -404,5 +405,6 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    </>
   );
 }
