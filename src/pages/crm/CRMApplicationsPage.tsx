@@ -81,6 +81,26 @@ export default function CRMApplicationsPage() {
     [stages, chosenPipelineId]
   );
 
+  // Auto-selects the correct pipeline when the send dialog opens for a mastermind application
+  useEffect(() => {
+    if (!sendDialogOpen || !selected || pipelines.length === 0 || stages.length === 0) return;
+    if (chosenPipelineId) return; // already selected by user
+
+    const targetName = selected.type === "mastermind" ? "mastermind unv" : "";
+    if (!targetName) return;
+
+    const match = pipelines.find((p) => p.name.toLowerCase().includes(targetName));
+    if (!match) return;
+
+    setChosenPipelineId(match.id);
+
+    // Auto-select first stage
+    const firstStage = stages
+      .filter((s) => s.pipeline_id === match.id)
+      .sort((a, b) => a.sort_order - b.sort_order)[0];
+    if (firstStage) setChosenStageId(firstStage.id);
+  }, [sendDialogOpen, selected, pipelines, stages, chosenPipelineId]);
+
   // Build a human-readable summary of the application form responses
   const buildNotes = (a: UnifiedApplication): string => {
     const skip = new Set(["id", "created_at", "updated_at", "full_name", "email", "phone", "company", "status", "notes"]);
