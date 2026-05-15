@@ -126,11 +126,10 @@ const MastermindApplyPage = () => {
 
   const onSubmit = async (data: ApplicationFormData) => {
     setIsSubmitting(true);
-    
+
     try {
-      const { error } = await supabase
-        .from("mastermind_applications")
-        .insert({
+      const { error } = await supabase.functions.invoke("mastermind-submit", {
+        body: {
           full_name: data.full_name,
           email: data.email,
           phone: data.phone,
@@ -159,10 +158,11 @@ const MastermindApplyPage = () => {
           understands_not_operational: data.understands_not_operational,
           understands_may_be_refused: data.understands_may_be_refused,
           commits_confidentiality: data.commits_confidentiality,
-        });
-      
+        },
+      });
+
       if (error) throw error;
-      
+
       setIsSubmitted(true);
     } catch (error) {
       console.error("Error submitting application:", error);
