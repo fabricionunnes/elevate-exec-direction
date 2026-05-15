@@ -124,11 +124,48 @@ const MastermindApplyPage = () => {
     },
   });
 
+  const saveApplicationDirectly = async (data: ApplicationFormData) => {
+    const { error } = await supabase
+      .from("mastermind_applications")
+      .insert({
+        full_name: data.full_name,
+        email: data.email,
+        phone: data.phone,
+        company: data.company,
+        role: data.role,
+        role_other: data.role_other || null,
+        monthly_revenue: data.monthly_revenue,
+        company_age: data.company_age,
+        employees_count: data.employees_count,
+        salespeople_count: data.salespeople_count,
+        main_challenge: data.main_challenge,
+        upcoming_decision: data.upcoming_decision,
+        energy_drain: data.energy_drain,
+        feels_alone: data.feels_alone,
+        willing_to_share_numbers: data.willing_to_share_numbers,
+        reaction_to_confrontation: data.reaction_to_confrontation,
+        contribution_to_group: data.contribution_to_group,
+        validation_or_confrontation: data.validation_or_confrontation,
+        available_for_meetings: data.available_for_meetings,
+        understands_mansion_costs: data.understands_mansion_costs,
+        agrees_confidentiality: data.agrees_confidentiality,
+        aware_of_investment: data.aware_of_investment,
+        why_right_moment: data.why_right_moment,
+        success_definition: data.success_definition,
+        is_decision_maker: data.is_decision_maker,
+        understands_not_operational: data.understands_not_operational,
+        understands_may_be_refused: data.understands_may_be_refused,
+        commits_confidentiality: data.commits_confidentiality,
+      });
+    if (error) throw error;
+  };
+
   const onSubmit = async (data: ApplicationFormData) => {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.functions.invoke("mastermind-submit", {
+      // Try edge function first (CRM lead + WhatsApp notification)
+      const { error: fnError } = await supabase.functions.invoke("mastermind-submit", {
         body: {
           full_name: data.full_name,
           email: data.email,
@@ -161,7 +198,11 @@ const MastermindApplyPage = () => {
         },
       });
 
-      if (error) throw error;
+      if (fnError) {
+        // Edge function not deployed yet — fallback to direct insert
+        console.warn("mastermind-submit function unavailable, using direct insert:", fnError);
+        await saveApplicationDirectly(data);
+      }
 
       setIsSubmitted(true);
     } catch (error) {
