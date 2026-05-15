@@ -426,57 +426,52 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
       case "enviar_mensagem_conversa": result = await nexusPost(`${SYS}?module=conversations&action=send_message`, input, apiKey); break;
       // ── LUNA: Marketing / Meta Ads ──
       case "leads_por_campanha": {
-        const p: Record<string,string> = { module: "marketing", action: "leads_by_campaign" };
-        if (input.date_from) p.date_from = input.date_from as string;
-        if (input.date_to) p.date_to = input.date_to as string;
-        if (input.utm_source) p.utm_source = input.utm_source as string;
-        if (input.utm_campaign) p.utm_campaign = input.utm_campaign as string;
-        result = await nexusGet(SYS, p, apiKey);
+        // Agrega leads do CRM por utm_campaign — via meta-ads-sync (POST) com acesso ao service role
+        const body: Record<string,unknown> = { action: "leads_by_campaign" };
+        if (input.date_from) body.date_from = input.date_from;
+        if (input.date_to) body.date_to = input.date_to;
+        if (input.utm_source) body.utm_source = input.utm_source;
+        if (input.utm_campaign) body.utm_campaign = input.utm_campaign;
+        const r = await fetch(`${NEXUS_URL}/meta-ads-sync`, { method: "POST", headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        result = r.ok ? await r.json() : { error: `leads_por_campanha ${r.status}: ${await r.text()}` };
         break;
       }
       case "campanhas_meta": {
-        const p: Record<string,string> = { action: "campaigns" };
-        if (input.status) p.status = input.status as string;
-        if (input.date_from) p.date_from = input.date_from as string;
-        if (input.date_to) p.date_to = input.date_to as string;
-        const metaUrl = new URL(`${NEXUS_URL}/meta-ads-sync`);
-        for (const [k,v] of Object.entries(p)) metaUrl.searchParams.set(k, v);
-        const metaRes = await fetch(metaUrl.toString(), { headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } });
-        result = metaRes.ok ? await metaRes.json() : { error: `meta-ads-sync ${metaRes.status}` };
+        const body: Record<string,unknown> = { action: "campaigns" };
+        if (input.status) body.status = input.status;
+        if (input.date_from) body.date_from = input.date_from;
+        if (input.date_to) body.date_to = input.date_to;
+        const r = await fetch(`${NEXUS_URL}/meta-ads-sync`, { method: "POST", headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        result = r.ok ? await r.json() : { error: `campanhas_meta ${r.status}: ${await r.text()}` };
         break;
       }
       case "metricas_meta": {
-        const p: Record<string,string> = { action: "metrics" };
-        if (input.date_from) p.date_from = input.date_from as string;
-        if (input.date_to) p.date_to = input.date_to as string;
-        if (input.campaign_id) p.campaign_id = input.campaign_id as string;
-        if (input.level) p.level = input.level as string;
-        const metaUrl = new URL(`${NEXUS_URL}/meta-ads-sync`);
-        for (const [k,v] of Object.entries(p)) metaUrl.searchParams.set(k, v);
-        const metaRes = await fetch(metaUrl.toString(), { headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } });
-        result = metaRes.ok ? await metaRes.json() : { error: `meta-ads-sync ${metaRes.status}` };
+        // metricas_meta retorna dados de campanhas com filtro de data e nível
+        const body: Record<string,unknown> = { action: "campaigns" };
+        if (input.date_from) body.date_from = input.date_from;
+        if (input.date_to) body.date_to = input.date_to;
+        if (input.campaign_id) body.campaign_id = input.campaign_id;
+        const r = await fetch(`${NEXUS_URL}/meta-ads-sync`, { method: "POST", headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        result = r.ok ? await r.json() : { error: `metricas_meta ${r.status}: ${await r.text()}` };
         break;
       }
       case "conjuntos_anuncios": {
-        const p: Record<string,string> = { action: "adsets", campaign_id: input.campaign_id as string };
-        if (input.date_from) p.date_from = input.date_from as string;
-        if (input.date_to) p.date_to = input.date_to as string;
-        const metaUrl = new URL(`${NEXUS_URL}/meta-ads-sync`);
-        for (const [k,v] of Object.entries(p)) metaUrl.searchParams.set(k, v);
-        const metaRes = await fetch(metaUrl.toString(), { headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } });
-        result = metaRes.ok ? await metaRes.json() : { error: `meta-ads-sync ${metaRes.status}` };
+        const body: Record<string,unknown> = { action: "adsets" };
+        if (input.campaign_id) body.campaign_id = input.campaign_id;
+        if (input.date_from) body.date_from = input.date_from;
+        if (input.date_to) body.date_to = input.date_to;
+        const r = await fetch(`${NEXUS_URL}/meta-ads-sync`, { method: "POST", headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        result = r.ok ? await r.json() : { error: `conjuntos_anuncios ${r.status}: ${await r.text()}` };
         break;
       }
       case "desempenho_criativo": {
-        const p: Record<string,string> = { action: "creatives" };
-        if (input.campaign_id) p.campaign_id = input.campaign_id as string;
-        if (input.adset_id) p.adset_id = input.adset_id as string;
-        if (input.date_from) p.date_from = input.date_from as string;
-        if (input.date_to) p.date_to = input.date_to as string;
-        const metaUrl = new URL(`${NEXUS_URL}/meta-ads-sync`);
-        for (const [k,v] of Object.entries(p)) metaUrl.searchParams.set(k, v);
-        const metaRes = await fetch(metaUrl.toString(), { headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } });
-        result = metaRes.ok ? await metaRes.json() : { error: `meta-ads-sync ${metaRes.status}` };
+        const body: Record<string,unknown> = { action: "creatives" };
+        if (input.campaign_id) body.campaign_id = input.campaign_id;
+        if (input.adset_id) body.adset_id = input.adset_id;
+        if (input.date_from) body.date_from = input.date_from;
+        if (input.date_to) body.date_to = input.date_to;
+        const r = await fetch(`${NEXUS_URL}/meta-ads-sync`, { method: "POST", headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        result = r.ok ? await r.json() : { error: `desempenho_criativo ${r.status}: ${await r.text()}` };
         break;
       }
       // ── SOPHIA: WhatsApp Direto ──

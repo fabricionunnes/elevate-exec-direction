@@ -532,6 +532,90 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ──── READ ACTIONS (usados pelo agente Luna — leem das tabelas Supabase, sem chamar Meta API) ────
+
+    // Helper: pega project_id da conta mais recente conectada
+    async function getConnectedProjectId(): Promise<string | null> {
+      const { data } = await supabase
+        .from("meta_ads_accounts")
+        .select("project_id")
+        .eq("is_connected", true)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data?.project_id ?? null;
+    }
+
+    if (action === "campaigns") {
+      const pid = await getConnectedProjectId();
+      if (!pid) return new Response(JSON.stringify({ error: "Nenhuma conta Meta Ads conectada" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      let q = supabase.from("meta_ads_campaigns")
+        .select("campaign_id,campaign_name,status,objective,impressions,reach,clicks,spend,cpc,cpm,ctr,conversions,roas,frequency,leads,messaging_conversations_started,cost_per_messaging_conversation,date_start,date_stop,synced_at")
+        .eq("project_id", pid)
+        .order("spend", { ascending: false })
+        .limit(50);
+      if (body.date_from) q = q.gte("date_start", body.date_from);
+      if (body.date_to) q = q.lte("date_stop", body.date_to);
+      if (body.status && body.status !== "ALL") q = q.eq("status", body.status);
+      const { data, error } = await q;
+      if (error) throw error;
+      return new Response(JSON.stringify({ campaigns: data || [], count: (data || []).length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (action === "adsets") {
+      const pid = await getConnectedProjectId();
+      if (!pid) return new Response(JSON.stringify({ error: "Nenhuma conta Meta Ads conectada" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      let q = supabase.from("meta_ads_adsets")
+        .select("adset_id,adset_name,campaign_id,campaign_name,status,impressions,reach,clicks,spend,cpc,cpm,ctr,conversions,roas,frequency,date_start,date_stop")
+        .eq("project_id", pid)
+        .order("spend", { ascending: false })
+        .limit(100);
+      if (body.campaign_id) q = q.eq("campaign_id", body.campaign_id);
+      if (body.date_from) q = q.gte("date_start", body.date_from);
+      if (body.date_to) q = q.lte("date_stop", body.date_to);
+      const { data, error } = await q;
+      if (error) throw error;
+      return new Response(JSON.stringify({ adsets: data || [], count: (data || []).length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (action === "creatives") {
+      const pid = await getConnectedProjectId();
+      if (!pid) return new Response(JSON.stringify({ error: "Nenhuma conta Meta Ads conectada" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      let q = supabase.from("meta_ads_ads")
+        .select("ad_id,ad_name,adset_name,campaign_name,status,creative_body,creative_title,creative_thumbnail_url,impressions,reach,clicks,spend,cpc,cpm,ctr,conversions,roas,frequency,date_start,date_stop")
+        .eq("project_id", pid)
+        .order("ctr", { ascending: false })
+        .limit(50);
+      if (body.campaign_id) q = q.eq("campaign_id", body.campaign_id);
+      if (body.adset_id) q = q.eq("adset_id", body.adset_id);
+      if (body.date_from) q = q.gte("date_start", body.date_from);
+      if (body.date_to) q = q.lte("date_stop", body.date_to);
+      const { data, error } = await q;
+      if (error) throw error;
+      return new Response(JSON.stringify({ creatives: data || [], count: (data || []).length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (action === "leads_by_campaign") {
+      // Agrega leads do CRM por utm_campaign — combina dados de tráfego pago com conversão real
+      let q = supabase.from("crm_leads")
+        .select("utm_source,utm_medium,utm_campaign,utm_content,created_at")
+        .not("utm_campaign", "is", null);
+      if (body.date_from) q = q.gte("created_at", body.date_from);
+      if (body.date_to) q = q.lte("created_at", body.date_to);
+      if (body.utm_source) q = q.eq("utm_source", body.utm_source);
+      const { data, error } = await q.limit(1000);
+      if (error) throw error;
+      // Agrega por campanha
+      const map: Record<string, { utm_campaign: string; utm_source: string; utm_medium: string; leads: number }> = {};
+      for (const lead of (data || [])) {
+        const key = `${lead.utm_campaign}||${lead.utm_source}`;
+        if (!map[key]) map[key] = { utm_campaign: lead.utm_campaign, utm_source: lead.utm_source || "", utm_medium: lead.utm_medium || "", leads: 0 };
+        map[key].leads++;
+      }
+      const result = Object.values(map).sort((a, b) => b.leads - a.leads);
+      return new Response(JSON.stringify({ campaigns: result, total_leads: (data || []).length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // ──── BALANCE CHECK (usado pelo agente Luna para alertas de saldo baixo) ────
     if (action === "balance_check") {
       // Busca primeira conta conectada (sem filtrar por project_id — usado internamente pelo agente)
