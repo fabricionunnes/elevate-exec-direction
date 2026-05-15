@@ -554,16 +554,28 @@ async function callAgent(agentType: AgentType, userMessage: string, history: Ant
 
 // ============ TELEGRAM — TEXTO ============
 async function sendTelegramChunk(token: string, chatId: number, chunk: string): Promise<void> {
-  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text: chunk, parse_mode: "Markdown" }),
-  });
-  if (!res.ok) {
-    // fallback sem Markdown
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: chunk }),
-    });
+  // Tenta com Markdown — até 3 vezes com backoff para erros de rede transitórios
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: chunk, parse_mode: "Markdown" }),
+      });
+      if (res.ok) return;
+      // Markdown inválido → tenta sem parse_mode (não retry)
+      if (res.status === 400) {
+        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: chunk }),
+        });
+        return;
+      }
+      // Outro erro HTTP → retry com backoff
+      if (attempt < 2) await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+    } catch {
+      // Erro de rede (ex: IPv6 timeout) → retry com backoff
+      if (attempt < 2) await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+    }
   }
 }
 
@@ -1323,7 +1335,11 @@ Deno.serve(async (req) => {
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           const isRate = msg.includes("rate_limit") || msg.includes("429");
-          await sendTelegram(chatId, isRate ? "Muitas consultas simultâneas. Aguarda 30s e tenta de novo." : `Erro: ${msg.slice(0, 200)}`, agentType);
+          // Nunca expõe erros técnicos de rede ou internos ao usuário
+          const userMsg = isRate
+            ? "Muitas consultas simultâneas. Aguarda 30s e tenta de novo."
+            : "Tive um problema técnico aqui. Tenta mandar de novo em instantes.";
+          await sendTelegram(chatId, userMsg, agentType).catch(() => {/* silent */});
         }
       })());
 
