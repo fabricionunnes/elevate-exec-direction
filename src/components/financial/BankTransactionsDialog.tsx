@@ -405,5 +405,6 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    </>
   );
 }
