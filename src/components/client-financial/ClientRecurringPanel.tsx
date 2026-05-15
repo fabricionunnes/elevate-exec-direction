@@ -434,11 +434,11 @@ export function ClientRecurringPanel({ projectId, canEdit }: Props) {
 
       {/* Add Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Nova Recorrência</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto pr-1">
             <div>
               <Label>Tipo *</Label>
               <Select
@@ -558,11 +558,11 @@ export function ClientRecurringPanel({ projectId, canEdit }: Props) {
 
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Editar Recorrência</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto pr-1">
             <div>
               <Label>Tipo *</Label>
               <Select

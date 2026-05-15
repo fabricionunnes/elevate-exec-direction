@@ -333,11 +333,11 @@ export function CompanyRecurringCharges({
                 Nova Recorrência
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
               <DialogHeader>
                 <DialogTitle>Nova Cobrança Recorrente</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-4 overflow-y-auto pr-1">
                 {asaasAccounts.length > 1 && (
                   <div className="space-y-2">
                     <Label>Conta Asaas</Label>
