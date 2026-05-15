@@ -1057,21 +1057,20 @@ async function saveAlertSent(): Promise<void> {
 
 async function runMetaBalanceCheck(): Promise<void> {
   try {
-    // Busca saldo da conta no Meta Ads
-    const metaUrl = new URL(`${NEXUS_URL}/meta-ads-sync`);
-    metaUrl.searchParams.set("action", "account");
-    const metaRes = await fetch(metaUrl.toString(), {
-      headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }
+    // Busca saldo via action balance_check (POST) — meta-ads-sync lê da Graph API do Meta
+    const metaRes = await fetch(`${NEXUS_URL}/meta-ads-sync`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "balance_check" }),
     });
     if (!metaRes.ok) return;
     const data = await metaRes.json() as Record<string, unknown>;
 
-    // Tenta extrair saldo — Meta Ads retorna balance em centavos ou como string "70.00"
+    // Meta retorna balance como string decimal em BRL: "50.00" = R$ 50,00
     let balanceCents = 0;
-    const raw = data?.balance ?? data?.account?.balance ?? data?.data?.balance ?? null;
+    const raw = data?.balance ?? null;
     if (raw !== null && raw !== undefined) {
       const parsed = parseFloat(String(raw));
-      // Se vier em formato de moeda (ex: "70.50"), converte pra centavos
       balanceCents = isNaN(parsed) ? 0 : Math.round(parsed * 100);
     }
 

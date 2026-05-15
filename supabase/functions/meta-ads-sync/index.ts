@@ -532,6 +532,38 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ──── BALANCE CHECK (usado pelo agente Luna para alertas de saldo baixo) ────
+    if (action === "balance_check") {
+      // Busca primeira conta conectada (sem filtrar por project_id — usado internamente pelo agente)
+      const { data: account, error: accErr } = await supabase
+        .from("meta_ads_accounts")
+        .select("ad_account_id, access_token, currency")
+        .eq("is_connected", true)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (accErr || !account) throw new Error("Nenhuma conta Meta Ads conectada");
+
+      const token = account.access_token;
+      const adAccountId = account.ad_account_id.startsWith("act_")
+        ? account.ad_account_id
+        : `act_${account.ad_account_id}`;
+
+      // Consulta saldo direto na Graph API do Meta
+      const balanceRes = await fetchWithTimeout(
+        `https://graph.facebook.com/v21.0/${adAccountId}?fields=balance,currency&access_token=${token}`
+      );
+      const balanceData = await balanceRes.json();
+      if (balanceData.error) throw new Error(balanceData.error.message);
+
+      return new Response(JSON.stringify({
+        balance: balanceData.balance,   // valor em unidade monetária (ex: "50.00" = R$ 50,00)
+        currency: balanceData.currency ?? account.currency ?? "BRL",
+        ad_account_id: adAccountId,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // ──── DISCONNECT ────
     if (action === "disconnect") {
       await supabase.from("meta_ads_accounts").update({ is_connected: false }).eq("project_id", project_id);
