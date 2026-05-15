@@ -803,76 +803,67 @@ async function runAlignmentMeeting(mode: "daily" | "ondemand" = "daily", directC
   // Daily: usa Haiku nos 4 relatórios iniciais (3-4× mais rápido, cabe nos 150s da edge function)
   // Ondemand: usa Sonnet para maior qualidade (chamado via Telegram, sem restrição de tempo)
   const reportModel  = mode === "daily" ? "claude-haiku-4-5" : "claude-sonnet-4-6";
-  const reportTokens = mode === "daily" ? 1500 : 4096;
+  const reportTokens = mode === "daily" ? 800 : 4096;
 
-  // Consulta paralela nos 4 agentes
+  // Consulta paralela nos 4 agentes — resumo executivo apenas
   const [noahStatus, sophiaStatus, melissaStatus, lunaStatus] = await Promise.all([
-    callAgent("financeiro", `${prefix} financeiro: saldo atual, MRR. Inadimplência: liste individualmente os clientes do mês atual e dos 2 últimos meses (nome, valor, dias de atraso); dívidas acima de 60 dias agrupe em bloco separado com total e quantidade. Contas a receber e a pagar: apenas o que vence hoje e nos próximos 7 dias (nunca totais acumulados). Projeção de caixa e alertas críticos.`, [], { model: reportModel, maxTokens: reportTokens }),
-    callAgent("crm", `${prefix} comercial: leads quentes, follow-ups críticos, reuniões agendadas, oportunidades próximas de fechar, conversão do mês e próximos passos de cada lead relevante.`, [], { model: reportModel, maxTokens: reportTokens }),
-    callAgent("projetos", `${prefix} de CS/Projetos: todos os clientes ativos com status, sinais de churn, entregas pendentes, tarefas atrasadas, KPIs não lançados e pontos de atenção. Não omita nenhum cliente com risco.`, [], { model: reportModel, maxTokens: reportTokens }),
-    callAgent("marketing", `${prefix} de marketing: status das campanhas ativas no Meta Ads (gasto, CPL, ROAS), leads por canal de origem no CRM, criativos com melhor e pior performance, oportunidades de otimização.`, [], { model: reportModel, maxTokens: reportTokens }),
+    callAgent("financeiro", `${prefix} financeiro. Retorne APENAS: saldo atual, MRR, 1-2 inadimplentes mais críticos do mês (nome + valor), e 1 alerta de caixa se houver. Máximo 4 linhas. Sem formatação extra.`, [], { model: reportModel, maxTokens: reportTokens }),
+    callAgent("crm", `${prefix} comercial. Retorne APENAS: qtd de leads quentes, 1-2 follow-ups mais urgentes e conversão do mês. Máximo 3 linhas. Sem formatação extra.`, [], { model: reportModel, maxTokens: reportTokens }),
+    callAgent("projetos", `${prefix} CS/Projetos. Retorne APENAS: qtd de clientes ativos, 1-2 clientes em risco de churn e 1 tarefa crítica pendente. Máximo 3 linhas. Sem formatação extra.`, [], { model: reportModel, maxTokens: reportTokens }),
+    callAgent("marketing", `${prefix} marketing. Retorne APENAS: gasto total em tráfego pago no período atual, CPL médio e 1 campanha de destaque (melhor ou pior). Máximo 3 linhas. Sem formatação extra.`, [], { model: reportModel, maxTokens: reportTokens }),
   ]);
 
-  // Envia relatório de cada agente como mensagem separada para o CEO
-  if (ceoId) {
-    await sendTelegram(ceoId, `*📉 FINANCEIRO — Noah*\n\n${noahStatus}`, "ceo");
+  // No modo daily: NÃO envia relatórios individuais — Max consolida tudo em 1 mensagem
+  // No modo ondemand: envia relatórios separados para contexto completo
+  if (mode === "ondemand" && ceoId) {
+    await sendTelegram(ceoId, `*FINANCEIRO — Noah*\n\n${noahStatus}`, "ceo");
     await new Promise(r => setTimeout(r, 500));
-    await sendTelegram(ceoId, `*📈 COMERCIAL — Sophia*\n\n${sophiaStatus}`, "ceo");
+    await sendTelegram(ceoId, `*COMERCIAL — Sophia*\n\n${sophiaStatus}`, "ceo");
     await new Promise(r => setTimeout(r, 500));
-    await sendTelegram(ceoId, `*⚙️ OPERACIONAL — Melissa*\n\n${melissaStatus}`, "ceo");
+    await sendTelegram(ceoId, `*OPERACIONAL — Melissa*\n\n${melissaStatus}`, "ceo");
     await new Promise(r => setTimeout(r, 500));
-    await sendTelegram(ceoId, `*🎯 MARKETING — Luna*\n\n${lunaStatus}`, "ceo");
+    await sendTelegram(ceoId, `*MARKETING — Luna*\n\n${lunaStatus}`, "ceo");
     await new Promise(r => setTimeout(r, 500));
   }
 
-  // CEO (Max) sintetiza, prioriza e direciona cada agente
-  const title = mode === "daily" ? "BRIEFING MATINAL" : "REUNIÃO DE ALINHAMENTO";
+  // CEO (Max) sintetiza em uma mensagem compacta
   const ceoPrompt = `
-${dateBRT} — ${timeBRT}. Relatórios dos setores:
+${dateBRT} — ${timeBRT}. Dados dos setores:
 
-NOAH — Financeiro:
-${noahStatus}
+NOAH: ${noahStatus}
+SOPHIA: ${sophiaStatus}
+MELISSA: ${melissaStatus}
+LUNA: ${lunaStatus}
 
-SOPHIA — Comercial:
-${sophiaStatus}
+Como Max, CEO da UNV Holdings, gere o BRIEFING MATINAL no formato exato abaixo. Seja telegráfico — cada linha vale ouro:
 
-MELISSA — Projetos/CS:
-${melissaStatus}
+*BRIEFING — ${dateBRT}*
 
-LUNA — Marketing:
-${lunaStatus}
+Financeiro: [1 linha com saldo, MRR e maior risco financeiro]
+Comercial: [1 linha com pipeline e oportunidade mais quente]
+Clientes: [1 linha com status geral e maior risco de churn]
+Marketing: [1 linha com gasto e CPL]
 
-Como Max, CEO da UNV Holdings, gere a ATA DE ALINHAMENTO no formato exato abaixo (use os marcadores exatamente como estão):
-
-*SITUAÇÃO GERAL*
-(2-3 linhas — snapshot real da empresa agora)
-
-*PRIORIDADES IMEDIATAS*
-(top 3 ações que precisam acontecer hoje — específicas e acionáveis, com responsável)
-
-*RISCOS NO RADAR*
-(o que não pode ser ignorado — com prazo para resolver)
-
-*DECISÕES NECESSÁRIAS*
-(o que precisa de decisão do Fabrício agora — seja direto)
+*Prioridade do dia:* [2-3 ações específicas, com responsável — separadas por " | "]
+*Atenção:* [1 risco ou alerta que não pode ser ignorado hoje]
 
 ---DIRECIONAMENTO_NOAH---
-(ordens diretas para Noah executar hoje/esta semana: o que cobrar, o que registrar, o que resolver, o que monitorar — mínimo 3 ações específicas com prazo)
+(máx 2 ordens diretas e específicas para hoje)
 ---FIM_NOAH---
 
 ---DIRECIONAMENTO_SOPHIA---
-(ordens diretas para Sophia executar hoje/esta semana: quais leads trabalhar, quais follow-ups fazer, o que priorizar no pipeline — mínimo 3 ações específicas com prazo)
+(máx 2 ordens diretas e específicas para hoje)
 ---FIM_SOPHIA---
 
 ---DIRECIONAMENTO_MELISSA---
-(ordens diretas para Melissa executar hoje/esta semana: quais clientes visitar/contatar, quais tarefas urgentes, o que monitorar em risco de churn — mínimo 3 ações específicas com prazo)
+(máx 2 ordens diretas e específicas para hoje)
 ---FIM_MELISSA---
 
 ---DIRECIONAMENTO_LUNA---
-(ordens diretas para Luna executar hoje/esta semana: quais campanhas otimizar, quais criativos pausar ou escalar, o que testar, ajustes de orçamento recomendados — mínimo 3 ações específicas com prazo)
+(máx 2 ordens diretas e específicas para hoje)
 ---FIM_LUNA---
 
-Direto. Sem enrolação. Cada ação com responsável e prazo.
+Sem rodeios. Sem seções vazias.
   `.trim();
 
   const ata = await callAgent("ceo", ceoPrompt);
