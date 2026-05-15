@@ -113,13 +113,29 @@ Deno.serve(async (req) => {
 });
 
 async function resolvePipelineAndStage(supabase: any) {
-  const { data: pipeline } = await supabase
+  // Busca exata primeiro, depois fallback por nome parcial com UNV
+  let pipeline: any = null;
+
+  const { data: exact } = await supabase
     .from("crm_pipelines")
     .select("id, name")
     .eq("is_active", true)
-    .ilike("name", "%MasterMind%")
+    .ilike("name", "mastermind unv")
     .limit(1)
     .maybeSingle();
+
+  if (exact) {
+    pipeline = exact;
+  } else {
+    const { data: partial } = await supabase
+      .from("crm_pipelines")
+      .select("id, name")
+      .eq("is_active", true)
+      .ilike("name", "%mastermind%unv%")
+      .limit(1)
+      .maybeSingle();
+    pipeline = partial;
+  }
 
   if (!pipeline) return null;
 
