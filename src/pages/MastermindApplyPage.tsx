@@ -162,7 +162,34 @@ const MastermindApplyPage = () => {
         });
       
       if (error) throw error;
-      
+
+      // Notify master Fabrício via WhatsApp (Fabricio Nunnes instance)
+      try {
+        const message =
+          `🎯 *Nova Aplicação UNV Mastermind*\n\n` +
+          `*Nome:* ${data.full_name}\n` +
+          `*Empresa:* ${data.company}\n` +
+          `*Cargo:* ${data.role}${data.role_other ? ` (${data.role_other})` : ""}\n` +
+          `*E-mail:* ${data.email}\n` +
+          `*WhatsApp:* ${data.phone}\n\n` +
+          `*Faturamento:* ${data.monthly_revenue}\n` +
+          `*Tempo de empresa:* ${data.company_age}\n` +
+          `*Colaboradores:* ${data.employees_count} | *Vendedores:* ${data.salespeople_count}\n\n` +
+          `*Principal desafio:*\n${data.main_challenge}\n\n` +
+          `*Por que agora:*\n${data.why_right_moment}`;
+
+        await supabase.functions.invoke("evolution-api", {
+          body: {
+            action: "sendText",
+            instanceId: "2c161b5b-912e-4475-adca-74237feb1182", // Fabricio Nunnes
+            phone: "5531989840003", // Fabrício master
+            message,
+          },
+        });
+      } catch (notifyErr) {
+        console.warn("Falha ao notificar WhatsApp do master:", notifyErr);
+      }
+
       setIsSubmitted(true);
     } catch (error) {
       console.error("Error submitting application:", error);
