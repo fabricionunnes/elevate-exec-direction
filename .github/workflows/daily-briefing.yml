@@ -1,0 +1,29 @@
+name: Max — Briefing Diário
+
+on:
+  schedule:
+    # 07:30 BRT (Brasília) = 10:30 UTC — segunda a sexta
+    - cron: '30 10 * * 1-5'
+  workflow_dispatch: # permite rodar manualmente pelo GitHub
+
+jobs:
+  dispara-briefing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispara reunião diária via Max
+        run: |
+          response=$(curl -s -o /tmp/response.json -w "%{http_code}" -X POST \
+            "https://czmyjgdixwhpfasfugkm.supabase.co/functions/v1/agente-unv?action=daily-meeting" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json")
+
+          echo "HTTP status: $response"
+          echo "Response body:"
+          cat /tmp/response.json
+
+          if [ "$response" != "200" ]; then
+            echo "Erro ao disparar o briefing — status HTTP $response"
+            exit 1
+          fi
+
+          echo "Briefing disparado com sucesso."
