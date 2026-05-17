@@ -1,4 +1,4 @@
-CREATE TABLE public.agent_chat_ids (
+CREATE TABLE IF NOT EXISTS public.agent_chat_ids (
   agent TEXT NOT NULL PRIMARY KEY,
   chat_id BIGINT NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
