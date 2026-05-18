@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { ArrowLeft, Plus, Pencil, Trash2, ListTodo, LogOut, Package, Layers, Workflow } from 'lucide-react';
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
@@ -39,6 +40,8 @@ export default function OnboardingServicesPage() {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [phasesDialogOpen, setPhasesDialogOpen] = useState(false);
   const [selectedServiceForPhases, setSelectedServiceForPhases] = useState<Service | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -205,28 +208,22 @@ export default function OnboardingServicesPage() {
     }
   };
 
-  const handleDelete = async (service: Service) => {
-    const count = getTemplateCount(service.id, service.slug);
-    const warning = count > 0
-      ? `Este serviço possui ${count} tarefa(s) cadastrada(s) que também serão excluídas. `
-      : '';
+  const handleDelete = (service: Service) => {
+    setServiceToDelete(service);
+    setDeleteDialogOpen(true);
+  };
 
-    if (!confirm(`${warning}Tem certeza que deseja excluir o serviço "${service.name}"?`)) {
-      return;
-    }
-
+  const confirmDelete = async () => {
+    if (!serviceToDelete) return;
     try {
-      // Delete task templates linked by service id or slug
-      await supabase.from('onboarding_task_templates').delete().eq('product_id', service.id);
-      await supabase.from('onboarding_task_templates').delete().eq('product_id', service.slug);
-
-      // Delete service phases
-      await supabase.from('onboarding_service_phases').delete().eq('service_id', service.id);
+      await supabase.from('onboarding_task_templates').delete().eq('product_id', serviceToDelete.id);
+      await supabase.from('onboarding_task_templates').delete().eq('product_id', serviceToDelete.slug);
+      await supabase.from('onboarding_service_phases').delete().eq('service_id', serviceToDelete.id);
 
       const { error } = await supabase
         .from('onboarding_services')
         .delete()
-        .eq('id', service.id);
+        .eq('id', serviceToDelete.id);
 
       if (error) throw error;
       toast.success('Serviço excluído com sucesso');
@@ -234,6 +231,9 @@ export default function OnboardingServicesPage() {
     } catch (error) {
       console.error('Error deleting service:', error);
       toast.error('Erro ao excluir serviço');
+    } finally {
+      setDeleteDialogOpen(false);
+      setServiceToDelete(null);
     }
   };
 
@@ -431,6 +431,27 @@ export default function OnboardingServicesPage() {
           serviceName={selectedServiceForPhases.name}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir serviço</AlertDialogTitle>
+            <AlertDialogDescription>
+              {serviceToDelete && getTemplateCount(serviceToDelete.id, serviceToDelete.slug) > 0
+                ? `Este serviço possui ${getTemplateCount(serviceToDelete.id, serviceToDelete.slug)} tarefa(s) cadastrada(s) que também serão excluídas. `
+                : ''}
+              Tem certeza que deseja excluir <strong>{serviceToDelete?.name}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
