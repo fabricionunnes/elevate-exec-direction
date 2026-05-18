@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { CreditCard, MessageCircle, Plus, Trash2, Loader2, CheckCircle2, Clock, Link2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CreditCard, MessageCircle, Plus, Trash2, Loader2, CheckCircle2, Building2, Star, Link2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface AsaasAccount {
@@ -17,7 +18,13 @@ interface AsaasAccount {
   api_key_secret_name: string;
   is_active: boolean;
   is_default: boolean;
+  bank_id: string | null;
   created_at: string;
+}
+
+interface Bank {
+  id: string;
+  name: string;
 }
 
 interface WhatsappInstance {
@@ -85,21 +92,33 @@ export function TenantIntegrationsSettings() {
 /* ------------------------- Asaas ------------------------- */
 export function AsaasIntegration({ tenantId }: { tenantId: string }) {
   const [accounts, setAccounts] = useState<AsaasAccount[]>([]);
+  const [banks, setBanks] = useState<Bank[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [bankId, setBankId] = useState<string>("");
+  const [editingBankId, setEditingBankId] = useState<{ accountId: string; bankId: string } | null>(null);
+  const [savingBank, setSavingBank] = useState(false);
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("asaas_accounts")
-      .select("*")
-      .eq("tenant_id", tenantId)
-      .order("created_at", { ascending: false });
-    if (error) toast.error("Erro ao carregar: " + error.message);
-    setAccounts((data as AsaasAccount[]) || []);
+    const [accountsRes, banksRes] = await Promise.all([
+      supabase
+        .from("asaas_accounts")
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("financial_banks")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name"),
+    ]);
+    if (accountsRes.error) toast.error("Erro ao carregar contas: " + accountsRes.error.message);
+    setAccounts((accountsRes.data as AsaasAccount[]) || []);
+    setBanks((banksRes.data as Bank[]) || []);
     setLoading(false);
   };
 
@@ -114,13 +133,24 @@ export function AsaasIntegration({ tenantId }: { tenantId: string }) {
     }
     setSaving(true);
     try {
-      const { error } = await supabase.functions.invoke("tenant-asaas-account", {
+      // Step 1: create via edge function (stores API key securely)
+      const { data: result, error } = await supabase.functions.invoke("tenant-asaas-account", {
         body: { action: "create", name: name.trim(), api_key: apiKey.trim() },
       });
       if (error) throw error;
-      toast.success("Conta Asaas adicionada!");
+
+      // Step 2: if bank was selected, link it to the new account
+      if (bankId && result?.account?.id) {
+        await supabase
+          .from("asaas_accounts")
+          .update({ bank_id: bankId } as any)
+          .eq("id", result.account.id);
+      }
+
+      toast.success("Conta Asaas configurada!");
       setName("");
       setApiKey("");
+      setBankId("");
       setOpen(false);
       load();
     } catch (e: any) {
@@ -130,12 +160,40 @@ export function AsaasIntegration({ tenantId }: { tenantId: string }) {
     }
   };
 
+  const handleSetDefault = async (id: string) => {
+    // Remove default from all, then set on selected
+    await supabase.from("asaas_accounts").update({ is_default: false } as any).eq("tenant_id", tenantId);
+    const { error } = await supabase.from("asaas_accounts").update({ is_default: true } as any).eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Conta definida como padrão");
+    load();
+  };
+
+  const handleUpdateBank = async (accountId: string, newBankId: string) => {
+    setSavingBank(true);
+    const updateValue = newBankId === "none" ? null : newBankId;
+    const { error } = await supabase
+      .from("asaas_accounts")
+      .update({ bank_id: updateValue } as any)
+      .eq("id", accountId);
+    setSavingBank(false);
+    if (error) return toast.error("Erro ao vincular banco: " + error.message);
+    toast.success("Banco vinculado com sucesso");
+    setEditingBankId(null);
+    load();
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm("Remover esta conta Asaas?")) return;
     const { error } = await supabase.from("asaas_accounts").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Conta removida");
     load();
+  };
+
+  const getBankName = (bankId: string | null) => {
+    if (!bankId) return null;
+    return banks.find(b => b.id === bankId)?.name || null;
   };
 
   return (
@@ -147,7 +205,7 @@ export function AsaasIntegration({ tenantId }: { tenantId: string }) {
               <CreditCard className="h-5 w-5" /> Contas Asaas
             </CardTitle>
             <CardDescription>
-              Cadastre suas próprias chaves Asaas para emitir boletos, PIX e cobranças.
+              Configure as chaves do Asaas para emitir boletos, PIX e cobranças recorrentes. Vincule cada conta a um banco do sistema para reconciliação automática.
             </CardDescription>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
@@ -163,7 +221,7 @@ export function AsaasIntegration({ tenantId }: { tenantId: string }) {
                   A chave é armazenada de forma segura e usada apenas pelo backend.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Nome da conta</Label>
                   <Input
@@ -186,6 +244,26 @@ export function AsaasIntegration({ tenantId }: { tenantId: string }) {
                     Encontre em: Asaas → Integrações → Chave de API
                   </p>
                 </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    <Building2 className="h-3.5 w-3.5" />
+                    Banco vinculado (para reconciliação automática)
+                  </Label>
+                  <Select value={bankId} onValueChange={setBankId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um banco..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum banco</SelectItem>
+                      {banks.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Quando um pagamento for confirmado, o sistema creditará automaticamente este banco.
+                  </p>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
@@ -206,31 +284,116 @@ export function AsaasIntegration({ tenantId }: { tenantId: string }) {
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : accounts.length === 0 ? (
-          <div className="text-center py-8 text-sm text-muted-foreground">
-            Nenhuma conta Asaas cadastrada ainda.
+          <div className="text-center py-8 space-y-2">
+            <CreditCard className="h-10 w-10 mx-auto text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">Nenhuma conta Asaas configurada.</p>
+            <p className="text-xs text-muted-foreground">Adicione sua chave de API para ativar cobranças e assinaturas.</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {accounts.map((a) => (
-              <div
-                key={a.id}
-                className="flex items-center justify-between p-3 rounded-md border border-border"
-              >
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                  <div>
-                    <div className="font-medium text-sm">{a.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {a.is_default && <Badge variant="secondary" className="mr-1">Padrão</Badge>}
-                      {a.is_active ? "Ativa" : "Inativa"}
+          <div className="space-y-3">
+            {accounts.map((a) => {
+              const linkedBankName = getBankName(a.bank_id);
+              const isEditingBank = editingBankId?.accountId === a.id;
+              return (
+                <div
+                  key={a.id}
+                  className="p-4 rounded-lg border border-border space-y-3"
+                >
+                  {/* Header row */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                      <div>
+                        <div className="font-medium text-sm flex items-center gap-2">
+                          {a.name}
+                          {a.is_default && (
+                            <Badge variant="secondary" className="text-xs">
+                              <Star className="h-3 w-3 mr-0.5" /> Padrão
+                            </Badge>
+                          )}
+                          {a.is_active ? (
+                            <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs">Ativa</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">Inativa</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {!a.is_default && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs h-7"
+                          onClick={() => handleSetDefault(a.id)}
+                          title="Definir como padrão"
+                        >
+                          <Star className="h-3 w-3 mr-1" /> Padrão
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(a.id)}>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
                     </div>
                   </div>
+
+                  {/* Bank linkage row */}
+                  <div className="flex items-center gap-2 pl-7">
+                    <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    {isEditingBank ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <Select
+                          value={editingBankId.bankId}
+                          onValueChange={(v) => setEditingBankId({ accountId: a.id, bankId: v })}
+                        >
+                          <SelectTrigger className="h-7 text-xs flex-1">
+                            <SelectValue placeholder="Selecione um banco..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhum banco</SelectItem>
+                            {banks.map((b) => (
+                              <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs"
+                          disabled={savingBank}
+                          onClick={() => handleUpdateBank(a.id, editingBankId.bankId)}
+                        >
+                          {savingBank ? <Loader2 className="h-3 w-3 animate-spin" /> : "Salvar"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => setEditingBankId(null)}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className="text-xs text-muted-foreground">
+                          {linkedBankName
+                            ? <><span className="text-foreground font-medium">{linkedBankName}</span> — pagamentos confirmados creditam este banco automaticamente</>
+                            : "Nenhum banco vinculado — configure para reconciliação automática"}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-xs ml-auto shrink-0"
+                          onClick={() => setEditingBankId({ accountId: a.id, bankId: a.bank_id || "none" })}
+                        >
+                          {linkedBankName ? "Alterar" : "Vincular banco"}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(a.id)}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>

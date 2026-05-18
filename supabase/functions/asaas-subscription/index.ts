@@ -59,28 +59,46 @@ Deno.serve(async (req) => {
 
     // Resolve API key: if asaas_account_id is provided, look up the secret name
     let ASAAS_API_KEY: string | undefined;
-    
+
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
     if (asaas_account_id) {
-      const supabaseAdmin = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
       const { data: account } = await supabaseAdmin
         .from("asaas_accounts")
         .select("api_key_secret_name")
         .eq("id", asaas_account_id)
         .single();
-      
+
       if (account?.api_key_secret_name) {
+        // 1st attempt: try Deno env var (for platform-injected secrets)
         ASAAS_API_KEY = Deno.env.get(account.api_key_secret_name);
-        console.log(`Using Asaas account: ${account.api_key_secret_name}`);
+
+        // 2nd attempt: read from tenant_integration_secrets table
+        // (used by tenant-asaas-account edge function which stores keys in the DB)
+        if (!ASAAS_API_KEY) {
+          const { data: secret } = await supabaseAdmin
+            .from("tenant_integration_secrets")
+            .select("secret_value")
+            .eq("secret_name", account.api_key_secret_name)
+            .maybeSingle();
+          if (secret?.secret_value) {
+            ASAAS_API_KEY = secret.secret_value;
+            console.log(`Using Asaas API key from tenant_integration_secrets: ${account.api_key_secret_name}`);
+          }
+        } else {
+          console.log(`Using Asaas API key from Deno env: ${account.api_key_secret_name}`);
+        }
       }
     }
-    
+
+    // Final fallback: platform-level default API key
     if (!ASAAS_API_KEY) {
       ASAAS_API_KEY = Deno.env.get("ASAAS_API_KEY");
     }
-    if (!ASAAS_API_KEY) throw new Error("ASAAS_API_KEY not configured");
+    if (!ASAAS_API_KEY) throw new Error("ASAAS_API_KEY não configurado. Configure a integração Asaas no menu Financeiro > Integrações.");
 
     if (!description || !amount_cents || !recurrence || !customer_name || !customer_email) {
       return new Response(
@@ -102,11 +120,7 @@ Deno.serve(async (req) => {
     // Fetch company address for Asaas customer
     let compAddr: Record<string, string | null> = {};
     if (company_id) {
-      const supabaseAddr = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
-      const { data: compData } = await supabaseAddr
+      const { data: compData } = await supabaseAdmin
         .from("onboarding_companies")
         .select("address, address_number, address_complement, address_neighborhood, address_zipcode, address_city, address_state, phone")
         .eq("id", company_id)
@@ -190,10 +204,8 @@ Deno.serve(async (req) => {
     console.log("Asaas subscription created:", subscription.id);
 
     // Step 5: Get the invoice URL from the first Asaas payment
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    // supabaseAdmin is already available from the key resolution above
+    const supabase = supabaseAdmin;
 
     let invoiceUrl = "";
     try {

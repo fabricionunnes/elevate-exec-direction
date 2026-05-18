@@ -465,9 +465,9 @@ async function hasEquivalentPendingElsewhere(
 
 async function creditAsaasBank(supabase: any, amountCents: number, description: string, invoiceId: string, recurringChargeId?: string | null) {
   try {
-    // Determine which bank to credit based on the Asaas account used
+    // Determine which bank to credit based on the Asaas account linked to the recurring charge.
+    // Priority: 1) asaas_accounts.bank_id (explicit linkage), 2) name-based fallback, 3) default "Asaas" bank.
     let bankId: string | null = null;
-    let isSocialAccount = false;
 
     if (recurringChargeId) {
       // Look up which Asaas account this recurring charge uses
@@ -478,16 +478,19 @@ async function creditAsaasBank(supabase: any, amountCents: number, description: 
         .single();
 
       if (charge?.asaas_account_id) {
+        // Try bank_id column first (set via integration config UI)
         const { data: account } = await supabase
           .from("asaas_accounts")
-          .select("name")
+          .select("name, bank_id")
           .eq("id", charge.asaas_account_id)
           .single();
 
-        if (account?.name) {
-          isSocialAccount = account.name.toLowerCase().includes("social");
-          // Map Asaas account name to bank name
-          // "UNV" -> "Asaas", "UN Social" -> "Asaas UNV Social"
+        if (account?.bank_id) {
+          bankId = account.bank_id;
+          console.log(`[Asaas Webhook] Resolved bank via asaas_accounts.bank_id: ${bankId}`);
+        } else if (account?.name) {
+          // Fallback: match by name convention
+          const isSocialAccount = account.name.toLowerCase().includes("social");
           const bankSearchName = isSocialAccount ? "Asaas UNV Social" : "Asaas";
           const { data: banks } = await supabase
             .from("financial_banks")
@@ -498,13 +501,13 @@ async function creditAsaasBank(supabase: any, amountCents: number, description: 
 
           if (banks?.length) {
             bankId = banks[0].id;
-            console.log(`[Asaas Webhook] Resolved bank "${bankSearchName}" (${bankId}) for Asaas account "${account.name}"`);
+            console.log(`[Asaas Webhook] Resolved bank by name "${bankSearchName}" (${bankId}) for Asaas account "${account.name}"`);
           }
         }
       }
     }
 
-    // Fallback: find default "Asaas" bank
+    // Final fallback: find default "Asaas" bank
     if (!bankId) {
       const { data: banks } = await supabase
         .from("financial_banks")
