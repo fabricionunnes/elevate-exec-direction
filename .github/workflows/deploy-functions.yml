@@ -7,7 +7,31 @@ on:
       - 'supabase/functions/**'
 
 jobs:
-  deploy:
+  # ── UNV project (czmyjgdixwhpfasfugkm) ────────────────────────────────────
+  deploy-unv:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy agente-unv
+        continue-on-error: true
+        run: supabase functions deploy agente-unv --project-ref czmyjgdixwhpfasfugkm --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy mastermind-submit
+        continue-on-error: true
+        run: supabase functions deploy mastermind-submit --project-ref czmyjgdixwhpfasfugkm --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+  # ── Nexus / elevate-exec-direction (xrncvhzxjmddqluxoosu) ─────────────────
+  deploy-nexus:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,18 +40,6 @@ jobs:
         with:
           version: latest
 
-      # ── UNV project functions ──────────────────────────────────────────────
-      - name: Deploy agente-unv
-        run: supabase functions deploy agente-unv --project-ref czmyjgdixwhpfasfugkm --no-verify-jwt
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-
-      - name: Deploy mastermind-submit
-        run: supabase functions deploy mastermind-submit --project-ref czmyjgdixwhpfasfugkm --no-verify-jwt
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-
-      # ── Nexus / elevate-exec-direction functions ───────────────────────────
       - name: Deploy asaas-subscription
         run: supabase functions deploy asaas-subscription --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
         env:
