@@ -207,16 +207,22 @@ export default function OnboardingServicesPage() {
 
   const handleDelete = async (service: Service) => {
     const count = getTemplateCount(service.id, service.slug);
-    if (count > 0) {
-      toast.error(`Não é possível excluir. Este serviço possui ${count} tarefas cadastradas.`);
-      return;
-    }
+    const warning = count > 0
+      ? `Este serviço possui ${count} tarefa(s) cadastrada(s) que também serão excluídas. `
+      : '';
 
-    if (!confirm(`Tem certeza que deseja excluir o serviço "${service.name}"?`)) {
+    if (!confirm(`${warning}Tem certeza que deseja excluir o serviço "${service.name}"?`)) {
       return;
     }
 
     try {
+      // Delete task templates linked by service id or slug
+      await supabase.from('onboarding_task_templates').delete().eq('product_id', service.id);
+      await supabase.from('onboarding_task_templates').delete().eq('product_id', service.slug);
+
+      // Delete service phases
+      await supabase.from('onboarding_service_phases').delete().eq('service_id', service.id);
+
       const { error } = await supabase
         .from('onboarding_services')
         .delete()
@@ -319,7 +325,6 @@ export default function OnboardingServicesPage() {
                     variant="ghost"
                     size="icon"
                     onClick={() => handleDelete(service)}
-                    disabled={getTemplateCount(service.id, service.slug) > 0}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
