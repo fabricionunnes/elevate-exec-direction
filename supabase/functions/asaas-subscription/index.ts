@@ -80,13 +80,15 @@ Deno.serve(async (req) => {
 
       if (account?.api_key_secret_name) {
         // 1st: try by reference_id (most direct — set by tenant-asaas-account)
-        const { data: secretByRef, error: refErr } = await supabaseAdmin
+        // Use limit(1) instead of maybeSingle() to avoid PGRST116 when multiple rows match
+        const { data: refRows, error: refErr } = await supabaseAdmin
           .from("tenant_integration_secrets")
           .select("secret_value")
           .eq("reference_id", asaas_account_id)
           .eq("provider", "asaas")
-          .maybeSingle();
+          .limit(1);
 
+        const secretByRef = refRows?.[0] || null;
         console.log(`[key-resolve] secretByRef found: ${!!secretByRef?.secret_value}, err: ${JSON.stringify(refErr)}`);
 
         if (secretByRef?.secret_value) {
@@ -94,12 +96,13 @@ Deno.serve(async (req) => {
           console.log(`Using Asaas API key from tenant_integration_secrets (reference_id=${asaas_account_id})`);
         } else {
           // 2nd: try by secret_name in DB
-          const { data: secretByName, error: nameErr } = await supabaseAdmin
+          const { data: nameRows, error: nameErr } = await supabaseAdmin
             .from("tenant_integration_secrets")
             .select("secret_value")
             .eq("secret_name", account.api_key_secret_name)
-            .maybeSingle();
+            .limit(1);
 
+          const secretByName = nameRows?.[0] || null;
           console.log(`[key-resolve] secretByName found: ${!!secretByName?.secret_value}, err: ${JSON.stringify(nameErr)}`);
 
           if (secretByName?.secret_value) {

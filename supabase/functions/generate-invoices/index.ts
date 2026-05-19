@@ -51,26 +51,28 @@ async function resolveAsaasApiKey(
 
       if (account?.api_key_secret_name) {
         // 1st: try by reference_id (most direct — set by tenant-asaas-account)
-        const { data: secretByRef } = await supabase
+        // Use limit(1) instead of maybeSingle() to avoid PGRST116 when multiple rows match
+        const { data: refRows } = await supabase
           .from("tenant_integration_secrets")
           .select("secret_value")
           .eq("reference_id", charge.asaas_account_id)
           .eq("provider", "asaas")
-          .maybeSingle();
+          .limit(1);
 
+        const secretByRef = refRows?.[0] || null;
         if (secretByRef?.secret_value) {
           console.log(`[resolveAsaasApiKey] Using tenant_integration_secrets (reference_id=${charge.asaas_account_id})`);
           return secretByRef.secret_value;
         }
 
-        // 2nd: try by secret_name in DB (never use Deno.env for account-specific keys
-        //      because a wrong platform secret could override the correct DB value)
-        const { data: secretByName } = await supabase
+        // 2nd: try by secret_name in DB
+        const { data: nameRows } = await supabase
           .from("tenant_integration_secrets")
           .select("secret_value")
           .eq("secret_name", account.api_key_secret_name)
-          .maybeSingle();
+          .limit(1);
 
+        const secretByName = nameRows?.[0] || null;
         if (secretByName?.secret_value) {
           console.log(`[resolveAsaasApiKey] Using tenant_integration_secrets (secret_name=${account.api_key_secret_name})`);
           return secretByName.secret_value;
