@@ -297,6 +297,7 @@ Retorne APENAS um JSON válido no formato:
       },
       body: JSON.stringify({
         model: 'gpt-4o',
+        response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: systemPrompt },
           {
@@ -304,7 +305,7 @@ Retorne APENAS um JSON válido no formato:
             content: [
               {
                 type: 'text',
-                text: `Analise este documento de planejamento estratégico${companyName ? ` da empresa "${companyName}"` : ''} e extraia todas as ações propostas, distribuídas nos próximos 90 dias com foco em resultados imediatos primeiro. Retorne em formato JSON.`
+                text: `Analise este documento de planejamento estratégico${companyName ? ` da empresa "${companyName}"` : ''} e extraia todas as ações propostas, distribuídas nos próximos 90 dias com foco em resultados imediatos primeiro. Retorne APENAS JSON válido.`
               },
               {
                 type: 'file',
@@ -345,9 +346,15 @@ Retorne APENAS um JSON válido no formato:
 
     const aiData = await response.json();
     const content = aiData.choices?.[0]?.message?.content;
-    
+    const finishReason = aiData.choices?.[0]?.finish_reason;
+
+    console.log('AI response finish_reason:', finishReason);
+    console.log('AI content preview:', content?.substring(0, 300));
+
     if (!content) {
-      throw new Error('No content in AI response');
+      const refusal = aiData.choices?.[0]?.message?.refusal;
+      console.error('No content. Refusal:', refusal, 'Full response:', JSON.stringify(aiData).substring(0, 500));
+      throw new Error(refusal ? `IA recusou: ${refusal}` : 'Sem conteúdo na resposta da IA');
     }
 
     console.log('AI response received, parsing JSON...');
@@ -398,7 +405,8 @@ Retorne APENAS um JSON válido no formato:
       }
       
       if (tasks.length === 0) {
-        throw new Error('Não foi possível extrair as ações do documento. Tente um PDF mais simples ou menor.');
+        console.error('Raw AI content that failed to parse:', content?.substring(0, 1000));
+        throw new Error(`Não foi possível extrair as ações do documento. Resposta da IA: ${content?.substring(0, 200) || 'vazia'}`);
       }
     }
 
