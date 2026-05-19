@@ -69,6 +69,7 @@ import { WhatsAppInstancePanel } from "@/components/financial/WhatsAppInstancePa
 import { FinancialInboxPanel } from "@/components/financial/FinancialInboxPanel";
 import { BankStatementFullPanel } from "@/components/financial/BankStatementFullPanel";
 import { NfsePanel } from "@/components/financial/NfsePanel";
+import { TenantIntegrationsSettings } from "@/components/whitelabel/TenantIntegrationsSettings";
 import { SupplierAutocomplete } from "@/components/financial/SupplierAutocomplete";
 import { PayablePaymentDialog, PayableEditDialog } from "@/components/financial/PayableActionDialogs";
 import { BankTransactionsDialog } from "@/components/financial/BankTransactionsDialog";
@@ -173,6 +174,8 @@ const NAV_ITEMS = [
   { key: "whatsapp-instance", label: "Instância", icon: MessageSquare, permKey: FINANCIAL_PERMISSION_KEYS.fin_whatsapp_instance },
   { key: "bank-statement", label: "Extrato Bancário", icon: FileText, permKey: FINANCIAL_PERMISSION_KEYS.fin_bank_statement },
   { key: "nfse", label: "NFS-e", icon: FileCheck, permKey: FINANCIAL_PERMISSION_KEYS.fin_nfse },
+  { key: "separator-integrations", label: "── CONFIG ──", icon: Link2, permKey: null, isSeparator: true },
+  { key: "integrations", label: "Integrações", icon: Link2, permKey: null },
 ] as const;
 
 const applyPeriodPreset = (
@@ -373,7 +376,7 @@ export default function AllRecurringChargesPage() {
         setUserRole(finPerms.userRole);
         // Auto-select first permitted tab instead of hardcoding "dashboard"
         const firstPermitted = NAV_ITEMS.find(
-          item => !('isSeparator' in item && item.isSeparator) && finPerms.hasFinancialPermission(item.permKey)
+          item => !('isSeparator' in item && item.isSeparator) && (item.permKey == null || finPerms.hasFinancialPermission(item.permKey))
         );
         setActiveTab(firstPermitted ? firstPermitted.key : "dashboard");
         loadData().finally(() => setIsLoading(false));
@@ -1216,7 +1219,7 @@ export default function AllRecurringChargesPage() {
     );
   }
 
-  const visibleNavItems = NAV_ITEMS.filter(item => !('isSeparator' in item && item.isSeparator) && hasPerm(item.permKey));
+  const visibleNavItems = NAV_ITEMS.filter(item => !('isSeparator' in item && item.isSeparator) && (item.permKey == null || hasPerm(item.permKey)));
   const hasCfoAccess = DASHBOARD_CHILDREN.some(item => hasPerm(item.permKey));
 
   return (
@@ -2412,6 +2415,9 @@ export default function AllRecurringChargesPage() {
           )}
           {activeTab === "nfse" && (
             <NfsePanel />
+          )}
+          {activeTab === "integrations" && (
+            <TenantIntegrationsSettings />
           )}
         </div>
       </main>
