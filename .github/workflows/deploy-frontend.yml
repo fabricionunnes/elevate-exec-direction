@@ -11,6 +11,7 @@ on:
       - 'tailwind.config.*'
       - 'package.json'
       - 'wrangler.toml'
+      - '.env'
       - '.github/workflows/deploy-frontend.yml'
   workflow_dispatch:
 
