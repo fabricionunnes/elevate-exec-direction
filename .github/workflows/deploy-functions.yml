@@ -42,6 +42,26 @@ jobs:
         with:
           version: latest
 
+      - name: Deploy agente-unv
+        run: supabase functions deploy agente-unv --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy meta-ads-sync
+        run: supabase functions deploy meta-ads-sync --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy nsm-api
+        run: supabase functions deploy nsm-api --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy system-api
+        run: supabase functions deploy system-api --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
       - name: Deploy asaas-subscription
         run: supabase functions deploy asaas-subscription --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
         env:
