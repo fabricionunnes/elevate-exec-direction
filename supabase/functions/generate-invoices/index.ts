@@ -49,10 +49,21 @@ async function resolveAsaasApiKey(
         .single();
 
       if (account?.api_key_secret_name) {
+        // 1st: try Deno env var (platform-injected secrets)
         const key = Deno.env.get(account.api_key_secret_name);
         if (key) {
-          console.log(`[resolveAsaasApiKey] Using account: ${account.api_key_secret_name}`);
+          console.log(`[resolveAsaasApiKey] Using env var: ${account.api_key_secret_name}`);
           return key;
+        }
+        // 2nd: fall back to tenant_integration_secrets table (same as asaas-subscription)
+        const { data: secret } = await supabase
+          .from("tenant_integration_secrets")
+          .select("secret_value")
+          .eq("secret_name", account.api_key_secret_name)
+          .maybeSingle();
+        if (secret?.secret_value) {
+          console.log(`[resolveAsaasApiKey] Using tenant_integration_secrets: ${account.api_key_secret_name}`);
+          return secret.secret_value;
         }
       }
     }
