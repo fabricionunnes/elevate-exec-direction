@@ -1,3 +1,4 @@
+// v2 — account-specific keys always resolved from DB, never from Deno.env
 import { createClient } from "@supabase/supabase-js";
 
 const PUBLISHED_URL = "https://elevate-exec-direction.lovable.app";
