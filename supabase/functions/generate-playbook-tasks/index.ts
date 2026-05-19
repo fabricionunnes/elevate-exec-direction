@@ -1506,9 +1506,9 @@ Deno.serve(async (req) => {
 
     console.log("Generating tasks for project:", projectId);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY is not configured");
     }
 
     // Initialize Supabase client
@@ -1552,7 +1552,7 @@ Deno.serve(async (req) => {
     if (!productConfig) {
       console.log("No specific config for product:", productId, "- using AI generation");
       // Fallback to AI generation for products without specific config
-      return await generateWithAI(req, project, company, existingTaskTitles, context, LOVABLE_API_KEY);
+      return await generateWithAI(req, project, company, existingTaskTitles, context, OPENAI_API_KEY);
     }
 
     console.log("Using product-specific tasks for:", productConfig.name);
@@ -1767,14 +1767,14 @@ Retorne APENAS JSON válido:
   ]
 }`;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: "Gere as tarefas de onboarding." }

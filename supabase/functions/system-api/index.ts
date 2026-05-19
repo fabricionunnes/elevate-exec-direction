@@ -153,6 +153,60 @@ serve(async (req) => {
           if (error) throw error;
           return json({ data });
         },
+        create: async (c) => {
+          const { company_id, title, product_id, service_slug, consultant_id, cs_id, status } = c.body;
+          if (!company_id) return json({ error: "Campo 'company_id' obrigatório" }, 400);
+          if (!title) return json({ error: "Campo 'title' obrigatório" }, 400);
+
+          // Resolve product_id: accept directly or look up via service_slug
+          let resolvedProductId = product_id || null;
+          if (!resolvedProductId && service_slug) {
+            const { data: svc } = await c.supabase
+              .from("onboarding_services")
+              .select("id")
+              .eq("slug", service_slug)
+              .maybeSingle();
+            if (svc) resolvedProductId = svc.id;
+          }
+          if (!resolvedProductId) {
+            return json({ error: "Informe 'product_id' (UUID do serviço) ou 'service_slug' (ex: 'sales-acceleration')" }, 400);
+          }
+
+          const { data, error } = await c.supabase
+            .from("onboarding_projects")
+            .insert({
+              onboarding_company_id: company_id,
+              product_name: title,
+              product_id: resolvedProductId,
+              consultant_id: consultant_id || null,
+              cs_id: cs_id || null,
+              status: status || "active",
+            })
+            .select()
+            .single();
+          if (error) throw error;
+          return json({ data }, 201);
+        },
+        set_monthly_goal: async (c) => {
+          const { project_id, month, year, sales_target, sales_result, notes } = c.body;
+          if (!project_id) return json({ error: "Campo 'project_id' obrigatório" }, 400);
+          if (!month || !year) return json({ error: "Campos 'month' (1-12) e 'year' obrigatórios" }, 400);
+          if (sales_target === undefined && sales_result === undefined) return json({ error: "Informe 'sales_target' (meta) e/ou 'sales_result' (resultado)" }, 400);
+          const { data, error } = await c.supabase
+            .from("onboarding_monthly_goals")
+            .upsert({
+              project_id,
+              month: Number(month),
+              year: Number(year),
+              ...(sales_target !== undefined ? { sales_target: Number(sales_target), target_set_at: new Date().toISOString() } : {}),
+              ...(sales_result !== undefined ? { sales_result: Number(sales_result), result_set_at: new Date().toISOString() } : {}),
+              ...(notes ? { notes } : {}),
+            }, { onConflict: "project_id,month,year" })
+            .select()
+            .single();
+          if (error) throw error;
+          return json({ data }, 201);
+        },
       },
 
       // ===== TASKS =====
@@ -639,6 +693,76 @@ serve(async (req) => {
           const { company_id, salesperson_id, kpi_id, entry_date, value, observations, unit_id, team_id, sector_id } = c.body;
           if (!company_id || !salesperson_id || !kpi_id) return json({ error: "Campos 'company_id', 'salesperson_id' e 'kpi_id' obrigatórios" }, 400);
           const { data, error } = await c.supabase.from("kpi_entries").upsert({ company_id, salesperson_id, kpi_id, entry_date: entry_date || new Date().toISOString().split("T")[0], value: value || 0, observations, unit_id, team_id, sector_id }, { onConflict: "salesperson_id,kpi_id,entry_date" }).select().single();
+          if (error) throw error;
+          return json({ data }, 201);
+        },
+        create: async (c) => {
+          const { company_id, name, kpi_type, periodicity, target_value, is_individual, is_required, is_active, is_main_goal, scope, sort_order, sector_id, team_id, unit_id, salesperson_id } = c.body;
+          if (!company_id) return json({ error: "Campo 'company_id' obrigatório" }, 400);
+          if (!name) return json({ error: "Campo 'name' obrigatório" }, 400);
+          const validKpiTypes = ["monetary", "numeric", "percentage"];
+          if (!kpi_type) return json({ error: "Campo 'kpi_type' obrigatório", valid_values: validKpiTypes }, 400);
+          if (!validKpiTypes.includes(kpi_type)) return json({ error: `'kpi_type' inválido. Use: ${validKpiTypes.join(", ")}` }, 400);
+          if (target_value === undefined || target_value === null) return json({ error: "Campo 'target_value' obrigatório" }, 400);
+          const { data, error } = await c.supabase
+            .from("company_kpis")
+            .insert({
+              company_id,
+              name,
+              kpi_type,
+              periodicity: periodicity || "monthly",
+              target_value,
+              is_individual: is_individual ?? false,
+              is_required: is_required ?? true,
+              is_active: is_active ?? true,
+              is_main_goal: is_main_goal ?? false,
+              scope: scope || "company",
+              sort_order: sort_order || 0,
+              sector_id: sector_id || null,
+              team_id: team_id || null,
+              unit_id: unit_id || null,
+              salesperson_id: salesperson_id || null,
+            })
+            .select()
+            .single();
+          if (error) throw error;
+          return json({ data }, 201);
+        },
+        set_monthly_target: async (c) => {
+          const { kpi_id, company_id, month_year, target_value, level_name, level_order, salesperson_id, team_id, sector_id, unit_id } = c.body;
+          if (!kpi_id) return json({ error: "Campo 'kpi_id' obrigatório" }, 400);
+          if (!company_id) return json({ error: "Campo 'company_id' obrigatório" }, 400);
+          if (!month_year) return json({ error: "Campo 'month_year' obrigatório (formato: YYYY-MM)" }, 400);
+          if (target_value === undefined || target_value === null) return json({ error: "Campo 'target_value' obrigatório" }, 400);
+          const normalized = normalizeMonthYear(month_year);
+          const lvlName = level_name || "Meta";
+          const lvlOrder = level_order ?? 1;
+
+          // Try update first, then insert if not found
+          const { data: existing } = await c.supabase
+            .from("kpi_monthly_targets")
+            .select("id")
+            .eq("kpi_id", kpi_id)
+            .eq("company_id", company_id)
+            .eq("month_year", normalized)
+            .eq("level_name", lvlName)
+            .maybeSingle();
+
+          let data, error;
+          if (existing) {
+            ({ data, error } = await c.supabase
+              .from("kpi_monthly_targets")
+              .update({ target_value, salesperson_id: salesperson_id || null, team_id: team_id || null, sector_id: sector_id || null, unit_id: unit_id || null, updated_at: new Date().toISOString() })
+              .eq("id", existing.id)
+              .select()
+              .single());
+          } else {
+            ({ data, error } = await c.supabase
+              .from("kpi_monthly_targets")
+              .insert({ kpi_id, company_id, month_year: normalized, target_value, level_name: lvlName, level_order: lvlOrder, salesperson_id: salesperson_id || null, team_id: team_id || null, sector_id: sector_id || null, unit_id: unit_id || null })
+              .select()
+              .single());
+          }
           if (error) throw error;
           return json({ data }, 201);
         },
@@ -1366,7 +1490,7 @@ serve(async (req) => {
           return json({
             modules: {
               companies: { actions: ["list", "get", "create", "update"], description: "Gerenciar empresas/clientes" },
-              projects: { actions: ["list", "get"], description: "Visualizar projetos" },
+              projects: { actions: ["list", "get", "create", "set_monthly_goal"], description: "Projetos de clientes (listar, buscar, criar, definir meta mensal)" },
               tasks: { actions: ["list", "get", "create", "update", "delete"], description: "Gerenciar tarefas" },
               staff: { actions: ["list"], description: "Listar colaboradores" },
               leads: { actions: ["list", "get", "create", "update", "delete", "move_stage", "win", "lose", "add_note"], description: "CRM completo" },
@@ -1375,7 +1499,7 @@ serve(async (req) => {
               activities: { actions: ["list", "create", "update", "complete", "delete"], description: "Atividades do CRM" },
               meetings: { actions: ["list", "schedule", "finalize"], description: "Reuniões do CRM" },
               sales: { actions: ["list", "create", "update"], description: "Histórico de vendas" },
-              kpis: { actions: ["list", "entries", "monthly_targets", "create_entry"], description: "KPIs, metas mensais e lançamentos" },
+              kpis: { actions: ["list", "entries", "monthly_targets", "create_entry", "create", "set_monthly_target"], description: "KPIs: cadastrar, definir meta mensal, lançar resultado" },
               salespeople: { actions: ["list", "create", "update"], description: "Vendedores das empresas" },
               receivables: { actions: ["list", "get", "create", "update", "mark_paid", "mark_unpaid", "delete"], description: "Contas a receber (CRUD + baixa)" },
               payables: { actions: ["list", "get", "create", "update", "mark_paid", "mark_unpaid", "delete"], description: "Contas a pagar (CRUD + baixa)" },
@@ -1398,9 +1522,12 @@ serve(async (req) => {
     if (!handler) return json({ error: `Ação '${action}' não disponível para '${module}'`, available: Object.keys(mod) }, 404);
 
     return await handler(ctx);
-  } catch (e) {
+  } catch (e: any) {
     console.error("system-api error:", e);
-    return json({ error: e instanceof Error ? e.message : "Erro desconhecido" }, 500);
+    const msg = e?.message ?? (typeof e === "string" ? e : "Erro desconhecido");
+    const details = e?.details ?? e?.hint ?? undefined;
+    const code = e?.code ?? undefined;
+    return json({ error: msg, ...(details ? { details } : {}), ...(code ? { code } : {}) }, 500);
   }
 });
 

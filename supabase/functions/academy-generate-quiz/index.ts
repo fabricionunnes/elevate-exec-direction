@@ -55,15 +55,15 @@ Responda APENAS com um JSON válido no seguinte formato:
 }`;
 
     // Call Lovable AI (Google Gemini)
-    const aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${Deno.env.get("OPENROUTER_API_KEY") || Deno.env.get("LOVABLE_AI_KEY")}`,
+        "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
         "Content-Type": "application/json",
         "HTTP-Referer": supabaseUrl,
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "user",

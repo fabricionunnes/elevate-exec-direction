@@ -183,7 +183,7 @@ serve(async (req) => {
       const companyContext = await fetchCompanyContext(supabase, project_id);
 
       // Generate with AI
-      const aiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
+      const aiUrl = "https://api.openai.com/v1/chat/completions";
 
       const prompt = `Gere um calendário anual de ações comerciais para uma empresa do nicho "${niche}" para o ano de ${year}.
 
@@ -212,8 +212,8 @@ Para cada ação, retorne um JSON object com:
 
 Retorne APENAS um array JSON válido com as ações. Sem texto adicional.`;
 
-      const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-      if (!lovableApiKey) throw new Error("LOVABLE_API_KEY não configurada");
+      const lovableApiKey = Deno.env.get("OPENAI_API_KEY");
+      if (!lovableApiKey) throw new Error("OPENAI_API_KEY não configurada");
 
       const aiResponse = await fetch(aiUrl, {
         method: "POST",
@@ -222,7 +222,7 @@ Retorne APENAS um array JSON válido com as ações. Sem texto adicional.`;
           "Authorization": `Bearer ${lovableApiKey}`,
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "gpt-4o-mini",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7,
           max_tokens: 30000,

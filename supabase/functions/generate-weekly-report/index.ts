@@ -238,11 +238,11 @@ Responda APENAS em formato JSON:
     let classificationReason = 'Semana dentro da normalidade operacional.';
 
     try {
-      const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: 'gpt-4o-mini',
           messages: [
             { role: 'system', content: 'Você é um CFO/COO experiente analisando dados semanais.' },
             { role: 'user', content: classificationPrompt }

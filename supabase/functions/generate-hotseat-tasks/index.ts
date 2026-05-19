@@ -209,7 +209,7 @@ Deno.serve(async (req) => {
       }
 
       // AI task generation
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
       
       const taskItems = [...actionItems, ...recommendations.filter((r: string) => !actionItems.some((a: string) => a.toLowerCase().includes(r.toLowerCase().substring(0, 20))))];
 
@@ -220,13 +220,13 @@ Deno.serve(async (req) => {
 
       let tasks: { title: string; description: string; priority: string; suggested_date?: string }[] = [];
 
-      if (LOVABLE_API_KEY) {
+      if (OPENAI_API_KEY) {
         try {
-          const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
-            headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+            headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
             body: JSON.stringify({
-              model: "google/gemini-2.5-flash-lite",
+              model: "gpt-4o-mini",
               messages: [
                 {
                   role: "system",

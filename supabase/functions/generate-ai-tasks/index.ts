@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    const lovableApiKey = Deno.env.get("OPENAI_API_KEY");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Fetch project info
@@ -189,14 +189,14 @@ Responda APENAS com um array JSON válido no seguinte formato (sem markdown, sem
 ]`;
 
     // Call Lovable AI
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${lovableApiKey}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "user",

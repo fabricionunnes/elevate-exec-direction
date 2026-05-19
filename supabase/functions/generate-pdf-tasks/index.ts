@@ -57,10 +57,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY is not configured');
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    if (!OPENAI_API_KEY) {
+      console.error('OPENAI_API_KEY is not configured');
+      throw new Error('OPENAI_API_KEY is not configured');
     }
 
     const formData = await req.formData();
@@ -233,14 +233,14 @@ Deno.serve(async (req) => {
     const base64 = btoa(binaryString);
 
     // Use Gemini to extract tasks from the PDF
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',

@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
 interface CompanyContext {
   company_name: string;
@@ -126,8 +126,8 @@ function formatCompanyContext(ctx?: CompanyContext): string {
 }
 
 async function generatePresentation(briefing: PresentationBriefing): Promise<Slide[]> {
-  if (!LOVABLE_API_KEY) {
-    throw new Error("LOVABLE_API_KEY not configured");
+  if (!OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY not configured");
   }
 
   const objectiveLabels: Record<string, string> = {
@@ -269,14 +269,14 @@ Tipos interativos: question, reflection, decision, highlight`;
     briefingsCount: briefing.previous_briefings?.length || 0,
   });
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+      "Authorization": `Bearer ${OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }

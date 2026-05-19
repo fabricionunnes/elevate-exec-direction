@@ -11,8 +11,8 @@ serve(async (req) => {
 
   try {
     const { projectId, segment, businessModel, ticketRange, saleType } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -46,14 +46,14 @@ Retorne um JSON com a seguinte estrutura:
 
 Crie entre 5 e 8 etapas que façam sentido para o segmento. Inclua taxas de conversão realistas e tempos médios. Use cores diferentes para cada etapa. Posicione verticalmente com y incrementando de 80 em 80.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: "Você é um especialista em processos comerciais e funis de vendas. Sempre responda em JSON válido." },
           { role: "user", content: prompt },

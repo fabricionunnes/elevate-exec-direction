@@ -84,9 +84,9 @@ SALÁRIO: ${job.salary_range || "A combinar"}
 `.trim();
 
     // Call AI for analysis
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) {
+      console.error("OPENAI_API_KEY not configured");
       return new Response(
         JSON.stringify({ error: "AI service not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -119,14 +119,14 @@ ${resumeContent || "[Conteúdo do arquivo não pôde ser extraído - considere c
 
 Analise a compatibilidade do candidato com a vaga e retorne o JSON de avaliação.`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -196,7 +196,7 @@ Analise a compatibilidade do candidato com a vaga e retorne o JSON de avaliaçã
         concerns: evaluation.concerns || [],
         recommendation: evaluation.recommendation,
         full_analysis: evaluation.full_analysis,
-        model_used: "gemini-2.5-flash",
+        model_used: "gpt-4o-mini",
       })
       .select()
       .single();

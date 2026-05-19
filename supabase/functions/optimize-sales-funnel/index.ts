@@ -10,8 +10,8 @@ serve(async (req) => {
 
   try {
     const { funnelId, stages, connections } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
     const stagesInfo = stages.map((s: any, idx: number) => 
       `${idx + 1}. ${s.name} (tipo: ${s.stage_type}, conversão: ${s.expected_conversion_rate || 'N/A'}%, tempo: ${s.expected_avg_time_days || 'N/A'} dias)`
@@ -37,14 +37,14 @@ Gere de 3 a 6 insights práticos sobre:
 4. Sugestões de automação
 5. Comparação com melhores práticas`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: "Você é um consultor especialista em otimização de processos comerciais." },
           { role: "user", content: prompt },

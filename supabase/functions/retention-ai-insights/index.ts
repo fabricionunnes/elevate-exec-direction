@@ -21,9 +21,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY is not configured");
     }
 
     const prompt = `Você é um analista especialista em retenção de clientes de uma consultoria de vendas chamada UNV (Universidade de Vendas). Analise os seguintes dados e gere insights estratégicos em português brasileiro.
@@ -56,14 +56,14 @@ Gere um relatório com:
 
 Seja direto, use dados concretos e dê recomendações acionáveis. Use formatação markdown.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 4000,
       }),
