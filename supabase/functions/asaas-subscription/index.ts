@@ -66,30 +66,40 @@ Deno.serve(async (req) => {
     );
 
     if (asaas_account_id) {
-      const { data: account } = await supabaseAdmin
-        .from("asaas_accounts")
-        .select("api_key_secret_name")
-        .eq("id", asaas_account_id)
-        .single();
+      // Direct lookup: tenant-asaas-account stores the key with reference_id = asaas_account_id
+      const { data: secret } = await supabaseAdmin
+        .from("tenant_integration_secrets")
+        .select("secret_value")
+        .eq("reference_id", asaas_account_id)
+        .eq("provider", "asaas")
+        .maybeSingle();
 
-      if (account?.api_key_secret_name) {
-        // 1st attempt: try Deno env var (for platform-injected secrets)
-        ASAAS_API_KEY = Deno.env.get(account.api_key_secret_name);
+      if (secret?.secret_value) {
+        ASAAS_API_KEY = secret.secret_value;
+        console.log(`Using Asaas API key from tenant_integration_secrets (reference_id=${asaas_account_id})`);
+      } else {
+        // Fallback: look up by api_key_secret_name (Deno env or DB by secret_name)
+        const { data: account } = await supabaseAdmin
+          .from("asaas_accounts")
+          .select("api_key_secret_name")
+          .eq("id", asaas_account_id)
+          .single();
 
-        // 2nd attempt: read from tenant_integration_secrets table
-        // (used by tenant-asaas-account edge function which stores keys in the DB)
-        if (!ASAAS_API_KEY) {
-          const { data: secret } = await supabaseAdmin
-            .from("tenant_integration_secrets")
-            .select("secret_value")
-            .eq("secret_name", account.api_key_secret_name)
-            .maybeSingle();
-          if (secret?.secret_value) {
-            ASAAS_API_KEY = secret.secret_value;
-            console.log(`Using Asaas API key from tenant_integration_secrets: ${account.api_key_secret_name}`);
+        if (account?.api_key_secret_name) {
+          ASAAS_API_KEY = Deno.env.get(account.api_key_secret_name);
+          if (!ASAAS_API_KEY) {
+            const { data: secretByName } = await supabaseAdmin
+              .from("tenant_integration_secrets")
+              .select("secret_value")
+              .eq("secret_name", account.api_key_secret_name)
+              .maybeSingle();
+            if (secretByName?.secret_value) {
+              ASAAS_API_KEY = secretByName.secret_value;
+              console.log(`Using Asaas API key from tenant_integration_secrets (secret_name=${account.api_key_secret_name})`);
+            }
+          } else {
+            console.log(`Using Asaas API key from Deno env: ${account.api_key_secret_name}`);
           }
-        } else {
-          console.log(`Using Asaas API key from Deno env: ${account.api_key_secret_name}`);
         }
       }
     }

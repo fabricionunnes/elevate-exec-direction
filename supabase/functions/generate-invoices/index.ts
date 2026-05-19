@@ -42,6 +42,20 @@ async function resolveAsaasApiKey(
       .single();
 
     if (charge?.asaas_account_id) {
+      // Direct lookup: tenant-asaas-account stores the key with reference_id = asaas_account_id
+      const { data: secret } = await supabase
+        .from("tenant_integration_secrets")
+        .select("secret_value")
+        .eq("reference_id", charge.asaas_account_id)
+        .eq("provider", "asaas")
+        .maybeSingle();
+
+      if (secret?.secret_value) {
+        console.log(`[resolveAsaasApiKey] Using tenant_integration_secrets (reference_id=${charge.asaas_account_id})`);
+        return secret.secret_value;
+      }
+
+      // Fallback: look up by api_key_secret_name
       const { data: account } = await supabase
         .from("asaas_accounts")
         .select("api_key_secret_name")
@@ -49,21 +63,19 @@ async function resolveAsaasApiKey(
         .single();
 
       if (account?.api_key_secret_name) {
-        // 1st: try Deno env var (platform-injected secrets)
         const key = Deno.env.get(account.api_key_secret_name);
         if (key) {
           console.log(`[resolveAsaasApiKey] Using env var: ${account.api_key_secret_name}`);
           return key;
         }
-        // 2nd: fall back to tenant_integration_secrets table (same as asaas-subscription)
-        const { data: secret } = await supabase
+        const { data: secretByName } = await supabase
           .from("tenant_integration_secrets")
           .select("secret_value")
           .eq("secret_name", account.api_key_secret_name)
           .maybeSingle();
-        if (secret?.secret_value) {
-          console.log(`[resolveAsaasApiKey] Using tenant_integration_secrets: ${account.api_key_secret_name}`);
-          return secret.secret_value;
+        if (secretByName?.secret_value) {
+          console.log(`[resolveAsaasApiKey] Using tenant_integration_secrets (secret_name=${account.api_key_secret_name})`);
+          return secretByName.secret_value;
         }
       }
     }
