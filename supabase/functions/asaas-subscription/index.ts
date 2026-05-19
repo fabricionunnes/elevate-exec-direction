@@ -247,74 +247,10 @@ Deno.serve(async (req) => {
         .eq("id", recurring_charge_id);
     }
 
-    // Step 7: Send WhatsApp notification with invoice link
-    if (invoiceUrl && phoneToUse) {
-      try {
-        // Get the default WhatsApp instance name from config
-        const { data: defaultCfg } = await supabaseAdmin
-          .from("whatsapp_default_config")
-          .select("setting_value")
-          .eq("setting_key", "default_instance")
-          .maybeSingle();
-
-        const instanceName = defaultCfg?.setting_value;
-
-        if (instanceName) {
-          const { data: instance } = await supabaseAdmin
-            .from("whatsapp_instances")
-            .select("instance_name, api_url, api_key")
-            .eq("instance_name", instanceName)
-            .eq("status", "connected")
-            .maybeSingle();
-
-          if (instance?.api_url && instance?.api_key) {
-            // Normalize phone to Brazilian format
-            let phone = phoneToUse;
-            if (!phone.startsWith("55")) phone = "55" + phone;
-            if (phone.length === 12) phone = phone.slice(0, 4) + "9" + phone.slice(4);
-
-            if (phone.length >= 12) {
-              const amountFormatted = amountValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-              const dueDateFormatted = nextDueDate.split("-").reverse().join("/");
-
-              // Calculate discount deadline (1 day before due date)
-              const dueDateObj = new Date(nextDueDate + "T12:00:00");
-              const discountDateObj = new Date(dueDateObj);
-              discountDateObj.setDate(discountDateObj.getDate() - 1);
-              const today2 = new Date();
-              today2.setHours(12, 0, 0, 0);
-              const showDiscount = discountDateObj.getTime() >= today2.getTime();
-              const discountDateFormatted = `${String(discountDateObj.getDate()).padStart(2, "0")}/${String(discountDateObj.getMonth() + 1).padStart(2, "0")}/${discountDateObj.getFullYear()}`;
-              const discountedAmount = (amountValue * 0.95).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-              const discountLine = showDiscount
-                ? `\n\n🏷️ *Desconto de 5%* pagando até *${discountDateFormatted}*! Valor com desconto: *${discountedAmount}*`
-                : "";
-
-              const message = `Olá ${customer_name}! 👋\n\nSua cobrança foi gerada com sucesso. 🎉\n\nSegue sua fatura:\n\n📄 *${description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${discountLine}\n\nAcesse o link abaixo para realizar o pagamento:\n\n🔗 ${invoiceUrl}\n\nQualquer dúvida, estamos à disposição! ✨`;
-
-              const sendRes = await fetch(`${instance.api_url}/message/sendText/${instance.instance_name}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "apikey": instance.api_key },
-                body: JSON.stringify({ number: phone, text: message }),
-              });
-
-              if (sendRes.ok) {
-                console.log(`WhatsApp notification sent to ${phone} via instance ${instance.instance_name}`);
-              } else {
-                console.error("WhatsApp send failed:", await sendRes.text());
-              }
-            }
-          } else {
-            console.log(`WhatsApp instance "${instanceName}" not found or not connected, skipping notification`);
-          }
-        } else {
-          console.log("No default WhatsApp instance configured, skipping notification");
-        }
-      } catch (e) {
-        console.error("WhatsApp notification error (non-fatal):", e);
-        // Do not throw — notification failure must not break subscription flow
-      }
-    }
+    // NOTE: WhatsApp notification is intentionally NOT sent here.
+    // It is sent by generate-invoices (action: "generate") after creating the
+    // company_invoices records, so the link in WhatsApp matches exactly the
+    // payment_link_url stored in the database (what the "Faturas" tab shows).
 
     return new Response(
       JSON.stringify({

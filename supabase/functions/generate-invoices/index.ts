@@ -178,13 +178,23 @@ async function sendWhatsAppInvoiceNotification(
 
     const formattedPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
 
-    // Get WhatsApp instance (prefer default, fallback to any connected)
-    const { data: whatsappInstance } = await supabase
-      .from("whatsapp_instances")
-      .select("api_url, api_key, instance_name, is_default")
-      .eq("status", "connected")
-      .eq("instance_name", "financeirounv")
-      .single();
+    // Get WhatsApp instance from default config (same logic as asaas-subscription)
+    const { data: defaultCfg } = await supabase
+      .from("whatsapp_default_config")
+      .select("setting_value")
+      .eq("setting_key", "default_instance")
+      .maybeSingle();
+
+    const defaultInstanceName = defaultCfg?.setting_value;
+
+    const { data: whatsappInstance } = defaultInstanceName
+      ? await supabase
+          .from("whatsapp_instances")
+          .select("api_url, api_key, instance_name, is_default")
+          .eq("status", "connected")
+          .eq("instance_name", defaultInstanceName)
+          .maybeSingle()
+      : { data: null };
 
     if (!whatsappInstance?.api_url || !whatsappInstance?.api_key) {
       console.log("No default WhatsApp instance found, skipping notification");
