@@ -66,34 +66,41 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    console.log(`[key-resolve] asaas_account_id received: ${JSON.stringify(asaas_account_id)}`);
+
     if (asaas_account_id) {
       // Look up the api_key_secret_name for this account
-      const { data: account } = await supabaseAdmin
+      const { data: account, error: accountErr } = await supabaseAdmin
         .from("asaas_accounts")
         .select("api_key_secret_name")
         .eq("id", asaas_account_id)
         .single();
 
+      console.log(`[key-resolve] asaas_accounts lookup: ${JSON.stringify(account)}, err: ${JSON.stringify(accountErr)}`);
+
       if (account?.api_key_secret_name) {
         // 1st: try by reference_id (most direct — set by tenant-asaas-account)
-        const { data: secretByRef } = await supabaseAdmin
+        const { data: secretByRef, error: refErr } = await supabaseAdmin
           .from("tenant_integration_secrets")
           .select("secret_value")
           .eq("reference_id", asaas_account_id)
           .eq("provider", "asaas")
           .maybeSingle();
 
+        console.log(`[key-resolve] secretByRef found: ${!!secretByRef?.secret_value}, err: ${JSON.stringify(refErr)}`);
+
         if (secretByRef?.secret_value) {
           ASAAS_API_KEY = secretByRef.secret_value;
           console.log(`Using Asaas API key from tenant_integration_secrets (reference_id=${asaas_account_id})`);
         } else {
-          // 2nd: try by secret_name in DB (never use Deno.env for account-specific keys
-          //      because a wrong platform secret could override the correct DB value)
-          const { data: secretByName } = await supabaseAdmin
+          // 2nd: try by secret_name in DB
+          const { data: secretByName, error: nameErr } = await supabaseAdmin
             .from("tenant_integration_secrets")
             .select("secret_value")
             .eq("secret_name", account.api_key_secret_name)
             .maybeSingle();
+
+          console.log(`[key-resolve] secretByName found: ${!!secretByName?.secret_value}, err: ${JSON.stringify(nameErr)}`);
 
           if (secretByName?.secret_value) {
             ASAAS_API_KEY = secretByName.secret_value;
@@ -105,8 +112,10 @@ Deno.serve(async (req) => {
 
     // Final fallback: platform-level default API key
     if (!ASAAS_API_KEY) {
+      console.log(`[key-resolve] falling back to Deno.env ASAAS_API_KEY`);
       ASAAS_API_KEY = Deno.env.get("ASAAS_API_KEY");
     }
+    console.log(`[key-resolve] final key resolved: ${ASAAS_API_KEY ? "ok (len=" + ASAAS_API_KEY.length + ")" : "MISSING"}`);
     if (!ASAAS_API_KEY) throw new Error("ASAAS_API_KEY não configurado. Configure a integração Asaas no menu Financeiro > Integrações.");
 
     if (!description || !amount_cents || !recurrence || !customer_name || !customer_email) {
