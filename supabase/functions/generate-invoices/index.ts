@@ -42,20 +42,7 @@ async function resolveAsaasApiKey(
       .single();
 
     if (charge?.asaas_account_id) {
-      // Direct lookup: tenant-asaas-account stores the key with reference_id = asaas_account_id
-      const { data: secret } = await supabase
-        .from("tenant_integration_secrets")
-        .select("secret_value")
-        .eq("reference_id", charge.asaas_account_id)
-        .eq("provider", "asaas")
-        .maybeSingle();
-
-      if (secret?.secret_value) {
-        console.log(`[resolveAsaasApiKey] Using tenant_integration_secrets (reference_id=${charge.asaas_account_id})`);
-        return secret.secret_value;
-      }
-
-      // Fallback: look up by api_key_secret_name
+      // Look up the api_key_secret_name for this account
       const { data: account } = await supabase
         .from("asaas_accounts")
         .select("api_key_secret_name")
@@ -63,16 +50,27 @@ async function resolveAsaasApiKey(
         .single();
 
       if (account?.api_key_secret_name) {
-        const key = Deno.env.get(account.api_key_secret_name);
-        if (key) {
-          console.log(`[resolveAsaasApiKey] Using env var: ${account.api_key_secret_name}`);
-          return key;
+        // 1st: try by reference_id (most direct — set by tenant-asaas-account)
+        const { data: secretByRef } = await supabase
+          .from("tenant_integration_secrets")
+          .select("secret_value")
+          .eq("reference_id", charge.asaas_account_id)
+          .eq("provider", "asaas")
+          .maybeSingle();
+
+        if (secretByRef?.secret_value) {
+          console.log(`[resolveAsaasApiKey] Using tenant_integration_secrets (reference_id=${charge.asaas_account_id})`);
+          return secretByRef.secret_value;
         }
+
+        // 2nd: try by secret_name in DB (never use Deno.env for account-specific keys
+        //      because a wrong platform secret could override the correct DB value)
         const { data: secretByName } = await supabase
           .from("tenant_integration_secrets")
           .select("secret_value")
           .eq("secret_name", account.api_key_secret_name)
           .maybeSingle();
+
         if (secretByName?.secret_value) {
           console.log(`[resolveAsaasApiKey] Using tenant_integration_secrets (secret_name=${account.api_key_secret_name})`);
           return secretByName.secret_value;
