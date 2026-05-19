@@ -31,19 +31,15 @@ Deno.serve(async (req) => {
     }
 
     // Resolve tenant_id of the logged-in staff
+    // Master UNV platform admins are NOT in onboarding_staff — tenantId stays null (platform-level)
     const { data: staff } = await admin
       .from("onboarding_staff")
       .select("tenant_id, role")
       .eq("user_id", userData.user.id)
       .maybeSingle();
 
-    const tenantId = staff?.tenant_id || null;
-    if (!tenantId) {
-      return new Response(JSON.stringify({ error: "Sem tenant_id (apenas usuários white-label podem usar)" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const tenantId: string | null = staff?.tenant_id || null;
+    // Allow both white-label staff (tenantId set) and master platform admin (tenantId null)
 
     const body = await req.json().catch(() => ({}));
     const action = body.action || "create";
@@ -58,21 +54,18 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Generate a secret name unique per tenant + account
-      const secretName = `ASAAS_TENANT_${tenantId.replace(/-/g, "").slice(0, 12).toUpperCase()}_${Date.now()}`;
-
-      // We can't add Supabase project secrets from here, so persist the api key
-      // alongside the account row in a private column-less reference: store name + masked.
-      // Persist the actual key into a safe table for tenant-scoped use.
-      // Strategy: store the raw key in a dedicated table with strong RLS.
-      // For now we save reference name and rely on api_key column placeholder.
+      // Generate a unique secret name
+      const scopeKey = tenantId
+        ? `ASAAS_TENANT_${tenantId.replace(/-/g, "").slice(0, 12).toUpperCase()}`
+        : "ASAAS_PLATFORM";
+      const secretName = `${scopeKey}_${Date.now()}`;
 
       const { data: account, error } = await admin
         .from("asaas_accounts")
         .insert({
           name,
           api_key_secret_name: secretName,
-          tenant_id: tenantId,
+          ...(tenantId ? { tenant_id: tenantId } : {}),
           is_active: true,
           is_default: false,
         })
@@ -81,10 +74,10 @@ Deno.serve(async (req) => {
 
       if (error) throw error;
 
-      // Store the key in tenant_integration_secrets if exists; otherwise skip silently.
+      // Store the key in tenant_integration_secrets
       try {
         await admin.from("tenant_integration_secrets").insert({
-          tenant_id: tenantId,
+          ...(tenantId ? { tenant_id: tenantId } : {}),
           secret_name: secretName,
           secret_value: apiKey,
           provider: "asaas",

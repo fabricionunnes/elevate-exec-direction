@@ -40,23 +40,16 @@ interface WhatsappInstance {
 
 export function TenantIntegrationsSettings() {
   const { tenant } = useTenant();
-
-  if (!tenant) {
-    return (
-      <Card>
-        <CardContent className="py-8 text-center text-muted-foreground">
-          Nenhum tenant ativo.
-        </CardContent>
-      </Card>
-    );
-  }
+  // tenant === null means master UNV platform admin — still show integrations
+  // (platform-level accounts have tenant_id = null in the database)
+  const tenantId = tenant?.id ?? null;
 
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold">Integrações</h2>
         <p className="text-sm text-muted-foreground">
-          Configure as integrações exclusivas do seu tenant. Apenas você terá acesso a estes dados.
+          Configure as integrações da plataforma. Apenas administradores têm acesso a estes dados.
         </p>
       </div>
 
@@ -74,11 +67,11 @@ export function TenantIntegrationsSettings() {
         </TabsList>
 
         <TabsContent value="asaas">
-          <AsaasIntegration tenantId={tenant.id} />
+          <AsaasIntegration tenantId={tenantId} />
         </TabsContent>
 
         <TabsContent value="whatsapp">
-          <WhatsappIntegration tenantId={tenant.id} />
+          <WhatsappIntegration tenantId={tenantId} />
         </TabsContent>
 
         <TabsContent value="others">
@@ -90,7 +83,7 @@ export function TenantIntegrationsSettings() {
 }
 
 /* ------------------------- Asaas ------------------------- */
-export function AsaasIntegration({ tenantId }: { tenantId: string }) {
+export function AsaasIntegration({ tenantId }: { tenantId: string | null }) {
   const [accounts, setAccounts] = useState<AsaasAccount[]>([]);
   const [banks, setBanks] = useState<Bank[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,12 +97,11 @@ export function AsaasIntegration({ tenantId }: { tenantId: string }) {
 
   const load = async () => {
     setLoading(true);
+    const accountsQuery = tenantId
+      ? supabase.from("asaas_accounts").select("*").eq("tenant_id", tenantId)
+      : supabase.from("asaas_accounts").select("*").is("tenant_id", null);
     const [accountsRes, banksRes] = await Promise.all([
-      supabase
-        .from("asaas_accounts")
-        .select("*")
-        .eq("tenant_id", tenantId)
-        .order("created_at", { ascending: false }),
+      accountsQuery.order("created_at", { ascending: false }),
       supabase
         .from("financial_banks")
         .select("id, name")
@@ -161,8 +153,11 @@ export function AsaasIntegration({ tenantId }: { tenantId: string }) {
   };
 
   const handleSetDefault = async (id: string) => {
-    // Remove default from all, then set on selected
-    await supabase.from("asaas_accounts").update({ is_default: false } as any).eq("tenant_id", tenantId);
+    // Remove default from all in this tenant scope, then set on selected
+    const resetQuery = tenantId
+      ? supabase.from("asaas_accounts").update({ is_default: false } as any).eq("tenant_id", tenantId)
+      : supabase.from("asaas_accounts").update({ is_default: false } as any).is("tenant_id", null);
+    await resetQuery;
     const { error } = await supabase.from("asaas_accounts").update({ is_default: true } as any).eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Conta definida como padrão");
@@ -402,7 +397,7 @@ export function AsaasIntegration({ tenantId }: { tenantId: string }) {
 }
 
 /* ----------------------- WhatsApp ----------------------- */
-function WhatsappIntegration({ tenantId }: { tenantId: string }) {
+function WhatsappIntegration({ tenantId }: { tenantId: string | null }) {
   const [instances, setInstances] = useState<WhatsappInstance[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -417,11 +412,10 @@ function WhatsappIntegration({ tenantId }: { tenantId: string }) {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("whatsapp_instances")
-      .select("id,instance_name,display_name,phone_number,status,is_default,api_url,created_at")
-      .eq("tenant_id", tenantId)
-      .order("created_at", { ascending: false });
+    const whatsappQuery = tenantId
+      ? supabase.from("whatsapp_instances").select("id,instance_name,display_name,phone_number,status,is_default,api_url,created_at").eq("tenant_id", tenantId)
+      : supabase.from("whatsapp_instances").select("id,instance_name,display_name,phone_number,status,is_default,api_url,created_at").is("tenant_id", null);
+    const { data, error } = await whatsappQuery.order("created_at", { ascending: false });
     if (error) toast.error("Erro ao carregar: " + error.message);
     setInstances((data as WhatsappInstance[]) || []);
     setLoading(false);
@@ -444,9 +438,9 @@ function WhatsappIntegration({ tenantId }: { tenantId: string }) {
         phone_number: form.phone_number.trim() || null,
         api_url: form.api_url.trim() || null,
         api_key: form.api_key.trim() || null,
-        tenant_id: tenantId,
+        ...(tenantId ? { tenant_id: tenantId } : {}),
         status: "disconnected",
-      });
+      } as any);
       if (error) throw error;
       toast.success("Instância adicionada!");
       setForm({ instance_name: "", display_name: "", phone_number: "", api_url: "", api_key: "" });
