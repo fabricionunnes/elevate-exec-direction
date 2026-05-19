@@ -172,10 +172,9 @@ const NAV_ITEMS = [
   { key: "suppliers", label: "Fornecedores", icon: Truck, permKey: FINANCIAL_PERMISSION_KEYS.fin_payables_view },
   { key: "inbox", label: "Atendimentos", icon: Headphones, permKey: FINANCIAL_PERMISSION_KEYS.fin_inbox },
   { key: "whatsapp-instance", label: "Instância", icon: MessageSquare, permKey: FINANCIAL_PERMISSION_KEYS.fin_whatsapp_instance },
+  { key: "integrations", label: "Integrações", icon: Link2, permKey: null },
   { key: "bank-statement", label: "Extrato Bancário", icon: FileText, permKey: FINANCIAL_PERMISSION_KEYS.fin_bank_statement },
   { key: "nfse", label: "NFS-e", icon: FileCheck, permKey: FINANCIAL_PERMISSION_KEYS.fin_nfse },
-  { key: "separator-integrations", label: "── CONFIG ──", icon: Link2, permKey: null, isSeparator: true },
-  { key: "integrations", label: "Integrações", icon: Link2, permKey: null },
 ] as const;
 
 const applyPeriodPreset = (
