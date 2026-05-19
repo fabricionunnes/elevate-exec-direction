@@ -151,6 +151,17 @@ export function CompanyRecurringCharges({
       toast.error("CPF/CNPJ do cliente é obrigatório");
       return;
     }
+    // Validate date: must be YYYY-MM-DD and year >= 2024
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(form.nextChargeDate)) {
+      toast.error("Data inválida. Use o seletor de data para escolher o vencimento.");
+      return;
+    }
+    const dateYear = parseInt(form.nextChargeDate.split("-")[0], 10);
+    if (dateYear < 2024 || dateYear > 2100) {
+      toast.error(`Ano inválido (${dateYear}). Verifique a data de vencimento.`);
+      return;
+    }
 
     setSaving(true);
     try {
