@@ -219,32 +219,32 @@ Deno.serve(async (req) => {
 
     console.log(`Processing PDF for project ${projectId}, file: ${pdfFile.name}, size: ${pdfFile.size}`);
 
-    // Read file as base64 using chunked approach to avoid stack overflow
     const arrayBuffer = await pdfFile.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-    
-    // Convert to base64 in chunks to avoid "Maximum call stack size exceeded"
-    let binaryString = '';
-    const chunkSize = 8192;
-    for (let i = 0; i < uint8Array.length; i += chunkSize) {
-      const chunk = uint8Array.slice(i, i + chunkSize);
-      binaryString += String.fromCharCode(...chunk);
-    }
-    const base64 = btoa(binaryString);
 
-    // Use Gemini to extract tasks from the PDF
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Step 1: Upload PDF to OpenAI Files API (gpt-4o supports PDFs via file_id)
+    const uploadFormData = new FormData();
+    const pdfBlob = new Blob([arrayBuffer], { type: 'application/pdf' });
+    uploadFormData.append('file', pdfBlob, pdfFile.name || 'document.pdf');
+    uploadFormData.append('purpose', 'user_data');
+
+    console.log('Uploading PDF to OpenAI Files API...');
+    const uploadRes = await fetch('https://api.openai.com/v1/files', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `Você é um especialista em planejamento estratégico e gestão de projetos. 
+      headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+      body: uploadFormData,
+    });
+
+    if (!uploadRes.ok) {
+      const errText = await uploadRes.text();
+      console.error('File upload error:', uploadRes.status, errText);
+      throw new Error(`Erro ao fazer upload do PDF: ${uploadRes.status}`);
+    }
+
+    const uploadData = await uploadRes.json();
+    const fileId = uploadData.id;
+    console.log('PDF uploaded, file_id:', fileId);
+
+    const systemPrompt = `Você é um especialista em planejamento estratégico e gestão de projetos.
 Sua tarefa é analisar documentos de planejamento estratégico e extrair TODAS as ações, tarefas e iniciativas propostas.
 
 DISTRIBUIÇÃO TEMPORAL (CRÍTICO):
@@ -278,7 +278,7 @@ Retorne APENAS um JSON válido no formato:
   "tasks": [
     {
       "title": "string",
-      "description": "string", 
+      "description": "string",
       "phase": "string",
       "priority": "high" | "medium" | "low",
       "days_from_now": number,
@@ -286,8 +286,19 @@ Retorne APENAS um JSON válido no formato:
     }
   ],
   "summary": "Resumo breve do plano estratégico"
-}`
-          },
+}`;
+
+    // Step 2: Call chat completions with file_id reference (gpt-4o supports PDFs)
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: systemPrompt },
           {
             role: 'user',
             content: [
@@ -296,10 +307,8 @@ Retorne APENAS um JSON válido no formato:
                 text: `Analise este documento de planejamento estratégico${companyName ? ` da empresa "${companyName}"` : ''} e extraia todas as ações propostas, distribuídas nos próximos 90 dias com foco em resultados imediatos primeiro. Retorne em formato JSON.`
               },
               {
-                type: 'image_url',
-                image_url: {
-                  url: `data:application/pdf;base64,${base64}`
-                }
+                type: 'file',
+                file: { file_id: fileId }
               }
             ]
           }
@@ -307,6 +316,12 @@ Retorne APENAS um JSON válido no formato:
         max_tokens: 8000,
       }),
     });
+
+    // Step 3: Clean up uploaded file (fire-and-forget)
+    fetch(`https://api.openai.com/v1/files/${fileId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+    }).catch(() => {});
 
     if (!response.ok) {
       const errorText = await response.text();
