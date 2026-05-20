@@ -818,6 +818,60 @@ serve(async (req) => {
           if (error) throw error;
           return json({ success: true, deleted_id: c.id });
         },
+        kpi_links: async (c) => {
+          const BASE_URL = "https://unvholdings.com.br";
+          let q = c.supabase
+            .from("company_salespeople")
+            .select("id, company_id, name, email, phone, is_active, access_code, unit_id, team_id, sector_id")
+            .order("name");
+          if (c.companyId) q = q.eq("company_id", c.companyId);
+          if (c.status === "active") q = q.eq("is_active", true);
+          if (c.status === "inactive") q = q.eq("is_active", false);
+          const { data, error } = await q;
+          if (error) throw error;
+          const enriched = (data || []).map((sp: any) => ({
+            ...sp,
+            kpi_entry_url: sp.access_code
+              ? `${BASE_URL}/#/kpi-entry/${sp.company_id}?code=${sp.access_code}`
+              : null,
+          }));
+          return json({ data: enriched });
+        },
+      },
+
+      // ===== JOB OPENINGS =====
+      job_openings: {
+        list: async (c) => {
+          const BASE_URL = "https://unvholdings.com.br";
+          let q = c.supabase
+            .from("job_openings")
+            .select("id, project_id, title, description, location, salary_range, employment_type, requirements, benefits, status, created_at, updated_at, closed_at")
+            .order("created_at", { ascending: false });
+          if (c.projectId) q = q.eq("project_id", c.projectId);
+          if (c.status) q = q.eq("status", c.status);
+          const { data, error } = await q;
+          if (error) throw error;
+
+          // Enrich with company_id (via project) and public link
+          const enriched = await Promise.all((data || []).map(async (job: any) => {
+            let company_id: string | null = null;
+            if (job.project_id) {
+              const { data: proj } = await c.supabase
+                .from("onboarding_projects")
+                .select("company_id")
+                .eq("id", job.project_id)
+                .maybeSingle();
+              company_id = proj?.company_id ?? null;
+            }
+            return {
+              ...job,
+              company_id,
+              application_url: `${BASE_URL}/#/job-application?job=${job.id}`,
+            };
+          }));
+
+          return json({ data: enriched, pagination: { limit: c.limit, offset: c.offset } });
+        },
       },
 
       // ===== UNITS =====
@@ -1623,7 +1677,8 @@ serve(async (req) => {
               meetings: { actions: ["list", "schedule", "finalize"], description: "Reuniões do CRM" },
               sales: { actions: ["list", "create", "update"], description: "Histórico de vendas" },
               kpis: { actions: ["list", "entries", "monthly_targets", "create_entry", "update_entry", "create", "update", "set_monthly_target"], description: "KPIs: cadastrar, editar, definir meta mensal, lançar e editar resultado" },
-              salespeople: { actions: ["list", "create", "update", "delete"], description: "Vendedores das empresas" },
+              salespeople: { actions: ["list", "create", "update", "delete", "kpi_links"], description: "Vendedores das empresas (kpi_links retorna link de lançamento individual por vendedor)" },
+              job_openings: { actions: ["list"], description: "Vagas de emprego abertas com link público de candidatura" },
               units: { actions: ["list", "create", "update"], description: "Unidades das empresas" },
               sectors: { actions: ["list", "create", "update"], description: "Setores das empresas" },
               teams: { actions: ["list", "create", "update"], description: "Equipes das empresas" },
