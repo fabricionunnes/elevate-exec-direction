@@ -23,6 +23,27 @@ Deno.serve(async (req) => {
     const isTest = body.test === true;
     const testCompanyId = body.test_company_id || null;
 
+    // ── Admin: reset instance to NULL for a survey type ──────────────────────
+    if (body.action === "admin_reset_instance") {
+      const type = body.survey_type as string;
+      if (!type || !["nps", "csat"].includes(type)) {
+        return new Response(JSON.stringify({ error: "survey_type must be 'nps' or 'csat'" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { error } = await supabase
+        .from("survey_send_configs")
+        .update({ whatsapp_instance_name: null })
+        .eq("survey_type", type);
+      if (error) return new Response(JSON.stringify({ error: error.message }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+      return new Response(JSON.stringify({ ok: true, message: `Instance reset to NULL for ${type}` }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     let totalSent = 0;
 
     // Process NPS
@@ -259,6 +280,16 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
 
     // Send via WhatsApp
     const instanceName = await getInstanceName(supabase, config.whatsapp_instance_name);
+    if (!instanceName) {
+      console.error("NPS: nenhuma instância WhatsApp configurada — configure em Régua de Pesquisa");
+      await supabase.from("survey_send_log").insert({
+        config_id: config.id, rule_id: ruleToSend.id, project_id: projectId, company_id: companyId,
+        survey_type: "nps", phone, contact_name: companyName, survey_link: npsLink,
+        status: "failed", attempt_number: attemptNumber, sent_at: null,
+        error_message: "Instância WhatsApp não configurada. Acesse Régua de Pesquisa e selecione uma instância.",
+      });
+      continue;
+    }
     console.log(`Sending to ${phone} via instance ${instanceName}`);
     const sendResult = await sendWhatsApp(supabase, instanceName, phone, message);
     console.log(`Send result:`, JSON.stringify(sendResult));
@@ -410,6 +441,10 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
       .replace(/\{data_reuniao\}/g, meetingDate);
 
     const instanceName = await getInstanceName(supabase, config.whatsapp_instance_name);
+    if (!instanceName) {
+      console.error("CSAT test: nenhuma instância WhatsApp configurada");
+      return 0;
+    }
     console.log(`Test CSAT: Sending to ${phone} via instance ${instanceName}, link: ${csatLink}`);
     const sendResult = await sendWhatsApp(supabase, instanceName, phone, message);
     console.log(`Test CSAT result:`, JSON.stringify(sendResult));
@@ -516,6 +551,17 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
       .replace(/\{data_reuniao\}/g, meetingDate);
 
     const instanceName = await getInstanceName(supabase, config.whatsapp_instance_name);
+    if (!instanceName) {
+      console.error("CSAT: nenhuma instância WhatsApp configurada — configure em Régua de Pesquisa");
+      await supabase.from("survey_send_log").insert({
+        config_id: config.id, rule_id: ruleToSend.id, project_id: survey.project_id,
+        company_id: company.id, survey_type: "csat", phone, contact_name: company.name,
+        survey_link: csatLink, meeting_id: survey.meeting_id, meeting_subject: meetingSubject,
+        csat_survey_id: csatSurveyId, status: "failed", attempt_number: 1, sent_at: null,
+        error_message: "Instância WhatsApp não configurada. Acesse Régua de Pesquisa e selecione uma instância.",
+      });
+      continue;
+    }
     const sendResult = await sendWhatsApp(supabase, instanceName, phone, message);
 
     await supabase.from("survey_send_log").insert({
@@ -543,14 +589,14 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
   return sent;
 }
 
-async function getInstanceName(supabase: any, configInstance: string | null): Promise<string> {
+async function getInstanceName(supabase: any, configInstance: string | null): Promise<string | null> {
   if (configInstance) return configInstance;
   const { data } = await supabase
     .from("whatsapp_default_config")
     .select("setting_value")
     .eq("setting_key", "default_instance")
     .maybeSingle();
-  return data?.setting_value || "fabricionunnes";
+  return data?.setting_value || null;
 }
 
 async function sendWhatsApp(
