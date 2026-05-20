@@ -845,7 +845,7 @@ serve(async (req) => {
           const BASE_URL = "https://unvholdings.com.br";
           let q = c.supabase
             .from("job_openings")
-            .select("id, project_id, title, description, location, salary_range, employment_type, requirements, benefits, status, created_at, updated_at, closed_at")
+            .select("id, project_id, title, area, job_type, description, requirements, differentials, seniority, contract_model, salary_range, location, is_remote, status, closed_at, target_date, sla_days, created_at, updated_at")
             .order("created_at", { ascending: false });
           if (c.projectId) q = q.eq("project_id", c.projectId);
           if (c.status) q = q.eq("status", c.status);
