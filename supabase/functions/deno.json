@@ -1,8 +1,8 @@
 {
   "imports": {
-    "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
-    "hono": "npm:hono@4",
-    "openai": "npm:openai@4"
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2",
+    "hono": "https://esm.sh/hono@4",
+    "openai": "https://esm.sh/openai@4"
   },
   "compilerOptions": {
     "strict": true,
