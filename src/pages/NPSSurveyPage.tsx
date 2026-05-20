@@ -41,22 +41,20 @@ export default function NPSSurveyPage() {
       }
 
       try {
-        const { data, error } = await supabase
-          .from('onboarding_projects')
-          .select(`
-            product_name,
-            onboarding_company_id,
-            onboarding_companies(id, name)
-          `)
-          .eq('id', projectId)
-          .single();
+        const { data, error } = await supabase.functions.invoke('nps-public', {
+          body: { action: 'get', projectId },
+        });
 
-        if (error) throw error;
+        if (error || data?.error) {
+          console.error('nps-public get error:', error || data);
+          setLoading(false);
+          return;
+        }
 
         setProjectInfo({
           product_name: data.product_name,
-          company_name: (data.onboarding_companies as any)?.name,
-          company_id: (data.onboarding_companies as any)?.id
+          company_name: data.company_name ?? undefined,
+          company_id: data.company_id ?? undefined,
         });
       } catch (error) {
         console.error('Error fetching project:', error);

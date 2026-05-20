@@ -1,8 +1,13 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+type GetPayload = {
+  action: "get";
+  projectId: string;
 };
 
 type SubmitPayload = {
@@ -16,7 +21,7 @@ type SubmitPayload = {
   referrals?: Array<{ name: string; phone: string }>;
 };
 
-type Payload = SubmitPayload;
+type Payload = GetPayload | SubmitPayload;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -33,7 +38,46 @@ Deno.serve(async (req) => {
 
     const body = (await req.json()) as Payload;
 
-    if (!body || body.action !== "submit") {
+    if (!body || !body.action) {
+      return new Response(JSON.stringify({ error: "invalid_action" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── GET: return project info for the survey page ──────────────────────────
+    if (body.action === "get") {
+      if (!body.projectId) {
+        return new Response(JSON.stringify({ error: "missing_project" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: project, error: projectError } = await supabase
+        .from("onboarding_projects")
+        .select("product_name, onboarding_company:onboarding_companies(id, name)")
+        .eq("id", body.projectId)
+        .maybeSingle();
+
+      if (projectError || !project) {
+        return new Response(JSON.stringify({ error: "project_not_found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const company = (project as any).onboarding_company;
+      return new Response(
+        JSON.stringify({
+          product_name: project.product_name,
+          company_name: company?.name ?? null,
+          company_id: company?.id ?? null,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (body.action !== "submit") {
       return new Response(JSON.stringify({ error: "invalid_action" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
