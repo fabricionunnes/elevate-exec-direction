@@ -393,25 +393,6 @@ async function handleIncomingMessage(
   const pushName = fromMe ? undefined : (data.pushName || message.pushName);
   let contact = await getOrCreateContact(supabase, phone, pushName);
 
-  // For groups: if the contact name is still the phone number (not yet resolved),
-  // fetch the group subject from the Evolution API and update it immediately
-  if (isGroup && contact.name === contact.phone) {
-    const subject = await fetchGroupSubject(
-      instanceApiUrl,
-      instanceApiKey,
-      instanceName,
-      `${phone}@g.us`,
-    );
-    if (subject) {
-      await supabase
-        .from('crm_whatsapp_contacts')
-        .update({ name: subject })
-        .eq('id', contact.id);
-      contact = { ...contact, name: subject };
-      console.log(`[webhook] Updated group contact name: ${phone} -> ${subject}`);
-    }
-  }
-
   // Get or create conversation
   let conversation = await getOrCreateConversation(supabase, instanceId, contact.id);
   
