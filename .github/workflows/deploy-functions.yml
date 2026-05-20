@@ -42,7 +42,73 @@ jobs:
         with:
           version: 2.22.6
 
-      - name: Deploy all Nexus edge functions
-        run: supabase functions deploy --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+      - name: Deploy system-api
+        run: supabase functions deploy system-api --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy financial-api
+        continue-on-error: true
+        run: supabase functions deploy financial-api --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy nsm-api
+        continue-on-error: true
+        run: supabase functions deploy nsm-api --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy database-backup
+        continue-on-error: true
+        run: supabase functions deploy database-backup --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy database-restore
+        continue-on-error: true
+        run: supabase functions deploy database-restore --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy create-job-opening
+        continue-on-error: true
+        run: supabase functions deploy create-job-opening --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy automation-engine
+        continue-on-error: true
+        run: supabase functions deploy automation-engine --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy evolution-api
+        continue-on-error: true
+        run: supabase functions deploy evolution-api --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy evolution-webhook
+        continue-on-error: true
+        run: supabase functions deploy evolution-webhook --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy asaas-subscription
+        continue-on-error: true
+        run: supabase functions deploy asaas-subscription --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy asaas-webhook
+        continue-on-error: true
+        run: supabase functions deploy asaas-webhook --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy generate-invoices
+        continue-on-error: true
+        run: supabase functions deploy generate-invoices --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
