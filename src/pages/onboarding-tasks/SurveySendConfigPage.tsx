@@ -62,6 +62,7 @@ interface WhatsAppInstance {
   id: string;
   instance_name: string;
   display_name: string | null;
+  phone_number: string | null;
   status: string;
 }
 
@@ -149,7 +150,7 @@ export default function SurveySendConfigPage() {
       const [configRes, rulesRes, instancesRes, logsRes] = await Promise.all([
         supabase.from("survey_send_configs").select("*").order("survey_type"),
         supabase.from("survey_send_rules").select("*").order("sort_order"),
-        supabase.from("whatsapp_instances").select("id, instance_name, display_name, status"),
+        supabase.from("whatsapp_instances").select("id, instance_name, display_name, phone_number, status"),
         supabase.from("survey_send_log").select("*").order("created_at", { ascending: false }).limit(100),
       ]);
 
@@ -502,11 +503,30 @@ export default function SurveySendConfigPage() {
                   <SelectItem value="default">Instância padrão do sistema</SelectItem>
                   {instances.filter(i => i.status === "connected").map(inst => (
                     <SelectItem key={inst.id} value={inst.instance_name}>
-                      {inst.display_name || inst.instance_name}
+                      <span className="flex flex-col">
+                        <span>{inst.display_name || inst.instance_name}</span>
+                        {inst.phone_number && (
+                          <span className="text-xs text-muted-foreground">{inst.phone_number}</span>
+                        )}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {config.whatsapp_instance_name && (() => {
+                const inst = instances.find(i => i.instance_name === config.whatsapp_instance_name);
+                return (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Usando: <strong>{inst?.display_name || config.whatsapp_instance_name}</strong>
+                    {inst?.phone_number && <> · <span className="font-mono">{inst.phone_number}</span></>}
+                  </p>
+                );
+              })()}
+              {!config.whatsapp_instance_name && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Usando a instância padrão definida nas configurações do sistema
+                </p>
+              )}
             </div>
 
             <div className="flex gap-2 pt-2">
