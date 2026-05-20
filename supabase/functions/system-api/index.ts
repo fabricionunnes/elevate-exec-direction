@@ -14,6 +14,40 @@ const normalizeMonthYear = (value: string | null) => {
   return `${match[1]}-${match[2]}`;
 };
 
+// ── Helper: resolve + refresh Google OAuth token for a given user_id ──────────
+async function getGoogleToken(supabase: any, userId: string): Promise<{ token: string } | { error: string; needs_auth?: boolean }> {
+  const { data: tokenData } = await supabase
+    .from("user_google_tokens")
+    .select("access_token, refresh_token, token_expires_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!tokenData) return { error: `Usuário (${userId}) não tem Google Calendar conectado.`, needs_auth: true };
+
+  if (!tokenData.token_expires_at || new Date(tokenData.token_expires_at) > new Date()) {
+    return { token: tokenData.access_token };
+  }
+
+  if (!tokenData.refresh_token) return { error: "Token expirado. Reconecte o Google Calendar.", needs_auth: true };
+
+  const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
+  const clientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+  if (!clientId || !clientSecret) return { error: "GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET não configurados no servidor" };
+
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, refresh_token: tokenData.refresh_token, grant_type: "refresh_token" }),
+  });
+  if (!res.ok) return { error: "Falha ao renovar token do Google. Reconecte o Google Calendar.", needs_auth: true };
+
+  const refreshed = await res.json();
+  const newExpires = new Date(Date.now() + (refreshed.expires_in || 3600) * 1000);
+  await supabase.from("user_google_tokens").update({ access_token: refreshed.access_token, token_expires_at: newExpires.toISOString() }).eq("user_id", userId);
+  return { token: refreshed.access_token };
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -1670,42 +1704,12 @@ serve(async (req) => {
 
             calendarOwnerUserId = calUserId;
 
-            // Look up OAuth token
-            const { data: tokenData } = await c.supabase
-              .from("user_google_tokens")
-              .select("access_token, refresh_token, token_expires_at")
-              .eq("user_id", calUserId)
-              .maybeSingle();
-
-            if (!tokenData) {
-              return json({ error: `Consultor (user_id: ${calUserId}) não tem Google Calendar conectado. Peça para ele conectar em Configurações → Integrações.`, needs_auth: true }, 422);
+            // Get OAuth token (auto-refreshes if expired)
+            const tokenResult = await getGoogleToken(c.supabase, calUserId);
+            if ("error" in tokenResult) {
+              return json({ error: tokenResult.error, needs_auth: tokenResult.needs_auth ?? false }, 422);
             }
-
-            let accessToken = tokenData.access_token;
-
-            // Refresh if expired
-            if (tokenData.token_expires_at && new Date(tokenData.token_expires_at) < new Date()) {
-              if (!tokenData.refresh_token) {
-                return json({ error: "Token do consultor expirado. Peça para ele reconectar o Google Calendar.", needs_auth: true }, 422);
-              }
-              const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
-              const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
-              if (!googleClientId || !googleClientSecret) {
-                return json({ error: "GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET não configurados no servidor" }, 500);
-              }
-              const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({ client_id: googleClientId, client_secret: googleClientSecret, refresh_token: tokenData.refresh_token, grant_type: "refresh_token" }),
-              });
-              if (!refreshRes.ok) {
-                return json({ error: "Falha ao renovar token do consultor. Peça para reconectar o Google Calendar.", needs_auth: true }, 422);
-              }
-              const refreshData = await refreshRes.json();
-              accessToken = refreshData.access_token;
-              const newExpiresAt = new Date(Date.now() + (refreshData.expires_in || 3600) * 1000);
-              await c.supabase.from("user_google_tokens").update({ access_token: accessToken, token_expires_at: newExpiresAt.toISOString() }).eq("user_id", calUserId);
-            }
+            const accessToken = tokenResult.token;
 
             // Build Calendar event
             const durationMinutes = b.duration_minutes ?? 60;
@@ -1770,6 +1774,7 @@ serve(async (req) => {
         },
         update: async (c) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const b = c.body || {};
           const allowed = [
             "meeting_title", "meeting_date", "subject", "notes", "attendees",
             "meeting_link", "recording_link", "transcript", "live_notes",
@@ -1777,14 +1782,71 @@ serve(async (req) => {
             "google_event_id", "is_finalized", "is_no_show", "is_internal",
           ];
           const updates: any = { updated_at: new Date().toISOString() };
-          for (const k of allowed) if (k in (c.body || {})) updates[k] = (c.body as any)[k];
+          for (const k of allowed) if (k in b) updates[k] = (b as any)[k];
           if (Object.keys(updates).length === 1) return json({ error: "Nenhum campo para atualizar" }, 400);
+
+          // ── Google Calendar sync ─────────────────────────────────────────────
+          let calendarEventUpdated = false;
+          let calendarWarning: string | null = null;
+          const calendarFields = ["meeting_title", "meeting_date", "attendees", "subject", "notes", "duration_minutes"];
+          const shouldSyncCal = calendarFields.some((f) => f in b);
+
+          if (shouldSyncCal) {
+            // Fetch current meeting to get google_event_id + calendar_owner_id
+            const { data: existing } = await c.supabase
+              .from("onboarding_meeting_notes")
+              .select("google_event_id, calendar_owner_id, meeting_title, meeting_date, subject, attendees")
+              .eq("id", c.id)
+              .maybeSingle();
+
+            const gEventId = existing?.google_event_id ?? null;
+            const ownerId = existing?.calendar_owner_id ?? null;
+
+            if (gEventId && ownerId) {
+              const tokenResult = await getGoogleToken(c.supabase, ownerId);
+              if ("error" in tokenResult) {
+                calendarWarning = `Reunião atualizada no sistema, mas não foi possível sincronizar com o Google Calendar: ${tokenResult.error}`;
+              } else {
+                const newTitle = updates.meeting_title ?? existing.meeting_title;
+                const newDate = updates.meeting_date ?? existing.meeting_date;
+                const newDesc = updates.notes ?? updates.subject ?? existing.subject ?? "";
+                const durationMinutes = b.duration_minutes ?? 60;
+                const startDt = new Date(newDate);
+                const endDt = new Date(startDt.getTime() + durationMinutes * 60 * 1000);
+                const calPatch: any = {
+                  summary: newTitle,
+                  description: newDesc,
+                  start: { dateTime: startDt.toISOString(), timeZone: "America/Sao_Paulo" },
+                  end: { dateTime: endDt.toISOString(), timeZone: "America/Sao_Paulo" },
+                };
+                const rawAttendees = updates.attendees ?? existing.attendees;
+                if (rawAttendees && Array.isArray(rawAttendees) && rawAttendees.length > 0) {
+                  calPatch.attendees = rawAttendees.map((e: string) => ({ email: e }));
+                }
+                const patchRes = await fetch(
+                  `https://www.googleapis.com/calendar/v3/calendars/primary/events/${gEventId}?sendUpdates=all`,
+                  { method: "PATCH", headers: { Authorization: `Bearer ${tokenResult.token}`, "Content-Type": "application/json" }, body: JSON.stringify(calPatch) }
+                );
+                if (patchRes.ok) {
+                  calendarEventUpdated = true;
+                } else {
+                  const errText = await patchRes.text();
+                  calendarWarning = `Reunião atualizada no sistema, mas falha ao atualizar no Google Calendar: ${errText}`;
+                }
+              }
+            }
+          }
+          // ────────────────────────────────────────────────────────────────────
+
           const { data, error } = await c.supabase
             .from("onboarding_meeting_notes")
             .update(updates).eq("id", c.id).select().single();
           if (error) throw error;
           if (!data) return json({ error: "Reunião não encontrada" }, 404);
-          return json({ data });
+          const response: any = { data };
+          if (shouldSyncCal) response.calendar_event_updated = calendarEventUpdated;
+          if (calendarWarning) response.warning = calendarWarning;
+          return json(response);
         },
         complete: async (c) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
@@ -1807,9 +1869,42 @@ serve(async (req) => {
         },
         delete: async (c) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+
+          // ── Google Calendar sync: delete event if linked ──────────────────────
+          let calendarEventDeleted = false;
+          let calendarWarning: string | null = null;
+
+          const { data: existing } = await c.supabase
+            .from("onboarding_meeting_notes")
+            .select("google_event_id, calendar_owner_id")
+            .eq("id", c.id)
+            .maybeSingle();
+
+          if (existing?.google_event_id && existing?.calendar_owner_id) {
+            const tokenResult = await getGoogleToken(c.supabase, existing.calendar_owner_id);
+            if ("error" in tokenResult) {
+              calendarWarning = `Registro excluído do sistema, mas não foi possível excluir do Google Calendar: ${tokenResult.error}`;
+            } else {
+              const delRes = await fetch(
+                `https://www.googleapis.com/calendar/v3/calendars/primary/events/${existing.google_event_id}?sendUpdates=all`,
+                { method: "DELETE", headers: { Authorization: `Bearer ${tokenResult.token}` } }
+              );
+              if (delRes.ok || delRes.status === 404 || delRes.status === 410) {
+                calendarEventDeleted = true;
+              } else {
+                const errText = await delRes.text();
+                calendarWarning = `Registro excluído do sistema, mas falha ao excluir do Google Calendar: ${errText}`;
+              }
+            }
+          }
+          // ────────────────────────────────────────────────────────────────────
+
           const { error } = await c.supabase.from("onboarding_meeting_notes").delete().eq("id", c.id);
           if (error) throw error;
-          return json({ success: true });
+          const response: any = { success: true };
+          if (calendarEventDeleted) response.calendar_event_deleted = true;
+          if (calendarWarning) response.warning = calendarWarning;
+          return json(response);
         },
       },
 
