@@ -4,11 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Sparkles, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Sparkles, ChevronLeft, ChevronRight, Loader2, Pencil, Trash2 } from "lucide-react";
 import { ACTION_STATUSES, MONTH_NAMES, COMMERCIAL_NICHES, type CommercialAction } from "../types";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { parseDateLocal } from "@/lib/dateUtils";
+import { ptBR } from "date-fns/locale";
+import { parseDateLocal, toDateString } from "@/lib/dateUtils";
+import { ACTION_CATEGORIES } from "../types";
 
 interface Props {
   projectId: string;
@@ -24,6 +32,17 @@ export const CommercialActionsCalendarTab = ({ projectId, companySegment, consul
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedNiche, setSelectedNiche] = useState(companySegment || "");
+
+  // Edit state
+  const [editingAction, setEditingAction] = useState<CommercialAction | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    title: "", description: "", objective: "", category: "Prospecção",
+    step_by_step: "", script: "", start_date: "", deadline: "",
+    responsible_staff_id: "", priority: "medium", goal: "", result: "",
+    status: "planned", recurrence: "", month: "", week: "",
+    year: new Date().getFullYear().toString(),
+  });
 
   useEffect(() => { fetchActions(); }, [projectId, selectedYear]);
 
@@ -93,6 +112,54 @@ export const CommercialActionsCalendarTab = ({ projectId, companySegment, consul
     const inProgress = actions.filter(a => a.status === "in_progress").length;
     return { total, completed, inProgress, rate: total > 0 ? Math.round((completed / total) * 100) : 0 };
   }, [actions]);
+
+  const handleEdit = (a: CommercialAction) => {
+    setEditingAction(a);
+    setForm({
+      title: a.title, description: a.description || "", objective: a.objective || "",
+      category: a.category, step_by_step: a.step_by_step || "", script: a.script || "",
+      start_date: a.start_date || "", deadline: a.deadline || "",
+      responsible_staff_id: a.responsible_staff_id || "", priority: a.priority,
+      goal: a.goal || "", result: a.result || "", status: a.status,
+      recurrence: a.recurrence || "", month: a.month?.toString() || "",
+      week: a.week?.toString() || "", year: a.year?.toString() || selectedYear.toString(),
+    });
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.title.trim()) { toast.error("Título obrigatório"); return; }
+    if (!editingAction) return;
+
+    const payload = {
+      title: form.title, description: form.description || null,
+      objective: form.objective || null, category: form.category,
+      step_by_step: form.step_by_step || null, script: form.script || null,
+      start_date: form.start_date || null, deadline: form.deadline || null,
+      responsible_staff_id: form.responsible_staff_id || null,
+      priority: form.priority, goal: form.goal || null,
+      result: form.result || null, status: form.status,
+      recurrence: form.recurrence || null,
+      month: form.month ? parseInt(form.month) : null,
+      week: form.week ? parseInt(form.week) : null,
+      year: form.year ? parseInt(form.year) : selectedYear,
+    };
+
+    const { error } = await supabase.from("commercial_actions")
+      .update(payload as any).eq("id", editingAction.id);
+    if (error) { toast.error("Erro ao atualizar"); console.error(error); return; }
+    toast.success("Ação atualizada");
+    setShowForm(false);
+    setEditingAction(null);
+    fetchActions();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Excluir esta ação?")) return;
+    await supabase.from("commercial_actions").delete().eq("id", id);
+    toast.success("Ação excluída");
+    fetchActions();
+  };
 
   return (
     <div className="space-y-4">
@@ -189,6 +256,14 @@ export const CommercialActionsCalendarTab = ({ projectId, companySegment, consul
                             {action.result && <span className="text-green-600">Resultado: {action.result}</span>}
                           </div>
                         </div>
+                        <div className="flex gap-1 ml-2" onClick={e => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(action)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(action.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -198,6 +273,149 @@ export const CommercialActionsCalendarTab = ({ projectId, companySegment, consul
           })}
         </div>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={showForm} onOpenChange={(v) => { if (!v) { setShowForm(false); setEditingAction(null); } }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Ação Comercial</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2 space-y-2">
+              <Label>Título *</Label>
+              <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2 space-y-2">
+              <Label>Descrição</Label>
+              <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} />
+            </div>
+            <div className="space-y-2">
+              <Label>Categoria</Label>
+              <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ACTION_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ACTION_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Responsável</Label>
+              <Select value={form.responsible_staff_id || "none"} onValueChange={v => setForm({ ...form, responsible_staff_id: v === "none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem responsável</SelectItem>
+                  {staffList.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Prioridade</Label>
+              <Select value={form.priority} onValueChange={v => setForm({ ...form, priority: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Baixa</SelectItem>
+                  <SelectItem value="medium">Média</SelectItem>
+                  <SelectItem value="high">Alta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Data de início</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    {form.start_date ? format(parseDateLocal(form.start_date), "dd/MM/yyyy") : "Selecione..."}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={form.start_date ? parseDateLocal(form.start_date) : undefined}
+                    onSelect={d => setForm({ ...form, start_date: d ? toDateString(d) : "" })} locale={ptBR} />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label>Prazo</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    {form.deadline ? format(parseDateLocal(form.deadline), "dd/MM/yyyy") : "Selecione..."}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={form.deadline ? parseDateLocal(form.deadline) : undefined}
+                    onSelect={d => setForm({ ...form, deadline: d ? toDateString(d) : "" })} locale={ptBR} />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label>Mês</Label>
+              <Select value={form.month || "none"} onValueChange={v => setForm({ ...form, month: v === "none" ? "" : v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">-</SelectItem>
+                  {MONTH_NAMES.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Semana</Label>
+              <Select value={form.week || "none"} onValueChange={v => setForm({ ...form, week: v === "none" ? "" : v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">-</SelectItem>
+                  {[1, 2, 3, 4, 5].map(w => <SelectItem key={w} value={String(w)}>Semana {w}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Meta</Label>
+              <Input value={form.goal} onChange={e => setForm({ ...form, goal: e.target.value })} placeholder="Ex: 50 leads gerados" />
+            </div>
+            <div className="space-y-2">
+              <Label>Resultado</Label>
+              <Input value={form.result} onChange={e => setForm({ ...form, result: e.target.value })} placeholder="Preenchido após execução" />
+            </div>
+            <div className="space-y-2">
+              <Label>Recorrência</Label>
+              <Select value={form.recurrence || "none"} onValueChange={v => setForm({ ...form, recurrence: v === "none" ? "" : v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem recorrência</SelectItem>
+                  <SelectItem value="semanal">Semanal</SelectItem>
+                  <SelectItem value="mensal">Mensal</SelectItem>
+                  <SelectItem value="trimestral">Trimestral</SelectItem>
+                  <SelectItem value="anual">Anual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="sm:col-span-2 space-y-2">
+              <Label>Objetivo</Label>
+              <Input value={form.objective} onChange={e => setForm({ ...form, objective: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2 space-y-2">
+              <Label>Passo a Passo</Label>
+              <Textarea value={form.step_by_step} onChange={e => setForm({ ...form, step_by_step: e.target.value })} rows={3} />
+            </div>
+            <div className="sm:col-span-2 space-y-2">
+              <Label>Script</Label>
+              <Textarea value={form.script} onChange={e => setForm({ ...form, script: e.target.value })} rows={3} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => { setShowForm(false); setEditingAction(null); }}>Cancelar</Button>
+            <Button onClick={handleSave}>Salvar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
