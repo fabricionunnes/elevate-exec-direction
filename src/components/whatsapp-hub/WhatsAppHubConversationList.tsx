@@ -3,7 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Smartphone, User, FolderOpen, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, Smartphone, User, FolderOpen, Users, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
@@ -74,15 +76,19 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, staffRole, onSe
   const [instances, setInstances] = useState<InstanceOption[]>([]);
   const [staffList, setStaffList] = useState<StaffOption[]>([]);
   const [staffSearch, setStaffSearch] = useState("");
+  const [isSyncingGroups, setIsSyncingGroups] = useState(false);
+  const [allowedInstanceIds, setAllowedInstanceIds] = useState<string[]>([]);
   const lastGroupSyncStaffIdRef = useRef<string | null>(null);
 
   const fetchAllowedAccess = async (): Promise<AllowedAccess> => {
     if (isMaster) {
       const { data } = await supabase.from("whatsapp_instances").select("id, instance_name, display_name");
       setInstances((data || []).map((i: any) => ({ id: i.id, display_name: i.display_name, instance_name: i.instance_name })));
+      const ids = (data || []).map((item: any) => item.id);
+      setAllowedInstanceIds(ids);
 
       return {
-        allowedInstanceIds: (data || []).map((item: any) => item.id),
+        allowedInstanceIds: ids,
         allowedOfficialInstanceIds: [],
       };
     }
@@ -109,9 +115,11 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, staffRole, onSe
       }));
 
     setInstances(instancesList);
+    const ids = (evolutionAccess || []).map((item: any) => item.instance_id);
+    setAllowedInstanceIds(ids);
 
     return {
-      allowedInstanceIds: (evolutionAccess || []).map((item: any) => item.instance_id),
+      allowedInstanceIds: ids,
       allowedOfficialInstanceIds: (officialAccess || []).map((item: any) => item.instance_id),
     };
   };
@@ -127,11 +135,14 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, staffRole, onSe
   };
 
   const syncMissingGroupConversations = async (instanceIds: string[]) => {
-    if (instanceIds.length === 0) return;
+    if (instanceIds.length === 0) return { contactsUpdated: 0, groupsFound: 0 };
+
+    let totalUpdated = 0;
+    let totalFound = 0;
 
     await Promise.allSettled(
       instanceIds.map(async (instanceId) => {
-        const { error } = await supabase.functions.invoke("evolution-api", {
+        const { data, error } = await supabase.functions.invoke("evolution-api", {
           body: {
             action: "syncGroups",
             instanceId,
@@ -139,8 +150,32 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, staffRole, onSe
         });
 
         if (error) throw error;
+        if (data?.contactsUpdated) totalUpdated += data.contactsUpdated;
+        if (data?.groupsFound) totalFound += data.groupsFound;
       })
     );
+
+    return { contactsUpdated: totalUpdated, groupsFound: totalFound };
+  };
+
+  const handleSyncGroupNames = async () => {
+    if (isSyncingGroups || allowedInstanceIds.length === 0) return;
+    setIsSyncingGroups(true);
+    try {
+      const result = await syncMissingGroupConversations(allowedInstanceIds);
+      await fetchConversations({ silent: true });
+      if (result.groupsFound === 0) {
+        toast.info("Nenhum grupo encontrado nas instâncias conectadas");
+      } else if (result.contactsUpdated === 0) {
+        toast.success(`${result.groupsFound} grupos verificados — nomes já estão atualizados`);
+      } else {
+        toast.success(`${result.contactsUpdated} nome(s) de grupo atualizados`);
+      }
+    } catch {
+      toast.error("Erro ao atualizar nomes dos grupos");
+    } finally {
+      setIsSyncingGroups(false);
+    }
   };
 
   const fetchConversations = async ({ syncGroupsInBackground = false, silent = false }: FetchConversationOptions = {}) => {
@@ -342,14 +377,26 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, staffRole, onSe
   return (
     <div className="flex flex-col h-full">
       <div className="p-3 border-b space-y-2">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar nome ou número..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar nome ou número..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-9"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 shrink-0"
+            onClick={handleSyncGroupNames}
+            disabled={isSyncingGroups || allowedInstanceIds.length === 0}
+            title="Atualizar nomes dos grupos"
+          >
+            <RefreshCw className={`h-4 w-4 ${isSyncingGroups ? "animate-spin" : ""}`} />
+          </Button>
         </div>
 
         {/* Filters row */}
