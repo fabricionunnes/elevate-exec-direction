@@ -2,7 +2,7 @@ import jsPDF from "jspdf";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { productDetails } from "@/data/productDetails";
-import { contractClauses, companyInfo } from "@/data/contractTemplate";
+import { contractClauses, companyInfo, rescisaoClause } from "@/data/contractTemplate";
 import { formatCurrencyWithWords, formatCurrencyBR } from "@/lib/numberToWords";
 import type { ContractFormData } from "./ContractForm";
 import { formatFullAddress } from "./ContractForm";
@@ -246,8 +246,38 @@ export async function generateContractPDF({ formData, customClauses }: GenerateP
   y += 8;
 
   // ============ CONTRACT CLAUSES ============
-  // Use custom clauses if provided, otherwise use defaults
-  const clausesToRender = customClauses || contractClauses;
+  // Build clause list: inject rescisão clause (6ª) for PIX or Boleto (parcelado or recorrente)
+  // and renumber subsequent clauses accordingly
+  const needsRescisaoClause =
+    (formData.paymentMethod === "pix" || formData.paymentMethod === "boleto") &&
+    (formData.isRecurring || formData.installments > 1);
+
+  let baseClauseList = customClauses || contractClauses;
+
+  let clausesToRender: typeof baseClauseList;
+  if (needsRescisaoClause) {
+    // Inject rescisão as clause 6, renumber confidencialidade→7, conduta→8, disposicoes→9
+    const renumberMap: Record<string, string> = {
+      confidencialidade: "CLÁUSULA 7ª - CONFIDENCIALIDADE E DIREITOS AUTORAIS",
+      conduta: "CLÁUSULA 8ª - CONDUTA E ÉTICA",
+      disposicoes: "CLÁUSULA 9ª - DISPOSIÇÕES GERAIS",
+    };
+    clausesToRender = baseClauseList.flatMap((clause) => {
+      if (clause.id === "confidencialidade") {
+        // Insert rescisão before this clause, then renumber from here
+        return [
+          rescisaoClause,
+          { ...clause, title: renumberMap[clause.id] || clause.title },
+        ];
+      }
+      if (renumberMap[clause.id]) {
+        return [{ ...clause, title: renumberMap[clause.id] }];
+      }
+      return [clause];
+    });
+  } else {
+    clausesToRender = baseClauseList;
+  }
   
   clausesToRender.forEach((clause) => {
     checkPageBreak(25);

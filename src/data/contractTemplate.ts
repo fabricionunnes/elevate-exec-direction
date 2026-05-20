@@ -9,6 +9,22 @@ export interface ContractClause {
   isDynamic?: boolean; // For clauses with dynamic content
 }
 
+export const rescisaoClause: ContractClause = {
+  id: "rescisao",
+  title: "CLÁUSULA 6ª - SOBRE RESCISÃO DE CONTRATO",
+  content: `I. O CONTRATANTE que desejar rescindir o presente contrato deverá comunicar a CONTRATADA, por escrito, com antecedência mínima de 30 (trinta) dias do próximo vencimento, ficando obrigado ao pagamento integral da parcela referente ao período de aviso prévio.
+
+II. A ausência de comunicação formal ou o não pagamento da parcela de aviso prévio na data de vencimento implicará na manutenção automática do contrato em pleno vigor, gerando regularmente as parcelas subsequentes, as quais serão devidas e exigíveis nos termos deste instrumento.
+
+III. As parcelas vencidas e não pagas ficarão sujeitas a:
+(a) multa moratória de 2% (dois por cento) sobre o valor do débito;
+(b) juros de mora de 1% (um por cento) ao mês, calculados pro rata die;
+(c) correção monetária pelo IGP-M/FGV ou índice que venha a substituí-lo;
+(d) honorários advocatícios de 20% (vinte por cento) sobre o valor atualizado do débito, em caso de cobrança judicial ou extrajudicial, sem prejuízo das demais despesas processuais e custas judiciais.
+
+IV. A rescisão contratual somente produzirá efeitos após o cumprimento integral do aviso prévio e a quitação de todos os valores devidos até a data efetiva do encerramento.`
+};
+
 export const contractClauses: ContractClause[] = [
   {
     id: "objeto",
