@@ -725,6 +725,16 @@ async function handleQRCodeUpdate(supabase: any, instanceId: string, data: any) 
   }
 }
 
+function isManagerV2ApiUrl(url: string | null): boolean {
+  if (!url) return false;
+  try {
+    const hostname = new URL(url.replace(/\/+$/, '')).hostname.toLowerCase();
+    return /^sm[v0-9-]/.test(hostname) && hostname.endsWith('.stevo.chat');
+  } catch {
+    return false;
+  }
+}
+
 async function fetchGroupSubject(
   apiUrl: string | null,
   apiKey: string | null,
@@ -736,6 +746,33 @@ async function fetchGroupSubject(
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (apiKey) headers['apikey'] = apiKey;
 
+  const isManagerV2 = isManagerV2ApiUrl(apiUrl);
+
+  if (isManagerV2) {
+    // Manager V2: GET /group/list returns all groups; find the one matching groupJid
+    try {
+      const res = await fetch(`${base}/group/list`, { headers });
+      if (res.ok) {
+        const d = await res.json();
+        const rawGroups = Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : [];
+        const phone = groupJid.replace(/@g\.us$/, '');
+        const found = rawGroups.find((g: any) => {
+          const id = String(g.id || g.ID || g.jid || '').replace(/@g\.us$/, '');
+          return id === phone;
+        });
+        const subject = found?.subject || found?.Subject || found?.name || found?.Name;
+        if (subject && !subject.includes('@')) {
+          console.log(`[webhook] fetchGroupSubject (mgr-v2) found: ${subject} for ${groupJid}`);
+          return subject;
+        }
+      }
+    } catch (e) {
+      console.log('[webhook] fetchGroupSubject (mgr-v2) error:', e);
+    }
+    return null;
+  }
+
+  // Standard Evolution API: try findGroupInfos
   const endpoints = [
     `${base}/group/findGroupInfos/${encodeURIComponent(instanceName)}?groupJid=${encodeURIComponent(groupJid)}`,
     `${base}/group/findGroupInfos/${encodeURIComponent(instanceName)}?jid=${encodeURIComponent(groupJid)}`,

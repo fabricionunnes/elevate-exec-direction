@@ -117,19 +117,25 @@ function normalizeGroupPhone(groupId?: string | null) {
 }
 
 function mapFetchedGroups(data: any) {
+  // Support multiple response shapes:
+  //   Evolution: array of { id, subject, creation }
+  //   Evolution wrapped: { groups: [...] }
+  //   Manager V2: array of { ID, Name/Subject } OR { data: [...] }
   const rawGroups = Array.isArray(data)
     ? data
     : Array.isArray(data?.groups)
       ? data.groups
-      : [];
+      : Array.isArray(data?.data)
+        ? data.data
+        : [];
 
   return rawGroups
     .map((group: any) => ({
-      id: group.id || group.jid || group.groupId,
-      subject: group.subject || group.name || group.groupName || 'Grupo sem nome',
-      creation: group.creation,
+      id: group.id || group.ID || group.jid || group.JID || group.groupId,
+      subject: group.subject || group.Subject || group.name || group.Name || group.groupName || null,
+      creation: group.creation || group.Creation,
     }))
-    .filter((group: any) => group.id);
+    .filter((group: any) => group.id && group.subject);  // only keep groups with a real name
 }
 
 async function fetchGroupsFromInstance(apiBaseUrl: string, apiHeaders: HeadersInit, instanceName: string) {
@@ -252,7 +258,10 @@ async function syncGroupsToConversations(supabaseService: any, instanceId: strin
 
   const contactsToRename = groups.filter((group: any) => {
     const existingContact = contactMap.get(group.phone);
-    return existingContact && (!existingContact.name || existingContact.name === existingContact.phone) && group.name;
+    if (!existingContact || !group.name) return false;
+    // Update if: name is still the phone number, or name is "Grupo sem nome", or name differs from group subject
+    const nameIsUnresolved = existingContact.name === existingContact.phone || existingContact.name === 'Grupo sem nome';
+    return nameIsUnresolved && existingContact.name !== group.name;
   });
 
   if (contactsToRename.length > 0) {
@@ -1855,7 +1864,7 @@ Deno.serve(async (req) => {
 
         const { data: instance, error: instanceError } = await supabaseService
           .from('whatsapp_instances')
-          .select('instance_name, api_url, api_key')
+          .select('instance_name, api_url, api_key, provider_type')
           .eq('id', instanceId)
           .single();
 
@@ -1867,17 +1876,42 @@ Deno.serve(async (req) => {
         }
 
         const apiBaseUrl = instance.api_url ? normalizeBaseUrl(instance.api_url) : evolutionBaseUrl;
-        const apiHeaders = instance.api_key ? buildEvolutionHeaders(instance.api_key) : evolutionHeaders;
-        const { lastRes, lastData } = await fetchGroupsFromInstance(apiBaseUrl, apiHeaders, instance.instance_name);
+        const isManagerV2Instance = instance.provider_type === 'manager_v2' || isStevoManagerV2Url(instance.api_url);
 
-        if (!lastRes?.ok) {
+        let groupsPayload: any = null;
+        let fetchError: string | null = null;
+
+        if (isManagerV2Instance) {
+          // Manager V2: GET /group/list (no instance name in path, instance URL is per-instance)
+          console.log(`[evolution-api] syncGroups using Manager V2 for ${instance.instance_name}`);
+          const result = await ManagerV2.listGroups({ baseUrl: apiBaseUrl, apiKey: instance.api_key || '' });
+          if (!result.ok) {
+            fetchError = `Manager V2 /group/list failed: ${result.status} ${JSON.stringify(result.data).substring(0, 200)}`;
+          } else {
+            // Manager V2 may return { data: [...] } or just [...]
+            const raw = result.data;
+            groupsPayload = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : raw;
+          }
+        } else {
+          // Standard Evolution API
+          const apiHeaders = instance.api_key ? buildEvolutionHeaders(instance.api_key) : evolutionHeaders;
+          const { lastRes, lastData } = await fetchGroupsFromInstance(apiBaseUrl, apiHeaders, instance.instance_name);
+          if (!lastRes?.ok) {
+            fetchError = `Evolution API failed: ${lastRes?.status} ${JSON.stringify(lastData).substring(0, 200)}`;
+          } else {
+            groupsPayload = lastData;
+          }
+        }
+
+        if (fetchError) {
+          console.error(`[evolution-api] syncGroups fetchError: ${fetchError}`);
           return new Response(
-            JSON.stringify(lastData || { error: 'Failed to fetch groups' }),
-            { status: lastRes?.status || 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ error: fetchError }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        const syncResult = await syncGroupsToConversations(supabaseService, instanceId, lastData);
+        const syncResult = await syncGroupsToConversations(supabaseService, instanceId, groupsPayload);
 
         return new Response(
           JSON.stringify({ success: true, ...syncResult }),
