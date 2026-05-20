@@ -872,6 +872,54 @@ serve(async (req) => {
 
           return json({ data: enriched, pagination: { limit: c.limit, offset: c.offset } });
         },
+        create: async (c) => {
+          const {
+            project_id, title, area, job_type, description, requirements,
+            differentials, seniority, contract_model, salary_range, location,
+            is_remote, status, target_date, sla_days, responsible_rh_id,
+            consultant_id, internal_notes,
+          } = c.body;
+          if (!project_id) return json({ error: "Campo 'project_id' obrigatório" }, 400);
+          if (!title) return json({ error: "Campo 'title' obrigatório" }, 400);
+          const payload: any = {
+            project_id,
+            title,
+            status: status || "open",
+          };
+          if (area !== undefined) payload.area = area;
+          if (job_type !== undefined) payload.job_type = job_type;
+          if (description !== undefined) payload.description = description;
+          if (requirements !== undefined) payload.requirements = requirements;
+          if (differentials !== undefined) payload.differentials = differentials;
+          if (seniority !== undefined) payload.seniority = seniority;
+          if (contract_model !== undefined) payload.contract_model = contract_model;
+          if (salary_range !== undefined) payload.salary_range = salary_range;
+          if (location !== undefined) payload.location = location;
+          if (is_remote !== undefined) payload.is_remote = is_remote;
+          if (target_date !== undefined) payload.target_date = target_date;
+          if (sla_days !== undefined) payload.sla_days = sla_days;
+          if (responsible_rh_id !== undefined) payload.responsible_rh_id = responsible_rh_id;
+          if (consultant_id !== undefined) payload.consultant_id = consultant_id;
+          if (internal_notes !== undefined) payload.internal_notes = internal_notes;
+
+          const { data, error } = await c.supabase.from("job_openings").insert(payload).select().single();
+          if (error) throw error;
+
+          const BASE_URL = "https://unvholdings.com.br";
+          const { data: proj } = await c.supabase
+            .from("onboarding_projects")
+            .select("company_id")
+            .eq("id", project_id)
+            .maybeSingle();
+
+          return json({
+            data: {
+              ...data,
+              company_id: proj?.company_id ?? null,
+              application_url: `${BASE_URL}/#/job-application?job=${data.id}`,
+            }
+          }, 201);
+        },
       },
 
       // ===== UNITS =====
@@ -1678,7 +1726,7 @@ serve(async (req) => {
               sales: { actions: ["list", "create", "update"], description: "Histórico de vendas" },
               kpis: { actions: ["list", "entries", "monthly_targets", "create_entry", "update_entry", "create", "update", "set_monthly_target"], description: "KPIs: cadastrar, editar, definir meta mensal, lançar e editar resultado" },
               salespeople: { actions: ["list", "create", "update", "delete", "kpi_links"], description: "Vendedores das empresas (kpi_links retorna link de lançamento individual por vendedor)" },
-              job_openings: { actions: ["list"], description: "Vagas de emprego abertas com link público de candidatura" },
+              job_openings: { actions: ["list", "create"], description: "Vagas de emprego: listar com link público de candidatura e criar novas vagas" },
               units: { actions: ["list", "create", "update"], description: "Unidades das empresas" },
               sectors: { actions: ["list", "create", "update"], description: "Setores das empresas" },
               teams: { actions: ["list", "create", "update"], description: "Equipes das empresas" },
