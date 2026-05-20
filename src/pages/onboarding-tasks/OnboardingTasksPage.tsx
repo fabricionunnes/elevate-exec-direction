@@ -2566,6 +2566,17 @@ const OnboardingTasksPage = () => {
                     <Presentation className="h-4 w-4 mr-2" />
                     Gerador de Slides
                   </DropdownMenuItem>
+
+                  {/* Backup — master and admin only */}
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/database-backup")}>
+                        <Database className="h-4 w-4 mr-2" />
+                        Backup & Restauração
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}

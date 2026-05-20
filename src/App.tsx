@@ -172,6 +172,7 @@ const SegmentsAnalysisPage = lazy(() => import("./pages/onboarding-tasks/Segment
 const StaffInvoicePage = lazy(() => import("./pages/onboarding-tasks/StaffInvoicePage"));
 const GlobalGamificationPage = lazy(() => import("./pages/onboarding-tasks/GlobalGamificationPage"));
 const SlideGeneratorPage = lazy(() => import("./pages/onboarding-tasks/SlideGeneratorPage"));
+const DatabaseBackupPage = lazy(() => import("./pages/onboarding-tasks/DatabaseBackupPage"));
 const TaskManagerPage = lazy(() => import("./pages/onboarding-tasks/TaskManagerPage"));
 const AutomationsPage = lazy(() => import("./pages/onboarding-tasks/AutomationsPage"));
 const B2BProspectionPage = lazy(() => import("./pages/onboarding-tasks/B2BProspectionPage"));
@@ -461,6 +462,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/nota-fiscal" element={<StaffInvoicePage />} />
               <Route path="/onboarding-tasks/gamificacao-geral" element={<GlobalGamificationPage />} />
               <Route path="/onboarding-tasks/slide-generator" element={<SlideGeneratorPage />} />
+              <Route path="/onboarding-tasks/database-backup" element={<DatabaseBackupPage />} />
               <Route path="/onboarding-tasks/task-manager" element={<TaskManagerPage />} />
               <Route path="/onboarding-tasks/automations" element={<AutomationsPage />} />
               <Route path="/onboarding-tasks/b2b-prospection" element={<B2BProspectionPage />} />
