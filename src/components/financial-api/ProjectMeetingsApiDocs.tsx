@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Video } from "lucide-react";
+import { Copy, Check, Video, CalendarCheck, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
@@ -135,21 +135,25 @@ const endpoints: EndpointDoc[] = [
   {
     action: "create",
     method: "POST",
-    description: "Criar uma nova reunião dentro de um projeto",
+    description: "Criar uma nova reunião dentro de um projeto. Se create_calendar_event=true, cria o evento na Google Agenda do consultor com link do Meet.",
     params: [
       { name: "project_id", desc: "UUID do projeto (body)", required: true },
       { name: "meeting_title", desc: "Título da reunião (body)", required: true },
       { name: "meeting_date", desc: "Data/hora ISO 8601 (body)", required: true },
       { name: "subject", desc: "Assunto (body)", required: true },
-      { name: "staff_id", desc: "UUID do responsável (body)", required: false },
+      { name: "staff_id", desc: "UUID do responsável — usado também para resolver o calendar_user_id automaticamente (body)", required: false },
       { name: "scheduled_by", desc: "UUID de quem agendou (body)", required: false },
-      { name: "attendees", desc: "Participantes em texto (body)", required: false },
-      { name: "meeting_link", desc: "Link da reunião (body)", required: false },
+      { name: "attendees", desc: "Array de e-mails dos participantes — ex: [\"cliente@email.com\"]. Adicionados ao evento do Google Calendar. (body)", required: false },
       { name: "notes", desc: "Anotações iniciais (body)", required: false },
-      { name: "is_internal", desc: "Reunião interna - não visível ao cliente (body)", required: false },
+      { name: "is_internal", desc: "Reunião interna — não visível ao cliente (body)", required: false },
+      { name: "create_calendar_event", desc: "true → cria evento na Google Agenda do consultor com Google Meet (body)", required: false },
+      { name: "calendar_user_id", desc: "user_id do consultor no sistema. Se omitido, resolve pelo staff_id. Obrigatório se create_calendar_event=true e staff_id não informado. (body)", required: false },
+      { name: "duration_minutes", desc: "Duração do evento em minutos (padrão: 60) (body)", required: false },
+      { name: "description", desc: "Descrição do evento no Google Calendar. Se omitido, usa o subject. (body)", required: false },
     ],
     example: `POST ${API_URL}?module=project_meetings&action=create
 Content-Type: application/json
+x-api-key: SUA_API_KEY
 
 {
   "project_id": "UUID-DO-PROJETO",
@@ -157,9 +161,9 @@ Content-Type: application/json
   "meeting_date": "2026-05-20T14:00:00-03:00",
   "subject": "Reunião de kickoff",
   "staff_id": "UUID-DO-CONSULTOR",
-  "attendees": "João, Maria",
-  "meeting_link": "https://meet.google.com/abc-def-ghi",
-  "is_internal": false
+  "attendees": ["cliente@empresa.com", "joao@unv.com.br"],
+  "duration_minutes": 90,
+  "create_calendar_event": true
 }`,
     response: `{
   "data": {
@@ -167,35 +171,42 @@ Content-Type: application/json
     "project_id": "uuid",
     "meeting_title": "Kickoff - Empresa X",
     "meeting_date": "2026-05-20T17:00:00Z",
+    "meeting_link": "https://meet.google.com/abc-def-ghi",
+    "google_event_id": "abc123xyz",
+    "calendar_owner_name": "João Silva",
     "is_finalized": false,
     "created_at": "2026-05-13T10:00:00Z"
-  }
+  },
+  "calendar_event_created": true
 }`,
   },
   {
     action: "update",
     method: "POST",
-    description: "Editar/alterar dados de uma reunião existente (envie só os campos que quer mudar)",
+    description: "Editar uma reunião. Se a reunião tiver google_event_id, atualiza automaticamente o evento na Google Agenda do consultor ao alterar título, data ou participantes.",
     params: [
       { name: "id", desc: "UUID da reunião (query)", required: true },
-      { name: "meeting_title", desc: "Novo título (body)", required: false },
-      { name: "meeting_date", desc: "Nova data ISO 8601 (body)", required: false },
+      { name: "meeting_title", desc: "Novo título — atualiza também no Google Calendar (body)", required: false },
+      { name: "meeting_date", desc: "Nova data ISO 8601 — atualiza também no Google Calendar (body)", required: false },
       { name: "subject", desc: "Novo assunto (body)", required: false },
       { name: "notes", desc: "Anotações (body)", required: false },
       { name: "live_notes", desc: "Notas ao vivo (body)", required: false },
-      { name: "attendees", desc: "Participantes (body)", required: false },
+      { name: "attendees", desc: "Array de e-mails — atualiza convidados no Google Calendar (body)", required: false },
       { name: "meeting_link", desc: "Link da reunião (body)", required: false },
       { name: "recording_link", desc: "Link da gravação (body)", required: false },
       { name: "transcript", desc: "Transcrição (body)", required: false },
       { name: "staff_id", desc: "Trocar responsável (body)", required: false },
+      { name: "duration_minutes", desc: "Nova duração em minutos ao remarcar (body)", required: false },
       { name: "is_no_show", desc: "Marcar como no-show (body)", required: false },
       { name: "is_internal", desc: "Marcar como interna (body)", required: false },
     ],
     example: `POST ${API_URL}?module=project_meetings&action=update&id=UUID
 Content-Type: application/json
+x-api-key: SUA_API_KEY
 
 {
   "meeting_date": "2026-05-21T15:00:00-03:00",
+  "duration_minutes": 60,
   "notes": "Cliente solicitou remarcar"
 }`,
     response: `{
@@ -204,7 +215,8 @@ Content-Type: application/json
     "meeting_date": "2026-05-21T18:00:00Z",
     "notes": "Cliente solicitou remarcar",
     "updated_at": "2026-05-13T10:30:00Z"
-  }
+  },
+  "calendar_event_updated": true
 }`,
   },
   {
@@ -221,6 +233,7 @@ Content-Type: application/json
     ],
     example: `POST ${API_URL}?module=project_meetings&action=complete&id=UUID
 Content-Type: application/json
+x-api-key: SUA_API_KEY
 
 {
   "notes": "Definimos próximos passos e responsáveis",
@@ -239,12 +252,16 @@ Content-Type: application/json
   {
     action: "delete",
     method: "POST",
-    description: "Excluir permanentemente uma reunião (remove também briefings, slides e respostas CSAT vinculadas)",
+    description: "Excluir permanentemente uma reunião. Se a reunião tiver google_event_id, exclui o evento do Google Calendar do consultor automaticamente.",
     params: [
       { name: "id", desc: "UUID da reunião (query)", required: true },
     ],
-    example: `POST ${API_URL}?module=project_meetings&action=delete&id=UUID`,
-    response: `{ "success": true }`,
+    example: `POST ${API_URL}?module=project_meetings&action=delete&id=UUID
+x-api-key: SUA_API_KEY`,
+    response: `{
+  "success": true,
+  "calendar_event_deleted": true
+}`,
   },
 ];
 
@@ -258,8 +275,25 @@ export function ProjectMeetingsApiDocs() {
         <div>
           <h2 className="text-xl font-bold">API de Reuniões de Projetos</h2>
           <p className="text-sm text-muted-foreground">
-            Consultar reuniões com todos os detalhes: responsável, participantes, transcrição, briefing IA, gravação e notas
+            Criar, editar, excluir e consultar reuniões — com sincronização automática na Google Agenda do consultor
           </p>
+        </div>
+      </div>
+
+      {/* Google Calendar callout */}
+      <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 flex gap-3">
+        <CalendarCheck className="h-5 w-5 shrink-0 mt-0.5 text-blue-600" />
+        <div className="space-y-1">
+          <p className="font-semibold">Integração com Google Calendar</p>
+          <ul className="text-xs space-y-1 list-disc list-inside text-blue-800">
+            <li><strong>create</strong> com <code className="bg-blue-100 px-1 rounded">create_calendar_event: true</code> → cria evento na agenda do consultor com link do Google Meet</li>
+            <li><strong>update</strong> → se a reunião tiver <code className="bg-blue-100 px-1 rounded">google_event_id</code>, atualiza automaticamente o evento ao alterar título, data ou participantes</li>
+            <li><strong>delete</strong> → remove o evento do Google Calendar antes de apagar o registro</li>
+          </ul>
+          <div className="flex items-start gap-1 mt-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>O consultor precisa ter o Google Calendar conectado em <strong>Configurações → Integrações</strong>. Sem isso, a API retorna <code className="bg-amber-100 px-1 rounded">422</code> com <code className="bg-amber-100 px-1 rounded">needs_auth: true</code>.</span>
+          </div>
         </div>
       </div>
 
@@ -341,7 +375,7 @@ export function ProjectMeetingsApiDocs() {
 
       <Card>
         <CardHeader><CardTitle className="text-base">Campos Retornados</CardTitle></CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="border rounded overflow-hidden">
             <table className="w-full text-xs">
               <thead className="bg-muted">
@@ -356,15 +390,17 @@ export function ProjectMeetingsApiDocs() {
                   ["meeting_date", "Data/hora da reunião (ISO 8601)"],
                   ["subject", "Assunto da reunião"],
                   ["notes", "Anotações/ata da reunião"],
-                  ["attendees", "Participantes (texto)"],
-                  ["meeting_link", "Link da reunião (Google Meet, Zoom, etc.)"],
+                  ["attendees", "Participantes (array de e-mails ou texto)"],
+                  ["meeting_link", "Link da reunião (Google Meet gerado automaticamente ou manual)"],
+                  ["google_event_id", "ID do evento no Google Calendar (preenchido quando create_calendar_event=true)"],
                   ["recording_link", "Link da gravação"],
                   ["transcript", "Transcrição completa da reunião"],
                   ["live_notes", "Notas feitas em tempo real durante a reunião"],
                   ["is_finalized", "Se a reunião foi finalizada"],
                   ["is_no_show", "Se o cliente não compareceu"],
                   ["is_internal", "Se é reunião interna (não visível ao cliente)"],
-                  ["calendar_owner_name", "Nome do dono do calendário"],
+                  ["calendar_owner_id", "user_id do consultor dono do evento no Google Calendar"],
+                  ["calendar_owner_name", "Nome do consultor dono do calendário"],
                   ["staff", "Objeto com dados do responsável (id, name, email, role)"],
                   ["scheduled_by_staff", "Objeto com dados de quem agendou (id, name, email)"],
                   ["project", "Objeto com dados do projeto e empresa vinculada"],
@@ -377,6 +413,35 @@ export function ProjectMeetingsApiDocs() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div>
+            <p className="text-xs font-medium mb-2 text-muted-foreground">CAMPOS DE RESPOSTA — GOOGLE CALENDAR</p>
+            <div className="border rounded overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="px-2 py-1.5 text-left font-medium">Campo</th>
+                    <th className="px-2 py-1.5 text-left font-medium">Ações</th>
+                    <th className="px-2 py-1.5 text-left font-medium">Descrição</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["calendar_event_created", "create", "true se o evento foi criado com sucesso no Google Calendar"],
+                    ["calendar_event_updated", "update", "true se o evento foi atualizado no Google Calendar"],
+                    ["calendar_event_deleted", "delete", "true se o evento foi removido do Google Calendar"],
+                    ["warning", "create / update / delete", "Presente quando a operação no banco funcionou mas houve falha no Google Calendar — ex: token expirado"],
+                  ].map(([campo, acao, desc]) => (
+                    <tr key={campo} className="border-t">
+                      <td className="px-2 py-1 font-mono text-blue-600">{campo}</td>
+                      <td className="px-2 py-1 text-xs text-muted-foreground font-mono">{acao}</td>
+                      <td className="px-2 py-1 text-muted-foreground">{desc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </CardContent>
       </Card>
