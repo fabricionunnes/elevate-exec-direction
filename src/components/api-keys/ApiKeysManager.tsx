@@ -57,6 +57,7 @@ export function ApiKeysManager() {
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [newKeyPreview, setNewKeyPreview] = useState("");
+  const [keyMode, setKeyMode] = useState<"generate" | "import">("generate");
   const [creating, setCreating] = useState(false);
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<ApiKey | null>(null);
@@ -83,6 +84,7 @@ export function ApiKeysManager() {
   const handleOpenCreate = () => {
     setNewName("");
     setNewKeyPreview(generateApiKey());
+    setKeyMode("generate");
     setShowCreate(true);
   };
 
@@ -93,6 +95,10 @@ export function ApiKeysManager() {
   const handleCreate = async () => {
     if (!newName.trim()) {
       toast.error("Informe um nome para a chave");
+      return;
+    }
+    if (!newKeyPreview.trim()) {
+      toast.error("A chave não pode estar vazia");
       return;
     }
     setCreating(true);
@@ -295,17 +301,47 @@ export function ApiKeysManager() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Chave gerada</Label>
-              <div className="flex gap-2">
-                <code className="flex-1 text-xs font-mono bg-muted rounded px-3 py-2 break-all">
-                  {newKeyPreview}
-                </code>
-                <Button size="sm" variant="outline" onClick={handleRegenerateKey} title="Gerar nova">
-                  ↻
-                </Button>
+              <div className="flex items-center gap-3">
+                <Label>Chave</Label>
+                <div className="flex gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => { setKeyMode("generate"); setNewKeyPreview(generateApiKey()); }}
+                    className={`px-2 py-0.5 rounded border transition-colors ${keyMode === "generate" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Gerar automaticamente
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setKeyMode("import"); setNewKeyPreview(""); }}
+                    className={`px-2 py-0.5 rounded border transition-colors ${keyMode === "import" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Importar chave existente
+                  </button>
+                </div>
               </div>
+
+              {keyMode === "generate" ? (
+                <div className="flex gap-2">
+                  <code className="flex-1 text-xs font-mono bg-muted rounded px-3 py-2 break-all">
+                    {newKeyPreview}
+                  </code>
+                  <Button size="sm" variant="outline" onClick={handleRegenerateKey} title="Gerar nova">
+                    ↻
+                  </Button>
+                </div>
+              ) : (
+                <Input
+                  placeholder="Cole aqui a chave existente (ex: 6575da9b...)"
+                  value={newKeyPreview}
+                  onChange={(e) => setNewKeyPreview(e.target.value.trim())}
+                  className="font-mono text-xs"
+                />
+              )}
               <p className="text-xs text-muted-foreground">
-                Guarde a chave agora — ela não será exibida novamente após salvar.
+                {keyMode === "generate"
+                  ? "Guarde a chave agora — ela não será exibida novamente após salvar."
+                  : "Cole a chave que foi gerada externamente para registrá-la no sistema."}
               </p>
             </div>
           </div>
