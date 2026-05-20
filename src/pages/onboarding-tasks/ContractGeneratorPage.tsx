@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ContractForm, { type ContractFormData } from "@/components/contract-generator/ContractForm";
 import ContractPreview from "@/components/contract-generator/ContractPreview";
 import ClausesEditor, { getDefaultEditableClauses, getEditableClausesWithSavedTemplate, type EditableClause } from "@/components/contract-generator/ClausesEditor";
+import { rescisaoClause } from "@/data/contractTemplate";
 import TemplateEditorDialog from "@/components/contract-generator/TemplateEditorDialog";
 import { generateContractPDF, downloadContractPDF } from "@/components/contract-generator/generateContractPDF";
 import { productDetails } from "@/data/productDetails";
@@ -286,6 +287,57 @@ export default function ContractGeneratorPage() {
     const clauses = await getEditableClausesWithSavedTemplate();
     setEditableClauses(clauses);
   };
+
+  // Helper: inject or remove the rescisão clause based on payment conditions
+  const applyRescisaoClause = (
+    base: EditableClause[],
+    paymentMethod: string,
+    isRecurring: boolean,
+    installments: number
+  ): EditableClause[] => {
+    const needsRescisao =
+      (paymentMethod === "pix" || paymentMethod === "boleto") &&
+      (isRecurring || installments > 1);
+
+    // Remove any existing rescisão clause and revert numbering first
+    const renumberRevert: Record<string, string> = {
+      confidencialidade: "CLÁUSULA 6ª - CONFIDENCIALIDADE E DIREITOS AUTORAIS",
+      conduta: "CLÁUSULA 7ª - CONDUTA E ÉTICA",
+      disposicoes: "CLÁUSULA 8ª - DISPOSIÇÕES GERAIS",
+    };
+    const without = base
+      .filter((c) => c.id !== "rescisao")
+      .map((c) => (renumberRevert[c.id] ? { ...c, title: renumberRevert[c.id] } : c));
+
+    if (!needsRescisao) return without;
+
+    // Inject rescisão and renumber
+    const renumberWith: Record<string, string> = {
+      confidencialidade: "CLÁUSULA 7ª - CONFIDENCIALIDADE E DIREITOS AUTORAIS",
+      conduta: "CLÁUSULA 8ª - CONDUTA E ÉTICA",
+      disposicoes: "CLÁUSULA 9ª - DISPOSIÇÕES GERAIS",
+    };
+    const rescisaoEditable: EditableClause = {
+      id: rescisaoClause.id,
+      title: rescisaoClause.title,
+      content: rescisaoClause.content,
+      originalContent: rescisaoClause.content,
+    };
+    return without.flatMap((c) => {
+      if (c.id === "confidencialidade") {
+        return [rescisaoEditable, { ...c, title: renumberWith[c.id] || c.title }];
+      }
+      if (renumberWith[c.id]) return [{ ...c, title: renumberWith[c.id] }];
+      return [c];
+    });
+  };
+
+  // Re-inject/remove rescisão clause whenever payment conditions change
+  useEffect(() => {
+    setEditableClauses((prev) =>
+      applyRescisaoClause(prev, formData.paymentMethod, formData.isRecurring, formData.installments)
+    );
+  }, [formData.paymentMethod, formData.isRecurring, formData.installments]);
 
   useEffect(() => {
     loadContracts();
