@@ -169,6 +169,42 @@ serve(async (req) => {
           if (error) throw error;
           return json({ data });
         },
+        kickoff_link: async (c) => {
+          const PUBLIC_BASE = "https://unvholdings.com.br";
+          if (c.id) {
+            // Single company
+            const { data, error } = await c.supabase
+              .from("onboarding_companies")
+              .select("id, name, status, email, phone, kickoff_date, contract_start_date")
+              .eq("id", c.id)
+              .eq("is_simulator", false)
+              .single();
+            if (error || !data) return json({ error: "Empresa não encontrada" }, 404);
+            return json({
+              data: {
+                ...data,
+                kickoff_form_url: `${PUBLIC_BASE}/#/kickoff/${data.id}`,
+              },
+            });
+          }
+          // List all (optionally filter by status)
+          let q = c.supabase
+            .from("onboarding_companies")
+            .select("id, name, status, email, phone, kickoff_date, contract_start_date")
+            .eq("is_simulator", false)
+            .order("name")
+            .range(c.offset, c.offset + c.limit - 1);
+          if (c.status) q = q.eq("status", c.status);
+          const { data, error } = await q;
+          if (error) throw error;
+          return json({
+            data: (data || []).map((company: any) => ({
+              ...company,
+              kickoff_form_url: `${PUBLIC_BASE}/#/kickoff/${company.id}`,
+            })),
+            pagination: { limit: c.limit, offset: c.offset },
+          });
+        },
       },
 
       // ===== PROJECTS =====
@@ -1913,7 +1949,7 @@ serve(async (req) => {
         endpoints: async () => {
           return json({
             modules: {
-              companies: { actions: ["list", "get", "create", "update"], description: "Gerenciar empresas/clientes" },
+              companies: { actions: ["list", "get", "create", "update", "kickoff_link"], description: "Gerenciar empresas/clientes (kickoff_link retorna link do formulário de kickoff por empresa)" },
               projects: { actions: ["list", "get", "create", "set_monthly_goal"], description: "Projetos de clientes (listar, buscar, criar, definir meta mensal)" },
               tasks: { actions: ["list", "get", "create", "update", "delete"], description: "Gerenciar tarefas" },
               staff: { actions: ["list"], description: "Listar colaboradores" },

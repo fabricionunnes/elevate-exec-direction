@@ -14,6 +14,7 @@ import { SystemApiDocs } from "@/components/financial-api/SystemApiDocs";
 import { JobOpeningApiDocs } from "@/components/people-api/JobOpeningApiDocs";
 import { CompanyStructureApiDocs } from "@/components/people-api/CompanyStructureApiDocs";
 import { LinksApiDocs } from "@/components/people-api/LinksApiDocs";
+import { KickoffLinkApiDocs } from "@/components/financial-api/KickoffLinkApiDocs";
 import { ApiKeysManager } from "@/components/api-keys/ApiKeysManager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -171,6 +172,10 @@ export default function ApiDocsPage() {
                 <Link2 className="h-4 w-4" />
                 <span className="hidden sm:inline">Links Públicos</span>
               </TabsTrigger>
+              <TabsTrigger value="kickoff_link" className="gap-2">
+                <Link2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Kickoff</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -204,6 +209,7 @@ export default function ApiDocsPage() {
               <section><JobOpeningApiDocs /></section>
               <section><CompanyStructureApiDocs /></section>
               <section><LinksApiDocs /></section>
+              <section><KickoffLinkApiDocs /></section>
             </div>
           </TabsContent>
 
@@ -253,6 +259,10 @@ export default function ApiDocsPage() {
 
           <TabsContent value="links">
             <LinksApiDocs />
+          </TabsContent>
+
+          <TabsContent value="kickoff_link">
+            <KickoffLinkApiDocs />
           </TabsContent>
 
           <TabsContent value="api_keys">
