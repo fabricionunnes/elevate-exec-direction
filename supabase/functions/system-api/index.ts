@@ -1640,6 +1640,107 @@ serve(async (req) => {
           if (!meeting_title) return json({ error: "Campo 'meeting_title' obrigatório" }, 400);
           if (!meeting_date) return json({ error: "Campo 'meeting_date' obrigatório (ISO 8601)" }, 400);
           if (!subject) return json({ error: "Campo 'subject' obrigatório" }, 400);
+
+          // ── Google Calendar integration ──────────────────────────────────────
+          let googleEventId: string | null = b.google_event_id ?? null;
+          let meetingLink: string | null = b.meeting_link ?? null;
+          let calendarOwnerName: string | null = b.calendar_owner_name ?? null;
+          let calendarOwnerUserId: string | null = b.calendar_owner_id ?? null;
+          let calendarWarning: string | null = null;
+
+          if (b.create_calendar_event === true) {
+            // Resolve calendar_user_id — accept direct or resolve via staff_id
+            let calUserId: string | null = b.calendar_user_id ?? null;
+
+            if (!calUserId && b.staff_id) {
+              const { data: staffRow } = await c.supabase
+                .from("onboarding_staff")
+                .select("user_id, name")
+                .eq("id", b.staff_id)
+                .maybeSingle();
+              if (staffRow) {
+                calUserId = staffRow.user_id;
+                if (!calendarOwnerName) calendarOwnerName = staffRow.name;
+              }
+            }
+
+            if (!calUserId) {
+              return json({ error: "Para criar evento no Google Calendar, envie 'calendar_user_id' (user_id do consultor) ou 'staff_id'" }, 400);
+            }
+
+            calendarOwnerUserId = calUserId;
+
+            // Look up OAuth token
+            const { data: tokenData } = await c.supabase
+              .from("user_google_tokens")
+              .select("access_token, refresh_token, token_expires_at")
+              .eq("user_id", calUserId)
+              .maybeSingle();
+
+            if (!tokenData) {
+              return json({ error: `Consultor (user_id: ${calUserId}) não tem Google Calendar conectado. Peça para ele conectar em Configurações → Integrações.`, needs_auth: true }, 422);
+            }
+
+            let accessToken = tokenData.access_token;
+
+            // Refresh if expired
+            if (tokenData.token_expires_at && new Date(tokenData.token_expires_at) < new Date()) {
+              if (!tokenData.refresh_token) {
+                return json({ error: "Token do consultor expirado. Peça para ele reconectar o Google Calendar.", needs_auth: true }, 422);
+              }
+              const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
+              const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+              if (!googleClientId || !googleClientSecret) {
+                return json({ error: "GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET não configurados no servidor" }, 500);
+              }
+              const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ client_id: googleClientId, client_secret: googleClientSecret, refresh_token: tokenData.refresh_token, grant_type: "refresh_token" }),
+              });
+              if (!refreshRes.ok) {
+                return json({ error: "Falha ao renovar token do consultor. Peça para reconectar o Google Calendar.", needs_auth: true }, 422);
+              }
+              const refreshData = await refreshRes.json();
+              accessToken = refreshData.access_token;
+              const newExpiresAt = new Date(Date.now() + (refreshData.expires_in || 3600) * 1000);
+              await c.supabase.from("user_google_tokens").update({ access_token: accessToken, token_expires_at: newExpiresAt.toISOString() }).eq("user_id", calUserId);
+            }
+
+            // Build Calendar event
+            const durationMinutes = b.duration_minutes ?? 60;
+            const startDt = new Date(meeting_date);
+            const endDt = new Date(startDt.getTime() + durationMinutes * 60 * 1000);
+            const eventBody: any = {
+              summary: meeting_title,
+              description: b.description || subject || "",
+              start: { dateTime: startDt.toISOString(), timeZone: "America/Sao_Paulo" },
+              end: { dateTime: endDt.toISOString(), timeZone: "America/Sao_Paulo" },
+              conferenceData: { createRequest: { requestId: crypto.randomUUID(), conferenceSolutionKey: { type: "hangoutsMeet" } } },
+            };
+            if (b.attendees && Array.isArray(b.attendees) && b.attendees.length > 0) {
+              eventBody.attendees = b.attendees.map((email: string) => ({ email }));
+            }
+
+            const calRes = await fetch(
+              "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all",
+              { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(eventBody) }
+            );
+
+            if (!calRes.ok) {
+              const errText = await calRes.text();
+              if (calRes.status === 401) return json({ error: "Token do Google inválido. Peça para o consultor reconectar.", needs_auth: true }, 422);
+              return json({ error: `Falha ao criar evento no Google Calendar: ${errText}` }, 500);
+            }
+
+            const calEvent = await calRes.json();
+            googleEventId = calEvent.id;
+            meetingLink = calEvent.hangoutLink
+              || calEvent.conferenceData?.entryPoints?.find((ep: any) => ep.entryPointType === "video")?.uri
+              || null;
+          }
+          // ────────────────────────────────────────────────────────────────────
+
           const payload: any = {
             project_id,
             meeting_title,
@@ -1647,22 +1748,25 @@ serve(async (req) => {
             subject,
             staff_id: b.staff_id ?? null,
             scheduled_by: b.scheduled_by ?? null,
-            calendar_owner_id: b.calendar_owner_id ?? null,
-            calendar_owner_name: b.calendar_owner_name ?? null,
+            calendar_owner_id: calendarOwnerUserId,
+            calendar_owner_name: calendarOwnerName,
             notes: b.notes ?? null,
             attendees: b.attendees ?? null,
-            meeting_link: b.meeting_link ?? null,
+            meeting_link: meetingLink,
             recording_link: b.recording_link ?? null,
             transcript: b.transcript ?? null,
             live_notes: b.live_notes ?? null,
-            google_event_id: b.google_event_id ?? null,
+            google_event_id: googleEventId,
             is_finalized: b.is_finalized ?? false,
             is_no_show: b.is_no_show ?? false,
             is_internal: b.is_internal ?? false,
           };
           const { data, error } = await c.supabase.from("onboarding_meeting_notes").insert(payload).select().single();
           if (error) throw error;
-          return json({ data }, 201);
+          const response: any = { data };
+          if (b.create_calendar_event === true) response.calendar_event_created = !!googleEventId;
+          if (calendarWarning) response.warning = calendarWarning;
+          return json(response, 201);
         },
         update: async (c) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
