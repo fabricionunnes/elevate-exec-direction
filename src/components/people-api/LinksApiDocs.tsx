@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link2, Users, Briefcase } from "lucide-react";
 
-const BASE = "https://rchsygtqwikprqakiqom.supabase.co/functions/v1/system-api";
+const BASE = "https://xrncvhzxjmddqluxoosu.supabase.co/functions/v1/system-api";
 
 const EndpointBadge = ({ method }: { method: string }) => {
   const colors: Record<string, string> = {
