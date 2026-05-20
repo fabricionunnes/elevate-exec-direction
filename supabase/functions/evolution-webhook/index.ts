@@ -392,7 +392,26 @@ async function handleIncomingMessage(
   // When fromMe is true, pushName is the device owner's name, not the contact's name
   const pushName = fromMe ? undefined : (data.pushName || message.pushName);
   let contact = await getOrCreateContact(supabase, phone, pushName);
-  
+
+  // For groups: if the contact name is still the phone number (not yet resolved),
+  // fetch the group subject from the Evolution API and update it immediately
+  if (isGroup && contact.name === contact.phone) {
+    const subject = await fetchGroupSubject(
+      instanceApiUrl,
+      instanceApiKey,
+      instanceName,
+      `${phone}@g.us`,
+    );
+    if (subject) {
+      await supabase
+        .from('crm_whatsapp_contacts')
+        .update({ name: subject })
+        .eq('id', contact.id);
+      contact = { ...contact, name: subject };
+      console.log(`[webhook] Updated group contact name: ${phone} -> ${subject}`);
+    }
+  }
+
   // Get or create conversation
   let conversation = await getOrCreateConversation(supabase, instanceId, contact.id);
   
@@ -704,6 +723,40 @@ async function handleQRCodeUpdate(supabase: any, instanceId: string, data: any) 
       })
       .eq('id', instanceId);
   }
+}
+
+async function fetchGroupSubject(
+  apiUrl: string | null,
+  apiKey: string | null,
+  instanceName: string,
+  groupJid: string,
+): Promise<string | null> {
+  if (!apiUrl) return null;
+  const base = apiUrl.replace(/\/$/, '');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (apiKey) headers['apikey'] = apiKey;
+
+  const endpoints = [
+    `${base}/group/findGroupInfos/${encodeURIComponent(instanceName)}?groupJid=${encodeURIComponent(groupJid)}`,
+    `${base}/group/findGroupInfos/${encodeURIComponent(instanceName)}?jid=${encodeURIComponent(groupJid)}`,
+  ];
+
+  for (const url of endpoints) {
+    try {
+      const res = await fetch(url, { headers });
+      if (res.ok) {
+        const d = await res.json();
+        const subject = d?.subject || d?.groupName || d?.name || (Array.isArray(d) && d[0]?.subject);
+        if (subject && subject !== groupJid && !subject.includes('@')) {
+          console.log(`[webhook] fetchGroupSubject found: ${subject} for ${groupJid}`);
+          return subject;
+        }
+      }
+    } catch (e) {
+      console.log('[webhook] fetchGroupSubject error:', e);
+    }
+  }
+  return null;
 }
 
 async function getOrCreateContact(supabase: any, phone: string, name?: string) {

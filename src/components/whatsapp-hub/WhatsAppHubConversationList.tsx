@@ -139,23 +139,24 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, staffRole, onSe
 
     let totalUpdated = 0;
     let totalFound = 0;
+    const errors: string[] = [];
 
-    await Promise.allSettled(
+    const results = await Promise.allSettled(
       instanceIds.map(async (instanceId) => {
         const { data, error } = await supabase.functions.invoke("evolution-api", {
-          body: {
-            action: "syncGroups",
-            instanceId,
-          },
+          body: { action: "syncGroups", instanceId },
         });
-
-        if (error) throw error;
+        if (error) throw new Error(error.message || JSON.stringify(error));
         if (data?.contactsUpdated) totalUpdated += data.contactsUpdated;
         if (data?.groupsFound) totalFound += data.groupsFound;
       })
     );
 
-    return { contactsUpdated: totalUpdated, groupsFound: totalFound };
+    results.forEach((r) => {
+      if (r.status === "rejected") errors.push(r.reason?.message || String(r.reason));
+    });
+
+    return { contactsUpdated: totalUpdated, groupsFound: totalFound, errors };
   };
 
   const handleSyncGroupNames = async () => {
@@ -164,15 +165,17 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, staffRole, onSe
     try {
       const result = await syncMissingGroupConversations(allowedInstanceIds);
       await fetchConversations({ silent: true });
-      if (result.groupsFound === 0) {
+      if (result.errors && result.errors.length > 0) {
+        toast.error(`Erro ao buscar grupos: ${result.errors[0]}`);
+      } else if (result.groupsFound === 0) {
         toast.info("Nenhum grupo encontrado nas instâncias conectadas");
       } else if (result.contactsUpdated === 0) {
         toast.success(`${result.groupsFound} grupos verificados — nomes já estão atualizados`);
       } else {
         toast.success(`${result.contactsUpdated} nome(s) de grupo atualizados`);
       }
-    } catch {
-      toast.error("Erro ao atualizar nomes dos grupos");
+    } catch (e: any) {
+      toast.error(`Erro ao atualizar grupos: ${e?.message || "desconhecido"}`);
     } finally {
       setIsSyncingGroups(false);
     }
