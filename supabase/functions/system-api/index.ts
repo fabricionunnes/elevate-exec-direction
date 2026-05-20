@@ -696,6 +696,17 @@ serve(async (req) => {
           if (error) throw error;
           return json({ data }, 201);
         },
+        update_entry: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { value, observations, entry_date } = c.body;
+          const payload: any = { updated_at: new Date().toISOString() };
+          if (value !== undefined) payload.value = value;
+          if (observations !== undefined) payload.observations = observations;
+          if (entry_date !== undefined) payload.entry_date = entry_date;
+          const { data, error } = await c.supabase.from("kpi_entries").update(payload).eq("id", c.id).select().single();
+          if (error) throw error;
+          return json({ data });
+        },
         create: async (c) => {
           const { company_id, name, kpi_type, periodicity, target_value, is_individual, is_required, is_active, is_main_goal, scope, sort_order, sector_id, team_id, unit_id, salesperson_id } = c.body;
           if (!company_id) return json({ error: "Campo 'company_id' obrigatório" }, 400);
@@ -727,6 +738,15 @@ serve(async (req) => {
             .single();
           if (error) throw error;
           return json({ data }, 201);
+        },
+        update: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const allowed = ["name", "kpi_type", "periodicity", "target_value", "is_individual", "is_required", "is_active", "is_main_goal", "scope", "sort_order", "sector_id", "team_id", "unit_id", "salesperson_id"];
+          const payload: any = { updated_at: new Date().toISOString() };
+          for (const k of allowed) { if (c.body[k] !== undefined) payload[k] = c.body[k]; }
+          const { data, error } = await c.supabase.from("company_kpis").update(payload).eq("id", c.id).select().single();
+          if (error) throw error;
+          return json({ data });
         },
         set_monthly_target: async (c) => {
           const { kpi_id, company_id, month_year, target_value, level_name, level_order, salesperson_id, team_id, sector_id, unit_id } = c.body;
@@ -789,6 +809,109 @@ serve(async (req) => {
         update: async (c) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
           const { data, error } = await c.supabase.from("company_salespeople").update({ ...c.body, updated_at: new Date().toISOString() }).eq("id", c.id).select().single();
+          if (error) throw error;
+          return json({ data });
+        },
+        delete: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { error } = await c.supabase.from("company_salespeople").delete().eq("id", c.id);
+          if (error) throw error;
+          return json({ success: true, deleted_id: c.id });
+        },
+      },
+
+      // ===== UNITS =====
+      units: {
+        list: async (c) => {
+          let q = c.supabase.from("company_units").select("id, company_id, name, code, is_active, created_at").order("name");
+          if (c.companyId) q = q.eq("company_id", c.companyId);
+          if (c.status === "active") q = q.eq("is_active", true);
+          if (c.status === "inactive") q = q.eq("is_active", false);
+          const { data, error } = await q;
+          if (error) throw error;
+          return json({ data: data || [] });
+        },
+        create: async (c) => {
+          const { company_id, name, code } = c.body;
+          if (!company_id || !name) return json({ error: "Campos 'company_id' e 'name' obrigatórios" }, 400);
+          const { data, error } = await c.supabase.from("company_units").insert({ company_id, name, code: code || null }).select().single();
+          if (error) throw error;
+          return json({ data }, 201);
+        },
+        update: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { name, code, is_active } = c.body;
+          const payload: any = { updated_at: new Date().toISOString() };
+          if (name !== undefined) payload.name = name;
+          if (code !== undefined) payload.code = code;
+          if (is_active !== undefined) payload.is_active = is_active;
+          const { data, error } = await c.supabase.from("company_units").update(payload).eq("id", c.id).select().single();
+          if (error) throw error;
+          return json({ data });
+        },
+      },
+
+      // ===== SECTORS =====
+      sectors: {
+        list: async (c) => {
+          let q = c.supabase.from("company_sectors").select("id, company_id, unit_id, name, code, description, is_active, sort_order, created_at").order("sort_order").order("name");
+          if (c.companyId) q = q.eq("company_id", c.companyId);
+          if (c.status === "active") q = q.eq("is_active", true);
+          if (c.status === "inactive") q = q.eq("is_active", false);
+          const { data, error } = await q;
+          if (error) throw error;
+          return json({ data: data || [] });
+        },
+        create: async (c) => {
+          const { company_id, name, code, description, unit_id, sort_order } = c.body;
+          if (!company_id || !name) return json({ error: "Campos 'company_id' e 'name' obrigatórios" }, 400);
+          const { data, error } = await c.supabase.from("company_sectors").insert({ company_id, name, code: code || null, description: description || null, unit_id: unit_id || null, sort_order: sort_order ?? 0 }).select().single();
+          if (error) throw error;
+          return json({ data }, 201);
+        },
+        update: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { name, code, description, unit_id, is_active, sort_order } = c.body;
+          const payload: any = { updated_at: new Date().toISOString() };
+          if (name !== undefined) payload.name = name;
+          if (code !== undefined) payload.code = code;
+          if (description !== undefined) payload.description = description;
+          if (unit_id !== undefined) payload.unit_id = unit_id;
+          if (is_active !== undefined) payload.is_active = is_active;
+          if (sort_order !== undefined) payload.sort_order = sort_order;
+          const { data, error } = await c.supabase.from("company_sectors").update(payload).eq("id", c.id).select().single();
+          if (error) throw error;
+          return json({ data });
+        },
+      },
+
+      // ===== TEAMS =====
+      teams: {
+        list: async (c) => {
+          let q = c.supabase.from("company_teams").select("id, company_id, unit_id, name, code, is_active, created_at").order("name");
+          if (c.companyId) q = q.eq("company_id", c.companyId);
+          if (c.status === "active") q = q.eq("is_active", true);
+          if (c.status === "inactive") q = q.eq("is_active", false);
+          const { data, error } = await q;
+          if (error) throw error;
+          return json({ data: data || [] });
+        },
+        create: async (c) => {
+          const { company_id, name, code, unit_id } = c.body;
+          if (!company_id || !name) return json({ error: "Campos 'company_id' e 'name' obrigatórios" }, 400);
+          const { data, error } = await c.supabase.from("company_teams").insert({ company_id, name, code: code || null, unit_id: unit_id || null }).select().single();
+          if (error) throw error;
+          return json({ data }, 201);
+        },
+        update: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { name, code, unit_id, is_active } = c.body;
+          const payload: any = { updated_at: new Date().toISOString() };
+          if (name !== undefined) payload.name = name;
+          if (code !== undefined) payload.code = code;
+          if (unit_id !== undefined) payload.unit_id = unit_id;
+          if (is_active !== undefined) payload.is_active = is_active;
+          const { data, error } = await c.supabase.from("company_teams").update(payload).eq("id", c.id).select().single();
           if (error) throw error;
           return json({ data });
         },
@@ -1499,8 +1622,11 @@ serve(async (req) => {
               activities: { actions: ["list", "create", "update", "complete", "delete"], description: "Atividades do CRM" },
               meetings: { actions: ["list", "schedule", "finalize"], description: "Reuniões do CRM" },
               sales: { actions: ["list", "create", "update"], description: "Histórico de vendas" },
-              kpis: { actions: ["list", "entries", "monthly_targets", "create_entry", "create", "set_monthly_target"], description: "KPIs: cadastrar, definir meta mensal, lançar resultado" },
-              salespeople: { actions: ["list", "create", "update"], description: "Vendedores das empresas" },
+              kpis: { actions: ["list", "entries", "monthly_targets", "create_entry", "update_entry", "create", "update", "set_monthly_target"], description: "KPIs: cadastrar, editar, definir meta mensal, lançar e editar resultado" },
+              salespeople: { actions: ["list", "create", "update", "delete"], description: "Vendedores das empresas" },
+              units: { actions: ["list", "create", "update"], description: "Unidades das empresas" },
+              sectors: { actions: ["list", "create", "update"], description: "Setores das empresas" },
+              teams: { actions: ["list", "create", "update"], description: "Equipes das empresas" },
               receivables: { actions: ["list", "get", "create", "update", "mark_paid", "mark_unpaid", "delete"], description: "Contas a receber (CRUD + baixa)" },
               payables: { actions: ["list", "get", "create", "update", "mark_paid", "mark_unpaid", "delete"], description: "Contas a pagar (CRUD + baixa)" },
               invoices: { actions: ["list", "get", "create", "mark_paid", "mark_unpaid"], description: "Faturas de empresas" },

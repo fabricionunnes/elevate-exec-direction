@@ -12,6 +12,7 @@ import { WhatsAppSendApiDocs } from "@/components/financial-api/WhatsAppSendApiD
 import { NSMApiDocs } from "@/components/financial-api/NSMApiDocs";
 import { SystemApiDocs } from "@/components/financial-api/SystemApiDocs";
 import { JobOpeningApiDocs } from "@/components/people-api/JobOpeningApiDocs";
+import { CompanyStructureApiDocs } from "@/components/people-api/CompanyStructureApiDocs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
@@ -111,7 +112,7 @@ export default function ApiDocsPage() {
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="all" className="space-y-6">
           <div className="flex flex-wrap items-center gap-3 justify-between">
-          <TabsList className="grid w-full max-w-5xl grid-cols-5 sm:grid-cols-11 h-auto">
+          <TabsList className="grid w-full max-w-5xl grid-cols-5 sm:grid-cols-12 h-auto">
               <TabsTrigger value="all" className="gap-2">
                 <LayoutGrid className="h-4 w-4" />
                 <span className="hidden sm:inline">Geral</span>
@@ -156,6 +157,10 @@ export default function ApiDocsPage() {
                 <Briefcase className="h-4 w-4" />
                 <span className="hidden sm:inline">Vagas</span>
               </TabsTrigger>
+              <TabsTrigger value="company_structure" className="gap-2">
+                <Briefcase className="h-4 w-4" />
+                <span className="hidden sm:inline">Estrutura</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -187,6 +192,7 @@ export default function ApiDocsPage() {
               <section><ConversationsApiDocs /></section>
               <section><WhatsAppSendApiDocs /></section>
               <section><JobOpeningApiDocs /></section>
+              <section><CompanyStructureApiDocs /></section>
             </div>
           </TabsContent>
 
@@ -228,6 +234,10 @@ export default function ApiDocsPage() {
 
           <TabsContent value="job_opening">
             <JobOpeningApiDocs />
+          </TabsContent>
+
+          <TabsContent value="company_structure">
+            <CompanyStructureApiDocs />
           </TabsContent>
         </Tabs>
       </main>
