@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Code2, DollarSign, Target, Briefcase, MessageSquare, Video, BarChart3, LayoutGrid, Download, Loader2, Copy, Send, Star, Building2, Link2 } from "lucide-react";
+import { ArrowLeft, Code2, DollarSign, Target, Briefcase, MessageSquare, Video, BarChart3, LayoutGrid, Download, Loader2, Copy, Send, Star, Building2, Link2, Key } from "lucide-react";
 import { FinancialApiDocs } from "@/components/financial-api/FinancialApiDocs";
 import { CrmApiDocs } from "@/components/financial-api/CrmApiDocs";
 import { ProductApiDocs } from "@/components/financial-api/ProductApiDocs";
@@ -14,6 +14,7 @@ import { SystemApiDocs } from "@/components/financial-api/SystemApiDocs";
 import { JobOpeningApiDocs } from "@/components/people-api/JobOpeningApiDocs";
 import { CompanyStructureApiDocs } from "@/components/people-api/CompanyStructureApiDocs";
 import { LinksApiDocs } from "@/components/people-api/LinksApiDocs";
+import { ApiKeysManager } from "@/components/api-keys/ApiKeysManager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
@@ -111,9 +112,13 @@ export default function ApiDocsPage() {
       </header>
 
       <main className="container mx-auto px-4 py-6">
-        <Tabs defaultValue="all" className="space-y-6">
+        <Tabs defaultValue="api_keys" className="space-y-6">
           <div className="flex flex-wrap items-center gap-3 justify-between">
-          <TabsList className="grid w-full max-w-5xl grid-cols-5 sm:grid-cols-12 h-auto">
+          <TabsList className="flex flex-wrap w-full max-w-5xl h-auto gap-0.5">
+              <TabsTrigger value="api_keys" className="gap-2">
+                <Key className="h-4 w-4" />
+                <span className="hidden sm:inline">Chaves de API</span>
+              </TabsTrigger>
               <TabsTrigger value="all" className="gap-2">
                 <LayoutGrid className="h-4 w-4" />
                 <span className="hidden sm:inline">Geral</span>
@@ -248,6 +253,10 @@ export default function ApiDocsPage() {
 
           <TabsContent value="links">
             <LinksApiDocs />
+          </TabsContent>
+
+          <TabsContent value="api_keys">
+            <ApiKeysManager />
           </TabsContent>
         </Tabs>
       </main>
