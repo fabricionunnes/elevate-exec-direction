@@ -510,6 +510,35 @@ Deno.serve(async (req) => {
         console.error('[evolution-api] Failed to resolve custom Evolution credentials:', error);
       }
 
+      // Last-resort: known per-instance Manager V2 credentials that haven't been
+      // persisted to the DB yet. Add entries here as { instanceName, apiUrl, apiKey }.
+      // Once saved via the UI (gear icon in WhatsApp admin), these become redundant.
+      const KNOWN_INSTANCE_CREDENTIALS: Array<{ instanceName: string; apiUrl: string; apiKey: string }> = [
+        {
+          instanceName: 'fabricio-nunnes',
+          apiUrl: 'https://sm-linguado.stevo.chat',
+          apiKey: '1779364298398RzjL6rRHAa94HxVK',
+        },
+      ];
+
+      if (instanceName) {
+        const normalized = normalizeInstanceKey(instanceName);
+        const known = KNOWN_INSTANCE_CREDENTIALS.find(
+          (k) => normalizeInstanceKey(k.instanceName) === normalized
+        );
+        if (known) {
+          console.log(`[evolution-api] Using known fallback credentials for ${instanceName}`);
+          const cleanUrl = normalizeBaseUrl(known.apiUrl);
+          return {
+            baseUrl: cleanUrl,
+            headers: buildEvolutionHeaders(known.apiKey),
+            apiKey: known.apiKey,
+            providerType: 'manager_v2' as const,
+            source: `known-fallback:${instanceName}`,
+          };
+        }
+      }
+
       return defaultTarget;
     };
 
