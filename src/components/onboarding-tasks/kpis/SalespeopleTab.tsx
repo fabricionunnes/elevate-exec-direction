@@ -29,10 +29,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, RefreshCw, Link, Building2, UsersRound, Filter, X, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw, Link, Building2, UsersRound, Filter, X, Check, UserCheck } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+
+async function callSystemApi(
+  token: string,
+  module: string,
+  action: string,
+  body?: Record<string, unknown>,
+  id?: string,
+): Promise<any> {
+  const params = new URLSearchParams({ module, action });
+  if (id) params.set("id", id);
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/system-api?${params}`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body || {}),
+  });
+  return res.json();
+}
 
 interface Salesperson {
   id: string;
@@ -228,7 +250,28 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
 
         if (error) throw error;
         salespersonId = data.id;
-        toast.success("Vendedor cadastrado");
+
+        // Auto-create auth login if email provided
+        if (formData.email?.trim()) {
+          try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData.session?.access_token;
+            if (token) {
+              const result = await callSystemApi(token, "salespeople", "create_login", { password: "123456" }, salespersonId);
+              if (result?.error) {
+                toast.warning(`Vendedor cadastrado, mas não foi possível criar o login: ${result.error}`);
+              } else {
+                toast.success("Vendedor cadastrado! Login criado com senha padrão: 123456");
+              }
+            } else {
+              toast.success("Vendedor cadastrado");
+            }
+          } catch {
+            toast.success("Vendedor cadastrado");
+          }
+        } else {
+          toast.success("Vendedor cadastrado");
+        }
       }
 
       // Insert unit associations
@@ -527,6 +570,12 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="email@empresa.com"
                   />
+                  {!editingPerson && formData.email?.trim() && (
+                    <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                      <UserCheck className="h-3 w-3" />
+                      Login será criado automaticamente com senha padrão <strong>123456</strong>
+                    </p>
+                  )}
                 </div>
 
                 <div>
