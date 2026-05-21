@@ -71,7 +71,18 @@ export const GroupSelector = ({
       });
 
       if (fnError) {
-        throw new Error(fnError.message || "Erro ao buscar grupos");
+        // Try to extract the real error message from the response body
+        let detail = fnError.message || "Erro ao buscar grupos";
+        try {
+          const ctx = (fnError as any).context;
+          if (ctx && typeof ctx.text === 'function') {
+            const bodyText = await ctx.text();
+            const parsed = bodyText ? JSON.parse(bodyText) : null;
+            if (parsed?.error) detail = parsed.error;
+            else if (bodyText) detail = bodyText.slice(0, 300);
+          }
+        } catch (_e) { /* ignore */ }
+        throw new Error(detail);
       }
 
       let groupsList: WhatsAppGroup[] = [];
