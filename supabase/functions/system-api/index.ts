@@ -931,10 +931,28 @@ serve(async (req) => {
             email_confirm: true,
             user_metadata: { name: sp.name, salesperson_id: sp.id, company_id: sp.company_id, role: "salesperson" },
           });
-          if (authErr) return json({ error: authErr.message }, 400);
 
-          await c.supabase.from("company_salespeople").update({ user_id: created.user.id }).eq("id", sp.id);
-          return json({ success: true, user_id: created.user.id });
+          let userId: string;
+
+          if (authErr) {
+            // If email already exists, look up the existing user and link it
+            if (authErr.message?.toLowerCase().includes("already") || authErr.message?.toLowerCase().includes("existe") || authErr.status === 422) {
+              const { data: { users }, error: listErr } = await c.supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+              if (listErr) return json({ error: authErr.message }, 400);
+              const existing = (users || []).find((u: any) => u.email?.toLowerCase() === sp.email.toLowerCase());
+              if (!existing) return json({ error: authErr.message }, 400);
+              // Update password to default and link
+              await c.supabase.auth.admin.updateUserById(existing.id, { password, user_metadata: { name: sp.name, salesperson_id: sp.id, company_id: sp.company_id, role: "salesperson" } });
+              userId = existing.id;
+            } else {
+              return json({ error: authErr.message }, 400);
+            }
+          } else {
+            userId = created.user.id;
+          }
+
+          await c.supabase.from("company_salespeople").update({ user_id: userId }).eq("id", sp.id);
+          return json({ success: true, user_id: userId });
         },
         reset_password: async (c) => {
           // Admin resets a salesperson's password
