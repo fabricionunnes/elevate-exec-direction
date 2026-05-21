@@ -85,7 +85,7 @@ jobs:
 
       - name: Deploy evolution-api
         continue-on-error: true
-        run: supabase functions deploy evolution-api --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        run: supabase functions deploy evolution-api --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt --import-map supabase/functions/deno.json
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
