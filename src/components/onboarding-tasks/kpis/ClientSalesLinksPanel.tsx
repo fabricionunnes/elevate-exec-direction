@@ -28,8 +28,30 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Copy, ExternalLink, Link2, ArrowLeft, Filter } from "lucide-react";
+import { Plus, Copy, ExternalLink, Link2, ArrowLeft, Filter, KeyRound, UserCheck, UserX } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+
+async function callSystemApi(
+  token: string,
+  module: string,
+  action: string,
+  body?: Record<string, unknown>,
+  id?: string,
+): Promise<any> {
+  const params = new URLSearchParams({ module, action });
+  if (id) params.set("id", id);
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/system-api?${params}`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body || {}),
+  });
+  return res.json();
+}
 
 interface Salesperson {
   id: string;
@@ -41,6 +63,7 @@ interface Salesperson {
   unit_id: string | null;
   team_id: string | null;
   sector_id: string | null;
+  has_login?: boolean;
 }
 
 interface OrgEntity {
@@ -65,6 +88,11 @@ export const ClientSalesLinksPanel = ({
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({ name: "", email: "", phone: "" });
 
+  // Login management state
+  const [resetPasswordDialog, setResetPasswordDialog] = useState<{ open: boolean; salesperson: Salesperson | null }>({ open: false, salesperson: null });
+  const [newPassword, setNewPassword] = useState("");
+  const [loginActionLoading, setLoginActionLoading] = useState<string | null>(null);
+
   // Filters
   const [filterUnit, setFilterUnit] = useState("all");
   const [filterSector, setFilterSector] = useState("all");
@@ -85,7 +113,7 @@ export const ClientSalesLinksPanel = ({
       const [spRes, unitsRes, sectorsRes, teamsRes, stRes] = await Promise.all([
         supabase
           .from("company_salespeople")
-          .select("id, name, email, phone, access_code, is_active, unit_id, team_id, sector_id")
+          .select("id, name, email, phone, access_code, is_active, unit_id, team_id, sector_id, user_id")
           .eq("company_id", companyId)
           .order("name"),
         supabase
@@ -112,7 +140,7 @@ export const ClientSalesLinksPanel = ({
       ]);
 
       if (spRes.error) throw spRes.error;
-      setSalespeople(spRes.data || []);
+      setSalespeople((spRes.data || []).map((sp: any) => ({ ...sp, has_login: !!sp.user_id })));
       setUnits(unitsRes.data || []);
       setSectors(sectorsRes.data || []);
       setTeams(teamsRes.data || []);
@@ -206,15 +234,27 @@ export const ClientSalesLinksPanel = ({
 
     setSaving(true);
     try {
-      const { error } = await supabase.from("company_salespeople").insert({
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+      if (!token) throw new Error("Sessão expirada");
+
+      const result = await callSystemApi(token, "salespeople", "create", {
         company_id: companyId,
         name: formData.name.trim(),
         email: formData.email.trim() || null,
         phone: formData.phone.trim() || null,
       });
 
-      if (error) throw error;
-      toast.success("Vendedor cadastrado!");
+      if (result?.error) throw new Error(result.error);
+
+      if (result?.login_created) {
+        toast.success(`Vendedor cadastrado com login criado! Senha padrão: 123456`);
+      } else if (formData.email.trim() && result?.login_error) {
+        toast.warning(`Vendedor cadastrado, mas não foi possível criar o login: ${result.login_error}`);
+      } else {
+        toast.success("Vendedor cadastrado!");
+      }
+
       setShowAddDialog(false);
       setFormData({ name: "", email: "", phone: "" });
       fetchData();
@@ -223,6 +263,52 @@ export const ClientSalesLinksPanel = ({
       toast.error(error.message || "Erro ao cadastrar vendedor");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCreateLogin = async (person: Salesperson) => {
+    if (!person.email) {
+      toast.error("Vendedor precisa ter e-mail cadastrado para criar login");
+      return;
+    }
+    setLoginActionLoading(person.id);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+      if (!token) throw new Error("Sessão expirada");
+
+      const result = await callSystemApi(token, "salespeople", "create_login", { password: "123456" }, person.id);
+      if (result?.error) throw new Error(result.error);
+      toast.success(`Login criado para ${person.name}! Senha padrão: 123456`);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao criar login");
+    } finally {
+      setLoginActionLoading(null);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetPasswordDialog.salesperson || !newPassword.trim()) return;
+    if (newPassword.length < 6) {
+      toast.error("Senha deve ter no mínimo 6 caracteres");
+      return;
+    }
+    setLoginActionLoading(resetPasswordDialog.salesperson.id);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+      if (!token) throw new Error("Sessão expirada");
+
+      const result = await callSystemApi(token, "salespeople", "reset_password", { new_password: newPassword }, resetPasswordDialog.salesperson.id);
+      if (result?.error) throw new Error(result.error);
+      toast.success("Senha redefinida com sucesso!");
+      setResetPasswordDialog({ open: false, salesperson: null });
+      setNewPassword("");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao redefinir senha");
+    } finally {
+      setLoginActionLoading(null);
     }
   };
 
@@ -334,7 +420,8 @@ export const ClientSalesLinksPanel = ({
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead className="hidden sm:table-cell">E-mail</TableHead>
-                <TableHead>Código</TableHead>
+                <TableHead className="hidden md:table-cell">Código</TableHead>
+                <TableHead>Login</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -342,10 +429,10 @@ export const ClientSalesLinksPanel = ({
               {filteredSalespeople.map((person) => (
                 <TableRow key={person.id}>
                   <TableCell className="font-medium">{person.name}</TableCell>
-                  <TableCell className="hidden sm:table-cell text-muted-foreground">
+                  <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
                     {person.email || "-"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Badge
                       variant="secondary"
                       className="font-mono cursor-pointer hover:bg-secondary/80"
@@ -354,14 +441,49 @@ export const ClientSalesLinksPanel = ({
                       {person.access_code}
                     </Badge>
                   </TableCell>
+                  <TableCell>
+                    {person.has_login ? (
+                      <Badge variant="outline" className="text-emerald-600 border-emerald-500/40 bg-emerald-500/10 text-[10px] gap-1">
+                        <UserCheck className="h-3 w-3" />
+                        Ativo
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground text-[10px] gap-1">
+                        <UserX className="h-3 w-3" />
+                        Sem login
+                      </Badge>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {person.has_login ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => { setResetPasswordDialog({ open: true, salesperson: person }); setNewPassword(""); }}
+                          title="Redefinir senha"
+                        >
+                          <KeyRound className="h-4 w-4" />
+                        </Button>
+                      ) : person.email ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-primary"
+                          onClick={() => handleCreateLogin(person)}
+                          disabled={loginActionLoading === person.id}
+                          title="Criar acesso"
+                        >
+                          <UserCheck className="h-4 w-4" />
+                        </Button>
+                      ) : null}
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
                         onClick={() => copyLink(person)}
-                        title="Copiar link"
+                        title="Copiar link KPI"
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
@@ -370,7 +492,7 @@ export const ClientSalesLinksPanel = ({
                         size="icon"
                         className="h-8 w-8"
                         onClick={() => openLink(person)}
-                        title="Abrir link"
+                        title="Abrir link KPI"
                       >
                         <ExternalLink className="h-4 w-4" />
                       </Button>
@@ -382,6 +504,41 @@ export const ClientSalesLinksPanel = ({
           </Table>
         </Card>
       )}
+
+      {/* Reset Password Dialog */}
+      <Dialog open={resetPasswordDialog.open} onOpenChange={(open) => setResetPasswordDialog({ open, salesperson: open ? resetPasswordDialog.salesperson : null })}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Redefinir Senha — {resetPasswordDialog.salesperson?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              O vendedor receberá a nova senha. Você pode usar "123456" para redefinir ao padrão.
+            </p>
+            <div>
+              <Label>Nova Senha *</Label>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                onKeyDown={(e) => e.key === "Enter" && handleResetPassword()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetPasswordDialog({ open: false, salesperson: null })}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleResetPassword}
+              disabled={!newPassword || newPassword.length < 6 || loginActionLoading !== null}
+            >
+              {loginActionLoading ? "Salvando..." : "Redefinir Senha"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Salesperson Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
@@ -406,6 +563,12 @@ export const ClientSalesLinksPanel = ({
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="email@exemplo.com"
               />
+              {formData.email.trim() && (
+                <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                  <UserCheck className="h-3 w-3" />
+                  Login será criado automaticamente com senha padrão <strong>123456</strong>
+                </p>
+              )}
             </div>
             <div>
               <Label>Telefone</Label>

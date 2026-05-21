@@ -861,20 +861,98 @@ serve(async (req) => {
       // ===== SALESPEOPLE =====
       salespeople: {
         list: async (c) => {
-          let q = c.supabase.from("company_salespeople").select("id, company_id, name, email, phone, is_active, unit_id, team_id, sector_id, access_code, created_at").order("name");
+          let q = c.supabase.from("company_salespeople").select("id, company_id, name, email, phone, is_active, unit_id, team_id, sector_id, access_code, user_id, created_at").order("name");
           if (c.companyId) q = q.eq("company_id", c.companyId);
           if (c.status === "active") q = q.eq("is_active", true);
           if (c.status === "inactive") q = q.eq("is_active", false);
           const { data, error } = await q;
           if (error) throw error;
-          return json({ data: data || [] });
+          // Expose has_login flag without exposing user_id directly
+          const enriched = (data || []).map((sp: any) => ({ ...sp, has_login: !!sp.user_id }));
+          return json({ data: enriched });
         },
         create: async (c) => {
           const { company_id, name, email, phone, unit_id, team_id, sector_id } = c.body;
           if (!company_id || !name) return json({ error: "Campos 'company_id' e 'name' obrigatórios" }, 400);
-          const { data, error } = await c.supabase.from("company_salespeople").insert({ company_id, name, email, phone, unit_id, team_id, sector_id }).select().single();
-          if (error) throw error;
-          return json({ data }, 201);
+
+          // Insert the salesperson record first
+          const { data: sp, error: spErr } = await c.supabase
+            .from("company_salespeople")
+            .insert({ company_id, name, email: email || null, phone: phone || null, unit_id, team_id, sector_id })
+            .select()
+            .single();
+          if (spErr) throw spErr;
+
+          // Auto-create auth login if email is provided
+          let authUser: any = null;
+          let loginError: string | null = null;
+          if (email) {
+            try {
+              const { data: created, error: authErr } = await c.supabase.auth.admin.createUser({
+                email,
+                password: "123456",
+                email_confirm: true,
+                user_metadata: { name, salesperson_id: sp.id, company_id, role: "salesperson" },
+              });
+              if (authErr) {
+                loginError = authErr.message;
+              } else {
+                authUser = created.user;
+                // Link user_id back to the salesperson record
+                await c.supabase
+                  .from("company_salespeople")
+                  .update({ user_id: authUser.id })
+                  .eq("id", sp.id);
+                sp.user_id = authUser.id;
+              }
+            } catch (e: any) {
+              loginError = e.message;
+            }
+          }
+
+          return json({ data: { ...sp, has_login: !!sp.user_id }, login_created: !!authUser, login_error: loginError }, 201);
+        },
+        create_login: async (c) => {
+          // Create auth login for an existing salesperson that doesn't have one yet
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data: sp, error: spErr } = await c.supabase
+            .from("company_salespeople")
+            .select("id, name, email, user_id, company_id")
+            .eq("id", c.id)
+            .single();
+          if (spErr || !sp) return json({ error: "Vendedor não encontrado" }, 404);
+          if (!sp.email) return json({ error: "Vendedor não tem e-mail cadastrado. Atualize o e-mail primeiro." }, 400);
+          if (sp.user_id) return json({ error: "Vendedor já possui login" }, 409);
+
+          const password = c.body?.password || "123456";
+          const { data: created, error: authErr } = await c.supabase.auth.admin.createUser({
+            email: sp.email,
+            password,
+            email_confirm: true,
+            user_metadata: { name: sp.name, salesperson_id: sp.id, company_id: sp.company_id, role: "salesperson" },
+          });
+          if (authErr) return json({ error: authErr.message }, 400);
+
+          await c.supabase.from("company_salespeople").update({ user_id: created.user.id }).eq("id", sp.id);
+          return json({ success: true, user_id: created.user.id });
+        },
+        reset_password: async (c) => {
+          // Admin resets a salesperson's password
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data: sp, error: spErr } = await c.supabase
+            .from("company_salespeople")
+            .select("id, user_id, name")
+            .eq("id", c.id)
+            .single();
+          if (spErr || !sp) return json({ error: "Vendedor não encontrado" }, 404);
+          if (!sp.user_id) return json({ error: "Vendedor não possui login" }, 400);
+
+          const newPassword = c.body?.new_password;
+          if (!newPassword || newPassword.length < 6) return json({ error: "Nova senha deve ter no mínimo 6 caracteres" }, 400);
+
+          const { error: authErr } = await c.supabase.auth.admin.updateUserById(sp.user_id, { password: newPassword });
+          if (authErr) return json({ error: authErr.message }, 400);
+          return json({ success: true });
         },
         update: async (c) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
@@ -884,6 +962,11 @@ serve(async (req) => {
         },
         delete: async (c) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          // Also delete the auth user if linked
+          const { data: sp } = await c.supabase.from("company_salespeople").select("user_id").eq("id", c.id).single();
+          if (sp?.user_id) {
+            await c.supabase.auth.admin.deleteUser(sp.user_id).catch(() => {});
+          }
           const { error } = await c.supabase.from("company_salespeople").delete().eq("id", c.id);
           if (error) throw error;
           return json({ success: true, deleted_id: c.id });
