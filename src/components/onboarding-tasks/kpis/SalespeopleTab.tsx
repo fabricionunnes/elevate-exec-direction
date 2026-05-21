@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, RefreshCw, Link, Building2, UsersRound, Filter, X, Check, UserCheck } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw, Link, Building2, UsersRound, Filter, X, Check, UserCheck, Users } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -66,6 +66,8 @@ interface Salesperson {
   unit_id: string | null;
   team_id: string | null;
   sector_id: string | null;
+  user_id?: string | null;
+  has_login?: boolean;
   unit_ids?: string[];
 }
 
@@ -110,6 +112,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [editingPerson, setEditingPerson] = useState<Salesperson | null>(null);
+  const [bulkCreatingLogins, setBulkCreatingLogins] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -179,6 +182,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
       const salespeopleWithUnits = (salespeopleRes.data || []).map(sp => ({
         ...sp,
         unit_ids: salespersonUnitsMap[sp.id] || (sp.unit_id ? [sp.unit_id] : []),
+        has_login: !!(sp as any).user_id,
       }));
 
       setSalespeople(salespeopleWithUnits);
@@ -293,6 +297,41 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
     } catch (error) {
       console.error("Error saving salesperson:", error);
       toast.error("Erro ao salvar vendedor");
+    }
+  };
+
+  const handleBulkCreateLogins = async () => {
+    const pending = salespeople.filter((sp) => sp.email && !sp.has_login && sp.is_active);
+    if (pending.length === 0) return;
+
+    setBulkCreatingLogins(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Sessão expirada");
+
+      let created = 0;
+      let failed = 0;
+      for (const sp of pending) {
+        try {
+          const result = await callSystemApi(token, "salespeople", "create_login", { password: "123456" }, sp.id);
+          if (result?.error) failed++;
+          else created++;
+        } catch {
+          failed++;
+        }
+      }
+
+      if (failed === 0) {
+        toast.success(`${created} login${created > 1 ? "s criados" : " criado"} com sucesso! Senha padrão: 123456`);
+      } else {
+        toast.warning(`${created} login${created > 1 ? "s criados" : " criado"}, ${failed} com erro`);
+      }
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao criar logins");
+    } finally {
+      setBulkCreatingLogins(false);
     }
   };
 
@@ -469,6 +508,18 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
           </p>
         </div>
         {isAdmin && (
+          <div className="flex items-center gap-2">
+            {salespeople.some((sp) => sp.email && !sp.has_login && sp.is_active) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkCreateLogins}
+                disabled={bulkCreatingLogins}
+              >
+                <Users className="h-4 w-4 mr-2" />
+                {bulkCreatingLogins ? "Criando logins..." : "Criar Logins"}
+              </Button>
+            )}
           <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
               <Button>
@@ -598,6 +649,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         )}
       </div>
 
