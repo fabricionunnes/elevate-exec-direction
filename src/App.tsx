@@ -145,6 +145,7 @@ const OnboardingCompaniesReportPage = lazy(() => import("./pages/onboarding-task
 const SalesReportPage = lazy(() => import("./pages/onboarding-tasks/SalesReportPage"));
 const OnboardingResultsPage = lazy(() => import("./pages/onboarding-tasks/OnboardingResultsPage"));
 const KPIEntryPage = lazy(() => import("./pages/onboarding-tasks/KPIEntryPage"));
+const VendedorKPIPage = lazy(() => import("./pages/vendedor/VendedorKPIPage"));
 const HealthScorePage = lazy(() => import("./pages/onboarding-tasks/HealthScorePage"));
 const FinancialModulePage = lazy(() => import("./pages/onboarding-tasks/FinancialModulePage"));
 const ApiDocsPage = lazy(() => import("./pages/onboarding-tasks/ApiDocsPage"));
@@ -513,6 +514,7 @@ const AppShell = () => {
             <Route path="/nps" element={<NPSSurveyPage />} />
             <Route path="/csat" element={<CSATSurveyPage />} />
             <Route path="/kpi-entry/:companyId" element={<KPIEntryPage />} />
+            <Route path="/vendedor/:salespersonId/kpis" element={<VendedorKPIPage />} />
             <Route path="/disc" element={<LegacyDiscRedirect />} />
             <Route path="/disc-publico" element={<PublicProfileDISCPage />} />
             <Route path="/pesquisa-clima/:surveyId" element={<PublicClimateSurveyPage />} />

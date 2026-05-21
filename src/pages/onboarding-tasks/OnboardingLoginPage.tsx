@@ -250,6 +250,20 @@ const OnboardingLoginPage = () => {
           return;
         }
 
+        // Check if user is a salesperson (company_salespeople.user_id)
+        const { data: salesperson } = await supabase
+          .from("company_salespeople")
+          .select("id, name, company_id")
+          .eq("user_id", data.user.id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (salesperson) {
+          toast.success(`Bem-vindo, ${salesperson.name}!`);
+          navigate(`/vendedor/${salesperson.id}/kpis`);
+          return;
+        }
+
         // Check if user exists in onboarding_users
         const { data: onboardingUsers, error: onboardingError } = await supabase
           .from("onboarding_users")
