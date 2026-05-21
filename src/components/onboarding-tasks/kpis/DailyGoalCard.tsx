@@ -305,7 +305,14 @@ export const DailyGoalCard = ({
             percentage: spTarget > 0 ? (spRealized / spTarget) * 100 : 0,
           };
         })
-        .sort((a, b) => b.percentage - a.percentage);
+        .sort((a, b) => {
+          // When both have no target set (% = 0), sort by realized value — same order as Comparativo
+          if (a.percentage === 0 && b.percentage === 0) return b.totalRealized - a.totalRealized;
+          // When only one has a target, prioritize the one with target
+          if (a.percentage === 0) return 1;
+          if (b.percentage === 0) return -1;
+          return b.percentage - a.percentage;
+        });
 
       return {
         kpi,
@@ -498,18 +505,24 @@ export const DailyGoalCard = ({
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2 mb-1">
                                 <p className="text-sm font-semibold truncate">{sp.name}</p>
-                                <Badge
-                                  variant="outline"
-                                  className={`text-[10px] px-1.5 py-0 border-0 font-bold shrink-0 ${
-                                    isCompleted
-                                      ? "bg-emerald-500/15 text-emerald-600"
-                                      : sp.percentage >= 70
-                                      ? "bg-amber-500/15 text-amber-600"
-                                      : "bg-red-500/10 text-red-600"
-                                  }`}
-                                >
-                                  {sp.percentage.toFixed(0)}%
-                                </Badge>
+                                {sp.totalTarget > 0 ? (
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[10px] px-1.5 py-0 border-0 font-bold shrink-0 ${
+                                      isCompleted
+                                        ? "bg-emerald-500/15 text-emerald-600"
+                                        : sp.percentage >= 70
+                                        ? "bg-amber-500/15 text-amber-600"
+                                        : "bg-red-500/10 text-red-600"
+                                    }`}
+                                  >
+                                    {sp.percentage.toFixed(0)}%
+                                  </Badge>
+                                ) : (
+                                  <span className="text-[10px] font-bold text-primary shrink-0">
+                                    {formatValue(sp.totalRealized, kpiBlock.kpiType)}
+                                  </span>
+                                )}
                               </div>
 
                               <div className="relative h-1.5 rounded-full bg-muted/60 overflow-hidden mb-1.5">
@@ -528,12 +541,18 @@ export const DailyGoalCard = ({
                               </div>
 
                               <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                                <span>Meta: {formatValue(sp.totalTarget, kpiBlock.kpiType)}</span>
-                                <span>Real: {formatValue(sp.totalRealized, kpiBlock.kpiType)}</span>
-                                <span>Falta: {formatValue(sp.remaining, kpiBlock.kpiType)}</span>
-                                <span className="font-bold text-primary">
-                                  Diária: {formatValue(sp.dailyGoal, kpiBlock.kpiType)}
-                                </span>
+                                {sp.totalTarget > 0 ? (
+                                  <>
+                                    <span>Meta: {formatValue(sp.totalTarget, kpiBlock.kpiType)}</span>
+                                    <span>Real: {formatValue(sp.totalRealized, kpiBlock.kpiType)}</span>
+                                    <span>Falta: {formatValue(sp.remaining, kpiBlock.kpiType)}</span>
+                                    <span className="font-bold text-primary">
+                                      Diária: {formatValue(sp.dailyGoal, kpiBlock.kpiType)}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span>Realizado: <span className="font-semibold text-foreground">{formatValue(sp.totalRealized, kpiBlock.kpiType)}</span></span>
+                                )}
                               </div>
                             </div>
                           </div>

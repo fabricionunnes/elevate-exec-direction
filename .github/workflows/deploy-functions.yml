@@ -103,7 +103,7 @@ jobs:
 
       - name: Deploy asaas-webhook
         continue-on-error: true
-        run: supabase functions deploy asaas-webhook --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        run: supabase functions deploy asaas-webhook --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt --import-map supabase/functions/deno.json
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 

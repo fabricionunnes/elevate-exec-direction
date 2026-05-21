@@ -205,8 +205,8 @@ Deno.serve(async (req) => {
 
           // Credit Asaas bank account with actual paid amount (minus fee)
           await creditAsaasBank(supabase, actualPaidCents, `Fatura ${invoice.id}${discountCents > 0 ? ` (desconto R$${(discountCents/100).toFixed(2)})` : ''}`, invoice.id, invoice.recurring_charge_id);
-          // Auto-reconcile financial_receivables
-          reconcileReceivable(supabase, invoice.id, null, actualPaidCents, invoice.description || '', dueDate).catch(() => {});
+          // Auto-baixa: mark matching financial_receivable as paid
+          reconcileReceivable(supabase, invoice.id, null, actualPaidCents, invoice.description || '', dueDate, paymentId).catch((e: any) => console.error("[Asaas Webhook] reconcileReceivable error:", e));
 
           // Notify payment confirmed (WhatsApp + internal notifications)
           supabase.functions.invoke("notify-payment-confirmed", {
@@ -306,8 +306,8 @@ Deno.serve(async (req) => {
 
                 // Credit Asaas bank account with actual paid amount (minus fee)
                 await creditAsaasBank(supabase, actualPaidCents, `Fatura ${invoice.id} (parcela ${invoice.installment_number}/${invoice.total_installments})${discountCents > 0 ? ` desconto R$${(discountCents/100).toFixed(2)}` : ''}`, invoice.id, invoice.recurring_charge_id);
-                // Auto-reconcile financial_receivables
-                reconcileReceivable(supabase, invoice.id, null, actualPaidCents, invoice.description || '', dueDate).catch(() => {});
+                // Auto-baixa: mark matching financial_receivable as paid
+                reconcileReceivable(supabase, invoice.id, null, actualPaidCents, invoice.description || '', dueDate, paymentId).catch((e: any) => console.error("[Asaas Webhook] reconcileReceivable error:", e));
 
                 supabase.functions.invoke("notify-payment-confirmed", {
                   body: { invoice_id: invoice.id },
@@ -384,7 +384,7 @@ Deno.serve(async (req) => {
           console.log(`[Asaas Webhook] Invoice ${invoice.id} marked paid via invoiceUrl${discountCents > 0 ? ` (discount ${discountCents} cents)` : ''}${interestCents > 0 ? ` (interest ${interestCents} cents)` : ''}`);
 
           await creditAsaasBank(supabase, actualPaidCents, `Fatura ${invoice.id}${invoice.installment_number ? ` (parcela ${invoice.installment_number}/${invoice.total_installments})` : ''}${discountCents > 0 ? ` desconto R$${(discountCents/100).toFixed(2)}` : ''}${interestCents > 0 ? ` juros R$${(interestCents/100).toFixed(2)}` : ''}`, invoice.id, invoice.recurring_charge_id);
-          reconcileReceivable(supabase, invoice.id, null, actualPaidCents, invoice.description || '', dueDate).catch(() => {});
+          reconcileReceivable(supabase, invoice.id, null, actualPaidCents, invoice.description || '', dueDate, paymentId).catch((e: any) => console.error("[Asaas Webhook] reconcileReceivable error:", e));
 
           supabase.functions.invoke("notify-payment-confirmed", {
             body: { invoice_id: invoice.id },
@@ -413,8 +413,15 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Fallback: if no company_invoice was matched but payment is confirmed,
+    // attempt baixa directly on financial_receivables (standalone receivables, manual entries, etc.)
+    if (!matched && newStatus === "paid" && dueDate) {
+      reconcileReceivable(supabase, "", null, paymentValueCents, "", dueDate, paymentId)
+        .catch((e: any) => console.error("[Asaas Webhook] fallback reconcileReceivable error:", e));
+    }
+
     if (!matched) {
-      console.log(`[Asaas Webhook] No match found for payment ${paymentId}`);
+      console.log(`[Asaas Webhook] No company_invoice match found for payment ${paymentId}`);
     }
 
     // Handle service purchase permission management
@@ -568,54 +575,105 @@ async function creditAsaasBank(supabase: any, amountCents: number, description: 
   }
 }
 
-// Auto-reconcile financial_receivables when a company_invoice is paid
-async function reconcileReceivable(supabase: any, invoiceId: string, companyId: string | null, paidAmountCents: number, description: string, dueDate?: string) {
+// Auto-reconcile financial_receivables when a company_invoice is paid.
+// Matching strategy (in order of priority):
+//   1. asaas_payment_id exact match (fastest, dedup-safe)
+//   2. company_id + due_date + amount tolerance (linked invoice path)
+//   3. due_date + amount tolerance with no company_id filter (standalone receivables)
+async function reconcileReceivable(
+  supabase: any,
+  invoiceId: string,
+  companyId: string | null,
+  paidAmountCents: number,
+  description: string,
+  dueDate?: string,
+  asaasPaymentId?: string,
+) {
   try {
+    const paidReais = paidAmountCents / 100;
+    const paidDate = new Date().toISOString().split("T")[0];
+
+    // 1. Dedup: if already reconciled by this exact Asaas payment, skip
+    if (asaasPaymentId) {
+      const { data: existing } = await supabase
+        .from("financial_receivables")
+        .select("id, status")
+        .eq("asaas_payment_id", asaasPaymentId)
+        .limit(1);
+      if (existing?.length) {
+        console.log(`[Asaas Webhook] financial_receivable ${existing[0].id} already linked to Asaas payment ${asaasPaymentId}, skipping`);
+        return;
+      }
+    }
+
+    // Resolve company_id from invoice if not provided
     if (!companyId) {
       const { data: inv } = await supabase
         .from("company_invoices")
         .select("company_id")
         .eq("id", invoiceId)
         .single();
-      companyId = inv?.company_id;
-    }
-    if (!companyId) return;
-
-    let query = supabase
-      .from("financial_receivables")
-      .select("id, amount, status, description")
-      .eq("company_id", companyId)
-      .not("status", "in", '("paid","cancelled")');
-
-    if (dueDate) {
-      query = query.eq("due_date", dueDate);
+      companyId = inv?.company_id ?? null;
     }
 
-    const { data: receivables } = await query.order("due_date", { ascending: true }).limit(5);
-    if (!receivables?.length) return;
+    let match: any = null;
+    const amountTolerance = Math.max(1, paidReais * 0.02); // 2% tolerance for rounding
 
-    const match = receivables.find((r: any) => 
-      description && r.description && (
-        r.description.toLowerCase().includes(description.toLowerCase()) ||
-        description.toLowerCase().includes(r.description.toLowerCase())
-      )
-    ) || (dueDate ? receivables[0] : null);
+    // 2. Try matching with company_id + due_date + amount
+    if (companyId && dueDate) {
+      const { data: rows } = await supabase
+        .from("financial_receivables")
+        .select("id, amount, status, description")
+        .eq("company_id", companyId)
+        .eq("due_date", dueDate)
+        .not("status", "in", '("paid","cancelled")')
+        .order("created_at", { ascending: true })
+        .limit(10);
 
-    if (!match) return;
+      if (rows?.length) {
+        match = rows.find((r: any) => Math.abs(Number(r.amount) - paidReais) <= amountTolerance)
+          ?? rows[0]; // fallback: same company+date
+      }
+    }
 
-    const paidReais = paidAmountCents / 100;
-    const isPartial = paidReais < match.amount;
+    // 3. Fallback: match by due_date + amount only (no company_id filter — standalone receivables)
+    if (!match && dueDate) {
+      const { data: rows } = await supabase
+        .from("financial_receivables")
+        .select("id, amount, status, description")
+        .eq("due_date", dueDate)
+        .not("status", "in", '("paid","cancelled")')
+        .is("asaas_payment_id", null)
+        .order("created_at", { ascending: true })
+        .limit(10);
+
+      if (rows?.length) {
+        // Must be a close amount match when no company_id filter
+        match = rows.find((r: any) => Math.abs(Number(r.amount) - paidReais) <= amountTolerance) ?? null;
+      }
+    }
+
+    if (!match) {
+      console.log(`[Asaas Webhook] No financial_receivable match for invoice ${invoiceId} (amount: ${paidReais}, dueDate: ${dueDate})`);
+      return;
+    }
+
+    const isPartial = paidReais < Number(match.amount) - amountTolerance;
+    const newStatus = isPartial ? "partial" : "paid";
+
+    const updatePayload: any = {
+      status: newStatus,
+      paid_date: paidDate,
+      paid_amount: paidReais,
+    };
+    if (asaasPaymentId) updatePayload.asaas_payment_id = asaasPaymentId;
 
     await supabase
       .from("financial_receivables")
-      .update({
-        status: isPartial ? "partial" : "paid",
-        paid_date: new Date().toISOString().split("T")[0],
-        paid_amount: paidReais,
-      })
+      .update(updatePayload)
       .eq("id", match.id);
 
-    console.log(`[Asaas Webhook] Auto-reconciled financial_receivable ${match.id} -> ${isPartial ? 'partial' : 'paid'}`);
+    console.log(`[Asaas Webhook] Auto-baixa: financial_receivable ${match.id} -> ${newStatus} (asaas: ${asaasPaymentId ?? "n/a"})`);
   } catch (err) {
     console.error("[Asaas Webhook] Error reconciling receivable:", err);
   }
@@ -677,8 +735,8 @@ async function markInvoicesPaid(supabase: any, orders: any[], paymentValueCents:
           paidInvForBank.id,
           paidInvForBank.recurring_charge_id
         );
-        // Auto-reconcile financial_receivables
-        reconcileReceivable(supabase, paidInvForBank.id, null, actualPaidCents, paidInvForBank.description || '', '').catch(() => {});
+        // Auto-baixa: mark matching financial_receivable as paid
+        reconcileReceivable(supabase, paidInvForBank.id, null, actualPaidCents, paidInvForBank.description || '', dueDate, paymentId).catch((e: any) => console.error("[Asaas Webhook] reconcileReceivable error:", e));
       }
 
       // Send WhatsApp payment confirmation (non-blocking)
