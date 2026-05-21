@@ -33,6 +33,7 @@ interface ImportLeadsDialogProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   selectedOriginId?: string | null;
+  defaultPipelineId?: string | null;
 }
 
 interface Pipeline {
@@ -102,7 +103,7 @@ const CRM_FIELDS = [
   { value: "ignore", label: "Ignorar coluna" },
 ];
 
-export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOriginId }: ImportLeadsDialogProps) => {
+export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOriginId, defaultPipelineId }: ImportLeadsDialogProps) => {
   const [step, setStep] = useState<"upload" | "pipeline" | "mapping" | "stage-mapping" | "preview" | "importing">("upload");
   const [file, setFile] = useState<File | null>(null);
   const [csvData, setCsvData] = useState<ParsedLead[]>([]);
@@ -110,7 +111,7 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
-  const [selectedPipeline, setSelectedPipeline] = useState("");
+  const [selectedPipeline, setSelectedPipeline] = useState(defaultPipelineId || "");
   const [defaultStage, setDefaultStage] = useState("");
   const [defaultOwner, setDefaultOwner] = useState("");
   const [columnMappings, setColumnMappings] = useState<ColumnMapping[]>([]);
@@ -146,9 +147,18 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
         .in("role", ["master", "admin", "head_comercial", "closer", "sdr"]),
     ]);
 
-    setPipelines(pipelinesRes.data || []);
+    const pipelinesList = pipelinesRes.data || [];
+    setPipelines(pipelinesList);
     setStages(stagesRes.data || []);
     setStaffList(staffRes.data || []);
+
+    // Pre-select the pipeline the user was viewing (or first available)
+    if (!selectedPipeline) {
+      const preselect = defaultPipelineId && pipelinesList.find(p => p.id === defaultPipelineId)
+        ? defaultPipelineId
+        : pipelinesList[0]?.id || "";
+      if (preselect) setSelectedPipeline(preselect);
+    }
   };
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
