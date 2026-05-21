@@ -146,7 +146,17 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, staffRole, onSe
         const { data, error } = await supabase.functions.invoke("evolution-api", {
           body: { action: "syncGroups", instanceId },
         });
-        if (error) throw new Error(error.message || JSON.stringify(error));
+        if (error) {
+          // Try to extract the actual error body from the edge function response
+          const context = (error as any)?.context;
+          let detail = error.message;
+          try {
+            if (context?.json) detail = JSON.stringify(context.json);
+            else if (typeof context === "string") detail = context;
+          } catch { /* ignore */ }
+          throw new Error(detail);
+        }
+        if (data?.error) throw new Error(data.error);
         if (data?.contactsUpdated) totalUpdated += data.contactsUpdated;
         if (data?.groupsFound) totalFound += data.groupsFound;
       })
