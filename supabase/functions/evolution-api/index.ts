@@ -1945,6 +1945,47 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'debugInstance': {
+        // Diagnostic: returns raw DB data for an instance without external calls
+        const { instanceId } = body;
+        if (!instanceId) return new Response(JSON.stringify({ error: 'instanceId required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+        const { data: dbInst } = await supabaseService
+          .from('whatsapp_instances')
+          .select('id, instance_name, api_url, api_key, provider_type, status')
+          .eq('id', instanceId)
+          .single();
+
+        const { data: allConfigured } = await supabaseService
+          .from('whatsapp_instances')
+          .select('instance_name, api_url, provider_type')
+          .not('api_url', 'is', null);
+
+        const { data: defaultConf } = await supabaseService
+          .from('whatsapp_default_config')
+          .select('setting_key, setting_value')
+          .eq('setting_key', 'default_instance')
+          .maybeSingle();
+
+        const { data: crmConf } = await supabaseService
+          .from('client_crm_whatsapp_config')
+          .select('server_url, api_key')
+          .limit(1)
+          .maybeSingle();
+
+        const resolved = dbInst ? await resolveEvolutionCredentials(dbInst.instance_name) : null;
+
+        return new Response(JSON.stringify({
+          dbInstance: { ...dbInst, api_key: dbInst?.api_key ? '***set***' : null },
+          configuredInstances: (allConfigured || []).map(i => ({ instance_name: i.instance_name, api_url: i.api_url, provider_type: i.provider_type })),
+          defaultConfig: defaultConf,
+          crmConfig: crmConf ? { server_url: crmConf.server_url, api_key: crmConf.api_key ? '***set***' : null } : null,
+          resolved: resolved ? { providerType: resolved.providerType, source: resolved.source, baseUrl: resolved.baseUrl, hasKey: !!resolved.apiKey } : null,
+          globalEvolutionUrl: evolutionBaseUrl,
+          isGlobalStevo: isStevoManagerV2Url(evolutionBaseUrl),
+        }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
       case 'syncGroups': {
         const { instanceId } = body;
 
