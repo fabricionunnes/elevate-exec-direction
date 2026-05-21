@@ -149,10 +149,13 @@ async function fetchGroupsFromInstance(apiBaseUrl: string, apiHeaders: HeadersIn
   let lastData: any = null;
 
   for (const endpoint of endpoints) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000); // 8s timeout per endpoint
     try {
       const response = await fetch(`${apiBaseUrl}${endpoint}`, {
         method: 'GET',
         headers: apiHeaders,
+        signal: controller.signal,
       });
 
       lastRes = response;
@@ -171,6 +174,9 @@ async function fetchGroupsFromInstance(apiBaseUrl: string, apiHeaders: HeadersIn
       console.log(`[evolution-api] fetchGroups failed with endpoint ${endpoint}: ${response.status}`);
     } catch (err) {
       console.error(`[evolution-api] fetchGroups network error for ${endpoint}:`, err);
+      lastData = { error: `Network error: ${String(err)}` };
+    } finally {
+      clearTimeout(timer);
     }
   }
 
@@ -1865,7 +1871,7 @@ Deno.serve(async (req) => {
       case 'fetchGroups': {
         // Fetch all groups from a WhatsApp instance
         const { instanceId } = body;
-        
+
         if (!instanceId) {
           return new Response(
             JSON.stringify({ error: 'instanceId is required' }),
@@ -1873,59 +1879,76 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Get instance credentials from database
-        const supabaseService = createClient(
-          Deno.env.get('SUPABASE_URL')!,
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-        );
-
-        // Look up instance_name from ID, then use resolveEvolutionCredentials for consistent
-        // Manager V2 detection (same logic used by registerWebhook, send, status, etc.)
+        // Fetch all relevant fields directly by ID — avoids resolveEvolutionCredentials
+        // missing instances that have null api_url/api_key in the DB
         const { data: instRow, error: instErr } = await supabaseService
           .from('whatsapp_instances')
-          .select('instance_name')
+          .select('instance_name, api_url, api_key, provider_type')
           .eq('id', instanceId)
           .single();
 
         if (instErr || !instRow) {
           return new Response(
-            JSON.stringify({ error: 'Instance not found' }),
+            JSON.stringify({ error: 'Instance not found', detail: instErr?.message }),
             { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        const fetchGroupsTarget = await resolveEvolutionCredentials(instRow.instance_name);
-        console.log(`[evolution-api] fetchGroups provider=${fetchGroupsTarget.providerType} source=${fetchGroupsTarget.source} instance=${instRow.instance_name}`);
+        // Determine provider type from DB fields (most reliable)
+        const instApiUrl = instRow.api_url ? normalizeBaseUrl(instRow.api_url) : null;
+        const instApiKey = instRow.api_key || null;
+        const instProviderType: 'manager_v2' | 'evolution' =
+          instRow.provider_type === 'manager_v2' || isStevoManagerV2Url(instRow.api_url)
+            ? 'manager_v2'
+            : 'evolution';
 
-        if (fetchGroupsTarget.providerType === 'manager_v2') {
-          const result = await ManagerV2.listGroups({ baseUrl: fetchGroupsTarget.baseUrl, apiKey: fetchGroupsTarget.apiKey });
+        console.log(`[evolution-api] fetchGroups instance=${instRow.instance_name} provider_type=${instRow.provider_type} api_url=${instRow.api_url} → detected=${instProviderType}`);
+
+        if (instProviderType === 'manager_v2') {
+          // For Manager V2: use per-instance URL and API key
+          // If not set in DB, fall back to resolveEvolutionCredentials
+          let mgr2BaseUrl = instApiUrl;
+          let mgr2ApiKey = instApiKey;
+
+          if (!mgr2BaseUrl || !mgr2ApiKey) {
+            console.log('[evolution-api] fetchGroups mgr-v2 missing api_url/api_key in DB, trying resolveEvolutionCredentials...');
+            const resolved = await resolveEvolutionCredentials(instRow.instance_name);
+            mgr2BaseUrl = resolved.baseUrl;
+            mgr2ApiKey = resolved.apiKey;
+          }
+
+          const result = await ManagerV2.listGroups({ baseUrl: mgr2BaseUrl, apiKey: mgr2ApiKey });
           const rawSnippet = JSON.stringify(result.data).substring(0, 500);
-          console.log(`[evolution-api] fetchGroups mgr-v2: status=${result.status} ok=${result.ok} data=${rawSnippet}`);
+          console.log(`[evolution-api] fetchGroups mgr-v2: url=${mgr2BaseUrl} status=${result.status} ok=${result.ok} data=${rawSnippet}`);
+
           if (!result.ok) {
-            // Return 200 so the frontend can read the error body
             return new Response(
-              JSON.stringify({ error: `Manager V2 /group/list falhou: ${result.status}`, detail: result.data, _debug: { provider: 'manager_v2', baseUrl: fetchGroupsTarget.baseUrl, source: fetchGroupsTarget.source } }),
+              JSON.stringify({ error: `Manager V2 /group/list falhou (${result.status})`, detail: result.data, _debug: { url: mgr2BaseUrl, hasKey: !!mgr2ApiKey } }),
               { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
+
           const raw = result.data;
-          // Log a sample group to understand the actual shape Manager V2 returns
           const firstItem = Array.isArray(raw) ? raw[0] : Array.isArray(raw?.data) ? raw.data[0] : null;
           console.log(`[evolution-api] fetchGroups mgr-v2 first item keys: ${firstItem ? Object.keys(firstItem).join(',') : 'none'}`);
+
           const groups = mapFetchedGroups(Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : raw);
           console.log(`[evolution-api] fetchGroups mgr-v2 mapped ${groups.length} groups`);
+
           return new Response(
-            // mapFetchedGroups returns { id, subject, creation } — use those fields
             JSON.stringify(groups.map((g: any) => ({ id: g.id, subject: g.subject, name: g.subject, size: 0 }))),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        // Standard Evolution API
-        const { lastRes, lastData } = await fetchGroupsFromInstance(fetchGroupsTarget.baseUrl, fetchGroupsTarget.headers, instRow.instance_name);
+        // Standard Evolution API — use per-instance creds if available, else global
+        const evoBaseUrl = instApiUrl || evolutionBaseUrl;
+        const evoHeaders = instApiKey ? buildEvolutionHeaders(instApiKey) : evolutionHeaders;
+        console.log(`[evolution-api] fetchGroups evolution url=${evoBaseUrl} instance=${instRow.instance_name}`);
+
+        const { lastRes, lastData } = await fetchGroupsFromInstance(evoBaseUrl, evoHeaders, instRow.instance_name);
         console.log('[evolution-api] fetchGroups response:', JSON.stringify(lastData).substring(0, 500));
 
-        // Always return 200 so frontend can read error body if groups not found
         return new Response(
           JSON.stringify(lastData || { error: 'Failed to fetch groups' }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
