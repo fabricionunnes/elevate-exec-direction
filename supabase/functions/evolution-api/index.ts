@@ -1899,17 +1899,24 @@ Deno.serve(async (req) => {
 
         if (fetchGroupsTarget.providerType === 'manager_v2') {
           const result = await ManagerV2.listGroups({ baseUrl: fetchGroupsTarget.baseUrl, apiKey: fetchGroupsTarget.apiKey });
-          console.log(`[evolution-api] fetchGroups mgr-v2: ${result.status} ${JSON.stringify(result.data).substring(0, 300)}`);
+          const rawSnippet = JSON.stringify(result.data).substring(0, 500);
+          console.log(`[evolution-api] fetchGroups mgr-v2: status=${result.status} ok=${result.ok} data=${rawSnippet}`);
           if (!result.ok) {
+            // Return 200 so the frontend can read the error body
             return new Response(
-              JSON.stringify({ error: `Manager V2 /group/list failed: ${result.status}`, detail: result.data }),
-              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              JSON.stringify({ error: `Manager V2 /group/list falhou: ${result.status}`, detail: result.data, _debug: { provider: 'manager_v2', baseUrl: fetchGroupsTarget.baseUrl, source: fetchGroupsTarget.source } }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
           const raw = result.data;
+          // Log a sample group to understand the actual shape Manager V2 returns
+          const firstItem = Array.isArray(raw) ? raw[0] : Array.isArray(raw?.data) ? raw.data[0] : null;
+          console.log(`[evolution-api] fetchGroups mgr-v2 first item keys: ${firstItem ? Object.keys(firstItem).join(',') : 'none'}`);
           const groups = mapFetchedGroups(Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : raw);
+          console.log(`[evolution-api] fetchGroups mgr-v2 mapped ${groups.length} groups`);
           return new Response(
-            JSON.stringify(groups.map((g: any) => ({ id: `${g.phone}@g.us`, subject: g.name, name: g.name, size: 0 }))),
+            // mapFetchedGroups returns { id, subject, creation } — use those fields
+            JSON.stringify(groups.map((g: any) => ({ id: g.id, subject: g.subject, name: g.subject, size: 0 }))),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
@@ -1918,9 +1925,10 @@ Deno.serve(async (req) => {
         const { lastRes, lastData } = await fetchGroupsFromInstance(fetchGroupsTarget.baseUrl, fetchGroupsTarget.headers, instRow.instance_name);
         console.log('[evolution-api] fetchGroups response:', JSON.stringify(lastData).substring(0, 500));
 
+        // Always return 200 so frontend can read error body if groups not found
         return new Response(
           JSON.stringify(lastData || { error: 'Failed to fetch groups' }),
-          { status: lastRes?.status || 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
