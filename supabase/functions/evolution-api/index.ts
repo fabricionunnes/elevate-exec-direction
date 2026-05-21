@@ -1879,25 +1879,26 @@ Deno.serve(async (req) => {
           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
         );
 
-        const { data: instance, error: instanceError } = await supabaseService
+        // Look up instance_name from ID, then use resolveEvolutionCredentials for consistent
+        // Manager V2 detection (same logic used by registerWebhook, send, status, etc.)
+        const { data: instRow, error: instErr } = await supabaseService
           .from('whatsapp_instances')
-          .select('instance_name, api_url, api_key, provider_type')
+          .select('instance_name')
           .eq('id', instanceId)
           .single();
 
-        if (instanceError || !instance) {
+        if (instErr || !instRow) {
           return new Response(
             JSON.stringify({ error: 'Instance not found' }),
             { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        const apiBaseUrl = instance.api_url ? normalizeBaseUrl(instance.api_url) : evolutionBaseUrl;
-        const isManagerV2Inst = instance.provider_type === 'manager_v2' || isStevoManagerV2Url(instance.api_url);
+        const fetchGroupsTarget = await resolveEvolutionCredentials(instRow.instance_name);
+        console.log(`[evolution-api] fetchGroups provider=${fetchGroupsTarget.providerType} source=${fetchGroupsTarget.source} instance=${instRow.instance_name}`);
 
-        if (isManagerV2Inst) {
-          console.log(`[evolution-api] fetchGroups using Manager V2 for ${instance.instance_name}`);
-          const result = await ManagerV2.listGroups({ baseUrl: apiBaseUrl, apiKey: instance.api_key || '' });
+        if (fetchGroupsTarget.providerType === 'manager_v2') {
+          const result = await ManagerV2.listGroups({ baseUrl: fetchGroupsTarget.baseUrl, apiKey: fetchGroupsTarget.apiKey });
           console.log(`[evolution-api] fetchGroups mgr-v2: ${result.status} ${JSON.stringify(result.data).substring(0, 300)}`);
           if (!result.ok) {
             return new Response(
@@ -1905,7 +1906,6 @@ Deno.serve(async (req) => {
               { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
-          // Normalise and return as array so GroupSelector can parse it
           const raw = result.data;
           const groups = mapFetchedGroups(Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : raw);
           return new Response(
@@ -1915,9 +1915,7 @@ Deno.serve(async (req) => {
         }
 
         // Standard Evolution API
-        const apiHeaders = instance.api_key ? buildEvolutionHeaders(instance.api_key) : evolutionHeaders;
-        console.log(`[evolution-api] fetchGroups using Evolution for ${instance.instance_name}`);
-        const { lastRes, lastData } = await fetchGroupsFromInstance(apiBaseUrl, apiHeaders, instance.instance_name);
+        const { lastRes, lastData } = await fetchGroupsFromInstance(fetchGroupsTarget.baseUrl, fetchGroupsTarget.headers, instRow.instance_name);
         console.log('[evolution-api] fetchGroups response:', JSON.stringify(lastData).substring(0, 500));
 
         return new Response(
@@ -1944,40 +1942,35 @@ Deno.serve(async (req) => {
           );
         }
 
-        const { data: instance, error: instanceError } = await supabaseService
+        const { data: syncInstRow, error: syncInstErr } = await supabaseService
           .from('whatsapp_instances')
-          .select('instance_name, api_url, api_key, provider_type')
+          .select('instance_name')
           .eq('id', instanceId)
           .single();
 
-        if (instanceError || !instance) {
+        if (syncInstErr || !syncInstRow) {
           return new Response(
             JSON.stringify({ error: 'Instance not found' }),
             { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        const apiBaseUrl = instance.api_url ? normalizeBaseUrl(instance.api_url) : evolutionBaseUrl;
-        const isManagerV2Instance = instance.provider_type === 'manager_v2' || isStevoManagerV2Url(instance.api_url);
+        const syncTarget = await resolveEvolutionCredentials(syncInstRow.instance_name);
+        console.log(`[evolution-api] syncGroups provider=${syncTarget.providerType} source=${syncTarget.source} instance=${syncInstRow.instance_name}`);
 
         let groupsPayload: any = null;
         let fetchError: string | null = null;
 
-        if (isManagerV2Instance) {
-          // Manager V2: GET /group/list (no instance name in path, instance URL is per-instance)
-          console.log(`[evolution-api] syncGroups using Manager V2 for ${instance.instance_name}`);
-          const result = await ManagerV2.listGroups({ baseUrl: apiBaseUrl, apiKey: instance.api_key || '' });
+        if (syncTarget.providerType === 'manager_v2') {
+          const result = await ManagerV2.listGroups({ baseUrl: syncTarget.baseUrl, apiKey: syncTarget.apiKey });
           if (!result.ok) {
             fetchError = `Manager V2 /group/list failed: ${result.status} ${JSON.stringify(result.data).substring(0, 200)}`;
           } else {
-            // Manager V2 may return { data: [...] } or just [...]
             const raw = result.data;
             groupsPayload = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : raw;
           }
         } else {
-          // Standard Evolution API
-          const apiHeaders = instance.api_key ? buildEvolutionHeaders(instance.api_key) : evolutionHeaders;
-          const { lastRes, lastData } = await fetchGroupsFromInstance(apiBaseUrl, apiHeaders, instance.instance_name);
+          const { lastRes, lastData } = await fetchGroupsFromInstance(syncTarget.baseUrl, syncTarget.headers, syncInstRow.instance_name);
           if (!lastRes?.ok) {
             fetchError = `Evolution API failed: ${lastRes?.status} ${JSON.stringify(lastData).substring(0, 200)}`;
           } else {
