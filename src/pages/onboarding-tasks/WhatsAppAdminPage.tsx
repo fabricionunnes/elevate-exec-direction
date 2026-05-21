@@ -9,24 +9,25 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  ArrowLeft, 
-  Plus, 
-  RefreshCw, 
-  Send, 
-  Trash2, 
-  QrCode, 
-  Phone, 
-  CheckCircle2, 
-  XCircle, 
-  Loader2, 
+import {
+  ArrowLeft,
+  Plus,
+  RefreshCw,
+  Send,
+  Trash2,
+  QrCode,
+  Phone,
+  CheckCircle2,
+  XCircle,
+  Loader2,
   MessageSquare,
   Star,
   History,
   LogOut,
   RotateCcw,
   Download,
-  Users
+  Users,
+  Settings,
 } from "lucide-react";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { WhatsAppQRCodeModal } from "@/components/onboarding-tasks/WhatsAppQRCodeModal";
@@ -34,6 +35,7 @@ import { WhatsAppMessageDialog } from "@/components/onboarding-tasks/WhatsAppMes
 import { ImportFromStevoModal } from "@/components/crm/service-config/ImportFromStevoModal";
 import { BulkMessageCampaign } from "@/components/whatsapp/BulkMessageCampaign";
 import { InstanceUsersDialog } from "@/components/whatsapp/InstanceUsersDialog";
+import { EditInstanceCredentialsDialog } from "@/components/whatsapp/EditInstanceCredentialsDialog";
 import { formatPhone } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -107,6 +109,7 @@ const WhatsAppAdminPage = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [usersDialogInstance, setUsersDialogInstance] = useState<WhatsAppInstance | null>(null);
+  const [credentialsInstance, setCredentialsInstance] = useState<WhatsAppInstance | null>(null);
 
   // Auth state listener - redirect to login if session expires
   useEffect(() => {
@@ -917,6 +920,18 @@ const WhatsAppAdminPage = () => {
                             </Button>
                           )}
                           
+                          {/* Edit Credentials - Only for Master */}
+                          {currentUserRole === "master" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCredentialsInstance(instance)}
+                              title="Configurar URL e API Key da instância"
+                            >
+                              <Settings className="h-4 w-4" />
+                            </Button>
+                          )}
+
                           {/* Manage Users - Only for Master */}
                           {currentUserRole === "master" && (
                             <Button
@@ -1118,6 +1133,17 @@ const WhatsAppAdminPage = () => {
           instanceId={usersDialogInstance.id}
           instanceName={usersDialogInstance.display_name}
           onAccessUpdated={fetchInstances}
+        />
+      )}
+
+      {/* Edit Credentials Dialog */}
+      {credentialsInstance && (
+        <EditInstanceCredentialsDialog
+          open={!!credentialsInstance}
+          onOpenChange={(open) => !open && setCredentialsInstance(null)}
+          instanceId={credentialsInstance.id}
+          instanceDisplayName={credentialsInstance.display_name}
+          onSaved={fetchInstances}
         />
       )}
     </div>
