@@ -1025,6 +1025,49 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'registerWebhook': {
+        // Re-register webhook URL on an already-connected instance (no QR needed)
+        const instanceName = url.searchParams.get('instanceName') || body.instanceName;
+        if (!instanceName) {
+          return new Response(
+            JSON.stringify({ error: 'instanceName is required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/evolution-webhook`;
+        const target = await resolveEvolutionCredentials(instanceName);
+
+        if (target.providerType === 'manager_v2') {
+          const result = await ManagerV2.connect(
+            { baseUrl: target.baseUrl, apiKey: target.apiKey },
+            { webhookUrl, subscribe: ['Message', 'Connected', 'Disconnected', 'QR'], immediate: true }
+          );
+          console.log(`[evolution-api] registerWebhook mgr-v2 result: ${result.status} ${JSON.stringify(result.data).substring(0, 200)}`);
+          return new Response(
+            JSON.stringify({ success: result.ok, webhookUrl, status: result.status, data: result.data }),
+            { status: result.ok ? 200 : result.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Evolution API: set webhook via /webhook/set/{instance}
+        const webhookPayload = {
+          url: webhookUrl,
+          enabled: true,
+          events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE', 'QRCODE_UPDATED'],
+          webhookByEvents: false,
+          webhookBase64: false,
+        };
+        const { res: webhookRes, json: webhookJson } = await fetchEvolutionRaw(
+          `${target.baseUrl}/webhook/set/${encodeURIComponent(instanceName)}`,
+          { method: 'POST', headers: target.headers, body: JSON.stringify(webhookPayload) }
+        );
+        console.log(`[evolution-api] registerWebhook evolution result: ${webhookRes.status} ${JSON.stringify(webhookJson).substring(0, 200)}`);
+        return new Response(
+          JSON.stringify({ success: webhookRes.ok, webhookUrl, data: webhookJson }),
+          { status: webhookRes.ok ? 200 : webhookRes.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'connect':
       case 'qr-code': {
         // Generate and return QR/pairing payload for WhatsApp connection.

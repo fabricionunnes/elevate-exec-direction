@@ -432,6 +432,22 @@ const WhatsAppAdminPage = () => {
     }
   };
 
+  const handleRegisterWebhook = async (instance: WhatsAppInstance) => {
+    setActionLoading(instance.id);
+    try {
+      const result = await callEvolutionAPI("registerWebhook", { instanceName: instance.instance_name });
+      if (result?.success === false || result?.error) {
+        toast.error(`Erro ao registrar webhook: ${result?.error || JSON.stringify(result?.data)}`);
+      } else {
+        toast.success("Webhook registrado com sucesso — mensagens devem chegar em instantes");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao registrar webhook");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleCheckStatus = async (instance: WhatsAppInstance) => {
     setActionLoading(instance.id);
     try {
@@ -842,6 +858,23 @@ const WhatsAppAdminPage = () => {
                               <RefreshCw className="h-4 w-4" />
                             )}
                           </Button>
+
+                          {instance.status === "connected" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRegisterWebhook(instance)}
+                              disabled={actionLoading === instance.id}
+                              title="Registrar Webhook (corrige mensagens não chegando)"
+                              className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                            >
+                              {actionLoading === instance.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <span className="text-xs font-medium">Webhook</span>
+                              )}
+                            </Button>
+                          )}
                           
                           {(instance.status === "connecting" || instance.status === "connected") && (
                             <Button

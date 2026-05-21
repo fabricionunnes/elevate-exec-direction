@@ -256,10 +256,10 @@ export const WonNotificationSettings = () => {
                           </span>
                         )}
                         <Badge
-                          variant={instance.status === "open" ? "default" : "secondary"}
+                          variant={instance.status === "connected" ? "default" : "secondary"}
                           className="text-[10px] px-1.5"
                         >
-                          {instance.status === "open" ? "Conectada" : "Desconectada"}
+                          {instance.status === "connected" ? "Conectada" : "Desconectada"}
                         </Badge>
                       </div>
                     </SelectItem>
@@ -267,7 +267,7 @@ export const WonNotificationSettings = () => {
                 </SelectContent>
               </Select>
 
-              {selectedInstance && selectedInstance.status !== "open" && (
+              {selectedInstance && selectedInstance.status !== "connected" && (
                 <div className="mt-3 flex items-center gap-2 text-sm text-amber-600">
                   <AlertCircle className="h-4 w-4" />
                   Esta instância não está conectada. As notificações podem falhar.
