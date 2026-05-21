@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Copy, ExternalLink, Link2, ArrowLeft, Filter, KeyRound, UserCheck, UserX } from "lucide-react";
+import { Plus, Copy, ExternalLink, Link2, ArrowLeft, Filter, KeyRound, UserCheck, UserX, Users } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
@@ -92,6 +92,7 @@ export const ClientSalesLinksPanel = ({
   const [resetPasswordDialog, setResetPasswordDialog] = useState<{ open: boolean; salesperson: Salesperson | null }>({ open: false, salesperson: null });
   const [newPassword, setNewPassword] = useState("");
   const [loginActionLoading, setLoginActionLoading] = useState<string | null>(null);
+  const [bulkCreatingLogins, setBulkCreatingLogins] = useState(false);
 
   // Filters
   const [filterUnit, setFilterUnit] = useState("all");
@@ -288,6 +289,41 @@ export const ClientSalesLinksPanel = ({
     }
   };
 
+  const handleBulkCreateLogins = async () => {
+    const pending = salespeople.filter((sp) => sp.email && !sp.has_login);
+    if (pending.length === 0) return;
+
+    setBulkCreatingLogins(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+      if (!token) throw new Error("Sessão expirada");
+
+      let created = 0;
+      let failed = 0;
+      for (const sp of pending) {
+        try {
+          const result = await callSystemApi(token, "salespeople", "create_login", { password: "123456" }, sp.id);
+          if (result?.error) failed++;
+          else created++;
+        } catch {
+          failed++;
+        }
+      }
+
+      if (failed === 0) {
+        toast.success(`${created} login${created > 1 ? "s criados" : " criado"} com sucesso! Senha padrão: 123456`);
+      } else {
+        toast.warning(`${created} login${created > 1 ? "s criados" : " criado"}, ${failed} com erro`);
+      }
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao criar logins");
+    } finally {
+      setBulkCreatingLogins(false);
+    }
+  };
+
   const handleResetPassword = async () => {
     if (!resetPasswordDialog.salesperson || !newPassword.trim()) return;
     if (newPassword.length < 6) {
@@ -342,12 +378,25 @@ export const ClientSalesLinksPanel = ({
             </p>
           </div>
         </div>
-        {canAddSalespeople && (
-          <Button onClick={() => setShowAddDialog(true)} size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Vendedor
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {salespeople.some((sp) => sp.email && !sp.has_login) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkCreateLogins}
+              disabled={bulkCreatingLogins}
+            >
+              <Users className="h-4 w-4 mr-2" />
+              {bulkCreatingLogins ? "Criando logins..." : "Criar Logins"}
+            </Button>
+          )}
+          {canAddSalespeople && (
+            <Button onClick={() => setShowAddDialog(true)} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Vendedor
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
