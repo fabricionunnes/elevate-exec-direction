@@ -75,26 +75,26 @@ export const GroupSelector = ({
       }
 
       let groupsList: WhatsAppGroup[] = [];
-      
+
+      const mapGroup = (g: any): WhatsAppGroup => ({
+        id: g.id || g.ID || g.jid || g.JID || g.groupId || "",
+        subject: g.subject || g.Subject || g.name || g.Name || g.groupName || "Grupo sem nome",
+        size: g.size || g.Size || g.participants?.length || 0,
+        owner: g.owner || g.Owner || g.subjectOwner,
+        creation: g.creation || g.Creation,
+      });
+
       if (Array.isArray(data)) {
-        groupsList = data.map((g: any) => ({
-          id: g.id || g.jid || g.groupId,
-          subject: g.subject || g.name || g.groupName || "Grupo sem nome",
-          size: g.size || g.participants?.length || 0,
-          owner: g.owner || g.subjectOwner,
-          creation: g.creation,
-        }));
+        groupsList = data.map(mapGroup);
       } else if (data?.groups && Array.isArray(data.groups)) {
-        groupsList = data.groups.map((g: any) => ({
-          id: g.id || g.jid || g.groupId,
-          subject: g.subject || g.name || g.groupName || "Grupo sem nome",
-          size: g.size || g.participants?.length || 0,
-          owner: g.owner || g.subjectOwner,
-          creation: g.creation,
-        }));
+        groupsList = data.groups.map(mapGroup);
+      } else if (data?.data && Array.isArray(data.data)) {
+        groupsList = data.data.map(mapGroup);
       } else if (data?.error) {
         throw new Error(data.error);
       }
+
+      groupsList = groupsList.filter((g) => g.id);
 
       setGroups(groupsList);
       

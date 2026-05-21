@@ -1881,7 +1881,7 @@ Deno.serve(async (req) => {
 
         const { data: instance, error: instanceError } = await supabaseService
           .from('whatsapp_instances')
-          .select('instance_name, api_url, api_key')
+          .select('instance_name, api_url, api_key, provider_type')
           .eq('id', instanceId)
           .single();
 
@@ -1892,14 +1892,32 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Use instance-specific API credentials if available
         const apiBaseUrl = instance.api_url ? normalizeBaseUrl(instance.api_url) : evolutionBaseUrl;
+        const isManagerV2Inst = instance.provider_type === 'manager_v2' || isStevoManagerV2Url(instance.api_url);
+
+        if (isManagerV2Inst) {
+          console.log(`[evolution-api] fetchGroups using Manager V2 for ${instance.instance_name}`);
+          const result = await ManagerV2.listGroups({ baseUrl: apiBaseUrl, apiKey: instance.api_key || '' });
+          console.log(`[evolution-api] fetchGroups mgr-v2: ${result.status} ${JSON.stringify(result.data).substring(0, 300)}`);
+          if (!result.ok) {
+            return new Response(
+              JSON.stringify({ error: `Manager V2 /group/list failed: ${result.status}`, detail: result.data }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          // Normalise and return as array so GroupSelector can parse it
+          const raw = result.data;
+          const groups = mapFetchedGroups(Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : raw);
+          return new Response(
+            JSON.stringify(groups.map((g: any) => ({ id: `${g.phone}@g.us`, subject: g.name, name: g.name, size: 0 }))),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Standard Evolution API
         const apiHeaders = instance.api_key ? buildEvolutionHeaders(instance.api_key) : evolutionHeaders;
-
-        console.log(`[evolution-api] fetchGroups using ${instance.api_url ? 'custom' : 'global'} credentials for instance ${instance.instance_name}`);
-
+        console.log(`[evolution-api] fetchGroups using Evolution for ${instance.instance_name}`);
         const { lastRes, lastData } = await fetchGroupsFromInstance(apiBaseUrl, apiHeaders, instance.instance_name);
-
         console.log('[evolution-api] fetchGroups response:', JSON.stringify(lastData).substring(0, 500));
 
         return new Response(
