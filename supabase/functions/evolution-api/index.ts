@@ -1949,6 +1949,35 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'setInstanceCredentials': {
+        // Admin-only: update api_url, api_key, provider_type for an existing instance
+        const { instanceId, apiUrl: newApiUrl, apiKey: newApiKey, providerType: newProviderType } = body;
+        if (!instanceId || !newApiUrl || !newApiKey) {
+          return new Response(
+            JSON.stringify({ error: 'instanceId, apiUrl and apiKey are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        const { error: updateErr } = await supabaseService
+          .from('whatsapp_instances')
+          .update({
+            api_url: String(newApiUrl).replace(/\/+$/, ''),
+            api_key: String(newApiKey),
+            provider_type: newProviderType || 'manager_v2',
+          })
+          .eq('id', instanceId);
+        if (updateErr) {
+          return new Response(
+            JSON.stringify({ error: 'DB update failed', detail: updateErr.message }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response(
+          JSON.stringify({ success: true, message: 'Credentials updated' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'debugInstance': {
         // Diagnostic: returns raw DB data for an instance without external calls
         const { instanceId } = body;
