@@ -419,11 +419,15 @@ Deno.serve(async (req) => {
     );
 
     const resolveEvolutionCredentials = async (instanceName?: string) => {
+      // Detect if the global EVOLUTION_API_URL is a Manager V2 (stevo.chat) URL
+      const globalProviderType: 'evolution' | 'manager_v2' = isManagerV2Url(evolutionBaseUrl)
+        ? 'manager_v2'
+        : 'evolution';
       const defaultTarget = {
         baseUrl: evolutionBaseUrl,
         headers: evolutionHeaders,
         apiKey: EVOLUTION_API_KEY,
-        providerType: 'evolution' as 'evolution' | 'manager_v2',
+        providerType: globalProviderType,
         source: 'global-env',
       };
 

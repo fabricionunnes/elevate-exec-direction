@@ -26,8 +26,8 @@ export function isManagerV2Url(input?: string | null): boolean {
   try {
     const cleaned = String(input || '').replace(/\/+$/g, '');
     const hostname = new URL(cleaned).hostname.toLowerCase();
-    // Patterns: sm-tucano.stevo.chat, smv2-1.stevo.chat, sm-anything.stevo.chat
-    return /^sm[v0-9-]/.test(hostname) && hostname.endsWith('.stevo.chat');
+    // Any *.stevo.chat host is Manager V2 — covers sm-*.stevo.chat AND evo*.stevo.chat
+    return hostname.endsWith('.stevo.chat');
   } catch {
     return false;
   }
