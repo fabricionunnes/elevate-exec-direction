@@ -1043,6 +1043,27 @@ Deno.serve(async (req) => {
             { webhookUrl, subscribe: ['Message', 'Connected', 'Disconnected', 'QR'], immediate: true }
           );
           console.log(`[evolution-api] registerWebhook mgr-v2 result: ${result.status} ${JSON.stringify(result.data).substring(0, 200)}`);
+
+          // After (re)connect, check live status and update DB so UI reflects real state
+          try {
+            const statusResult = await ManagerV2.status({ baseUrl: target.baseUrl, apiKey: target.apiKey });
+            const normalized = normalizeManagerV2Status(statusResult.data);
+            const isConnected = normalized?.instance?.state === 'open';
+            const { data: inst } = await supabaseService
+              .from('whatsapp_instances')
+              .select('id')
+              .eq('instance_name', instanceName)
+              .maybeSingle();
+            if (inst) {
+              await supabaseService
+                .from('whatsapp_instances')
+                .update({ status: isConnected ? 'connected' : 'connecting' })
+                .eq('id', inst.id);
+            }
+          } catch (e) {
+            console.log('[evolution-api] registerWebhook status check failed (non-critical):', e);
+          }
+
           return new Response(
             JSON.stringify({ success: result.ok, webhookUrl, status: result.status, data: result.data }),
             { status: result.ok ? 200 : result.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

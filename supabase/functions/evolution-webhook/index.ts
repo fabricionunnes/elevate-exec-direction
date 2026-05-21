@@ -669,10 +669,10 @@ async function handleMessageStatusUpdate(supabase: any, data: any) {
 async function handleConnectionUpdate(supabase: any, instanceId: string, instanceName: string, data: any) {
   console.log('Processing connection update:', JSON.stringify(data, null, 2));
 
-  const state = data.state;
-  
+  const state = String(data.state || '').toLowerCase();
+
   let status = 'disconnected';
-  if (state === 'open') {
+  if (state === 'open' || state === 'connected') {
     status = 'connected';
   } else if (state === 'connecting') {
     status = 'connecting';
