@@ -431,6 +431,33 @@ Deno.serve(async (req) => {
         source: 'global-env',
       };
 
+      // PRIORITY OVERRIDE: known per-instance Manager V2 credentials not yet in DB.
+      // These take precedence over all other lookups so they're always used.
+      const KNOWN_INSTANCE_CREDENTIALS: Array<{ instanceName: string; apiUrl: string; apiKey: string }> = [
+        {
+          instanceName: 'fabricio-nunnes',
+          apiUrl: 'https://sm-linguado.stevo.chat',
+          apiKey: '1779364298398RzjL6rRHAa94HxVK',
+        },
+      ];
+      if (instanceName) {
+        const normalizedQuery = normalizeInstanceKey(instanceName);
+        const knownCred = KNOWN_INSTANCE_CREDENTIALS.find(
+          (k) => normalizeInstanceKey(k.instanceName) === normalizedQuery
+        );
+        if (knownCred) {
+          console.log(`[evolution-api] KNOWN_OVERRIDE: using hardcoded Manager V2 creds for ${instanceName}`);
+          const cleanUrl = normalizeBaseUrl(knownCred.apiUrl);
+          return {
+            baseUrl: cleanUrl,
+            headers: buildEvolutionHeaders(knownCred.apiKey),
+            apiKey: knownCred.apiKey,
+            providerType: 'manager_v2' as const,
+            source: `known-override:${instanceName}`,
+          };
+        }
+      }
+
       try {
         const { data: configuredInstances, error: configuredInstancesError } = await supabaseService
           .from('whatsapp_instances')
@@ -508,35 +535,6 @@ Deno.serve(async (req) => {
         }
       } catch (error) {
         console.error('[evolution-api] Failed to resolve custom Evolution credentials:', error);
-      }
-
-      // Last-resort: known per-instance Manager V2 credentials that haven't been
-      // persisted to the DB yet. Add entries here as { instanceName, apiUrl, apiKey }.
-      // Once saved via the UI (gear icon in WhatsApp admin), these become redundant.
-      const KNOWN_INSTANCE_CREDENTIALS: Array<{ instanceName: string; apiUrl: string; apiKey: string }> = [
-        {
-          instanceName: 'fabricio-nunnes',
-          apiUrl: 'https://sm-linguado.stevo.chat',
-          apiKey: '1779364298398RzjL6rRHAa94HxVK',
-        },
-      ];
-
-      if (instanceName) {
-        const normalized = normalizeInstanceKey(instanceName);
-        const known = KNOWN_INSTANCE_CREDENTIALS.find(
-          (k) => normalizeInstanceKey(k.instanceName) === normalized
-        );
-        if (known) {
-          console.log(`[evolution-api] Using known fallback credentials for ${instanceName}`);
-          const cleanUrl = normalizeBaseUrl(known.apiUrl);
-          return {
-            baseUrl: cleanUrl,
-            headers: buildEvolutionHeaders(known.apiKey),
-            apiKey: known.apiKey,
-            providerType: 'manager_v2' as const,
-            source: `known-fallback:${instanceName}`,
-          };
-        }
       }
 
       return defaultTarget;
