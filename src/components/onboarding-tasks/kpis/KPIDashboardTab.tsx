@@ -133,6 +133,8 @@ export const KPIDashboardTab = ({
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [allSalespeopleForRanking, setAllSalespeopleForRanking] = useState<Salesperson[]>([]);
+  const [allEntriesForRanking, setAllEntriesForRanking] = useState<Entry[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
@@ -201,9 +203,9 @@ export const KPIDashboardTab = ({
 
       const [kpisRes, salespeopleRes, entriesRes, unitsRes, teamsRes, sectorsRes, companyRes, monthlyTargetsRes, sectorTeamsRes, teamUnitsRes, daySettingsRes] = await Promise.all([
         supabase.from("company_kpis").select("*").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
-        salespersonId 
+        salespersonId
           ? supabase.from("company_salespeople").select("*").eq("id", salespersonId)
-          : supabase.from("company_salespeople").select("*").eq("company_id", companyId).order("name"),
+          : supabase.from("company_salespeople").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         entriesQuery,
         supabase.from("company_units").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
         supabase.from("company_teams").select("*").eq("company_id", companyId).eq("is_active", true).order("name"),
@@ -274,6 +276,16 @@ export const KPIDashboardTab = ({
       );
       setSalespeople(visibleSalespeople);
       setEntries(entriesData);
+
+      // For vendedor view: fetch all company data to compute real ranking position
+      if (isClientView && salespersonId) {
+        const [allSpRes, allEntriesRes] = await Promise.all([
+          supabase.from("company_salespeople").select("id, name, is_active").eq("company_id", companyId).eq("is_active", true),
+          supabase.from("kpi_entries").select("kpi_id, salesperson_id, value").eq("company_id", companyId).gte("entry_date", dateRange.start).lte("entry_date", dateRange.end),
+        ]);
+        setAllSalespeopleForRanking(allSpRes.data || []);
+        setAllEntriesForRanking(allEntriesRes.data || []);
+      }
       setUnits(unitsRes.data || []);
       setTeams(teamsRes.data || []);
       setSectors(sectorsRes.data || []);
@@ -1106,6 +1118,26 @@ export const KPIDashboardTab = ({
       .slice(0, 10);
   };
 
+  // Calculate ranking position for current salesperson (used in isClientView)
+  const getMyRankingPosition = (forKpiId?: string): number | null => {
+    if (!salespersonId || allSalespeopleForRanking.length === 0) return null;
+    const rankingMap: Record<string, number> = {};
+    allSalespeopleForRanking.forEach(sp => { rankingMap[sp.id] = 0; });
+    allEntriesForRanking.forEach(entry => {
+      if (forKpiId) {
+        if (entry.kpi_id !== forKpiId) return;
+      } else if (selectedKpi !== "all" && entry.kpi_id !== selectedKpi) {
+        return;
+      }
+      if (rankingMap[entry.salesperson_id] !== undefined) {
+        rankingMap[entry.salesperson_id] += entry.value;
+      }
+    });
+    const sorted = Object.entries(rankingMap).sort((a, b) => b[1] - a[1]);
+    const pos = sorted.findIndex(([id]) => id === salespersonId);
+    return pos >= 0 ? pos + 1 : null;
+  };
+
   // Calculate derived metrics (conversion rate, average ticket, etc.)
   const getCalculatedMetrics = () => {
     const filteredEntries = getFilteredEntries();
@@ -1563,7 +1595,7 @@ export const KPIDashboardTab = ({
       </Card>
 
       {/* Norte Estratégico (NSM) — em destaque, acima da Projeção do Mês */}
-      <NorthStarMetricCard companyId={companyId} />
+      {!isClientView && <NorthStarMetricCard companyId={companyId} />}
 
       {/* Monthly Projection Card - Shows individual main goals when there are multiple */}
       {(projection.target > 0 || projection.hasDistinctCategories || projection.hasMultipleMainGoals) && (
@@ -1896,7 +1928,7 @@ export const KPIDashboardTab = ({
       />
 
       {/* Salespeople Comparison Table */}
-      {hasMultipleMainGoalsForCharts ? (
+      {!isClientView && (hasMultipleMainGoalsForCharts ? (
         mainGoalKpisForCharts.map((kpi) => (
           <SalespeopleComparisonTable
             key={`comparison-${kpi.id}`}
@@ -1929,7 +1961,7 @@ export const KPIDashboardTab = ({
           selectedSector={selectedSector}
           selectedSalesperson={selectedSalesperson}
         />
-      )}
+      ))}
 
       {/* Performance Comparison Card - Compare by units, sectors, teams, or salespeople */}
       {(teams.length > 1 || units.length > 1 || sectors.length > 1 || salespeople.length > 1) && (
@@ -2614,7 +2646,21 @@ export const KPIDashboardTab = ({
                     </div>
                   </CardHeader>
                   <CardContent className="relative">
-                    {kpiRankingData.length > 0 && kpiRankingData.some(r => r.total > 0) ? (
+                    {isClientView ? (
+                      (() => {
+                        const pos = getMyRankingPosition(kpi.id);
+                        return pos !== null ? (
+                          <div className="flex flex-col items-center justify-center h-[300px] gap-2">
+                            <div className="text-7xl font-bold text-primary leading-none">{pos}º</div>
+                            <p className="text-muted-foreground text-sm">sua posição no ranking</p>
+                          </div>
+                        ) : (
+                          <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                            Nenhum dado para o período selecionado
+                          </div>
+                        );
+                      })()
+                    ) : kpiRankingData.length > 0 && kpiRankingData.some(r => r.total > 0) ? (
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={kpiRankingData} layout="vertical">
                           <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
@@ -2688,13 +2734,27 @@ export const KPIDashboardTab = ({
             </div>
           </CardHeader>
           <CardContent className="relative">
-            {rankingData.length > 0 && rankingData.some(r => r.total > 0) ? (
+            {isClientView ? (
+              (() => {
+                const pos = getMyRankingPosition();
+                return pos !== null ? (
+                  <div className="flex flex-col items-center justify-center h-[300px] gap-2">
+                    <div className="text-7xl font-bold text-primary leading-none">{pos}º</div>
+                    <p className="text-muted-foreground text-sm">sua posição no ranking</p>
+                  </div>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    Nenhum dado para o período selecionado
+                  </div>
+                );
+              })()
+            ) : rankingData.length > 0 && rankingData.some(r => r.total > 0) ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={rankingData} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
                   <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
                   <YAxis dataKey="name" type="category" width={100} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: number) => [
                       selectedKpiData ? formatValue(value, selectedKpiData.kpi_type) : value.toLocaleString("pt-BR"),
                       "Total"
