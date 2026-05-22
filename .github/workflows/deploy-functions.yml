@@ -130,3 +130,9 @@ jobs:
         run: supabase functions deploy csat-public --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy onboarding-ai-chat
+        continue-on-error: true
+        run: supabase functions deploy onboarding-ai-chat --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
