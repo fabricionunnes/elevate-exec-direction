@@ -163,7 +163,7 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
         supabase
           .from("whatsapp_instances")
           .select("id, instance_name, status")
-          .eq("status", "connected"),
+          .order("instance_name"),
       ]);
 
       setRules(rulesRes.data || []);
@@ -541,9 +541,20 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
+                    {instances.length === 0 && (
+                      <div className="px-3 py-2 text-sm text-muted-foreground">
+                        Nenhuma instância encontrada
+                      </div>
+                    )}
                     {instances.map((inst) => (
                       <SelectItem key={inst.id} value={inst.id}>
-                        {inst.instance_name}
+                        <span className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${inst.status === "connected" ? "bg-green-500" : "bg-gray-400"}`} />
+                          {inst.instance_name}
+                          {inst.status !== "connected" && (
+                            <span className="text-xs text-muted-foreground">({inst.status})</span>
+                          )}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>

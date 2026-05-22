@@ -200,46 +200,43 @@ Use a tool "rich_video_edit" para retornar os dados.`;
         }],
       tools: [
         {
-          type: "function",
-          function: {
-            name: "rich_video_edit",
-            description: "Return headline, rich overlays and caption style for the video",
-            parameters: {
-              type: "object",
-              properties: {
-                headline: {
-                  type: "string",
-                  description: "Short hook phrase for the first 2 seconds (max 8 words)",
-                },
-                overlays: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      overlay_type: {
-                        type: "string",
-                        enum: ["emoji", "text_highlight", "zoom_cue", "broll_keyword"],
-                      },
-                      content: { type: "string" },
-                      start_time: { type: "number" },
-                      end_time: { type: "number" },
-                      x: { type: "number" },
-                      y: { type: "number" },
+          name: "rich_video_edit",
+          description: "Return headline, rich overlays and caption style for the video",
+          input_schema: {
+            type: "object",
+            properties: {
+              headline: {
+                type: "string",
+                description: "Short hook phrase for the first 2 seconds (max 8 words)",
+              },
+              overlays: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    overlay_type: {
+                      type: "string",
+                      enum: ["emoji", "text_highlight", "zoom_cue", "broll_keyword"],
                     },
-                    required: ["overlay_type", "content", "start_time", "end_time"],
+                    content: { type: "string" },
+                    start_time: { type: "number" },
+                    end_time: { type: "number" },
+                    x: { type: "number" },
+                    y: { type: "number" },
                   },
-                },
-                suggested_style: {
-                  type: "string",
-                  enum: ["default", "hormozi", "captions", "minimal", "bold", "neon"],
+                  required: ["overlay_type", "content", "start_time", "end_time"],
                 },
               },
-              required: ["headline", "overlays", "suggested_style"],
+              suggested_style: {
+                type: "string",
+                enum: ["default", "hormozi", "captions", "minimal", "bold", "neon"],
+              },
             },
+            required: ["headline", "overlays", "suggested_style"],
           },
         },
       ],
-      tool_choice: { type: "function", function: { name: "rich_video_edit" } },
+      tool_choice: { type: "tool", name: "rich_video_edit" },
     }),
   });
 
@@ -263,13 +260,13 @@ Use a tool "rich_video_edit" para retornar os dados.`;
   }
 
   const result = await response.json();
-  const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
+  const toolUse = result.content?.find((c: any) => c.type === "tool_use");
 
-  if (!toolCall?.function?.arguments) {
+  if (!toolUse?.input) {
     return emptyResult;
   }
 
-  const parsed = JSON.parse(toolCall.function.arguments);
+  const parsed = toolUse.input;
   return {
     headline: parsed?.headline ?? "",
     overlays: parsed?.overlays ?? [],

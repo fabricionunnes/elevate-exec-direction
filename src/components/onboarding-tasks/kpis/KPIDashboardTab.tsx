@@ -1297,6 +1297,12 @@ export const KPIDashboardTab = ({
     // Calculate average ticket
     const avgTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
 
+    // Calculate average daily sales
+    const periodStart = new Date(dateRange.start);
+    const periodEnd = new Date(dateRange.end);
+    const periodDays = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const avgDailySales = periodDays > 0 ? totalSales / periodDays : 0;
+
     return {
       totalLeads,
       totalServices,
@@ -1311,6 +1317,8 @@ export const KPIDashboardTab = ({
       overallConversion,
       conversionBaseName: conversionBase?.name || conversionStages[0]?.name,
       avgTicket,
+      avgDailySales,
+      periodDays,
       conversionStages,
       conversionRates,
       hasLeadsData: !!leadsKpi && totalLeads > 0,
@@ -2325,12 +2333,46 @@ export const KPIDashboardTab = ({
       )}
 
       {/* KPI Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {(() => {
+        const salesPatterns = ['venda', 'vendas', 'fechamento', 'fechamentos'];
+        const salesKpiIds = kpis
+          .filter(k => salesPatterns.some(p => k.name.toLowerCase().includes(p)))
+          .map(k => k.id);
+        const filteredForCard = getFilteredEntries();
+        const totalSalesCard = filteredForCard
+          .filter(e => salesKpiIds.includes(e.kpi_id))
+          .reduce((sum, e) => sum + e.value, 0);
+        const periodDaysCard = Math.ceil(
+          (new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / (1000 * 60 * 60 * 24)
+        ) + 1;
+        const avgDailySalesCard = periodDaysCard > 0 ? totalSalesCard / periodDaysCard : 0;
+
+        return (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-blue-500/50 bg-blue-500/5">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Média de Vendas Diárias</CardTitle>
+                <CalendarDays className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">
+                  {avgDailySalesCard.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-xs text-muted-foreground">
+                    {totalSalesCard} vendas · {periodDaysCard} dias{salespersonId ? " · suas vendas" : ""}
+                  </span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2 mt-2">
+                  <div className="h-2 rounded-full bg-blue-500" style={{ width: "100%" }} />
+                </div>
+              </CardContent>
+            </Card>
         {kpis.slice(0, 4).map(kpi => {
           const summary = getKpiSummary(kpi);
           const isOnTrack = summary.percentage >= 100;
           const hasMultipleTargets = kpi.monthly_targets && Object.keys(kpi.monthly_targets).length > 1;
-          
+
           return (
             <Card key={kpi.id}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -2390,7 +2432,9 @@ export const KPIDashboardTab = ({
             </Card>
           );
         })}
-      </div>
+          </div>
+        );
+      })()}
 
       {/* Sales Funnel Chart - Always show */}
       <Card className="relative overflow-hidden border-0 shadow-2xl bg-gradient-to-br from-card via-card to-card">
