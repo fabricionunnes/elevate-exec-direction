@@ -1502,6 +1502,7 @@ const OnboardingProjectPage = () => {
             {/* Tab style helper */}
             {(() => {
               const t = "flex items-center gap-1.5 px-2.5 py-1.5 h-auto text-xs font-medium rounded-md border border-transparent bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary/20 whitespace-nowrap transition-all shadow-none";
+              const g = "w-full text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40 pt-2 pb-0.5 select-none";
               return (
                 <TabsList className="h-auto w-full flex flex-wrap justify-start gap-1.5 bg-transparent p-0">
                   {/* ── Principal ── */}
@@ -1511,9 +1512,8 @@ const OnboardingProjectPage = () => {
                   <TabsTrigger value="tasks" className={t}><CheckCircle2 className="h-3.5 w-3.5 shrink-0" />Jornada</TabsTrigger>
                   <TabsTrigger value="ai-coach" className={t}><Sparkles className="h-3.5 w-3.5 shrink-0" />IA</TabsTrigger>
 
-                  <span className="self-center w-px h-5 bg-border/50 mx-0.5" />
-
                   {/* ── Relacionamento ── */}
+                  <span className={g}>Relacionamento</span>
                   <TabsTrigger value="nps" className={t}><TrendingUp className="h-3.5 w-3.5 shrink-0" />NPS</TabsTrigger>
                   <TabsTrigger value="csat" className={t}><Star className="h-3.5 w-3.5 shrink-0" />CSAT</TabsTrigger>
                   <TabsTrigger value="assessments" className={t}><Brain className="h-3.5 w-3.5 shrink-0" />Aval.</TabsTrigger>
@@ -1521,18 +1521,16 @@ const OnboardingProjectPage = () => {
                   <TabsTrigger value="support" className={t}><Headphones className="h-3.5 w-3.5 shrink-0" />Suporte</TabsTrigger>
                   <TabsTrigger value="whatsapp" className={t}><MessageSquare className="h-3.5 w-3.5 shrink-0 text-green-500" />Conversas</TabsTrigger>
 
-                  <span className="self-center w-px h-5 bg-border/50 mx-0.5" />
-
                   {/* ── Gestão ── */}
+                  <span className={g}>Gestão</span>
                   <TabsTrigger value="health" className={t}><Heart className="h-3.5 w-3.5 shrink-0" />Saúde</TabsTrigger>
                   <TabsTrigger value="hr" className={t}><Briefcase className="h-3.5 w-3.5 shrink-0" />RH</TabsTrigger>
                   <TabsTrigger value="board" className={t}><Users className="h-3.5 w-3.5 shrink-0" />Board</TabsTrigger>
                   <TabsTrigger value="financial" className={t}><Wallet className="h-3.5 w-3.5 shrink-0" />Financeiro</TabsTrigger>
                   <TabsTrigger value="history" className={t}><Clock className="h-3.5 w-3.5 shrink-0" />Histórico</TabsTrigger>
 
-                  <span className="self-center w-px h-5 bg-border/50 mx-0.5" />
-
                   {/* ── Comercial ── */}
+                  <span className={g}>Comercial</span>
                   {currentUserRole !== "client" && (
                     <TabsTrigger value="commercial_actions" className={t}><Target className="h-3.5 w-3.5 shrink-0" />Ações Comerciais</TabsTrigger>
                   )}
@@ -1540,9 +1538,8 @@ const OnboardingProjectPage = () => {
                   <TabsTrigger value="routine_contract" className={t}><ClipboardList className="h-3.5 w-3.5 shrink-0" />Contrato de Rotina</TabsTrigger>
                   <TabsTrigger value="commercial_director" className={t}><BrainCircuit className="h-3.5 w-3.5 shrink-0" />Diretor Comercial</TabsTrigger>
 
-                  <span className="self-center w-px h-5 bg-border/50 mx-0.5" />
-
                   {/* ── Marketing ── */}
+                  <span className={g}>Marketing</span>
                   <TabsTrigger value="paid_traffic" className={t}><Megaphone className="h-3.5 w-3.5 shrink-0" />Tráfego</TabsTrigger>
                   <TabsTrigger value="access" className={t}><Eye className="h-3.5 w-3.5 shrink-0" />Acessos</TabsTrigger>
                   <TabsTrigger value="instagram" className={t}><Instagram className="h-3.5 w-3.5 shrink-0 text-pink-500" />Instagram</TabsTrigger>
@@ -1550,7 +1547,7 @@ const OnboardingProjectPage = () => {
 
                   {project?.product_name === "UNV Sales Force" && (
                     <>
-                      <span className="self-center w-px h-5 bg-border/50 mx-0.5" />
+                      <span className={g}>Sales Force</span>
                       <TabsTrigger value="sf_commissions" className={t}><DollarSign className="h-3.5 w-3.5 shrink-0" />Comissões</TabsTrigger>
                     </>
                   )}
