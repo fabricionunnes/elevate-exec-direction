@@ -63,6 +63,7 @@ interface DailyGoalCardProps {
   selectedSalesperson: string;
   sectorTeams: SectorTeam[];
   isClientView?: boolean;
+  currentSalespersonRankPosition?: (kpiId: string) => number | null;
 }
 
 function getRemainingDaysInMonth(
@@ -106,6 +107,7 @@ export const DailyGoalCard = ({
   selectedSalesperson,
   sectorTeams,
   isClientView = false,
+  currentSalespersonRankPosition,
 }: DailyGoalCardProps) => {
   const [includeSaturday, setIncludeSaturday] = useState(false);
   const [includeSunday, setIncludeSunday] = useState(false);
@@ -463,7 +465,27 @@ export const DailyGoalCard = ({
                 </motion.div>
               </div>
 
-              {/* Per-salesperson ranking */}
+              {/* Per-salesperson ranking — position badge for vendedor view */}
+              {isClientView && currentSalespersonRankPosition && (() => {
+                const pos = currentSalespersonRankPosition(kpiBlock.kpi.id);
+                return pos !== null ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="flex flex-col items-center justify-center py-4 gap-1"
+                  >
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                      <Trophy className="h-3.5 w-3.5" />
+                      Ranking por Vendedor
+                    </p>
+                    <div className="text-5xl font-bold text-primary leading-none">{pos}º</div>
+                    <p className="text-xs text-muted-foreground mt-1">sua posição no ranking</p>
+                  </motion.div>
+                ) : null;
+              })()}
+
+              {/* Per-salesperson ranking — full list for admin view */}
               {!isClientView && kpiBlock.salespeopleData.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}

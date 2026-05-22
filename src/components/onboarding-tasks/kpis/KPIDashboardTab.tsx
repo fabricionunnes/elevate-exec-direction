@@ -1926,6 +1926,7 @@ export const KPIDashboardTab = ({
         selectedSalesperson={selectedSalesperson}
         sectorTeams={sectorTeams}
         isClientView={isClientView}
+        currentSalespersonRankPosition={isClientView ? getMyRankingPosition : undefined}
       />
 
       {/* Salespeople Comparison Table */}
