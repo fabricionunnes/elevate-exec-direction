@@ -111,6 +111,7 @@ export default function VendedorKPIPage() {
           canDeleteEntries={false}
           canEditSalesHistory={true}
           isClientView={true}
+          isSalespersonView={true}
         />
       </div>
     </div>

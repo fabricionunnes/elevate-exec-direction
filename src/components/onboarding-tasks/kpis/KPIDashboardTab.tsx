@@ -108,6 +108,7 @@ interface KPIDashboardTabProps {
   canEditSalesHistory?: boolean; // Admin, CS, consultant, or client
   salespersonId?: string | null; // Filter all data by this salesperson (for vendedor role)
   isClientView?: boolean;
+  isSalespersonView?: boolean; // true only for the vendedor portal — hides NSM, ranking, comparativo, AI
 }
 
 // Raw monthly targets storage (all scopes: company, unit, salesperson)
@@ -122,13 +123,14 @@ interface MonthlyTarget {
   salesperson_id: string | null;
 }
 
-export const KPIDashboardTab = ({ 
-  companyId, 
-  projectId, 
-  canDeleteEntries = false, 
+export const KPIDashboardTab = ({
+  companyId,
+  projectId,
+  canDeleteEntries = false,
   canEditSalesHistory = false,
   salespersonId,
   isClientView = false,
+  isSalespersonView = false,
 }: KPIDashboardTabProps) => {
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
@@ -278,7 +280,7 @@ export const KPIDashboardTab = ({
       setEntries(entriesData);
 
       // For vendedor view: fetch all company data to compute real ranking position
-      if (isClientView && salespersonId) {
+      if (isSalespersonView && salespersonId) {
         const [allSpRes, allEntriesRes] = await Promise.all([
           supabase.from("company_salespeople").select("id, name, is_active").eq("company_id", companyId).eq("is_active", true),
           supabase.from("kpi_entries").select("kpi_id, salesperson_id, value").eq("company_id", companyId).gte("entry_date", dateRange.start).lte("entry_date", dateRange.end),
@@ -1595,7 +1597,7 @@ export const KPIDashboardTab = ({
       </Card>
 
       {/* Norte Estratégico (NSM) — em destaque, acima da Projeção do Mês */}
-      {!isClientView && <NorthStarMetricCard companyId={companyId} />}
+      {!isSalespersonView && <NorthStarMetricCard companyId={companyId} />}
 
       {/* Monthly Projection Card - Shows individual main goals when there are multiple */}
       {(projection.target > 0 || projection.hasDistinctCategories || projection.hasMultipleMainGoals) && (
@@ -1925,12 +1927,12 @@ export const KPIDashboardTab = ({
         selectedSector={selectedSector}
         selectedSalesperson={selectedSalesperson}
         sectorTeams={sectorTeams}
-        isClientView={isClientView}
-        currentSalespersonRankPosition={isClientView ? getMyRankingPosition : undefined}
+        isClientView={isSalespersonView}
+        currentSalespersonRankPosition={isSalespersonView ? getMyRankingPosition : undefined}
       />
 
       {/* Salespeople Comparison Table */}
-      {!isClientView && (hasMultipleMainGoalsForCharts ? (
+      {!isSalespersonView && (hasMultipleMainGoalsForCharts ? (
         mainGoalKpisForCharts.map((kpi) => (
           <SalespeopleComparisonTable
             key={`comparison-${kpi.id}`}
@@ -2029,7 +2031,7 @@ export const KPIDashboardTab = ({
             selectedSalesperson={selectedSalesperson}
             filterKpiIds={[kpi.id]}
             titleSuffix={kpi.name}
-            isClientView={isClientView}
+            isClientView={isSalespersonView}
           />
         ))
       ) : (
@@ -2047,7 +2049,7 @@ export const KPIDashboardTab = ({
           selectedTeam={selectedTeam}
           selectedSector={selectedSector}
           selectedSalesperson={selectedSalesperson}
-          isClientView={isClientView}
+          isClientView={isSalespersonView}
         />
       )}
 
@@ -2650,7 +2652,7 @@ export const KPIDashboardTab = ({
                     </div>
                   </CardHeader>
                   <CardContent className="relative">
-                    {isClientView ? (
+                    {isSalespersonView ? (
                       (() => {
                         const pos = getMyRankingPosition(kpi.id);
                         return pos !== null ? (
@@ -2738,7 +2740,7 @@ export const KPIDashboardTab = ({
             </div>
           </CardHeader>
           <CardContent className="relative">
-            {isClientView ? (
+            {isSalespersonView ? (
               (() => {
                 const pos = getMyRankingPosition();
                 return pos !== null ? (
