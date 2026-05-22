@@ -37,9 +37,9 @@ Deno.serve(async (req) => {
 
     console.log("Received request for project:", projectId, "company:", companyId);
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     // Initialize Supabase client
@@ -787,65 +787,58 @@ INSTRUÇÕES:
 14. Considere o histórico de ações para entender o engajamento da equipe
 `;
 
-    // Build messages for AI
-    const messages = [
-      { role: "system", content: contextPrompt },
+    // Build messages for Anthropic (system prompt separate, no system role in messages array)
+    const anthropicMessages = [
       ...(history?.map((h: any) => ({ role: h.role, content: h.content })) || []),
       { role: "user", content: message }
     ];
 
-    console.log("Calling Lovable AI Gateway...");
+    console.log("Calling Anthropic API...");
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages,
+        model: "claude-haiku-4-5",
         max_tokens: 8000,
+        system: contextPrompt,
+        messages: anthropicMessages,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI Gateway error:", response.status, errorText);
-      
+      console.error("Anthropic API error:", response.status, errorText);
+
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required. Please add credits." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      throw new Error(`AI Gateway error: ${response.status} - ${errorText}`);
+
+      throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
     }
 
-    // Get response text first to handle empty responses
     const responseText = await response.text();
-    
+
     if (!responseText || responseText.trim() === "") {
-      console.error("AI Gateway returned empty response");
-      throw new Error("AI Gateway returned empty response");
+      throw new Error("Anthropic API returned empty response");
     }
 
     let data;
     try {
       data = JSON.parse(responseText);
     } catch (parseError) {
-      console.error("Failed to parse AI response:", responseText.substring(0, 500));
-      throw new Error("Invalid JSON response from AI Gateway");
+      console.error("Failed to parse Anthropic response:", responseText.substring(0, 500));
+      throw new Error("Invalid JSON response from Anthropic API");
     }
 
-    const aiResponse = data.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua pergunta.";
+    const aiResponse = data.content?.[0]?.text || "Desculpe, não consegui processar sua pergunta.";
 
     console.log("AI response received successfully");
 
