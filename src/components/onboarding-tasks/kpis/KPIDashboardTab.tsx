@@ -1925,6 +1925,7 @@ export const KPIDashboardTab = ({
         selectedSector={selectedSector}
         selectedSalesperson={selectedSalesperson}
         sectorTeams={sectorTeams}
+        isClientView={isClientView}
       />
 
       {/* Salespeople Comparison Table */}

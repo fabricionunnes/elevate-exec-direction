@@ -62,6 +62,7 @@ interface DailyGoalCardProps {
   selectedSector: string;
   selectedSalesperson: string;
   sectorTeams: SectorTeam[];
+  isClientView?: boolean;
 }
 
 function getRemainingDaysInMonth(
@@ -104,6 +105,7 @@ export const DailyGoalCard = ({
   selectedSector,
   selectedSalesperson,
   sectorTeams,
+  isClientView = false,
 }: DailyGoalCardProps) => {
   const [includeSaturday, setIncludeSaturday] = useState(false);
   const [includeSunday, setIncludeSunday] = useState(false);
@@ -462,7 +464,7 @@ export const DailyGoalCard = ({
               </div>
 
               {/* Per-salesperson ranking */}
-              {kpiBlock.salespeopleData.length > 0 && (
+              {!isClientView && kpiBlock.salespeopleData.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
