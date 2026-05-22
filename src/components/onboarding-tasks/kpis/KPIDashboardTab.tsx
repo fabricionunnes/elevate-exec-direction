@@ -1121,23 +1121,68 @@ export const KPIDashboardTab = ({
       .slice(0, 10);
   };
 
-  // Calculate ranking position for current salesperson among all company salespeople
-  // Uses allEntriesForRanking (all company entries) — groups by salesperson_id dynamically
+  // Calculate ranking position for current salesperson by goal achievement percentage
+  // Mirrors DailyGoalCard's sorting logic: percentage desc, then realized value desc for ties
   const getMyRankingPosition = (forKpiId?: string): number | null => {
     if (!salespersonId || allEntriesForRanking.length === 0) return null;
-    const rankingMap: Record<string, number> = {};
+
+    const kpiIdToRank = forKpiId || (selectedKpi !== "all" ? selectedKpi : null);
+
+    // Accumulate realized per salesperson
+    const realizedMap: Record<string, number> = {};
     allEntriesForRanking.forEach(entry => {
-      if (forKpiId) {
-        if (entry.kpi_id !== forKpiId) return;
-      } else if (selectedKpi !== "all" && entry.kpi_id !== selectedKpi) {
-        return;
-      }
-      if (!rankingMap[entry.salesperson_id]) rankingMap[entry.salesperson_id] = 0;
-      rankingMap[entry.salesperson_id] += entry.value;
+      if (kpiIdToRank && entry.kpi_id !== kpiIdToRank) return;
+      if (!realizedMap[entry.salesperson_id]) realizedMap[entry.salesperson_id] = 0;
+      realizedMap[entry.salesperson_id] += entry.value;
     });
-    // Ensure current salesperson appears even with 0 entries
-    if (rankingMap[salespersonId] === undefined) rankingMap[salespersonId] = 0;
-    const sorted = Object.entries(rankingMap).sort((a, b) => b[1] - a[1]);
+    // Ensure current salesperson is always in the map
+    if (realizedMap[salespersonId] === undefined) realizedMap[salespersonId] = 0;
+
+    if (!kpiIdToRank) {
+      // No specific KPI in context — rank by total value
+      const sorted = Object.entries(realizedMap).sort((a, b) => b[1] - a[1]);
+      const pos = sorted.findIndex(([id]) => id === salespersonId);
+      return pos >= 0 ? pos + 1 : null;
+    }
+
+    const spCount = Math.max(Object.keys(realizedMap).length, 1);
+
+    // Calculate goal achievement percentage per salesperson
+    const percentageMap: Record<string, number> = {};
+    Object.entries(realizedMap).forEach(([spId, realized]) => {
+      // 1) Personal target for this salesperson + KPI
+      const personalTargets = allMonthlyTargets.filter(
+        mt => mt.kpi_id === kpiIdToRank && mt.salesperson_id === spId
+      );
+      let target = 0;
+      if (personalTargets.length > 0) {
+        const meta = personalTargets.find(t => t.level_name === "Meta");
+        target = meta?.target_value ?? personalTargets[0].target_value;
+      } else {
+        // 2) Company-level target divided equally
+        const companyTargets = allMonthlyTargets.filter(
+          mt => mt.kpi_id === kpiIdToRank && mt.unit_id === null && mt.team_id === null && mt.salesperson_id === null
+        );
+        if (companyTargets.length > 0) {
+          const meta = companyTargets.find(t => t.level_name === "Meta");
+          target = (meta?.target_value ?? companyTargets[0].target_value) / spCount;
+        } else {
+          // 3) KPI default target
+          const kpi = kpis.find(k => k.id === kpiIdToRank);
+          target = (kpi?.effective_target ?? kpi?.target_value ?? 0) / spCount;
+        }
+      }
+      percentageMap[spId] = target > 0 ? (realized / target) * 100 : 0;
+    });
+
+    // Same sort as DailyGoalCard: % desc; both 0% → realized desc; 0% goes to bottom
+    const sorted = Object.entries(percentageMap).sort((a, b) => {
+      if (a[1] === 0 && b[1] === 0) return (realizedMap[b[0]] || 0) - (realizedMap[a[0]] || 0);
+      if (a[1] === 0) return 1;
+      if (b[1] === 0) return -1;
+      return b[1] - a[1];
+    });
+
     const pos = sorted.findIndex(([id]) => id === salespersonId);
     return pos >= 0 ? pos + 1 : null;
   };
