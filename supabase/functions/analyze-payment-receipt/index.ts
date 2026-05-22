@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,8 +12,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY not configured");
 
     const { media_url, invoices, company_name } = await req.json();
 
@@ -59,17 +59,18 @@ Regras:
 - Se não conseguir ler a imagem ou não encontrar informações, retorne found_payment: false
 - Sempre responda em português`;
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
+        model: "claude-haiku-4-5",
+          max_tokens: 8096,
+        system: systemPrompt,
+          messages: [{
             role: "user",
             content: [
               {
@@ -81,8 +82,7 @@ Regras:
                 image_url: { url: media_url },
               },
             ],
-          },
-        ],
+          }],
       }),
     });
 

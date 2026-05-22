@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("OPENAI_API_KEY");
+    const lovableApiKey = Deno.env.get("ANTHROPIC_API_KEY");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Fetch project info
@@ -189,14 +189,16 @@ Responda APENAS com um array JSON válido no seguinte formato (sem markdown, sem
 ]`;
 
     // Call Lovable AI
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${lovableApiKey}`,
+        "x-api-key": lovableApiKey,
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "claude-haiku-4-5",
+        max_tokens: 8096,
         messages: [
           {
             role: "user",
@@ -213,7 +215,7 @@ Responda APENAS com um array JSON válido no seguinte formato (sem markdown, sem
     }
 
     const aiData = await aiResponse.json();
-    const aiContent = aiData.choices?.[0]?.message?.content;
+    const aiContent = aiData.content?.[0]?.text;
 
     if (!aiContent) {
       throw new Error("Empty response from AI");

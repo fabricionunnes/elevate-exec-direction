@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,12 +18,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -141,22 +141,24 @@ ESTILO:
 - Seja conciso mas completo`;
 
     const messages = [
-      { role: "system", content: systemPrompt },
       ...(previousMessages || []).map((m: any) => ({
         role: m.role,
         content: m.content,
-      })),
+      })).filter((m: any) => m.role !== "system"),
       { role: "user", content: message },
     ];
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "claude-haiku-4-5",
+        max_tokens: 8096,
+        system: systemPrompt,
         messages,
         stream: true,
       }),
@@ -202,10 +204,16 @@ ESTILO:
           
           const jsonStr = line.slice(6).trim();
           if (jsonStr === "[DONE]") break;
-          
+
           try {
             const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content;
+            // Anthropic SSE format
+            let content: string | undefined;
+            if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+              content = parsed.delta.text;
+            } else if (parsed.type === "message_stop") {
+              break;
+            }
             if (content) fullResponse += content;
           } catch {
             // Partial JSON, continue

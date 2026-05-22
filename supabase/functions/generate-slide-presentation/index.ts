@@ -3,7 +3,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 
 interface SlideRequest {
   topic: string;
@@ -33,7 +33,7 @@ interface GeneratedSlide {
 }
 
 async function generateSlides(request: SlideRequest): Promise<{ title: string; description: string; slides: GeneratedSlide[] }> {
-  if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+  if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY not configured");
 
   const levelLabels: Record<string, string> = {
     iniciante: "Iniciante - Conceitos básicos, linguagem simples, muitos exemplos",
@@ -130,17 +130,17 @@ Retorne APENAS um JSON válido:
   ]
 }`;
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
+      model: "claude-haiku-4-5",
+      system: systemPrompt,
+          messages: [{ role: "user", content: userPrompt }
       ],
       temperature: 0.7,
       max_tokens: 15000,
@@ -156,7 +156,7 @@ Retorne APENAS um JSON válido:
   }
 
   const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
+  const content = data.content?.[0]?.text;
   if (!content) throw new Error("No content from AI");
 
   let parsed;

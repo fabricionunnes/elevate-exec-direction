@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,8 +14,8 @@ serve(async (req) => {
     const { leadId, type, transcriptionId } = await req.json(); // type: "overview" | "guide" | "followup" | "analysis"
     if (!leadId || !type) throw new Error("leadId and type are required");
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY not configured");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -459,18 +459,18 @@ ${transcriptionText.substring(0, 15000)}
 IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown. Seja rigoroso nas notas.`;
     }
 
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
+        model: "claude-haiku-4-5",
+          max_tokens: 8096,
+        system: systemPrompt,
+          messages: [{ role: "user", content: userPrompt }],
       }),
     });
 
@@ -493,7 +493,7 @@ IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown. Se
     }
 
     const aiData = await aiResponse.json();
-    let content = aiData.choices?.[0]?.message?.content || "";
+    let content = aiData.content?.[0]?.text || "";
 
     // Clean markdown wrappers if present
     content = content.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();

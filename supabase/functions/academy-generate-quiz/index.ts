@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,15 +55,16 @@ Responda APENAS com um JSON válido no seguinte formato:
 }`;
 
     // Call Lovable AI (Google Gemini)
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
+        "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
+          "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
         "HTTP-Referer": supabaseUrl,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "claude-haiku-4-5",
         messages: [
           {
             role: "user",
@@ -81,7 +82,7 @@ Responda APENAS com um JSON válido no seguinte formato:
     }
 
     const aiData = await aiResponse.json();
-    const content = aiData.choices?.[0]?.message?.content;
+    const content = aiData.content?.[0]?.text;
 
     if (!content) {
       throw new Error("No content from AI response");

@@ -107,19 +107,20 @@ REGRAS:
 9. Responda APENAS com o JSON, sem texto adicional`;
 
     // Call Lovable AI Gateway
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      return new Response(JSON.stringify({ error: "OPENAI_API_KEY not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "claude-haiku-4-5",
         messages: [{ role: "user", content: prompt }],
       }),
     });
@@ -131,7 +132,7 @@ REGRAS:
     }
 
     const aiData = await aiResponse.json();
-    const text = aiData.choices?.[0]?.message?.content || "";
+    const text = aiData.content?.[0]?.text || "";
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     let planData;
     if (!jsonMatch) {

@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -67,10 +67,10 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('OPENAI_API_KEY');
+    const lovableApiKey = Deno.env.get("ANTHROPIC_API_KEY");
 
     if (!lovableApiKey) {
-      throw new Error('OPENAI_API_KEY is not configured');
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -211,17 +211,18 @@ ${JSON.stringify(riskFactors, null, 2)}
 Gere um playbook personalizado com tarefas específicas para reverter essa situação.`;
 
     // Call Lovable AI
-    const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
+        "x-api-key": lovableApiKey,
+        "anthropic-version": "2023-06-01",
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
+        model: "claude-haiku-4-5",
+          max_tokens: 8096,
+        system: systemPrompt,
+          messages: [{ role: 'user', content: userPrompt }
         ],
       }),
     });
@@ -240,7 +241,7 @@ Gere um playbook personalizado com tarefas específicas para reverter essa situa
     }
 
     const aiData = await aiResponse.json();
-    const aiContent = aiData.choices?.[0]?.message?.content;
+    const aiContent = aiData.content?.[0]?.text;
 
     if (!aiContent) {
       throw new Error('Empty AI response');

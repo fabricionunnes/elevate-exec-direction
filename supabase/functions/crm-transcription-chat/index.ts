@@ -13,8 +13,8 @@ serve(async (req) => {
   }
 
   try {
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -128,28 +128,29 @@ Contexto completo do lead e suas transcrições:
 ${context}`;
 
     // Build messages array
-    const messages: Array<{ role: string; content: string }> = [
-      { role: "system", content: systemPrompt },
-    ];
+    const messages: Array<{ role: string; content: string }> = [];
 
-    // Add conversation history if provided
+    // Add conversation history if provided (excluding any system messages)
     if (conversationHistory && Array.isArray(conversationHistory)) {
       for (const msg of conversationHistory) {
-        messages.push({ role: msg.role, content: msg.content });
+        if (msg.role !== "system") messages.push({ role: msg.role, content: msg.content });
       }
     }
 
     messages.push({ role: "user", content: question });
 
     // Call Lovable AI Gateway with streaming
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "claude-haiku-4-5",
+        max_tokens: 8096,
+        system: systemPrompt,
         messages,
         stream: true,
       }),
@@ -173,7 +174,27 @@ ${context}`;
       throw new Error("Erro ao consultar IA");
     }
 
-    return new Response(aiResponse.body, {
+    // Transform Anthropic SSE to OpenAI-compatible SSE
+    const { readable, writable } = new TransformStream({
+      transform(chunk, controller) {
+        const text = new TextDecoder().decode(chunk);
+        for (const line of text.split("\n")) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (!data || data === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+              controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { content: parsed.delta.text }, finish_reason: null }] })}\n\n`));
+            } else if (parsed.type === "message_stop") {
+              controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+            }
+          } catch { /* ignore */ }
+        }
+      }
+    });
+    aiResponse.body!.pipeTo(writable);
+    return new Response(readable, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {

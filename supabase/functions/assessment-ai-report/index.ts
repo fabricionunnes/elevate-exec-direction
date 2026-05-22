@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,10 +62,10 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("OPENAI_API_KEY");
+    const lovableApiKey = Deno.env.get("ANTHROPIC_API_KEY");
 
     if (!lovableApiKey) {
-      throw new Error("OPENAI_API_KEY não configurada");
+      throw new Error("ANTHROPIC_API_KEY não configurada");
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -292,18 +292,18 @@ Deno.serve(async (req) => {
     console.log("Sending to AI Gateway...");
 
     // Call Lovable AI Gateway
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
+        "x-api-key": lovableApiKey,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: contextPrompt },
-        ],
+        model: "claude-haiku-4-5",
+          max_tokens: 8096,
+        system: SYSTEM_PROMPT,
+          messages: [{ role: "user", content: contextPrompt }],
         stream: true,
       }),
     });
@@ -328,8 +328,27 @@ Deno.serve(async (req) => {
       throw new Error(`AI Gateway error: ${aiResponse.status}`);
     }
 
-    // Return streaming response
-    return new Response(aiResponse.body, {
+    // Transform Anthropic SSE to OpenAI-compatible SSE and stream to client
+    const { readable, writable } = new TransformStream({
+      transform(chunk, controller) {
+        const text = new TextDecoder().decode(chunk);
+        for (const line of text.split("\n")) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (!data || data === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+              controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { content: parsed.delta.text }, finish_reason: null }] })}\n\n`));
+            } else if (parsed.type === "message_stop") {
+              controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+            }
+          } catch { /* ignore */ }
+        }
+      }
+    });
+    aiResponse.body!.pipeTo(writable);
+    return new Response(readable, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
 

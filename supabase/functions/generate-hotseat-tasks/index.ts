@@ -209,7 +209,7 @@ Deno.serve(async (req) => {
       }
 
       // AI task generation
-      const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+      const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
       
       const taskItems = [...actionItems, ...recommendations.filter((r: string) => !actionItems.some((a: string) => a.toLowerCase().includes(r.toLowerCase().substring(0, 20))))];
 
@@ -220,22 +220,20 @@ Deno.serve(async (req) => {
 
       let tasks: { title: string; description: string; priority: string; suggested_date?: string }[] = [];
 
-      if (OPENAI_API_KEY) {
+      if (ANTHROPIC_API_KEY) {
         try {
-          const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+          const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
-            headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+            headers: { "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
             body: JSON.stringify({
-              model: "gpt-4o-mini",
-              messages: [
-                {
-                  role: "system",
-                  content: `Você é um assistente que transforma itens de ação de reuniões em tarefas estruturadas para um sistema de gestão de projetos.
+              model: "claude-haiku-4-5",
+          max_tokens: 8096,
+              system: `Você é um assistente que transforma itens de ação de reuniões em tarefas estruturadas para um sistema de gestão de projetos.
 Retorne APENAS um JSON array com objetos contendo: title (max 80 chars, direto e acionável), description (contexto e detalhes), priority (high/medium/low), suggested_date (opcional, formato YYYY-MM-DD, apenas se uma data específica foi mencionada na reunião).
 Agrupe ações similares quando fizer sentido. Cada tarefa deve ser concreta e executável.
-NÃO inclua explicações, apenas o JSON array.`
-                },
-                {
+NÃO inclua explicações, apenas o JSON array.`,
+          messages: [{
                   role: "user",
                   content: `Empresa: ${companyName}\n\nDesafios identificados:\n${challenges.join("\n")}\n\nAções e recomendações:\n${taskItems.join("\n")}\n\nTransforme em tarefas acionáveis. Se alguma ação mencionar uma data específica, inclua no campo suggested_date.`
                 }
@@ -246,7 +244,7 @@ NÃO inclua explicações, apenas o JSON array.`
 
           if (aiRes.ok) {
             const aiData = await aiRes.json();
-            const content = aiData.choices?.[0]?.message?.content || "";
+            const content = aiData.content?.[0]?.text || "";
             const jsonMatch = content.match(/\[[\s\S]*\]/);
             if (jsonMatch) {
               tasks = JSON.parse(jsonMatch[0]);

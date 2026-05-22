@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -281,7 +281,7 @@ Deno.serve(async (req) => {
       const annualLoss = monthlyLoss * 12;
 
       // === IA via Lovable AI Gateway ===
-      const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+      const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
       let diagnosis = {
         diagnosis_text: "",
         performance_level: "medio",
@@ -289,7 +289,7 @@ Deno.serve(async (req) => {
         action_plan: [] as Array<{ title: string; description: string }>,
       };
 
-      if (OPENAI_API_KEY) {
+      if (ANTHROPIC_API_KEY) {
         const userPayload = {
           empresa: sub.company_name,
           segmento: sub.segment,
@@ -321,25 +321,21 @@ Deno.serve(async (req) => {
         };
 
         try {
-          const aiResp = await fetch("https://api.openai.com/v1/chat/completions", {
+          const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${OPENAI_API_KEY}`,
+              "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "gpt-4o-mini",
-              messages: [
-                {
-                  role: "system",
-                  content:
-                    "Você é um Diretor Comercial Sênior da UNV. Analise os dados de uma empresa e produza um diagnóstico comercial direto, em português do Brasil, com foco em onde a empresa perde dinheiro e como resolver. Use linguagem clara, executiva, sem clichês.",
-                },
-                {
+              model: "claude-haiku-4-5",
+          max_tokens: 8096,
+              system: "Você é um Diretor Comercial Sênior da UNV. Analise os dados de uma empresa e produza um diagnóstico comercial direto, em português do Brasil, com foco em onde a empresa perde dinheiro e como resolver. Use linguagem clara, executiva, sem clichês.",
+          messages: [{
                   role: "user",
                   content: `Analise estes dados e devolva o diagnóstico via tool call:\n${JSON.stringify(userPayload, null, 2)}`,
-                },
-              ],
+                }],
               tools: [
                 {
                   type: "function",

@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -282,22 +282,23 @@ INSTRUÇÕES:
 8. Responda em português brasileiro`;
 
     if (action === "generate-insights") {
-      const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-      if (!OPENAI_API_KEY) {
-        throw new Error("OPENAI_API_KEY not configured");
+      const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+      if (!ANTHROPIC_API_KEY) {
+        throw new Error("ANTHROPIC_API_KEY not configured");
       }
 
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { 
+          model: "claude-haiku-4-5",
+          max_tokens: 8096,
+          system: systemPrompt,
+          messages: [{ 
               role: "user", 
               content: `Analise todos os dados do negócio e gere 3-5 insights/recomendações priorizados. 
               
@@ -378,9 +379,9 @@ Foque em:
     }
 
     if (action === "chat") {
-      const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-      if (!OPENAI_API_KEY) {
-        throw new Error("OPENAI_API_KEY not configured");
+      const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+      if (!ANTHROPIC_API_KEY) {
+        throw new Error("ANTHROPIC_API_KEY not configured");
       }
 
       const chatMessages = [
@@ -389,14 +390,15 @@ Foque em:
         { role: "user", content: message }
       ];
 
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: "claude-haiku-4-5",
           messages: chatMessages,
           stream: true,
         }),
@@ -412,9 +414,37 @@ Foque em:
         throw new Error(`AI gateway error: ${response.status}`);
       }
 
-      return new Response(response.body, {
-        headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-      });
+      
+  // Transform Anthropic SSE to OpenAI-compatible SSE format
+  const { readable, writable } = new TransformStream({
+    transform(chunk, controller) {
+      const text = new TextDecoder().decode(chunk);
+      const lines = text.split("
+");
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6).trim();
+        if (data === "[DONE]" || data === "") continue;
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+            const openaiChunk = { choices: [{ delta: { content: parsed.delta.text }, finish_reason: null }] };
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(openaiChunk)}
+
+`));
+          } else if (parsed.type === "message_stop") {
+            controller.enqueue(new TextEncoder().encode("data: [DONE]
+
+"));
+          }
+        } catch { /* ignore parse errors */ }
+      }
+    }
+  });
+  response.body!.pipeTo(writable);
+  return new Response(readable, {
+    headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+  });
     }
 
     return new Response(JSON.stringify({ error: "Invalid action" }), {

@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -57,10 +57,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      console.error('OPENAI_API_KEY is not configured');
-      throw new Error('OPENAI_API_KEY is not configured');
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      console.error("ANTHROPIC_API_KEY is not configured");
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     const formData = await req.formData();
@@ -221,28 +221,16 @@ Deno.serve(async (req) => {
 
     const arrayBuffer = await pdfFile.arrayBuffer();
 
-    // Step 1: Upload PDF to OpenAI Files API (gpt-4o supports PDFs via file_id)
-    const uploadFormData = new FormData();
-    const pdfBlob = new Blob([arrayBuffer], { type: 'application/pdf' });
-    uploadFormData.append('file', pdfBlob, pdfFile.name || 'document.pdf');
-    uploadFormData.append('purpose', 'user_data');
-
-    console.log('Uploading PDF to OpenAI Files API...');
-    const uploadRes = await fetch('https://api.openai.com/v1/files', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` },
-      body: uploadFormData,
-    });
-
-    if (!uploadRes.ok) {
-      const errText = await uploadRes.text();
-      console.error('File upload error:', uploadRes.status, errText);
-      throw new Error(`Erro ao fazer upload do PDF: ${uploadRes.status}`);
+    // Convert PDF to base64 for Anthropic document API
+    console.log('Converting PDF to base64 for Anthropic...');
+    const uint8Array = new Uint8Array(arrayBuffer);
+    let binaryString = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      binaryString += String.fromCharCode(...uint8Array.subarray(i, i + chunkSize));
     }
-
-    const uploadData = await uploadRes.json();
-    const fileId = uploadData.id;
-    console.log('PDF uploaded, file_id:', fileId);
+    const base64Pdf = btoa(binaryString);
+    console.log('PDF converted, size:', uint8Array.length, 'bytes');
 
     const systemPrompt = `Você é um especialista em planejamento estratégico e gestão de projetos.
 Sua tarefa é analisar documentos de planejamento estratégico e extrair TODAS as ações, tarefas e iniciativas propostas.
@@ -288,41 +276,37 @@ Retorne APENAS um JSON válido no formato:
   "summary": "Resumo breve do plano estratégico"
 }`;
 
-    // Step 2: Call chat completions with file_id reference (gpt-4o supports PDFs)
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Step 2: Call Anthropic with base64 PDF (Claude supports documents directly)
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: `Analise este documento de planejamento estratégico${companyName ? ` da empresa "${companyName}"` : ''} e extraia todas as ações propostas, distribuídas nos próximos 90 dias com foco em resultados imediatos primeiro. Retorne APENAS JSON válido.`
-              },
-              {
-                type: 'file',
-                file: { file_id: fileId }
-              }
-            ]
-          }
-        ],
+        model: "claude-haiku-4-5",
         max_tokens: 8000,
+        system: systemPrompt,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'document',
+              source: {
+                type: 'base64',
+                media_type: 'application/pdf',
+                data: base64Pdf,
+              }
+            },
+            {
+              type: 'text',
+              text: `Analise este documento de planejamento estratégico${companyName ? ` da empresa "${companyName}"` : ''} e extraia todas as ações propostas, distribuídas nos próximos 90 dias com foco em resultados imediatos primeiro. Retorne APENAS JSON válido.`
+            }
+          ]
+        }],
       }),
     });
-
-    // Step 3: Clean up uploaded file (fire-and-forget)
-    fetch(`https://api.openai.com/v1/files/${fileId}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` },
-    }).catch(() => {});
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -345,7 +329,7 @@ Retorne APENAS um JSON válido no formato:
     }
 
     const aiData = await response.json();
-    const content = aiData.choices?.[0]?.message?.content;
+    const content = aiData.content?.[0]?.text;
     const finishReason = aiData.choices?.[0]?.finish_reason;
 
     console.log('AI response finish_reason:', finishReason);

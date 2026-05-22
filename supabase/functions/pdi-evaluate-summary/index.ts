@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,8 +17,8 @@ serve(async (req) => {
       });
     }
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY not configured");
 
     // Get task info
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -30,18 +30,17 @@ serve(async (req) => {
     const taskDesc = task?.description || "";
 
     // Call AI to evaluate
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: `Você é a IA Avaliadora de Aprendizado do Plano de Desenvolvimento Individual (PDI).
+        model: "claude-haiku-4-5",
+          max_tokens: 8096,
+        system: `Você é a IA Avaliadora de Aprendizado do Plano de Desenvolvimento Individual (PDI).
 Avalie o resumo/resposta do participante com base na tarefa proposta.
 
 Critérios de avaliação:
@@ -54,13 +53,11 @@ Retorne EXATAMENTE no formato JSON:
 {
   "score": <número de 0 a 10>,
   "feedback": "<feedback construtivo em português, máximo 300 palavras, incluindo pontos fortes e sugestões de melhoria>"
-}`
-          },
-          {
+}`,
+          messages: [{
             role: "user",
             content: `Tarefa: ${taskTitle}\nDescrição: ${taskDesc}\n\nResposta do participante:\n${text}`
-          },
-        ],
+          }],
         tools: [
           {
             type: "function",

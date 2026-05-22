@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -87,9 +87,9 @@ Deno.serve(async (req) => {
   try {
     const { messages, companyName, userName, planningData } = await req.json();
     
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     // Build context from planning data
@@ -232,18 +232,18 @@ ${dataContext || "\n(Nenhum dado de planejamento encontrado ainda)"}
 
     console.log("Sending context to AI:", contextPrompt.substring(0, 500) + "...");
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT + contextPrompt },
-          ...messages.map((m: any) => ({ role: m.role, content: m.content })),
-        ],
+        model: "claude-haiku-4-5",
+          max_tokens: 8096,
+        system: SYSTEM_PROMPT + contextPrompt,
+          messages: [...messages.map((m: any) => ({ role: m.role, content: m.content }))],
         stream: true,
       }),
     });
@@ -271,9 +271,37 @@ ${dataContext || "\n(Nenhum dado de planejamento encontrado ainda)"}
       });
     }
 
-    return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-    });
+    
+  // Transform Anthropic SSE to OpenAI-compatible SSE format
+  const { readable, writable } = new TransformStream({
+    transform(chunk, controller) {
+      const text = new TextDecoder().decode(chunk);
+      const lines = text.split("
+");
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6).trim();
+        if (data === "[DONE]" || data === "") continue;
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+            const openaiChunk = { choices: [{ delta: { content: parsed.delta.text }, finish_reason: null }] };
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(openaiChunk)}
+
+`));
+          } else if (parsed.type === "message_stop") {
+            controller.enqueue(new TextEncoder().encode("data: [DONE]
+
+"));
+          }
+        } catch { /* ignore parse errors */ }
+      }
+    }
+  });
+  response.body!.pipeTo(writable);
+  return new Response(readable, {
+    headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+  });
 
   } catch (error) {
     console.error("Portal AI Coach error:", error);

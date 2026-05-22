@@ -183,21 +183,21 @@ REGRAS IMPORTANTES:
 
 Use a tool "rich_video_edit" para retornar os dados.`;
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${lovableApiKey}`,
+      "x-api-key": lovableApiKey,
+        "anthropic-version": "2023-06-01",
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        {
+      model: "claude-haiku-4-5",
+          max_tokens: 8096,
+      system: systemPrompt,
+          messages: [{
           role: "user",
           content: `Transcrição completa:\n${transcriptText}\n\nLegenda segmentada com timestamps:\n${timestampedScript}\n\nCrie uma edição profissional rica com headline, overlays variados (emoji, text_highlight, zoom_cue, broll_keyword) distribuídos ao longo de todo o vídeo.${editorContext}`,
-        },
-      ],
+        }],
       tools: [
         {
           type: "function",
@@ -348,7 +348,7 @@ serve(async (req) => {
       return jsonResponse({ error: "ASSEMBLYAI_API_KEY not configured" }, 500);
     }
 
-    const lovableApiKey = Deno.env.get("OPENAI_API_KEY");
+    const lovableApiKey = Deno.env.get("ANTHROPIC_API_KEY");
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,

@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -20,18 +20,18 @@ const SYSTEM_PROMPTS: Record<string, string> = {
 };
 
 async function callAI(systemPrompt: string, userPrompt: string) {
-  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
+      model: "claude-haiku-4-5",
+          max_tokens: 8096,
+      system: systemPrompt,
+          messages: [{ role: "user", content: userPrompt }],
     }),
   });
 
@@ -42,7 +42,7 @@ async function callAI(systemPrompt: string, userPrompt: string) {
     throw new Error(`AI Gateway error: ${resp.status} ${text}`);
   }
   const data = await resp.json();
-  return data.choices?.[0]?.message?.content || "";
+  return data.content?.[0]?.text || "";
 }
 
 Deno.serve(async (req) => {

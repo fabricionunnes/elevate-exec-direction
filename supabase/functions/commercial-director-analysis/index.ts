@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,8 +14,8 @@ Deno.serve(async (req) => {
     const { companyId, projectId } = await req.json();
     console.log("Commercial Director analysis for company:", companyId, "project:", projectId);
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -133,18 +133,18 @@ Gere de 3 a 5 insights, 5 a 7 ações no plano de crescimento, e 4 a 5 prioridad
 Se não houver dados suficientes para algum campo, faça inferências com base nas informações disponíveis.
 `;
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: "Você é um Diretor Comercial sênior. Responda APENAS em JSON válido, sem markdown." },
-          { role: "user", content: contextPrompt },
-        ],
+        model: "claude-haiku-4-5",
+          max_tokens: 8096,
+        system: "Você é um Diretor Comercial sênior. Responda APENAS em JSON válido, sem markdown.",
+          messages: [{ role: "user", content: contextPrompt }],
       }),
     });
 

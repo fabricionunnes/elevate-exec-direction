@@ -3,7 +3,7 @@ import Anthropic from "npm:@anthropic-ai/sdk";
 
 // ============ ENV VARS ============
 const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY") ?? "";
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? ""; // opcional — habilita voz
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? ""; // opcional — habilita voz
 const EVOLUTION_URL = "https://evo07.stevo.chat";
 const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
 const EVOLUTION_INSTANCE = Deno.env.get("EVOLUTION_INSTANCE") ?? "fabricionunnes";
@@ -615,7 +615,7 @@ async function sendTelegram(chatId: number, text: string, agentType: AgentType):
 
 // ============ VOZ — TRANSCRIÇÃO (Whisper) ============
 async function transcribeVoice(fileId: string, agentType: AgentType): Promise<string | null> {
-  if (!OPENAI_API_KEY) return null;
+  if (!ANTHROPIC_API_KEY) return null;
   try {
     const token = TELEGRAM_TOKENS[agentType];
     // 1. Pegar URL do arquivo no Telegram
@@ -642,23 +642,9 @@ async function transcribeVoice(fileId: string, agentType: AgentType): Promise<st
   } catch { return null; }
 }
 
-// ============ VOZ — TTS (OpenAI) ============
-async function synthesizeSpeech(text: string, agentType: AgentType): Promise<ArrayBuffer | null> {
-  if (!OPENAI_API_KEY) return null;
-  try {
-    const res = await fetch("https://api.openai.com/v1/audio/speech", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "tts-1",
-        input: text.slice(0, 4000),
-        voice: TTS_VOICES[agentType] ?? "alloy",
-        response_format: "opus",
-      }),
-    });
-    if (!res.ok) return null;
-    return await res.arrayBuffer();
-  } catch { return null; }
+// ============ VOZ — TTS (disabled — OpenAI TTS not available) ============
+async function synthesizeSpeech(_text: string, _agentType: AgentType): Promise<ArrayBuffer | null> {
+  return null; // TTS disabled — OpenAI TTS replaced by Anthropic which has no TTS endpoint
 }
 
 async function sendVoice(chatId: number, audioBuffer: ArrayBuffer, agentType: AgentType): Promise<boolean> {
@@ -1283,7 +1269,7 @@ Deno.serve(async (req) => {
 
           // Transcreve áudio se necessário
           if (isVoiceInput) {
-            if (!OPENAI_API_KEY) {
+            if (!ANTHROPIC_API_KEY) {
               await sendTelegram(chatId, "Recebi seu áudio, mas o serviço de transcrição não está configurado. Envie por texto por enquanto.", agentType);
               return;
             }

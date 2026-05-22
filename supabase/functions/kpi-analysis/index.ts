@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,9 +17,9 @@ Deno.serve(async (req) => {
     console.log("Period:", startDate, "to", endDate, "label:", periodLabel);
     if (customPrompt) console.log("Custom prompt:", customPrompt);
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -263,18 +263,18 @@ Seja direto, prático e orientado a resultados. Use emojis para destacar seçõe
 
     console.log("Calling AI Gateway...");
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: "Você é um consultor comercial sênior especializado em análise de performance de vendas. Responda sempre em português brasileiro, de forma clara, objetiva e acionável." },
-          { role: "user", content: contextPrompt },
-        ],
+        model: "claude-haiku-4-5",
+          max_tokens: 8096,
+        system: "Você é um consultor comercial sênior especializado em análise de performance de vendas. Responda sempre em português brasileiro, de forma clara, objetiva e acionável.",
+          messages: [{ role: "user", content: contextPrompt }],
         stream: true,
       }),
     });
@@ -300,9 +300,37 @@ Seja direto, prático e orientado a resultados. Use emojis para destacar seçõe
       });
     }
 
-    return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-    });
+    
+  // Transform Anthropic SSE to OpenAI-compatible SSE format
+  const { readable, writable } = new TransformStream({
+    transform(chunk, controller) {
+      const text = new TextDecoder().decode(chunk);
+      const lines = text.split("
+");
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6).trim();
+        if (data === "[DONE]" || data === "") continue;
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+            const openaiChunk = { choices: [{ delta: { content: parsed.delta.text }, finish_reason: null }] };
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(openaiChunk)}
+
+`));
+          } else if (parsed.type === "message_stop") {
+            controller.enqueue(new TextEncoder().encode("data: [DONE]
+
+"));
+          }
+        } catch { /* ignore parse errors */ }
+      }
+    }
+  });
+  response.body!.pipeTo(writable);
+  return new Response(readable, {
+    headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+  });
   } catch (error) {
     console.error("KPI Analysis error:", error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {

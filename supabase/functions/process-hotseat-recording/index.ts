@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,8 +38,8 @@ Deno.serve(async (req) => {
     if (!recordingId) return new Response(JSON.stringify({ error: "recordingId is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const ASSEMBLYAI_API_KEY = Deno.env.get("ASSEMBLYAI_API_KEY");
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY not configured");
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: recording, error: recordingError } = await supabase.from("hotseat_recordings").select("*").eq("id", recordingId).single();
@@ -102,7 +102,10 @@ Retorne um JSON com:
 - companies (array de objetos, SOMENTE empresas que realmente participaram): cada objeto com name, challenges (array), recommendations (array), action_items (array) — tudo em português
 - next_steps (array de strings, em português): próximos passos`;
 
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: `Analise a transcrição abaixo e retorne o JSON conforme instruído. Lembre-se: responda SOMENTE em português e inclua APENAS empresas que realmente participaram:\n\n${transcriptText}` }], temperature: 0.3 }) });
+    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01", "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-haiku-4-5",
+          max_tokens: 8096, system: systemPrompt,
+          messages: [{ role: "user", content: `Analise a transcrição abaixo e retorne o JSON conforme instruído. Lembre-se: responda SOMENTE em português e inclua APENAS empresas que realmente participaram:\n\n${transcriptText}` }], temperature: 0.3 }) });
     
     if (!aiResponse.ok) { await supabase.from("hotseat_recordings").update({ status: "completed", error_message: "Erro ao gerar resumo" }).eq("id", recordingId); return new Response(JSON.stringify({ success: true, warning: "Resumo não gerado" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
 

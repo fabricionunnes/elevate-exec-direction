@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -84,9 +84,9 @@ SALÁRIO: ${job.salary_range || "A combinar"}
 `.trim();
 
     // Call AI for analysis
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      console.error("OPENAI_API_KEY not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      console.error("ANTHROPIC_API_KEY not configured");
       return new Response(
         JSON.stringify({ error: "AI service not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -119,18 +119,18 @@ ${resumeContent || "[Conteúdo do arquivo não pôde ser extraído - considere c
 
 Analise a compatibilidade do candidato com a vaga e retorne o JSON de avaliação.`;
 
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
+        model: "claude-haiku-4-5",
+          max_tokens: 8096,
+        system: systemPrompt,
+          messages: [{ role: "user", content: userPrompt }],
       }),
     });
 
@@ -158,7 +158,7 @@ Analise a compatibilidade do candidato com a vaga e retorne o JSON de avaliaçã
     }
 
     const aiData = await aiResponse.json();
-    const aiContent = aiData.choices?.[0]?.message?.content || "";
+    const aiContent = aiData.content?.[0]?.text || "";
     
     // Parse AI response
     let evaluation;
@@ -196,7 +196,7 @@ Analise a compatibilidade do candidato com a vaga e retorne o JSON de avaliaçã
         concerns: evaluation.concerns || [],
         recommendation: evaluation.recommendation,
         full_analysis: evaluation.full_analysis,
-        model_used: "gpt-4o-mini",
+        model_used: "claude-haiku-4-5",
       })
       .select()
       .single();

@@ -129,9 +129,9 @@ Deno.serve(async (req) => {
   try {
     const { briefingData, companyName } = await req.json();
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     // Build the user prompt with all briefing data
@@ -202,20 +202,19 @@ Por favor, gere o planejamento estratégico completo conforme os 3 blocos especi
 
     console.log("Generating strategic planning for:", companyName);
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         // Use a higher output budget to avoid truncating before BLOCO 3
-        model: "gpt-4o-mini",
+        model: "claude-haiku-4-5",
         max_tokens: 6000,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
+        system: SYSTEM_PROMPT,
+          messages: [{ role: "user", content: userPrompt }],
         stream: true,
       }),
     });
@@ -238,9 +237,37 @@ Por favor, gere o planejamento estratégico completo conforme os 3 blocos especi
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
-    return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-    });
+    
+  // Transform Anthropic SSE to OpenAI-compatible SSE format
+  const { readable, writable } = new TransformStream({
+    transform(chunk, controller) {
+      const text = new TextDecoder().decode(chunk);
+      const lines = text.split("
+");
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6).trim();
+        if (data === "[DONE]" || data === "") continue;
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+            const openaiChunk = { choices: [{ delta: { content: parsed.delta.text }, finish_reason: null }] };
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(openaiChunk)}
+
+`));
+          } else if (parsed.type === "message_stop") {
+            controller.enqueue(new TextEncoder().encode("data: [DONE]
+
+"));
+          }
+        } catch { /* ignore parse errors */ }
+      }
+    }
+  });
+  response.body!.pipeTo(writable);
+  return new Response(readable, {
+    headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+  });
   } catch (error) {
     console.error("Error generating strategic planning:", error);
     return new Response(

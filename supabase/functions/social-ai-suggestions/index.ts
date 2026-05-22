@@ -16,10 +16,10 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("OPENAI_API_KEY");
+    const lovableApiKey = Deno.env.get("ANTHROPIC_API_KEY");
 
     if (!lovableApiKey) {
-      console.error("OPENAI_API_KEY is not configured");
+      console.error("ANTHROPIC_API_KEY is not configured");
       return new Response(
         JSON.stringify({ error: "Chave de API não configurada. Entre em contato com o suporte." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -56,14 +56,15 @@ ${copyText}
 
 Responda APENAS com a descrição da imagem, sem explicações extras.`;
 
-      const aiResp = await fetch("https://api.openai.com/v1/chat/completions", {
+      const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${lovableApiKey}`,
+          "x-api-key": lovableApiKey,
+        "anthropic-version": "2023-06-01",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: "claude-haiku-4-5",
           messages: [
             { role: "user", content: prompt }
           ],
@@ -79,7 +80,7 @@ Responda APENAS com a descrição da imagem, sem explicações extras.`;
       }
 
       const aiData = await aiResp.json();
-      const suggestion = aiData.choices?.[0]?.message?.content?.trim() || null;
+      const suggestion = aiData.content?.[0]?.text?.trim() || null;
       console.log("social-ai-suggestions: Image prompt suggestion generated");
 
       return new Response(
@@ -135,14 +136,15 @@ ${copyText || "Sem copy definida"}
 Responda APENAS com o texto sugerido, sem aspas e sem explicações.`;
       }
 
-      const aiResp = await fetch("https://api.openai.com/v1/chat/completions", {
+      const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${lovableApiKey}`,
+          "x-api-key": lovableApiKey,
+        "anthropic-version": "2023-06-01",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: "claude-haiku-4-5",
           messages: [{ role: "user", content: prompt }],
         }),
       });
@@ -156,7 +158,7 @@ Responda APENAS com o texto sugerido, sem aspas e sem explicações.`;
       }
 
       const aiData = await aiResp.json();
-      const raw = aiData.choices?.[0]?.message?.content?.trim() || null;
+      const raw = aiData.content?.[0]?.text?.trim() || null;
       console.log("social-ai-suggestions: Image text suggestion raw:", raw);
 
       if (isCarousel && raw) {
@@ -293,17 +295,18 @@ IMPORTANTE:
     console.log("social-ai-suggestions: Calling Lovable AI");
 
     // Call Lovable AI with tool calling
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
+        "x-api-key": lovableApiKey,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: context }
+        model: "claude-haiku-4-5",
+          max_tokens: 8096,
+        system: systemPrompt,
+          messages: [{ role: "user", content: context }
         ],
         tools,
         tool_choice: { type: "function", function: { name: "return_suggestions" } }
@@ -355,7 +358,7 @@ IMPORTANTE:
 
     // Fallback: try to parse from content if no tool calls
     if (suggestions.length === 0) {
-      const generatedText = aiData.choices?.[0]?.message?.content;
+      const generatedText = aiData.content?.[0]?.text;
       if (generatedText) {
         console.log("social-ai-suggestions: Trying to parse from content");
         try {

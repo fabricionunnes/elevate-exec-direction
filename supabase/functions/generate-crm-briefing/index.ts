@@ -20,9 +20,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY não configurada");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY não configurada");
     }
 
     const systemPrompt = `Você é um analista sênior de vendas B2B especializado em gerar briefings executivos a partir de transcrições de reuniões comerciais.
@@ -95,18 +95,17 @@ ${transcription}
 
 Gere o briefing seguindo rigorosamente a estrutura e formatação solicitadas. Seja preciso e extraia o máximo de informações úteis.`;
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
+        model: "claude-haiku-4-5",
+        system: systemPrompt,
+          messages: [{ role: "user", content: userPrompt }],
         temperature: 0.25,
         max_tokens: 4000,
       }),
@@ -131,7 +130,7 @@ Gere o briefing seguindo rigorosamente a estrutura e formatação solicitadas. S
     }
 
     const data = await response.json();
-    const briefing = data.choices?.[0]?.message?.content;
+    const briefing = data.content?.[0]?.text;
 
     if (!briefing) {
       throw new Error("Resposta vazia da IA");

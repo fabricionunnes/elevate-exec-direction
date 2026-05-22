@@ -13,25 +13,25 @@ Deno.serve(async (req) => {
   try {
     const { systemPrompt, userPrompt } = await req.json();
 
-    const lovableApiKey = Deno.env.get("OPENAI_API_KEY");
+    const lovableApiKey = Deno.env.get("ANTHROPIC_API_KEY");
     if (!lovableApiKey) {
-      throw new Error("OPENAI_API_KEY not configured");
+      throw new Error("ANTHROPIC_API_KEY not configured");
     }
 
     console.log("Generating portfolio health insights...");
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${lovableApiKey}`,
+        "x-api-key": lovableApiKey,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
+        model: "claude-haiku-4-5",
+          max_tokens: 8096,
+        system: systemPrompt,
+          messages: [{ role: "user", content: userPrompt }],
         // Return a single JSON response (simpler to consume in the web app)
         stream: false,
       }),

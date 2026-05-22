@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,9 +13,9 @@ Deno.serve(async (req) => {
   try {
     const { action, candidateId, jobOpeningId, projectId } = await req.json();
     
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -73,17 +73,18 @@ Gere um resumo executivo conciso (máximo 4 linhas) que destaque:
 4. Recomendação geral
 `;
 
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: "Você é um especialista em RH. Responda sempre em português brasileiro de forma concisa e profissional." },
-            { role: "user", content: prompt }
+          model: "claude-haiku-4-5",
+          max_tokens: 8096,
+          system: "Você é um especialista em RH. Responda sempre em português brasileiro de forma concisa e profissional.",
+          messages: [{ role: "user", content: prompt }
           ],
         }),
       });
@@ -95,7 +96,7 @@ Gere um resumo executivo conciso (máximo 4 linhas) que destaque:
       }
 
       const data = await response.json();
-      const summary = data.choices?.[0]?.message?.content || "";
+      const summary = data.content?.[0]?.text || "";
 
       // Save summary to candidate
       await supabase
@@ -160,17 +161,18 @@ Formato de resposta (JSON):
 }
 `;
 
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: "Você é um especialista em RH e entrevistas. Responda sempre em português brasileiro e em formato JSON válido." },
-            { role: "user", content: prompt }
+          model: "claude-haiku-4-5",
+          max_tokens: 8096,
+          system: "Você é um especialista em RH e entrevistas. Responda sempre em português brasileiro e em formato JSON válido.",
+          messages: [{ role: "user", content: prompt }
           ],
         }),
       });
@@ -182,7 +184,7 @@ Formato de resposta (JSON):
       }
 
       const data = await response.json();
-      const content = data.choices?.[0]?.message?.content || "{}";
+      const content = data.content?.[0]?.text || "{}";
       
       // Try to parse JSON from response
       let questions;
@@ -266,17 +268,18 @@ Formato de resposta (JSON):
 }
 `;
 
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: "Você é um especialista em recrutamento. Responda em português brasileiro e em formato JSON válido." },
-            { role: "user", content: prompt }
+          model: "claude-haiku-4-5",
+          max_tokens: 8096,
+          system: "Você é um especialista em recrutamento. Responda em português brasileiro e em formato JSON válido.",
+          messages: [{ role: "user", content: prompt }
           ],
         }),
       });
@@ -288,7 +291,7 @@ Formato de resposta (JSON):
       }
 
       const data = await response.json();
-      const content = data.choices?.[0]?.message?.content || "{}";
+      const content = data.content?.[0]?.text || "{}";
       
       let matches;
       try {

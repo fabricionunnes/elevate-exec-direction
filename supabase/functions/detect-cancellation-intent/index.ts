@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,35 +30,32 @@ Deno.serve(async (req) => {
     console.log('[Cancellation Detection] Analyzing message from:', phone);
 
     // Step 1: Use AI to detect cancellation intent
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      console.error('[Cancellation Detection] OPENAI_API_KEY not configured');
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      console.error('[Cancellation Detection] ANTHROPIC_API_KEY not configured');
       return new Response(JSON.stringify({ detected: false, error: 'AI not configured' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `Você é um analisador de intenção de cancelamento. Analise a mensagem do cliente e determine se ele está solicitando, pedindo ou mencionando cancelamento de contrato, encerramento de serviço, desistência, ou rescisão. 
+        model: "claude-haiku-4-5",
+          max_tokens: 8096,
+        system: `Você é um analisador de intenção de cancelamento. Analise a mensagem do cliente e determine se ele está solicitando, pedindo ou mencionando cancelamento de contrato, encerramento de serviço, desistência, ou rescisão. 
 Responda APENAS com um JSON: {"is_cancellation": true/false, "confidence": 0.0-1.0}
 Exemplos de cancelamento: "quero cancelar", "vou encerrar o contrato", "não quero mais o serviço", "gostaria de cancelar minha assinatura", "solicito o cancelamento", "quero rescindir", "não vou renovar".
 NÃO considere como cancelamento: reclamações sem pedido de cancelamento, pedidos de informação, dúvidas gerais.`,
-          },
-          {
+          messages: [{
             role: 'user',
             content: messageContent,
-          },
-        ],
+          }],
       }),
     });
 
@@ -70,7 +67,7 @@ NÃO considere como cancelamento: reclamações sem pedido de cancelamento, pedi
     }
 
     const aiData = await aiResponse.json();
-    const aiText = aiData.choices?.[0]?.message?.content || '';
+    const aiText = aiData.content?.[0]?.text || '';
     console.log('[Cancellation Detection] AI response:', aiText);
 
     // Parse AI response

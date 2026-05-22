@@ -21,9 +21,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     const prompt = `Você é um analista especialista em retenção de clientes de uma consultoria de vendas chamada UNV (Universidade de Vendas). Analise os seguintes dados e gere insights estratégicos em português brasileiro.
@@ -56,14 +56,15 @@ Gere um relatório com:
 
 Seja direto, use dados concretos e dê recomendações acionáveis. Use formatação markdown.`;
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "claude-haiku-4-5",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 4000,
       }),

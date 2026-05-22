@@ -337,10 +337,10 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("OPENAI_API_KEY");
+    const lovableApiKey = Deno.env.get("ANTHROPIC_API_KEY");
 
     if (!lovableApiKey) {
-      return new Response(JSON.stringify({ error: "OPENAI_API_KEY não configurada" }), {
+      return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY não configurada" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -406,25 +406,18 @@ serve(async (req) => {
     }
 
     if (!sqlQuery) {
-      const sqlResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      const sqlResponse = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${lovableApiKey}`,
+          "x-api-key": lovableApiKey,
+        "anthropic-version": "2023-06-01",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content: `Você é um assistente SQL expert. A data de HOJE é ${new Date().toISOString().split('T')[0]}. Dado o esquema do banco de dados abaixo, gere UMA query SQL SELECT para responder a pergunta do usuário. Retorne APENAS o SQL puro, sem markdown, sem explicação, sem \`\`\`.
-
-IMPORTANTE: Quando o usuário perguntar sobre "contas a receber", considere TODOS os status (pending, paid, overdue, partial) a menos que ele especifique um status. Quando perguntar "quanto tenho a receber", inclua todos os registros do período independente do status.
-
-${DATA_SOURCES}`,
-            },
-            { role: "user", content: userQuestion },
-          ],
+          model: "claude-haiku-4-5",
+          max_tokens: 8096,
+          system: `Você é um assistente SQL expert. A data de HOJE é ${new Date().toISOString().split('T')[0]}. Dado o esquema do banco de dados abaixo, gere UMA query SQL SELECT para responder a pergunta do usuário. Retorne APENAS o SQL puro, sem markdown, sem explicação, sem \`,
+          messages: [{ role: "user", content: userQuestion }],
         }),
       });
 
@@ -495,14 +488,15 @@ REGRAS DE FORMATAÇÃO:
       },
     ];
 
-    const interpretResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const interpretResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
+        "x-api-key": lovableApiKey,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "claude-haiku-4-5",
         messages: interpretMessages,
         stream: true,
       }),
@@ -514,7 +508,27 @@ REGRAS DE FORMATAÇÃO:
       throw new Error("Erro ao interpretar resultados");
     }
 
-    return new Response(interpretResponse.body, {
+    // Transform Anthropic SSE to OpenAI-compatible SSE
+    const { readable, writable } = new TransformStream({
+      transform(chunk, controller) {
+        const text = new TextDecoder().decode(chunk);
+        for (const line of text.split("\n")) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (!data || data === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+              controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { content: parsed.delta.text }, finish_reason: null }] })}\n\n`));
+            } else if (parsed.type === "message_stop") {
+              controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+            }
+          } catch { /* ignore */ }
+        }
+      }
+    });
+    interpretResponse.body!.pipeTo(writable);
+    return new Response(readable, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {

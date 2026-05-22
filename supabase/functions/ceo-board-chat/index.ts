@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('OPENAI_API_KEY')!;
+    const lovableApiKey = Deno.env.get("ANTHROPIC_API_KEY")!;
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -191,14 +191,14 @@ Máximo de 2 conselheiros, a menos que seja muito abrangente.
 Resposta (apenas códigos):`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: "claude-haiku-4-5",
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.3,
       }),
@@ -209,7 +209,7 @@ Resposta (apenas códigos):`;
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || 'Board Chair';
+    const content = data.content?.[0]?.text || 'Board Chair';
     
     const validRoles = ['CFO', 'COO', 'CRO', 'CPO', 'Board Chair'];
     const mentioned = validRoles.filter(role => 
@@ -276,17 +276,17 @@ REGRAS:
 Responda como ${advisor.name} (${role}):`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
+        model: "claude-haiku-4-5",
+          max_tokens: 8096,
+        system: systemPrompt,
+          messages: [{ role: 'user', content: userPrompt }
         ],
         temperature: 0.7,
       }),
@@ -297,7 +297,7 @@ Responda como ${advisor.name} (${role}):`;
     }
 
     const data = await response.json();
-    return data.choices?.[0]?.message?.content || 'Desculpe, não consegui processar sua pergunta.';
+    return data.content?.[0]?.text || 'Desculpe, não consegui processar sua pergunta.';
   } catch (e) {
     console.error(`Error getting response from ${role}:`, e);
     return `Desculpe, ocorreu um erro ao processar sua pergunta. Por favor, tente novamente.`;

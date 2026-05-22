@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -238,14 +238,14 @@ Responda APENAS em formato JSON:
     let classificationReason = 'Semana dentro da normalidade operacional.';
 
     try {
-      const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: 'Você é um CFO/COO experiente analisando dados semanais.' },
-            { role: 'user', content: classificationPrompt }
+          model: "claude-haiku-4-5",
+          max_tokens: 8096,
+          system: 'Você é um CFO/COO experiente analisando dados semanais.',
+          messages: [{ role: 'user', content: classificationPrompt }
           ],
           temperature: 0.3,
         }),
@@ -253,7 +253,7 @@ Responda APENAS em formato JSON:
 
       if (aiResponse.ok) {
         const aiData = await aiResponse.json();
-        const content = aiData.choices?.[0]?.message?.content || '';
+        const content = aiData.content?.[0]?.text || '';
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);

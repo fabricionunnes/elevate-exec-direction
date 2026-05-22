@@ -183,7 +183,7 @@ serve(async (req) => {
       const companyContext = await fetchCompanyContext(supabase, project_id);
 
       // Generate with AI
-      const aiUrl = "https://api.openai.com/v1/chat/completions";
+      const aiUrl = "https://api.anthropic.com/v1/messages";
 
       const prompt = `Gere um calendário anual de ações comerciais para uma empresa do nicho "${niche}" para o ano de ${year}.
 
@@ -212,17 +212,18 @@ Para cada ação, retorne um JSON object com:
 
 Retorne APENAS um array JSON válido com as ações. Sem texto adicional.`;
 
-      const lovableApiKey = Deno.env.get("OPENAI_API_KEY");
-      if (!lovableApiKey) throw new Error("OPENAI_API_KEY não configurada");
+      const lovableApiKey = Deno.env.get("ANTHROPIC_API_KEY");
+      if (!lovableApiKey) throw new Error("ANTHROPIC_API_KEY não configurada");
 
       const aiResponse = await fetch(aiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${lovableApiKey}`,
+          "x-api-key": lovableApiKey,
+          "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: "claude-haiku-4-5",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7,
           max_tokens: 30000,
@@ -246,7 +247,7 @@ Retorne APENAS um array JSON válido com as ações. Sem texto adicional.`;
       }
 
       const aiData = await aiResponse.json();
-      let content = aiData.choices?.[0]?.message?.content || "";
+      let content = aiData.content?.[0]?.text || "";
       
       // Extract JSON from response
       const jsonMatch = content.match(/\[[\s\S]*\]/);

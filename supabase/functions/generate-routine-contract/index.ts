@@ -21,29 +21,26 @@ serve(async (req) => {
       );
     }
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY not configured");
     }
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "Você é a IA de Organização de Rotina da UNV. Retorne APENAS JSON válido, sem markdown, sem texto extra."
-          },
-          {
+        model: "claude-haiku-4-5",
+          max_tokens: 8096,
+        system: "Você é a IA de Organização de Rotina da UNV. Retorne APENAS JSON válido, sem markdown, sem texto extra.",
+          messages: [{
             role: "user",
             content: prompt,
-          },
-        ],
+          }],
         temperature: 0.7,
       }),
     });
@@ -55,7 +52,7 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const textContent = data.choices?.[0]?.message?.content;
+    const textContent = data.content?.[0]?.text;
 
     if (!textContent) {
       throw new Error("No response from AI");

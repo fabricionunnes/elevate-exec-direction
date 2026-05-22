@@ -35,23 +35,22 @@ FORMATO DO CONTEÚDO:
 - Mantenha cada seção concisa e direta`;
 
 async function generateWithAI(prompt: string): Promise<string> {
-  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-  if (!OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is not configured");
+  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY is not configured");
   }
   
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: prompt },
-      ],
+      model: "claude-haiku-4-5",
+      system: SYSTEM_PROMPT,
+          messages: [{ role: "user", content: prompt }],
       temperature: 0.7,
       max_tokens: 4000,
     }),
@@ -63,7 +62,7 @@ async function generateWithAI(prompt: string): Promise<string> {
   }
 
   const data = await response.json();
-  return data.choices[0].message.content;
+  return data.content[0].text;
 }
 
 function buildSectionPrompt(sectionKey: string, formResponse: any): string {

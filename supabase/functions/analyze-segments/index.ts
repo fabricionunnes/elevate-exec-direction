@@ -33,17 +33,18 @@ Gere insights sobre:
 
 Seja objetivo e direto. Use bullet points e emojis para facilitar a leitura.`;
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("Missing OPENAI_API_KEY");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) throw new Error("Missing ANTHROPIC_API_KEY");
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "claude-haiku-4-5",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 2000,
       }),
@@ -55,7 +56,7 @@ Seja objetivo e direto. Use bullet points e emojis para facilitar a leitura.`;
     }
 
     const data = await response.json();
-    const analysis = data.choices?.[0]?.message?.content || "Sem análise disponível.";
+    const analysis = data.content?.[0]?.text || "Sem análise disponível.";
 
     return new Response(JSON.stringify({ analysis }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

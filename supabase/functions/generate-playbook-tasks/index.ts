@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1506,9 +1506,9 @@ Deno.serve(async (req) => {
 
     console.log("Generating tasks for project:", projectId);
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     // Initialize Supabase client
@@ -1552,7 +1552,7 @@ Deno.serve(async (req) => {
     if (!productConfig) {
       console.log("No specific config for product:", productId, "- using AI generation");
       // Fallback to AI generation for products without specific config
-      return await generateWithAI(req, project, company, existingTaskTitles, context, OPENAI_API_KEY);
+      return await generateWithAI(req, project, company, existingTaskTitles, context, ANTHROPIC_API_KEY);
     }
 
     console.log("Using product-specific tasks for:", productConfig.name);
@@ -1767,17 +1767,17 @@ Retorne APENAS JSON válido:
   ]
 }`;
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: "Gere as tarefas de onboarding." }
+      model: "claude-haiku-4-5",
+      system: systemPrompt,
+          messages: [{ role: "user", content: "Gere as tarefas de onboarding." }
       ],
       max_tokens: 4000,
     }),
@@ -1789,7 +1789,7 @@ Retorne APENAS JSON válido:
   }
 
   const data = await response.json();
-  let aiResponse = data.choices?.[0]?.message?.content || "";
+  let aiResponse = data.content?.[0]?.text || "";
 
   aiResponse = aiResponse.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
   const parsed = JSON.parse(aiResponse);
