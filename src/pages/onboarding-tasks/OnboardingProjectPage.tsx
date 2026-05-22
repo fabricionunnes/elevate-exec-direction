@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -224,48 +224,21 @@ const OnboardingProjectPage = () => {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [showAddTaskDialog, setShowAddTaskDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("kpis");
-  const tabsScrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
 
-  const updateScrollState = useCallback(() => {
-    const el = tabsScrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 4);
-    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
-  }, []);
-
-  const scrollTabs = useCallback((dir: "left" | "right") => {
-    const el = tabsScrollRef.current;
-    if (!el) return;
-    el.scrollBy({ left: dir === "left" ? -200 : 200, behavior: "smooth" });
-  }, []);
-
-  // Initialize scroll state on mount
+  // Two-level navigation: group → sub-tabs
+  const tabGroupMap: Record<string, string> = {
+    kpis: "principal", briefing: "principal", diagnostic: "principal", tasks: "principal", "ai-coach": "principal",
+    nps: "relacionamento", csat: "relacionamento", assessments: "relacionamento", meetings: "relacionamento", support: "relacionamento", whatsapp: "relacionamento",
+    health: "gestao", hr: "gestao", board: "gestao", financial: "gestao", history: "gestao",
+    commercial_actions: "comercial", sales_funnel: "comercial", routine_contract: "comercial", commercial_director: "comercial",
+    paid_traffic: "marketing", access: "marketing", instagram: "marketing", social: "marketing",
+    sf_commissions: "salesforce",
+  };
+  const [navGroup, setNavGroup] = useState(() => tabGroupMap[activeTab] ?? "principal");
   useEffect(() => {
-    updateScrollState();
-    window.addEventListener("resize", updateScrollState);
-    return () => window.removeEventListener("resize", updateScrollState);
-  }, [updateScrollState]);
-
-  // Scroll active tab into view when tab changes
-  useEffect(() => {
-    const el = tabsScrollRef.current;
-    if (!el) return;
-    const active = el.querySelector('[data-state="active"]') as HTMLElement | null;
-    if (active) {
-      const elLeft = el.getBoundingClientRect().left;
-      const btnLeft = active.getBoundingClientRect().left;
-      const btnRight = active.getBoundingClientRect().right;
-      const elRight = el.getBoundingClientRect().right;
-      if (btnLeft < elLeft + 40) {
-        el.scrollBy({ left: btnLeft - elLeft - 40, behavior: "smooth" });
-      } else if (btnRight > elRight - 40) {
-        el.scrollBy({ left: btnRight - elRight + 40, behavior: "smooth" });
-      }
-    }
-    updateScrollState();
-  }, [activeTab, updateScrollState]);
+    const g = tabGroupMap[activeTab];
+    if (g) setNavGroup(g);
+  }, [activeTab]);
   const [currentUserRole, setCurrentUserRole] = useState<"admin" | "cs" | "consultant" | "client" | "rh" | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
@@ -1499,84 +1472,94 @@ const OnboardingProjectPage = () => {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="mb-4 sm:mb-6">
-            {/* Tab style helper */}
+            {/* Two-level navigation */}
             {(() => {
-              const t = "flex items-center gap-1.5 px-2.5 py-1.5 h-auto text-xs font-medium rounded-md border border-transparent bg-background/60 text-muted-foreground hover:bg-background hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary/20 whitespace-nowrap transition-all shadow-none";
-              const label = "text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40 mb-1.5 select-none block";
-              const box = "rounded-lg border border-border/50 bg-muted/30 p-2.5 flex flex-col gap-0";
-              const pills = "flex flex-wrap gap-1.5";
+              const groups = [
+                { id: "principal",      label: "Principal",       icon: <BarChart3 className="h-4 w-4" /> },
+                { id: "relacionamento", label: "Relac.",          icon: <Heart className="h-4 w-4" /> },
+                { id: "gestao",         label: "Gestão",          icon: <Settings className="h-4 w-4" /> },
+                { id: "comercial",      label: "Comercial",       icon: <Target className="h-4 w-4" /> },
+                { id: "marketing",      label: "Marketing",       icon: <Megaphone className="h-4 w-4" /> },
+                ...(project?.product_name === "UNV Sales Force" ? [{ id: "salesforce", label: "Sales Force", icon: <DollarSign className="h-4 w-4" /> }] : []),
+              ];
+
+              const subTabs: Record<string, React.ReactNode[]> = {
+                principal: [
+                  <TabsTrigger key="kpis" value="kpis"><BarChart3 className="h-3.5 w-3.5 shrink-0" />KPIs</TabsTrigger>,
+                  <TabsTrigger key="briefing" value="briefing"><Building2 className="h-3.5 w-3.5 shrink-0" />Briefing</TabsTrigger>,
+                  <TabsTrigger key="diagnostic" value="diagnostic"><Sparkles className="h-3.5 w-3.5 shrink-0" />Diagnóstico</TabsTrigger>,
+                  <TabsTrigger key="tasks" value="tasks"><CheckCircle2 className="h-3.5 w-3.5 shrink-0" />Jornada</TabsTrigger>,
+                  <TabsTrigger key="ai-coach" value="ai-coach"><Sparkles className="h-3.5 w-3.5 shrink-0" />IA</TabsTrigger>,
+                ],
+                relacionamento: [
+                  <TabsTrigger key="nps" value="nps"><TrendingUp className="h-3.5 w-3.5 shrink-0" />NPS</TabsTrigger>,
+                  <TabsTrigger key="csat" value="csat"><Star className="h-3.5 w-3.5 shrink-0" />CSAT</TabsTrigger>,
+                  <TabsTrigger key="assessments" value="assessments"><Brain className="h-3.5 w-3.5 shrink-0" />Avaliações</TabsTrigger>,
+                  <TabsTrigger key="meetings" value="meetings"><Video className="h-3.5 w-3.5 shrink-0" />Reuniões</TabsTrigger>,
+                  <TabsTrigger key="support" value="support"><Headphones className="h-3.5 w-3.5 shrink-0" />Suporte</TabsTrigger>,
+                  <TabsTrigger key="whatsapp" value="whatsapp"><MessageSquare className="h-3.5 w-3.5 shrink-0 text-green-500" />Conversas</TabsTrigger>,
+                ],
+                gestao: [
+                  <TabsTrigger key="health" value="health"><Heart className="h-3.5 w-3.5 shrink-0" />Saúde</TabsTrigger>,
+                  <TabsTrigger key="hr" value="hr"><Briefcase className="h-3.5 w-3.5 shrink-0" />RH</TabsTrigger>,
+                  <TabsTrigger key="board" value="board"><Users className="h-3.5 w-3.5 shrink-0" />Board</TabsTrigger>,
+                  <TabsTrigger key="financial" value="financial"><Wallet className="h-3.5 w-3.5 shrink-0" />Financeiro</TabsTrigger>,
+                  <TabsTrigger key="history" value="history"><Clock className="h-3.5 w-3.5 shrink-0" />Histórico</TabsTrigger>,
+                ],
+                comercial: [
+                  ...(currentUserRole !== "client" ? [<TabsTrigger key="commercial_actions" value="commercial_actions"><Target className="h-3.5 w-3.5 shrink-0" />Ações Comerciais</TabsTrigger>] : []),
+                  <TabsTrigger key="sales_funnel" value="sales_funnel"><FunnelIcon className="h-3.5 w-3.5 shrink-0" />Funil de Vendas</TabsTrigger>,
+                  <TabsTrigger key="routine_contract" value="routine_contract"><ClipboardList className="h-3.5 w-3.5 shrink-0" />Contrato de Rotina</TabsTrigger>,
+                  <TabsTrigger key="commercial_director" value="commercial_director"><BrainCircuit className="h-3.5 w-3.5 shrink-0" />Diretor Comercial</TabsTrigger>,
+                ],
+                marketing: [
+                  <TabsTrigger key="paid_traffic" value="paid_traffic"><Megaphone className="h-3.5 w-3.5 shrink-0" />Tráfego</TabsTrigger>,
+                  <TabsTrigger key="access" value="access"><Eye className="h-3.5 w-3.5 shrink-0" />Acessos</TabsTrigger>,
+                  <TabsTrigger key="instagram" value="instagram"><Instagram className="h-3.5 w-3.5 shrink-0 text-pink-500" />Instagram</TabsTrigger>,
+                  <TabsTrigger key="social" value="social"><Heart className="h-3.5 w-3.5 shrink-0 text-pink-500" />UNV Social IA</TabsTrigger>,
+                ],
+                salesforce: [
+                  <TabsTrigger key="sf_commissions" value="sf_commissions"><DollarSign className="h-3.5 w-3.5 shrink-0" />Comissões</TabsTrigger>,
+                ],
+              };
+
+              const activeGroupId = tabGroupMap[activeTab] ?? "principal";
+              const triggerBase = "flex items-center gap-1.5 px-3 py-1.5 h-auto text-xs font-medium rounded-md border border-transparent bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap transition-all shadow-none";
+
               return (
-                <TabsList className="h-auto w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 bg-transparent p-0">
-                  {/* ── Principal ── */}
-                  <div className={box}>
-                    <span className={label}>Principal</span>
-                    <div className={pills}>
-                      <TabsTrigger value="kpis" className={t}><BarChart3 className="h-3.5 w-3.5 shrink-0" />KPIs</TabsTrigger>
-                      <TabsTrigger value="briefing" className={t}><Building2 className="h-3.5 w-3.5 shrink-0" />Briefing</TabsTrigger>
-                      <TabsTrigger value="diagnostic" className={t}><Sparkles className="h-3.5 w-3.5 shrink-0" />Diagnóstico</TabsTrigger>
-                      <TabsTrigger value="tasks" className={t}><CheckCircle2 className="h-3.5 w-3.5 shrink-0" />Jornada</TabsTrigger>
-                      <TabsTrigger value="ai-coach" className={t}><Sparkles className="h-3.5 w-3.5 shrink-0" />IA</TabsTrigger>
-                    </div>
+                <div className="flex flex-col gap-2">
+                  {/* Level 1 — Group selector */}
+                  <div className="flex items-center gap-1 rounded-xl bg-muted/40 p-1 border border-border/40">
+                    {groups.map(g => {
+                      const isActive = navGroup === g.id;
+                      const hasActiveTab = activeGroupId === g.id;
+                      return (
+                        <button
+                          key={g.id}
+                          onClick={() => setNavGroup(g.id)}
+                          className={`flex flex-1 flex-col items-center gap-0.5 px-1 py-1.5 rounded-lg text-[10px] font-semibold transition-all relative ${
+                            isActive
+                              ? "bg-background text-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                          }`}
+                        >
+                          <span className={isActive ? "text-primary" : ""}>{g.icon}</span>
+                          <span className="truncate max-w-full leading-none">{g.label}</span>
+                          {hasActiveTab && (
+                            <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-primary" />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
 
-                  {/* ── Relacionamento ── */}
-                  <div className={box}>
-                    <span className={label}>Relacionamento</span>
-                    <div className={pills}>
-                      <TabsTrigger value="nps" className={t}><TrendingUp className="h-3.5 w-3.5 shrink-0" />NPS</TabsTrigger>
-                      <TabsTrigger value="csat" className={t}><Star className="h-3.5 w-3.5 shrink-0" />CSAT</TabsTrigger>
-                      <TabsTrigger value="assessments" className={t}><Brain className="h-3.5 w-3.5 shrink-0" />Aval.</TabsTrigger>
-                      <TabsTrigger value="meetings" className={t}><Video className="h-3.5 w-3.5 shrink-0" />Reuniões</TabsTrigger>
-                      <TabsTrigger value="support" className={t}><Headphones className="h-3.5 w-3.5 shrink-0" />Suporte</TabsTrigger>
-                      <TabsTrigger value="whatsapp" className={t}><MessageSquare className="h-3.5 w-3.5 shrink-0 text-green-500" />Conversas</TabsTrigger>
-                    </div>
-                  </div>
-
-                  {/* ── Gestão ── */}
-                  <div className={box}>
-                    <span className={label}>Gestão</span>
-                    <div className={pills}>
-                      <TabsTrigger value="health" className={t}><Heart className="h-3.5 w-3.5 shrink-0" />Saúde</TabsTrigger>
-                      <TabsTrigger value="hr" className={t}><Briefcase className="h-3.5 w-3.5 shrink-0" />RH</TabsTrigger>
-                      <TabsTrigger value="board" className={t}><Users className="h-3.5 w-3.5 shrink-0" />Board</TabsTrigger>
-                      <TabsTrigger value="financial" className={t}><Wallet className="h-3.5 w-3.5 shrink-0" />Financeiro</TabsTrigger>
-                      <TabsTrigger value="history" className={t}><Clock className="h-3.5 w-3.5 shrink-0" />Histórico</TabsTrigger>
-                    </div>
-                  </div>
-
-                  {/* ── Comercial ── */}
-                  <div className={box}>
-                    <span className={label}>Comercial</span>
-                    <div className={pills}>
-                      {currentUserRole !== "client" && (
-                        <TabsTrigger value="commercial_actions" className={t}><Target className="h-3.5 w-3.5 shrink-0" />Ações Comerciais</TabsTrigger>
-                      )}
-                      <TabsTrigger value="sales_funnel" className={t}><FunnelIcon className="h-3.5 w-3.5 shrink-0" />Funil de Vendas</TabsTrigger>
-                      <TabsTrigger value="routine_contract" className={t}><ClipboardList className="h-3.5 w-3.5 shrink-0" />Contrato de Rotina</TabsTrigger>
-                      <TabsTrigger value="commercial_director" className={t}><BrainCircuit className="h-3.5 w-3.5 shrink-0" />Diretor Comercial</TabsTrigger>
-                    </div>
-                  </div>
-
-                  {/* ── Marketing ── */}
-                  <div className={box}>
-                    <span className={label}>Marketing</span>
-                    <div className={pills}>
-                      <TabsTrigger value="paid_traffic" className={t}><Megaphone className="h-3.5 w-3.5 shrink-0" />Tráfego</TabsTrigger>
-                      <TabsTrigger value="access" className={t}><Eye className="h-3.5 w-3.5 shrink-0" />Acessos</TabsTrigger>
-                      <TabsTrigger value="instagram" className={t}><Instagram className="h-3.5 w-3.5 shrink-0 text-pink-500" />Instagram</TabsTrigger>
-                      <TabsTrigger value="social" className={t}><Heart className="h-3.5 w-3.5 shrink-0 text-pink-500" />UNV Social IA</TabsTrigger>
-                    </div>
-                  </div>
-
-                  {project?.product_name === "UNV Sales Force" && (
-                    <div className={box}>
-                      <span className={label}>Sales Force</span>
-                      <div className={pills}>
-                        <TabsTrigger value="sf_commissions" className={t}><DollarSign className="h-3.5 w-3.5 shrink-0" />Comissões</TabsTrigger>
-                      </div>
-                    </div>
-                  )}
-                </TabsList>
+                  {/* Level 2 — Sub-tabs for selected group */}
+                  <TabsList className="h-auto w-full flex flex-wrap gap-1 bg-transparent p-0">
+                    {(subTabs[navGroup] ?? []).map(trigger =>
+                      React.cloneElement(trigger as React.ReactElement, { className: triggerBase })
+                    )}
+                  </TabsList>
+                </div>
               );
             })()}
           </div>
