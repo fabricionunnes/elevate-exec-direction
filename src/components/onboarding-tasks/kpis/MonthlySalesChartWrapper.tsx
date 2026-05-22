@@ -28,6 +28,7 @@ interface MonthlySalesChartWrapperProps {
   selectedSalesperson?: string;
   filterKpiIds?: string[];
   titleSuffix?: string;
+  isClientView?: boolean;
 }
 
 interface MonetaryKpi {

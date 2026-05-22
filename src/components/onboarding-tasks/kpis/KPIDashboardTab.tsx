@@ -2029,10 +2029,11 @@ export const KPIDashboardTab = ({
             selectedSalesperson={selectedSalesperson}
             filterKpiIds={[kpi.id]}
             titleSuffix={kpi.name}
+            isClientView={isClientView}
           />
         ))
       ) : (
-        <MonthlySalesChart 
+        <MonthlySalesChart
           companyId={companyId}
           projectId={projectId}
           salespeople={salespeople.map(sp => ({
@@ -2046,6 +2047,7 @@ export const KPIDashboardTab = ({
           selectedTeam={selectedTeam}
           selectedSector={selectedSector}
           selectedSalesperson={selectedSalesperson}
+          isClientView={isClientView}
         />
       )}
 

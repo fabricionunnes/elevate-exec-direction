@@ -58,6 +58,7 @@ interface SingleMonthlySalesChartProps {
   kpiIds?: string[];
   kpiName: string;
   kpiTargetValue: number;
+  isClientView?: boolean;
 }
 
 export const SingleMonthlySalesChart = ({
@@ -74,6 +75,7 @@ export const SingleMonthlySalesChart = ({
   kpiIds,
   kpiName,
   kpiTargetValue,
+  isClientView = false,
 }: SingleMonthlySalesChartProps) => {
   const normalizeFilter = (value?: string) => {
     if (!value) return undefined;
@@ -621,8 +623,8 @@ Empresa: "${companyName || "cliente"}".`;
           </div>
         )}
 
-        {/* AI Analysis Section */}
-        <div className="relative overflow-hidden rounded-xl border bg-gradient-to-r from-primary/5 via-primary/10 to-violet-500/5 p-4">
+        {/* AI Analysis Section — hidden for salesperson view */}
+        {!isClientView && <div className="relative overflow-hidden rounded-xl border bg-gradient-to-r from-primary/5 via-primary/10 to-violet-500/5 p-4">
           <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-primary via-violet-500 to-primary" />
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-lg bg-gradient-to-br from-primary/15 to-violet-500/15">
@@ -665,7 +667,7 @@ Empresa: "${companyName || "cliente"}".`;
               )}
             </div>
           </div>
-        </div>
+        </div>}
       </CardContent>
     </Card>
   );
