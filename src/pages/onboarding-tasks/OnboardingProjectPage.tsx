@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import {
   MoreHorizontal,
   Trash2,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   RefreshCw,
   Pencil,
@@ -223,6 +224,48 @@ const OnboardingProjectPage = () => {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [showAddTaskDialog, setShowAddTaskDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("kpis");
+  const tabsScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollState = useCallback(() => {
+    const el = tabsScrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+  }, []);
+
+  const scrollTabs = useCallback((dir: "left" | "right") => {
+    const el = tabsScrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir === "left" ? -200 : 200, behavior: "smooth" });
+  }, []);
+
+  // Initialize scroll state on mount
+  useEffect(() => {
+    updateScrollState();
+    window.addEventListener("resize", updateScrollState);
+    return () => window.removeEventListener("resize", updateScrollState);
+  }, [updateScrollState]);
+
+  // Scroll active tab into view when tab changes
+  useEffect(() => {
+    const el = tabsScrollRef.current;
+    if (!el) return;
+    const active = el.querySelector('[data-state="active"]') as HTMLElement | null;
+    if (active) {
+      const elLeft = el.getBoundingClientRect().left;
+      const btnLeft = active.getBoundingClientRect().left;
+      const btnRight = active.getBoundingClientRect().right;
+      const elRight = el.getBoundingClientRect().right;
+      if (btnLeft < elLeft + 40) {
+        el.scrollBy({ left: btnLeft - elLeft - 40, behavior: "smooth" });
+      } else if (btnRight > elRight - 40) {
+        el.scrollBy({ left: btnRight - elRight + 40, behavior: "smooth" });
+      }
+    }
+    updateScrollState();
+  }, [activeTab, updateScrollState]);
   const [currentUserRole, setCurrentUserRole] = useState<"admin" | "cs" | "consultant" | "client" | "rh" | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
@@ -1456,11 +1499,20 @@ const OnboardingProjectPage = () => {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="mb-4 sm:mb-6 -mx-2 px-2 sm:mx-0 sm:px-0">
-            <div className="relative">
-              {/* Fade edges indicating scroll */}
-              <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-background to-transparent z-10" />
-              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent z-10" />
-              <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-border/60">
+            <div className="relative flex items-center gap-1 border-b border-border/60">
+              {/* Left arrow */}
+              <button
+                onClick={() => scrollTabs("left")}
+                className={`flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted transition-all ${canScrollLeft ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+              >
+                <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+              </button>
+
+              <div
+                ref={tabsScrollRef}
+                onScroll={updateScrollState}
+                className="flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
                 <TabsList className="h-auto w-max flex flex-nowrap items-center gap-0 bg-transparent p-0">
                   {/* Tab trigger base style */}
                   {/* Group: Principal */}
@@ -1569,6 +1621,14 @@ const OnboardingProjectPage = () => {
                   )}
                 </TabsList>
               </div>
+
+              {/* Right arrow */}
+              <button
+                onClick={() => scrollTabs("right")}
+                className={`flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted transition-all ${canScrollRight ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+              >
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </button>
             </div>
           </div>
 
