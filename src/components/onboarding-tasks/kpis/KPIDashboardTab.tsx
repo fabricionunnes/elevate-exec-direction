@@ -135,8 +135,7 @@ export const KPIDashboardTab = ({
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
-  const [allSalespeopleForRanking, setAllSalespeopleForRanking] = useState<Salesperson[]>([]);
-  const [allEntriesForRanking, setAllEntriesForRanking] = useState<Entry[]>([]);
+  const [allEntriesForRanking, setAllEntriesForRanking] = useState<{ kpi_id: string; salesperson_id: string; value: number }[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
@@ -279,13 +278,15 @@ export const KPIDashboardTab = ({
       setSalespeople(visibleSalespeople);
       setEntries(entriesData);
 
-      // For vendedor view: fetch all company data to compute real ranking position
+      // For vendedor view: fetch all company entries to compute real ranking position
+      // (uses kpi_entries directly — no need to fetch all salespeople, avoids RLS issues)
       if (isSalespersonView && salespersonId) {
-        const [allSpRes, allEntriesRes] = await Promise.all([
-          supabase.from("company_salespeople").select("id, name, is_active").eq("company_id", companyId).eq("is_active", true),
-          supabase.from("kpi_entries").select("kpi_id, salesperson_id, value").eq("company_id", companyId).gte("entry_date", dateRange.start).lte("entry_date", dateRange.end),
-        ]);
-        setAllSalespeopleForRanking(allSpRes.data || []);
+        const allEntriesRes = await supabase
+          .from("kpi_entries")
+          .select("kpi_id, salesperson_id, value")
+          .eq("company_id", companyId)
+          .gte("entry_date", dateRange.start)
+          .lte("entry_date", dateRange.end);
         setAllEntriesForRanking(allEntriesRes.data || []);
       }
       setUnits(unitsRes.data || []);
@@ -1120,21 +1121,22 @@ export const KPIDashboardTab = ({
       .slice(0, 10);
   };
 
-  // Calculate ranking position for current salesperson (used in isClientView)
+  // Calculate ranking position for current salesperson among all company salespeople
+  // Uses allEntriesForRanking (all company entries) — groups by salesperson_id dynamically
   const getMyRankingPosition = (forKpiId?: string): number | null => {
-    if (!salespersonId || allSalespeopleForRanking.length === 0) return null;
+    if (!salespersonId || allEntriesForRanking.length === 0) return null;
     const rankingMap: Record<string, number> = {};
-    allSalespeopleForRanking.forEach(sp => { rankingMap[sp.id] = 0; });
     allEntriesForRanking.forEach(entry => {
       if (forKpiId) {
         if (entry.kpi_id !== forKpiId) return;
       } else if (selectedKpi !== "all" && entry.kpi_id !== selectedKpi) {
         return;
       }
-      if (rankingMap[entry.salesperson_id] !== undefined) {
-        rankingMap[entry.salesperson_id] += entry.value;
-      }
+      if (!rankingMap[entry.salesperson_id]) rankingMap[entry.salesperson_id] = 0;
+      rankingMap[entry.salesperson_id] += entry.value;
     });
+    // Ensure current salesperson appears even with 0 entries
+    if (rankingMap[salespersonId] === undefined) rankingMap[salespersonId] = 0;
     const sorted = Object.entries(rankingMap).sort((a, b) => b[1] - a[1]);
     const pos = sorted.findIndex(([id]) => id === salespersonId);
     return pos >= 0 ? pos + 1 : null;
