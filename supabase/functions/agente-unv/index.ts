@@ -503,6 +503,65 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
   }
 }
 
+// ============ BRIEFING — SEM TOOLS (evita estouro de 200k tokens) ============
+// Busca dados diretamente via executeTool e passa como contexto para Anthropic SEM tool_use.
+// Garante que cada chamada fique bem abaixo do limite de tokens.
+async function callAgentBriefing(agentType: "financeiro" | "crm" | "projetos" | "marketing", task: string): Promise<string> {
+  // 1. Busca raw data para cada agente (2 chamadas paralelas por agente)
+  let rawData = "";
+  try {
+    if (agentType === "financeiro") {
+      const [summary, overdue] = await Promise.allSettled([
+        executeTool("resumo_financeiro", {}, "financeiro"),
+        executeTool("inadimplentes", {}, "financeiro"),
+      ]);
+      rawData = `RESUMO FINANCEIRO:\n${summary.status === "fulfilled" ? summary.value : "erro"}\n\nINADIMPLENTES:\n${overdue.status === "fulfilled" ? overdue.value : "erro"}`;
+    } else if (agentType === "crm") {
+      const [leads, activities] = await Promise.allSettled([
+        executeTool("listar_leads", {}, "crm"),
+        executeTool("listar_atividades", { status: "pending" }, "crm"),
+      ]);
+      rawData = `LEADS CRM:\n${leads.status === "fulfilled" ? leads.value : "erro"}\n\nATIVIDADES PENDENTES:\n${activities.status === "fulfilled" ? activities.value : "erro"}`;
+    } else if (agentType === "projetos") {
+      const [companies, tasks] = await Promise.allSettled([
+        executeTool("listar_empresas", { status: "active" }, "projetos"),
+        executeTool("listar_tarefas", { status: "pending" }, "projetos"),
+      ]);
+      rawData = `EMPRESAS ATIVAS:\n${companies.status === "fulfilled" ? companies.value : "erro"}\n\nTAREFAS PENDENTES:\n${tasks.status === "fulfilled" ? tasks.value : "erro"}`;
+    } else if (agentType === "marketing") {
+      const [metrics, leadsByCampaign] = await Promise.allSettled([
+        executeTool("metricas_meta", {}, "marketing"),
+        executeTool("leads_por_campanha", {}, "marketing"),
+      ]);
+      rawData = `MÉTRICAS META ADS:\n${metrics.status === "fulfilled" ? metrics.value : "erro"}\n\nLEADS POR CAMPANHA:\n${leadsByCampaign.status === "fulfilled" ? leadsByCampaign.value : "erro"}`;
+    }
+  } catch (_e) {
+    rawData = "Dados não disponíveis no momento.";
+  }
+
+  // 2. Trunca para ~8k chars — evita que respostas grandes da API comam o orçamento de tokens
+  if (rawData.length > 8000) rawData = rawData.slice(0, 8000) + "\n[truncado]";
+
+  // 3. Chama Anthropic SEM tools — apenas contexto + pergunta
+  const systemMap: Record<string, string> = {
+    financeiro: "Você é Noah, CFO virtual da UNV Holdings. Analise os dados e responda de forma direta e objetiva.",
+    crm: "Você é Sophia, Diretora Comercial virtual da UNV Holdings. Analise os dados e responda de forma direta e objetiva.",
+    projetos: "Você é Melissa, Gestora de CS/Projetos virtual da UNV Holdings. Analise os dados e responda de forma direta e objetiva.",
+    marketing: "Você é Luna, Head de Marketing virtual da UNV Holdings. Analise os dados e responda de forma direta e objetiva.",
+  };
+
+  const res = await anthropic.messages.create({
+    model: "claude-haiku-4-5",
+    max_tokens: 600,
+    system: systemMap[agentType] ?? "Você é um assistente especializado. Seja direto e objetivo.",
+    messages: [{
+      role: "user",
+      content: `DADOS DO SISTEMA:\n${rawData}\n\n---\n${task}`,
+    }],
+  });
+  return res.content[0]?.type === "text" ? (res.content[0] as { type: "text"; text: string }).text : "Sem dados.";
+}
+
 // ============ LOOP DO AGENTE ============
 async function callAgent(agentType: AgentType, userMessage: string, history: Anthropic.MessageParam[] = [], opts: { model?: string; maxTokens?: number } = {}): Promise<string> {
   const agentModel = opts.model ?? "claude-sonnet-4-6";
@@ -799,17 +858,12 @@ async function runAlignmentMeeting(mode: "daily" | "ondemand" = "daily", directC
 
   await safeRun(async () => {
 
-  // Daily: usa Haiku nos 4 relatórios iniciais (3-4× mais rápido, cabe nos 150s da edge function)
-  // Ondemand: usa Sonnet para maior qualidade (chamado via Telegram, sem restrição de tempo)
-  const reportModel  = mode === "daily" ? "claude-haiku-4-5" : "claude-sonnet-4-6";
-  const reportTokens = mode === "daily" ? 800 : 4096;
-
-  // Consulta paralela nos 4 agentes — resumo executivo apenas
+  // Consulta paralela nos 4 agentes — usa callAgentBriefing (sem tools) para evitar estouro de 200k tokens
   const [noahStatus, sophiaStatus, melissaStatus, lunaStatus] = await Promise.all([
-    callAgent("financeiro", `${prefix} financeiro. Retorne APENAS: saldo atual, MRR, 1-2 inadimplentes mais críticos do mês (nome + valor), e 1 alerta de caixa se houver. Máximo 4 linhas. Sem formatação extra.`, [], { model: reportModel, maxTokens: reportTokens }),
-    callAgent("crm", `${prefix} comercial. Retorne APENAS: qtd de leads quentes, 1-2 follow-ups mais urgentes e conversão do mês. Máximo 3 linhas. Sem formatação extra.`, [], { model: reportModel, maxTokens: reportTokens }),
-    callAgent("projetos", `${prefix} CS/Projetos. Retorne APENAS: qtd de clientes ativos, 1-2 clientes em risco de churn e 1 tarefa crítica pendente. Máximo 3 linhas. Sem formatação extra.`, [], { model: reportModel, maxTokens: reportTokens }),
-    callAgent("marketing", `${prefix} marketing. Retorne APENAS: gasto total em tráfego pago no período atual, CPL médio e 1 campanha de destaque (melhor ou pior). Máximo 3 linhas. Sem formatação extra.`, [], { model: reportModel, maxTokens: reportTokens }),
+    callAgentBriefing("financeiro", `${prefix} financeiro. Retorne APENAS: saldo atual, MRR, 1-2 inadimplentes mais críticos do mês (nome + valor), e 1 alerta de caixa se houver. Máximo 4 linhas. Sem formatação extra.`),
+    callAgentBriefing("crm", `${prefix} comercial. Retorne APENAS: qtd de leads quentes, 1-2 follow-ups mais urgentes e conversão do mês. Máximo 3 linhas. Sem formatação extra.`),
+    callAgentBriefing("projetos", `${prefix} CS/Projetos. Retorne APENAS: qtd de clientes ativos, 1-2 clientes em risco de churn e 1 tarefa crítica pendente. Máximo 3 linhas. Sem formatação extra.`),
+    callAgentBriefing("marketing", `${prefix} marketing. Retorne APENAS: gasto total em tráfego pago no período atual, CPL médio e 1 campanha de destaque (melhor ou pior). Máximo 3 linhas. Sem formatação extra.`),
   ]);
 
   // No modo daily: NÃO envia relatórios individuais — Max consolida tudo em 1 mensagem
