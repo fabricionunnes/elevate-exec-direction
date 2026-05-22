@@ -1498,138 +1498,65 @@ const OnboardingProjectPage = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="mb-4 sm:mb-6 -mx-2 px-2 sm:mx-0 sm:px-0">
-            <div className="relative flex items-center gap-1 border-b border-border/60">
-              {/* Left arrow */}
-              <button
-                onClick={() => scrollTabs("left")}
-                className={`flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted transition-all ${canScrollLeft ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-              >
-                <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-              </button>
+          <div className="mb-4 sm:mb-6">
+            {/* Tab style helper */}
+            {(() => {
+              const t = "flex items-center gap-1.5 px-2.5 py-1.5 h-auto text-xs font-medium rounded-md border border-transparent bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary/20 whitespace-nowrap transition-all shadow-none";
+              return (
+                <TabsList className="h-auto w-full flex flex-wrap justify-start gap-1.5 bg-transparent p-0">
+                  {/* ── Principal ── */}
+                  <TabsTrigger value="kpis" className={t}><BarChart3 className="h-3.5 w-3.5 shrink-0" />KPIs</TabsTrigger>
+                  <TabsTrigger value="briefing" className={t}><Building2 className="h-3.5 w-3.5 shrink-0" />Briefing</TabsTrigger>
+                  <TabsTrigger value="diagnostic" className={t}><Sparkles className="h-3.5 w-3.5 shrink-0" />Diagnóstico</TabsTrigger>
+                  <TabsTrigger value="tasks" className={t}><CheckCircle2 className="h-3.5 w-3.5 shrink-0" />Jornada</TabsTrigger>
+                  <TabsTrigger value="ai-coach" className={t}><Sparkles className="h-3.5 w-3.5 shrink-0" />IA</TabsTrigger>
 
-              <div
-                ref={tabsScrollRef}
-                onScroll={updateScrollState}
-                className="flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              >
-                <TabsList className="h-auto w-max flex flex-nowrap items-center gap-0 bg-transparent p-0">
-                  {/* Tab trigger base style */}
-                  {/* Group: Principal */}
-                  <TabsTrigger value="kpis" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <BarChart3 className="h-3.5 w-3.5 shrink-0" />KPIs
-                  </TabsTrigger>
-                  <TabsTrigger value="briefing" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <Building2 className="h-3.5 w-3.5 shrink-0" />Briefing
-                  </TabsTrigger>
-                  <TabsTrigger value="diagnostic" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <Sparkles className="h-3.5 w-3.5 shrink-0" />Diagnóstico
-                  </TabsTrigger>
-                  <TabsTrigger value="tasks" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />Jornada
-                  </TabsTrigger>
-                  <TabsTrigger value="ai-coach" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <Sparkles className="h-3.5 w-3.5 shrink-0" />IA
-                  </TabsTrigger>
+                  <span className="self-center w-px h-5 bg-border/50 mx-0.5" />
 
-                  {/* Separator */}
-                  <span className="mx-1 h-4 w-px bg-border/60 shrink-0 self-center" />
+                  {/* ── Relacionamento ── */}
+                  <TabsTrigger value="nps" className={t}><TrendingUp className="h-3.5 w-3.5 shrink-0" />NPS</TabsTrigger>
+                  <TabsTrigger value="csat" className={t}><Star className="h-3.5 w-3.5 shrink-0" />CSAT</TabsTrigger>
+                  <TabsTrigger value="assessments" className={t}><Brain className="h-3.5 w-3.5 shrink-0" />Aval.</TabsTrigger>
+                  <TabsTrigger value="meetings" className={t}><Video className="h-3.5 w-3.5 shrink-0" />Reuniões</TabsTrigger>
+                  <TabsTrigger value="support" className={t}><Headphones className="h-3.5 w-3.5 shrink-0" />Suporte</TabsTrigger>
+                  <TabsTrigger value="whatsapp" className={t}><MessageSquare className="h-3.5 w-3.5 shrink-0 text-green-500" />Conversas</TabsTrigger>
 
-                  {/* Group: Relacionamento */}
-                  <TabsTrigger value="nps" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <TrendingUp className="h-3.5 w-3.5 shrink-0" />NPS
-                  </TabsTrigger>
-                  <TabsTrigger value="csat" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <Star className="h-3.5 w-3.5 shrink-0" />CSAT
-                  </TabsTrigger>
-                  <TabsTrigger value="assessments" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <Brain className="h-3.5 w-3.5 shrink-0" />Aval.
-                  </TabsTrigger>
-                  <TabsTrigger value="meetings" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <Video className="h-3.5 w-3.5 shrink-0" />Reuniões
-                  </TabsTrigger>
-                  <TabsTrigger value="support" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <Headphones className="h-3.5 w-3.5 shrink-0" />Suporte
-                  </TabsTrigger>
-                  <TabsTrigger value="whatsapp" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <MessageSquare className="h-3.5 w-3.5 shrink-0 text-green-500" />Conversas
-                  </TabsTrigger>
+                  <span className="self-center w-px h-5 bg-border/50 mx-0.5" />
 
-                  {/* Separator */}
-                  <span className="mx-1 h-4 w-px bg-border/60 shrink-0 self-center" />
+                  {/* ── Gestão ── */}
+                  <TabsTrigger value="health" className={t}><Heart className="h-3.5 w-3.5 shrink-0" />Saúde</TabsTrigger>
+                  <TabsTrigger value="hr" className={t}><Briefcase className="h-3.5 w-3.5 shrink-0" />RH</TabsTrigger>
+                  <TabsTrigger value="board" className={t}><Users className="h-3.5 w-3.5 shrink-0" />Board</TabsTrigger>
+                  <TabsTrigger value="financial" className={t}><Wallet className="h-3.5 w-3.5 shrink-0" />Financeiro</TabsTrigger>
+                  <TabsTrigger value="history" className={t}><Clock className="h-3.5 w-3.5 shrink-0" />Histórico</TabsTrigger>
 
-                  {/* Group: Gestão */}
-                  <TabsTrigger value="health" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <Heart className="h-3.5 w-3.5 shrink-0" />Saúde
-                  </TabsTrigger>
-                  <TabsTrigger value="hr" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <Briefcase className="h-3.5 w-3.5 shrink-0" />RH
-                  </TabsTrigger>
-                  <TabsTrigger value="board" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <Users className="h-3.5 w-3.5 shrink-0" />Board
-                  </TabsTrigger>
-                  <TabsTrigger value="financial" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <Wallet className="h-3.5 w-3.5 shrink-0" />Financeiro
-                  </TabsTrigger>
-                  <TabsTrigger value="history" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <Clock className="h-3.5 w-3.5 shrink-0" />Histórico
-                  </TabsTrigger>
+                  <span className="self-center w-px h-5 bg-border/50 mx-0.5" />
 
-                  {/* Separator */}
-                  <span className="mx-1 h-4 w-px bg-border/60 shrink-0 self-center" />
-
-                  {/* Group: Comercial */}
+                  {/* ── Comercial ── */}
                   {currentUserRole !== "client" && (
-                    <TabsTrigger value="commercial_actions" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                      <Target className="h-3.5 w-3.5 shrink-0" />Ações Comerciais
-                    </TabsTrigger>
+                    <TabsTrigger value="commercial_actions" className={t}><Target className="h-3.5 w-3.5 shrink-0" />Ações Comerciais</TabsTrigger>
                   )}
-                  <TabsTrigger value="sales_funnel" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <FunnelIcon className="h-3.5 w-3.5 shrink-0" />Funil de Vendas
-                  </TabsTrigger>
-                  <TabsTrigger value="routine_contract" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <ClipboardList className="h-3.5 w-3.5 shrink-0" />Contrato de Rotina
-                  </TabsTrigger>
-                  <TabsTrigger value="commercial_director" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <BrainCircuit className="h-3.5 w-3.5 shrink-0" />Diretor Comercial
-                  </TabsTrigger>
+                  <TabsTrigger value="sales_funnel" className={t}><FunnelIcon className="h-3.5 w-3.5 shrink-0" />Funil de Vendas</TabsTrigger>
+                  <TabsTrigger value="routine_contract" className={t}><ClipboardList className="h-3.5 w-3.5 shrink-0" />Contrato de Rotina</TabsTrigger>
+                  <TabsTrigger value="commercial_director" className={t}><BrainCircuit className="h-3.5 w-3.5 shrink-0" />Diretor Comercial</TabsTrigger>
 
-                  {/* Separator */}
-                  <span className="mx-1 h-4 w-px bg-border/60 shrink-0 self-center" />
+                  <span className="self-center w-px h-5 bg-border/50 mx-0.5" />
 
-                  {/* Group: Marketing */}
-                  <TabsTrigger value="paid_traffic" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <Megaphone className="h-3.5 w-3.5 shrink-0" />Tráfego
-                  </TabsTrigger>
-                  <TabsTrigger value="access" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <Eye className="h-3.5 w-3.5 shrink-0" />Acessos
-                  </TabsTrigger>
-                  <TabsTrigger value="instagram" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <Instagram className="h-3.5 w-3.5 shrink-0 text-pink-500" />Instagram
-                  </TabsTrigger>
-                  <TabsTrigger value="social" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                    <Heart className="h-3.5 w-3.5 shrink-0 text-pink-500" />UNV Social IA
-                  </TabsTrigger>
+                  {/* ── Marketing ── */}
+                  <TabsTrigger value="paid_traffic" className={t}><Megaphone className="h-3.5 w-3.5 shrink-0" />Tráfego</TabsTrigger>
+                  <TabsTrigger value="access" className={t}><Eye className="h-3.5 w-3.5 shrink-0" />Acessos</TabsTrigger>
+                  <TabsTrigger value="instagram" className={t}><Instagram className="h-3.5 w-3.5 shrink-0 text-pink-500" />Instagram</TabsTrigger>
+                  <TabsTrigger value="social" className={t}><Heart className="h-3.5 w-3.5 shrink-0 text-pink-500" />UNV Social IA</TabsTrigger>
 
                   {project?.product_name === "UNV Sales Force" && (
                     <>
-                      <span className="mx-1 h-4 w-px bg-border/60 shrink-0 self-center" />
-                      <TabsTrigger value="sf_commissions" className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-none border-b-2 border-transparent bg-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent whitespace-nowrap transition-colors">
-                        <DollarSign className="h-3.5 w-3.5 shrink-0" />Comissões
-                      </TabsTrigger>
+                      <span className="self-center w-px h-5 bg-border/50 mx-0.5" />
+                      <TabsTrigger value="sf_commissions" className={t}><DollarSign className="h-3.5 w-3.5 shrink-0" />Comissões</TabsTrigger>
                     </>
                   )}
                 </TabsList>
-              </div>
-
-              {/* Right arrow */}
-              <button
-                onClick={() => scrollTabs("right")}
-                className={`flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted transition-all ${canScrollRight ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-              >
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </button>
-            </div>
+              );
+            })()}
           </div>
 
           <TabsContent value="tasks">
