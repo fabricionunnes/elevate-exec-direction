@@ -1475,12 +1475,12 @@ const OnboardingProjectPage = () => {
             {/* Two-level navigation */}
             {(() => {
               const groups = [
-                { id: "principal",      label: "Principal",       icon: <BarChart3 className="h-4 w-4" /> },
-                { id: "relacionamento", label: "Relac.",          icon: <Heart className="h-4 w-4" /> },
-                { id: "gestao",         label: "Gestão",          icon: <Settings className="h-4 w-4" /> },
-                { id: "comercial",      label: "Comercial",       icon: <Target className="h-4 w-4" /> },
-                { id: "marketing",      label: "Marketing",       icon: <Megaphone className="h-4 w-4" /> },
-                ...(project?.product_name === "UNV Sales Force" ? [{ id: "salesforce", label: "Sales Force", icon: <DollarSign className="h-4 w-4" /> }] : []),
+                { id: "principal",      label: "Principal",  icon: <BarChart3 className="h-4 w-4" /> },
+                { id: "relacionamento", label: "Relac.",     icon: <Heart className="h-4 w-4" /> },
+                { id: "gestao",         label: "Gestão",     icon: <Settings className="h-4 w-4" /> },
+                { id: "comercial",      label: "Comerc.",    icon: <Target className="h-4 w-4" /> },
+                { id: "marketing",      label: "Mkt",        icon: <Megaphone className="h-4 w-4" /> },
+                ...(project?.product_name === "UNV Sales Force" ? [{ id: "salesforce", label: "Sales F.", icon: <DollarSign className="h-4 w-4" /> }] : []),
               ];
 
               const subTabs: Record<string, React.ReactNode[]> = {
@@ -1544,7 +1544,7 @@ const OnboardingProjectPage = () => {
                           }`}
                         >
                           <span className={isActive ? "text-primary" : ""}>{g.icon}</span>
-                          <span className="truncate max-w-full leading-none">{g.label}</span>
+                          <span className="leading-none">{g.label}</span>
                           {hasActiveTab && (
                             <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-primary" />
                           )}
