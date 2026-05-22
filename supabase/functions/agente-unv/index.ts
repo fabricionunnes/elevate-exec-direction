@@ -865,7 +865,15 @@ Marketing: [1 linha com gasto e CPL]
 Sem rodeios. Sem seções vazias.
   `.trim();
 
-  const ata = await callAgent("ceo", ceoPrompt);
+  // Usa Anthropic direto SEM tools para evitar estouro de 200k tokens
+  // (callAgent("ceo") inclui ~50 tools que somam >150k tokens de definição)
+  const ataRes = await anthropic.messages.create({
+    model: "claude-haiku-4-5",
+    max_tokens: 1024,
+    system: "Você é Max, CEO da UNV Holdings. Gere o briefing exatamente no formato solicitado. Seja telegráfico e direto.",
+    messages: [{ role: "user", content: ceoPrompt }],
+  });
+  const ata = ataRes.content[0]?.type === "text" ? (ataRes.content[0] as { type: "text"; text: string }).text : "";
 
   // Extrai os direcionamentos por agente
   function extractSection(text: string, start: string, end: string): string {
@@ -888,11 +896,9 @@ Sem rodeios. Sem seções vazias.
     .trim();
 
   // Envia decisões do Max como mensagem separada
-  const msgCeoAta = `*🧠 MAX — Decisões e Prioridades*\n\n${ataCeo}`;
+  const msgCeoAta = `*MAX — Decisões e Prioridades*\n\n${ataCeo}`;
   if (ceoId) {
-    await (OPENAI_API_KEY
-      ? synthesizeSpeech(ataCeo, "ceo").then(a => a ? sendVoice(ceoId, a, "ceo") : sendTelegram(ceoId, msgCeoAta, "ceo"))
-      : sendTelegram(ceoId, msgCeoAta, "ceo"));
+    await sendTelegram(ceoId, msgCeoAta, "ceo");
   }
 
   // Salva direcionamentos pendentes de aprovação — NÃO executa ainda
