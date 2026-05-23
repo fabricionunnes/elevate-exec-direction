@@ -10,7 +10,7 @@ const FACEBOOK_APP_SECRET = Deno.env.get("FACEBOOK_APP_SECRET");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const GRAPH_API = "https://graph.facebook.com/v21.0";
-const META_ADS_STABLE_REDIRECT_URI = "https://elevate-exec-direction.lovable.app/meta-ads-callback";
+const META_ADS_STABLE_REDIRECT_URI = "https://xrncvhzxjmddqluxoosu.supabase.co/functions/v1/meta-ads-callback";
 
 async function fetchWithTimeout(url: string, timeout = 30000) {
   const controller = new AbortController();
