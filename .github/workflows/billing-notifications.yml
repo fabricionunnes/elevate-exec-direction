@@ -1,0 +1,30 @@
+name: Régua de Cobranças — Envio Diário
+
+on:
+  schedule:
+    # 08:00 BRT (Brasília) = 11:00 UTC — todos os dias
+    - cron: '0 11 * * *'
+  workflow_dispatch: # permite rodar manualmente pelo GitHub
+
+jobs:
+  enviar-notificacoes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispara régua de cobranças
+        run: |
+          response=$(curl -s -o /tmp/response.json -w "%{http_code}" -X POST \
+            "https://xrncvhzxjmddqluxoosu.supabase.co/functions/v1/billing-notifications" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"manual": false}')
+
+          echo "HTTP status: $response"
+          echo "Response body:"
+          cat /tmp/response.json
+
+          if [ "$response" != "200" ]; then
+            echo "Erro ao executar régua de cobranças — status HTTP $response"
+            exit 1
+          fi
+
+          echo "Régua de cobranças executada com sucesso."
