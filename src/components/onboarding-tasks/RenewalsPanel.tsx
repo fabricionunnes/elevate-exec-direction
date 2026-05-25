@@ -63,19 +63,26 @@ interface Staff {
   name: string;
 }
 
-interface CompanyForRenewal {
-  id: string;
-  name: string;
-  consultant_id: string | null;
-  consultant_name: string | null;
+interface ProjectForRenewal {
+  // Project-level fields
+  project_id: string;
+  project_name: string;
+  project_status: string;
   contract_start_date: string | null;
   contract_end_date: string | null;
   contract_value: number | null;
-  payment_method: string | null;
-  status: string;
+  billing_day: number | null;
   renewal_status: string | null;
   renewal_notes: string | null;
   renewal_meeting_date: string | null;
+  renewed_at: string | null;
+  // Company-level fields
+  company_id: string;
+  company_name: string;
+  consultant_id: string | null;
+  consultant_name: string | null;
+  payment_method: string | null;
+  company_status: string;
   // Calculated
   contract_months: number;
   monthly_value: number;
@@ -84,6 +91,7 @@ interface CompanyForRenewal {
 interface RenewalHistory {
   id: string;
   company_id: string;
+  project_id: string | null;
   previous_start_date: string | null;
   previous_end_date: string | null;
   new_start_date: string | null;
@@ -116,10 +124,10 @@ interface RenewalsPanelProps {
 }
 
 export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: RenewalsPanelProps) {
-  const [companies, setCompanies] = useState<CompanyForRenewal[]>([]);
+  const [projects, setProjects] = useState<ProjectForRenewal[]>([]);
   const [renewals, setRenewals] = useState<RenewalHistory[]>([]);
   const [loading, setLoading] = useState(false);
-  
+
   // Filters
   const [selectedMonth, setSelectedMonth] = useState(() => startOfMonth(new Date()));
   const [searchTerm, setSearchTerm] = useState("");
@@ -129,7 +137,7 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
 
   // Renewal dialog
   const [renewDialogOpen, setRenewDialogOpen] = useState(false);
-  const [selectedCompany, setSelectedCompany] = useState<CompanyForRenewal | null>(null);
+  const [selectedProject, setSelectedProject] = useState<ProjectForRenewal | null>(null);
   const [renewalMode, setRenewalMode] = useState<"same" | "change">("same");
   const [newMonthlyValue, setNewMonthlyValue] = useState<number>(0);
   const [newTermMonths, setNewTermMonths] = useState<number>(12);
@@ -141,12 +149,12 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
 
   // History dialog
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
-  const [companyHistory, setCompanyHistory] = useState<RenewalHistory[]>([]);
-  const [historyCompanyName, setHistoryCompanyName] = useState("");
+  const [projectHistory, setProjectHistory] = useState<RenewalHistory[]>([]);
+  const [historyTitle, setHistoryTitle] = useState("");
 
   // Meeting date dialog (for inline status change)
   const [meetingDateDialogOpen, setMeetingDateDialogOpen] = useState(false);
-  const [meetingDateCompanyId, setMeetingDateCompanyId] = useState<string | null>(null);
+  const [meetingDateProjectId, setMeetingDateProjectId] = useState<string | null>(null);
   const [meetingDateValue, setMeetingDateValue] = useState<string>("");
 
   useEffect(() => {
@@ -157,64 +165,85 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
 
   const fetchData = async () => {
     setLoading(true);
-    
-    // Fetch companies with card payment method
-    const { data: companiesData, error: companiesError } = await supabase
-      .from("onboarding_companies")
+
+    // Fetch projects with contract data, joined with company info
+    const { data: projectsData, error: projectsError } = await supabase
+      .from("onboarding_projects")
       .select(`
         id,
-        name,
-        consultant_id,
+        product_name,
+        status,
         contract_start_date,
         contract_end_date,
         contract_value,
-        payment_method,
-        status,
+        billing_day,
         renewal_status,
         renewal_notes,
         renewal_meeting_date,
-        consultant:consultant_id(name)
+        renewed_at,
+        onboarding_company:onboarding_company_id(
+          id,
+          name,
+          consultant_id,
+          payment_method,
+          status,
+          consultant:consultant_id(name)
+        )
       `)
-      .or("payment_method.eq.card,payment_method.is.null")
-      .neq("status", "inactive")
       .not("contract_end_date", "is", null)
       .order("contract_end_date", { ascending: true });
 
-    if (companiesError) {
-      console.error("Error fetching companies:", companiesError);
-      toast.error("Erro ao carregar empresas");
+    if (projectsError) {
+      console.error("Error fetching projects:", projectsError);
+      toast.error("Erro ao carregar projetos");
     } else {
-      const processedCompanies: CompanyForRenewal[] = (companiesData || []).map((company: any) => {
-        const startDate = company.contract_start_date ? parseISO(company.contract_start_date) : null;
-        const endDate = company.contract_end_date ? parseISO(company.contract_end_date) : null;
-        
-        let contractMonths = 1;
-        if (startDate && endDate) {
-          contractMonths = Math.max(1, differenceInMonths(endDate, startDate));
-        }
-        
-        const contractValue = company.contract_value || 0;
-        const monthlyValue = contractMonths > 0 ? contractValue / contractMonths : contractValue;
-        
-        return {
-          id: company.id,
-          name: company.name,
-          consultant_id: company.consultant_id,
-          consultant_name: company.consultant?.name || null,
-          contract_start_date: company.contract_start_date,
-          contract_end_date: company.contract_end_date,
-          contract_value: company.contract_value,
-          payment_method: company.payment_method,
-          status: company.status || "active",
-          renewal_status: company.renewal_status,
-          renewal_notes: company.renewal_notes,
-          renewal_meeting_date: company.renewal_meeting_date,
-          contract_months: contractMonths,
-          monthly_value: monthlyValue,
-        };
-      });
-      
-      setCompanies(processedCompanies);
+      const processedProjects: ProjectForRenewal[] = (projectsData || [])
+        .filter((p: any) => {
+          const company = p.onboarding_company;
+          if (!company) return false;
+          // Exclude inactive companies
+          if (company.status === "inactive") return false;
+          // Only card or null payment_method
+          if (company.payment_method && company.payment_method !== "card") return false;
+          return true;
+        })
+        .map((p: any) => {
+          const company = p.onboarding_company;
+          const startDate = p.contract_start_date ? parseISO(p.contract_start_date) : null;
+          const endDate = p.contract_end_date ? parseISO(p.contract_end_date) : null;
+
+          let contractMonths = 1;
+          if (startDate && endDate) {
+            contractMonths = Math.max(1, differenceInMonths(endDate, startDate));
+          }
+
+          const contractValue = p.contract_value || 0;
+          const monthlyValue = contractMonths > 0 ? contractValue / contractMonths : contractValue;
+
+          return {
+            project_id: p.id,
+            project_name: p.product_name,
+            project_status: p.status || "active",
+            contract_start_date: p.contract_start_date,
+            contract_end_date: p.contract_end_date,
+            contract_value: p.contract_value,
+            billing_day: p.billing_day,
+            renewal_status: p.renewal_status,
+            renewal_notes: p.renewal_notes,
+            renewal_meeting_date: p.renewal_meeting_date,
+            renewed_at: p.renewed_at,
+            company_id: company.id,
+            company_name: company.name,
+            consultant_id: company.consultant_id,
+            consultant_name: company.consultant?.name || null,
+            payment_method: company.payment_method,
+            company_status: company.status || "active",
+            contract_months: contractMonths,
+            monthly_value: monthlyValue,
+          };
+        });
+
+      setProjects(processedProjects);
     }
 
     // Fetch renewal history
@@ -237,65 +266,63 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
     setLoading(false);
   };
 
-  // Filter companies based on selected month
-  const filteredCompanies = useMemo(() => {
+  // Filter projects based on selected month
+  const filteredProjects = useMemo(() => {
     const monthStart = startOfMonth(selectedMonth);
     const monthEnd = endOfMonth(selectedMonth);
 
-    return companies.filter(company => {
-      if (!company.contract_end_date) return false;
-      
-      // Exclude 1-month contracts - they stay active until manually closed
-      if (company.contract_months <= 1) return false;
-      
-      const endDate = parseISO(company.contract_end_date);
-      
+    return projects.filter(p => {
+      if (!p.contract_end_date) return false;
+
+      // Exclude 1-month contracts
+      if (p.contract_months <= 1) return false;
+
+      const endDate = parseISO(p.contract_end_date);
+
       // Check if contract ends in selected month
       const endsInMonth = isWithinInterval(endDate, { start: monthStart, end: monthEnd });
-      
+
       // Check if it's a pending renewal from previous months
       const isPendingFromPast = includePending && isBefore(endDate, monthStart);
-      
+
       if (!endsInMonth && !isPendingFromPast) return false;
-      
-      // Search filter
-      if (searchTerm && !company.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-        return false;
-      }
-      
-      // Consultant filter
-      if (filterConsultant !== "all" && company.consultant_id !== filterConsultant) {
-        return false;
-      }
-      
-      // Status filter
-      if (filterStatus !== "all") {
-        const companyRenewalStatus = company.renewal_status || "pendente";
-        if (filterStatus !== companyRenewalStatus) {
+
+      // Search filter — matches company name or project name
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        if (!p.company_name.toLowerCase().includes(term) && !p.project_name.toLowerCase().includes(term)) {
           return false;
         }
       }
-      
+
+      // Consultant filter
+      if (filterConsultant !== "all" && p.consultant_id !== filterConsultant) return false;
+
+      // Status filter
+      if (filterStatus !== "all") {
+        const projectRenewalStatus = p.renewal_status || "pendente";
+        if (filterStatus !== projectRenewalStatus) return false;
+      }
+
       return true;
     }).sort((a, b) => {
-      // Sort by end date ascending (most urgent first)
       const dateA = a.contract_end_date ? new Date(a.contract_end_date).getTime() : 0;
       const dateB = b.contract_end_date ? new Date(b.contract_end_date).getTime() : 0;
       return dateA - dateB;
     });
-  }, [companies, selectedMonth, searchTerm, filterConsultant, filterStatus, includePending]);
+  }, [projects, selectedMonth, searchTerm, filterConsultant, filterStatus, includePending]);
 
   // Stats
   const stats = useMemo(() => {
-    const total = filteredCompanies.length;
-    const pending = filteredCompanies.filter(c => !c.renewal_status || c.renewal_status === "pendente").length;
-    const negotiating = filteredCompanies.filter(c => c.renewal_status === "em_negociacao").length;
-    const renewed = filteredCompanies.filter(c => c.renewal_status === "renovado").length;
-    const notRenewed = filteredCompanies.filter(c => c.renewal_status === "nao_renovado" || c.renewal_status === "cancelado").length;
-    const totalValue = filteredCompanies.reduce((sum, c) => sum + (c.monthly_value || 0), 0);
-    
+    const total = filteredProjects.length;
+    const pending = filteredProjects.filter(p => !p.renewal_status || p.renewal_status === "pendente").length;
+    const negotiating = filteredProjects.filter(p => p.renewal_status === "em_negociacao").length;
+    const renewed = filteredProjects.filter(p => p.renewal_status === "renovado").length;
+    const notRenewed = filteredProjects.filter(p => p.renewal_status === "nao_renovado" || p.renewal_status === "cancelado").length;
+    const totalValue = filteredProjects.reduce((sum, p) => sum + (p.monthly_value || 0), 0);
+
     return { total, pending, negotiating, renewed, notRenewed, totalValue };
-  }, [filteredCompanies]);
+  }, [filteredProjects]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -318,8 +345,7 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
     if (!statusOption) {
       return <Badge variant="secondary">Pendente</Badge>;
     }
-    
-    // Show meeting date for scheduled meetings
+
     if (status === "reuniao_agendada" && meetingDate) {
       return (
         <div className="flex flex-col gap-1">
@@ -330,7 +356,7 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
         </div>
       );
     }
-    
+
     return (
       <Badge className={`${statusOption.bgColor} ${statusOption.textColor} ${statusOption.borderColor}`}>
         {statusOption.label}
@@ -338,40 +364,42 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
     );
   };
 
-  const openRenewalDialog = (company: CompanyForRenewal) => {
-    setSelectedCompany(company);
+  const openRenewalDialog = (project: ProjectForRenewal) => {
+    setSelectedProject(project);
     setRenewalMode("same");
-    setNewMonthlyValue(company.monthly_value);
-    setNewTermMonths(company.contract_months);
-    
-    // Default new start date: day after current end date
-    if (company.contract_end_date) {
-      const nextDay = addDays(parseISO(company.contract_end_date), 1);
+    setNewMonthlyValue(project.monthly_value);
+    setNewTermMonths(project.contract_months);
+
+    if (project.contract_end_date) {
+      const nextDay = addDays(parseISO(project.contract_end_date), 1);
       setNewStartDate(format(nextDay, "yyyy-MM-dd"));
     } else {
       setNewStartDate(format(new Date(), "yyyy-MM-dd"));
     }
-    
-    setRenewalNotes(company.renewal_notes || "");
-    setRenewalStatus(company.renewal_status || "pendente");
-    setRenewalMeetingDate(company.renewal_meeting_date || "");
+
+    setRenewalNotes(project.renewal_notes || "");
+    setRenewalStatus(project.renewal_status || "pendente");
+    setRenewalMeetingDate(project.renewal_meeting_date || "");
     setRenewDialogOpen(true);
   };
 
-  const openHistoryDialog = (company: CompanyForRenewal) => {
-    const history = renewals.filter(r => r.company_id === company.id);
-    setCompanyHistory(history);
-    setHistoryCompanyName(company.name);
+  const openHistoryDialog = (project: ProjectForRenewal) => {
+    // Filter history by project_id if available, otherwise by company_id
+    const history = renewals.filter(r =>
+      r.project_id ? r.project_id === project.project_id : r.company_id === project.company_id
+    );
+    setProjectHistory(history);
+    setHistoryTitle(`${project.company_name} — ${project.project_name}`);
     setHistoryDialogOpen(true);
   };
 
   // Calculate new contract values
   const calculatedValues = useMemo(() => {
-    if (!selectedCompany) return { newEndDate: "", newTotalValue: 0, monthlyValue: 0 };
-    
-    const monthlyValue = renewalMode === "same" ? selectedCompany.monthly_value : newMonthlyValue;
-    const termMonths = renewalMode === "same" ? selectedCompany.contract_months : newTermMonths;
-    
+    if (!selectedProject) return { newEndDate: "", newTotalValue: 0, monthlyValue: 0 };
+
+    const monthlyValue = renewalMode === "same" ? selectedProject.monthly_value : newMonthlyValue;
+    const termMonths = renewalMode === "same" ? selectedProject.contract_months : newTermMonths;
+
     let newEndDate = "";
     if (newStartDate) {
       try {
@@ -380,35 +408,34 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
         newEndDate = format(endDate, "yyyy-MM-dd");
       } catch {}
     }
-    
+
     const newTotalValue = monthlyValue * termMonths;
-    
+
     return { newEndDate, newTotalValue, monthlyValue };
-  }, [selectedCompany, renewalMode, newMonthlyValue, newTermMonths, newStartDate]);
+  }, [selectedProject, renewalMode, newMonthlyValue, newTermMonths, newStartDate]);
 
   // Save only status and notes (does NOT update contract values)
   const handleSaveStatusOnly = async () => {
-    if (!selectedCompany || !staffId) return;
-    
+    if (!selectedProject || !staffId) return;
+
     setSaving(true);
-    
+
     try {
-      // Only update renewal status, notes and meeting date - no contract changes
       const { error: updateError } = await supabase
-        .from("onboarding_companies")
+        .from("onboarding_projects")
         .update({
           renewal_status: renewalStatus,
           renewal_notes: renewalNotes || null,
           renewal_meeting_date: renewalStatus === "reuniao_agendada" ? renewalMeetingDate || null : null,
         })
-        .eq("id", selectedCompany.id);
-        
+        .eq("id", selectedProject.project_id);
+
       if (updateError) throw updateError;
 
       toast.success("Status de renovação atualizado");
-      
+
       setRenewDialogOpen(false);
-      setSelectedCompany(null);
+      setSelectedProject(null);
       fetchData();
     } catch (error) {
       console.error("Error saving renewal status:", error);
@@ -419,24 +446,23 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
   };
 
   // Update status directly from table dropdown
-  const handleInlineStatusChange = async (companyId: string, newStatus: string) => {
+  const handleInlineStatusChange = async (projectId: string, newStatus: string) => {
     try {
-      // If status is "reuniao_agendada", we need to open a date picker dialog
       if (newStatus === "reuniao_agendada") {
-        setMeetingDateCompanyId(companyId);
+        setMeetingDateProjectId(projectId);
         setMeetingDateValue("");
         setMeetingDateDialogOpen(true);
         return;
       }
 
       const { error } = await supabase
-        .from("onboarding_companies")
+        .from("onboarding_projects")
         .update({
           renewal_status: newStatus,
-          renewal_meeting_date: null, // Clear meeting date when changing to non-meeting status
+          renewal_meeting_date: null,
         })
-        .eq("id", companyId);
-        
+        .eq("id", projectId);
+
       if (error) throw error;
 
       toast.success("Status atualizado");
@@ -449,25 +475,25 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
 
   // Save meeting date from the dedicated dialog
   const handleSaveMeetingDate = async () => {
-    if (!meetingDateCompanyId || !meetingDateValue) {
+    if (!meetingDateProjectId || !meetingDateValue) {
       toast.error("Selecione a data da reunião");
       return;
     }
 
     try {
       const { error } = await supabase
-        .from("onboarding_companies")
+        .from("onboarding_projects")
         .update({
           renewal_status: "reuniao_agendada",
           renewal_meeting_date: meetingDateValue,
         })
-        .eq("id", meetingDateCompanyId);
-        
+        .eq("id", meetingDateProjectId);
+
       if (error) throw error;
 
       toast.success("Reunião agendada com sucesso");
       setMeetingDateDialogOpen(false);
-      setMeetingDateCompanyId(null);
+      setMeetingDateProjectId(null);
       setMeetingDateValue("");
       fetchData();
     } catch (error) {
@@ -477,35 +503,32 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
   };
 
   // Confirm renewal - extends contract end date and sums values
-  // IMPORTANT: Only updates contract_end_date (keeps original start_date)
-  // and sums the renewal value with the original contract value
   const handleConfirmRenewal = async () => {
-    if (!selectedCompany || !staffId || !newStartDate) return;
-    
+    if (!selectedProject || !staffId || !newStartDate) return;
+
     setSaving(true);
-    
+
     try {
-      const monthlyValue = renewalMode === "same" ? selectedCompany.monthly_value : newMonthlyValue;
-      const termMonths = renewalMode === "same" ? selectedCompany.contract_months : newTermMonths;
+      const monthlyValue = renewalMode === "same" ? selectedProject.monthly_value : newMonthlyValue;
+      const termMonths = renewalMode === "same" ? selectedProject.contract_months : newTermMonths;
       const renewalValue = monthlyValue * termMonths;
-      
-      // Calculate new end date based on the renewal start date + term months
+
       const renewalStartDate = parseISO(newStartDate);
       const newEndDate = format(addMonths(renewalStartDate, termMonths), "yyyy-MM-dd");
-      
-      // Sum the renewal value with the original contract value
-      const previousContractValue = selectedCompany.contract_value || 0;
+
+      const previousContractValue = selectedProject.contract_value || 0;
       const newTotalContractValue = previousContractValue + renewalValue;
-      
+
       // Insert renewal history record
       const { error: renewalError } = await supabase
         .from("onboarding_contract_renewals")
         .insert({
-          company_id: selectedCompany.id,
-          previous_start_date: selectedCompany.contract_start_date,
-          previous_end_date: selectedCompany.contract_end_date,
-          previous_value: selectedCompany.contract_value,
-          previous_term_months: selectedCompany.contract_months,
+          company_id: selectedProject.company_id,
+          project_id: selectedProject.project_id,
+          previous_start_date: selectedProject.contract_start_date,
+          previous_end_date: selectedProject.contract_end_date,
+          previous_value: selectedProject.contract_value,
+          previous_term_months: selectedProject.contract_months,
           new_start_date: newStartDate,
           new_end_date: newEndDate,
           new_value: renewalValue,
@@ -514,32 +537,28 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
           status: "renovado",
           created_by: staffId,
         });
-        
+
       if (renewalError) throw renewalError;
-      
-      // Update company contract:
-      // - KEEP original contract_start_date (do not change)
-      // - UPDATE contract_end_date to the new extended date
-      // - SUM renewal value with previous contract value
+
+      // Update project contract
       const { error: contractError } = await supabase
-        .from("onboarding_companies")
+        .from("onboarding_projects")
         .update({
-          // contract_start_date is NOT updated - keeps original start date
           contract_end_date: newEndDate,
-          contract_value: newTotalContractValue, // Sum of original + renewal value
-          renewal_status: null, // Reset for next renewal cycle
+          contract_value: newTotalContractValue,
+          renewal_status: null,
           renewal_notes: null,
           renewal_meeting_date: null,
-          renewed_at: new Date().toISOString(), // Mark as renewed for health score bonus
+          renewed_at: new Date().toISOString(),
         })
-        .eq("id", selectedCompany.id);
-        
+        .eq("id", selectedProject.project_id);
+
       if (contractError) throw contractError;
-      
+
       toast.success("Contrato renovado com sucesso!");
-      
+
       setRenewDialogOpen(false);
-      setSelectedCompany(null);
+      setSelectedProject(null);
       fetchData();
     } catch (error) {
       console.error("Error confirming renewal:", error);
@@ -556,17 +575,17 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
   // Count pending from past months
   const pendingFromPastCount = useMemo(() => {
     const monthStart = startOfMonth(selectedMonth);
-    return companies.filter(c => {
-      if (!c.contract_end_date) return false;
-      const endDate = parseISO(c.contract_end_date);
+    return projects.filter(p => {
+      if (!p.contract_end_date) return false;
+      const endDate = parseISO(p.contract_end_date);
       return isBefore(endDate, monthStart);
     }).length;
-  }, [companies, selectedMonth]);
+  }, [projects, selectedMonth]);
 
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-full sm:max-w-4xl p-0">
+        <SheetContent side="right" className="w-full sm:max-w-5xl p-0">
           <SheetHeader className="p-6 pb-4 border-b">
             <SheetTitle className="flex items-center gap-2">
               <RefreshCw className="h-5 w-5 text-primary" />
@@ -663,7 +682,7 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar empresa..."
+                  placeholder="Buscar empresa ou projeto..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
@@ -700,6 +719,7 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
                   <TableHeader>
                     <TableRow>
                       <TableHead>Empresa</TableHead>
+                      <TableHead>Projeto</TableHead>
                       <TableHead>Consultor</TableHead>
                       <TableHead>Início</TableHead>
                       <TableHead>Vencimento</TableHead>
@@ -713,43 +733,46 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-8">
+                        <TableCell colSpan={10} className="text-center py-8">
                           <div className="flex items-center justify-center gap-2">
                             <RefreshCw className="h-4 w-4 animate-spin" />
                             Carregando...
                           </div>
                         </TableCell>
                       </TableRow>
-                    ) : filteredCompanies.length === 0 ? (
+                    ) : filteredProjects.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                          Nenhuma empresa para renovar neste período
+                        <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                          Nenhum projeto para renovar neste período
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredCompanies.map((company) => (
-                        <TableRow key={company.id}>
-                          <TableCell className="font-medium">{company.name}</TableCell>
-                          <TableCell>{company.consultant_name || "—"}</TableCell>
-                          <TableCell>{formatDate(company.contract_start_date)}</TableCell>
-                          <TableCell>{formatDate(company.contract_end_date)}</TableCell>
-                          <TableCell className="text-right">{company.contract_months} meses</TableCell>
+                      filteredProjects.map((p) => (
+                        <TableRow key={p.project_id}>
+                          <TableCell className="font-medium">{p.company_name}</TableCell>
+                          <TableCell>
+                            <span className="text-sm text-muted-foreground">{p.project_name}</span>
+                          </TableCell>
+                          <TableCell>{p.consultant_name || "—"}</TableCell>
+                          <TableCell>{formatDate(p.contract_start_date)}</TableCell>
+                          <TableCell>{formatDate(p.contract_end_date)}</TableCell>
+                          <TableCell className="text-right">{p.contract_months} meses</TableCell>
                           <TableCell className="text-right text-blue-500">
-                            {formatCurrency(company.monthly_value)}
+                            {formatCurrency(p.monthly_value)}
                           </TableCell>
                           <TableCell className="text-right text-green-500 font-medium">
-                            {formatCurrency(company.contract_value || 0)}
+                            {formatCurrency(p.contract_value || 0)}
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-1">
                               <Select
-                                value={company.renewal_status || "pendente"}
-                                onValueChange={(value) => handleInlineStatusChange(company.id, value)}
+                                value={p.renewal_status || "pendente"}
+                                onValueChange={(value) => handleInlineStatusChange(p.project_id, value)}
                               >
                                 <SelectTrigger className="w-[160px] h-8 text-xs">
                                   <SelectValue>
                                     {(() => {
-                                      const statusOption = RENEWAL_STATUS_OPTIONS.find(s => s.value === (company.renewal_status || "pendente"));
+                                      const statusOption = RENEWAL_STATUS_OPTIONS.find(s => s.value === (p.renewal_status || "pendente"));
                                       return (
                                         <div className="flex items-center gap-2">
                                           <div className={`w-2 h-2 rounded-full ${statusOption?.color || 'bg-yellow-500'}`} />
@@ -770,8 +793,8 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
                                   ))}
                                 </SelectContent>
                               </Select>
-                              {company.renewal_status === "reuniao_agendada" && company.renewal_meeting_date && (
-                                <span className="text-xs text-purple-500 pl-1">{formatDate(company.renewal_meeting_date)}</span>
+                              {p.renewal_status === "reuniao_agendada" && p.renewal_meeting_date && (
+                                <span className="text-xs text-purple-500 pl-1">{formatDate(p.renewal_meeting_date)}</span>
                               )}
                             </div>
                           </TableCell>
@@ -780,7 +803,7 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => openHistoryDialog(company)}
+                                onClick={() => openHistoryDialog(p)}
                                 title="Histórico"
                               >
                                 <History className="h-4 w-4" />
@@ -788,7 +811,7 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
                               <Button
                                 variant="default"
                                 size="sm"
-                                onClick={() => openRenewalDialog(company)}
+                                onClick={() => openRenewalDialog(p)}
                               >
                                 Renovar
                               </Button>
@@ -810,10 +833,13 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Renovação de Contrato</DialogTitle>
-            <DialogDescription>{selectedCompany?.name}</DialogDescription>
+            <DialogDescription>
+              {selectedProject?.company_name}
+              {selectedProject && <span className="text-muted-foreground"> — {selectedProject.project_name}</span>}
+            </DialogDescription>
           </DialogHeader>
 
-          {selectedCompany && (
+          {selectedProject && (
             <div className="space-y-6 py-4">
               {/* Current Contract Info */}
               <div className="space-y-3">
@@ -821,31 +847,31 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="bg-muted/50 rounded-lg p-3">
                     <p className="text-xs text-muted-foreground">Início</p>
-                    <p className="font-medium">{formatDate(selectedCompany.contract_start_date)}</p>
+                    <p className="font-medium">{formatDate(selectedProject.contract_start_date)}</p>
                   </div>
                   <div className="bg-muted/50 rounded-lg p-3">
                     <p className="text-xs text-muted-foreground">Término</p>
-                    <p className="font-medium">{formatDate(selectedCompany.contract_end_date)}</p>
+                    <p className="font-medium">{formatDate(selectedProject.contract_end_date)}</p>
                   </div>
                   <div className="bg-muted/50 rounded-lg p-3">
                     <p className="text-xs text-muted-foreground">Prazo</p>
-                    <p className="font-medium">{selectedCompany.contract_months} meses</p>
+                    <p className="font-medium">{selectedProject.contract_months} meses</p>
                   </div>
                   <div className="bg-muted/50 rounded-lg p-3">
                     <p className="text-xs text-muted-foreground">Valor Mensal</p>
-                    <p className="font-medium text-blue-500">{formatCurrency(selectedCompany.monthly_value)}</p>
+                    <p className="font-medium text-blue-500">{formatCurrency(selectedProject.monthly_value)}</p>
                   </div>
                 </div>
                 <div className="bg-muted/50 rounded-lg p-3">
                   <p className="text-xs text-muted-foreground">Valor Total do Contrato</p>
-                  <p className="font-medium text-green-500 text-lg">{formatCurrency(selectedCompany.contract_value || 0)}</p>
+                  <p className="font-medium text-green-500 text-lg">{formatCurrency(selectedProject.contract_value || 0)}</p>
                 </div>
               </div>
 
               {/* Renewal Configuration */}
               <div className="space-y-3">
                 <h4 className="font-medium text-sm text-muted-foreground">Configuração da Renovação</h4>
-                
+
                 <RadioGroup value={renewalMode} onValueChange={(v) => setRenewalMode(v as "same" | "change")}>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="same" id="same" />
@@ -908,7 +934,7 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
                   <p className="text-xs text-muted-foreground">Novo Valor Total</p>
                   <p className="font-bold text-primary text-lg">{formatCurrency(calculatedValues.newTotalValue)}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    ({formatCurrency(calculatedValues.monthlyValue)}/mês × {renewalMode === "same" ? selectedCompany.contract_months : newTermMonths} meses)
+                    ({formatCurrency(calculatedValues.monthlyValue)}/mês × {renewalMode === "same" ? selectedProject.contract_months : newTermMonths} meses)
                   </p>
                 </div>
               </div>
@@ -965,14 +991,14 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
             <Button variant="outline" onClick={() => setRenewDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button 
-              variant="secondary" 
+            <Button
+              variant="secondary"
               onClick={handleSaveStatusOnly}
               disabled={saving}
             >
               {saving ? "Salvando..." : "Salvar Status"}
             </Button>
-            <Button 
+            <Button
               onClick={handleConfirmRenewal}
               disabled={saving || !newStartDate}
             >
@@ -987,17 +1013,17 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Histórico de Renovações</DialogTitle>
-            <DialogDescription>{historyCompanyName}</DialogDescription>
+            <DialogDescription>{historyTitle}</DialogDescription>
           </DialogHeader>
 
           <ScrollArea className="max-h-[400px]">
-            {companyHistory.length === 0 ? (
+            {projectHistory.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 Nenhuma renovação registrada
               </div>
             ) : (
               <div className="space-y-3">
-                {companyHistory.map((renewal) => (
+                {projectHistory.map((renewal) => (
                   <Card key={renewal.id} className="p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div>
@@ -1059,7 +1085,7 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
               variant="outline"
               onClick={() => {
                 setMeetingDateDialogOpen(false);
-                setMeetingDateCompanyId(null);
+                setMeetingDateProjectId(null);
                 setMeetingDateValue("");
               }}
             >
