@@ -1449,197 +1449,206 @@ export const KPIDashboardTab = ({
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <Card>
-        <CardContent className="pt-3 sm:pt-6 px-3 sm:px-6 pb-3 sm:pb-6">
-          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4">
-            {/* Período compacto: dois inputs lado a lado em uma única "pílula" */}
-            <div className="space-y-1.5 w-full sm:w-auto">
-              <Label className="text-[11px] sm:text-sm text-muted-foreground flex items-center gap-1.5">
-                <CalendarDays className="h-3 w-3" />
-                Período
-              </Label>
-              <div className="flex items-center gap-1 rounded-md border border-input bg-background px-2 h-9">
-                <Input
-                  type="date"
-                  value={dateRange.start}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      setDateRange({ ...dateRange, start: e.target.value });
-                    }
-                  }}
-                  className="h-7 border-0 bg-transparent text-[11px] sm:text-xs px-1 focus-visible:ring-0 focus-visible:ring-offset-0 flex-1 min-w-0 sm:w-[130px] sm:flex-none"
-                />
-                <span className="text-muted-foreground text-xs shrink-0">→</span>
-                <Input
-                  type="date"
-                  value={dateRange.end}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      setDateRange({ ...dateRange, end: e.target.value });
-                    }
-                  }}
-                  className="h-7 border-0 bg-transparent text-[11px] sm:text-xs px-1 focus-visible:ring-0 focus-visible:ring-offset-0 flex-1 min-w-0 sm:w-[130px] sm:flex-none"
-                />
-              </div>
-              <div className="flex gap-1.5">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-[11px] px-2.5 flex-1 sm:flex-none"
-                  onClick={() => applyMonthRange(0)}
-                >
-                  Mês atual
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-[11px] px-2.5 flex-1 sm:flex-none"
-                  onClick={() => applyMonthRange(1)}
-                >
-                  Mês anterior
-                </Button>
-              </div>
-            </div>
+      <Card className="border-border/50 shadow-sm overflow-hidden">
+        {/* Cabeçalho colorido */}
+        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-4 py-2.5 border-b border-border/40 flex items-center gap-2">
+          <div className="h-6 w-6 rounded-md bg-primary/15 flex items-center justify-center">
+            <Filter className="h-3 w-3 text-primary" />
+          </div>
+          <span className="text-xs font-semibold text-foreground tracking-wide uppercase">Filtros</span>
+        </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs sm:text-sm">KPI</Label>
-              <Select value={selectedKpi} onValueChange={setSelectedKpi}>
-                <SelectTrigger className="w-full sm:w-[180px] h-9 sm:h-10 text-[11px] sm:text-sm px-2 sm:px-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-background">
-                  <SelectItem value="all">Todos os KPIs</SelectItem>
-                  {kpis.map(kpi => (
-                    <SelectItem key={kpi.id} value={kpi.id}>{kpi.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <CardContent className="px-4 pt-4 pb-4 space-y-4">
+          {/* Período */}
+          <div className="space-y-2">
+            <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <CalendarDays className="h-3 w-3" />
+              Período
+            </Label>
+            <div className="flex items-center gap-1.5 rounded-xl border border-input bg-muted/40 px-3 h-11 shadow-sm">
+              <Input
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => {
+                  if (e.target.value) setDateRange({ ...dateRange, start: e.target.value });
+                }}
+                className="h-8 border-0 bg-transparent text-xs px-0 focus-visible:ring-0 focus-visible:ring-offset-0 flex-1 min-w-0"
+              />
+              <span className="text-muted-foreground/60 text-sm shrink-0 font-light">→</span>
+              <Input
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => {
+                  if (e.target.value) setDateRange({ ...dateRange, end: e.target.value });
+                }}
+                className="h-8 border-0 bg-transparent text-xs px-0 focus-visible:ring-0 focus-visible:ring-offset-0 flex-1 min-w-0"
+              />
             </div>
-            {units.length > 0 && (
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 text-xs rounded-lg border-border/60 hover:bg-primary/5 hover:border-primary/40 hover:text-primary transition-colors font-medium"
+                onClick={() => applyMonthRange(0)}
+              >
+                Mês atual
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 text-xs rounded-lg border-border/60 hover:bg-primary/5 hover:border-primary/40 hover:text-primary transition-colors font-medium"
+                onClick={() => applyMonthRange(1)}
+              >
+                Mês anterior
+              </Button>
+            </div>
+          </div>
+
+          {/* Dropdowns de filtro */}
+          <div className="space-y-3">
+            <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Visualização</Label>
+            <div className="grid grid-cols-2 gap-2.5">
               <div className="space-y-1">
-                <Label className="text-xs sm:text-sm">Unidade</Label>
-                <Select value={selectedUnit} onValueChange={(value) => {
-                  setSelectedUnit(value);
-                  // Reset dependent filters when unit changes
-                  setSelectedTeam("all");
-                  setSelectedSector("all");
-                  setSelectedSalesperson("all");
-                }}>
-                  <SelectTrigger className="w-full sm:w-[180px] h-9 sm:h-10 text-[11px] sm:text-sm px-2 sm:px-3">
+                <Label className="text-[10px] text-muted-foreground">KPI</Label>
+                <Select value={selectedKpi} onValueChange={setSelectedKpi}>
+                  <SelectTrigger className="h-9 text-xs px-2.5 rounded-lg border-border/60 bg-muted/30">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-background">
-                    <SelectItem value="all">Todas</SelectItem>
-                    {units.map(unit => (
-                      <SelectItem key={unit.id} value={unit.id}>{unit.name}</SelectItem>
+                    <SelectItem value="all">Todos os KPIs</SelectItem>
+                    {kpis.map(kpi => (
+                      <SelectItem key={kpi.id} value={kpi.id}>{kpi.name}</SelectItem>
                     ))}
-                  </SelectContent>
-              </Select>
-            </div>
-            )}
-            {sectors.length > 0 && (
-              <div className="space-y-1">
-                <Label className="text-xs sm:text-sm">Setor</Label>
-                <Select value={selectedSector} onValueChange={(value) => {
-                  setSelectedSector(value);
-                  // Reset team and salesperson when sector changes
-                  setSelectedTeam("all");
-                  setSelectedSalesperson("all");
-                }}>
-                  <SelectTrigger className="w-full sm:w-[180px] h-9 sm:h-10 text-[11px] sm:text-sm px-2 sm:px-3">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background">
-                    <SelectItem value="all">Todos</SelectItem>
-                    {sectors
-                      .filter(s => selectedUnit === "all" || s.unit_id === selectedUnit || s.unit_id === null)
-                      .map(sector => (
-                        <SelectItem key={sector.id} value={sector.id}>{sector.name}</SelectItem>
-                      ))}
                   </SelectContent>
                 </Select>
               </div>
-            )}
-            {teams.length > 0 && (
-              <div className="space-y-1">
-                <Label className="text-xs sm:text-sm">Equipe</Label>
-                <Select value={selectedTeam} onValueChange={(value) => {
-                  setSelectedTeam(value);
-                  // Reset salesperson when team changes
-                  if (value !== "all") {
-                    setSelectedSalesperson("all");
-                  }
-                }}>
-                  <SelectTrigger className="w-full sm:w-[180px] h-9 sm:h-10 text-[11px] sm:text-sm px-2 sm:px-3">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background">
-                    <SelectItem value="all">Todas</SelectItem>
-                    {teams
-                      .filter(t => {
-                        if (selectedUnit !== "all" && t.unit_id !== selectedUnit && t.unit_id !== null) return false;
-                        if (selectedSector !== "all") {
-                          // Filter teams that belong to the selected sector
-                          const teamsInSector = sectorTeams.filter(st => st.sector_id === selectedSector).map(st => st.team_id);
-                          if (!teamsInSector.includes(t.id)) return false;
-                        }
-                        return true;
-                      })
-                      .map(team => (
-                        <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <div className="space-y-1">
-              <Label className="text-xs sm:text-sm">Vendedor</Label>
-              <Select value={selectedSalesperson} onValueChange={setSelectedSalesperson}>
-                <SelectTrigger className="w-full sm:w-[180px] h-9 sm:h-10 text-[11px] sm:text-sm px-2 sm:px-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-background">
-                  <SelectItem value="all">Todos</SelectItem>
-                  {salespeople
-                    .filter(sp => {
-                      if (selectedUnit !== "all" && sp.unit_id !== selectedUnit) return false;
-                      if (selectedTeam !== "all" && sp.team_id !== selectedTeam) return false;
-                      return true;
-                    })
-                    .map(sp => (
-                      <SelectItem key={sp.id} value={sp.id}>{sp.name}</SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="col-span-2 sm:col-span-1 flex items-end gap-2 flex-wrap">
-              {/* Personalized entry link for salespeople */}
-              {salespersonId && salespersonAccessCode && (
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => {
-                    const link = `${getPublicBaseUrl()}/#/kpi-entry/${companyId}?code=${salespersonAccessCode}`;
-                    window.open(link, '_blank');
-                  }}
-                  className="gap-2"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  Lançar Vendas
-                </Button>
+
+              {!isSalespersonView && (
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Vendedor</Label>
+                  <Select value={selectedSalesperson} onValueChange={setSelectedSalesperson}>
+                    <SelectTrigger className="h-9 text-xs px-2.5 rounded-lg border-border/60 bg-muted/30">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background">
+                      <SelectItem value="all">Todos</SelectItem>
+                      {salespeople
+                        .filter(sp => {
+                          if (selectedUnit !== "all" && sp.unit_id !== selectedUnit) return false;
+                          if (selectedTeam !== "all" && sp.team_id !== selectedTeam) return false;
+                          return true;
+                        })
+                        .map(sp => (
+                          <SelectItem key={sp.id} value={sp.id}>{sp.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
-              {/* Only show sales history if not filtering by salesperson (company-wide data) */}
+
+              {units.length > 0 && (
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Unidade</Label>
+                  <Select value={selectedUnit} onValueChange={(value) => {
+                    setSelectedUnit(value);
+                    setSelectedTeam("all");
+                    setSelectedSector("all");
+                    setSelectedSalesperson("all");
+                  }}>
+                    <SelectTrigger className="h-9 text-xs px-2.5 rounded-lg border-border/60 bg-muted/30">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background">
+                      <SelectItem value="all">Todas</SelectItem>
+                      {units.map(unit => (
+                        <SelectItem key={unit.id} value={unit.id}>{unit.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {sectors.length > 0 && (
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Setor</Label>
+                  <Select value={selectedSector} onValueChange={(value) => {
+                    setSelectedSector(value);
+                    setSelectedTeam("all");
+                    setSelectedSalesperson("all");
+                  }}>
+                    <SelectTrigger className="h-9 text-xs px-2.5 rounded-lg border-border/60 bg-muted/30">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background">
+                      <SelectItem value="all">Todos</SelectItem>
+                      {sectors
+                        .filter(s => selectedUnit === "all" || s.unit_id === selectedUnit || s.unit_id === null)
+                        .map(sector => (
+                          <SelectItem key={sector.id} value={sector.id}>{sector.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {teams.length > 0 && (
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Equipe</Label>
+                  <Select value={selectedTeam} onValueChange={(value) => {
+                    setSelectedTeam(value);
+                    if (value !== "all") setSelectedSalesperson("all");
+                  }}>
+                    <SelectTrigger className="h-9 text-xs px-2.5 rounded-lg border-border/60 bg-muted/30">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background">
+                      <SelectItem value="all">Todas</SelectItem>
+                      {teams
+                        .filter(t => {
+                          if (selectedUnit !== "all" && t.unit_id !== selectedUnit && t.unit_id !== null) return false;
+                          if (selectedSector !== "all") {
+                            const teamsInSector = sectorTeams.filter(st => st.sector_id === selectedSector).map(st => st.team_id);
+                            if (!teamsInSector.includes(t.id)) return false;
+                          }
+                          return true;
+                        })
+                        .map(team => (
+                          <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Ações */}
+          <div className="space-y-2 pt-1">
+            {salespersonId && salespersonAccessCode && (
+              <Button
+                variant="default"
+                className="w-full h-11 gap-2 text-sm font-semibold rounded-xl shadow-md bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+                onClick={() => {
+                  const link = `${getPublicBaseUrl()}/#/kpi-entry/${companyId}?code=${salespersonAccessCode}`;
+                  window.open(link, '_blank');
+                }}
+              >
+                <ExternalLink className="h-4 w-4" />
+                Lançar Vendas
+              </Button>
+            )}
+            <div className="flex gap-2 flex-wrap">
               {!salespersonId && (
-                <SalesHistoryDialog 
-                  companyId={companyId} 
+                <SalesHistoryDialog
+                  companyId={companyId}
                   contractStartDate={contractStartDate}
                   onDataChange={() => setSalesHistoryRefreshKey(prev => prev + 1)}
                   canEdit={canEditSalesHistory}
                 />
               )}
-              <KPIEntriesHistoryDialog 
+              <KPIEntriesHistoryDialog
                 companyId={companyId}
                 canDelete={canDeleteEntries}
                 canEdit={canEditSalesHistory}
