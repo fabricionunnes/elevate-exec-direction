@@ -151,6 +151,31 @@ export const AcademyLayout = () => {
           }
         }
 
+        // Check if company salesperson (vendor portal users)
+        const { data: salesperson } = await supabase
+          .from("company_salespeople")
+          .select("id, name, company_id, is_active")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (salesperson) {
+          setUserContext({
+            isAdmin: false,
+            isClientManager: false,
+            isUser: true,
+            staffId: null,
+            onboardingUserId: null,
+            companyId: salesperson.company_id,
+            projectId: null,
+            userName: salesperson.name,
+            userRole: "vendedor",
+          });
+          setHasAccess(true);
+          setIsLoading(false);
+          return;
+        }
+
         // No access
         navigate("/onboarding-tasks");
       } catch (error) {
@@ -228,7 +253,9 @@ export const AcademyLayout = () => {
           className="w-full justify-start gap-2"
           onClick={() => {
             setSidebarOpen(false);
-            navigate(userContext.isAdmin ? "/onboarding-tasks" : "/portal/app");
+            if (userContext.isAdmin) navigate("/onboarding-tasks");
+            else if (userContext.userRole === "vendedor" && !userContext.onboardingUserId) navigate(-1);
+            else navigate("/portal/app");
           }}
         >
           <ChevronLeft className="h-4 w-4" />
