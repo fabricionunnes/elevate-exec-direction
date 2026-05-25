@@ -293,24 +293,35 @@ export const AcademyLessonPage = () => {
     const provider = inferredProvider ?? lesson.video_provider;
 
     // YouTube: thumbnail + play button primeiro; iframe só carrega após clique
-    // Isso evita que o app do YouTube seja aberto no mobile
+    // playsinline=1 é essencial para evitar que o app do YouTube abra no iOS
+    // NÃO usar autoplay=1 — isso que faz o iOS abrir o app mesmo com youtube-nocookie
     if (provider === "youtube") {
       const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([^&?/]+)/);
       if (match) {
         const videoId = match[1];
-        const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-        const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&origin=${encodeURIComponent(window.location.origin)}`;
+        // Tenta maxresdefault primeiro (maior qualidade), fallback para hqdefault
+        const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+        const thumbnailFallback = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        // SEM autoplay=1 — deixa o usuário clicar play dentro do iframe
+        // playsinline=1 garante que o vídeo toque dentro do browser no iOS
+        const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&enablejsapi=1`;
 
         if (!videoPlaying) {
           return (
             <div
-              className="aspect-video w-full rounded-xl overflow-hidden bg-black shadow-xl relative cursor-pointer group"
+              className="aspect-video w-full rounded-xl overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl relative cursor-pointer group"
               onClick={() => setVideoPlaying(true)}
             >
               <img
                 src={thumbnailUrl}
                 alt={lesson.title}
                 className="w-full h-full object-cover opacity-90 group-hover:opacity-75 transition-opacity"
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  if (img.src !== thumbnailFallback) {
+                    img.src = thumbnailFallback;
+                  }
+                }}
               />
               {/* Overlay escuro */}
               <div className="absolute inset-0 bg-black/20 group-hover:bg-black/35 transition-colors" />
@@ -335,7 +346,7 @@ export const AcademyLessonPage = () => {
             <iframe
               src={embedUrl}
               className="w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
               allowFullScreen
               title={lesson?.title || "Video"}
             />
