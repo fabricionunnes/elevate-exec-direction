@@ -175,7 +175,7 @@ export default function RenewalsPanel({ open, onOpenChange, staffId, staff }: Re
         renewal_meeting_date,
         consultant:consultant_id(name)
       `)
-      .eq("payment_method", "card")
+      .or("payment_method.eq.card,payment_method.is.null")
       .neq("status", "inactive")
       .not("contract_end_date", "is", null)
       .order("contract_end_date", { ascending: true });

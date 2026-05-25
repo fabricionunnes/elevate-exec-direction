@@ -693,8 +693,8 @@ export default function OnboardingRenewalsPage() {
     // Exclude inactive companies
     if (company.status === "inactive") return false;
 
-    // Only show contracts paid by card (same source of truth as Relatório de Empresas)
-    if (company.payment_method !== "card") return false;
+    // Mostra contratos card ou sem método definido (null = não preenchido ainda)
+    if (company.payment_method && company.payment_method !== "card") return false;
 
     // Only companies with a defined contract end date require renewal
     if (!company.contract_end_date) return false;
@@ -734,7 +734,7 @@ export default function OnboardingRenewalsPage() {
   // Count pending from previous periods
   const pendingFromPastCount = companies.filter(c => {
     if (c.status === "inactive") return false;
-    if (c.payment_method !== "card") return false;
+    if (c.payment_method && c.payment_method !== "card") return false;
     if (!c.contract_end_date) return false;
     const endDate = parseISO(c.contract_end_date);
     return isBefore(endDate, currentPeriodRange.start);
