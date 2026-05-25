@@ -13,7 +13,7 @@ const FACEBOOK_APP_SECRET = Deno.env.get("FACEBOOK_APP_SECRET");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const GRAPH_API = "https://graph.facebook.com/v21.0";
-const STABLE_REDIRECT_URI = "https://elevate-exec-direction.lovable.app/meta-ads-callback";
+const STABLE_REDIRECT_URI = "https://unvholdings.com.br/crm-meta-ads-callback";
 
 const SCOPES = [
   "ads_read",
@@ -23,9 +23,14 @@ const SCOPES = [
   "instagram_manage_insights",
 ];
 
-async function gj(url: string) {
+async function gj(url: string, label?: string) {
   const res = await fetch(url);
-  return await res.json();
+  const json = await res.json();
+  if (json?.error) {
+    const msg = json.error.message || json.error.type || "Meta API error";
+    throw new Error(label ? `[${label}] ${msg}` : msg);
+  }
+  return json;
 }
 
 function todayRangeISO(days = 30) {
@@ -191,6 +196,7 @@ Deno.serve(async (req) => {
       // ---- CAMPAIGNS metadata ----
       const campMetaRes = await gj(
         `${GRAPH_API}/${fbAccount}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget&limit=500&access_token=${token}`,
+        "campaigns",
       );
       const campsMeta: Record<string, any> = {};
       for (const c of campMetaRes.data || []) campsMeta[c.id] = c;
@@ -198,6 +204,7 @@ Deno.serve(async (req) => {
       // ---- CAMPAIGN insights (breakdown diário) ----
       const campInsRes = await gj(
         `${GRAPH_API}/${fbAccount}/insights?level=campaign&fields=${insightFields}&time_range=${timeRange}&time_increment=${timeIncrement}&limit=5000&access_token=${token}`,
+        "campaign insights",
       );
       const campaignsRows: any[] = [];
       for (const ins of campInsRes.data || []) {
@@ -252,12 +259,14 @@ Deno.serve(async (req) => {
       // ---- ADSETS ----
       const adsetMetaRes = await gj(
         `${GRAPH_API}/${fbAccount}/adsets?fields=id,name,status,daily_budget,campaign_id&limit=1000&access_token=${token}`,
+        "adsets",
       );
       const adsetsMeta: Record<string, any> = {};
       for (const a of adsetMetaRes.data || []) adsetsMeta[a.id] = a;
 
       const adsetInsRes = await gj(
         `${GRAPH_API}/${fbAccount}/insights?level=adset&fields=${insightFields}&time_range=${timeRange}&time_increment=${timeIncrement}&limit=5000&access_token=${token}`,
+        "adset insights",
       );
       const adsetRows: any[] = [];
       for (const ins of adsetInsRes.data || []) {
@@ -305,12 +314,14 @@ Deno.serve(async (req) => {
       // ---- ADS (criativos) ----
       const adMetaRes = await gj(
         `${GRAPH_API}/${fbAccount}/ads?fields=id,name,status,creative{thumbnail_url,body,title,object_story_spec,effective_object_story_id}&limit=1000&access_token=${token}`,
+        "ads",
       );
       const adsMeta: Record<string, any> = {};
       for (const a of adMetaRes.data || []) adsMeta[a.id] = a;
 
       const adInsRes = await gj(
         `${GRAPH_API}/${fbAccount}/insights?level=ad&fields=${insightFields}&time_range=${timeRange}&time_increment=${timeIncrement}&limit=5000&access_token=${token}`,
+        "ad insights",
       );
       const adRows: any[] = [];
       for (const ins of adInsRes.data || []) {
