@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
         ? redirect_uri.trim()
         : META_ADS_STABLE_REDIRECT_URI;
 
-      const scopes = "ads_read,ads_management,business_management,instagram_basic,instagram_manage_insights";
+      const scopes = "ads_read,ads_management,business_management,instagram_content_publish,pages_show_list,pages_read_engagement";
       const state = btoa(JSON.stringify({
         project_id,
         flow: "meta_ads",
@@ -185,11 +185,15 @@ Deno.serve(async (req) => {
     if (action === "save_connection") {
       const { ad_account_id, ad_account_name, access_token, user_id } = body;
 
+      // Long-lived tokens last 60 days; store expiry so we can refresh proactively
+      const tokenExpiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
+
       const { error } = await supabase.from("meta_ads_accounts").upsert({
         project_id,
         ad_account_id,
         ad_account_name,
         access_token,
+        token_expires_at: tokenExpiresAt,
         is_connected: true,
         connected_by: user_id,
         updated_at: new Date().toISOString(),
@@ -202,17 +206,76 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ──── REFRESH ALL TOKENS (called by scheduled job) ────
+    if (action === "refresh_all_tokens") {
+      const { data: accounts, error: fetchErr } = await supabase
+        .from("meta_ads_accounts")
+        .select("id, access_token, ad_account_id, project_id")
+        .eq("is_connected", true);
+
+      if (fetchErr) throw fetchErr;
+
+      const results: { id: string; status: string; error?: string }[] = [];
+
+      for (const acc of (accounts || [])) {
+        try {
+          const refreshUrl = `${GRAPH_API}/oauth/access_token?grant_type=fb_exchange_token&client_id=${FACEBOOK_APP_ID}&client_secret=${FACEBOOK_APP_SECRET}&fb_exchange_token=${acc.access_token}`;
+          const refreshRes = await fetchWithTimeout(refreshUrl);
+          const refreshData = await refreshRes.json();
+
+          if (refreshData.error) {
+            // Token invalid or expired — mark as disconnected
+            await supabase
+              .from("meta_ads_accounts")
+              .update({ is_connected: false, updated_at: new Date().toISOString() })
+              .eq("id", acc.id);
+            results.push({ id: acc.id, status: "disconnected", error: refreshData.error.message });
+            continue;
+          }
+
+          const newToken = refreshData.access_token;
+          const tokenExpiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
+
+          await supabase
+            .from("meta_ads_accounts")
+            .update({ access_token: newToken, token_expires_at: tokenExpiresAt, updated_at: new Date().toISOString() })
+            .eq("id", acc.id);
+
+          results.push({ id: acc.id, status: "refreshed" });
+        } catch (e: any) {
+          results.push({ id: acc.id, status: "error", error: e.message });
+        }
+      }
+
+      console.log("[refresh_all_tokens] results:", JSON.stringify(results));
+      return new Response(JSON.stringify({ success: true, results }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // ──── SYNC DATA ────
     if (action === "sync") {
-      // Get account connection
-      const { data: account, error: accErr } = await supabase
-        .from("meta_ads_accounts")
-        .select("*")
-        .eq("project_id", project_id)
+      // Tenta unv_meta_ads_accounts primeiro (agentes UNV), depois meta_ads_accounts (onboarding)
+      let account: { access_token: string; ad_account_id: string } | null = null;
+      const { data: unvAccount } = await supabase
+        .from("unv_meta_ads_accounts")
+        .select("access_token, ad_account_id")
         .eq("is_connected", true)
+        .limit(1)
         .single();
+      if (unvAccount) {
+        account = unvAccount;
+      } else if (project_id) {
+        const { data: legacyAccount } = await supabase
+          .from("meta_ads_accounts")
+          .select("access_token, ad_account_id")
+          .eq("project_id", project_id)
+          .eq("is_connected", true)
+          .single();
+        account = legacyAccount;
+      }
 
-      if (accErr || !account) throw new Error("No Meta Ads account connected");
+      if (!account) throw new Error("No Meta Ads account connected");
 
       const token = account.access_token;
       const adAccountId = account.ad_account_id.startsWith("act_") ? account.ad_account_id : `act_${account.ad_account_id}`;
@@ -534,7 +597,21 @@ Deno.serve(async (req) => {
 
     // ──── READ ACTIONS (usados pelo agente Luna — leem das tabelas Supabase, sem chamar Meta API) ────
 
-    // Helper: pega project_id da conta mais recente conectada
+    // Helper: pega token + adAccountId da conta UNV conectada
+    async function getUnvConnection(): Promise<{ token: string; adAccountId: string } | null> {
+      const { data } = await supabase
+        .from("unv_meta_ads_accounts")
+        .select("access_token, ad_account_id")
+        .eq("is_connected", true)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!data) return null;
+      const adAccountId = data.ad_account_id.startsWith("act_") ? data.ad_account_id : `act_${data.ad_account_id}`;
+      return { token: data.access_token, adAccountId };
+    }
+
+    // Helper legado: pega project_id da conta mais recente conectada (onboarding)
     async function getConnectedProjectId(): Promise<string | null> {
       const { data } = await supabase
         .from("meta_ads_accounts")
@@ -547,13 +624,28 @@ Deno.serve(async (req) => {
     }
 
     if (action === "campaigns") {
+      // Tenta UNV primeiro (acesso direto à API Meta), depois cache de onboarding
+      const unv = await getUnvConnection();
+      if (unv) {
+        const end = body.date_to || new Date().toISOString().split("T")[0];
+        const start = body.date_from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+        const insightFields = "impressions,reach,clicks,spend,cpc,cpm,ctr,actions,frequency";
+        const statusFilter = body.status && body.status !== "ALL" ? `&effective_status=["${body.status}"]` : "";
+        const url = `${GRAPH_API}/${unv.adAccountId}/campaigns?fields=name,status,objective,daily_budget,lifetime_budget,insights.time_range({"since":"${start}","until":"${end}"}).fields(${insightFields})&limit=50${statusFilter}&access_token=${unv.token}`;
+        const res = await fetch(url);
+        const json = await res.json();
+        const campaigns = (json.data || []).map((c: any) => {
+          const ins = c.insights?.data?.[0] || {};
+          const leads = (ins.actions || []).find((a: any) => a.action_type === "lead" || a.action_type === "onsite_conversion.lead_grouped")?.value || 0;
+          return { campaign_id: c.id, campaign_name: c.name, status: c.status, objective: c.objective, daily_budget: c.daily_budget, lifetime_budget: c.lifetime_budget, impressions: ins.impressions || 0, reach: ins.reach || 0, clicks: ins.clicks || 0, spend: ins.spend || 0, cpc: ins.cpc || 0, cpm: ins.cpm || 0, ctr: ins.ctr || 0, frequency: ins.frequency || 0, leads, date_start: start, date_stop: end };
+        });
+        return new Response(JSON.stringify({ campaigns, count: campaigns.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       const pid = await getConnectedProjectId();
       if (!pid) return new Response(JSON.stringify({ error: "Nenhuma conta Meta Ads conectada" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       let q = supabase.from("meta_ads_campaigns")
         .select("campaign_id,campaign_name,status,objective,daily_budget,lifetime_budget,impressions,reach,clicks,spend,cpc,cpm,ctr,conversions,conversion_value,roas,frequency,leads,messaging_conversations_started,cost_per_messaging_conversation,date_start,date_stop,synced_at")
-        .eq("project_id", pid)
-        .order("spend", { ascending: false })
-        .limit(50);
+        .eq("project_id", pid).order("spend", { ascending: false }).limit(50);
       if (body.date_from) q = q.gte("date_start", body.date_from);
       if (body.date_to) q = q.lte("date_stop", body.date_to);
       if (body.status && body.status !== "ALL") q = q.eq("status", body.status);
@@ -563,13 +655,26 @@ Deno.serve(async (req) => {
     }
 
     if (action === "adsets") {
+      const unv = await getUnvConnection();
+      if (unv) {
+        const end = body.date_to || new Date().toISOString().split("T")[0];
+        const start = body.date_from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+        const insightFields = "impressions,reach,clicks,spend,cpc,cpm,ctr,frequency";
+        const campFilter = body.campaign_id ? `&campaign_id=${body.campaign_id}` : "";
+        const url = `${GRAPH_API}/${unv.adAccountId}/adsets?fields=name,status,campaign_id,campaign{name},daily_budget,insights.time_range({"since":"${start}","until":"${end}"}).fields(${insightFields})&limit=100${campFilter}&access_token=${unv.token}`;
+        const res = await fetch(url);
+        const json = await res.json();
+        const adsets = (json.data || []).map((a: any) => {
+          const ins = a.insights?.data?.[0] || {};
+          return { adset_id: a.id, adset_name: a.name, campaign_id: a.campaign_id, campaign_name: a.campaign?.name || "", status: a.status, impressions: ins.impressions || 0, reach: ins.reach || 0, clicks: ins.clicks || 0, spend: ins.spend || 0, cpc: ins.cpc || 0, cpm: ins.cpm || 0, ctr: ins.ctr || 0, frequency: ins.frequency || 0, date_start: start, date_stop: end };
+        });
+        return new Response(JSON.stringify({ adsets, count: adsets.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       const pid = await getConnectedProjectId();
       if (!pid) return new Response(JSON.stringify({ error: "Nenhuma conta Meta Ads conectada" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       let q = supabase.from("meta_ads_adsets")
         .select("adset_id,adset_name,campaign_id,campaign_name,status,impressions,reach,clicks,spend,cpc,cpm,ctr,conversions,roas,frequency,date_start,date_stop")
-        .eq("project_id", pid)
-        .order("spend", { ascending: false })
-        .limit(100);
+        .eq("project_id", pid).order("spend", { ascending: false }).limit(100);
       if (body.campaign_id) q = q.eq("campaign_id", body.campaign_id);
       if (body.date_from) q = q.gte("date_start", body.date_from);
       if (body.date_to) q = q.lte("date_stop", body.date_to);
@@ -579,13 +684,26 @@ Deno.serve(async (req) => {
     }
 
     if (action === "creatives") {
+      const unv = await getUnvConnection();
+      if (unv) {
+        const end = body.date_to || new Date().toISOString().split("T")[0];
+        const start = body.date_from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+        const insightFields = "impressions,reach,clicks,spend,cpc,cpm,ctr,frequency";
+        const campFilter = body.campaign_id ? `&campaign_id=${body.campaign_id}` : "";
+        const url = `${GRAPH_API}/${unv.adAccountId}/ads?fields=name,status,adset_id,adset{name},campaign_id,campaign{name},creative{body,title,thumbnail_url},insights.time_range({"since":"${start}","until":"${end}"}).fields(${insightFields})&limit=50${campFilter}&access_token=${unv.token}`;
+        const res = await fetch(url);
+        const json = await res.json();
+        const creatives = (json.data || []).map((a: any) => {
+          const ins = a.insights?.data?.[0] || {};
+          return { ad_id: a.id, ad_name: a.name, adset_name: a.adset?.name || "", campaign_name: a.campaign?.name || "", status: a.status, creative_body: a.creative?.body || "", creative_title: a.creative?.title || "", creative_thumbnail_url: a.creative?.thumbnail_url || "", impressions: ins.impressions || 0, reach: ins.reach || 0, clicks: ins.clicks || 0, spend: ins.spend || 0, cpc: ins.cpc || 0, cpm: ins.cpm || 0, ctr: ins.ctr || 0, frequency: ins.frequency || 0, date_start: start, date_stop: end };
+        });
+        return new Response(JSON.stringify({ creatives, count: creatives.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       const pid = await getConnectedProjectId();
       if (!pid) return new Response(JSON.stringify({ error: "Nenhuma conta Meta Ads conectada" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       let q = supabase.from("meta_ads_ads")
         .select("ad_id,ad_name,adset_name,campaign_name,status,creative_body,creative_title,creative_thumbnail_url,creative_image_url,creative_video_url,impressions,reach,clicks,spend,cpc,cpm,ctr,conversions,conversion_value,roas,frequency,date_start,date_stop")
-        .eq("project_id", pid)
-        .order("ctr", { ascending: false })
-        .limit(50);
+        .eq("project_id", pid).order("ctr", { ascending: false }).limit(50);
       if (body.campaign_id) q = q.eq("campaign_id", body.campaign_id);
       if (body.adset_id) q = q.eq("adset_id", body.adset_id);
       if (body.date_from) q = q.gte("date_start", body.date_from);

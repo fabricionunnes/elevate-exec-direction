@@ -1,0 +1,33 @@
+name: Renovar Tokens Meta Ads
+
+on:
+  schedule:
+    # Roda todo dia 1º do mês às 07:00 UTC (04:00 BRT)
+    # Tokens duram 60 dias — rodar mensalmente garante que nunca expiram
+    - cron: '0 7 1 * *'
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Renovar tokens de Meta Ads
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/meta-ads-sync" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"action":"refresh_all_tokens"}')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $BODY"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Falha ao renovar tokens (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+
+          echo "✅ Tokens renovados com sucesso"
