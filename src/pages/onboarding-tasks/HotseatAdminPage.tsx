@@ -240,7 +240,7 @@ export default function HotseatAdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-6">
           <Skeleton className="h-10 w-64 mb-6" />
           <div className="grid gap-4 md:grid-cols-3 mb-6">
@@ -255,22 +255,22 @@ export default function HotseatAdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-white border-b shadow-sm sticky top-0 z-40">
+      <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => navigate("/onboarding-tasks")}
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <NexusHeader showTitle={false} />
               <div>
-                <h1 className="text-xl md:text-2xl font-bold text-slate-900 flex items-center gap-2">
+                <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
                   <Flame className="h-6 w-6 text-orange-500" />
                   Hotseat
                 </h1>
@@ -280,24 +280,21 @@ export default function HotseatAdminPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={copyLink}
-                className="gap-2"
+                className="gap-2 border-border text-foreground hover:bg-muted"
               >
                 <Copy className="h-4 w-4" />
                 <span className="hidden sm:inline">Copiar Link</span>
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => {
-                  setLoading(true);
-                  fetchResponses();
-                }}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setLoading(true); fetchResponses(); }}
                 disabled={loading}
-                className="gap-2"
+                className="gap-2 border-border text-foreground hover:bg-muted"
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 <span className="hidden sm:inline">Atualizar</span>
@@ -316,47 +313,47 @@ export default function HotseatAdminPage() {
 
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4 mb-6">
-          <Card>
+          <Card className="bg-orange-500/10 border-orange-500/20">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total</p>
-                  <p className="text-2xl font-bold">{responses.length}</p>
+                  <p className="text-2xl font-bold text-orange-500">{responses.length}</p>
                 </div>
-                <Flame className="h-8 w-8 text-orange-500 opacity-20" />
+                <Flame className="h-8 w-8 text-orange-500 opacity-40" />
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-yellow-500/10 border-yellow-500/20">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Pendentes</p>
-                  <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
+                  <p className="text-2xl font-bold text-yellow-500">{pendingCount}</p>
                 </div>
-                <Clock className="h-8 w-8 text-yellow-500 opacity-20" />
+                <Clock className="h-8 w-8 text-yellow-500 opacity-40" />
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-blue-500/10 border-blue-500/20">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Agendados</p>
-                  <p className="text-2xl font-bold text-blue-600">{scheduledCount}</p>
+                  <p className="text-2xl font-bold text-blue-500">{scheduledCount}</p>
                 </div>
-                <Calendar className="h-8 w-8 text-blue-500 opacity-20" />
+                <Calendar className="h-8 w-8 text-blue-500 opacity-40" />
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-green-500/10 border-green-500/20">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Concluídos</p>
-                  <p className="text-2xl font-bold text-green-600">{completedCount}</p>
+                  <p className="text-2xl font-bold text-green-500">{completedCount}</p>
                 </div>
-                <CheckCircle2 className="h-8 w-8 text-green-500 opacity-20" />
+                <CheckCircle2 className="h-8 w-8 text-green-500 opacity-40" />
               </div>
             </CardContent>
           </Card>
@@ -389,7 +386,7 @@ export default function HotseatAdminPage() {
           </Select>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("w-[150px] justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
+              <Button variant="outline" className={cn("w-[150px] justify-start text-left font-normal border-border text-foreground hover:bg-muted", !dateFrom && "text-muted-foreground")}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Data início"}
               </Button>
@@ -400,7 +397,7 @@ export default function HotseatAdminPage() {
           </Popover>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("w-[150px] justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
+              <Button variant="outline" className={cn("w-[150px] justify-start text-left font-normal border-border text-foreground hover:bg-muted", !dateTo && "text-muted-foreground")}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateTo ? format(dateTo, "dd/MM/yyyy") : "Data fim"}
               </Button>

@@ -423,7 +423,7 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
   }
 
   return (
-    <Card className="border-orange-200 bg-gradient-to-br from-orange-50/50 to-white">
+    <Card className="border-orange-500/20 bg-orange-500/5">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Video className="h-5 w-5 text-orange-500" />
@@ -433,12 +433,12 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
       <CardContent className="space-y-4">
         {/* Tabs for input mode */}
         <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as "link" | "manual")}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="link" className="gap-2">
+          <TabsList className="grid w-full grid-cols-2 bg-muted">
+            <TabsTrigger value="link" className="gap-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground">
               <Link className="h-4 w-4" />
               Link do Drive
             </TabsTrigger>
-            <TabsTrigger value="manual" className="gap-2">
+            <TabsTrigger value="manual" className="gap-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground">
               <FileText className="h-4 w-4" />
               Transcrição Manual
             </TabsTrigger>
@@ -456,10 +456,10 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
                   disabled={submitting}
                 />
               </div>
-              <Button 
-                onClick={handleSubmitLink} 
+              <Button
+                onClick={handleSubmitLink}
                 disabled={submitting || !newLink.trim()}
-                className="gap-2"
+                className="gap-2 bg-orange-500 hover:bg-orange-600 text-white"
               >
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -486,10 +486,10 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
               <p className="text-xs text-muted-foreground">
                 Cole a transcrição e o sistema gerará um resumo automaticamente.
               </p>
-              <Button 
-                onClick={handleSubmitManualTranscript} 
+              <Button
+                onClick={handleSubmitManualTranscript}
                 disabled={submitting || !manualTranscript.trim()}
-                className="gap-2"
+                className="gap-2 bg-orange-500 hover:bg-orange-600 text-white"
               >
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -519,7 +519,7 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
                 open={expandedId === recording.id}
                 onOpenChange={(open) => setExpandedId(open ? recording.id : null)}
               >
-                <div className="border rounded-lg p-3 bg-white">
+                <div className="border border-border rounded-lg p-3 bg-card">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -727,13 +727,13 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
                           placeholder="Cole ou digite a transcrição aqui..."
                         />
                       ) : recording.transcript ? (
-                        <ScrollArea className="h-[200px] rounded-md border p-4 bg-slate-50">
+                        <ScrollArea className="h-[200px] rounded-md border border-border p-4 bg-muted/40">
                           <pre className="whitespace-pre-wrap text-xs font-mono">
                             {recording.transcript}
                           </pre>
                         </ScrollArea>
                       ) : (
-                        <div className="h-[100px] rounded-md border p-4 bg-slate-50 flex items-center justify-center text-muted-foreground text-sm">
+                        <div className="h-[100px] rounded-md border border-border p-4 bg-muted/40 flex items-center justify-center text-muted-foreground text-sm">
                           Nenhuma transcrição disponível. Clique em "Editar" para adicionar.
                         </div>
                       )}
