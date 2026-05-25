@@ -980,9 +980,13 @@ export default function OnboardingRenewalsPage() {
                               <div className="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10">
                                 <Building2 className="h-4 w-4 text-primary flex-shrink-0" />
                               </div>
-                              <span className="font-semibold text-sm text-slate-800 dark:text-slate-100" title={project.company_name}>
+                              <button
+                                className="font-semibold text-sm text-slate-800 dark:text-slate-100 hover:text-primary hover:underline text-left transition-colors"
+                                title={`Abrir detalhes de ${project.company_name}`}
+                                onClick={() => navigate(`/onboarding-tasks/companies/${project.company_id}?tab=contract`)}
+                              >
                                 {project.company_name}
-                              </span>
+                              </button>
                             </div>
                           </TableCell>
                           <TableCell className="py-3">
