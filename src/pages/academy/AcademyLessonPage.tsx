@@ -17,6 +17,84 @@ import {
 import { toast } from "sonner";
 import type { AcademyUserContext } from "./AcademyLayout";
 
+// Declaração global para a YouTube IFrame Player API
+declare global {
+  interface Window {
+    YT: {
+      Player: new (
+        element: HTMLElement | string,
+        options: {
+          videoId: string;
+          playerVars?: Record<string, unknown>;
+          events?: Record<string, (event: unknown) => void>;
+        }
+      ) => { destroy: () => void };
+      PlayerState: Record<string, number>;
+    };
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
+
+/**
+ * Usa a YouTube IFrame Player API para tocar vídeos inline no iOS.
+ * Embeds via <iframe> simples são interceptados pelo app do YouTube.
+ * A API JavaScript seta `playsinline` diretamente no <video> interno,
+ * contornando o Universal Links do iOS.
+ */
+const YouTubePlayer = ({ videoId, title }: { videoId: string; title: string }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<{ destroy: () => void } | null>(null);
+
+  useEffect(() => {
+    let destroyed = false;
+
+    const initPlayer = () => {
+      if (destroyed || !containerRef.current) return;
+      // Limpa player anterior se existir
+      if (playerRef.current) {
+        playerRef.current.destroy();
+        playerRef.current = null;
+      }
+      playerRef.current = new window.YT.Player(containerRef.current, {
+        videoId,
+        playerVars: {
+          playsinline: 1,    // CRÍTICO: toca inline no iOS sem abrir app
+          autoplay: 1,
+          rel: 0,
+          controls: 1,
+          modestbranding: 1,
+          iv_load_policy: 3,
+        },
+      });
+    };
+
+    if (window.YT?.Player) {
+      initPlayer();
+    } else {
+      // Carrega a API se ainda não foi carregada
+      if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+        const script = document.createElement("script");
+        script.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(script);
+      }
+      // Encadeia callbacks caso já exista um registrado
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        if (typeof prev === "function") prev();
+        initPlayer();
+      };
+    }
+
+    return () => {
+      destroyed = true;
+      playerRef.current?.destroy();
+      playerRef.current = null;
+    };
+  }, [videoId]);
+
+  return <div ref={containerRef} className="w-full h-full" title={title} />;
+};
+
 interface Lesson {
   id: string;
   title: string;
@@ -292,19 +370,14 @@ export const AcademyLessonPage = () => {
 
     const provider = inferredProvider ?? lesson.video_provider;
 
-    // YouTube: thumbnail + play button primeiro; iframe só carrega após clique
-    // playsinline=1 é essencial para evitar que o app do YouTube abra no iOS
-    // NÃO usar autoplay=1 — isso que faz o iOS abrir o app mesmo com youtube-nocookie
+    // YouTube: usa IFrame Player API (não iframe simples) para garantir
+    // reprodução inline no iOS. iframe simples é interceptado pelo app.
     if (provider === "youtube") {
       const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([^&?/]+)/);
       if (match) {
         const videoId = match[1];
-        // Tenta maxresdefault primeiro (maior qualidade), fallback para hqdefault
         const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
         const thumbnailFallback = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-        // SEM autoplay=1 — deixa o usuário clicar play dentro do iframe
-        // playsinline=1 garante que o vídeo toque dentro do browser no iOS
-        const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&enablejsapi=1`;
 
         if (!videoPlaying) {
           return (
@@ -323,15 +396,12 @@ export const AcademyLessonPage = () => {
                   }
                 }}
               />
-              {/* Overlay escuro */}
               <div className="absolute inset-0 bg-black/20 group-hover:bg-black/35 transition-colors" />
-              {/* Botão play */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="h-16 w-16 rounded-full bg-red-600 flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform ring-4 ring-white/30">
                   <Play className="h-7 w-7 text-white ml-1" fill="white" />
                 </div>
               </div>
-              {/* Duração no canto */}
               {lesson.estimated_duration_minutes && (
                 <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2 py-0.5 rounded font-medium">
                   {lesson.estimated_duration_minutes} min
@@ -341,15 +411,10 @@ export const AcademyLessonPage = () => {
           );
         }
 
+        // Player via IFrame API — toca inline no iOS sem abrir app
         return (
           <div className="aspect-video w-full rounded-xl overflow-hidden bg-black shadow-xl">
-            <iframe
-              src={embedUrl}
-              className="w-full h-full"
-              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-              allowFullScreen
-              title={lesson?.title || "Video"}
-            />
+            <YouTubePlayer videoId={videoId} title={lesson?.title || "Video"} />
           </div>
         );
       }
