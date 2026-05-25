@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const STABLE_REDIRECT = "https://elevate-exec-direction.lovable.app/crm-meta-ads-callback";
+const STABLE_REDIRECT = "https://unvholdings.com.br/crm-meta-ads-callback";
 
 const CRMMetaAdsCallbackPage = () => {
   const [searchParams] = useSearchParams();

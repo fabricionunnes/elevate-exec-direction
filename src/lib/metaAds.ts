@@ -1,4 +1,4 @@
-export const META_ADS_PREFERRED_CALLBACK_ORIGIN = "https://elevate-exec-direction.lovable.app";
+export const META_ADS_PREFERRED_CALLBACK_ORIGIN = "https://unvholdings.com.br";
 
 export function isLovablePreviewHost(hostname = window.location.hostname) {
   return hostname.endsWith(".lovableproject.com") ||
