@@ -12,6 +12,7 @@ import {
   FileText,
   ExternalLink,
   Lock,
+  Play,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { AcademyUserContext } from "./AcademyLayout";
@@ -66,6 +67,7 @@ export const AcademyLessonPage = () => {
   // Timer state
   const [timeSpent, setTimeSpent] = useState(0);
   const [canComplete, setCanComplete] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<Date | null>(null);
 
@@ -97,6 +99,7 @@ export const AcademyLessonPage = () => {
   useEffect(() => {
     setTimeSpent(0);
     setCanComplete(false);
+    setVideoPlaying(false);
     startTimeRef.current = null;
   }, [lessonId]);
 
@@ -288,15 +291,62 @@ export const AcademyLessonPage = () => {
               : null;
 
     const provider = inferredProvider ?? lesson.video_provider;
-    let embedUrl = url;
 
+    // YouTube: thumbnail + play button primeiro; iframe só carrega após clique
+    // Isso evita que o app do YouTube seja aberto no mobile
     if (provider === "youtube") {
       const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([^&?/]+)/);
       if (match) {
-        // youtube-nocookie.com evita abertura do app no mobile e reduz rastreamento
-        embedUrl = `https://www.youtube-nocookie.com/embed/${match[1]}?rel=0&modestbranding=1&playsinline=1&controls=1&fs=1&iv_load_policy=3`;
+        const videoId = match[1];
+        const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3`;
+
+        if (!videoPlaying) {
+          return (
+            <div
+              className="aspect-video w-full rounded-xl overflow-hidden bg-black shadow-xl relative cursor-pointer group"
+              onClick={() => setVideoPlaying(true)}
+            >
+              <img
+                src={thumbnailUrl}
+                alt={lesson.title}
+                className="w-full h-full object-cover opacity-90 group-hover:opacity-75 transition-opacity"
+              />
+              {/* Overlay escuro */}
+              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/35 transition-colors" />
+              {/* Botão play */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="h-16 w-16 rounded-full bg-red-600 flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform ring-4 ring-white/30">
+                  <Play className="h-7 w-7 text-white ml-1" fill="white" />
+                </div>
+              </div>
+              {/* Duração no canto */}
+              {lesson.estimated_duration_minutes && (
+                <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2 py-0.5 rounded font-medium">
+                  {lesson.estimated_duration_minutes} min
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        return (
+          <div className="aspect-video w-full rounded-xl overflow-hidden bg-black shadow-xl">
+            <iframe
+              src={embedUrl}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+              title={lesson?.title || "Video"}
+            />
+          </div>
+        );
       }
-    } else if (provider === "vimeo") {
+    }
+
+    let embedUrl = url;
+
+    if (provider === "vimeo") {
       const match = url.match(/vimeo\.com\/(\d+)/);
       if (match) {
         embedUrl = `https://player.vimeo.com/video/${match[1]}`;
@@ -306,7 +356,6 @@ export const AcademyLessonPage = () => {
         embedUrl = url.replace("player.pandavideo.com", "player.pandavideo.com.br/embed");
       }
     } else if (provider === "google_drive") {
-      // Google Drive: aceita /file/d/{id}/view e links com ?id={id}
       const fileIdFromPath = url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1];
       const fileIdFromQuery = url.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1];
       const fileId = fileIdFromPath ?? fileIdFromQuery;
@@ -314,8 +363,7 @@ export const AcademyLessonPage = () => {
       if (fileId) {
         embedUrl = `https://drive.google.com/file/d/${fileId}/preview`;
       } else if (!url.includes("/preview")) {
-        const previewUrl = url.replace(/\/(view|edit).*$|$/, "/preview");
-        embedUrl = previewUrl;
+        embedUrl = url.replace(/\/(view|edit).*$|$/, "/preview");
       }
     }
 
@@ -324,10 +372,9 @@ export const AcademyLessonPage = () => {
         <iframe
           src={embedUrl}
           className="w-full h-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
           allowFullScreen
           title={lesson?.title || "Video"}
-          loading="lazy"
         />
       </div>
     );
