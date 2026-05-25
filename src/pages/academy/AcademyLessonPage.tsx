@@ -299,7 +299,7 @@ export const AcademyLessonPage = () => {
       if (match) {
         const videoId = match[1];
         const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-        const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3`;
+        const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&origin=${encodeURIComponent(window.location.origin)}`;
 
         if (!videoPlaying) {
           return (
