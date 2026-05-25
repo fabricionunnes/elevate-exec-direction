@@ -293,8 +293,8 @@ export const AcademyLessonPage = () => {
     if (provider === "youtube") {
       const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([^&?/]+)/);
       if (match) {
-        const originParam = typeof window !== "undefined" ? `&origin=${encodeURIComponent(window.location.origin)}` : "";
-        embedUrl = `https://www.youtube.com/embed/${match[1]}?rel=0&modestbranding=1&playsinline=1${originParam}`;
+        // youtube-nocookie.com evita abertura do app no mobile e reduz rastreamento
+        embedUrl = `https://www.youtube-nocookie.com/embed/${match[1]}?rel=0&modestbranding=1&playsinline=1&controls=1&fs=1&iv_load_policy=3`;
       }
     } else if (provider === "vimeo") {
       const match = url.match(/vimeo\.com\/(\d+)/);
@@ -320,14 +320,14 @@ export const AcademyLessonPage = () => {
     }
 
     return (
-      <div className="aspect-video w-full rounded-xl overflow-hidden bg-black">
+      <div className="aspect-video w-full rounded-xl overflow-hidden bg-black shadow-xl">
         <iframe
           src={embedUrl}
           className="w-full h-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
           allowFullScreen
-          referrerPolicy="strict-origin-when-cross-origin"
           title={lesson?.title || "Video"}
+          loading="lazy"
         />
       </div>
     );
