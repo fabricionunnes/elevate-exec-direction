@@ -36,34 +36,43 @@ declare global {
 }
 
 /**
- * Usa a YouTube IFrame Player API para tocar vídeos inline no iOS.
- * Embeds via <iframe> simples são interceptados pelo app do YouTube.
- * A API JavaScript seta `playsinline` diretamente no <video> interno,
- * contornando o Universal Links do iOS.
+ * YouTubePlayer via IFrame API.
+ * - Carrega o vídeo PAUSADO (autoplay: 0) para que o primeiro play
+ *   seja sempre um gesto direto do usuário — isso é o que permite
+ *   reprodução inline no iOS em vez de abrir o app.
+ * - Mostra overlay de play sobre o player até o usuário tocar.
+ * - Fallback "Abrir no YouTube" para casos onde Universal Links
+ *   do iOS impedem a reprodução inline mesmo assim.
  */
-const YouTubePlayer = ({ videoId, title }: { videoId: string; title: string }) => {
+const YouTubePlayer = ({ videoId, title, watchUrl }: { videoId: string; title: string; watchUrl: string }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<{ destroy: () => void } | null>(null);
+  const playerRef = useRef<any>(null);
+  const [playerReady, setPlayerReady] = useState(false);
+  const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
     let destroyed = false;
 
     const initPlayer = () => {
       if (destroyed || !containerRef.current) return;
-      // Limpa player anterior se existir
       if (playerRef.current) {
-        playerRef.current.destroy();
+        try { playerRef.current.destroy(); } catch { /* ignore */ }
         playerRef.current = null;
       }
       playerRef.current = new window.YT.Player(containerRef.current, {
         videoId,
         playerVars: {
-          playsinline: 1,    // CRÍTICO: toca inline no iOS sem abrir app
-          autoplay: 1,
+          playsinline: 1,  // inline no iOS
+          autoplay: 0,     // NÃO autoplay — play deve ser gesto direto do usuário
           rel: 0,
           controls: 1,
           modestbranding: 1,
           iv_load_policy: 3,
+        },
+        events: {
+          onReady: () => {
+            if (!destroyed) setPlayerReady(true);
+          },
         },
       });
     };
@@ -71,13 +80,11 @@ const YouTubePlayer = ({ videoId, title }: { videoId: string; title: string }) =
     if (window.YT?.Player) {
       initPlayer();
     } else {
-      // Carrega a API se ainda não foi carregada
       if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
         const script = document.createElement("script");
         script.src = "https://www.youtube.com/iframe_api";
         document.head.appendChild(script);
       }
-      // Encadeia callbacks caso já exista um registrado
       const prev = window.onYouTubeIframeAPIReady;
       window.onYouTubeIframeAPIReady = () => {
         if (typeof prev === "function") prev();
@@ -87,12 +94,55 @@ const YouTubePlayer = ({ videoId, title }: { videoId: string; title: string }) =
 
     return () => {
       destroyed = true;
-      playerRef.current?.destroy();
+      try { playerRef.current?.destroy(); } catch { /* ignore */ }
       playerRef.current = null;
     };
   }, [videoId]);
 
-  return <div ref={containerRef} className="w-full h-full" title={title} />;
+  const handlePlay = () => {
+    if (playerRef.current && playerReady) {
+      playerRef.current.playVideo();
+      setPlaying(true);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="aspect-video w-full rounded-xl overflow-hidden bg-black shadow-xl relative">
+        {/* Player YT (inicia pausado) */}
+        <div ref={containerRef} className="w-full h-full" title={title} />
+
+        {/* Overlay de play — visível até o usuário tocar */}
+        {!playing && (
+          <div
+            className="absolute inset-0 flex items-center justify-center bg-black/30 cursor-pointer"
+            onClick={handlePlay}
+          >
+            {playerReady ? (
+              <div className="h-16 w-16 rounded-full bg-red-600 flex items-center justify-center shadow-2xl ring-4 ring-white/30 hover:scale-110 transition-transform">
+                <Play className="h-7 w-7 text-white ml-1" fill="white" />
+              </div>
+            ) : (
+              <div className="h-10 w-10 rounded-full border-4 border-white/40 border-t-white animate-spin" />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Fallback para iOS com app do YouTube instalado */}
+      <p className="text-center text-xs text-muted-foreground">
+        Vídeo não abriu?{" "}
+        <a
+          href={watchUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline text-primary"
+        >
+          Assistir no YouTube
+        </a>
+      </p>
+    </div>
+  );
 };
 
 interface Lesson {
@@ -413,9 +463,11 @@ export const AcademyLessonPage = () => {
 
         // Player via IFrame API — toca inline no iOS sem abrir app
         return (
-          <div className="aspect-video w-full rounded-xl overflow-hidden bg-black shadow-xl">
-            <YouTubePlayer videoId={videoId} title={lesson?.title || "Video"} />
-          </div>
+          <YouTubePlayer
+            videoId={videoId}
+            title={lesson?.title || "Video"}
+            watchUrl={`https://www.youtube.com/watch?v=${videoId}`}
+          />
         );
       }
     }
