@@ -327,7 +327,15 @@ const OnboardingCompanyDetailPage = () => {
         consultant_id: currentForm.consultant_id || null,
         kickoff_date: currentForm.kickoff_date || null,
         contract_start_date: currentForm.contract_start_date || null,
-        contract_end_date: currentForm.contract_end_date || null,
+        contract_end_date: (() => {
+          if (!currentForm.contract_end_date) return null;
+          const year = new Date(currentForm.contract_end_date).getFullYear();
+          if (year < 2020 || year > 2099) {
+            toast.error("Data de fim de contrato inválida. Verifique o ano.");
+            return null;
+          }
+          return currentForm.contract_end_date;
+        })(),
         contract_value: currentForm.contract_value ? parseFloat(currentForm.contract_value) : null,
         billing_day: currentForm.billing_day ? parseInt(currentForm.billing_day) : null,
         company_description: currentForm.company_description || null,
