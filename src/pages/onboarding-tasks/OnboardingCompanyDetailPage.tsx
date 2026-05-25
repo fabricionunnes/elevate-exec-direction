@@ -127,7 +127,28 @@ const OnboardingCompanyDetailPage = () => {
   const { companyId } = useParams<{ companyId: string }>();
   const navigate = useNavigate();
   const isNew = companyId === "new";
-  
+
+  // Currency helpers (BRL mask — stores raw decimal string, displays formatted)
+  const formatBRL = (raw: string): string => {
+    if (!raw) return "";
+    const digits = raw.replace(/\D/g, "");
+    if (!digits) return "";
+    const cents = parseInt(digits, 10);
+    return (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+  const parseBRL = (formatted: string): string => {
+    const digits = formatted.replace(/\D/g, "");
+    if (!digits) return "";
+    return (parseInt(digits, 10) / 100).toString();
+  };
+  // Convert a raw decimal number string (e.g. "1500.5") to cents-based display string
+  const rawToDisplay = (raw: string): string => {
+    if (!raw) return "";
+    const num = parseFloat(raw);
+    if (isNaN(num)) return "";
+    return num.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -1234,9 +1255,17 @@ const OnboardingCompanyDetailPage = () => {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <Label>Valor do Contrato (R$)</Label>
-                              <Input type="number" step="0.01" placeholder="0,00"
-                                value={c.contract_value}
-                                onChange={(e) => setC({ contract_value: e.target.value })} />
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                                <Input
+                                  type="text"
+                                  inputMode="numeric"
+                                  placeholder="0,00"
+                                  className="pl-9"
+                                  value={rawToDisplay(c.contract_value)}
+                                  onChange={(e) => setC({ contract_value: parseBRL(e.target.value) })}
+                                />
+                              </div>
                             </div>
                             <div className="space-y-2">
                               <Label>Dia de Faturamento</Label>
