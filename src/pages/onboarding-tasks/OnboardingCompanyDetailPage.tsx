@@ -116,6 +116,11 @@ interface Project {
   product_name: string;
   status: string;
   created_at: string;
+  contract_start_date: string | null;
+  contract_end_date: string | null;
+  contract_value: number | null;
+  billing_day: number | null;
+  contract_notes: string | null;
 }
 
 const OnboardingCompanyDetailPage = () => {
@@ -129,6 +134,14 @@ const OnboardingCompanyDetailPage = () => {
   const [loadingCnpj, setLoadingCnpj] = useState(false);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectContracts, setProjectContracts] = useState<Record<string, {
+    contract_start_date: string;
+    contract_end_date: string;
+    contract_value: string;
+    billing_day: string;
+    contract_notes: string;
+  }>>({});
+  const [savingContract, setSavingContract] = useState<string | null>(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") || "info";
@@ -299,7 +312,45 @@ const OnboardingCompanyDetailPage = () => {
       .select("*")
       .eq("onboarding_company_id", companyId)
       .order("created_at", { ascending: false });
-    setProjects(data || []);
+    const list = data || [];
+    setProjects(list);
+    // Initialize per-project contract state
+    const contracts: typeof projectContracts = {};
+    for (const p of list) {
+      contracts[p.id] = {
+        contract_start_date: p.contract_start_date || "",
+        contract_end_date: p.contract_end_date || "",
+        contract_value: p.contract_value?.toString() || "",
+        billing_day: p.billing_day?.toString() || "",
+        contract_notes: p.contract_notes || "",
+      };
+    }
+    setProjectContracts(contracts);
+  };
+
+  const handleSaveProjectContract = async (projectId: string) => {
+    const data = projectContracts[projectId];
+    if (!data) return;
+    setSavingContract(projectId);
+    try {
+      const { error } = await supabase
+        .from("onboarding_projects")
+        .update({
+          contract_start_date: data.contract_start_date || null,
+          contract_end_date: data.contract_end_date || null,
+          contract_value: data.contract_value ? parseFloat(data.contract_value) : null,
+          billing_day: data.billing_day ? parseInt(data.billing_day) : null,
+          contract_notes: data.contract_notes || null,
+        })
+        .eq("id", projectId);
+      if (error) throw error;
+      toast.success("Contrato salvo!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao salvar contrato");
+    } finally {
+      setSavingContract(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1134,66 +1185,90 @@ const OnboardingCompanyDetailPage = () => {
 
             {/* Contract Tab */}
             <TabsContent value="contract">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Dados do Contrato</CardTitle>
-                  <CardDescription>Informações contratuais</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="contract_start_date">Início do Contrato</Label>
-                      <Input
-                        id="contract_start_date"
-                        type="date"
-                        value={form.contract_start_date}
-                        onChange={(e) => setForm({ ...form, contract_start_date: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="contract_end_date">Fim do Contrato</Label>
-                      <Input
-                        id="contract_end_date"
-                        type="date"
-                        value={form.contract_end_date}
-                        onChange={(e) => setForm({ ...form, contract_end_date: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="contract_value">Valor do Contrato (R$)</Label>
-                      <Input
-                        id="contract_value"
-                        type="number"
-                        step="0.01"
-                        value={form.contract_value}
-                        onChange={(e) => setForm({ ...form, contract_value: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="billing_day">Dia de Faturamento</Label>
-                      <Input
-                        id="billing_day"
-                        type="number"
-                        min="1"
-                        max="31"
-                        value={form.billing_day}
-                        onChange={(e) => setForm({ ...form, billing_day: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Observações</Label>
-                    <Textarea
-                      id="notes"
-                      value={form.notes}
-                      onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                      rows={4}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-4">
+                {projects.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-12 text-center text-muted-foreground">
+                      <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                      <p className="font-medium">Nenhum projeto contratado</p>
+                      <p className="text-sm mt-1">Adicione um projeto na aba Projetos para configurar os dados de contrato.</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  projects.map((project) => {
+                    const c = projectContracts[project.id] || {
+                      contract_start_date: "", contract_end_date: "",
+                      contract_value: "", billing_day: "", contract_notes: "",
+                    };
+                    const setC = (patch: Partial<typeof c>) =>
+                      setProjectContracts((prev) => ({ ...prev, [project.id]: { ...c, ...patch } }));
+                    return (
+                      <Card key={project.id}>
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <CardTitle className="text-base flex items-center gap-2">
+                                <DollarSign className="h-4 w-4 text-primary" />
+                                {project.product_name}
+                              </CardTitle>
+                              <CardDescription>Dados contratuais deste projeto</CardDescription>
+                            </div>
+                            <Badge variant={project.status === "active" ? "default" : "secondary"} className="text-xs">
+                              {project.status === "active" ? "Ativo" : project.status === "churned" ? "Churned" : project.status}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Início do Contrato</Label>
+                              <Input type="date" value={c.contract_start_date}
+                                onChange={(e) => setC({ contract_start_date: e.target.value })} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Fim do Contrato</Label>
+                              <Input type="date" value={c.contract_end_date}
+                                onChange={(e) => setC({ contract_end_date: e.target.value })} />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Valor do Contrato (R$)</Label>
+                              <Input type="number" step="0.01" placeholder="0,00"
+                                value={c.contract_value}
+                                onChange={(e) => setC({ contract_value: e.target.value })} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Dia de Faturamento</Label>
+                              <Input type="number" min="1" max="31" placeholder="Ex: 5"
+                                value={c.billing_day}
+                                onChange={(e) => setC({ billing_day: e.target.value })} />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Observações</Label>
+                            <Textarea rows={3} value={c.contract_notes}
+                              onChange={(e) => setC({ contract_notes: e.target.value })} />
+                          </div>
+                          <div className="flex justify-end">
+                            <Button
+                              size="sm"
+                              onClick={() => handleSaveProjectContract(project.id)}
+                              disabled={savingContract === project.id}
+                              className="gap-2"
+                            >
+                              {savingContract === project.id
+                                ? <Loader2 className="h-4 w-4 animate-spin" />
+                                : <Save className="h-4 w-4" />}
+                              Salvar
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })
+                )}
+              </div>
             </TabsContent>
 
             {/* Briefing Tab */}
