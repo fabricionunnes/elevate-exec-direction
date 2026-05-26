@@ -6,6 +6,30 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// Same normalization as evolution-api function
+function normalizeBaseUrl(input: string) {
+  return input.replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
+}
+
+// Detect Stevo Manager V2 (*.stevo.chat)
+function isManagerV2Url(input?: string | null): boolean {
+  try {
+    const hostname = new URL(String(input || "").replace(/\/+$/, "")).hostname.toLowerCase();
+    return hostname.endsWith(".stevo.chat");
+  } catch {
+    return false;
+  }
+}
+
+function buildEvolutionHeaders(apiKey: string) {
+  return {
+    "Content-Type": "application/json",
+    apikey: apiKey,
+    Authorization: `Bearer ${apiKey}`,
+    "x-api-key": apiKey,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -78,16 +102,19 @@ Deno.serve(async (req) => {
       has_api_key: !!i.api_key,
     }));
 
-    // Build instance map, filling missing api_url/api_key from env fallback
+    // Build instance map, filling missing api_url/api_key from env fallback + normalize URL
     const instanceMap = new Map(
-      (whatsappInstances || []).map((i: any) => [
-        i.instance_name,
-        {
-          ...i,
-          api_url: i.api_url || EVOLUTION_API_URL,
-          api_key: i.api_key || EVOLUTION_API_KEY,
-        },
-      ])
+      (whatsappInstances || []).map((i: any) => {
+        const rawUrl = i.api_url || EVOLUTION_API_URL;
+        return [
+          i.instance_name,
+          {
+            ...i,
+            api_url: rawUrl ? normalizeBaseUrl(rawUrl) : rawUrl,
+            api_key: i.api_key || EVOLUTION_API_KEY,
+          },
+        ];
+      })
     );
 
     if (instanceMap.size === 0) {
@@ -281,7 +308,7 @@ Deno.serve(async (req) => {
         sendQueue.push({
           rule, invoice, company, formattedPhone, message,
           instanceName: whatsappInstance.instance_name,
-          apiUrl: whatsappInstance.api_url,
+          apiUrl: normalizeBaseUrl(whatsappInstance.api_url),
           apiKey: whatsappInstance.api_key,
         });
       }
@@ -316,15 +343,22 @@ Deno.serve(async (req) => {
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
           try {
-            const resp = await fetch(
-              `${item.apiUrl}/message/sendText/${item.instanceName}`,
-              {
+            // Manager V2 (Stevo *.stevo.chat): POST /send/text — no instance in path
+            // Evolution API (standard): POST /message/sendText/{instanceName}
+            const isV2 = isManagerV2Url(item.apiUrl);
+            const sendUrl = isV2
+              ? `${item.apiUrl}/send/text`
+              : `${item.apiUrl}/message/sendText/${item.instanceName}`;
+            const sendHeaders = isV2
+              ? { "Content-Type": "application/json", apikey: item.apiKey }
+              : buildEvolutionHeaders(item.apiKey);
+
+            const resp = await fetch(sendUrl, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", apikey: item.apiKey },
+                headers: sendHeaders,
                 body: JSON.stringify({ number: item.formattedPhone, text: item.message }),
                 signal: controller.signal,
-              }
-            );
+              });
             clearTimeout(timeout);
             const body = await resp.text();
             return { ...item, ok: resp.ok, body };
@@ -343,7 +377,9 @@ Deno.serve(async (req) => {
           totalSent++;
           console.log(`[billing-notifications] ✓ ${val.company.name} (${val.formattedPhone})`);
         } else {
-          const errMsg = `${val.company.name} (${val.formattedPhone}): ${val.body}`;
+          const isV2err = isManagerV2Url(val.apiUrl);
+        const usedUrl = isV2err ? `${val.apiUrl}/send/text` : `${val.apiUrl}/message/sendText/${val.instanceName}`;
+        const errMsg = `${val.company.name} (${val.formattedPhone}): ${val.body} [url: ${usedUrl}]`;
           failures.push(errMsg);
           console.error(`[billing-notifications] ✗ ${errMsg}`);
         }
