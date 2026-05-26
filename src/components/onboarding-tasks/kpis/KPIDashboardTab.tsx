@@ -2347,17 +2347,35 @@ export const KPIDashboardTab = ({
         const salesKpiIds = kpis
           .filter(k => salesPatterns.some(p => k.name.toLowerCase().includes(p)))
           .map(k => k.id);
+        const revenueKpiIds = kpis
+          .filter(k => k.kpi_type === 'monetary')
+          .map(k => k.id);
         const filteredForCard = getFilteredEntries();
         const totalSalesCard = filteredForCard
           .filter(e => salesKpiIds.includes(e.kpi_id))
+          .reduce((sum, e) => sum + e.value, 0);
+        const totalRevenueCard = filteredForCard
+          .filter(e => revenueKpiIds.includes(e.kpi_id))
           .reduce((sum, e) => sum + e.value, 0);
         const periodDaysCard = Math.ceil(
           (new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / (1000 * 60 * 60 * 24)
         ) + 1;
         const avgDailySalesCard = periodDaysCard > 0 ? totalSalesCard / periodDaysCard : 0;
+        const avgDailyRevenueCard = periodDaysCard > 0 ? totalRevenueCard / periodDaysCard : 0;
+        const hasRevenueKpis = revenueKpiIds.length > 0;
+
+        // KPIs que NÃO são monetários — os monetários já aparecem como "Média Diária de Faturamento"
+        const nonRevenueKpis = kpis.filter(k => k.kpi_type !== 'monetary');
+        // Monetários para mostrar como cards normais (excluídos os que já estão na média)
+        const revenueKpisForCards = kpis.filter(k => k.kpi_type === 'monetary');
+        // Total de cards extras: até 2 se temos faturamento, até 3 se não temos
+        const extraKpis = hasRevenueKpis
+          ? nonRevenueKpis.slice(0, 2)
+          : kpis.slice(0, 3);
 
         return (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {/* Card 1: Média de Vendas Diárias */}
             <Card className="border-blue-500/50 bg-blue-500/5">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Média de Vendas Diárias</CardTitle>
@@ -2377,7 +2395,32 @@ export const KPIDashboardTab = ({
                 </div>
               </CardContent>
             </Card>
-        {kpis.slice(0, 4).map(kpi => {
+
+            {/* Card 2: Média Diária de Faturamento — ao lado do de vendas */}
+            {hasRevenueKpis && (
+              <Card className="border-emerald-500/50 bg-emerald-500/5">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Média Diária de Faturamento</CardTitle>
+                  <CalendarDays className="h-4 w-4 text-emerald-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-emerald-600">
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(avgDailyRevenueCard)}
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-xs text-muted-foreground">
+                      {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(totalRevenueCard)} · {periodDaysCard} dias
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2 mt-2">
+                    <div className="h-2 rounded-full bg-emerald-500" style={{ width: "100%" }} />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+        {/* KPIs não-monetários (os monetários já estão no card de média diária de faturamento) */}
+        {(hasRevenueKpis ? kpis.filter(k => k.kpi_type !== 'monetary') : kpis).slice(0, hasRevenueKpis ? 2 : 3).map(kpi => {
           const summary = getKpiSummary(kpi);
           const isOnTrack = summary.percentage >= 100;
           const hasMultipleTargets = kpi.monthly_targets && Object.keys(kpi.monthly_targets).length > 1;
