@@ -32,6 +32,16 @@ import {
   Settings,
   TrendingUp,
   TrendingDown,
+  ArrowUp,
+  ArrowDown,
+  Search,
+  DollarSign,
+  Target,
+  CalendarDays,
+  Wallet,
+  Activity,
+  PieChart,
+  BarChart3,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -44,14 +54,13 @@ import {
   Tooltip,
   LineChart,
   Line,
-  ReferenceLine,
   Cell,
   LabelList,
-  Legend,
+  AreaChart,
+  Area,
 } from "recharts";
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend, getYear, getMonth } from "date-fns";
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -157,18 +166,31 @@ function KpiCard({
   value,
   sub,
   accentColor = "#16a34a",
+  icon: Icon,
 }: {
   title: string;
   value: string;
   sub?: string;
   accentColor?: string;
+  icon?: React.ElementType;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-gradient-to-br from-card to-card/50 p-5 shadow-sm hover:shadow-md transition-shadow">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">{title}</p>
+    <div
+      className="rounded-2xl border p-5 shadow-md hover:shadow-lg transition-all duration-300 relative overflow-hidden"
+      style={{
+        background: `linear-gradient(135deg, hsl(var(--card)) 0%, ${accentColor}18 100%)`,
+        borderColor: `${accentColor}40`,
+      }}
+    >
+      {Icon && (
+        <div className="absolute top-4 right-4 opacity-20" style={{ color: accentColor }}>
+          <Icon className="h-10 w-10" />
+        </div>
+      )}
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">{title}</p>
       <p className="text-3xl font-bold text-foreground tabular-nums">{value}</p>
       {sub && <p className="text-sm text-muted-foreground mt-1.5">{sub}</p>}
-      <div className="mt-3 h-1 rounded-full" style={{ background: accentColor }}></div>
+      <div className="mt-4 h-1.5 rounded-full" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}60)` }} />
     </div>
   );
 }
@@ -334,6 +356,7 @@ function RankingBarChart({
 
   const chartData = sorted.map((d) => ({ ...d, name: truncateName(d.name) }));
   const chartHeight = Math.max(200, chartData.length * 32);
+  const gradId = `grad-${title.replace(/\s+/g, "-")}`;
 
   return (
     <Card>
@@ -343,13 +366,19 @@ function RankingBarChart({
       <CardContent>
         <ResponsiveContainer width="100%" height={chartHeight}>
           <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 48, top: 4, bottom: 4 }}>
+            <defs>
+              <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#16a34a" stopOpacity={1} />
+                <stop offset="100%" stopColor="#4ade80" stopOpacity={0.8} />
+              </linearGradient>
+            </defs>
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
             <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
             <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} width={90} />
             <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="value" fill={color} radius={[0, 4, 4, 0]}>
+            <Bar dataKey="value" fill={`url(#${gradId})`} radius={[0, 4, 4, 0]}>
               {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={color} />
+                <Cell key={`cell-${index}`} fill={`url(#${gradId})`} />
               ))}
               <LabelList dataKey="value" position="right" style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: 600 }} />
             </Bar>
@@ -376,22 +405,51 @@ function MetaProgressBar({
   dashed?: boolean;
 }) {
   const pct = target > 0 ? Math.min(100, (current / target) * 100) : 0;
+  const isAchieved = current >= target && target > 0;
   return (
-    <div className="space-y-1">
-      <div className="flex justify-between items-center text-xs">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-semibold text-foreground">
-          {current} / {target} <span style={{ color }} className="ml-1">{pct.toFixed(0)}%</span>
-        </span>
+    <div className="space-y-1.5">
+      <div className="flex justify-between items-center">
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{current} / {target}</span>
+          <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: `${color}25`, color }}>
+            {pct.toFixed(0)}%
+          </span>
+        </div>
       </div>
-      <div className="h-3 rounded-full bg-muted overflow-hidden relative">
+      <div className="h-3 rounded-full bg-muted overflow-hidden">
         <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${pct}%`, background: color, opacity: dashed ? 0.6 : 1 }}
+          className="h-full rounded-full transition-all duration-700"
+          style={{
+            width: `${pct}%`,
+            background: `linear-gradient(90deg, ${color}, ${color}99)`,
+            opacity: dashed ? 0.7 : 1,
+            boxShadow: isAchieved ? `0 0 8px ${color}60` : undefined,
+          }}
         />
       </div>
     </div>
   );
+}
+
+// ─── Section Header ───────────────────────────────────────────────────────────
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      <div className="h-6 w-1.5 rounded-full bg-gradient-to-b from-primary to-primary/30" />
+      <h3 className="text-base font-bold text-foreground">{title}</h3>
+    </div>
+  );
+}
+
+// ─── Modalidade Badge ─────────────────────────────────────────────────────────
+
+function ModalidadeBadge({ modalidade }: { modalidade: string | null }) {
+  if (!modalidade) return <Badge variant="outline">--</Badge>;
+  if (modalidade === "EAD") return <Badge className="bg-blue-500/15 text-blue-600 border-blue-500/30 text-xs">{modalidade}</Badge>;
+  if (modalidade.toLowerCase().includes("presencial")) return <Badge className="bg-green-500/15 text-green-600 border-green-500/30 text-xs">{modalidade}</Badge>;
+  return <Badge className="bg-purple-500/15 text-purple-600 border-purple-500/30 text-xs">{modalidade}</Badge>;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -417,6 +475,11 @@ export function FacunicampsIndicadoresPanel() {
   // Compare view
   const [comparePeriod1, setComparePeriod1] = useState("");
   const [comparePeriod2, setComparePeriod2] = useState("");
+
+  // Table search & sort
+  const [tableSearch, setTableSearch] = useState("");
+  const [tableSortCol, setTableSortCol] = useState<string>("data_venda");
+  const [tableSortDir, setTableSortDir] = useState<"asc" | "desc">("desc");
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -761,14 +824,44 @@ export function FacunicampsIndicadoresPanel() {
   const period1Stats = comparePeriod1 ? getPeriodStats(comparePeriod1) : null;
   const period2Stats = comparePeriod2 ? getPeriodStats(comparePeriod2) : null;
 
-  // ── Current month table data ───────────────────────────────────────────────
+  // ── Current month table data (sortable + searchable) ──────────────────────
 
   const tableData = useMemo(() => {
-    return filteredAll
-      .filter((m) => toMonthKey(m.data_venda) === currentMonthKey)
-      .sort((a, b) => (b.data_venda ?? "").localeCompare(a.data_venda ?? ""))
-      .slice(0, 50);
-  }, [filteredAll, currentMonthKey]);
+    let rows = filteredAll.filter(m => toMonthKey(m.data_venda) === currentMonthKey);
+
+    if (tableSearch.trim()) {
+      const q = tableSearch.toLowerCase();
+      rows = rows.filter(m =>
+        (m.vendedor ?? "").toLowerCase().includes(q) ||
+        (m.cliente ?? "").toLowerCase().includes(q) ||
+        (m.curso ?? "").toLowerCase().includes(q)
+      );
+    }
+
+    rows = [...rows].sort((a, b) => {
+      let valA: string | number = "";
+      let valB: string | number = "";
+      if (tableSortCol === "data_venda") { valA = a.data_venda ?? ""; valB = b.data_venda ?? ""; }
+      else if (tableSortCol === "vendedor") { valA = (a.vendedor ?? "").toLowerCase(); valB = (b.vendedor ?? "").toLowerCase(); }
+      else if (tableSortCol === "cliente") { valA = (a.cliente ?? "").toLowerCase(); valB = (b.cliente ?? "").toLowerCase(); }
+      else if (tableSortCol === "modalidade") { valA = (a.modalidade ?? "").toLowerCase(); valB = (b.modalidade ?? "").toLowerCase(); }
+      else if (tableSortCol === "curso") { valA = (a.curso ?? "").toLowerCase(); valB = (b.curso ?? "").toLowerCase(); }
+      else if (tableSortCol === "forma_ingresso") { valA = (a.forma_ingresso ?? "").toLowerCase(); valB = (b.forma_ingresso ?? "").toLowerCase(); }
+      else if (tableSortCol === "valor_total") { valA = a.valor_total ?? 0; valB = b.valor_total ?? 0; }
+
+      if (valA < valB) return tableSortDir === "asc" ? -1 : 1;
+      if (valA > valB) return tableSortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return rows;
+  }, [filteredAll, currentMonthKey, tableSearch, tableSortCol, tableSortDir]);
+
+  // Total rows before search filter (for the count display)
+  const tableDataTotal = useMemo(
+    () => filteredAll.filter(m => toMonthKey(m.data_venda) === currentMonthKey).length,
+    [filteredAll, currentMonthKey]
+  );
 
   // ── Render loading ─────────────────────────────────────────────────────────
 
@@ -787,6 +880,25 @@ export function FacunicampsIndicadoresPanel() {
       ? "#16a34a"
       : "#dc2626"
     : "#94a3b8";
+
+  // ── Sortable header helper ─────────────────────────────────────────────────
+
+  const SortableHeader = ({ col, label, align }: { col: string; label: string; align?: "right" }) => (
+    <TableHead
+      className={`text-xs cursor-pointer select-none hover:text-foreground transition-colors${align === "right" ? " text-right" : ""}`}
+      onClick={() => {
+        if (tableSortCol === col) setTableSortDir(d => d === "asc" ? "desc" : "asc");
+        else { setTableSortCol(col); setTableSortDir("asc"); }
+      }}
+    >
+      <span className={`flex items-center gap-1${align === "right" ? " justify-end" : ""}`}>
+        {label}
+        {tableSortCol === col
+          ? tableSortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+          : <span className="h-3 w-3 opacity-20">↕</span>}
+      </span>
+    </TableHead>
+  );
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -961,24 +1073,28 @@ export function FacunicampsIndicadoresPanel() {
               value={fmtBRL(cmKpis.valorMatricula)}
               sub={`Ticket Médio: ${fmtBRL(cmKpis.ticketMat)}`}
               accentColor="#3b82f6"
+              icon={DollarSign}
             />
             <KpiCard
               title="Qtde. Vendas"
               value={String(cmKpis.count)}
               sub={currentMeta ? `Restante: ${cmKpis.remaining}` : "Restante: --"}
               accentColor={metaAccentColor}
+              icon={TrendingUp}
             />
             <KpiCard
               title="Valor Total"
               value={fmtBRL(cmKpis.valorTotal)}
               sub={`Ticket Médio: ${fmtBRL(cmKpis.ticketTotal)}`}
               accentColor="#8b5cf6"
+              icon={BarChart3}
             />
             <KpiCard
               title="Meta Qtde. Vendas"
               value={currentMeta ? String(currentMeta.meta) : "--"}
               sub={currentMeta ? `Diária sugerida: ${cmKpis.diaria}` : "Diária: --"}
               accentColor={metaAccentColor}
+              icon={Target}
             />
           </div>
 
@@ -989,53 +1105,67 @@ export function FacunicampsIndicadoresPanel() {
               value={dailyMetrics.metaDiariaVendas !== null ? dailyMetrics.metaDiariaVendas.toFixed(1) : "--"}
               sub={`${dailyMetrics.totalWorkdays} dias úteis no mês`}
               accentColor="#f97316"
+              icon={CalendarDays}
             />
             <KpiCard
               title="Meta Diária — Faturamento"
               value={dailyMetrics.metaDiariaFaturamento !== null ? fmtBRL(dailyMetrics.metaDiariaFaturamento) : "--"}
               sub="Baseado na meta de faturamento"
               accentColor="#f97316"
+              icon={Wallet}
             />
             <KpiCard
               title="Média Vendas Diárias (real)"
               value={dailyMetrics.mediaVendasDiarias.toFixed(1)}
               sub={`Últimos ${dailyMetrics.elapsedWorkdays} dias úteis`}
               accentColor={dailyMetrics.metaDiariaVendas !== null && dailyMetrics.mediaVendasDiarias >= dailyMetrics.metaDiariaVendas ? "#16a34a" : "#94a3b8"}
+              icon={Activity}
             />
             <KpiCard
               title="Média Faturamento Diário (real)"
               value={fmtBRL(dailyMetrics.mediaFaturamentoDiario)}
               sub={`Últimos ${dailyMetrics.elapsedWorkdays} dias úteis`}
               accentColor={dailyMetrics.metaDiariaFaturamento !== null && dailyMetrics.mediaFaturamentoDiario >= dailyMetrics.metaDiariaFaturamento ? "#16a34a" : "#94a3b8"}
+              icon={PieChart}
             />
           </div>
 
-          {/* Sales per day line chart */}
+          {/* Sales per day area chart */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold text-foreground">Vendas no período</CardTitle>
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-1.5 rounded-full bg-gradient-to-b from-emerald-500 to-emerald-500/30" />
+                <CardTitle className="text-base font-bold text-foreground">Vendas no período</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               {salesPerDay.length === 0 ? (
                 <p className="text-muted-foreground text-sm">Sem vendas no período selecionado</p>
               ) : (
                 <ResponsiveContainer width="100%" height={200}>
-                  <LineChart data={salesPerDay} margin={{ left: 0, right: 16, top: 8, bottom: 0 }}>
+                  <AreaChart data={salesPerDay} margin={{ left: 0, right: 16, top: 16, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="vendasGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#16a34a" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="date" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                     <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Line
+                    <Area
                       type="monotone"
                       dataKey="count"
                       stroke="#16a34a"
-                      strokeWidth={2}
-                      dot={{ r: 4, fill: "#16a34a" }}
+                      strokeWidth={2.5}
+                      fill="url(#vendasGrad)"
+                      dot={{ r: 5, fill: "#16a34a", strokeWidth: 2, stroke: "#fff" }}
                       name="Vendas"
                     >
-                      <LabelList dataKey="count" position="top" style={{ fontSize: 10, fill: "hsl(var(--foreground))" }} />
-                    </Line>
-                  </LineChart>
+                      <LabelList dataKey="count" position="top" style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: 600 }} />
+                    </Area>
+                  </AreaChart>
                 </ResponsiveContainer>
               )}
             </CardContent>
@@ -1044,7 +1174,10 @@ export function FacunicampsIndicadoresPanel() {
           {/* Vendas vs Metas — progress bars */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold text-foreground">Vendas VS Metas</CardTitle>
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-1.5 rounded-full bg-gradient-to-b from-primary to-primary/30" />
+                <CardTitle className="text-base font-bold text-foreground">Vendas VS Metas</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               {!currentMeta ? (
@@ -1103,7 +1236,23 @@ export function FacunicampsIndicadoresPanel() {
           {/* Data table */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold text-foreground">Matrículas no mês (últimas 50)</CardTitle>
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-1.5 rounded-full bg-gradient-to-b from-primary to-primary/30" />
+                <CardTitle className="text-base font-bold text-foreground">Matrículas no mês</CardTitle>
+              </div>
+              {/* Search input */}
+              <div className="relative mt-2">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  className="pl-8 h-8 text-xs"
+                  placeholder="Buscar por vendedor, cliente ou curso..."
+                  value={tableSearch}
+                  onChange={(e) => setTableSearch(e.target.value)}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Exibindo {tableData.length} de {tableDataTotal} matrículas
+              </p>
             </CardHeader>
             <CardContent className="overflow-x-auto p-0">
               {tableData.length === 0 ? (
@@ -1112,25 +1261,25 @@ export function FacunicampsIndicadoresPanel() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-xs">Data</TableHead>
-                      <TableHead className="text-xs">Vendedor(a)</TableHead>
-                      <TableHead className="text-xs">Cliente</TableHead>
-                      <TableHead className="text-xs">Modalidade</TableHead>
-                      <TableHead className="text-xs">Curso</TableHead>
-                      <TableHead className="text-xs">Forma</TableHead>
-                      <TableHead className="text-xs text-right">Valor Total</TableHead>
+                      <SortableHeader col="data_venda" label="Data" />
+                      <SortableHeader col="vendedor" label="Vendedor(a)" />
+                      <SortableHeader col="cliente" label="Cliente" />
+                      <SortableHeader col="modalidade" label="Modalidade" />
+                      <SortableHeader col="curso" label="Curso" />
+                      <SortableHeader col="forma_ingresso" label="Forma" />
+                      <SortableHeader col="valor_total" label="Valor Total" align="right" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {tableData.map((row, i) => (
-                      <TableRow key={row.id ?? i} className={isCancelled(row) ? "opacity-50" : ""}>
+                      <TableRow key={row.id ?? i} className={`hover:bg-muted/50 transition-colors${isCancelled(row) ? " opacity-50" : ""}`}>
                         <TableCell className="text-xs">
                           {row.data_venda ? format(parseISO(row.data_venda), "dd/MM/yyyy") : "--"}
                         </TableCell>
                         <TableCell className="text-xs">{row.vendedor ?? "--"}</TableCell>
                         <TableCell className="text-xs">{row.cliente ?? "--"}</TableCell>
                         <TableCell className="text-xs">
-                          <Badge variant="outline" className="text-xs">{row.modalidade ?? "--"}</Badge>
+                          <ModalidadeBadge modalidade={row.modalidade} />
                         </TableCell>
                         <TableCell className="text-xs max-w-[180px] truncate">{row.curso ?? "--"}</TableCell>
                         <TableCell className="text-xs">
@@ -1156,16 +1305,19 @@ export function FacunicampsIndicadoresPanel() {
         <div className="space-y-6">
           {/* KPI cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <KpiCard title="Valor Matrícula Total" value={fmtBRL(histKpis.valorMatricula)} accentColor="#3b82f6" />
-            <KpiCard title="Qtde. Vendas Total" value={String(histKpis.count)} accentColor="#16a34a" />
-            <KpiCard title="Valor Total Histórico" value={fmtBRL(histKpis.valorTotal)} accentColor="#8b5cf6" />
-            <KpiCard title="Meta Total Configurada" value={histKpis.totalMeta > 0 ? String(histKpis.totalMeta) : "--"} accentColor="#f97316" />
+            <KpiCard title="Valor Matrícula Total" value={fmtBRL(histKpis.valorMatricula)} accentColor="#3b82f6" icon={DollarSign} />
+            <KpiCard title="Qtde. Vendas Total" value={String(histKpis.count)} accentColor="#16a34a" icon={TrendingUp} />
+            <KpiCard title="Valor Total Histórico" value={fmtBRL(histKpis.valorTotal)} accentColor="#8b5cf6" icon={BarChart3} />
+            <KpiCard title="Meta Total Configurada" value={histKpis.totalMeta > 0 ? String(histKpis.totalMeta) : "--"} accentColor="#f97316" icon={Target} />
           </div>
 
           {/* Valor Total Mensal BarChart with % change labels */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold text-foreground">Valor Total no período (mensal)</CardTitle>
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-blue-500/30" />
+                <CardTitle className="text-base font-bold text-foreground">Valor Total no período (mensal)</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               {monthlyDataWithPct.length === 0 ? (
@@ -1173,6 +1325,12 @@ export function FacunicampsIndicadoresPanel() {
               ) : (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={monthlyDataWithPct} margin={{ left: 8, right: 16, top: 32, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9} />
+                        <stop offset="100%" stopColor="#1e3a8a" stopOpacity={0.7} />
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                     <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                     <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => fmtBRL(v)} width={90} />
@@ -1195,7 +1353,7 @@ export function FacunicampsIndicadoresPanel() {
                         );
                       }}
                     />
-                    <Bar dataKey="valorTotal" fill="#1e3a5f" radius={[4, 4, 0, 0]} name="Valor Total">
+                    <Bar dataKey="valorTotal" fill="url(#barGrad)" radius={[4, 4, 0, 0]} name="Valor Total">
                       <LabelList
                         content={(props) => {
                           const { x, y, width, value, index } = props as { x: number; y: number; width: number; value: number; index: number };
@@ -1230,7 +1388,10 @@ export function FacunicampsIndicadoresPanel() {
           {/* Vendas vs Meta LineChart */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold text-foreground">Vendas vs Meta (histórico)</CardTitle>
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-1.5 rounded-full bg-gradient-to-b from-emerald-500 to-emerald-500/30" />
+                <CardTitle className="text-base font-bold text-foreground">Vendas vs Meta (histórico)</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               {vendasVsMetaData.length === 0 ? (
@@ -1265,36 +1426,91 @@ export function FacunicampsIndicadoresPanel() {
           {/* Visão de Curto, Médio e Longo Prazo */}
           {prazoStats && (
             <div>
-              <h3 className="text-sm font-semibold text-foreground mb-3">Visão de Curto, Médio e Longo Prazo</h3>
+              <SectionHeader title="Visão de Curto, Médio e Longo Prazo" />
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {([prazoStats.curto, prazoStats.medio, prazoStats.longo] as const).map((p) => (
-                  <div key={p.label} className="rounded-xl border border-border bg-gradient-to-br from-card to-card/50 p-5 shadow-sm space-y-3">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{p.label}</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Total Vendas</p>
-                        <p className="text-2xl font-bold text-foreground">{p.count}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Valor Total</p>
-                        <p className="text-lg font-bold text-foreground">{fmtBRL(p.valorTotal)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Ticket Médio</p>
-                        <p className="text-base font-semibold text-foreground">{fmtBRL(p.ticketMedio)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Média/mês</p>
-                        <p className="text-base font-semibold text-foreground">{p.avgVendasMes.toFixed(0)} vendas</p>
-                      </div>
-                      <div className="col-span-2">
-                        <p className="text-xs text-muted-foreground">Fat. médio/mês</p>
-                        <p className="text-base font-semibold text-foreground">{fmtBRL(p.avgFatMes)}</p>
-                      </div>
+                {/* Curto prazo */}
+                <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 p-5 shadow-sm space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{prazoStats.curto.label}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total Vendas</p>
+                      <p className="text-2xl font-bold text-foreground">{prazoStats.curto.count}</p>
                     </div>
-                    <div className="h-1 rounded-full bg-gradient-to-r from-primary/60 to-primary/20" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Valor Total</p>
+                      <p className="text-lg font-bold text-foreground">{fmtBRL(prazoStats.curto.valorTotal)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Ticket Médio</p>
+                      <p className="text-base font-semibold text-foreground">{fmtBRL(prazoStats.curto.ticketMedio)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Média/mês</p>
+                      <p className="text-base font-semibold text-foreground">{prazoStats.curto.avgVendasMes.toFixed(0)} vendas</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-xs text-muted-foreground">Fat. médio/mês</p>
+                      <p className="text-base font-semibold text-foreground">{fmtBRL(prazoStats.curto.avgFatMes)}</p>
+                    </div>
                   </div>
-                ))}
+                  <div className="h-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-500/40" />
+                </div>
+
+                {/* Médio prazo */}
+                <div className="rounded-xl border border-blue-500/30 bg-gradient-to-br from-blue-500/10 to-blue-500/5 p-5 shadow-sm space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{prazoStats.medio.label}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total Vendas</p>
+                      <p className="text-2xl font-bold text-foreground">{prazoStats.medio.count}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Valor Total</p>
+                      <p className="text-lg font-bold text-foreground">{fmtBRL(prazoStats.medio.valorTotal)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Ticket Médio</p>
+                      <p className="text-base font-semibold text-foreground">{fmtBRL(prazoStats.medio.ticketMedio)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Média/mês</p>
+                      <p className="text-base font-semibold text-foreground">{prazoStats.medio.avgVendasMes.toFixed(0)} vendas</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-xs text-muted-foreground">Fat. médio/mês</p>
+                      <p className="text-base font-semibold text-foreground">{fmtBRL(prazoStats.medio.avgFatMes)}</p>
+                    </div>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-blue-500/40" />
+                </div>
+
+                {/* Longo prazo */}
+                <div className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-purple-500/5 p-5 shadow-sm space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{prazoStats.longo.label}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total Vendas</p>
+                      <p className="text-2xl font-bold text-foreground">{prazoStats.longo.count}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Valor Total</p>
+                      <p className="text-lg font-bold text-foreground">{fmtBRL(prazoStats.longo.valorTotal)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Ticket Médio</p>
+                      <p className="text-base font-semibold text-foreground">{fmtBRL(prazoStats.longo.ticketMedio)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Média/mês</p>
+                      <p className="text-base font-semibold text-foreground">{prazoStats.longo.avgVendasMes.toFixed(0)} vendas</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-xs text-muted-foreground">Fat. médio/mês</p>
+                      <p className="text-base font-semibold text-foreground">{fmtBRL(prazoStats.longo.avgFatMes)}</p>
+                    </div>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-gradient-to-r from-purple-500 to-purple-500/40" />
+                </div>
               </div>
             </div>
           )}
@@ -1308,7 +1524,10 @@ export function FacunicampsIndicadoresPanel() {
           {/* Funil de Vendas */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold text-foreground">Funil de Vendas</CardTitle>
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-1.5 rounded-full bg-gradient-to-b from-primary to-primary/30" />
+                <CardTitle className="text-base font-bold text-foreground">Funil de Vendas</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               {totalAtendimentos === 0 ? (
@@ -1344,7 +1563,10 @@ export function FacunicampsIndicadoresPanel() {
           {/* Projeção Vendedores */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold text-foreground">Projeção Vendedores Ativos</CardTitle>
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-1.5 rounded-full bg-gradient-to-b from-primary to-primary/30" />
+                <CardTitle className="text-base font-bold text-foreground">Projeção Vendedores Ativos</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               <p className="text-xs text-muted-foreground mb-3">
@@ -1356,11 +1578,17 @@ export function FacunicampsIndicadoresPanel() {
                   layout="vertical"
                   margin={{ left: 8, right: 48, top: 4, bottom: 4 }}
                 >
+                  <defs>
+                    <linearGradient id="projGrad" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#16a34a" stopOpacity={1} />
+                      <stop offset="100%" stopColor="#4ade80" stopOpacity={0.8} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
                   <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} width={90} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="value" fill="#1e3a5f" radius={[0, 4, 4, 0]} name="Vendas">
+                  <Bar dataKey="value" fill="url(#projGrad)" radius={[0, 4, 4, 0]} name="Vendas">
                     <LabelList dataKey="value" position="right" style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: 600 }} />
                   </Bar>
                 </BarChart>
