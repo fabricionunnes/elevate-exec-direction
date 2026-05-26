@@ -137,6 +137,13 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
+
+      - name: Deploy billing-notifications
+        continue-on-error: true
+        run: supabase functions deploy billing-notifications --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
       - name: Deploy survey-sender
         continue-on-error: true
         run: supabase functions deploy survey-sender --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
