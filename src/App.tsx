@@ -181,6 +181,7 @@ const ConsultoriasAdminPage = lazy(() => import("./pages/onboarding-tasks/Consul
 const MasterAIConsultPage = lazy(() => import("./pages/onboarding-tasks/MasterAIConsultPage"));
 const MRRDashboardPage = lazy(() => import("./pages/onboarding-tasks/MRRDashboardPage"));
 const SignaturesAdminPage = lazy(() => import("./pages/onboarding-tasks/SignaturesAdminPage"));
+const FacunicampsDashboardPage = lazy(() => import("./pages/onboarding-tasks/FacunicampsDashboardPage"));
 
 // Public Signatures / Verification
 const SigningPage = lazy(() => import("./pages/SigningPage"));
@@ -474,6 +475,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/b2b-prospection" element={<B2BProspectionPage />} />
               <Route path="/onboarding-tasks/master-ai" element={<MasterAIConsultPage />} />
               <Route path="/onboarding-tasks/mrr" element={<MRRDashboardPage />} />
+              <Route path="/onboarding-tasks/facunicamps" element={<FacunicampsDashboardPage />} />
               <Route path="/onboarding-tasks/assinaturas" element={<SignaturesAdminPage />} />
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
               <Route path="/onboarding-tasks/commercial-actions" element={<CommercialActionsDashboardPage />} />
