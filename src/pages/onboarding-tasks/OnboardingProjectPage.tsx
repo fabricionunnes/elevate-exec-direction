@@ -81,6 +81,9 @@ import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistor
 import { MeetingHistoryPanel } from "@/components/onboarding-tasks/MeetingHistoryPanel";
 import { AssessmentsPanel } from "@/components/assessments/AssessmentsPanel";
 import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel";
+import { FacunicampsIndicadoresPanel } from "@/components/facunicamps/FacunicampsIndicadoresPanel";
+
+const FACUNICAMPS_ID = "1081cb78-bd6c-42b2-8a85-104ead3ecc18";
 import { CSATConfigPanel } from "@/components/onboarding-tasks/CSATConfigPanel";
 import { HealthScoreWidget } from "@/components/onboarding-tasks/health-score/HealthScoreWidget";
 import { HealthScoreDetailPanel } from "@/components/onboarding-tasks/health-score/HealthScoreDetailPanel";
@@ -227,7 +230,7 @@ const OnboardingProjectPage = () => {
 
   // Two-level navigation: group → sub-tabs
   const tabGroupMap: Record<string, string> = {
-    kpis: "principal", briefing: "principal", diagnostic: "principal", tasks: "principal", "ai-coach": "principal",
+    indicadores: "principal", kpis: "principal", briefing: "principal", diagnostic: "principal", tasks: "principal", "ai-coach": "principal",
     nps: "relacionamento", csat: "relacionamento", assessments: "relacionamento", meetings: "relacionamento", support: "relacionamento", whatsapp: "relacionamento",
     health: "gestao", hr: "gestao", board: "gestao", financial: "gestao", history: "gestao",
     commercial_actions: "comercial", sales_funnel: "comercial", routine_contract: "comercial", commercial_director: "comercial",
@@ -507,6 +510,11 @@ const OnboardingProjectPage = () => {
       }
       
       setProject(projectData);
+
+      // Default to Indicadores for Facunicamps
+      if (projectData.onboarding_company_id === FACUNICAMPS_ID) {
+        setActiveTab("indicadores");
+      }
 
       // Fetch tasks with responsible staff
       const { data: tasksData, error: tasksError } = await supabase
@@ -1485,6 +1493,9 @@ const OnboardingProjectPage = () => {
 
               const subTabs: Record<string, React.ReactNode[]> = {
                 principal: [
+                  ...(project?.onboarding_company_id === FACUNICAMPS_ID ? [
+                    <TabsTrigger key="indicadores" value="indicadores"><BarChart3 className="h-3.5 w-3.5 shrink-0" />Indicadores</TabsTrigger>
+                  ] : []),
                   <TabsTrigger key="kpis" value="kpis"><BarChart3 className="h-3.5 w-3.5 shrink-0" />KPIs</TabsTrigger>,
                   <TabsTrigger key="briefing" value="briefing"><Building2 className="h-3.5 w-3.5 shrink-0" />Briefing</TabsTrigger>,
                   <TabsTrigger key="diagnostic" value="diagnostic"><Sparkles className="h-3.5 w-3.5 shrink-0" />Diagnóstico</TabsTrigger>,
@@ -1828,9 +1839,15 @@ const OnboardingProjectPage = () => {
             <HealthScoreDetailPanel projectId={projectId!} isAdmin={isAdmin} />
           </TabsContent>
 
+          {project?.onboarding_company_id === FACUNICAMPS_ID && (
+            <TabsContent value="indicadores">
+              <FacunicampsIndicadoresPanel />
+            </TabsContent>
+          )}
+
           <TabsContent value="kpis">
-            <KPIMetasPanel 
-              companyId={project.onboarding_company_id || ""} 
+            <KPIMetasPanel
+              companyId={project.onboarding_company_id || ""}
               isAdmin={isAdmin}
               projectId={projectId}
               isStaff={currentUserRole === "admin" || currentUserRole === "cs" || currentUserRole === "consultant"}
