@@ -180,6 +180,11 @@ const B2BProspectionPage = lazy(() => import("./pages/onboarding-tasks/B2BProspe
 const ConsultoriasAdminPage = lazy(() => import("./pages/onboarding-tasks/ConsultoriasAdminPage"));
 const MasterAIConsultPage = lazy(() => import("./pages/onboarding-tasks/MasterAIConsultPage"));
 const MRRDashboardPage = lazy(() => import("./pages/onboarding-tasks/MRRDashboardPage"));
+const SignaturesAdminPage = lazy(() => import("./pages/onboarding-tasks/SignaturesAdminPage"));
+
+// Public Signatures / Verification
+const SigningPage = lazy(() => import("./pages/SigningPage"));
+const VerificationPage = lazy(() => import("./pages/VerificationPage"));
 
 // Assessments
 const LegacyDiscRedirect = lazy(() => import("./pages/assessments/LegacyDiscRedirect"));
@@ -469,6 +474,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/b2b-prospection" element={<B2BProspectionPage />} />
               <Route path="/onboarding-tasks/master-ai" element={<MasterAIConsultPage />} />
               <Route path="/onboarding-tasks/mrr" element={<MRRDashboardPage />} />
+              <Route path="/onboarding-tasks/assinaturas" element={<SignaturesAdminPage />} />
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
               <Route path="/onboarding-tasks/commercial-actions" element={<CommercialActionsDashboardPage />} />
               <Route path="/onboarding-tasks/:projectId/health-score" element={<HealthScorePage />} />
@@ -668,6 +674,10 @@ const AppShell = () => {
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/fatura" element={<PublicInvoicePage />} />
             
+            {/* Assinatura Eletrônica — rotas públicas */}
+            <Route path="/assinar/:token" element={<SigningPage />} />
+            <Route path="/verificar/:envelopeId?" element={<VerificationPage />} />
+
             {/* White-Label Admin */}
             <Route path="/whitelabel-admin" element={<WhitelabelAdminPage />} />
             <Route path="/whitelabel-gestao" element={<WhitelabelUNVAdminPage />} />
