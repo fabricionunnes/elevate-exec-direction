@@ -416,7 +416,7 @@ serve(async (req) => {
         body: JSON.stringify({
           model: "claude-haiku-4-5",
           max_tokens: 8096,
-          system: `Você é um assistente SQL expert. A data de HOJE é ${new Date().toISOString().split('T')[0]}. Dado o esquema do banco de dados abaixo, gere UMA query SQL SELECT para responder a pergunta do usuário. Retorne APENAS o SQL puro, sem markdown, sem explicação, sem \`,
+          system: "Você é um assistente SQL expert. A data de HOJE é " + new Date().toISOString().split('T')[0] + ". Dado o esquema do banco de dados abaixo, gere UMA query SQL SELECT para responder a pergunta do usuário. Retorne APENAS o SQL puro, sem markdown, sem explicação, sem aspas nem blocos de código.\n\n" + DATA_SOURCES,
           messages: [{ role: "user", content: userQuestion }],
         }),
       });
@@ -440,8 +440,10 @@ serve(async (req) => {
       }
 
       const sqlJson = await sqlResponse.json();
-      sqlQuery = sqlJson.choices?.[0]?.message?.content?.trim() || "";
-      sqlQuery = sqlQuery.replace(/```sql\n?/gi, "").replace(/```\n?/g, "").trim();
+      sqlQuery = sqlJson.content?.[0]?.text?.trim() || "";
+      // Remove markdown code fences (```) from AI response
+      const FENCE = String.fromCharCode(96, 96, 96);
+      sqlQuery = sqlQuery.split(FENCE + "sql").join("").split(FENCE + "SQL").join("").split(FENCE).join("").trim();
       sqlQuery = sqlQuery.replace(/;\s*$/, "").trim();
 
       const upperSql = sqlQuery.toUpperCase().trim();

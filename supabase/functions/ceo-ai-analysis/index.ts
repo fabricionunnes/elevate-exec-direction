@@ -419,8 +419,7 @@ Foque em:
   const { readable, writable } = new TransformStream({
     transform(chunk, controller) {
       const text = new TextDecoder().decode(chunk);
-      const lines = text.split("
-");
+      const lines = text.split("\n");
       for (const line of lines) {
         if (!line.startsWith("data: ")) continue;
         const data = line.slice(6).trim();
@@ -429,13 +428,9 @@ Foque em:
           const parsed = JSON.parse(data);
           if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
             const openaiChunk = { choices: [{ delta: { content: parsed.delta.text }, finish_reason: null }] };
-            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(openaiChunk)}
-
-`));
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(openaiChunk)}\n\n`));
           } else if (parsed.type === "message_stop") {
-            controller.enqueue(new TextEncoder().encode("data: [DONE]
-
-"));
+            controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
           }
         } catch { /* ignore parse errors */ }
       }
