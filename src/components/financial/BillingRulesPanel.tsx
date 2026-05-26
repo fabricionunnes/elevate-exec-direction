@@ -35,6 +35,8 @@ interface BillingRule {
   include_interest_info: boolean;
   include_discount_info: boolean;
   whatsapp_instance_name: string | null;
+  send_hour: number;
+  send_minute: number;
   created_at: string;
 }
 
@@ -123,6 +125,7 @@ export function BillingRulesPanel() {
   const [formIncludeInterest, setFormIncludeInterest] = useState(true);
   const [formIncludeDiscount, setFormIncludeDiscount] = useState(true);
   const [formInstanceName, setFormInstanceName] = useState("");
+  const [formSendHour, setFormSendHour] = useState(8);
 
   // Global instance config
   const [globalInstance, setGlobalInstance] = useState<string>("");
@@ -193,6 +196,7 @@ export function BillingRulesPanel() {
     setFormIncludeInterest(true);
     setFormIncludeDiscount(true);
     setFormInstanceName(globalInstance);
+    setFormSendHour(8);
     setDialogOpen(true);
   };
 
@@ -207,6 +211,7 @@ export function BillingRulesPanel() {
     setFormIncludeInterest(rule.include_interest_info);
     setFormIncludeDiscount(rule.include_discount_info);
     setFormInstanceName(rule.whatsapp_instance_name || globalInstance);
+    setFormSendHour(rule.send_hour ?? 8);
     setDialogOpen(true);
   };
 
@@ -237,6 +242,8 @@ export function BillingRulesPanel() {
       include_interest_info: formIncludeInterest,
       include_discount_info: formIncludeDiscount,
       whatsapp_instance_name: formInstanceName,
+      send_hour: formSendHour,
+      send_minute: 0,
     };
 
     if (editingRule) {
@@ -460,6 +467,9 @@ export function BillingRulesPanel() {
                         <Clock className="h-3 w-3 mr-1" />
                         {getTriggerLabel(rule.trigger_type, rule.days_offset)}
                       </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        🕗 {String(rule.send_hour ?? 8).padStart(2, "0")}:00
+                      </Badge>
                       {!rule.is_active && (
                         <Badge variant="secondary">Inativa</Badge>
                       )}
@@ -542,6 +552,23 @@ export function BillingRulesPanel() {
                   />
                 </div>
               )}
+            </div>
+
+            <div>
+              <Label>Horário de envio</Label>
+              <Select value={String(formSendHour)} onValueChange={(v) => setFormSendHour(parseInt(v))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 24 }, (_, h) => (
+                    <SelectItem key={h} value={String(h)}>
+                      {String(h).padStart(2, "0")}:00
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">Horário local (BRT). A notificação será enviada neste horário quando o cron executar.</p>
             </div>
 
             <Separator />

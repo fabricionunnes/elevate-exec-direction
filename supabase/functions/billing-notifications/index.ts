@@ -46,24 +46,88 @@ Deno.serve(async (req) => {
     const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL") || "";
     const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") || "";
 
+    // Parse request body to check if it's a manual execution
+    let isManual = false;
+    try {
+      const body = await req.json();
+      isManual = body?.manual === true;
+    } catch {
+      // no body or invalid JSON — treat as scheduled
+    }
+
+    // Current UTC time for time-based filtering
+    const nowUtc = new Date();
+    const currentHourUtc = nowUtc.getUTCHours();
+    const currentMinuteUtc = nowUtc.getUTCMinutes();
+    diagnostics.current_hour_utc = currentHourUtc;
+    diagnostics.current_minute_utc = currentMinuteUtc;
+    diagnostics.is_manual = isManual;
+
     // 1. Load active billing rules
-    const { data: rules, error: rulesError } = await supabase
+    const { data: allRules, error: rulesError } = await supabase
       .from("billing_notification_rules")
       .select("*")
       .eq("is_active", true);
 
     if (rulesError) throw rulesError;
 
-    diagnostics.rules_count = rules?.length ?? 0;
+    diagnostics.rules_count = allRules?.length ?? 0;
+
+    // 2. Filter rules by scheduled send time (skip filter when manual)
+    let rules = allRules || [];
+    const TIME_TOLERANCE_MINUTES = 5;
+
+    if (!isManual && rules.length > 0) {
+      const rulesScheduledNow: string[] = [];
+      const rulesFilteredOut: string[] = [];
+
+      rules = rules.filter((rule: any) => {
+        const sendHour: number = rule.send_hour ?? 8;
+        const sendMinute: number = rule.send_minute ?? 0;
+        const tzOffset: number = rule.timezone_offset ?? -3;
+
+        // Convert rule's local hour to UTC for comparison
+        // local_hour = utc_hour + tz_offset  →  utc_hour = local_hour - tz_offset
+        const targetUtcHour = ((sendHour - tzOffset) % 24 + 24) % 24;
+        const targetUtcMinute = sendMinute;
+
+        // Total minutes from midnight for comparison
+        const currentTotal = currentHourUtc * 60 + currentMinuteUtc;
+        const targetTotal = targetUtcHour * 60 + targetUtcMinute;
+        const diff = Math.abs(currentTotal - targetTotal);
+
+        // Handle midnight crossing (e.g. target=23:58, current=00:02)
+        const wrappedDiff = Math.min(diff, 1440 - diff);
+
+        const shouldFire = wrappedDiff <= TIME_TOLERANCE_MINUTES;
+        if (shouldFire) {
+          rulesScheduledNow.push(`${rule.name} (send_hour=${sendHour}, targetUtcHour=${targetUtcHour})`);
+        } else {
+          rulesFilteredOut.push(`${rule.name} (send_hour=${sendHour}, targetUtcHour=${targetUtcHour})`);
+        }
+        return shouldFire;
+      });
+
+      diagnostics.rules_filtered_by_time = rulesFilteredOut.length;
+      diagnostics.rules_scheduled_now = rulesScheduledNow;
+    } else {
+      diagnostics.rules_filtered_by_time = 0;
+      diagnostics.rules_scheduled_now = (rules || []).map((r: any) => r.name);
+    }
+
+    diagnostics.rules_after_time_filter = rules.length;
 
     if (!rules || rules.length === 0) {
+      const msg = isManual
+        ? "Nenhuma regra ativa encontrada"
+        : `Nenhuma regra agendada para este horário (${currentHourUtc}:${String(currentMinuteUtc).padStart(2,"0")} UTC)`;
       return new Response(
-        JSON.stringify({ sent: 0, message: "Nenhuma regra ativa encontrada", diagnostics }),
+        JSON.stringify({ sent: 0, message: msg, diagnostics }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // 2. Calculate target dates
+    // 3. Calculate target dates
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayStr = today.toISOString().split("T")[0];
