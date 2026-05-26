@@ -94,6 +94,44 @@ const systemModules: ModuleDoc[] = [
     ],
   },
   {
+    name: "Projetos",
+    icon: FolderOpen,
+    module: "projects",
+    description: "Listar, buscar e criar projetos de clientes",
+    endpoints: [
+      {
+        action: "list", method: "GET", description: "Listar projetos",
+        params: [
+          { name: "company_id", desc: "Filtrar por UUID da empresa", required: false },
+          { name: "status", desc: "active, paused, churned", required: false },
+          { name: "limit", desc: "Quantidade por página (padrão: 50)", required: false },
+          { name: "offset", desc: "Paginação", required: false },
+        ],
+        example: `GET ${API_URL}?module=projects&action=list&company_id=UUID&status=active`,
+        response: `{ "data": [{ "id": "uuid", "company_id": "uuid", "product_name": "UNV Sales Force", "status": "active", "consultant_id": "uuid", "created_at": "..." }], "pagination": { "limit": 50, "offset": 0 } }`,
+      },
+      {
+        action: "get", method: "GET", description: "Detalhes de um projeto",
+        params: [{ name: "id", desc: "UUID do projeto", required: true }],
+        example: `GET ${API_URL}?module=projects&action=get&id=UUID`,
+        response: `{ "data": { "id": "uuid", "company_id": "uuid", "product_name": "UNV Sales Force", "status": "active", ... } }`,
+      },
+      {
+        action: "create", method: "POST", description: "Criar novo projeto",
+        bodyFields: [
+          { name: "company_id", desc: "UUID da empresa (obrigatório)", required: true },
+          { name: "title", desc: "Nome do serviço, ex: UNV Sales Acceleration", required: true },
+          { name: "product_id", desc: "Slug do serviço, ex: sales-acceleration", required: false },
+          { name: "consultant_id", desc: "UUID do consultor responsável", required: false },
+          { name: "cs_id", desc: "UUID do Customer Success", required: false },
+          { name: "status", desc: "active (padrão), paused, churned", required: false },
+        ],
+        example: `POST ${API_URL}?module=projects&action=create\n\n{\n  "company_id": "uuid-da-empresa",\n  "title": "UNV Sales Acceleration",\n  "consultant_id": "uuid-do-consultor"\n}`,
+        response: `{ "data": { "id": "uuid-gerado", "company_id": "uuid", "product_name": "UNV Sales Acceleration", "status": "active", "created_at": "..." } }`,
+      },
+    ],
+  },
+  {
     name: "Tarefas",
     icon: ListTodo,
     module: "tasks",

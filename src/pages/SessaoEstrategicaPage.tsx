@@ -25,7 +25,7 @@ import {
 import fabricioHero from "@/assets/fabricio-hero.webp";
 import fabricioMentor from "@/assets/fabricio-mentor.webp";
 
-const FORM_TOKEN = "b4116f2e0b338035238f5750a7436135";
+const FORM_TOKEN = "8aec65af0a65844e3f2342e4ef700708";
 
 const howItWorks = [
   {
