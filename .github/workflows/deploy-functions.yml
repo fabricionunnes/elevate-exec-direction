@@ -60,6 +60,12 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
+      - name: Deploy instagram-post
+        continue-on-error: true
+        run: supabase functions deploy instagram-post --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
       - name: Deploy system-api
         run: supabase functions deploy system-api --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
         env:
@@ -152,5 +158,36 @@ jobs:
       - name: Deploy onboarding-ai-chat
         continue-on-error: true
         run: supabase functions deploy onboarding-ai-chat --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      # ── Assinatura Eletrônica ──────────────────────────────────────────────
+      - name: Deploy create-envelope
+        continue-on-error: true
+        run: supabase functions deploy create-envelope --project-ref xrncvhzxjmddqluxoosu
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy send-envelope
+        continue-on-error: true
+        run: supabase functions deploy send-envelope --project-ref xrncvhzxjmddqluxoosu
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy get-signing-page
+        continue-on-error: true
+        run: supabase functions deploy get-signing-page --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy submit-signature
+        continue-on-error: true
+        run: supabase functions deploy submit-signature --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy finalize-envelope
+        continue-on-error: true
+        run: supabase functions deploy finalize-envelope --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
