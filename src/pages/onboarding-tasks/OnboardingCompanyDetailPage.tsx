@@ -55,7 +55,8 @@ import { AddressFields } from "@/components/ui/address-fields";
 import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
 import { CompanyDataView } from "@/components/company/CompanyDataView";
-import { Database } from "lucide-react";
+import { Database, BarChart3 } from "lucide-react";
+import { FacunicampsIndicadoresPanel } from "@/components/facunicamps/FacunicampsIndicadoresPanel";
 
 
 interface Staff {
@@ -122,6 +123,8 @@ interface Project {
   billing_day: number | null;
   contract_notes: string | null;
 }
+
+const FACUNICAMPS_ID = "1081cb78-bd6c-42b2-8a85-104ead3ecc18";
 
 const OnboardingCompanyDetailPage = () => {
   const { companyId } = useParams<{ companyId: string }>();
@@ -705,6 +708,12 @@ const OnboardingCompanyDetailPage = () => {
                     <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     <span className="hidden sm:inline">Dados</span>
                     <span className="sm:hidden">Dados</span>
+                  </TabsTrigger>
+                )}
+                {!isNew && companyId === FACUNICAMPS_ID && (
+                  <TabsTrigger value="indicadores" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                    <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span>Indicadores</span>
                   </TabsTrigger>
                 )}
               </TabsList>
@@ -1461,6 +1470,12 @@ const OnboardingCompanyDetailPage = () => {
                   csId={form.cs_id}
                   consultantId={form.consultant_id}
                 />
+              </TabsContent>
+            )}
+
+            {!isNew && companyId === FACUNICAMPS_ID && (
+              <TabsContent value="indicadores">
+                <FacunicampsIndicadoresPanel />
               </TabsContent>
             )}
 
