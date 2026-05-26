@@ -1495,8 +1495,9 @@ const OnboardingProjectPage = () => {
                 principal: [
                   ...(project?.onboarding_company_id === FACUNICAMPS_ID ? [
                     <TabsTrigger key="indicadores" value="indicadores"><BarChart3 className="h-3.5 w-3.5 shrink-0" />Indicadores</TabsTrigger>
-                  ] : []),
-                  <TabsTrigger key="kpis" value="kpis"><BarChart3 className="h-3.5 w-3.5 shrink-0" />KPIs</TabsTrigger>,
+                  ] : [
+                    <TabsTrigger key="kpis" value="kpis"><BarChart3 className="h-3.5 w-3.5 shrink-0" />KPIs</TabsTrigger>
+                  ]),
                   <TabsTrigger key="briefing" value="briefing"><Building2 className="h-3.5 w-3.5 shrink-0" />Briefing</TabsTrigger>,
                   <TabsTrigger key="diagnostic" value="diagnostic"><Sparkles className="h-3.5 w-3.5 shrink-0" />Diagnóstico</TabsTrigger>,
                   <TabsTrigger key="tasks" value="tasks"><CheckCircle2 className="h-3.5 w-3.5 shrink-0" />Jornada</TabsTrigger>,

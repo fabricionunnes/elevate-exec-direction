@@ -74,6 +74,7 @@ interface MetaRow {
   super: number;
   hiper: number;
   atendimentos: number;
+  meta_faturamento: number;
 }
 
 type ActiveView = "mes-atual" | "historico" | "comparar";
@@ -114,6 +115,19 @@ function countWorkdaysRemaining(referenceDate: Date): number {
   const start = referenceDate > end ? end : referenceDate;
   const days = eachDayOfInterval({ start, end });
   return days.filter((d) => !isWeekend(d)).length;
+}
+
+function countTotalWorkdaysInMonth(monthFirstDay: Date): number {
+  const start = startOfMonth(monthFirstDay);
+  const end = endOfMonth(monthFirstDay);
+  return eachDayOfInterval({ start, end }).filter((d) => !isWeekend(d)).length;
+}
+
+function countElapsedWorkdaysInMonth(monthFirstDay: Date, today: Date): number {
+  const start = startOfMonth(monthFirstDay);
+  const end = today < endOfMonth(monthFirstDay) ? today : endOfMonth(monthFirstDay);
+  if (end < start) return 0;
+  return eachDayOfInterval({ start, end }).filter((d) => !isWeekend(d)).length;
 }
 
 function isCancelled(row: Matricula) {
@@ -174,7 +188,7 @@ function MetasConfigModal({
   availableMonths: string[];
   onSaved: () => void;
 }) {
-  const [rows, setRows] = useState<Record<string, { meta: string; super: string; hiper: string; atendimentos: string }>>({});
+  const [rows, setRows] = useState<Record<string, { meta: string; super: string; hiper: string; atendimentos: string; meta_faturamento: string }>>({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -186,6 +200,7 @@ function MetasConfigModal({
         super: existing ? String(existing.super) : "",
         hiper: existing ? String(existing.hiper) : "",
         atendimentos: existing ? String(existing.atendimentos) : "",
+        meta_faturamento: existing ? String(existing.meta_faturamento ?? 0) : "",
       };
     }
     setRows(init);
@@ -199,13 +214,14 @@ function MetasConfigModal({
     setSaving(true);
     try {
       const upserts = Object.entries(rows)
-        .filter(([, v]) => v.meta !== "" || v.super !== "" || v.hiper !== "" || v.atendimentos !== "")
+        .filter(([, v]) => v.meta !== "" || v.super !== "" || v.hiper !== "" || v.atendimentos !== "" || v.meta_faturamento !== "")
         .map(([month, v]) => ({
           mes: month + "-01",
           meta: parseInt(v.meta || "0") || 0,
           super: parseInt(v.super || "0") || 0,
           hiper: parseInt(v.hiper || "0") || 0,
           atendimentos: parseInt(v.atendimentos || "0") || 0,
+          meta_faturamento: parseFloat(v.meta_faturamento || "0") || 0,
           updated_at: new Date().toISOString(),
         }));
 
@@ -243,17 +259,18 @@ function MetasConfigModal({
             <TableHeader>
               <TableRow>
                 <TableHead>Mês</TableHead>
-                <TableHead>Meta</TableHead>
+                <TableHead>Meta (qtde)</TableHead>
                 <TableHead>Super</TableHead>
                 <TableHead>Hiper</TableHead>
                 <TableHead>Atendimentos</TableHead>
+                <TableHead>Meta Fat. (R$)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sortedMonths.map((month) => (
                 <TableRow key={month}>
                   <TableCell className="font-medium">{monthLabel(month)}</TableCell>
-                  {(["meta", "super", "hiper", "atendimentos"] as const).map((field) => (
+                  {(["meta", "super", "hiper", "atendimentos", "meta_faturamento"] as const).map((field) => (
                     <TableCell key={field}>
                       <Input
                         type="number"
@@ -300,7 +317,7 @@ function RankingBarChart({
 }) {
   void nameKey;
   void valueKey;
-  const sorted = [...data].sort((a, b) => b.value - a.value).slice(0, 15);
+  const sorted = [...data].sort((a, b) => b.value - a.value).slice(0, 10);
 
   if (sorted.length === 0) {
     return (
@@ -552,6 +569,29 @@ export function FacunicampsIndicadoresPanel() {
     return { count, valorMatricula, valorTotal, ticketMat, ticketTotal, metaCount, remaining, diaria };
   }, [currentMonthSales, currentMeta, referenceDate]);
 
+  // ── Daily targets & averages ──────────────────────────────────────────────
+
+  const dailyMetrics = useMemo(() => {
+    const totalWorkdays = countTotalWorkdaysInMonth(referenceDate);
+    const elapsedWorkdays = countElapsedWorkdaysInMonth(referenceDate, new Date());
+
+    const metaDiariaVendas = currentMeta?.meta && totalWorkdays > 0
+      ? currentMeta.meta / totalWorkdays
+      : null;
+    const metaDiariaFaturamento = currentMeta?.meta_faturamento && totalWorkdays > 0
+      ? currentMeta.meta_faturamento / totalWorkdays
+      : null;
+
+    const mediaVendasDiarias = elapsedWorkdays > 0
+      ? cmKpis.count / elapsedWorkdays
+      : 0;
+    const mediaFaturamentoDiario = elapsedWorkdays > 0
+      ? cmKpis.valorTotal / elapsedWorkdays
+      : 0;
+
+    return { metaDiariaVendas, metaDiariaFaturamento, mediaVendasDiarias, mediaFaturamentoDiario, totalWorkdays, elapsedWorkdays };
+  }, [currentMeta, referenceDate, cmKpis]);
+
   // ── Sales per day chart ───────────────────────────────────────────────────
 
   const salesPerDay = useMemo(() => {
@@ -657,6 +697,39 @@ export function FacunicampsIndicadoresPanel() {
   const totalAtendimentos = useMemo(() => metas.reduce((s, m) => s + m.atendimentos, 0), [metas]);
   const totalVendas = activeSales.length;
   const conversionRate = totalAtendimentos > 0 ? ((totalVendas / totalAtendimentos) * 100).toFixed(1) : null;
+
+  // ── Curto / Médio / Longo prazo ───────────────────────────────────────────
+
+  const prazoStats = useMemo(() => {
+    const sortedMonths = [...new Set(activeSales.map(m => toMonthKey(m.data_venda)).filter(Boolean) as string[])].sort().reverse();
+    const latestMonth = sortedMonths[0];
+    if (!latestMonth) return null;
+
+    const getStats = (monthKeys: string[], label: string) => {
+      const rows = activeSales.filter(m => {
+        const k = toMonthKey(m.data_venda);
+        return k && monthKeys.includes(k);
+      });
+      const count = rows.length;
+      const valorTotal = rows.reduce((s, m) => s + (m.valor_total ?? 0), 0);
+      const paid = rows.filter(m => (m.valor_total ?? 0) > 0);
+      const ticketMedio = paid.length > 0 ? valorTotal / paid.length : 0;
+      // avg per month
+      const avgVendasMes = monthKeys.length > 0 ? count / monthKeys.length : 0;
+      const avgFatMes = monthKeys.length > 0 ? valorTotal / monthKeys.length : 0;
+      return { label, count, valorTotal, ticketMedio, avgVendasMes, avgFatMes, months: monthKeys.length };
+    };
+
+    const curto = [latestMonth]; // último mês
+    const medio = sortedMonths.slice(0, 3); // últimos 3 meses
+    const longo = sortedMonths.slice(0, 12); // últimos 12 meses
+
+    return {
+      curto: getStats(curto, "Curto Prazo (1 mês)"),
+      medio: getStats(medio, "Médio Prazo (3 meses)"),
+      longo: getStats(longo, "Longo Prazo (12 meses)"),
+    };
+  }, [activeSales]);
 
   // ── Compare periods ────────────────────────────────────────────────────────
 
@@ -909,6 +982,34 @@ export function FacunicampsIndicadoresPanel() {
             />
           </div>
 
+          {/* Daily targets & averages */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <KpiCard
+              title="Meta Diária — Vendas"
+              value={dailyMetrics.metaDiariaVendas !== null ? dailyMetrics.metaDiariaVendas.toFixed(1) : "--"}
+              sub={`${dailyMetrics.totalWorkdays} dias úteis no mês`}
+              accentColor="#f97316"
+            />
+            <KpiCard
+              title="Meta Diária — Faturamento"
+              value={dailyMetrics.metaDiariaFaturamento !== null ? fmtBRL(dailyMetrics.metaDiariaFaturamento) : "--"}
+              sub="Baseado na meta de faturamento"
+              accentColor="#f97316"
+            />
+            <KpiCard
+              title="Média Vendas Diárias (real)"
+              value={dailyMetrics.mediaVendasDiarias.toFixed(1)}
+              sub={`Últimos ${dailyMetrics.elapsedWorkdays} dias úteis`}
+              accentColor={dailyMetrics.metaDiariaVendas !== null && dailyMetrics.mediaVendasDiarias >= dailyMetrics.metaDiariaVendas ? "#16a34a" : "#94a3b8"}
+            />
+            <KpiCard
+              title="Média Faturamento Diário (real)"
+              value={fmtBRL(dailyMetrics.mediaFaturamentoDiario)}
+              sub={`Últimos ${dailyMetrics.elapsedWorkdays} dias úteis`}
+              accentColor={dailyMetrics.metaDiariaFaturamento !== null && dailyMetrics.mediaFaturamentoDiario >= dailyMetrics.metaDiariaFaturamento ? "#16a34a" : "#94a3b8"}
+            />
+          </div>
+
           {/* Sales per day line chart */}
           <Card>
             <CardHeader>
@@ -995,8 +1096,8 @@ export function FacunicampsIndicadoresPanel() {
 
           {/* Rankings */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <RankingBarChart title="Ranking Vendedores (mês)" data={cmVendedoresRanking} />
-            <RankingBarChart title="Ranking Cursos (mês)" data={cmCursosRanking} />
+            <RankingBarChart title="Ranking Vendedores — Top 10 (mês)" data={cmVendedoresRanking} />
+            <RankingBarChart title="Ranking Cursos — Top 10 (mês)" data={cmCursosRanking} />
           </div>
 
           {/* Data table */}
@@ -1161,10 +1262,47 @@ export function FacunicampsIndicadoresPanel() {
             </CardContent>
           </Card>
 
+          {/* Visão de Curto, Médio e Longo Prazo */}
+          {prazoStats && (
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-3">Visão de Curto, Médio e Longo Prazo</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {([prazoStats.curto, prazoStats.medio, prazoStats.longo] as const).map((p) => (
+                  <div key={p.label} className="rounded-xl border border-border bg-gradient-to-br from-card to-card/50 p-5 shadow-sm space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{p.label}</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Total Vendas</p>
+                        <p className="text-2xl font-bold text-foreground">{p.count}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Valor Total</p>
+                        <p className="text-lg font-bold text-foreground">{fmtBRL(p.valorTotal)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Ticket Médio</p>
+                        <p className="text-base font-semibold text-foreground">{fmtBRL(p.ticketMedio)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Média/mês</p>
+                        <p className="text-base font-semibold text-foreground">{p.avgVendasMes.toFixed(0)} vendas</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground">Fat. médio/mês</p>
+                        <p className="text-base font-semibold text-foreground">{fmtBRL(p.avgFatMes)}</p>
+                      </div>
+                    </div>
+                    <div className="h-1 rounded-full bg-gradient-to-r from-primary/60 to-primary/20" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Rankings */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <RankingBarChart title="Ranking Vendedores (histórico)" data={histVendedoresRanking} />
-            <RankingBarChart title="Ranking Cursos (histórico)" data={histCursosRanking} />
+            <RankingBarChart title="Ranking Vendedores — Top 10" data={histVendedoresRanking} />
+            <RankingBarChart title="Ranking Cursos — Top 10" data={histCursosRanking} />
           </div>
 
           {/* Funil de Vendas */}
