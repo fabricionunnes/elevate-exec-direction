@@ -289,7 +289,47 @@ export function BillingRulesPanel() {
         body: { manual: true },
       });
       if (error) throw error;
-      toast.success(`Régua executada! ${data?.sent || 0} mensagens enviadas.`);
+
+      const d = data || {};
+      const diag = d.diagnostics || {};
+
+      if (d.error) {
+        toast.error(d.error, { duration: 8000 });
+        console.warn("[billing-notifications] diagnostics:", diag);
+        return;
+      }
+
+      if (d.sent > 0) {
+        toast.success(`${d.sent} de ${d.total} mensagens enviadas com sucesso!`);
+      } else {
+        const reasons: string[] = [];
+        if (diag.whatsapp_instances_connected === 0) {
+          reasons.push("Nenhuma instância WhatsApp conectada");
+        } else if (diag.whatsapp_instances_usable === 0) {
+          reasons.push("Instâncias sem api_url/api_key — configure os secrets no Supabase");
+        }
+        if (diag.invoices_found === 0) {
+          reasons.push(`Nenhuma fatura para as datas: ${(diag.target_dates || []).join(", ")}`);
+        }
+        if ((diag.companies_without_phone || []).length > 0) {
+          reasons.push(`Clientes sem telefone: ${diag.companies_without_phone.join(", ")}`);
+        }
+        if (diag.already_sent_today > 0) {
+          reasons.push(`${diag.already_sent_today} já enviadas hoje`);
+        }
+        if ((diag.skipped || []).length > 0) {
+          reasons.push(`Ignoradas: ${diag.skipped.slice(0, 3).join(" | ")}`);
+        }
+        if ((diag.failures || []).length > 0) {
+          reasons.push(`Falhas: ${diag.failures.slice(0, 2).join(" | ")}`);
+        }
+        const msg = d.message || "0 mensagens enviadas";
+        toast.warning(
+          reasons.length > 0 ? `${msg}. ${reasons.join(". ")}` : msg,
+          { duration: 10000 }
+        );
+        console.warn("[billing-notifications] diagnostics:", diag);
+      }
     } catch (e: any) {
       toast.error("Erro ao executar: " + (e.message || "erro desconhecido"));
     }
