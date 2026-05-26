@@ -51,6 +51,7 @@ import {
 } from "recharts";
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend, getYear, getMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -108,9 +109,10 @@ function truncateName(name: string, max = 12) {
   return name.length > max ? name.slice(0, max) + "..." : name;
 }
 
-function countWorkdaysRemaining(today: Date): number {
-  const end = endOfMonth(today);
-  const days = eachDayOfInterval({ start: today, end });
+function countWorkdaysRemaining(referenceDate: Date): number {
+  const end = endOfMonth(referenceDate);
+  const start = referenceDate > end ? end : referenceDate;
+  const days = eachDayOfInterval({ start, end });
   return days.filter((d) => !isWeekend(d)).length;
 }
 
@@ -123,8 +125,8 @@ function isCancelled(row: Matricula) {
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number; name: string; color: string }[]; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg text-sm">
-      <p className="font-medium text-gray-700 mb-1">{label}</p>
+    <div className="bg-popover text-popover-foreground border border-border rounded-lg p-3 shadow-lg text-sm">
+      <p className="font-medium mb-1">{label}</p>
       {payload.map((p, i) => (
         <p key={i} style={{ color: p.color }}>
           {p.name}: {typeof p.value === "number" && p.value > 1000 ? fmtBRL(p.value) : p.value}
@@ -140,21 +142,20 @@ function KpiCard({
   title,
   value,
   sub,
-  borderColor,
+  accentColor = "#16a34a",
 }: {
   title: string;
   value: string;
   sub?: string;
-  borderColor?: string;
+  accentColor?: string;
 }) {
   return (
-    <Card className={borderColor ? `border-l-4` : ""} style={borderColor ? { borderLeftColor: borderColor } : {}}>
-      <CardContent className="p-4">
-        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">{title}</p>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-        {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
-      </CardContent>
-    </Card>
+    <div className="rounded-xl border border-border bg-gradient-to-br from-card to-card/50 p-5 shadow-sm hover:shadow-md transition-shadow">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">{title}</p>
+      <p className="text-3xl font-bold text-foreground tabular-nums">{value}</p>
+      {sub && <p className="text-sm text-muted-foreground mt-1.5">{sub}</p>}
+      <div className="mt-3 h-1 rounded-full" style={{ background: accentColor }}></div>
+    </div>
   );
 }
 
@@ -305,10 +306,10 @@ function RankingBarChart({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-semibold">{title}</CardTitle>
+          <CardTitle className="text-sm font-semibold text-foreground">{title}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-400 text-sm">Sem dados</p>
+          <p className="text-muted-foreground text-sm">Sem dados</p>
         </CardContent>
       </Card>
     );
@@ -320,22 +321,59 @@ function RankingBarChart({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm font-semibold">{title}</CardTitle>
+        <CardTitle className="text-sm font-semibold text-foreground">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={chartHeight}>
-          <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 32, top: 4, bottom: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-            <XAxis type="number" tick={{ fontSize: 11 }} />
-            <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
+          <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 48, top: 4, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+            <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+            <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} width={90} />
             <Tooltip content={<CustomTooltip />} />
             <Bar dataKey="value" fill={color} radius={[0, 4, 4, 0]}>
-              <LabelList dataKey="value" position="right" style={{ fontSize: 11, fill: "#374151" }} />
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={color} />
+              ))}
+              <LabelList dataKey="value" position="right" style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: 600 }} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>
+  );
+}
+
+// ─── Progress Bar for Metas ───────────────────────────────────────────────────
+
+function MetaProgressBar({
+  label,
+  current,
+  target,
+  color,
+  dashed = false,
+}: {
+  label: string;
+  current: number;
+  target: number;
+  color: string;
+  dashed?: boolean;
+}) {
+  const pct = target > 0 ? Math.min(100, (current / target) * 100) : 0;
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between items-center text-xs">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="font-semibold text-foreground">
+          {current} / {target} <span style={{ color }} className="ml-1">{pct.toFixed(0)}%</span>
+        </span>
+      </div>
+      <div className="h-3 rounded-full bg-muted overflow-hidden relative">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${pct}%`, background: color, opacity: dashed ? 0.6 : 1 }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -349,6 +387,9 @@ export function FacunicampsIndicadoresPanel() {
   const [activeView, setActiveView] = useState<ActiveView>("mes-atual");
   const [showFilters, setShowFilters] = useState(false);
   const [showMetasConfig, setShowMetasConfig] = useState(false);
+
+  // Selected month override (null = use latest from data)
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
 
   // Filters
   const [filterModalidade, setFilterModalidade] = useState("");
@@ -438,6 +479,27 @@ export function FacunicampsIndicadoresPanel() {
     return [...set].sort();
   }, [matriculas]);
 
+  // ── Derive effective current month key (latest month with data or override) ──
+
+  const currentMonthKey = useMemo(() => {
+    if (selectedMonthKey) return selectedMonthKey;
+    if (matriculas.length === 0) return format(new Date(), "yyyy-MM");
+    const keys = matriculas
+      .map((m) => toMonthKey(m.data_venda))
+      .filter(Boolean) as string[];
+    return keys.sort().reverse()[0] ?? format(new Date(), "yyyy-MM");
+  }, [selectedMonthKey, matriculas]);
+
+  // Months available in data for the month selector
+  const dataMonthKeys = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of matriculas) {
+      const k = toMonthKey(m.data_venda);
+      if (k) set.add(k);
+    }
+    return [...set].sort().reverse();
+  }, [matriculas]);
+
   // ── Apply filters ──────────────────────────────────────────────────────────
 
   const filteredAll = useMemo(() => {
@@ -452,10 +514,7 @@ export function FacunicampsIndicadoresPanel() {
   // Active sales only (no CANCELADO/TRANSFERIDO)
   const activeSales = useMemo(() => filteredAll.filter((m) => !isCancelled(m)), [filteredAll]);
 
-  // ── Current month ─────────────────────────────────────────────────────────
-
-  const today = new Date();
-  const currentMonthKey = format(today, "yyyy-MM");
+  // ── Current month data ────────────────────────────────────────────────────
 
   const currentMonthSales = useMemo(
     () => activeSales.filter((m) => toMonthKey(m.data_venda) === currentMonthKey),
@@ -466,6 +525,15 @@ export function FacunicampsIndicadoresPanel() {
     () => metas.find((m) => m.mes.slice(0, 7) === currentMonthKey),
     [metas, currentMonthKey]
   );
+
+  // Use a reference date for the selected month (first day of that month)
+  const referenceDate = useMemo(() => {
+    try {
+      return parseISO(currentMonthKey + "-01");
+    } catch {
+      return new Date();
+    }
+  }, [currentMonthKey]);
 
   // ── Current month KPIs ────────────────────────────────────────────────────
 
@@ -479,10 +547,10 @@ export function FacunicampsIndicadoresPanel() {
     const ticketTotal = paidTotal.length > 0 ? valorTotal / paidTotal.length : 0;
     const metaCount = currentMeta?.meta ?? 0;
     const remaining = metaCount > 0 ? Math.max(0, metaCount - count) : 0;
-    const workdays = countWorkdaysRemaining(today);
+    const workdays = countWorkdaysRemaining(referenceDate);
     const diaria = workdays > 0 && remaining > 0 ? Math.ceil(remaining / workdays) : 0;
     return { count, valorMatricula, valorTotal, ticketMat, ticketTotal, metaCount, remaining, diaria };
-  }, [currentMonthSales, currentMeta, today]);
+  }, [currentMonthSales, currentMeta, referenceDate]);
 
   // ── Sales per day chart ───────────────────────────────────────────────────
 
@@ -576,6 +644,15 @@ export function FacunicampsIndicadoresPanel() {
     });
   }, [monthlyData, metas]);
 
+  // Monthly data with % change for bar labels
+  const monthlyDataWithPct = useMemo(() => {
+    return monthlyData.map((md, idx) => {
+      const prev = idx > 0 ? monthlyData[idx - 1].valorTotal : null;
+      const pct = prev && prev > 0 ? ((md.valorTotal - prev) / prev) * 100 : null;
+      return { ...md, pct };
+    });
+  }, [monthlyData]);
+
   // Funnel
   const totalAtendimentos = useMemo(() => metas.reduce((s, m) => s + m.atendimentos, 0), [metas]);
   const totalVendas = activeSales.length;
@@ -625,10 +702,18 @@ export function FacunicampsIndicadoresPanel() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
+
+  // ── Derive KPI accent color based on meta progress ─────────────────────────
+
+  const metaAccentColor = currentMeta
+    ? cmKpis.count >= currentMeta.meta
+      ? "#16a34a"
+      : "#dc2626"
+    : "#94a3b8";
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -636,7 +721,25 @@ export function FacunicampsIndicadoresPanel() {
     <div className="space-y-4">
       {/* Header */}
       <div className="rounded-xl p-4 flex items-center justify-between gap-4" style={{ background: "#0D2B5E" }}>
-        <span className="text-white font-bold text-lg tracking-wider">FACUNICAMPS</span>
+        <div className="flex items-center gap-3">
+          <span className="text-white font-bold text-lg tracking-wider">FACUNICAMPS</span>
+          {/* Month selector — shown only in mes-atual view */}
+          {activeView === "mes-atual" && dataMonthKeys.length > 0 && (
+            <Select
+              value={currentMonthKey}
+              onValueChange={(v) => setSelectedMonthKey(v)}
+            >
+              <SelectTrigger className="h-7 text-xs w-[110px] bg-white/10 border-white/20 text-white hover:bg-white/20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {dataMonthKeys.map((mk) => (
+                  <SelectItem key={mk} value={mk}>{monthLabel(mk)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
 
         {/* Tabs */}
         <div className="flex gap-1 bg-white/10 rounded-full p-1">
@@ -682,82 +785,96 @@ export function FacunicampsIndicadoresPanel() {
 
       {/* Filter Panel */}
       {showFilters && (
-        <Card>
-          <CardContent className="pt-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Modalidade</p>
-                <Select value={filterModalidade || "all"} onValueChange={(v) => setFilterModalidade(v === "all" ? "" : v)}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {uniqueModalidades.map((m) => (
-                      <SelectItem key={m} value={m}>{m}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Vendedor Ativo</p>
-                <Select value={filterVendedorAtivo || "all"} onValueChange={(v) => setFilterVendedorAtivo(v === "all" ? "" : v)}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {uniqueVendedores.map((v) => (
-                      <SelectItem key={v} value={v}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Forma de Ingresso</p>
-                <Select value={filterFormaIngresso || "all"} onValueChange={(v) => setFilterFormaIngresso(v === "all" ? "" : v)}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {uniqueFormasIngresso.map((f) => (
-                      <SelectItem key={f} value={f}>{f}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Excluir Vendedor</p>
-                <Select value={filterVendedorDesligado || "all"} onValueChange={(v) => setFilterVendedorDesligado(v === "all" ? "" : v)}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Nenhum" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Nenhum</SelectItem>
-                    {uniqueVendedores.map((v) => (
-                      <SelectItem key={v} value={v}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Modalidade</p>
+              <Select value={filterModalidade || "all"} onValueChange={(v) => setFilterModalidade(v === "all" ? "" : v)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {uniqueModalidades.map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex justify-end mt-3">
-              <Button size="sm" variant="outline" onClick={() => setShowFilters(false)}>
-                Aplicar / Fechar
-              </Button>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Vendedor Ativo</p>
+              <Select value={filterVendedorAtivo || "all"} onValueChange={(v) => setFilterVendedorAtivo(v === "all" ? "" : v)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {uniqueVendedores.map((v) => (
+                    <SelectItem key={v} value={v}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </CardContent>
-        </Card>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Forma de Ingresso</p>
+              <Select value={filterFormaIngresso || "all"} onValueChange={(v) => setFilterFormaIngresso(v === "all" ? "" : v)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {uniqueFormasIngresso.map((f) => (
+                    <SelectItem key={f} value={f}>{f}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Excluir Vendedor</p>
+              <Select value={filterVendedorDesligado || "all"} onValueChange={(v) => setFilterVendedorDesligado(v === "all" ? "" : v)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Nenhum" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Nenhum</SelectItem>
+                  {uniqueVendedores.map((v) => (
+                    <SelectItem key={v} value={v}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end mt-3">
+            <Button size="sm" variant="outline" onClick={() => setShowFilters(false)}>
+              Aplicar / Fechar
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Active filters badges */}
       {(filterModalidade || filterVendedorAtivo || filterFormaIngresso || filterVendedorDesligado) && (
         <div className="flex flex-wrap gap-2">
-          {filterModalidade && <Badge variant="secondary">Modalidade: {filterModalidade} <button className="ml-1" onClick={() => setFilterModalidade("")}>×</button></Badge>}
-          {filterVendedorAtivo && <Badge variant="secondary">Vendedor: {filterVendedorAtivo} <button className="ml-1" onClick={() => setFilterVendedorAtivo("")}>×</button></Badge>}
-          {filterFormaIngresso && <Badge variant="secondary">Forma: {filterFormaIngresso} <button className="ml-1" onClick={() => setFilterFormaIngresso("")}>×</button></Badge>}
-          {filterVendedorDesligado && <Badge variant="destructive">Excluindo: {filterVendedorDesligado} <button className="ml-1" onClick={() => setFilterVendedorDesligado("")}>×</button></Badge>}
+          {filterModalidade && (
+            <Badge variant="secondary" className="cursor-pointer" onClick={() => setFilterModalidade("")}>
+              Modalidade: {filterModalidade} ×
+            </Badge>
+          )}
+          {filterVendedorAtivo && (
+            <Badge variant="secondary" className="cursor-pointer" onClick={() => setFilterVendedorAtivo("")}>
+              Vendedor: {filterVendedorAtivo} ×
+            </Badge>
+          )}
+          {filterFormaIngresso && (
+            <Badge variant="secondary" className="cursor-pointer" onClick={() => setFilterFormaIngresso("")}>
+              Forma: {filterFormaIngresso} ×
+            </Badge>
+          )}
+          {filterVendedorDesligado && (
+            <Badge variant="destructive" className="cursor-pointer" onClick={() => setFilterVendedorDesligado("")}>
+              Excluindo: {filterVendedorDesligado} ×
+            </Badge>
+          )}
         </div>
       )}
 
@@ -770,52 +887,42 @@ export function FacunicampsIndicadoresPanel() {
               title="Valor Matrícula"
               value={fmtBRL(cmKpis.valorMatricula)}
               sub={`Ticket Médio: ${fmtBRL(cmKpis.ticketMat)}`}
+              accentColor="#3b82f6"
             />
             <KpiCard
               title="Qtde. Vendas"
               value={String(cmKpis.count)}
               sub={currentMeta ? `Restante: ${cmKpis.remaining}` : "Restante: --"}
-              borderColor={
-                currentMeta
-                  ? cmKpis.count >= currentMeta.meta
-                    ? "#16a34a"
-                    : "#dc2626"
-                  : "#94a3b8"
-              }
+              accentColor={metaAccentColor}
             />
             <KpiCard
               title="Valor Total"
               value={fmtBRL(cmKpis.valorTotal)}
               sub={`Ticket Médio: ${fmtBRL(cmKpis.ticketTotal)}`}
+              accentColor="#8b5cf6"
             />
             <KpiCard
               title="Meta Qtde. Vendas"
               value={currentMeta ? String(currentMeta.meta) : "--"}
-              sub={currentMeta ? `Diária: ${cmKpis.diaria}` : "Diária: --"}
-              borderColor={
-                currentMeta
-                  ? cmKpis.count >= currentMeta.meta
-                    ? "#16a34a"
-                    : "#dc2626"
-                  : "#94a3b8"
-              }
+              sub={currentMeta ? `Diária sugerida: ${cmKpis.diaria}` : "Diária: --"}
+              accentColor={metaAccentColor}
             />
           </div>
 
           {/* Sales per day line chart */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold">Vendas no período</CardTitle>
+              <CardTitle className="text-sm font-semibold text-foreground">Vendas no período</CardTitle>
             </CardHeader>
             <CardContent>
               {salesPerDay.length === 0 ? (
-                <p className="text-gray-400 text-sm">Sem vendas no mês atual</p>
+                <p className="text-muted-foreground text-sm">Sem vendas no período selecionado</p>
               ) : (
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={salesPerDay} margin={{ left: 0, right: 16, top: 8, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
                     <Tooltip content={<CustomTooltip />} />
                     <Line
                       type="monotone"
@@ -825,7 +932,7 @@ export function FacunicampsIndicadoresPanel() {
                       dot={{ r: 4, fill: "#16a34a" }}
                       name="Vendas"
                     >
-                      <LabelList dataKey="count" position="top" style={{ fontSize: 10, fill: "#374151" }} />
+                      <LabelList dataKey="count" position="top" style={{ fontSize: 10, fill: "hsl(var(--foreground))" }} />
                     </Line>
                   </LineChart>
                 </ResponsiveContainer>
@@ -833,44 +940,55 @@ export function FacunicampsIndicadoresPanel() {
             </CardContent>
           </Card>
 
-          {/* Vendas vs Metas */}
+          {/* Vendas vs Metas — progress bars */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold">Vendas VS Metas</CardTitle>
+              <CardTitle className="text-sm font-semibold text-foreground">Vendas VS Metas</CardTitle>
             </CardHeader>
             <CardContent>
               {!currentMeta ? (
-                <p className="text-gray-400 text-sm">Configure as metas para visualizar</p>
+                <p className="text-muted-foreground text-sm">Configure as metas para visualizar</p>
               ) : (
-                <>
-                  <div className="flex gap-4 text-xs mb-3 flex-wrap">
-                    <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm inline-block bg-green-600" /> Qtde. Vendas</span>
-                    <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm inline-block bg-red-500" /> Meta ({currentMeta.meta})</span>
-                    {currentMeta.super > 0 && <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm inline-block bg-orange-500" /> Super ({currentMeta.super})</span>}
-                    {currentMeta.hiper > 0 && <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm inline-block bg-purple-600" /> Hiper ({currentMeta.hiper})</span>}
+                <div className="space-y-4">
+                  <MetaProgressBar
+                    label={`Meta (${currentMeta.meta})`}
+                    current={cmKpis.count}
+                    target={currentMeta.meta}
+                    color="#16a34a"
+                  />
+                  {currentMeta.super > 0 && (
+                    <MetaProgressBar
+                      label={`Super (${currentMeta.super})`}
+                      current={cmKpis.count}
+                      target={currentMeta.super}
+                      color="#f97316"
+                      dashed
+                    />
+                  )}
+                  {currentMeta.hiper > 0 && (
+                    <MetaProgressBar
+                      label={`Hiper (${currentMeta.hiper})`}
+                      current={cmKpis.count}
+                      target={currentMeta.hiper}
+                      color="#9333ea"
+                      dashed
+                    />
+                  )}
+                  <div className="pt-2 border-t border-border">
+                    <div className="flex gap-4 text-xs text-muted-foreground flex-wrap">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-green-600 inline-block" />
+                        Qtde. atual: <span className="font-semibold text-foreground">{cmKpis.count}</span>
+                      </span>
+                      {cmKpis.diaria > 0 && (
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+                          Necessário/dia: <span className="font-semibold text-foreground">{cmKpis.diaria}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <ResponsiveContainer width="100%" height={80}>
-                    <BarChart
-                      data={[{ label: format(today, "MMM/yy", { locale: ptBR }), vendas: cmKpis.count }]}
-                      layout="vertical"
-                      margin={{ left: 8, right: 60, top: 4, bottom: 4 }}
-                    >
-                      <XAxis
-                        type="number"
-                        domain={[0, Math.max(cmKpis.count, currentMeta.meta, currentMeta.super || 0, currentMeta.hiper || 0) + 5]}
-                        tick={{ fontSize: 11 }}
-                      />
-                      <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={60} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar dataKey="vendas" fill="#16a34a" radius={[0, 4, 4, 0]} name="Vendas">
-                        <LabelList dataKey="vendas" position="right" style={{ fontSize: 12, fill: "#374151", fontWeight: "bold" }} />
-                      </Bar>
-                      <ReferenceLine x={currentMeta.meta} stroke="#dc2626" strokeDasharray="4 2" strokeWidth={2} label={{ value: `Meta: ${currentMeta.meta}`, position: "top", fontSize: 10, fill: "#dc2626" }} />
-                      {currentMeta.super > 0 && <ReferenceLine x={currentMeta.super} stroke="#f97316" strokeDasharray="4 2" strokeWidth={2} label={{ value: `Super: ${currentMeta.super}`, position: "top", fontSize: 10, fill: "#f97316" }} />}
-                      {currentMeta.hiper > 0 && <ReferenceLine x={currentMeta.hiper} stroke="#9333ea" strokeDasharray="4 2" strokeWidth={2} label={{ value: `Hiper: ${currentMeta.hiper}`, position: "top", fontSize: 10, fill: "#9333ea" }} />}
-                    </BarChart>
-                  </ResponsiveContainer>
-                </>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -884,11 +1002,11 @@ export function FacunicampsIndicadoresPanel() {
           {/* Data table */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold">Matrículas no mês (últimas 50)</CardTitle>
+              <CardTitle className="text-sm font-semibold text-foreground">Matrículas no mês (últimas 50)</CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto p-0">
               {tableData.length === 0 ? (
-                <p className="text-gray-400 text-sm p-4">Sem registros no mês atual</p>
+                <p className="text-muted-foreground text-sm p-4">Sem registros no período selecionado</p>
               ) : (
                 <Table>
                   <TableHeader>
@@ -937,35 +1055,34 @@ export function FacunicampsIndicadoresPanel() {
         <div className="space-y-6">
           {/* KPI cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <KpiCard title="Valor Matrícula Total" value={fmtBRL(histKpis.valorMatricula)} />
-            <KpiCard title="Qtde. Vendas Total" value={String(histKpis.count)} />
-            <KpiCard title="Valor Total Histórico" value={fmtBRL(histKpis.valorTotal)} />
-            <KpiCard title="Meta Total Configurada" value={histKpis.totalMeta > 0 ? String(histKpis.totalMeta) : "--"} />
+            <KpiCard title="Valor Matrícula Total" value={fmtBRL(histKpis.valorMatricula)} accentColor="#3b82f6" />
+            <KpiCard title="Qtde. Vendas Total" value={String(histKpis.count)} accentColor="#16a34a" />
+            <KpiCard title="Valor Total Histórico" value={fmtBRL(histKpis.valorTotal)} accentColor="#8b5cf6" />
+            <KpiCard title="Meta Total Configurada" value={histKpis.totalMeta > 0 ? String(histKpis.totalMeta) : "--"} accentColor="#f97316" />
           </div>
 
-          {/* Valor Total Mensal BarChart */}
+          {/* Valor Total Mensal BarChart with % change labels */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold">Valor Total no período (mensal)</CardTitle>
+              <CardTitle className="text-sm font-semibold text-foreground">Valor Total no período (mensal)</CardTitle>
             </CardHeader>
             <CardContent>
-              {monthlyData.length === 0 ? (
-                <p className="text-gray-400 text-sm">Sem dados</p>
+              {monthlyDataWithPct.length === 0 ? (
+                <p className="text-muted-foreground text-sm">Sem dados</p>
               ) : (
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={monthlyData} margin={{ left: 8, right: 16, top: 24, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => fmtBRL(v)} width={90} />
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={monthlyDataWithPct} margin={{ left: 8, right: 16, top: 32, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => fmtBRL(v)} width={90} />
                     <Tooltip
                       content={({ active, payload, label }) => {
                         if (!active || !payload?.length) return null;
                         const cur = payload[0].value as number;
-                        const idx = monthlyData.findIndex((d) => d.label === label);
-                        const prev = idx > 0 ? monthlyData[idx - 1].valorTotal : null;
-                        const pct = prev && prev > 0 ? ((cur - prev) / prev) * 100 : null;
+                        const item = monthlyDataWithPct.find((d) => d.label === label);
+                        const pct = item?.pct ?? null;
                         return (
-                          <div className="bg-white border rounded-lg p-3 shadow-lg text-sm">
+                          <div className="bg-popover text-popover-foreground border border-border rounded-lg p-3 shadow-lg text-sm">
                             <p className="font-medium mb-1">{label}</p>
                             <p>{fmtBRL(cur)}</p>
                             {pct !== null && (
@@ -979,10 +1096,28 @@ export function FacunicampsIndicadoresPanel() {
                     />
                     <Bar dataKey="valorTotal" fill="#1e3a5f" radius={[4, 4, 0, 0]} name="Valor Total">
                       <LabelList
-                        dataKey="valorTotal"
-                        position="top"
-                        formatter={(v: number) => fmtBRL(v)}
-                        style={{ fontSize: 9, fill: "#374151" }}
+                        content={(props) => {
+                          const { x, y, width, value, index } = props as { x: number; y: number; width: number; value: number; index: number };
+                          const item = monthlyDataWithPct[index];
+                          if (!item) return null;
+                          const pct = item.pct;
+                          const pctLabel = pct !== null
+                            ? (pct >= 0 ? `+${pct.toFixed(0)}% ▲` : `${pct.toFixed(0)}% ▼`)
+                            : null;
+                          const pctColor = pct !== null ? (pct >= 0 ? "#16a34a" : "#dc2626") : "hsl(var(--muted-foreground))";
+                          return (
+                            <g>
+                              <text x={x + (width as number) / 2} y={(y as number) - 16} textAnchor="middle" fontSize={9} fill="hsl(var(--foreground))">
+                                {fmtBRL(value)}
+                              </text>
+                              {pctLabel && (
+                                <text x={x + (width as number) / 2} y={(y as number) - 4} textAnchor="middle" fontSize={9} fill={pctColor} fontWeight={600}>
+                                  {pctLabel}
+                                </text>
+                              )}
+                            </g>
+                          );
+                        }}
                       />
                     </Bar>
                   </BarChart>
@@ -994,14 +1129,14 @@ export function FacunicampsIndicadoresPanel() {
           {/* Vendas vs Meta LineChart */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold">Vendas vs Meta (histórico)</CardTitle>
+              <CardTitle className="text-sm font-semibold text-foreground">Vendas vs Meta (histórico)</CardTitle>
             </CardHeader>
             <CardContent>
               {vendasVsMetaData.length === 0 ? (
-                <p className="text-gray-400 text-sm">Sem dados</p>
+                <p className="text-muted-foreground text-sm">Sem dados</p>
               ) : (
                 <>
-                  <div className="flex gap-4 text-xs mb-3 flex-wrap">
+                  <div className="flex gap-4 text-xs mb-3 flex-wrap text-muted-foreground">
                     <span className="flex items-center gap-1"><span className="w-3 h-0.5 inline-block bg-green-600" /> Vendas</span>
                     <span className="flex items-center gap-1"><span className="w-3 h-0.5 inline-block bg-red-500" /> Meta</span>
                     <span className="flex items-center gap-1"><span className="w-3 h-0.5 inline-block bg-orange-500" /> Super</span>
@@ -1009,12 +1144,12 @@ export function FacunicampsIndicadoresPanel() {
                   </div>
                   <ResponsiveContainer width="100%" height={260}>
                     <LineChart data={vendasVsMetaData} margin={{ left: 0, right: 16, top: 8, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                      <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
                       <Tooltip content={<CustomTooltip />} />
                       <Line type="monotone" dataKey="vendas" stroke="#16a34a" strokeWidth={2} dot={{ r: 4 }} name="Vendas">
-                        <LabelList dataKey="vendas" position="top" style={{ fontSize: 10, fill: "#374151" }} />
+                        <LabelList dataKey="vendas" position="top" style={{ fontSize: 10, fill: "hsl(var(--foreground))" }} />
                       </Line>
                       <Line type="monotone" dataKey="meta" stroke="#dc2626" strokeWidth={2} strokeDasharray="4 2" dot={{ r: 3 }} name="Meta" connectNulls />
                       <Line type="monotone" dataKey="super" stroke="#f97316" strokeWidth={2} strokeDasharray="4 2" dot={{ r: 3 }} name="Super" connectNulls />
@@ -1035,26 +1170,26 @@ export function FacunicampsIndicadoresPanel() {
           {/* Funil de Vendas */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold">Funil de Vendas</CardTitle>
+              <CardTitle className="text-sm font-semibold text-foreground">Funil de Vendas</CardTitle>
             </CardHeader>
             <CardContent>
               {totalAtendimentos === 0 ? (
-                <p className="text-gray-400 text-sm">Configure Atendimentos nas Metas para visualizar o funil</p>
+                <p className="text-muted-foreground text-sm">Configure Atendimentos nas Metas para visualizar o funil</p>
               ) : (
                 <div className="space-y-3 max-w-md">
                   <div>
-                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
                       <span>Atendimentos</span>
-                      <span className="font-semibold text-gray-800">{totalAtendimentos}</span>
+                      <span className="font-semibold text-foreground">{totalAtendimentos}</span>
                     </div>
                     <div className="h-8 bg-blue-500 rounded-md flex items-center px-3">
                       <span className="text-white text-xs font-medium">100%</span>
                     </div>
                   </div>
                   <div>
-                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
                       <span>Vendas</span>
-                      <span className="font-semibold text-gray-800">{totalVendas}</span>
+                      <span className="font-semibold text-foreground">{totalVendas}</span>
                     </div>
                     <div
                       className="h-8 bg-green-600 rounded-md flex items-center px-3"
@@ -1071,24 +1206,24 @@ export function FacunicampsIndicadoresPanel() {
           {/* Projeção Vendedores */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold">Projeção Vendedores Ativos</CardTitle>
+              <CardTitle className="text-sm font-semibold text-foreground">Projeção Vendedores Ativos</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-xs text-gray-500 mb-3">
-                Total de vendedores únicos: <span className="font-semibold text-gray-800">{histVendedoresRanking.length}</span>
+              <p className="text-xs text-muted-foreground mb-3">
+                Total de vendedores únicos: <span className="font-semibold text-foreground">{histVendedoresRanking.length}</span>
               </p>
               <ResponsiveContainer width="100%" height={Math.max(200, Math.min(15, histVendedoresRanking.length) * 32)}>
                 <BarChart
                   data={[...histVendedoresRanking].sort((a, b) => b.value - a.value).slice(0, 15).map((d) => ({ ...d, name: truncateName(d.name) }))}
                   layout="vertical"
-                  margin={{ left: 8, right: 32, top: 4, bottom: 4 }}
+                  margin={{ left: 8, right: 48, top: 4, bottom: 4 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} width={90} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="value" fill="#1e3a5f" radius={[0, 4, 4, 0]} name="Vendas">
-                    <LabelList dataKey="value" position="right" style={{ fontSize: 11, fill: "#374151" }} />
+                    <LabelList dataKey="value" position="right" style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: 600 }} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -1102,7 +1237,7 @@ export function FacunicampsIndicadoresPanel() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-xs text-gray-500 mb-1">Período 1</p>
+              <p className="text-xs text-muted-foreground mb-1">Período 1</p>
               <Select value={comparePeriod1 || "none"} onValueChange={(v) => setComparePeriod1(v === "none" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar mês" />
@@ -1116,7 +1251,7 @@ export function FacunicampsIndicadoresPanel() {
               </Select>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Período 2</p>
+              <p className="text-xs text-muted-foreground mb-1">Período 2</p>
               <Select value={comparePeriod2 || "none"} onValueChange={(v) => setComparePeriod2(v === "none" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar mês" />
@@ -1136,26 +1271,26 @@ export function FacunicampsIndicadoresPanel() {
               {/* Period 1 */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm font-semibold">{monthLabel(comparePeriod1)}</CardTitle>
+                  <CardTitle className="text-sm font-semibold text-foreground">{monthLabel(comparePeriod1)}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <CompareMetric label="Qtde. Vendas" value={period1Stats.count} other={period2Stats.count} />
                   <CompareMetric label="Valor Total" value={period1Stats.valorTotal} other={period2Stats.valorTotal} isCurrency />
                   <CompareMetric label="Ticket Médio" value={period1Stats.ticketMedio} other={period2Stats.ticketMedio} isCurrency />
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Top 3 Cursos</p>
+                    <p className="text-xs text-muted-foreground mb-1">Top 3 Cursos</p>
                     {period1Stats.topCursos.map(([name, cnt]) => (
                       <div key={name} className="flex justify-between text-xs py-0.5">
-                        <span className="truncate max-w-[140px]">{name}</span>
+                        <span className="truncate max-w-[140px] text-foreground">{name}</span>
                         <Badge variant="secondary" className="text-xs">{cnt}</Badge>
                       </div>
                     ))}
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Top 3 Vendedores</p>
+                    <p className="text-xs text-muted-foreground mb-1">Top 3 Vendedores</p>
                     {period1Stats.topVendedores.map(([name, cnt]) => (
                       <div key={name} className="flex justify-between text-xs py-0.5">
-                        <span className="truncate max-w-[140px]">{name}</span>
+                        <span className="truncate max-w-[140px] text-foreground">{name}</span>
                         <Badge variant="secondary" className="text-xs">{cnt}</Badge>
                       </div>
                     ))}
@@ -1166,26 +1301,26 @@ export function FacunicampsIndicadoresPanel() {
               {/* Period 2 */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm font-semibold">{monthLabel(comparePeriod2)}</CardTitle>
+                  <CardTitle className="text-sm font-semibold text-foreground">{monthLabel(comparePeriod2)}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <CompareMetric label="Qtde. Vendas" value={period2Stats.count} other={period1Stats.count} />
                   <CompareMetric label="Valor Total" value={period2Stats.valorTotal} other={period1Stats.valorTotal} isCurrency />
                   <CompareMetric label="Ticket Médio" value={period2Stats.ticketMedio} other={period1Stats.ticketMedio} isCurrency />
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Top 3 Cursos</p>
+                    <p className="text-xs text-muted-foreground mb-1">Top 3 Cursos</p>
                     {period2Stats.topCursos.map(([name, cnt]) => (
                       <div key={name} className="flex justify-between text-xs py-0.5">
-                        <span className="truncate max-w-[140px]">{name}</span>
+                        <span className="truncate max-w-[140px] text-foreground">{name}</span>
                         <Badge variant="secondary" className="text-xs">{cnt}</Badge>
                       </div>
                     ))}
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Top 3 Vendedores</p>
+                    <p className="text-xs text-muted-foreground mb-1">Top 3 Vendedores</p>
                     {period2Stats.topVendedores.map(([name, cnt]) => (
                       <div key={name} className="flex justify-between text-xs py-0.5">
-                        <span className="truncate max-w-[140px]">{name}</span>
+                        <span className="truncate max-w-[140px] text-foreground">{name}</span>
                         <Badge variant="secondary" className="text-xs">{cnt}</Badge>
                       </div>
                     ))}
@@ -1196,7 +1331,7 @@ export function FacunicampsIndicadoresPanel() {
           ) : (
             <Card>
               <CardContent className="p-8 text-center">
-                <p className="text-gray-400">Selecione dois períodos para comparar</p>
+                <p className="text-muted-foreground">Selecione dois períodos para comparar</p>
               </CardContent>
             </Card>
           )}
@@ -1235,9 +1370,9 @@ function CompareMetric({
 
   return (
     <div className="flex items-center justify-between">
-      <span className="text-xs text-gray-500">{label}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
       <div className="flex items-center gap-1">
-        <span className="text-sm font-semibold">{display}</span>
+        <span className="text-sm font-semibold text-foreground">{display}</span>
         {!equal && (
           <span className={`text-xs flex items-center ${better ? "text-green-600" : "text-red-500"}`}>
             {better ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
