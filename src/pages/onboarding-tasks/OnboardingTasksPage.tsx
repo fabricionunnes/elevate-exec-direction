@@ -2574,6 +2574,17 @@ const OnboardingTasksPage = () => {
                     Gerador de Slides
                   </DropdownMenuItem>
 
+                  {/* Assinaturas Eletrônicas — admin only */}
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/assinaturas")}>
+                        <FileSignature className="h-4 w-4 mr-2" />
+                        Assinaturas
+                      </DropdownMenuItem>
+                    </>
+                  )}
+
                   {/* Backup — master and admin only */}
                   {isAdmin && (
                     <>
