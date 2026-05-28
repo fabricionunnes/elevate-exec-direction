@@ -653,7 +653,11 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
   const [searchingRecording, setSearchingRecording] = useState(false);
   const [foundRecordings, setFoundRecordings] = useState<{ id: string; name: string; link: string; createdTime: string }[]>([]);
   const [attendanceLesson, setAttendanceLesson] = useState<Lesson | null>(null);
-  const [attendanceList, setAttendanceList] = useState<{ name: string; completed_at: string }[]>([]);
+  const [attendanceList, setAttendanceList] = useState<{
+    name: string; completed_at: string; source: "system" | "public";
+    company?: string; log_id?: string;
+  }[]>([]);
+  const [issuingCertId, setIssuingCertId] = useState<string | null>(null);
   const [ytBroadcastLoading, setYtBroadcastLoading] = useState(false);
   const [ytStreamKey, setYtStreamKey] = useState<string | null>(null);
   const [ytRtmpUrl, setYtRtmpUrl] = useState<string | null>(null);
@@ -798,16 +802,69 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
 
   const openAttendance = async (lesson: Lesson) => {
     setAttendanceLesson(lesson);
-    const { data } = await supabase
-      .from("pe_progress")
-      .select("completed_at, onboarding_staff!inner(name)")
-      .eq("lesson_id", lesson.id)
-      .eq("completed", true)
-      .order("completed_at", { ascending: false });
-    setAttendanceList((data || []).map((r: any) => ({
+    const [{ data: prog }, { data: logs }] = await Promise.all([
+      supabase.from("pe_progress")
+        .select("completed_at, onboarding_staff!inner(name)")
+        .eq("lesson_id", lesson.id).eq("completed", true)
+        .order("completed_at", { ascending: false }),
+      supabase.from("pe_checkin_log")
+        .select("id, attendee_name, company_name, checked_in_at")
+        .eq("lesson_id", lesson.id)
+        .order("checked_in_at", { ascending: false }),
+    ]);
+    const systemEntries = (prog || []).map((r: any) => ({
       name: r.onboarding_staff?.name || "—",
       completed_at: r.completed_at || "",
-    })));
+      source: "system" as const,
+    }));
+    const publicEntries = (logs || []).map((r: any) => ({
+      name: r.attendee_name,
+      completed_at: r.checked_in_at || "",
+      source: "public" as const,
+      company: r.company_name || "",
+      log_id: r.id,
+    }));
+    setAttendanceList([...systemEntries, ...publicEntries]);
+  };
+
+  const issueCertificate = async (entry: typeof attendanceList[0], lesson: Lesson) => {
+    setIssuingCertId(entry.log_id || entry.name);
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const W = 297, H = 210;
+      doc.setFillColor(6, 13, 31);
+      doc.rect(0, 0, W, H, "F");
+      doc.setFillColor(124, 58, 237);
+      doc.rect(0, 0, W, 3, "F");
+      doc.rect(0, H - 3, W, 3, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(11); doc.setFont("helvetica", "normal");
+      doc.text("CERTIFICADO DE PARTICIPAÇÃO", W / 2, 45, { align: "center" });
+      doc.setFontSize(9); doc.setTextColor(180, 150, 255);
+      doc.text("Este certificado atesta a participação de", W / 2, 65, { align: "center" });
+      doc.setFontSize(26); doc.setFont("helvetica", "bold"); doc.setTextColor(255, 255, 255);
+      doc.text(entry.name, W / 2, 90, { align: "center" });
+      if (entry.company) {
+        doc.setFontSize(12); doc.setFont("helvetica", "normal"); doc.setTextColor(200, 200, 220);
+        doc.text(entry.company, W / 2, 102, { align: "center" });
+      }
+      doc.setFontSize(9); doc.setTextColor(180, 150, 255);
+      doc.text("na aula ao vivo", W / 2, 118, { align: "center" });
+      doc.setFontSize(16); doc.setFont("helvetica", "bold"); doc.setTextColor(255, 255, 255);
+      doc.text(`"${lesson.title}"`, W / 2, 130, { align: "center" });
+      const dateStr = entry.completed_at ? format(new Date(entry.completed_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+      doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(120, 120, 140);
+      doc.text(dateStr, W / 2, 150, { align: "center" });
+      doc.save(`certificado-${entry.name.replace(/\s+/g, "-").toLowerCase()}.pdf`);
+      if (entry.log_id) {
+        await supabase.from("pe_checkin_log").update({ certificate_url: "issued" }).eq("id", entry.log_id);
+      }
+    } catch (e) {
+      toast.error("Erro ao gerar certificado");
+    } finally {
+      setIssuingCertId(null);
+    }
   };
 
   // ── Lesson CRUD ────────────────────────────────────────────────────────
@@ -1162,29 +1219,65 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
 
       {/* Attendance Dialog */}
       <Dialog open={!!attendanceLesson} onOpenChange={v => !v && setAttendanceLesson(null)}>
-        <DialogContent className="bg-[#0f1629] border-white/10 text-white max-w-md">
+        <DialogContent className="bg-[#0f1629] border-white/10 text-white max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Users className="h-4 w-4 text-violet-400" /> Presenças — {attendanceLesson?.title}
             </DialogTitle>
           </DialogHeader>
-          <div className="py-2 max-h-[60vh] overflow-y-auto space-y-1">
+          {/* Check-in public link */}
+          {attendanceLesson && (
+            <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2.5 flex items-center gap-2">
+              <Link2 className="h-3.5 w-3.5 text-violet-400 shrink-0" />
+              <span className="text-xs text-white/60 flex-1 truncate">
+                Link de check-in: <span className="text-violet-300 font-mono">/checkin/{attendanceLesson.id}</span>
+              </span>
+              <button onClick={() => {
+                const url = `${window.location.origin}${window.location.pathname.split("#")[0]}#/checkin/${attendanceLesson.id}${attendanceLesson.checkin_code ? `?code=${attendanceLesson.checkin_code}` : ""}`;
+                navigator.clipboard.writeText(url);
+                toast.success("Link copiado!");
+              }} className="p-1 rounded text-white/40 hover:text-violet-400 transition-colors shrink-0">
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+          <div className="py-1 max-h-[55vh] overflow-y-auto space-y-1.5">
             {attendanceList.length === 0 ? (
               <p className="text-center text-white/40 py-8 text-sm">Nenhuma presença confirmada ainda.</p>
             ) : (
               <>
-                <p className="text-xs text-white/40 mb-3">{attendanceList.length} presença{attendanceList.length !== 1 ? "s" : ""} confirmada{attendanceList.length !== 1 ? "s" : ""}</p>
+                <p className="text-xs text-white/40 mb-2">{attendanceList.length} presença{attendanceList.length !== 1 ? "s" : ""} confirmada{attendanceList.length !== 1 ? "s" : ""}</p>
                 {attendanceList.map((a, i) => (
-                  <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/5">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                      <span className="text-sm text-white/80">{a.name}</span>
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white/80 truncate">{a.name}</p>
+                      {a.company && <p className="text-[11px] text-white/40 truncate">{a.company}</p>}
                     </div>
-                    {a.completed_at && (
-                      <span className="text-[11px] text-white/30">
-                        {format(new Date(a.completed_at), "dd/MM HH:mm", { locale: ptBR })}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {a.completed_at && (
+                        <span className="text-[11px] text-white/30">
+                          {format(new Date(a.completed_at), "dd/MM HH:mm", { locale: ptBR })}
+                        </span>
+                      )}
+                      <span className={cn(
+                        "text-[10px] px-1.5 py-0.5 rounded border",
+                        a.source === "public"
+                          ? "border-violet-500/30 text-violet-400 bg-violet-500/10"
+                          : "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+                      )}>
+                        {a.source === "public" ? "link" : "sistema"}
                       </span>
-                    )}
+                      <button
+                        onClick={() => issueCertificate(a, attendanceLesson!)}
+                        disabled={issuingCertId === (a.log_id || a.name)}
+                        title="Emitir Certificado"
+                        className="p-1 rounded text-white/30 hover:text-amber-400 transition-colors disabled:opacity-50">
+                        {issuingCertId === (a.log_id || a.name)
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <Award className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </>
@@ -1348,8 +1441,8 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
                   </div>
                 )}
 
-                {/* Recording URL (edit mode — paste or fetch after meeting) */}
-                {editLesson && (
+                {/* Recording URL — paste manually or fetch from Drive */}
+                {(
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <Label className="text-white/60 text-xs flex items-center gap-1"><Link2 className="h-3 w-3" /> URL da gravação</Label>
@@ -1526,9 +1619,26 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
                 </div>
               </div>
               {lessonForm.checkin_code && (
-                <div className="rounded-lg bg-violet-500/10 border border-violet-500/20 px-3 py-2 flex items-center justify-between">
-                  <p className="text-xs text-white/50">Código para exibir na aula:</p>
-                  <p className="font-mono font-bold text-violet-300 tracking-widest text-lg">{lessonForm.checkin_code}</p>
+                <div className="space-y-2">
+                  <div className="rounded-lg bg-violet-500/10 border border-violet-500/20 px-3 py-2 flex items-center justify-between">
+                    <p className="text-xs text-white/50">Código para exibir na aula:</p>
+                    <p className="font-mono font-bold text-violet-300 tracking-widest text-lg">{lessonForm.checkin_code}</p>
+                  </div>
+                  {editLesson && (
+                    <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 flex items-center gap-2">
+                      <Link2 className="h-3.5 w-3.5 text-violet-400 shrink-0" />
+                      <p className="text-[11px] text-white/50 flex-1 truncate">Link público de check-in</p>
+                      <button type="button"
+                        onClick={() => {
+                          const url = `${window.location.origin}${window.location.pathname.split("#")[0]}#/checkin/${editLesson.id}?code=${lessonForm.checkin_code}`;
+                          navigator.clipboard.writeText(url);
+                          toast.success("Link copiado! Envie durante a aula");
+                        }}
+                        className="flex items-center gap-1 text-[11px] text-violet-400 hover:text-violet-300 transition-colors shrink-0">
+                        <Copy className="h-3 w-3" /> Copiar link
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

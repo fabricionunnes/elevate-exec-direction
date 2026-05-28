@@ -186,6 +186,7 @@ const FacunicampsDashboardPage = lazy(() => import("./pages/onboarding-tasks/Fac
 const JuridicoPage = lazy(() => import("./pages/onboarding-tasks/JuridicoPage"));
 const PontoDeEncontroPage = lazy(() => import("./pages/ponto-de-encontro/PontoDeEncontroPage"));
 const PeLessonPage = lazy(() => import("./pages/ponto-de-encontro/PeLessonPage"));
+const CheckinPage = lazy(() => import("./pages/ponto-de-encontro/CheckinPage"));
 
 // Public Signatures / Verification
 const SigningPage = lazy(() => import("./pages/SigningPage"));
@@ -689,6 +690,7 @@ const AppShell = () => {
             {/* Ponto de Encontro — treinamentos coletivos */}
             <Route path="/ponto-de-encontro" element={<PontoDeEncontroPage />} />
             <Route path="/ponto-de-encontro/aula/:id" element={<PeLessonPage />} />
+            <Route path="/checkin/:lessonId" element={<CheckinPage />} />
 
             {/* White-Label Admin */}
             <Route path="/whitelabel-admin" element={<WhitelabelAdminPage />} />
