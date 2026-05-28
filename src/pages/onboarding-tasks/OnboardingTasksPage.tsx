@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale } from "lucide-react";
 import { GlobalAccessControlPanel } from "@/components/onboarding-tasks/GlobalAccessControlPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -658,7 +658,24 @@ const OnboardingTasksPage = () => {
               permKeys.includes("companies") || 
               permKeys.includes("tasks");
             
+            // Juridico role → redirect directly to juridico page
+            if (normalizedRole === "juridico") {
+              navigate("/onboarding-tasks/juridico");
+              return;
+            }
+
+            // Aluno role → redirect directly to Ponto de Encontro
+            if (normalizedRole === "aluno") {
+              navigate("/ponto-de-encontro");
+              return;
+            }
+
             if (!hasDashboardAccess && permKeys.length > 0) {
+              // Only juridico menu → redirect to juridico
+              if (permKeys.includes("juridico") && permKeys.length === 1) {
+                navigate("/onboarding-tasks/juridico");
+                return;
+              }
               // Only CRM permission → redirect to CRM
               if (permKeys.includes("crm") && !permKeys.some(k => k.startsWith("fin_") || k === "financial")) {
                 navigate("/crm");
@@ -1994,6 +2011,17 @@ const OnboardingTasksPage = () => {
                       </DropdownMenuItem>
                     </>
                   )}
+                  {/* Ponto de Encontro no menu mobile */}
+                  {(isMaster || isAdmin || isCS || isConsultant || ["closer","sdr","social_setter","bdr","head_comercial","rh","financeiro","marketing","juridico"].includes(currentUserRole || "")) && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/ponto-de-encontro")}
+                        className="text-violet-500 font-semibold focus:text-violet-400">
+                        <GraduationCap className="h-4 w-4 mr-2 text-violet-500" />
+                        Ponto de Encontro
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   {canCreateCompany && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/staff")}>
                       <Users className="h-4 w-4 mr-2" />
@@ -2226,6 +2254,22 @@ const OnboardingTasksPage = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
+            {/* ── Ponto de Encontro — botão destacado ───────── */}
+            {(isMaster || isAdmin || isCS || isConsultant || ["closer","sdr","social_setter","bdr","head_comercial","rh","financeiro","marketing","juridico"].includes(currentUserRole || "")) && (
+              <Button
+                size="sm"
+                className="gap-1.5 text-sm font-semibold text-white border-0 shadow-lg"
+                style={{
+                  background: "linear-gradient(135deg, #7c3aed, #a855f7)",
+                  boxShadow: "0 0 12px rgba(168,85,247,0.4)",
+                }}
+                onClick={() => navigate("/ponto-de-encontro")}
+              >
+                <GraduationCap className="h-4 w-4" />
+                Ponto de Encontro
+              </Button>
+            )}
+
             {/* ── CRM Comercial — botão direto ─────────────── */}
             {canAccessCRM && (
               <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60" onClick={() => navigate("/crm")}>
@@ -2430,6 +2474,18 @@ const OnboardingTasksPage = () => {
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro/recorrencias")}>
                       <Calculator className="h-4 w-4 mr-2" />
                       Financeiro
+                    </DropdownMenuItem>
+                  )}
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro/monitor-parcelas")}>
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Monitor de Parcelas
+                    </DropdownMenuItem>
+                  )}
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/juridico")}>
+                      <Scale className="h-4 w-4 mr-2" />
+                      Jurídico
                     </DropdownMenuItem>
                   )}
                   {(currentUserEmail === "fabricio@universidadevendas.com.br" || canAccessFinancial) && (

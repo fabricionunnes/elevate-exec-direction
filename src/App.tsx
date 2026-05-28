@@ -150,6 +150,7 @@ const HealthScorePage = lazy(() => import("./pages/onboarding-tasks/HealthScoreP
 const FinancialModulePage = lazy(() => import("./pages/onboarding-tasks/FinancialModulePage"));
 const ApiDocsPage = lazy(() => import("./pages/onboarding-tasks/ApiDocsPage"));
 const AllRecurringChargesPage = lazy(() => import("./pages/onboarding-tasks/AllRecurringChargesPage"));
+const RecurringMonitorPage = lazy(() => import("./pages/onboarding-tasks/RecurringMonitorPage"));
 const WhatsAppAdminPage = lazy(() => import("./pages/onboarding-tasks/WhatsAppAdminPage"));
 const WhatsAppHubPage = lazy(() => import("./pages/onboarding-tasks/WhatsAppHubPage"));
 const ClientDisparadorPage = lazy(() => import("./pages/disparador/ClientDisparadorPage"));
@@ -182,6 +183,9 @@ const MasterAIConsultPage = lazy(() => import("./pages/onboarding-tasks/MasterAI
 const MRRDashboardPage = lazy(() => import("./pages/onboarding-tasks/MRRDashboardPage"));
 const SignaturesAdminPage = lazy(() => import("./pages/onboarding-tasks/SignaturesAdminPage"));
 const FacunicampsDashboardPage = lazy(() => import("./pages/onboarding-tasks/FacunicampsDashboardPage"));
+const JuridicoPage = lazy(() => import("./pages/onboarding-tasks/JuridicoPage"));
+const PontoDeEncontroPage = lazy(() => import("./pages/ponto-de-encontro/PontoDeEncontroPage"));
+const PeLessonPage = lazy(() => import("./pages/ponto-de-encontro/PeLessonPage"));
 
 // Public Signatures / Verification
 const SigningPage = lazy(() => import("./pages/SigningPage"));
@@ -452,6 +456,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/financeiro" element={<ModuleGuard module="financial" label="Financeiro"><FinancialModulePage /></ModuleGuard>} />
               <Route path="/onboarding-tasks/api-docs" element={<ApiDocsPage />} />
               <Route path="/onboarding-tasks/financeiro/recorrencias" element={<ModuleGuard module="financial" label="Financeiro"><AllRecurringChargesPage /></ModuleGuard>} />
+              <Route path="/onboarding-tasks/financeiro/monitor-parcelas" element={<RecurringMonitorPage />} />
               <Route path="/onboarding-tasks/whatsapp" element={<WhatsAppAdminPage />} />
               <Route path="/onboarding-tasks/whatsapp-hub" element={<WhatsAppHubPage />} />
               <Route path="/onboarding-tasks/churn-prediction" element={<ChurnPredictionPage />} />
@@ -472,6 +477,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/database-backup" element={<DatabaseBackupPage />} />
               <Route path="/onboarding-tasks/task-manager" element={<TaskManagerPage />} />
               <Route path="/onboarding-tasks/automations" element={<AutomationsPage />} />
+              <Route path="/onboarding-tasks/juridico" element={<JuridicoPage />} />
               <Route path="/onboarding-tasks/b2b-prospection" element={<B2BProspectionPage />} />
               <Route path="/onboarding-tasks/master-ai" element={<MasterAIConsultPage />} />
               <Route path="/onboarding-tasks/mrr" element={<MRRDashboardPage />} />
@@ -679,6 +685,10 @@ const AppShell = () => {
             {/* Assinatura Eletrônica — rotas públicas */}
             <Route path="/assinar/:token" element={<SigningPage />} />
             <Route path="/verificar/:envelopeId?" element={<VerificationPage />} />
+
+            {/* Ponto de Encontro — treinamentos coletivos */}
+            <Route path="/ponto-de-encontro" element={<PontoDeEncontroPage />} />
+            <Route path="/ponto-de-encontro/aula/:id" element={<PeLessonPage />} />
 
             {/* White-Label Admin */}
             <Route path="/whitelabel-admin" element={<WhitelabelAdminPage />} />
