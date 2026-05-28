@@ -732,8 +732,26 @@ const PeLessonPage = () => {
           )}
         </div>
 
-        {/* Check-in code — backup for external sessions */}
-        {lesson.checkin_code && !completed && lesson.video_state === "live" && (
+        {/* Check-in code — visible to instructors */}
+        {lesson.checkin_code && lesson.video_state === "live" &&
+          ["consultant", "cs", "admin", "master"].includes(staffInfo?.role) && (
+          <div className="rounded-xl border border-violet-500/40 p-4"
+            style={{ background: "rgba(124,58,237,0.10)" }}>
+            <div className="flex items-center gap-2 mb-2">
+              <KeyRound className="h-4 w-4 text-violet-400" />
+              <p className="text-sm font-semibold text-white">Código de presença</p>
+              <span className="ml-auto text-[10px] px-2 py-0.5 rounded border border-violet-500/30 text-violet-400 bg-violet-500/10">Instrutor</span>
+            </div>
+            <p className="text-xs text-white/40 mb-3">Exiba este código para os participantes confirmarem presença.</p>
+            <p className="font-mono font-bold text-violet-300 tracking-[0.3em] text-2xl text-center py-2">
+              {lesson.checkin_code}
+            </p>
+          </div>
+        )}
+
+        {/* Check-in code — input for students */}
+        {lesson.checkin_code && !completed && lesson.video_state === "live" &&
+          !["consultant", "cs", "admin", "master"].includes(staffInfo?.role) && (
           <div className="rounded-xl border border-violet-500/20 p-4"
             style={{ background: "rgba(124,58,237,0.06)" }}>
             <div className="flex items-center gap-2 mb-3">
