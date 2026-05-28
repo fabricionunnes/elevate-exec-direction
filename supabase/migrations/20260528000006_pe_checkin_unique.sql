@@ -4,5 +4,5 @@ CREATE UNIQUE INDEX IF NOT EXISTS pe_checkin_log_once_per_day
     lesson_id,
     lower(attendee_name),
     lower(coalesce(company_name, '')),
-    (checked_in_at AT TIME ZONE 'America/Sao_Paulo')::date
+    CAST(checked_in_at AT TIME ZONE 'America/Sao_Paulo' AS date)
   );
