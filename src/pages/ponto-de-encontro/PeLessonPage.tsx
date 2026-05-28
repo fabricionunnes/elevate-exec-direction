@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   ArrowLeft, Clock, CheckCircle2, Award, Play, ThumbsUp,
   HelpCircle, RefreshCw, AlertTriangle, ExternalLink, Video,
-  KeyRound, Users,
+  KeyRound, Users, Copy, Link2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -742,10 +742,22 @@ const PeLessonPage = () => {
               <p className="text-sm font-semibold text-white">Código de presença</p>
               <span className="ml-auto text-[10px] px-2 py-0.5 rounded border border-violet-500/30 text-violet-400 bg-violet-500/10">Instrutor</span>
             </div>
-            <p className="text-xs text-white/40 mb-3">Exiba este código para os participantes confirmarem presença.</p>
+            <p className="text-xs text-white/40 mb-3">Exiba este código ou envie o link para os participantes confirmarem presença.</p>
             <p className="font-mono font-bold text-violet-300 tracking-[0.3em] text-2xl text-center py-2">
               {lesson.checkin_code}
             </p>
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}${window.location.pathname.split("#")[0]}#/checkin/${lesson.id}?code=${lesson.checkin_code}`;
+                navigator.clipboard.writeText(url);
+                toast.success("Link de check-in copiado!");
+              }}
+              className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-violet-500/30 text-violet-400 text-xs hover:bg-violet-500/15 transition-colors"
+            >
+              <Link2 className="h-3.5 w-3.5" />
+              Copiar link de check-in para vendedores
+              <Copy className="h-3 w-3 opacity-50" />
+            </button>
           </div>
         )}
 
