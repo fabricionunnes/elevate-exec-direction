@@ -2184,6 +2184,14 @@ const OnboardingTasksPage = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-52">
+                {(isMaster || isAdmin || isCS || isConsultant || ["closer","sdr","social_setter","bdr","head_comercial","rh","financeiro","marketing","juridico"].includes(currentUserRole || "")) && (
+                  <>
+                    <DropdownMenuItem onClick={() => navigate("/ponto-de-encontro")} className="text-violet-400 focus:text-violet-300 font-semibold">
+                      <GraduationCap className="h-4 w-4 mr-2 text-violet-400" /> Ponto de Encontro
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/task-manager")}>
                   <LayoutGrid className="h-4 w-4 mr-2" /> Gerenciador
                 </DropdownMenuItem>
@@ -2253,22 +2261,6 @@ const OnboardingTasksPage = () => {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-
-            {/* ── Ponto de Encontro — botão destacado ───────── */}
-            {(isMaster || isAdmin || isCS || isConsultant || ["closer","sdr","social_setter","bdr","head_comercial","rh","financeiro","marketing","juridico"].includes(currentUserRole || "")) && (
-              <Button
-                size="sm"
-                className="gap-1.5 text-sm font-semibold text-white border-0 shadow-lg"
-                style={{
-                  background: "linear-gradient(135deg, #7c3aed, #a855f7)",
-                  boxShadow: "0 0 12px rgba(168,85,247,0.4)",
-                }}
-                onClick={() => navigate("/ponto-de-encontro")}
-              >
-                <GraduationCap className="h-4 w-4" />
-                Ponto de Encontro
-              </Button>
-            )}
 
             {/* ── CRM Comercial — botão direto ─────────────── */}
             {canAccessCRM && (
