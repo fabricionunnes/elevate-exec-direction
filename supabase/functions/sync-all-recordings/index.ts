@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -376,6 +376,17 @@ Deno.serve(async (req) => {
           if (!finalizeError) {
             totalMeetingsFinalized++;
             console.log(`✓ Meeting auto-finalized: ${refreshedMeeting.meeting_title || refreshedMeeting.subject}`);
+
+            // Trigger summarization + action generation in background (fire-and-forget)
+            if (refreshedMeeting.transcript && refreshedMeeting.transcript.length > 50) {
+              supabase.functions.invoke("summarize-meeting-transcription", {
+                body: { meetingId: refreshedMeeting.id },
+              }).catch((e: any) => console.error("[sync-all-recordings] summarize error:", e));
+
+              supabase.functions.invoke("generate-meeting-actions", {
+                body: { meetingId: refreshedMeeting.id, projectId: refreshedMeeting.project_id },
+              }).catch((e: any) => console.error("[sync-all-recordings] generate-actions error:", e));
+            }
           }
         }
 
