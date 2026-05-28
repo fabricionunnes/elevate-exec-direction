@@ -610,6 +610,11 @@ const PeLessonPage = () => {
     toast.success("Certificado baixado!");
   };
 
+  // Must be before early returns to respect Rules of Hooks
+  const minWatchLabel = lesson
+    ? (lesson.min_watch_minutes > 0 ? lesson.min_watch_minutes : Math.ceil((lesson.duration_minutes || 0) * 0.5))
+    : 0;
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "#0a0f1e" }}>
       <RefreshCw className="h-6 w-6 animate-spin text-violet-400" />
@@ -620,12 +625,6 @@ const PeLessonPage = () => {
 
   const isYT = lesson.video_url ? getYouTubeId(lesson.video_url) !== null : false;
   const embedUrl = (!isYT && lesson.video_url) ? getEmbedUrl(lesson.video_url) : null;
-  const minWatchLabel = useMemo(() => {
-    const mins = lesson.min_watch_minutes > 0
-      ? lesson.min_watch_minutes
-      : Math.ceil((lesson.duration_minutes || 0) * 0.5);
-    return mins;
-  }, [lesson]);
 
   return (
     <div className="min-h-screen" style={{ background: "#0a0f1e" }}>
