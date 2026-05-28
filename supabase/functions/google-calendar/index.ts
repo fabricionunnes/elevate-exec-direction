@@ -33,7 +33,8 @@ interface CalendarEvent {
 
 const GOOGLE_CALENDAR_SCOPES = [
   "https://www.googleapis.com/auth/calendar",
-  "https://www.googleapis.com/auth/drive.readonly",
+  "https://www.googleapis.com/auth/drive",
+  "https://www.googleapis.com/auth/youtube",
 ].join(" ");
 
 // Helper function to transcribe recording using AssemblyAI
@@ -1186,6 +1187,89 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (action === "set-drive-permission") {
+      // Make a Drive file readable by anyone with the link
+      if (!tokenData) {
+        return new Response(
+          JSON.stringify({ error: "Not connected to Google Calendar", needsAuth: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const body = await req.json();
+      const { fileId } = body;
+      if (!fileId) {
+        return new Response(
+          JSON.stringify({ error: "Missing fileId" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      let accessToken = tokenData.access_token;
+
+      // Refresh token if expired
+      if (tokenData.token_expires_at && new Date(tokenData.token_expires_at) < new Date()) {
+        if (!tokenData.refresh_token) {
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
+        const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+        const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: googleClientId!,
+            client_secret: googleClientSecret!,
+            refresh_token: tokenData.refresh_token,
+            grant_type: "refresh_token",
+          }),
+        });
+        if (refreshRes.ok) {
+          const refreshData = await refreshRes.json();
+          accessToken = refreshData.access_token;
+          await supabase.from("user_google_tokens").update({
+            access_token: accessToken,
+            token_expires_at: new Date(Date.now() + (refreshData.expires_in || 3600) * 1000).toISOString(),
+          }).eq("user_id", effectiveUserId);
+        }
+      }
+
+      // Set permission: anyone with link can read
+      const permUrl = `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`;
+      const permRes = await fetch(permUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ role: "reader", type: "anyone" }),
+      });
+
+      if (!permRes.ok) {
+        const errText = await permRes.text();
+        console.error("Drive permission error:", errText);
+        // 403 = needs broader Drive scope → user must reconnect
+        if (permRes.status === 403) {
+          return new Response(
+            JSON.stringify({ error: "Permissão insuficiente no Drive. Reconecte o Google Calendar para liberar acesso completo.", needsReauth: true }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        return new Response(
+          JSON.stringify({ error: "Falha ao definir permissão no Drive" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (action === "sync-recordings") {
       // Sync recordings with meeting notes - match by date/title
       const body = await req.json();
@@ -1828,6 +1912,165 @@ Deno.serve(async (req) => {
           availableSlots, 
           busyPeriods,
           durationMinutes: slotDuration 
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "create-youtube-broadcast") {
+      if (!tokenData) {
+        return new Response(
+          JSON.stringify({ error: "Not connected to Google", needsAuth: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const body = await req.json();
+      const { title, scheduledStartTime, description } = body;
+
+      if (!title) {
+        return new Response(
+          JSON.stringify({ error: "Missing required field: title" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      let accessToken = tokenData.access_token;
+
+      // Refresh token if expired
+      if (tokenData.token_expires_at && new Date(tokenData.token_expires_at) < new Date()) {
+        if (!tokenData.refresh_token) {
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
+        const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+        const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: googleClientId!,
+            client_secret: googleClientSecret!,
+            refresh_token: tokenData.refresh_token,
+            grant_type: "refresh_token",
+          }),
+        });
+        if (refreshRes.ok) {
+          const refreshData = await refreshRes.json();
+          accessToken = refreshData.access_token;
+          await supabase.from("user_google_tokens").update({
+            access_token: accessToken,
+            token_expires_at: new Date(Date.now() + (refreshData.expires_in || 3600) * 1000).toISOString(),
+          }).eq("user_id", effectiveUserId);
+        } else {
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+
+      // 1. Create the live broadcast
+      const broadcastStart = scheduledStartTime || new Date(Date.now() + 60 * 1000).toISOString();
+      const broadcastRes = await fetch(
+        "https://www.googleapis.com/youtube/v3/liveBroadcasts?part=id,snippet,status,contentDetails",
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            snippet: {
+              title,
+              description: description || "",
+              scheduledStartTime: broadcastStart,
+            },
+            status: { privacyStatus: "unlisted" },
+            contentDetails: {
+              enableAutoStart: true,
+              enableAutoStop: true,
+              recordFromStart: true,
+              enableDvr: true,
+            },
+          }),
+        }
+      );
+
+      if (!broadcastRes.ok) {
+        const errText = await broadcastRes.text();
+        console.error("YouTube broadcast creation error:", errText);
+        if (broadcastRes.status === 403) {
+          return new Response(
+            JSON.stringify({ error: "Permissão YouTube insuficiente. Reconecte o Google com escopo YouTube.", needsYouTubeAuth: true }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        return new Response(
+          JSON.stringify({ error: "Falha ao criar broadcast: " + errText }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const broadcast = await broadcastRes.json();
+      const broadcastId = broadcast.id;
+      console.log("YouTube broadcast created:", broadcastId);
+
+      // 2. Create the live stream (encoder ingestion point)
+      const streamRes = await fetch(
+        "https://www.googleapis.com/youtube/v3/liveStreams?part=id,snippet,cdn",
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            snippet: { title: `Stream — ${title}` },
+            cdn: { frameRate: "variable", ingestionType: "rtmp", resolution: "variable" },
+          }),
+        }
+      );
+
+      if (!streamRes.ok) {
+        const errText = await streamRes.text();
+        console.error("YouTube stream creation error:", errText);
+        return new Response(
+          JSON.stringify({ error: "Broadcast criado mas falha ao criar stream: " + errText }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const stream = await streamRes.json();
+      const streamId = stream.id;
+      const streamKey = stream.cdn?.ingestionInfo?.streamName;
+      const rtmpUrl = stream.cdn?.ingestionInfo?.ingestionAddress;
+      console.log("YouTube stream created:", streamId);
+
+      // 3. Bind stream to broadcast
+      const bindRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/liveBroadcasts/bind?id=${broadcastId}&part=id,snippet,contentDetails,status&streamId=${streamId}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: "{}",
+        }
+      );
+
+      if (!bindRes.ok) {
+        const errText = await bindRes.text();
+        console.error("YouTube bind error:", errText);
+        // Not fatal — broadcast still works, just not bound yet
+      } else {
+        console.log("YouTube broadcast bound to stream successfully");
+      }
+
+      const watchUrl = `https://www.youtube.com/watch?v=${broadcastId}`;
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          broadcastId,
+          watchUrl,
+          streamKey,
+          rtmpUrl,
+          streamId,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );

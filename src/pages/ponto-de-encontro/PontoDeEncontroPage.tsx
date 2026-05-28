@@ -654,6 +654,9 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
   const [foundRecordings, setFoundRecordings] = useState<{ id: string; name: string; link: string; createdTime: string }[]>([]);
   const [attendanceLesson, setAttendanceLesson] = useState<Lesson | null>(null);
   const [attendanceList, setAttendanceList] = useState<{ name: string; completed_at: string }[]>([]);
+  const [ytBroadcastLoading, setYtBroadcastLoading] = useState(false);
+  const [ytStreamKey, setYtStreamKey] = useState<string | null>(null);
+  const [ytRtmpUrl, setYtRtmpUrl] = useState<string | null>(null);
 
   // Forms
   const [trackForm, setTrackForm] = useState({ title: "", description: "", status: "draft" as const });
@@ -810,6 +813,7 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
   // ── Lesson CRUD ────────────────────────────────────────────────────────
   const openNewLesson = () => {
     setEditLesson(null);
+    setYtStreamKey(null); setYtRtmpUrl(null);
     // default scheduled_at = tomorrow 09:00
     const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0);
     const pad = (n: number) => String(n).padStart(2, "0");
@@ -820,6 +824,7 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
   };
   const openEditLesson = (l: Lesson) => {
     setEditLesson(l);
+    setYtStreamKey(null); setYtRtmpUrl(null);
     const localDt = l.scheduled_at
       ? (() => { const d = new Date(l.scheduled_at); const pad = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; })()
       : "";
@@ -955,6 +960,51 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
     if (error) { toast.error("Erro ao encerrar aula"); return; }
     toast.success("Aula encerrada · edite para adicionar a gravação");
     loadAll();
+  };
+
+  const createYouTubeBroadcast = async () => {
+    if (!lessonForm.title.trim()) { toast.error("Preencha o título da aula primeiro"); return; }
+    setYtBroadcastLoading(true);
+    setYtStreamKey(null);
+    setYtRtmpUrl(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const scheduledStartTime = lessonForm.scheduled_at
+        ? new Date(lessonForm.scheduled_at).toISOString()
+        : new Date(Date.now() + 60 * 1000).toISOString();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar?action=create-youtube-broadcast`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title: lessonForm.title,
+            description: lessonForm.description || "",
+            scheduledStartTime,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        if (data.needsYouTubeAuth) {
+          toast.error("Reconecte o Google com permissão YouTube (Escritório Virtual → Google Calendar → Desconectar e reconectar)");
+        } else {
+          toast.error(data.error || "Erro ao criar transmissão");
+        }
+        return;
+      }
+      setLessonForm(f => ({ ...f, video_url: data.watchUrl }));
+      setYtStreamKey(data.streamKey);
+      setYtRtmpUrl(data.rtmpUrl);
+      toast.success("Transmissão criada! Copie a chave de stream para o OBS");
+    } catch (e) {
+      toast.error("Erro ao criar transmissão");
+    } finally {
+      setYtBroadcastLoading(false);
+    }
   };
 
   const trackMap = useMemo(() => new Map(tracks.map(t => [t.id, t.title])), [tracks]);
@@ -1364,20 +1414,60 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
               <div className="space-y-3 rounded-lg border border-white/10 bg-white/5 p-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-white/60 text-xs">Data</Label>
+                    <Label className="text-white/60 text-xs">Data da Aula</Label>
                     <Input type="date" value={lessonForm.lesson_date}
                       onChange={e => setLessonForm(f => ({ ...f, lesson_date: e.target.value }))}
                       className="bg-white/5 border-white/10 text-white text-sm" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-white/60 text-xs">Duração (min)</Label>
-                    <Input type="number" value={lessonForm.duration_minutes}
-                      onChange={e => setLessonForm(f => ({ ...f, duration_minutes: Number(e.target.value) }))}
-                      className="bg-white/5 border-white/10 text-white text-sm" min={0} />
+                    <Label className="text-white/60 text-xs">Horário de Início</Label>
+                    <Input type="datetime-local" value={lessonForm.scheduled_at}
+                      onChange={e => setLessonForm(f => ({ ...f, scheduled_at: e.target.value }))}
+                      className="bg-white/5 border-white/10 text-white text-sm" />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-white/60 text-xs">Link do Vídeo</Label>
+                  <Label className="text-white/60 text-xs">Duração (min)</Label>
+                  <Input type="number" value={lessonForm.duration_minutes}
+                    onChange={e => setLessonForm(f => ({ ...f, duration_minutes: Number(e.target.value) }))}
+                    className="bg-white/5 border-white/10 text-white text-sm" min={0} />
+                </div>
+                {/* Create broadcast button */}
+                <Button type="button" size="sm" variant="outline"
+                  className="w-full border-red-500/40 text-red-400 hover:bg-red-500/10 gap-2"
+                  disabled={ytBroadcastLoading}
+                  onClick={createYouTubeBroadcast}>
+                  {ytBroadcastLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Radio className="h-3.5 w-3.5" />}
+                  {ytBroadcastLoading ? "Criando transmissão..." : "Criar Transmissão no YouTube"}
+                </Button>
+                {/* Stream key display after creation */}
+                {ytStreamKey && (
+                  <div className="space-y-2 rounded border border-red-500/20 bg-red-500/5 p-3">
+                    <p className="text-xs text-red-400 font-medium">Transmissão criada! Cole no OBS:</p>
+                    <div className="space-y-1.5">
+                      <Label className="text-white/50 text-[11px]">URL do Servidor (RTMP)</Label>
+                      <div className="flex gap-2">
+                        <Input readOnly value={ytRtmpUrl || ""} className="bg-white/5 border-white/10 text-white/80 text-xs font-mono" />
+                        <button className="p-2 rounded text-white/40 hover:text-white/70 transition-colors shrink-0"
+                          onClick={() => { navigator.clipboard.writeText(ytRtmpUrl || ""); toast.success("URL copiada"); }}>
+                          <Copy className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-white/50 text-[11px]">Chave de Stream</Label>
+                      <div className="flex gap-2">
+                        <Input readOnly value={ytStreamKey} className="bg-white/5 border-white/10 text-white/80 text-xs font-mono" />
+                        <button className="p-2 rounded text-white/40 hover:text-white/70 transition-colors shrink-0"
+                          onClick={() => { navigator.clipboard.writeText(ytStreamKey); toast.success("Chave copiada"); }}>
+                          <Copy className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <Label className="text-white/60 text-xs">Link do Vídeo (preenchido automaticamente ou cole manualmente)</Label>
                   <Input value={lessonForm.video_url}
                     onChange={e => setLessonForm(f => ({ ...f, video_url: e.target.value }))}
                     className="bg-white/5 border-white/10 text-white text-sm"
