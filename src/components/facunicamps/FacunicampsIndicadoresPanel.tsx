@@ -1988,6 +1988,39 @@ export function FacunicampsIndicadoresPanel() {
       {/* ── HISTÓRICO VIEW ─────────────────────────────────────────────────────── */}
       {activeView === "historico" && (
         <div className="space-y-6">
+          {/* Date range filter */}
+          <div className="flex flex-wrap items-center gap-3 bg-white/5 rounded-xl px-4 py-3 border border-white/10">
+            <span className="text-xs text-white/50 font-medium shrink-0">Período:</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-white/40">De</span>
+                <input
+                  type="date"
+                  value={filterDateFrom}
+                  onChange={e => setFilterDateFrom(e.target.value)}
+                  className="h-7 text-xs rounded-lg px-2 bg-white/10 border border-white/15 text-white [color-scheme:dark]"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-white/40">Até</span>
+                <input
+                  type="date"
+                  value={filterDateTo}
+                  onChange={e => setFilterDateTo(e.target.value)}
+                  className="h-7 text-xs rounded-lg px-2 bg-white/10 border border-white/15 text-white [color-scheme:dark]"
+                />
+              </div>
+              {(filterDateFrom || filterDateTo) && (
+                <button
+                  onClick={() => { setFilterDateFrom(""); setFilterDateTo(""); }}
+                  className="text-xs text-white/40 hover:text-white/80 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors"
+                >
+                  Limpar
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* KPI cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
             <KpiCard title="Valor Matrícula Total" value={fmtBRL(histKpis.valorMatricula)} accentColor="#3b82f6" icon={DollarSign} />
