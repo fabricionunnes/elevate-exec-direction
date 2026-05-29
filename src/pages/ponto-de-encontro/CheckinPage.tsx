@@ -101,39 +101,17 @@ export default function CheckinPage() {
 
     setSubmitting(true);
 
-    // Check if already checked in today
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const { data: existing } = await supabase
-      .from("pe_checkin_log")
-      .select("id")
-      .eq("lesson_id", lesson.id)
-      .ilike("attendee_name", attendeeName.trim())
-      .gte("checked_in_at", todayStart.toISOString())
-      .maybeSingle();
-
-    if (existing) {
-      setSubmitting(false);
-      setError("Você já registrou presença nesta aula hoje.");
-      return;
-    }
-
-    const { error: insertError } = await supabase
-      .from("pe_checkin_log")
-      .insert({
-        lesson_id: lesson.id,
-        attendee_name: attendeeName.trim(),
-        company_name: selectedCompany?.name || companyQuery.trim(),
-      });
+    const { data: result, error: rpcError } = await supabase.rpc("register_checkin", {
+      p_lesson_id: lesson.id,
+      p_attendee_name: attendeeName.trim(),
+      p_company_name: selectedCompany?.name || companyQuery.trim(),
+    });
 
     setSubmitting(false);
-    if (insertError) {
-      // Unique constraint violation = already checked in
-      if (insertError.code === "23505") {
-        setError("Você já registrou presença nesta aula hoje.");
-      } else {
-        setError(`Erro: ${insertError.message} (${insertError.code})`);
-      }
+    if (rpcError) {
+      setError(`Erro ao registrar presença. Tente novamente.`);
+    } else if (result?.error === "duplicate") {
+      setError("Você já registrou presença nesta aula hoje.");
     } else {
       setDone(true);
     }
