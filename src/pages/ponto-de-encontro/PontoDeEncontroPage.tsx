@@ -848,6 +848,14 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
         ? format(new Date(entry.completed_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
         : format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
 
+      // Preload Dancing Script font so html2canvas captures it correctly
+      const fontLink = document.createElement("link");
+      fontLink.rel = "stylesheet";
+      fontLink.href = "https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Playfair+Display:wght@900&display=swap";
+      document.head.appendChild(fontLink);
+      await new Promise(r => setTimeout(r, 1200));
+      await document.fonts.load("700 40px 'Dancing Script'", entry.name);
+
       // Convert logo and signature to base64 for embedding
       const toBase64 = (url: string) => fetch(url).then(r => r.blob()).then(b => new Promise<string>((res, rej) => {
         const reader = new FileReader();
@@ -928,41 +936,22 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
           <!-- CERTIFICADO -->
           <div style="margin-top:10px;text-align:center;">
             <div style="font-family:'Playfair Display',Georgia,serif;font-size:74px;font-weight:900;color:#0D2B5E;letter-spacing:6px;line-height:1;">CERTIFICADO</div>
-            <!-- decorative rule -->
-            <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:4px;">
-              <div style="height:1.5px;width:60px;background:#CC1B1B;"></div>
-              <div style="font-size:11px;font-weight:700;letter-spacing:5px;color:#CC1B1B;">PARTICIPAÇÃO EM AULA AO VIVO</div>
-              <div style="height:1.5px;width:60px;background:#CC1B1B;"></div>
-            </div>
-            <div style="font-size:13px;font-weight:600;letter-spacing:1px;color:#0D2B5E;margin-top:5px;opacity:0.75;">"${lesson.title}"</div>
+            <div style="font-size:11px;font-weight:700;letter-spacing:4px;color:#0D2B5E;margin-top:6px;">PARTICIPAÇÃO EM AULA AO VIVO <span style="color:#CC1B1B;">*${lesson.title.toUpperCase()}*</span></div>
           </div>
 
           <!-- Concedido a -->
-          <div style="margin-top:18px;font-size:14px;color:#555;font-style:italic;letter-spacing:0.5px;">Este Certificado é concedido a:</div>
-
-          <!-- horizontal rule -->
-          <div style="display:flex;align-items:center;gap:10px;margin-top:6px;width:80%;">
-            <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#CC1B1B66);"></div>
-            <div style="width:6px;height:6px;background:#CC1B1B;transform:rotate(45deg);"></div>
-            <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#CC1B1B66);"></div>
-          </div>
+          <div style="margin-top:18px;font-size:15px;color:#444;font-style:italic;letter-spacing:0.5px;">Este Certificado é concedido a:</div>
 
           <!-- Name in script -->
-          <div style="font-family:'Dancing Script',Georgia,cursive;font-size:64px;font-weight:700;color:#0D2B5E;line-height:1.2;margin-top:2px;text-align:center;">
+          <div style="font-family:'Dancing Script',cursive;font-size:64px;font-weight:700;color:#0D2B5E;line-height:1.2;margin-top:4px;text-align:center;">
             ${entry.name}
-          </div>
-
-          <!-- horizontal rule -->
-          <div style="display:flex;align-items:center;gap:10px;margin-top:2px;width:80%;">
-            <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#CC1B1B66);"></div>
-            <div style="width:6px;height:6px;background:#CC1B1B;transform:rotate(45deg);"></div>
-            <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#CC1B1B66);"></div>
           </div>
 
           <!-- Description -->
           <p style="margin-top:12px;font-size:12.5px;color:#333;line-height:1.75;text-align:center;max-width:680px;">
             Como forma de reconhecimento pela participação na aula ao vivo, desenvolvida pela
-            <strong style="color:#0D2B5E;">Universidade Nacional de Vendas</strong>, o participante demonstrou
+            Universidade Nacional de Vendas, com foco no aprimoramento de competências em
+            <strong style="color:#0D2B5E;">${lesson.title}</strong>, o participante demonstrou
             comprometimento com sua evolução, participação ativa nas etapas propostas e dedicação à construção de resultados.
           </p>
 
@@ -999,6 +988,7 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
       });
 
       document.body.removeChild(container);
+      document.head.removeChild(fontLink);
 
       const imgData = canvas.toDataURL("image/jpeg", 0.95);
       const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
