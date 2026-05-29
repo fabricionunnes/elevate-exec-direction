@@ -57,6 +57,7 @@ import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistor
 import { ClientMeetingsView } from "@/components/client-portal/ClientMeetingsView";
 import { ClientAssessmentsView } from "@/components/client-portal/ClientAssessmentsView";
 import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel";
+import { FacunicampsIndicadoresPanel } from "@/components/facunicamps/FacunicampsIndicadoresPanel";
 import { ClientReferralsPanel } from "@/components/client-portal/ClientReferralsPanel";
 import { ClientHRView } from "@/components/client-portal/ClientHRView";
 import { ClientVirtualBoard } from "@/components/onboarding-tasks/ClientVirtualBoard";
@@ -124,7 +125,10 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing" | "paid_traffic" | "sales_funnel" | "instagram" | "commercial_director" | "other_services" | "crm_comercial" | "b2b_prospection" | "diagnostic" | "unv_office" | "sf_comissoes";
+type ViewType = "kpis" | "indicadores" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing" | "paid_traffic" | "sales_funnel" | "instagram" | "commercial_director" | "other_services" | "crm_comercial" | "b2b_prospection" | "diagnostic" | "unv_office" | "sf_comissoes";
+
+const FACUNICAMPS_ID = "1081cb78-bd6c-42b2-8a85-104ead3ecc18";
+const FACUNICAMPS_PROJECT_ID = "1152db5b-2053-45e4-a0ac-6e68a0beb852";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -137,6 +141,7 @@ const ClientOnboardingPage = () => {
   const [users, setUsers] = useState<OnboardingUser[]>([]);
   const [currentUser, setCurrentUser] = useState<OnboardingUser | null>(null);
   const [activeView, setActiveView] = useState<ViewType>("kpis");
+  const [projectCompanyId, setProjectCompanyId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<OnboardingTask | null>(null);
   const [showTaskDetail, setShowTaskDetail] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -253,6 +258,15 @@ const ClientOnboardingPage = () => {
         setCurrentUser(onboardingUser);
         setProject(onboardingUser.project);
         setCompany(onboardingUser.project?.onboarding_company);
+
+        // Track company ID for stable conditional rendering
+        const cid = onboardingUser.project?.onboarding_company_id;
+        if (cid) {
+          setProjectCompanyId(cid);
+          if (cid === FACUNICAMPS_ID || projectId === FACUNICAMPS_PROJECT_ID) {
+            setActiveView("indicadores");
+          }
+        }
 
         // Check billing block: either from DB flag or by checking overdue invoices > 5 days
         const companyData = onboardingUser.project?.onboarding_company;
@@ -502,7 +516,9 @@ const ClientOnboardingPage = () => {
   // IMPORTANT: this is a hook (useMemo) and must stay above any conditional return
   const menuStructure = useMemo(() => {
     const allMenus = [
-      { id: "kpis" as ViewType, icon: BarChart3, label: "KPIs", menuKey: CLIENT_MENU_KEYS.kpis },
+      (projectCompanyId === FACUNICAMPS_ID || projectId === FACUNICAMPS_PROJECT_ID)
+        ? { id: "indicadores" as ViewType, icon: BarChart3, label: "Indicadores" }
+        : { id: "kpis" as ViewType, icon: BarChart3, label: "KPIs", menuKey: CLIENT_MENU_KEYS.kpis },
       {
         id: "trilha-group",
         icon: Map,
@@ -565,7 +581,7 @@ const ClientOnboardingPage = () => {
         return item;
       })
       .filter(Boolean) as typeof allMenus;
-  }, [hasPermission]);
+  }, [hasPermission, projectCompanyId, projectId]);
 
   const hasViewAccess = useCallback(
     (view: ViewType) => {
@@ -957,6 +973,17 @@ const ClientOnboardingPage = () => {
       {/* Main content */}
       <main className="p-4 pb-0 max-w-7xl mx-auto">
         <AnimatePresence mode="wait">
+          {activeView === "indicadores" && (
+            <motion.div
+              key="indicadores"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <FacunicampsIndicadoresPanel />
+            </motion.div>
+          )}
+
           {activeView === "kpis" && hasViewAccess("kpis") && (
             <motion.div
               key="kpis"
@@ -964,8 +991,8 @@ const ClientOnboardingPage = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
             >
-              <KPIMetasPanel 
-                companyId={project.onboarding_company_id || ""} 
+              <KPIMetasPanel
+                companyId={project.onboarding_company_id || ""}
                 isAdmin={false}
                 projectId={projectId}
                 salespersonId={salespersonId}
