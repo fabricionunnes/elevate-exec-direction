@@ -286,7 +286,7 @@ Retorne APENAS um JSON válido no formato:
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5",
-        max_tokens: 8000,
+        max_tokens: 16000,
         system: systemPrompt,
         messages: [{
           role: 'user',
@@ -343,12 +343,18 @@ Retorne APENAS um JSON válido no formato:
 
     console.log('AI response received, parsing JSON...');
 
-    // Parse JSON from the response (handle markdown code blocks)
-    let jsonContent = content;
-    if (content.includes('```json')) {
-      jsonContent = content.split('```json')[1].split('```')[0].trim();
-    } else if (content.includes('```')) {
-      jsonContent = content.split('```')[1].split('```')[0].trim();
+    // Robust JSON extraction: strip markdown code blocks
+    let jsonContent = content.trim();
+    // Remove ```json ... ``` or ``` ... ```
+    const fenceMatch = jsonContent.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/);
+    if (fenceMatch) {
+      jsonContent = fenceMatch[1].trim();
+    }
+    // If still has ``` anywhere, try extracting between first { and last }
+    if (jsonContent.includes('```')) {
+      const first = jsonContent.indexOf('{');
+      const last = jsonContent.lastIndexOf('}');
+      if (first !== -1 && last !== -1) jsonContent = jsonContent.slice(first, last + 1);
     }
 
     let parsedTasks;
@@ -361,36 +367,41 @@ Retorne APENAS um JSON válido no formato:
       summary = parsedTasks.summary || '';
     } catch (parseError) {
       console.error('JSON parse error:', parseError, 'Attempting recovery...');
-      
-      // Try to recover partial JSON by extracting individual task objects
+
+      // Recovery: find the tasks array by locating first [ after "tasks":
       try {
-        // Find all task objects using regex
-        const taskRegex = /\{\s*"title"\s*:\s*"[^"]*"[^}]*"estimated_days"\s*:\s*\d+\s*\}/g;
-        const matches = jsonContent.match(taskRegex);
-        
-        if (matches && matches.length > 0) {
-          console.log(`Recovered ${matches.length} tasks from partial JSON`);
-          tasks = matches.map((match: string) => {
-            try {
-              return JSON.parse(match);
-            } catch {
-              return null;
+        const tasksIdx = jsonContent.indexOf('"tasks"');
+        if (tasksIdx !== -1) {
+          const arrStart = jsonContent.indexOf('[', tasksIdx);
+          if (arrStart !== -1) {
+            // Walk forward to find matching ]
+            let depth = 0;
+            let arrEnd = -1;
+            for (let i = arrStart; i < jsonContent.length; i++) {
+              if (jsonContent[i] === '[') depth++;
+              else if (jsonContent[i] === ']') { depth--; if (depth === 0) { arrEnd = i; break; } }
             }
-          }).filter((t: any) => t !== null);
+            const arrStr = arrEnd !== -1 ? jsonContent.slice(arrStart, arrEnd + 1) : jsonContent.slice(arrStart) + ']';
+            try {
+              tasks = JSON.parse(arrStr);
+            } catch {
+              // Last resort: find individual title fields
+              const titleMatches = [...jsonContent.matchAll(/"title"\s*:\s*"([^"]+)"/g)];
+              tasks = titleMatches.map(m => ({ title: m[1], description: '', phase: 'Geral', priority: 'medium', days_from_now: 30, estimated_hours: 2 }));
+            }
+          }
         }
-        
-        // Try to extract summary
+
+        // Extract summary
         const summaryMatch = jsonContent.match(/"summary"\s*:\s*"([^"]*)"/);
-        if (summaryMatch) {
-          summary = summaryMatch[1];
-        }
+        if (summaryMatch) summary = summaryMatch[1];
       } catch (recoveryError) {
         console.error('Recovery also failed:', recoveryError);
       }
-      
+
       if (tasks.length === 0) {
         console.error('Raw AI content that failed to parse:', content?.substring(0, 1000));
-        throw new Error(`Não foi possível extrair as ações do documento. Resposta da IA: ${content?.substring(0, 200) || 'vazia'}`);
+        throw new Error(`Não foi possível extrair as ações do documento. Tente novamente.`);
       }
     }
 
