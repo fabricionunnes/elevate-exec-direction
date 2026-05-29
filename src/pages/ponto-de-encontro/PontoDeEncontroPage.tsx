@@ -868,115 +868,122 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
       doc.setFillColor(255, 255, 255);
       doc.rect(0, 0, W, H, "F");
 
-      // ── 2. TOP-RIGHT: red large triangle ─────────────────────────────
-      // Points: (W,0) (W-90,0) (W,65) — closed polygon
-      doc.setFillColor(...RED);
-      doc.lines([[90,0],[0,65]], W-90, 0, [1,1], "F", true);
+      // Helper: filled polygon via SVG-like path rendered to canvas then to jsPDF
+      // We'll use a canvas element to draw the shapes precisely
+      const shapeCanvas = document.createElement("canvas");
+      shapeCanvas.width = 2480; shapeCanvas.height = 1754; // A4 landscape @ 300dpi
+      const ctx = shapeCanvas.getContext("2d")!;
+      const cW = shapeCanvas.width, cH = shapeCanvas.height;
 
-      // ── 3. TOP-RIGHT: small navy corner ──────────────────────────────
-      doc.setFillColor(...NAVY);
-      doc.lines([[36,0],[0,26]], W-36, 0, [1,1], "F", true);
+      // White background
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, cW, cH);
 
-      // ── 4. BOTTOM-LEFT: navy wave ─────────────────────────────────────
-      // Start (0,210), go to (0,135), wave up to (240,95), then (240,210)
-      doc.setFillColor(...NAVY);
-      doc.lines(
-        [[0,-75], [30,-20],[30,5],[30,-10],[40,8],[40,-18],[40,8],[30,-13],[0,115]],
-        0, 210, [1,1], "F", true
-      );
+      // Scale helpers: mm → px (297mm=2480px, 210mm=1754px)
+      const mmX = (mm: number) => (mm / 297) * cW;
+      const mmY = (mm: number) => (mm / 210) * cH;
 
-      // ── 5. BOTTOM-LEFT: red wave (smaller, on top) ───────────────────
-      doc.setFillColor(...RED);
-      doc.lines(
-        [[0,-58],[28,-22],[32,7],[30,-12],[38,9],[32,-18],[0,94]],
-        0, 210, [1,1], "F", true
-      );
+      // ── TOP-RIGHT: red triangle ──────────────────────────────────────
+      ctx.fillStyle = "#CC1B1B";
+      ctx.beginPath();
+      ctx.moveTo(cW, 0);
+      ctx.lineTo(mmX(297 - 95), 0);
+      ctx.lineTo(cW, mmY(68));
+      ctx.closePath(); ctx.fill();
 
-      // ── 6. Border: outer navy thick ──────────────────────────────────
-      doc.setDrawColor(...NAVY);
-      doc.setLineWidth(1.0);
-      doc.rect(9, 9, W-18, H-18, "S");
+      // ── TOP-RIGHT: navy small corner ─────────────────────────────────
+      ctx.fillStyle = "#0D2B5E";
+      ctx.beginPath();
+      ctx.moveTo(cW, 0);
+      ctx.lineTo(mmX(297 - 37), 0);
+      ctx.lineTo(cW, mmY(27));
+      ctx.closePath(); ctx.fill();
 
-      // ── 7. Border: inner red thin ─────────────────────────────────────
-      doc.setDrawColor(...RED);
-      doc.setLineWidth(0.25);
-      doc.rect(12.5, 12.5, W-25, H-25, "S");
+      // ── BOTTOM-LEFT: navy wave ───────────────────────────────────────
+      // Covers bottom ~38% of height (y >= 130mm), extends ~83% of width
+      ctx.fillStyle = "#0D2B5E";
+      ctx.beginPath();
+      ctx.moveTo(0, cH);
+      ctx.lineTo(0, mmY(133));
+      ctx.bezierCurveTo(mmX(40), mmY(118), mmX(85), mmY(128), mmX(115), mmY(135));
+      ctx.bezierCurveTo(mmX(155), mmY(144), mmX(185), mmY(122), mmX(220), mmY(128));
+      ctx.bezierCurveTo(mmX(255), mmY(134), mmX(275), mmY(152), mmX(255), mmY(165));
+      ctx.lineTo(mmX(255), cH);
+      ctx.closePath(); ctx.fill();
 
-      // ── 8. Corner ornaments (L-brackets navy + red) ───────────────────
-      const drawCorner = (x: number, y: number, dx: number, dy: number) => {
-        // Navy outer L
-        doc.setDrawColor(...NAVY); doc.setLineWidth(0.9);
-        doc.line(x, y + dy*18, x, y); doc.line(x, y, x + dx*18, y);
-        // Red inner L
-        doc.setDrawColor(...RED); doc.setLineWidth(0.3);
-        doc.line(x + dx*3.5, y + dy*18, x + dx*3.5, y + dy*3.5); doc.line(x + dx*3.5, y + dy*3.5, x + dx*18, y + dy*3.5);
-        // Red square dot
-        doc.setFillColor(...RED);
-        doc.rect(x + dx*1 - (dx>0?0:2), y + dy*1 - (dy>0?0:2), 2, 2, "F");
-      };
-      drawCorner(9, 9, 1, 1);       // top-left
-      drawCorner(W-9, 9, -1, 1);    // top-right
-      drawCorner(9, H-9, 1, -1);    // bottom-left
-      drawCorner(W-9, H-9, -1, -1); // bottom-right
+      // ── BOTTOM-LEFT: red wave (on top of navy) ───────────────────────
+      ctx.fillStyle = "#CC1B1B";
+      ctx.beginPath();
+      ctx.moveTo(0, cH);
+      ctx.lineTo(0, mmY(152));
+      ctx.bezierCurveTo(mmX(30), mmY(139), mmX(65), mmY(148), mmX(90), mmY(153));
+      ctx.bezierCurveTo(mmX(118), mmY(159), mmX(145), mmY(143), mmX(168), mmY(150));
+      ctx.bezierCurveTo(mmX(185), mmY(156), mmX(195), mmY(168), mmX(178), mmY(174));
+      ctx.lineTo(mmX(178), cH);
+      ctx.closePath(); ctx.fill();
 
-      // ── 9. UNV Logo ───────────────────────────────────────────────────
-      const logoH = 20, logoW = 26;
-      doc.addImage(logoB64, "PNG", W/2 - logoW/2, 13, logoW, logoH);
+      // ── BORDER: outer navy ───────────────────────────────────────────
+      ctx.strokeStyle = "#0D2B5E"; ctx.lineWidth = 10;
+      ctx.strokeRect(mmX(9), mmY(9), mmX(297-18), mmY(210-18));
 
-      // ── 10. CERTIFICADO ───────────────────────────────────────────────
+      // ── BORDER: inner red ────────────────────────────────────────────
+      ctx.strokeStyle = "#CC1B1B"; ctx.lineWidth = 3;
+      ctx.strokeRect(mmX(13), mmY(13), mmX(297-26), mmY(210-26));
+
+      // ── CORNER ORNAMENTS ─────────────────────────────────────────────
+      const corners = [
+        [mmX(9), mmY(9), 1, 1], [mmX(288), mmY(9), -1, 1],
+        [mmX(9), mmY(201), 1, -1], [mmX(288), mmY(201), -1, -1],
+      ] as [number, number, number, number][];
+      corners.forEach(([cx, cy, dx, dy]) => {
+        const L = mmX(18);
+        ctx.strokeStyle = "#0D2B5E"; ctx.lineWidth = 9;
+        ctx.beginPath(); ctx.moveTo(cx, cy + dy*L); ctx.lineTo(cx, cy); ctx.lineTo(cx + dx*L, cy); ctx.stroke();
+        ctx.strokeStyle = "#CC1B1B"; ctx.lineWidth = 3;
+        const off = mmX(3.5);
+        ctx.beginPath(); ctx.moveTo(cx+dx*off, cy+dy*(off+mmX(14.5))); ctx.lineTo(cx+dx*off, cy+dy*off); ctx.lineTo(cx+dx*(off+mmX(14.5)), cy+dy*off); ctx.stroke();
+        ctx.fillStyle = "#CC1B1B";
+        ctx.fillRect(cx+dx*mmX(0.5), cy+dy*mmY(0.5), mmX(2), mmY(2));
+      });
+
+      // Convert the shape canvas to image and embed in jsPDF
+      const shapeImg = shapeCanvas.toDataURL("image/png");
+      doc.addImage(shapeImg, "PNG", 0, 0, W, H);
+
+      // ── UNV Logo ──────────────────────────────────────────────────────
+      doc.addImage(logoB64, "PNG", W/2 - 13, 13, 26, 20);
+
+      // ── CERTIFICADO ───────────────────────────────────────────────────
       doc.setFont("helvetica", "bold");
       doc.setFontSize(44);
       doc.setTextColor(...NAVY);
       doc.text("CERTIFICADO", W/2, 50, { align: "center", charSpace: 2 });
 
-      // Subtitle line
-      doc.setFontSize(8.5);
-      doc.setFont("helvetica", "normal");
+      // Subtitle
+      doc.setFontSize(8.5); doc.setFont("helvetica", "normal");
       doc.setTextColor(...NAVY);
-      const sub = `PARTICIPAÇÃO EM AULA AO VIVO  *${lesson.title.toUpperCase()}*`;
-      doc.text(sub, W/2, 57, { align: "center", charSpace: 2 });
+      doc.text(`PARTICIPAÇÃO EM AULA AO VIVO  *${lesson.title.toUpperCase()}*`, W/2, 57, { align: "center", charSpace: 2 });
 
-      // Red decorative rule
+      // Red rule
       doc.setDrawColor(...RED); doc.setLineWidth(0.4);
       doc.line(W/2 - 55, 60, W/2 + 55, 60);
 
-      // ── 11. "Este Certificado é concedido a:" ─────────────────────────
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(10);
+      // ── "Este Certificado é concedido a:" ─────────────────────────────
+      doc.setFont("helvetica", "italic"); doc.setFontSize(10);
       doc.setTextColor(80, 80, 80);
       doc.text("Este Certificado é concedido a:", W/2, 73, { align: "center" });
 
-      // ── 12. NAME ──────────────────────────────────────────────────────
-      if (hasCursive) {
-        doc.setFont("DancingScript", "normal");
-        doc.setFontSize(38);
-      } else {
-        doc.setFont("helvetica", "bolditalic");
-        doc.setFontSize(32);
-      }
+      // ── NAME ──────────────────────────────────────────────────────────
+      doc.setFont("helvetica", "bolditalic"); doc.setFontSize(32);
       doc.setTextColor(...NAVY);
-      doc.text(entry.name, W/2, 93, { align: "center" });
+      doc.text(entry.name, W/2, 90, { align: "center" });
 
-      // ── 13. Description paragraph ─────────────────────────────────────
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
+      // ── Description paragraph ─────────────────────────────────────────
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
       doc.setTextColor(50, 50, 50);
       const paraFull = `Como forma de reconhecimento pela participação na aula ao vivo, desenvolvida pela Universidade Nacional de Vendas, com foco no aprimoramento de competências em ${lesson.title}, o participante demonstrou comprometimento com sua evolução, participação ativa nas etapas propostas e dedicação à construção de resultados.`;
-      const paraLines = doc.splitTextToSize(paraFull, 165);
-      doc.text(paraLines, W/2, 108, { align: "center" });
-
-      // Bold the lesson title inside paragraph
-      const titleStart = paraFull.indexOf(lesson.title);
-      if (titleStart !== -1) {
-        // Approximate bold overlay for lesson.title on first paragraph line
-        const beforeTitle = paraFull.slice(0, titleStart);
-        const firstLine = paraLines[0] as string;
-        if (firstLine.includes(lesson.title)) {
-          const bx = W/2 - doc.getTextWidth(firstLine)/2 + doc.getTextWidth(beforeTitle);
-          doc.setFont("helvetica", "bold");
-          doc.text(lesson.title, bx, 108);
-        }
-      }
+      const paraLines = doc.splitTextToSize(paraFull, 160);
+      doc.text(paraLines, W/2, 105, { align: "center" });
 
       // ── 14. Signature ─────────────────────────────────────────────────
       const sigY = 158;
