@@ -848,22 +848,29 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
         ? format(new Date(entry.completed_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
         : format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
 
-      // Preload Dancing Script font so html2canvas captures it correctly
-      const fontLink = document.createElement("link");
-      fontLink.rel = "stylesheet";
-      fontLink.href = "https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Playfair+Display:wght@900&display=swap";
-      document.head.appendChild(fontLink);
-      await new Promise(r => setTimeout(r, 1200));
-      await document.fonts.load("700 40px 'Dancing Script'", entry.name);
-
-      // Convert logo and signature to base64 for embedding
+      // Fetch fonts and images as base64 so html2canvas can embed them
       const toBase64 = (url: string) => fetch(url).then(r => r.blob()).then(b => new Promise<string>((res, rej) => {
         const reader = new FileReader();
         reader.onload = () => res(reader.result as string);
         reader.onerror = rej;
         reader.readAsDataURL(b);
       }));
-      const [logoB64, assinaturaB64] = await Promise.all([toBase64(logoUnv), toBase64(assinaturaFabricio)]);
+
+      // Fetch Dancing Script woff2 via Google Fonts CSS → extract URL → base64
+      const fetchFontBase64 = async (cssUrl: string): Promise<string> => {
+        try {
+          const css = await fetch(cssUrl, { headers: { "User-Agent": "Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Chrome/120" } }).then(r => r.text());
+          const match = css.match(/src:\s*url\(([^)]+\.woff2)\)/);
+          if (!match) return "";
+          return toBase64(match[1]);
+        } catch { return ""; }
+      };
+
+      const [logoB64, assinaturaB64, dancingScriptB64] = await Promise.all([
+        toBase64(logoUnv),
+        toBase64(assinaturaFabricio),
+        fetchFontBase64("https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap"),
+      ]);
 
       const container = document.createElement("div");
       container.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;width:1123px;height:794px;";
@@ -872,7 +879,7 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
 
       cert.innerHTML = `
         <style>
-          @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Playfair+Display:wght@400;700;900&display=swap');
+          ${dancingScriptB64 ? `@font-face { font-family: 'Dancing Script'; font-weight: 700; src: url('${dancingScriptB64}') format('woff2'); }` : ""}
         </style>
 
         <!-- ══ BACKGROUND LAYER ══ -->
@@ -988,7 +995,6 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
       });
 
       document.body.removeChild(container);
-      document.head.removeChild(fontLink);
 
       const imgData = canvas.toDataURL("image/jpeg", 0.95);
       const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
