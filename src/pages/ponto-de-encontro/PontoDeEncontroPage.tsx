@@ -864,90 +864,114 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
 
       cert.innerHTML = `
         <style>
-          @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');
+          @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Playfair+Display:wght@400;700;900&display=swap');
         </style>
 
-        <!-- TOP-RIGHT: red triangle block -->
-        <svg style="position:absolute;top:0;right:0;width:340px;height:220px;" viewBox="0 0 340 220" preserveAspectRatio="none">
-          <polygon points="340,0 0,0 340,220" fill="#CC1B1B"/>
+        <!-- ══ BACKGROUND LAYER ══ -->
+
+        <!-- TOP-RIGHT navy fill -->
+        <div style="position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 280px 180px 0;border-color:transparent #0D2B5E transparent transparent;"></div>
+        <!-- TOP-RIGHT red fill over navy -->
+        <div style="position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 340px 220px 0;border-color:transparent #CC1B1B transparent transparent;z-index:0;"></div>
+        <!-- TOP-RIGHT navy small corner on top of red -->
+        <div style="position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 110px 72px 0;border-color:transparent #0D2B5E transparent transparent;z-index:1;"></div>
+
+        <!-- BOTTOM-LEFT navy wave -->
+        <svg style="position:absolute;bottom:0;left:0;width:430px;height:270px;display:block;" viewBox="0 0 430 270" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0,270 L0,95 C70,15 170,55 250,85 C330,115 390,50 430,25 L430,270 Z" fill="#0D2B5E"/>
         </svg>
-        <!-- TOP-RIGHT: small navy corner accent -->
-        <svg style="position:absolute;top:0;right:0;width:120px;height:80px;" viewBox="0 0 120 80" preserveAspectRatio="none">
-          <polygon points="120,0 0,0 120,80" fill="#0D2B5E"/>
+        <!-- BOTTOM-LEFT red wave on top -->
+        <svg style="position:absolute;bottom:0;left:0;width:330px;height:185px;display:block;" viewBox="0 0 330 185" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0,185 L0,72 C55,8 135,42 200,68 C265,94 300,48 330,22 L330,185 Z" fill="#CC1B1B"/>
         </svg>
 
-        <!-- BOTTOM-LEFT: large navy wave -->
-        <svg style="position:absolute;bottom:0;left:0;width:420px;height:260px;" viewBox="0 0 420 260" preserveAspectRatio="none">
-          <path d="M0,260 L0,90 Q80,10 180,60 Q300,120 420,30 L420,260 Z" fill="#0D2B5E"/>
+        <!-- ══ WATERMARK: logo centered ══ -->
+        <img src="${logoB64}" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:420px;opacity:0.06;pointer-events:none;z-index:2;" />
+
+        <!-- ══ PREMIUM BORDER ══ -->
+        <!-- outer thick border -->
+        <div style="position:absolute;top:14px;left:14px;right:14px;bottom:14px;border:4px solid #0D2B5E;z-index:10;pointer-events:none;"></div>
+        <!-- inner thin red border -->
+        <div style="position:absolute;top:22px;left:22px;right:22px;bottom:22px;border:1.5px solid #CC1B1B;z-index:10;pointer-events:none;"></div>
+
+        <!-- corner ornaments — top-left -->
+        <svg style="position:absolute;top:8px;left:8px;width:70px;height:70px;z-index:12;" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg">
+          <polyline points="70,14 14,14 14,70" fill="none" stroke="#0D2B5E" stroke-width="4"/>
+          <polyline points="70,22 22,22 22,70" fill="none" stroke="#CC1B1B" stroke-width="1.5"/>
+          <rect x="10" y="10" width="8" height="8" fill="#CC1B1B"/>
         </svg>
-        <!-- BOTTOM-LEFT: red wave on top of navy -->
-        <svg style="position:absolute;bottom:0;left:0;width:320px;height:180px;" viewBox="0 0 320 180" preserveAspectRatio="none">
-          <path d="M0,180 L0,70 Q60,5 140,45 Q230,90 320,20 L320,180 Z" fill="#CC1B1B"/>
+        <!-- corner ornaments — top-right -->
+        <svg style="position:absolute;top:8px;right:8px;width:70px;height:70px;z-index:12;" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg">
+          <polyline points="0,14 56,14 56,70" fill="none" stroke="#0D2B5E" stroke-width="4"/>
+          <polyline points="0,22 48,22 48,70" fill="none" stroke="#CC1B1B" stroke-width="1.5"/>
+          <rect x="52" y="10" width="8" height="8" fill="#CC1B1B"/>
+        </svg>
+        <!-- corner ornaments — bottom-left -->
+        <svg style="position:absolute;bottom:8px;left:8px;width:70px;height:70px;z-index:12;" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg">
+          <polyline points="70,56 14,56 14,0" fill="none" stroke="#0D2B5E" stroke-width="4"/>
+          <polyline points="70,48 22,48 22,0" fill="none" stroke="#CC1B1B" stroke-width="1.5"/>
+          <rect x="10" y="52" width="8" height="8" fill="#CC1B1B"/>
+        </svg>
+        <!-- corner ornaments — bottom-right -->
+        <svg style="position:absolute;bottom:8px;right:8px;width:70px;height:70px;z-index:12;" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg">
+          <polyline points="0,56 56,56 56,0" fill="none" stroke="#0D2B5E" stroke-width="4"/>
+          <polyline points="0,48 48,48 48,0" fill="none" stroke="#CC1B1B" stroke-width="1.5"/>
+          <rect x="52" y="52" width="8" height="8" fill="#CC1B1B"/>
         </svg>
 
-        <!-- DECORATIVE BORDER: outer red frame -->
-        <div style="position:absolute;top:16px;left:16px;right:16px;bottom:16px;border:2.5px solid #CC1B1B;pointer-events:none;z-index:10;"></div>
-        <!-- corner ornaments -->
-        <!-- top-left corner -->
-        <svg style="position:absolute;top:10px;left:10px;width:48px;height:48px;z-index:11;" viewBox="0 0 48 48">
-          <polyline points="48,12 12,12 12,48" fill="none" stroke="#CC1B1B" stroke-width="3"/>
-          <polyline points="48,18 18,18 18,48" fill="none" stroke="#CC1B1B" stroke-width="1.5" opacity="0.5"/>
-        </svg>
-        <!-- top-right corner -->
-        <svg style="position:absolute;top:10px;right:10px;width:48px;height:48px;z-index:11;" viewBox="0 0 48 48">
-          <polyline points="0,12 36,12 36,48" fill="none" stroke="#CC1B1B" stroke-width="3"/>
-          <polyline points="0,18 30,18 30,48" fill="none" stroke="#CC1B1B" stroke-width="1.5" opacity="0.5"/>
-        </svg>
-        <!-- bottom-left corner -->
-        <svg style="position:absolute;bottom:10px;left:10px;width:48px;height:48px;z-index:11;" viewBox="0 0 48 48">
-          <polyline points="48,36 12,36 12,0" fill="none" stroke="#CC1B1B" stroke-width="3"/>
-          <polyline points="48,30 18,30 18,0" fill="none" stroke="#CC1B1B" stroke-width="1.5" opacity="0.5"/>
-        </svg>
-        <!-- bottom-right corner -->
-        <svg style="position:absolute;bottom:10px;right:10px;width:48px;height:48px;z-index:11;" viewBox="0 0 48 48">
-          <polyline points="0,36 36,36 36,0" fill="none" stroke="#CC1B1B" stroke-width="3"/>
-          <polyline points="0,30 30,30 30,0" fill="none" stroke="#CC1B1B" stroke-width="1.5" opacity="0.5"/>
-        </svg>
+        <!-- ══ CONTENT ══ -->
+        <div style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:15;display:flex;flex-direction:column;align-items:center;padding:28px 130px 0;">
 
-        <!-- UV watermark left -->
-        <div style="position:absolute;top:50%;left:60px;transform:translateY(-50%);font-size:200px;font-weight:900;color:#0D2B5E;opacity:0.05;letter-spacing:-8px;line-height:1;user-select:none;z-index:1;">UV</div>
-        <!-- UV watermark right -->
-        <div style="position:absolute;top:50%;right:60px;transform:translateY(-50%);font-size:200px;font-weight:900;color:#CC1B1B;opacity:0.05;letter-spacing:-8px;line-height:1;user-select:none;z-index:1;">UV</div>
-
-        <!-- CONTENT WRAPPER (z-index above watermarks) -->
-        <div style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:5;display:flex;flex-direction:column;align-items:center;padding:30px 120px 0;">
-
-          <!-- UNV Logo -->
-          <img src="${logoB64}" style="height:64px;object-fit:contain;margin-top:10px;" />
+          <!-- Logo -->
+          <img src="${logoB64}" style="height:62px;object-fit:contain;" />
 
           <!-- CERTIFICADO -->
-          <div style="margin-top:14px;text-align:center;">
-            <div style="font-size:72px;font-weight:900;color:#0D2B5E;letter-spacing:5px;line-height:1;">CERTIFICADO</div>
-            <div style="font-size:13px;font-weight:700;letter-spacing:4px;color:#0D2B5E;margin-top:2px;opacity:0.85;">PARTICIPAÇÃO EM AULA AO VIVO</div>
-            <div style="font-size:12px;font-weight:600;letter-spacing:1px;color:#CC1B1B;margin-top:4px;">"${lesson.title}"</div>
+          <div style="margin-top:10px;text-align:center;">
+            <div style="font-family:'Playfair Display',Georgia,serif;font-size:74px;font-weight:900;color:#0D2B5E;letter-spacing:6px;line-height:1;">CERTIFICADO</div>
+            <!-- decorative rule -->
+            <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:4px;">
+              <div style="height:1.5px;width:60px;background:#CC1B1B;"></div>
+              <div style="font-size:11px;font-weight:700;letter-spacing:5px;color:#CC1B1B;">PARTICIPAÇÃO EM AULA AO VIVO</div>
+              <div style="height:1.5px;width:60px;background:#CC1B1B;"></div>
+            </div>
+            <div style="font-size:13px;font-weight:600;letter-spacing:1px;color:#0D2B5E;margin-top:5px;opacity:0.75;">"${lesson.title}"</div>
           </div>
 
           <!-- Concedido a -->
-          <div style="margin-top:22px;font-size:15px;color:#444;font-style:italic;">Este Certificado é concedido a:</div>
+          <div style="margin-top:18px;font-size:14px;color:#555;font-style:italic;letter-spacing:0.5px;">Este Certificado é concedido a:</div>
 
-          <!-- Name -->
-          <div style="font-family:'Dancing Script',Georgia,cursive;font-size:66px;font-weight:700;color:#0D2B5E;line-height:1.15;margin-top:4px;text-align:center;">
+          <!-- horizontal rule -->
+          <div style="display:flex;align-items:center;gap:10px;margin-top:6px;width:80%;">
+            <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#CC1B1B66);"></div>
+            <div style="width:6px;height:6px;background:#CC1B1B;transform:rotate(45deg);"></div>
+            <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#CC1B1B66);"></div>
+          </div>
+
+          <!-- Name in script -->
+          <div style="font-family:'Dancing Script',Georgia,cursive;font-size:64px;font-weight:700;color:#0D2B5E;line-height:1.2;margin-top:2px;text-align:center;">
             ${entry.name}
           </div>
 
+          <!-- horizontal rule -->
+          <div style="display:flex;align-items:center;gap:10px;margin-top:2px;width:80%;">
+            <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#CC1B1B66);"></div>
+            <div style="width:6px;height:6px;background:#CC1B1B;transform:rotate(45deg);"></div>
+            <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#CC1B1B66);"></div>
+          </div>
+
           <!-- Description -->
-          <p style="margin-top:16px;font-size:13px;color:#333;line-height:1.75;text-align:center;max-width:720px;">
+          <p style="margin-top:12px;font-size:12.5px;color:#333;line-height:1.75;text-align:center;max-width:680px;">
             Como forma de reconhecimento pela participação na aula ao vivo, desenvolvida pela
-            <strong>Universidade Nacional de Vendas</strong>, o participante demonstrou comprometimento
-            com sua evolução, participação ativa nas etapas propostas e dedicação à construção de resultados.
+            <strong style="color:#0D2B5E;">Universidade Nacional de Vendas</strong>, o participante demonstrou
+            comprometimento com sua evolução, participação ativa nas etapas propostas e dedicação à construção de resultados.
           </p>
 
           <!-- Signature -->
-          <div style="margin-top:20px;display:flex;flex-direction:column;align-items:center;">
-            <img src="${assinaturaB64}" style="height:64px;object-fit:contain;" />
-            <div style="width:200px;border-top:1.5px solid #0D2B5E;margin-top:4px;"></div>
-            <div style="font-size:14px;font-weight:800;color:#0D2B5E;letter-spacing:1px;margin-top:5px;">Fabrício Nunnes</div>
-            <div style="font-size:10px;color:#888;margin-top:2px;">${dateStr}</div>
+          <div style="margin-top:14px;display:flex;flex-direction:column;align-items:center;">
+            <img src="${assinaturaB64}" style="height:56px;object-fit:contain;" />
+            <div style="width:180px;border-top:1.5px solid #0D2B5E;margin-top:3px;"></div>
+            <div style="font-size:13px;font-weight:800;color:#0D2B5E;letter-spacing:1px;margin-top:4px;">Fabrício Nunnes</div>
+            <div style="font-size:10px;color:#999;margin-top:1px;letter-spacing:0.5px;">${dateStr}</div>
           </div>
         </div>
       `;
