@@ -842,37 +842,128 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
   const issueCertificate = async (entry: typeof attendanceList[0], lesson: Lesson) => {
     setIssuingCertId(entry.log_id || entry.name);
     try {
-      const { default: jsPDF } = await import("jspdf");
+      const dateStr = entry.completed_at
+        ? format(new Date(entry.completed_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+        : format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+
+      // Build off-screen HTML template
+      const container = document.createElement("div");
+      container.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+      const cert = document.createElement("div");
+      cert.style.cssText = [
+        "width:1123px;height:794px;background:#fff;position:relative;overflow:hidden;",
+        "font-family:'Helvetica Neue',Arial,sans-serif;",
+      ].join("");
+
+      cert.innerHTML = `
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');
+          .cert-script { font-family:'Dancing Script',cursive; }
+        </style>
+
+        <!-- Navy wave bottom-left -->
+        <svg style="position:absolute;bottom:0;left:0;width:320px;height:200px" viewBox="0 0 320 200" preserveAspectRatio="none">
+          <path d="M0,200 L0,80 Q60,20 140,60 Q220,100 320,40 L320,200 Z" fill="#0D2B5E"/>
+        </svg>
+        <!-- Red wave bottom-left (over navy) -->
+        <svg style="position:absolute;bottom:0;left:0;width:260px;height:140px" viewBox="0 0 260 140" preserveAspectRatio="none">
+          <path d="M0,140 L0,60 Q50,10 120,40 Q190,70 260,20 L260,140 Z" fill="#CC1B1B" opacity="0.85"/>
+        </svg>
+
+        <!-- Red accent top-right -->
+        <svg style="position:absolute;top:0;right:0;width:280px;height:180px" viewBox="0 0 280 180" preserveAspectRatio="none">
+          <path d="M280,0 L280,180 L120,180 Q200,120 260,60 Z" fill="#CC1B1B" opacity="0.15"/>
+          <path d="M280,0 L140,0 L280,110 Z" fill="#CC1B1B"/>
+        </svg>
+        <!-- Navy accent top-right corner -->
+        <svg style="position:absolute;top:0;right:0;width:120px;height:100px" viewBox="0 0 120 100" preserveAspectRatio="none">
+          <path d="M120,0 L0,0 L120,100 Z" fill="#0D2B5E" opacity="0.35"/>
+        </svg>
+
+        <!-- Decorative border frame -->
+        <div style="position:absolute;top:18px;left:18px;right:18px;bottom:18px;border:2px solid #CC1B1B;border-radius:6px;pointer-events:none;"></div>
+        <div style="position:absolute;top:24px;left:24px;right:24px;bottom:24px;border:1px solid #0D2B5E;border-radius:4px;pointer-events:none;opacity:0.4;"></div>
+
+        <!-- Watermark UNV logo text -->
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:260px;font-weight:900;color:#0D2B5E;opacity:0.04;letter-spacing:-10px;line-height:1;user-select:none;">UV</div>
+
+        <!-- UNV Logo area -->
+        <div style="position:absolute;top:38px;left:50%;transform:translateX(-50%);text-align:center;">
+          <div style="font-size:11px;font-weight:900;letter-spacing:3px;color:#0D2B5E;line-height:1;">UNIVERSIDADE</div>
+          <div style="font-size:9px;letter-spacing:2px;color:#0D2B5E;opacity:0.7;line-height:1.2;">NACIONAL DE VENDAS</div>
+          <div style="font-size:28px;font-weight:900;color:#0D2B5E;letter-spacing:-1px;line-height:1;margin-top:2px;">U<span style="color:#CC1B1B;">V</span></div>
+        </div>
+
+        <!-- CERTIFICADO title -->
+        <div style="position:absolute;top:130px;width:100%;text-align:center;">
+          <div style="font-size:60px;font-weight:900;color:#0D2B5E;letter-spacing:4px;line-height:1;">CERTIFICADO</div>
+          <div style="font-size:14px;font-weight:700;letter-spacing:5px;color:#CC1B1B;margin-top:4px;">PARTICIPAÇÃO EM AULA AO VIVO</div>
+          <div style="font-size:13px;font-weight:600;letter-spacing:2px;color:#0D2B5E;margin-top:2px;opacity:0.8;">"${lesson.title}"</div>
+        </div>
+
+        <!-- Concedido a -->
+        <div style="position:absolute;top:270px;width:100%;text-align:center;">
+          <div style="font-size:15px;color:#555;font-style:italic;letter-spacing:1px;">Este Certificado é concedido a:</div>
+        </div>
+
+        <!-- Name in script -->
+        <div style="position:absolute;top:298px;width:100%;text-align:center;">
+          <div class="cert-script" style="font-family:'Dancing Script',Georgia,cursive;font-size:62px;font-weight:700;color:#0D2B5E;line-height:1.1;">
+            ${entry.name}
+          </div>
+        </div>
+
+        <!-- Description paragraph -->
+        <div style="position:absolute;top:400px;left:140px;right:140px;text-align:center;">
+          <p style="font-size:13px;color:#333;line-height:1.7;margin:0;">
+            Como forma de reconhecimento pela participação na aula ao vivo, desenvolvida pela
+            <strong>Universidade Nacional de Vendas</strong>, o participante demonstrou comprometimento
+            com sua evolução e dedicação à construção de resultados.
+          </p>
+        </div>
+
+        <!-- Signature block -->
+        <div style="position:absolute;bottom:80px;left:50%;transform:translateX(-50%);text-align:center;min-width:200px;">
+          <div style="font-size:32px;font-family:Georgia,serif;font-style:italic;color:#0D2B5E;border-bottom:1.5px solid #0D2B5E;padding-bottom:4px;margin-bottom:6px;">
+            Fabrício Nunnes
+          </div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#0D2B5E;">FABRÍCIO NUNNES</div>
+          <div style="font-size:10px;color:#888;letter-spacing:1px;margin-top:2px;">${dateStr}</div>
+        </div>
+      `;
+
+      container.appendChild(cert);
+      document.body.appendChild(container);
+
+      // Wait for fonts to load
+      await document.fonts.ready;
+      await new Promise(r => setTimeout(r, 600));
+
+      const [{ default: jsPDF }, html2canvas] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas"),
+      ]);
+
+      const canvas = await (html2canvas as any).default(cert, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
+
+      document.body.removeChild(container);
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
       const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-      const W = 297, H = 210;
-      doc.setFillColor(6, 13, 31);
-      doc.rect(0, 0, W, H, "F");
-      doc.setFillColor(124, 58, 237);
-      doc.rect(0, 0, W, 3, "F");
-      doc.rect(0, H - 3, W, 3, "F");
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(11); doc.setFont("helvetica", "normal");
-      doc.text("CERTIFICADO DE PARTICIPAÇÃO", W / 2, 45, { align: "center" });
-      doc.setFontSize(9); doc.setTextColor(180, 150, 255);
-      doc.text("Este certificado atesta a participação de", W / 2, 65, { align: "center" });
-      doc.setFontSize(26); doc.setFont("helvetica", "bold"); doc.setTextColor(255, 255, 255);
-      doc.text(entry.name, W / 2, 90, { align: "center" });
-      if (entry.company) {
-        doc.setFontSize(12); doc.setFont("helvetica", "normal"); doc.setTextColor(200, 200, 220);
-        doc.text(entry.company, W / 2, 102, { align: "center" });
-      }
-      doc.setFontSize(9); doc.setTextColor(180, 150, 255);
-      doc.text("na aula ao vivo", W / 2, 118, { align: "center" });
-      doc.setFontSize(16); doc.setFont("helvetica", "bold"); doc.setTextColor(255, 255, 255);
-      doc.text(`"${lesson.title}"`, W / 2, 130, { align: "center" });
-      const dateStr = entry.completed_at ? format(new Date(entry.completed_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
-      doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(120, 120, 140);
-      doc.text(dateStr, W / 2, 150, { align: "center" });
+      doc.addImage(imgData, "JPEG", 0, 0, 297, 210);
       doc.save(`certificado-${entry.name.replace(/\s+/g, "-").toLowerCase()}.pdf`);
+
       if (entry.log_id) {
         await supabase.from("pe_checkin_log").update({ certificate_url: "issued" }).eq("id", entry.log_id);
       }
     } catch (e) {
+      console.error(e);
       toast.error("Erro ao gerar certificado");
     } finally {
       setIssuingCertId(null);
