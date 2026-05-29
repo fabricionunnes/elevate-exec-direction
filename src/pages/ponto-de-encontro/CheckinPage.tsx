@@ -132,7 +132,7 @@ export default function CheckinPage() {
       if (insertError.code === "23505") {
         setError("Você já registrou presença nesta aula hoje.");
       } else {
-        setError("Erro ao registrar presença. Tente novamente.");
+        setError(`Erro: ${insertError.message} (${insertError.code})`);
       }
     } else {
       setDone(true);
