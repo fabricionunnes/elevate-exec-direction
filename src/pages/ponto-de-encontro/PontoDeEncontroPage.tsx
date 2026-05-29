@@ -863,12 +863,19 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
       doc.addImage(templateB64, "PNG", 0, 0, W, H);
 
       // ── Subtitle: lesson title (blanked area: y=182–226pt → 64.2–79.7mm)
-      // Two lines, spaced letters like original
+      // charSpace shifts the rendered center — compensate manually
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(...NAVY);
-      doc.text("PARTICIPAÇÃO EM AULA AO VIVO", W / 2, pt(193), { align: "center", charSpace: 2.5 });
-      doc.text(`*${lesson.title.toUpperCase()}*`, W / 2, pt(211), { align: "center", charSpace: 2.5 });
+      const cs = 2.5;
+      const line1 = "PARTICIPAÇÃO EM AULA AO VIVO";
+      const line2 = `*${lesson.title.toUpperCase()}*`;
+      const centerText = (text: string, y: number) => {
+        const w = doc.getTextWidth(text) + (text.length - 1) * cs;
+        doc.text(text, W / 2 - w / 2, y, { charSpace: cs });
+      };
+      centerText(line1, pt(193));
+      centerText(line2, pt(211));
 
       // ── Name (blanked area: y=252–352pt → 88.9–124.1mm, center y≈106mm)
       // Use large bold italic — closest to cursive without custom font
