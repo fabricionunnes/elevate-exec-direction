@@ -853,24 +853,7 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
         const reader = new FileReader(); reader.onload = () => res(reader.result as string); reader.onerror = rej; reader.readAsDataURL(b);
       }));
 
-      // Fetch Dancing Script TTF from Google Fonts (old UA → serves TTF)
-      const fetchDancingScript = async () => {
-        try {
-          const css = await fetch(
-            "https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700",
-            { headers: { "User-Agent": "Mozilla/4.0 (compatible; MSIE 6.0)" } }
-          ).then(r => r.text());
-          const match = css.match(/url\(([^)]+)\)/);
-          if (!match) return null;
-          const fontResp = await fetch(match[1]);
-          const fontBuf = await fontResp.arrayBuffer();
-          return fontBuf;
-        } catch { return null; }
-      };
-
-      const [logoB64, assinaturaB64, dancingBuf] = await Promise.all([
-        toB64(logoUnv), toB64(assinaturaFabricio), fetchDancingScript(),
-      ]);
+      const [logoB64, assinaturaB64] = await Promise.all([toB64(logoUnv), toB64(assinaturaFabricio)]);
 
       // ── jsPDF drawing ──────────────────────────────────────────────────
       const { default: jsPDF } = await import("jspdf");
@@ -879,22 +862,7 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
       const NAVY = [13, 43, 94] as const;
       const RED  = [204, 27, 27] as const;
 
-      // Register Dancing Script if available
-      let hasCursive = false;
-      if (dancingBuf) {
-        try {
-          // btoa chunk-by-chunk to avoid stack overflow on large buffers
-          const bytes = new Uint8Array(dancingBuf);
-          let b64str = "";
-          const chunk = 8192;
-          for (let i = 0; i < bytes.length; i += chunk) {
-            b64str += btoa(String.fromCharCode(...bytes.slice(i, i + chunk)));
-          }
-          doc.addFileToVFS("DancingScript-Bold.ttf", b64str);
-          doc.addFont("DancingScript-Bold.ttf", "DancingScript", "normal");
-          hasCursive = true;
-        } catch { hasCursive = false; }
-      }
+      const hasCursive = false;
 
       // ── 1. White background ───────────────────────────────────────────
       doc.setFillColor(255, 255, 255);
@@ -1031,9 +999,9 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
       if (entry.log_id) {
         await supabase.from("pe_checkin_log").update({ certificate_url: "issued" }).eq("id", entry.log_id);
       }
-    } catch (e) {
-      console.error(e);
-      toast.error("Erro ao gerar certificado");
+    } catch (e: any) {
+      console.error("Erro certificado:", e?.message || e);
+      toast.error(`Erro ao gerar certificado: ${e?.message || "desconhecido"}`);
     } finally {
       setIssuingCertId(null);
     }
