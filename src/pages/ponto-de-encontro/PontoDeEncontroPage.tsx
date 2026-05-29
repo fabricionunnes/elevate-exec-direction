@@ -22,8 +22,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import logoUnv from "@/assets/logo-unv.png";
-import assinaturaFabricio from "@/assets/assinatura-fabricio.png";
+import certTemplate from "@/assets/cert-template.png";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type UserRole = "aluno" | "consultant" | "cs" | "admin" | "master"
@@ -844,162 +843,47 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
   const issueCertificate = async (entry: typeof attendanceList[0], lesson: Lesson) => {
     setIssuingCertId(entry.log_id || entry.name);
     try {
-      const dateStr = entry.completed_at
-        ? format(new Date(entry.completed_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
-        : format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
-
-      // Load assets as base64
+      // Load template + assets as base64
       const toB64 = (url: string) => fetch(url).then(r => r.blob()).then(b => new Promise<string>((res, rej) => {
         const reader = new FileReader(); reader.onload = () => res(reader.result as string); reader.onerror = rej; reader.readAsDataURL(b);
       }));
+      const templateB64 = await toB64(certTemplate);
 
-      const [logoB64, assinaturaB64] = await Promise.all([toB64(logoUnv), toB64(assinaturaFabricio)]);
+      // ── jsPDF: template as background + text overlay ───────────────────
+      // Original PDF: 842.25 × 595.5 pt → A4 landscape 297 × 210 mm
+      // Scale: 1pt = 0.3527mm
+      const pt = (v: number) => v * 0.3527; // pt → mm
 
-      // ── jsPDF drawing ──────────────────────────────────────────────────
       const { default: jsPDF } = await import("jspdf");
       const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
       const W = 297, H = 210;
       const NAVY = [13, 43, 94] as const;
-      const RED  = [204, 27, 27] as const;
 
-      const hasCursive = false;
+      // Full-page template background (identical to model)
+      doc.addImage(templateB64, "PNG", 0, 0, W, H);
 
-      // ── 1. White background ───────────────────────────────────────────
-      doc.setFillColor(255, 255, 255);
-      doc.rect(0, 0, W, H, "F");
-
-      // Helper: filled polygon via SVG-like path rendered to canvas then to jsPDF
-      // We'll use a canvas element to draw the shapes precisely
-      const shapeCanvas = document.createElement("canvas");
-      shapeCanvas.width = 2480; shapeCanvas.height = 1754; // A4 landscape @ 300dpi
-      const ctx = shapeCanvas.getContext("2d")!;
-      const cW = shapeCanvas.width, cH = shapeCanvas.height;
-
-      // White background
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, cW, cH);
-
-      // Scale helpers: mm → px (297mm=2480px, 210mm=1754px)
-      const mmX = (mm: number) => (mm / 297) * cW;
-      const mmY = (mm: number) => (mm / 210) * cH;
-
-      // ── TOP-RIGHT: red triangle ──────────────────────────────────────
-      ctx.fillStyle = "#CC1B1B";
-      ctx.beginPath();
-      ctx.moveTo(cW, 0);
-      ctx.lineTo(mmX(297 - 95), 0);
-      ctx.lineTo(cW, mmY(68));
-      ctx.closePath(); ctx.fill();
-
-      // ── TOP-RIGHT: navy small corner ─────────────────────────────────
-      ctx.fillStyle = "#0D2B5E";
-      ctx.beginPath();
-      ctx.moveTo(cW, 0);
-      ctx.lineTo(mmX(297 - 37), 0);
-      ctx.lineTo(cW, mmY(27));
-      ctx.closePath(); ctx.fill();
-
-      // ── BOTTOM-LEFT: navy wave ───────────────────────────────────────
-      // Covers bottom ~38% of height (y >= 130mm), extends ~83% of width
-      ctx.fillStyle = "#0D2B5E";
-      ctx.beginPath();
-      ctx.moveTo(0, cH);
-      ctx.lineTo(0, mmY(133));
-      ctx.bezierCurveTo(mmX(40), mmY(118), mmX(85), mmY(128), mmX(115), mmY(135));
-      ctx.bezierCurveTo(mmX(155), mmY(144), mmX(185), mmY(122), mmX(220), mmY(128));
-      ctx.bezierCurveTo(mmX(255), mmY(134), mmX(275), mmY(152), mmX(255), mmY(165));
-      ctx.lineTo(mmX(255), cH);
-      ctx.closePath(); ctx.fill();
-
-      // ── BOTTOM-LEFT: red wave (on top of navy) ───────────────────────
-      ctx.fillStyle = "#CC1B1B";
-      ctx.beginPath();
-      ctx.moveTo(0, cH);
-      ctx.lineTo(0, mmY(152));
-      ctx.bezierCurveTo(mmX(30), mmY(139), mmX(65), mmY(148), mmX(90), mmY(153));
-      ctx.bezierCurveTo(mmX(118), mmY(159), mmX(145), mmY(143), mmX(168), mmY(150));
-      ctx.bezierCurveTo(mmX(185), mmY(156), mmX(195), mmY(168), mmX(178), mmY(174));
-      ctx.lineTo(mmX(178), cH);
-      ctx.closePath(); ctx.fill();
-
-      // ── BORDER: outer navy ───────────────────────────────────────────
-      ctx.strokeStyle = "#0D2B5E"; ctx.lineWidth = 10;
-      ctx.strokeRect(mmX(9), mmY(9), mmX(297-18), mmY(210-18));
-
-      // ── BORDER: inner red ────────────────────────────────────────────
-      ctx.strokeStyle = "#CC1B1B"; ctx.lineWidth = 3;
-      ctx.strokeRect(mmX(13), mmY(13), mmX(297-26), mmY(210-26));
-
-      // ── CORNER ORNAMENTS ─────────────────────────────────────────────
-      const corners = [
-        [mmX(9), mmY(9), 1, 1], [mmX(288), mmY(9), -1, 1],
-        [mmX(9), mmY(201), 1, -1], [mmX(288), mmY(201), -1, -1],
-      ] as [number, number, number, number][];
-      corners.forEach(([cx, cy, dx, dy]) => {
-        const L = mmX(18);
-        ctx.strokeStyle = "#0D2B5E"; ctx.lineWidth = 9;
-        ctx.beginPath(); ctx.moveTo(cx, cy + dy*L); ctx.lineTo(cx, cy); ctx.lineTo(cx + dx*L, cy); ctx.stroke();
-        ctx.strokeStyle = "#CC1B1B"; ctx.lineWidth = 3;
-        const off = mmX(3.5);
-        ctx.beginPath(); ctx.moveTo(cx+dx*off, cy+dy*(off+mmX(14.5))); ctx.lineTo(cx+dx*off, cy+dy*off); ctx.lineTo(cx+dx*(off+mmX(14.5)), cy+dy*off); ctx.stroke();
-        ctx.fillStyle = "#CC1B1B";
-        ctx.fillRect(cx+dx*mmX(0.5), cy+dy*mmY(0.5), mmX(2), mmY(2));
-      });
-
-      // Convert the shape canvas to image and embed in jsPDF
-      const shapeImg = shapeCanvas.toDataURL("image/png");
-      doc.addImage(shapeImg, "PNG", 0, 0, W, H);
-
-      // ── UNV Logo ──────────────────────────────────────────────────────
-      doc.addImage(logoB64, "PNG", W/2 - 13, 13, 26, 20);
-
-      // ── CERTIFICADO ───────────────────────────────────────────────────
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(44);
-      doc.setTextColor(...NAVY);
-      doc.text("CERTIFICADO", W/2, 50, { align: "center", charSpace: 2 });
-
-      // Subtitle
-      doc.setFontSize(8.5); doc.setFont("helvetica", "normal");
-      doc.setTextColor(...NAVY);
-      doc.text(`PARTICIPAÇÃO EM AULA AO VIVO  *${lesson.title.toUpperCase()}*`, W/2, 57, { align: "center", charSpace: 2 });
-
-      // Red rule
-      doc.setDrawColor(...RED); doc.setLineWidth(0.4);
-      doc.line(W/2 - 55, 60, W/2 + 55, 60);
-
-      // ── "Este Certificado é concedido a:" ─────────────────────────────
-      doc.setFont("helvetica", "italic"); doc.setFontSize(10);
-      doc.setTextColor(80, 80, 80);
-      doc.text("Este Certificado é concedido a:", W/2, 73, { align: "center" });
-
-      // ── NAME ──────────────────────────────────────────────────────────
-      doc.setFont("helvetica", "bolditalic"); doc.setFontSize(32);
-      doc.setTextColor(...NAVY);
-      doc.text(entry.name, W/2, 90, { align: "center" });
-
-      // ── Description paragraph ─────────────────────────────────────────
-      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-      doc.setTextColor(50, 50, 50);
-      const paraFull = `Como forma de reconhecimento pela participação na aula ao vivo, desenvolvida pela Universidade Nacional de Vendas, com foco no aprimoramento de competências em ${lesson.title}, o participante demonstrou comprometimento com sua evolução, participação ativa nas etapas propostas e dedicação à construção de resultados.`;
-      const paraLines = doc.splitTextToSize(paraFull, 160);
-      doc.text(paraLines, W/2, 105, { align: "center" });
-
-      // ── 14. Signature ─────────────────────────────────────────────────
-      const sigY = 158;
-      doc.addImage(assinaturaB64, "PNG", W/2 - 20, sigY - 20, 40, 18);
-      doc.setDrawColor(...NAVY); doc.setLineWidth(0.4);
-      doc.line(W/2 - 35, sigY, W/2 + 35, sigY);
-
+      // ── Subtitle: lesson title (blanked area: y=182–226pt → 64.2–79.7mm)
+      // Two lines, spaced letters like original
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(...NAVY);
-      doc.text("Fabrício Nunnes", W/2, sigY + 7, { align: "center" });
+      doc.text("PARTICIPAÇÃO EM AULA AO VIVO", W / 2, pt(193), { align: "center", charSpace: 2.5 });
+      doc.text(`*${lesson.title.toUpperCase()}*`, W / 2, pt(211), { align: "center", charSpace: 2.5 });
 
+      // ── Name (blanked area: y=252–352pt → 88.9–124.1mm, center y≈106mm)
+      // Use large bold italic — closest to cursive without custom font
+      doc.setFont("helvetica", "bolditalic");
+      doc.setFontSize(38);
+      doc.setTextColor(...NAVY);
+      doc.text(entry.name, W / 2, pt(312), { align: "center" });
+
+      // ── Paragraph (blanked area: y=346–438pt → 122.1–154.5mm)
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(140, 140, 140);
-      doc.text(dateStr, W/2, sigY + 13, { align: "center" });
+      doc.setFontSize(9.5);
+      doc.setTextColor(40, 40, 40);
+      const para = `Como forma de reconhecimento pela conclusão do conteúdo, desenvolvido pela Universidade Nacional de Vendas, com foco no aprimoramento de competências em ${lesson.title}, o participante demonstrou comprometimento com sua evolução, participação ativa nas etapas propostas e dedicação à construção de resultados.`;
+      const paraLines = doc.splitTextToSize(para, pt(620));
+      doc.text(paraLines, W / 2, pt(368), { align: "center" });
 
       doc.save(`certificado-${entry.name.replace(/\s+/g, "-").toLowerCase()}.pdf`);
 
