@@ -1092,11 +1092,8 @@ export function FacunicampsIndicadoresPanel() {
     return rows;
   }, [matriculas, filterModalidade, filterVendedorAtivo, filterFormaIngresso, filterVendedorDesligado, filterDateFrom, filterDateTo]);
 
-  // Active sales only (no CANCELADO/TRANSFERIDO)
-  const activeSales = useMemo(
-    () => showCancelled ? filteredAll : filteredAll.filter((m) => !isCancelled(m)),
-    [filteredAll, showCancelled]
-  );
+  // All filtered sales — cancelados SEMPRE incluídos nas métricas
+  const activeSales = useMemo(() => filteredAll, [filteredAll]);
 
   // ── Current month data ────────────────────────────────────────────────────
 
@@ -1655,15 +1652,9 @@ export function FacunicampsIndicadoresPanel() {
               />
             </div>
           </div>
-          {/* Show cancelled toggle */}
+          {/* Cancelled info — always included */}
           <div className="flex items-center gap-2 pt-1 border-t border-border">
-            <button
-              onClick={() => setShowCancelled(v => !v)}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${showCancelled ? "bg-amber-500" : "bg-muted"}`}
-            >
-              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${showCancelled ? "translate-x-4" : "translate-x-1"}`} />
-            </button>
-            <span className="text-xs text-muted-foreground">Incluir Cancelados{showCancelled ? " (ativo)" : ""}</span>
+            <span className="text-xs text-amber-400/70">⚠ Cancelados e transferidos são sempre contabilizados nas métricas.</span>
           </div>
           <div className="flex justify-between items-center">
             <Button size="sm" variant="ghost" className="text-xs" onClick={() => {
@@ -1685,7 +1676,7 @@ export function FacunicampsIndicadoresPanel() {
       )}
 
       {/* Active filters badges */}
-      {(filterModalidade.length > 0 || filterVendedorAtivo.length > 0 || filterFormaIngresso.length > 0 || filterVendedorDesligado.length > 0 || filterDateFrom || filterDateTo || showCancelled) && (
+      {(filterModalidade.length > 0 || filterVendedorAtivo.length > 0 || filterFormaIngresso.length > 0 || filterVendedorDesligado.length > 0 || filterDateFrom || filterDateTo) && (
         <div className="flex flex-wrap gap-2">
           {filterModalidade.map((v) => (
             <Badge key={v} variant="secondary" className="cursor-pointer" onClick={() => setFilterModalidade(filterModalidade.filter(x => x !== v))}>
@@ -1715,11 +1706,6 @@ export function FacunicampsIndicadoresPanel() {
           {filterDateTo && (
             <Badge variant="outline" className="cursor-pointer" onClick={() => setFilterDateTo("")}>
               Até: {format(parseISO(filterDateTo), "dd/MM/yyyy")} ×
-            </Badge>
-          )}
-          {showCancelled && (
-            <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 cursor-pointer" onClick={() => setShowCancelled(false)}>
-              + Cancelados ×
             </Badge>
           )}
         </div>
