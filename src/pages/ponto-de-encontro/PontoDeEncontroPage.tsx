@@ -16,7 +16,7 @@ import {
   LogOut, Settings, Users, BarChart3, Eye, EyeOff, Trash2, KeyRound,
   Edit3, ChevronRight, CheckCircle2, Lock, Clock, Star,
   GraduationCap, ArrowLeft, Video, List, Building2, X,
-  Mail, Calendar, Loader2, Link2, Copy, Radio, StopCircle,
+  Mail, Calendar, Loader2, Link2, Copy, Radio, StopCircle, Pencil, Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -658,6 +658,8 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
     company?: string; log_id?: string;
   }[]>([]);
   const [issuingCertId, setIssuingCertId] = useState<string | null>(null);
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
   const [ytBroadcastLoading, setYtBroadcastLoading] = useState(false);
   const [ytStreamKey, setYtStreamKey] = useState<string | null>(null);
   const [ytRtmpUrl, setYtRtmpUrl] = useState<string | null>(null);
@@ -825,6 +827,16 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
       log_id: r.id,
     }));
     setAttendanceList([...systemEntries, ...publicEntries]);
+  };
+
+  const saveEditName = async (logId: string) => {
+    const trimmed = editingName.trim();
+    if (!trimmed) return;
+    const { error } = await supabase.from("pe_checkin_log").update({ attendee_name: trimmed }).eq("id", logId);
+    if (error) { toast.error("Erro ao salvar nome."); return; }
+    setAttendanceList(prev => prev.map(a => a.log_id === logId ? { ...a, name: trimmed } : a));
+    setEditingLogId(null);
+    toast.success("Nome atualizado!");
   };
 
   const issueCertificate = async (entry: typeof attendanceList[0], lesson: Lesson) => {
@@ -1218,74 +1230,120 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
       </Tabs>
 
       {/* Attendance Dialog */}
-      <Dialog open={!!attendanceLesson} onOpenChange={v => !v && setAttendanceLesson(null)}>
-        <DialogContent className="bg-[#0f1629] border-white/10 text-white max-w-lg">
+      <Dialog open={!!attendanceLesson} onOpenChange={v => { if (!v) { setAttendanceLesson(null); setEditingLogId(null); } }}>
+        <DialogContent className="bg-[#0c1225] border-white/10 text-white max-w-xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-violet-400" /> Presenças — {attendanceLesson?.title}
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <div className="p-1.5 rounded-lg bg-violet-500/20">
+                <Users className="h-4 w-4 text-violet-400" />
+              </div>
+              <div>
+                <p className="text-white font-semibold">{attendanceLesson?.title}</p>
+                <p className="text-[11px] text-white/40 font-normal">Lista de presenças</p>
+              </div>
+              {attendanceList.length > 0 && (
+                <span className="ml-auto text-xs px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 font-medium">
+                  {attendanceList.length} presente{attendanceList.length !== 1 ? "s" : ""}
+                </span>
+              )}
             </DialogTitle>
           </DialogHeader>
-          {/* Check-in public link */}
+
+          {/* Link de check-in */}
           {attendanceLesson && (
-            <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2.5 flex items-center gap-2">
+            <button onClick={() => {
+              const url = `${window.location.origin}${window.location.pathname.split("#")[0]}#/checkin/${attendanceLesson.id}${attendanceLesson.checkin_code ? `?code=${attendanceLesson.checkin_code}` : ""}`;
+              navigator.clipboard.writeText(url);
+              toast.success("Link copiado!");
+            }} className="w-full rounded-lg border border-violet-500/20 bg-violet-500/5 hover:bg-violet-500/10 px-3 py-2.5 flex items-center gap-2 transition-colors group">
               <Link2 className="h-3.5 w-3.5 text-violet-400 shrink-0" />
-              <span className="text-xs text-white/60 flex-1 truncate">
-                Link de check-in: <span className="text-violet-300 font-mono">/checkin/{attendanceLesson.id}</span>
-              </span>
-              <button onClick={() => {
-                const url = `${window.location.origin}${window.location.pathname.split("#")[0]}#/checkin/${attendanceLesson.id}${attendanceLesson.checkin_code ? `?code=${attendanceLesson.checkin_code}` : ""}`;
-                navigator.clipboard.writeText(url);
-                toast.success("Link copiado!");
-              }} className="p-1 rounded text-white/40 hover:text-violet-400 transition-colors shrink-0">
-                <Copy className="h-3.5 w-3.5" />
-              </button>
-            </div>
+              <span className="text-xs text-white/50 flex-1 text-left truncate">Copiar link de check-in para vendedores</span>
+              <Copy className="h-3 w-3 text-white/30 group-hover:text-violet-400 transition-colors shrink-0" />
+            </button>
           )}
-          <div className="py-1 max-h-[55vh] overflow-y-auto space-y-1.5">
+
+          {/* Lista */}
+          <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-1">
             {attendanceList.length === 0 ? (
-              <p className="text-center text-white/40 py-8 text-sm">Nenhuma presença confirmada ainda.</p>
+              <div className="flex flex-col items-center justify-center py-10 gap-2">
+                <Users className="h-8 w-8 text-white/10" />
+                <p className="text-white/30 text-sm">Nenhuma presença confirmada ainda.</p>
+              </div>
             ) : (
-              <>
-                <p className="text-xs text-white/40 mb-2">{attendanceList.length} presença{attendanceList.length !== 1 ? "s" : ""} confirmada{attendanceList.length !== 1 ? "s" : ""}</p>
-                {attendanceList.map((a, i) => (
-                  <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white/80 truncate">{a.name}</p>
-                      {a.company && <p className="text-[11px] text-white/40 truncate">{a.company}</p>}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {a.completed_at && (
-                        <span className="text-[11px] text-white/30">
-                          {format(new Date(a.completed_at), "dd/MM HH:mm", { locale: ptBR })}
-                        </span>
-                      )}
-                      <span className={cn(
-                        "text-[10px] px-1.5 py-0.5 rounded border",
-                        a.source === "public"
-                          ? "border-violet-500/30 text-violet-400 bg-violet-500/10"
-                          : "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
-                      )}>
-                        {a.source === "public" ? "link" : "sistema"}
-                      </span>
-                      <button
-                        onClick={() => issueCertificate(a, attendanceLesson!)}
-                        disabled={issuingCertId === (a.log_id || a.name)}
-                        title="Emitir Certificado"
-                        className="p-1 rounded text-white/30 hover:text-amber-400 transition-colors disabled:opacity-50">
-                        {issuingCertId === (a.log_id || a.name)
-                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          : <Award className="h-3.5 w-3.5" />}
-                      </button>
-                    </div>
+              attendanceList.map((a, i) => (
+                <div key={i} className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3 flex items-center gap-3">
+                  {/* Avatar */}
+                  <div className="h-8 w-8 rounded-full bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-emerald-400">{(a.name || "?")[0].toUpperCase()}</span>
                   </div>
-                ))}
-              </>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    {editingLogId === a.log_id ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          autoFocus
+                          value={editingName}
+                          onChange={e => setEditingName(e.target.value)}
+                          onKeyDown={e => { if (e.key === "Enter") saveEditName(a.log_id!); if (e.key === "Escape") setEditingLogId(null); }}
+                          className="flex-1 bg-white/10 border border-violet-500/40 rounded px-2 py-0.5 text-sm text-white focus:outline-none focus:border-violet-400"
+                        />
+                        <button onClick={() => saveEditName(a.log_id!)} className="p-1 rounded text-emerald-400 hover:bg-emerald-500/20 transition-colors">
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+                        <button onClick={() => setEditingLogId(null)} className="p-1 rounded text-white/30 hover:bg-white/10 transition-colors">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-white font-medium truncate">{a.name}</p>
+                    )}
+                    {a.company && <p className="text-[11px] text-white/40 truncate mt-0.5">{a.company}</p>}
+                  </div>
+
+                  {/* Meta */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {a.completed_at && (
+                      <span className="text-[10px] text-white/25 hidden sm:block">
+                        {format(new Date(a.completed_at), "dd/MM HH:mm", { locale: ptBR })}
+                      </span>
+                    )}
+                    <span className={cn(
+                      "text-[10px] px-1.5 py-0.5 rounded-full border font-medium",
+                      a.source === "public"
+                        ? "border-violet-500/30 text-violet-400 bg-violet-500/10"
+                        : "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+                    )}>
+                      {a.source === "public" ? "link" : "sistema"}
+                    </span>
+                    {/* Editar nome — só para public check-ins e roles admin/cs/master */}
+                    {a.log_id && ["admin", "cs", "master"].includes(userRole || "") && editingLogId !== a.log_id && (
+                      <button
+                        onClick={() => { setEditingLogId(a.log_id!); setEditingName(a.name); }}
+                        title="Editar nome"
+                        className="p-1 rounded text-white/20 hover:text-violet-400 transition-colors">
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    )}
+                    {/* Certificado */}
+                    <button
+                      onClick={() => issueCertificate(a, attendanceLesson!)}
+                      disabled={issuingCertId === (a.log_id || a.name)}
+                      title="Emitir Certificado"
+                      className="p-1 rounded text-white/20 hover:text-amber-400 transition-colors disabled:opacity-50">
+                      {issuingCertId === (a.log_id || a.name)
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <Award className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              ))
             )}
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setAttendanceLesson(null)} className="text-white/60">Fechar</Button>
-            <Button variant="outline" className="border-white/10 text-white/70" onClick={() => openAttendance(attendanceLesson!)}>
+
+          <DialogFooter className="mt-1">
+            <Button variant="ghost" onClick={() => setAttendanceLesson(null)} className="text-white/50 hover:text-white">Fechar</Button>
+            <Button variant="outline" className="border-white/10 text-white/70 hover:bg-white/5" onClick={() => openAttendance(attendanceLesson!)}>
               <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Atualizar
             </Button>
           </DialogFooter>
