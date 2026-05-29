@@ -862,7 +862,13 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
       // Full-page template background (identical to model)
       doc.addImage(templateB64, "PNG", 0, 0, W, H);
 
-      // ── Subtitle: lesson title (blanked area: y=182–226pt → 64.2–79.7mm)
+      // ── "CERTIFICADO" title (removed from template due to overlap with subtitle)
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(52);
+      doc.setTextColor(...NAVY);
+      doc.text("CERTIFICADO", W / 2, pt(163), { align: "center" });
+
+      // ── Subtitle: lesson title
       // charSpace shifts the rendered center — compensate manually
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
