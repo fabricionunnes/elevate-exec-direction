@@ -22,6 +22,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import logoUnv from "@/assets/logo-unv.png";
+import assinaturaFabricio from "@/assets/assinatura-fabricio.png";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type UserRole = "aluno" | "consultant" | "cs" | "admin" | "master"
@@ -846,110 +848,130 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
         ? format(new Date(entry.completed_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
         : format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
 
-      // Build off-screen HTML template
+      // Convert logo and signature to base64 for embedding
+      const toBase64 = (url: string) => fetch(url).then(r => r.blob()).then(b => new Promise<string>((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result as string);
+        reader.onerror = rej;
+        reader.readAsDataURL(b);
+      }));
+      const [logoB64, assinaturaB64] = await Promise.all([toBase64(logoUnv), toBase64(assinaturaFabricio)]);
+
       const container = document.createElement("div");
-      container.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+      container.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;width:1123px;height:794px;";
       const cert = document.createElement("div");
-      cert.style.cssText = [
-        "width:1123px;height:794px;background:#fff;position:relative;overflow:hidden;",
-        "font-family:'Helvetica Neue',Arial,sans-serif;",
-      ].join("");
+      cert.style.cssText = "width:1123px;height:794px;background:#fff;position:relative;overflow:hidden;font-family:'Helvetica Neue',Arial,sans-serif;box-sizing:border-box;";
 
       cert.innerHTML = `
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');
-          .cert-script { font-family:'Dancing Script',cursive; }
         </style>
 
-        <!-- Navy wave bottom-left -->
-        <svg style="position:absolute;bottom:0;left:0;width:320px;height:200px" viewBox="0 0 320 200" preserveAspectRatio="none">
-          <path d="M0,200 L0,80 Q60,20 140,60 Q220,100 320,40 L320,200 Z" fill="#0D2B5E"/>
+        <!-- TOP-RIGHT: red triangle block -->
+        <svg style="position:absolute;top:0;right:0;width:340px;height:220px;" viewBox="0 0 340 220" preserveAspectRatio="none">
+          <polygon points="340,0 0,0 340,220" fill="#CC1B1B"/>
         </svg>
-        <!-- Red wave bottom-left (over navy) -->
-        <svg style="position:absolute;bottom:0;left:0;width:260px;height:140px" viewBox="0 0 260 140" preserveAspectRatio="none">
-          <path d="M0,140 L0,60 Q50,10 120,40 Q190,70 260,20 L260,140 Z" fill="#CC1B1B" opacity="0.85"/>
-        </svg>
-
-        <!-- Red accent top-right -->
-        <svg style="position:absolute;top:0;right:0;width:280px;height:180px" viewBox="0 0 280 180" preserveAspectRatio="none">
-          <path d="M280,0 L280,180 L120,180 Q200,120 260,60 Z" fill="#CC1B1B" opacity="0.15"/>
-          <path d="M280,0 L140,0 L280,110 Z" fill="#CC1B1B"/>
-        </svg>
-        <!-- Navy accent top-right corner -->
-        <svg style="position:absolute;top:0;right:0;width:120px;height:100px" viewBox="0 0 120 100" preserveAspectRatio="none">
-          <path d="M120,0 L0,0 L120,100 Z" fill="#0D2B5E" opacity="0.35"/>
+        <!-- TOP-RIGHT: small navy corner accent -->
+        <svg style="position:absolute;top:0;right:0;width:120px;height:80px;" viewBox="0 0 120 80" preserveAspectRatio="none">
+          <polygon points="120,0 0,0 120,80" fill="#0D2B5E"/>
         </svg>
 
-        <!-- Decorative border frame -->
-        <div style="position:absolute;top:18px;left:18px;right:18px;bottom:18px;border:2px solid #CC1B1B;border-radius:6px;pointer-events:none;"></div>
-        <div style="position:absolute;top:24px;left:24px;right:24px;bottom:24px;border:1px solid #0D2B5E;border-radius:4px;pointer-events:none;opacity:0.4;"></div>
+        <!-- BOTTOM-LEFT: large navy wave -->
+        <svg style="position:absolute;bottom:0;left:0;width:420px;height:260px;" viewBox="0 0 420 260" preserveAspectRatio="none">
+          <path d="M0,260 L0,90 Q80,10 180,60 Q300,120 420,30 L420,260 Z" fill="#0D2B5E"/>
+        </svg>
+        <!-- BOTTOM-LEFT: red wave on top of navy -->
+        <svg style="position:absolute;bottom:0;left:0;width:320px;height:180px;" viewBox="0 0 320 180" preserveAspectRatio="none">
+          <path d="M0,180 L0,70 Q60,5 140,45 Q230,90 320,20 L320,180 Z" fill="#CC1B1B"/>
+        </svg>
 
-        <!-- Watermark UNV logo text -->
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:260px;font-weight:900;color:#0D2B5E;opacity:0.04;letter-spacing:-10px;line-height:1;user-select:none;">UV</div>
+        <!-- DECORATIVE BORDER: outer red frame -->
+        <div style="position:absolute;top:16px;left:16px;right:16px;bottom:16px;border:2.5px solid #CC1B1B;pointer-events:none;z-index:10;"></div>
+        <!-- corner ornaments -->
+        <!-- top-left corner -->
+        <svg style="position:absolute;top:10px;left:10px;width:48px;height:48px;z-index:11;" viewBox="0 0 48 48">
+          <polyline points="48,12 12,12 12,48" fill="none" stroke="#CC1B1B" stroke-width="3"/>
+          <polyline points="48,18 18,18 18,48" fill="none" stroke="#CC1B1B" stroke-width="1.5" opacity="0.5"/>
+        </svg>
+        <!-- top-right corner -->
+        <svg style="position:absolute;top:10px;right:10px;width:48px;height:48px;z-index:11;" viewBox="0 0 48 48">
+          <polyline points="0,12 36,12 36,48" fill="none" stroke="#CC1B1B" stroke-width="3"/>
+          <polyline points="0,18 30,18 30,48" fill="none" stroke="#CC1B1B" stroke-width="1.5" opacity="0.5"/>
+        </svg>
+        <!-- bottom-left corner -->
+        <svg style="position:absolute;bottom:10px;left:10px;width:48px;height:48px;z-index:11;" viewBox="0 0 48 48">
+          <polyline points="48,36 12,36 12,0" fill="none" stroke="#CC1B1B" stroke-width="3"/>
+          <polyline points="48,30 18,30 18,0" fill="none" stroke="#CC1B1B" stroke-width="1.5" opacity="0.5"/>
+        </svg>
+        <!-- bottom-right corner -->
+        <svg style="position:absolute;bottom:10px;right:10px;width:48px;height:48px;z-index:11;" viewBox="0 0 48 48">
+          <polyline points="0,36 36,36 36,0" fill="none" stroke="#CC1B1B" stroke-width="3"/>
+          <polyline points="0,30 30,30 30,0" fill="none" stroke="#CC1B1B" stroke-width="1.5" opacity="0.5"/>
+        </svg>
 
-        <!-- UNV Logo area -->
-        <div style="position:absolute;top:38px;left:50%;transform:translateX(-50%);text-align:center;">
-          <div style="font-size:11px;font-weight:900;letter-spacing:3px;color:#0D2B5E;line-height:1;">UNIVERSIDADE</div>
-          <div style="font-size:9px;letter-spacing:2px;color:#0D2B5E;opacity:0.7;line-height:1.2;">NACIONAL DE VENDAS</div>
-          <div style="font-size:28px;font-weight:900;color:#0D2B5E;letter-spacing:-1px;line-height:1;margin-top:2px;">U<span style="color:#CC1B1B;">V</span></div>
-        </div>
+        <!-- UV watermark left -->
+        <div style="position:absolute;top:50%;left:60px;transform:translateY(-50%);font-size:200px;font-weight:900;color:#0D2B5E;opacity:0.05;letter-spacing:-8px;line-height:1;user-select:none;z-index:1;">UV</div>
+        <!-- UV watermark right -->
+        <div style="position:absolute;top:50%;right:60px;transform:translateY(-50%);font-size:200px;font-weight:900;color:#CC1B1B;opacity:0.05;letter-spacing:-8px;line-height:1;user-select:none;z-index:1;">UV</div>
 
-        <!-- CERTIFICADO title -->
-        <div style="position:absolute;top:130px;width:100%;text-align:center;">
-          <div style="font-size:60px;font-weight:900;color:#0D2B5E;letter-spacing:4px;line-height:1;">CERTIFICADO</div>
-          <div style="font-size:14px;font-weight:700;letter-spacing:5px;color:#CC1B1B;margin-top:4px;">PARTICIPAÇÃO EM AULA AO VIVO</div>
-          <div style="font-size:13px;font-weight:600;letter-spacing:2px;color:#0D2B5E;margin-top:2px;opacity:0.8;">"${lesson.title}"</div>
-        </div>
+        <!-- CONTENT WRAPPER (z-index above watermarks) -->
+        <div style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:5;display:flex;flex-direction:column;align-items:center;padding:30px 120px 0;">
 
-        <!-- Concedido a -->
-        <div style="position:absolute;top:270px;width:100%;text-align:center;">
-          <div style="font-size:15px;color:#555;font-style:italic;letter-spacing:1px;">Este Certificado é concedido a:</div>
-        </div>
+          <!-- UNV Logo -->
+          <img src="${logoB64}" style="height:64px;object-fit:contain;margin-top:10px;" />
 
-        <!-- Name in script -->
-        <div style="position:absolute;top:298px;width:100%;text-align:center;">
-          <div class="cert-script" style="font-family:'Dancing Script',Georgia,cursive;font-size:62px;font-weight:700;color:#0D2B5E;line-height:1.1;">
+          <!-- CERTIFICADO -->
+          <div style="margin-top:14px;text-align:center;">
+            <div style="font-size:72px;font-weight:900;color:#0D2B5E;letter-spacing:5px;line-height:1;">CERTIFICADO</div>
+            <div style="font-size:13px;font-weight:700;letter-spacing:4px;color:#0D2B5E;margin-top:2px;opacity:0.85;">PARTICIPAÇÃO EM AULA AO VIVO</div>
+            <div style="font-size:12px;font-weight:600;letter-spacing:1px;color:#CC1B1B;margin-top:4px;">"${lesson.title}"</div>
+          </div>
+
+          <!-- Concedido a -->
+          <div style="margin-top:22px;font-size:15px;color:#444;font-style:italic;">Este Certificado é concedido a:</div>
+
+          <!-- Name -->
+          <div style="font-family:'Dancing Script',Georgia,cursive;font-size:66px;font-weight:700;color:#0D2B5E;line-height:1.15;margin-top:4px;text-align:center;">
             ${entry.name}
           </div>
-        </div>
 
-        <!-- Description paragraph -->
-        <div style="position:absolute;top:400px;left:140px;right:140px;text-align:center;">
-          <p style="font-size:13px;color:#333;line-height:1.7;margin:0;">
+          <!-- Description -->
+          <p style="margin-top:16px;font-size:13px;color:#333;line-height:1.75;text-align:center;max-width:720px;">
             Como forma de reconhecimento pela participação na aula ao vivo, desenvolvida pela
             <strong>Universidade Nacional de Vendas</strong>, o participante demonstrou comprometimento
-            com sua evolução e dedicação à construção de resultados.
+            com sua evolução, participação ativa nas etapas propostas e dedicação à construção de resultados.
           </p>
-        </div>
 
-        <!-- Signature block -->
-        <div style="position:absolute;bottom:80px;left:50%;transform:translateX(-50%);text-align:center;min-width:200px;">
-          <div style="font-size:32px;font-family:Georgia,serif;font-style:italic;color:#0D2B5E;border-bottom:1.5px solid #0D2B5E;padding-bottom:4px;margin-bottom:6px;">
-            Fabrício Nunnes
+          <!-- Signature -->
+          <div style="margin-top:20px;display:flex;flex-direction:column;align-items:center;">
+            <img src="${assinaturaB64}" style="height:64px;object-fit:contain;" />
+            <div style="width:200px;border-top:1.5px solid #0D2B5E;margin-top:4px;"></div>
+            <div style="font-size:14px;font-weight:800;color:#0D2B5E;letter-spacing:1px;margin-top:5px;">Fabrício Nunnes</div>
+            <div style="font-size:10px;color:#888;margin-top:2px;">${dateStr}</div>
           </div>
-          <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#0D2B5E;">FABRÍCIO NUNNES</div>
-          <div style="font-size:10px;color:#888;letter-spacing:1px;margin-top:2px;">${dateStr}</div>
         </div>
       `;
 
       container.appendChild(cert);
       document.body.appendChild(container);
 
-      // Wait for fonts to load
       await document.fonts.ready;
-      await new Promise(r => setTimeout(r, 600));
+      await new Promise(r => setTimeout(r, 800));
 
-      const [{ default: jsPDF }, html2canvas] = await Promise.all([
+      const [{ default: jsPDF }, html2canvasMod] = await Promise.all([
         import("jspdf"),
         import("html2canvas"),
       ]);
+      const html2canvas = (html2canvasMod as any).default ?? html2canvasMod;
 
-      const canvas = await (html2canvas as any).default(cert, {
+      const canvas = await html2canvas(cert, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: "#ffffff",
         logging: false,
+        width: 1123,
+        height: 794,
       });
 
       document.body.removeChild(container);
