@@ -9,11 +9,17 @@ const corsHeaders = {
 const SHEETS_URL =
   "https://docs.google.com/spreadsheets/d/1ber4uoSTITnMwFWrRLUJ9o_22Z0dnXN3sUKl1dLmpP0/export?format=csv&gid=1914840166";
 
-// Parse Brazilian number format: "1.234,56" or "1234,56" → number
+const METAS_SHEETS_URL =
+  "https://docs.google.com/spreadsheets/d/1ber4uoSTITnMwFWrRLUJ9o_22Z0dnXN3sUKl1dLmpP0/export?format=csv&gid=1586475744";
+
+// Parse Brazilian number format: "1.234,56" or "1234,56" or "R$ 290,00" → number
 function parseBRNumber(raw: string): number | null {
   if (!raw || raw.trim() === "" || raw.trim() === "-") return null;
+  // Strip currency symbol (R$) and surrounding whitespace
+  const stripped = raw.trim().replace(/^R\$\s*/, "").trim();
+  if (!stripped || stripped === "-") return null;
   // Remove thousand separators (.) then replace decimal comma with dot
-  const cleaned = raw.trim().replace(/\./g, "").replace(",", ".");
+  const cleaned = stripped.replace(/\./g, "").replace(",", ".");
   const n = parseFloat(cleaned);
   return isNaN(n) ? null : n;
 }
@@ -164,6 +170,120 @@ Deno.serve(async (req) => {
 
     console.log(`[facunicamps-sync] Inserted ${totalInserted} rows`);
 
+    // ─── Import METAS from METAS tab ───────────────────────────────────────
+    let metasImported = 0;
+    try {
+      console.log("[facunicamps-sync] Fetching METAS CSV...");
+      const metasResp = await fetch(METAS_SHEETS_URL, { redirect: "follow" });
+      if (!metasResp.ok) throw new Error(`HTTP ${metasResp.status} fetching METAS CSV`);
+      const metasCsvText = await metasResp.text();
+      console.log(`[facunicamps-sync] METAS CSV fetched, length=${metasCsvText.length}`);
+
+      const metasRows = parseCSV(metasCsvText);
+      // Skip header
+      const metasData = metasRows.slice(1);
+
+      // Accumulate per (mes, vendedor): { meta, super, hiper, meta_faturamento }
+      const metasMap = new Map<string, {
+        mes: string;
+        vendedor: string;
+        meta: number;
+        super: number;
+        hiper: number;
+        meta_faturamento: number;
+      }>();
+
+      for (const cols of metasData) {
+        const rawMes = (cols[0] ?? "").trim();
+        const tipoMeta = (cols[1] ?? "").trim().toLowerCase();
+        const vendedor = (cols[2] ?? "").trim();
+        // cols[3] = Modalidade (ignored for now)
+        const rawValor = cols[4] ?? "";
+        const rawSuper = cols[5] ?? "";
+        const rawHiper = cols[6] ?? "";
+
+        if (!rawMes || !vendedor) continue;
+
+        const mes = parseBRDate(rawMes); // YYYY-MM-DD (always day 01)
+        if (!mes) continue;
+
+        const key = `${mes}|${vendedor}`;
+        if (!metasMap.has(key)) {
+          metasMap.set(key, { mes, vendedor, meta: 0, super: 0, hiper: 0, meta_faturamento: 0 });
+        }
+        const entry = metasMap.get(key)!;
+
+        const valor = parseBRNumber(rawValor) ?? 0;
+        const superVal = parseBRNumber(rawSuper) ?? 0;
+        const hiperVal = parseBRNumber(rawHiper) ?? 0;
+
+        if (tipoMeta.includes("quantidade") || tipoMeta.includes("vendas")) {
+          entry.meta = Math.round(valor);
+          entry.super = Math.round(superVal);
+          entry.hiper = Math.round(hiperVal);
+        } else if (tipoMeta.includes("faturamento") || tipoMeta.includes("receita")) {
+          entry.meta_faturamento = valor;
+        }
+      }
+
+      const metasVendedorRecords = [...metasMap.values()];
+      console.log(`[facunicamps-sync] Parsed ${metasVendedorRecords.length} meta rows`);
+
+      if (metasVendedorRecords.length > 0) {
+        // Upsert per-vendor metas
+        const { error: upsertVenErr } = await supabase
+          .from("facunicamps_metas_vendedor")
+          .upsert(
+            metasVendedorRecords.map(r => ({
+              mes: r.mes,
+              vendedor: r.vendedor,
+              meta: r.meta,
+              super: r.super,
+              hiper: r.hiper,
+              meta_faturamento: r.meta_faturamento,
+              updated_at: new Date().toISOString(),
+            })),
+            { onConflict: "mes,vendedor" }
+          );
+        if (upsertVenErr) throw new Error(`Upsert metas_vendedor failed: ${upsertVenErr.message}`);
+
+        // Aggregate per month and upsert into facunicamps_metas
+        const monthMap = new Map<string, { meta: number; super: number; hiper: number; meta_faturamento: number }>();
+        for (const r of metasVendedorRecords) {
+          if (!monthMap.has(r.mes)) {
+            monthMap.set(r.mes, { meta: 0, super: 0, hiper: 0, meta_faturamento: 0 });
+          }
+          const m = monthMap.get(r.mes)!;
+          m.meta += r.meta;
+          m.super += r.super;
+          m.hiper += r.hiper;
+          m.meta_faturamento += r.meta_faturamento;
+        }
+
+        const metasGeraisRecords = [...monthMap.entries()].map(([mes, vals]) => ({
+          mes,
+          meta: vals.meta,
+          super: vals.super,
+          hiper: vals.hiper,
+          meta_faturamento: vals.meta_faturamento,
+          atendimentos: 0,
+          updated_at: new Date().toISOString(),
+        }));
+
+        const { error: upsertGeraisErr } = await supabase
+          .from("facunicamps_metas")
+          .upsert(metasGeraisRecords, { onConflict: "mes" });
+        if (upsertGeraisErr) throw new Error(`Upsert metas failed: ${upsertGeraisErr.message}`);
+
+        metasImported = metasVendedorRecords.length;
+        console.log(`[facunicamps-sync] Metas imported: ${metasImported} vendedor rows, ${metasGeraisRecords.length} month totals`);
+      }
+    } catch (metasErr: unknown) {
+      // Non-fatal: log but don't fail the whole sync
+      const metasMsg = metasErr instanceof Error ? metasErr.message : String(metasErr);
+      console.error("[facunicamps-sync] METAS import error (non-fatal):", metasMsg);
+    }
+
     // Mark success
     await supabase
       .from("facunicamps_sync_runs")
@@ -175,7 +295,7 @@ Deno.serve(async (req) => {
       .eq("id", runId);
 
     return new Response(
-      JSON.stringify({ success: true, rows_imported: totalInserted }),
+      JSON.stringify({ success: true, rows_imported: totalInserted, metas_imported: metasImported }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: unknown) {
