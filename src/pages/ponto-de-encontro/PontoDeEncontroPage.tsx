@@ -883,7 +883,13 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
       let hasCursive = false;
       if (dancingBuf) {
         try {
-          const b64str = btoa(String.fromCharCode(...new Uint8Array(dancingBuf)));
+          // btoa chunk-by-chunk to avoid stack overflow on large buffers
+          const bytes = new Uint8Array(dancingBuf);
+          let b64str = "";
+          const chunk = 8192;
+          for (let i = 0; i < bytes.length; i += chunk) {
+            b64str += btoa(String.fromCharCode(...bytes.slice(i, i + chunk)));
+          }
           doc.addFileToVFS("DancingScript-Bold.ttf", b64str);
           doc.addFont("DancingScript-Bold.ttf", "DancingScript", "normal");
           hasCursive = true;
