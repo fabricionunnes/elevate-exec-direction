@@ -848,157 +848,178 @@ const InstructorView = ({ staffInfo, userRole }: { staffInfo: StaffInfo; userRol
         ? format(new Date(entry.completed_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
         : format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
 
-      // Fetch fonts and images as base64 so html2canvas can embed them
-      const toBase64 = (url: string) => fetch(url).then(r => r.blob()).then(b => new Promise<string>((res, rej) => {
-        const reader = new FileReader();
-        reader.onload = () => res(reader.result as string);
-        reader.onerror = rej;
-        reader.readAsDataURL(b);
+      // Load assets as base64
+      const toB64 = (url: string) => fetch(url).then(r => r.blob()).then(b => new Promise<string>((res, rej) => {
+        const reader = new FileReader(); reader.onload = () => res(reader.result as string); reader.onerror = rej; reader.readAsDataURL(b);
       }));
 
-      // Fetch Dancing Script woff2 via Google Fonts CSS → extract URL → base64
-      const fetchFontBase64 = async (cssUrl: string): Promise<string> => {
+      // Fetch Dancing Script TTF from Google Fonts (old UA → serves TTF)
+      const fetchDancingScript = async () => {
         try {
-          const css = await fetch(cssUrl, { headers: { "User-Agent": "Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Chrome/120" } }).then(r => r.text());
-          const match = css.match(/src:\s*url\(([^)]+\.woff2)\)/);
-          if (!match) return "";
-          return toBase64(match[1]);
-        } catch { return ""; }
+          const css = await fetch(
+            "https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700",
+            { headers: { "User-Agent": "Mozilla/4.0 (compatible; MSIE 6.0)" } }
+          ).then(r => r.text());
+          const match = css.match(/url\(([^)]+)\)/);
+          if (!match) return null;
+          const fontResp = await fetch(match[1]);
+          const fontBuf = await fontResp.arrayBuffer();
+          return fontBuf;
+        } catch { return null; }
       };
 
-      const [logoB64, assinaturaB64, dancingScriptB64] = await Promise.all([
-        toBase64(logoUnv),
-        toBase64(assinaturaFabricio),
-        fetchFontBase64("https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap"),
+      const [logoB64, assinaturaB64, dancingBuf] = await Promise.all([
+        toB64(logoUnv), toB64(assinaturaFabricio), fetchDancingScript(),
       ]);
 
-      const container = document.createElement("div");
-      container.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;width:1123px;height:794px;";
-      const cert = document.createElement("div");
-      cert.style.cssText = "width:1123px;height:794px;background:#fff;position:relative;overflow:hidden;font-family:'Helvetica Neue',Arial,sans-serif;box-sizing:border-box;";
-
-      cert.innerHTML = `
-        <style>
-          ${dancingScriptB64 ? `@font-face { font-family: 'Dancing Script'; font-weight: 700; src: url('${dancingScriptB64}') format('woff2'); }` : ""}
-        </style>
-
-        <!-- ══ BACKGROUND LAYER ══ -->
-
-        <!-- TOP-RIGHT navy fill -->
-        <div style="position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 280px 180px 0;border-color:transparent #0D2B5E transparent transparent;"></div>
-        <!-- TOP-RIGHT red fill over navy -->
-        <div style="position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 340px 220px 0;border-color:transparent #CC1B1B transparent transparent;z-index:0;"></div>
-        <!-- TOP-RIGHT navy small corner on top of red -->
-        <div style="position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 110px 72px 0;border-color:transparent #0D2B5E transparent transparent;z-index:1;"></div>
-
-        <!-- BOTTOM-LEFT navy wave -->
-        <svg style="position:absolute;bottom:0;left:0;width:430px;height:270px;display:block;" viewBox="0 0 430 270" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M0,270 L0,95 C70,15 170,55 250,85 C330,115 390,50 430,25 L430,270 Z" fill="#0D2B5E"/>
-        </svg>
-        <!-- BOTTOM-LEFT red wave on top -->
-        <svg style="position:absolute;bottom:0;left:0;width:330px;height:185px;display:block;" viewBox="0 0 330 185" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M0,185 L0,72 C55,8 135,42 200,68 C265,94 300,48 330,22 L330,185 Z" fill="#CC1B1B"/>
-        </svg>
-
-        <!-- ══ WATERMARK: logo centered ══ -->
-        <img src="${logoB64}" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:420px;opacity:0.06;pointer-events:none;z-index:2;" />
-
-        <!-- ══ PREMIUM BORDER ══ -->
-        <!-- outer thick border -->
-        <div style="position:absolute;top:14px;left:14px;right:14px;bottom:14px;border:4px solid #0D2B5E;z-index:10;pointer-events:none;"></div>
-        <!-- inner thin red border -->
-        <div style="position:absolute;top:22px;left:22px;right:22px;bottom:22px;border:1.5px solid #CC1B1B;z-index:10;pointer-events:none;"></div>
-
-        <!-- corner ornaments — top-left -->
-        <svg style="position:absolute;top:8px;left:8px;width:70px;height:70px;z-index:12;" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg">
-          <polyline points="70,14 14,14 14,70" fill="none" stroke="#0D2B5E" stroke-width="4"/>
-          <polyline points="70,22 22,22 22,70" fill="none" stroke="#CC1B1B" stroke-width="1.5"/>
-          <rect x="10" y="10" width="8" height="8" fill="#CC1B1B"/>
-        </svg>
-        <!-- corner ornaments — top-right -->
-        <svg style="position:absolute;top:8px;right:8px;width:70px;height:70px;z-index:12;" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg">
-          <polyline points="0,14 56,14 56,70" fill="none" stroke="#0D2B5E" stroke-width="4"/>
-          <polyline points="0,22 48,22 48,70" fill="none" stroke="#CC1B1B" stroke-width="1.5"/>
-          <rect x="52" y="10" width="8" height="8" fill="#CC1B1B"/>
-        </svg>
-        <!-- corner ornaments — bottom-left -->
-        <svg style="position:absolute;bottom:8px;left:8px;width:70px;height:70px;z-index:12;" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg">
-          <polyline points="70,56 14,56 14,0" fill="none" stroke="#0D2B5E" stroke-width="4"/>
-          <polyline points="70,48 22,48 22,0" fill="none" stroke="#CC1B1B" stroke-width="1.5"/>
-          <rect x="10" y="52" width="8" height="8" fill="#CC1B1B"/>
-        </svg>
-        <!-- corner ornaments — bottom-right -->
-        <svg style="position:absolute;bottom:8px;right:8px;width:70px;height:70px;z-index:12;" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg">
-          <polyline points="0,56 56,56 56,0" fill="none" stroke="#0D2B5E" stroke-width="4"/>
-          <polyline points="0,48 48,48 48,0" fill="none" stroke="#CC1B1B" stroke-width="1.5"/>
-          <rect x="52" y="52" width="8" height="8" fill="#CC1B1B"/>
-        </svg>
-
-        <!-- ══ CONTENT ══ -->
-        <div style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:15;display:flex;flex-direction:column;align-items:center;padding:28px 130px 0;">
-
-          <!-- Logo -->
-          <img src="${logoB64}" style="height:62px;object-fit:contain;" />
-
-          <!-- CERTIFICADO -->
-          <div style="margin-top:10px;text-align:center;">
-            <div style="font-family:'Playfair Display',Georgia,serif;font-size:74px;font-weight:900;color:#0D2B5E;letter-spacing:6px;line-height:1;">CERTIFICADO</div>
-            <div style="font-size:11px;font-weight:700;letter-spacing:4px;color:#0D2B5E;margin-top:6px;">PARTICIPAÇÃO EM AULA AO VIVO <span style="color:#CC1B1B;">*${lesson.title.toUpperCase()}*</span></div>
-          </div>
-
-          <!-- Concedido a -->
-          <div style="margin-top:18px;font-size:15px;color:#444;font-style:italic;letter-spacing:0.5px;">Este Certificado é concedido a:</div>
-
-          <!-- Name in script -->
-          <div style="font-family:'Dancing Script',cursive;font-size:64px;font-weight:700;color:#0D2B5E;line-height:1.2;margin-top:4px;text-align:center;">
-            ${entry.name}
-          </div>
-
-          <!-- Description -->
-          <p style="margin-top:12px;font-size:12.5px;color:#333;line-height:1.75;text-align:center;max-width:680px;">
-            Como forma de reconhecimento pela participação na aula ao vivo, desenvolvida pela
-            Universidade Nacional de Vendas, com foco no aprimoramento de competências em
-            <strong style="color:#0D2B5E;">${lesson.title}</strong>, o participante demonstrou
-            comprometimento com sua evolução, participação ativa nas etapas propostas e dedicação à construção de resultados.
-          </p>
-
-          <!-- Signature -->
-          <div style="margin-top:14px;display:flex;flex-direction:column;align-items:center;">
-            <img src="${assinaturaB64}" style="height:56px;object-fit:contain;" />
-            <div style="width:180px;border-top:1.5px solid #0D2B5E;margin-top:3px;"></div>
-            <div style="font-size:13px;font-weight:800;color:#0D2B5E;letter-spacing:1px;margin-top:4px;">Fabrício Nunnes</div>
-            <div style="font-size:10px;color:#999;margin-top:1px;letter-spacing:0.5px;">${dateStr}</div>
-          </div>
-        </div>
-      `;
-
-      container.appendChild(cert);
-      document.body.appendChild(container);
-
-      await document.fonts.ready;
-      await new Promise(r => setTimeout(r, 800));
-
-      const [{ default: jsPDF }, html2canvasMod] = await Promise.all([
-        import("jspdf"),
-        import("html2canvas"),
-      ]);
-      const html2canvas = (html2canvasMod as any).default ?? html2canvasMod;
-
-      const canvas = await html2canvas(cert, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        width: 1123,
-        height: 794,
-      });
-
-      document.body.removeChild(container);
-
-      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      // ── jsPDF drawing ──────────────────────────────────────────────────
+      const { default: jsPDF } = await import("jspdf");
       const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-      doc.addImage(imgData, "JPEG", 0, 0, 297, 210);
+      const W = 297, H = 210;
+      const NAVY = [13, 43, 94] as const;
+      const RED  = [204, 27, 27] as const;
+
+      // Register Dancing Script if available
+      let hasCursive = false;
+      if (dancingBuf) {
+        try {
+          const b64str = btoa(String.fromCharCode(...new Uint8Array(dancingBuf)));
+          doc.addFileToVFS("DancingScript-Bold.ttf", b64str);
+          doc.addFont("DancingScript-Bold.ttf", "DancingScript", "normal");
+          hasCursive = true;
+        } catch { hasCursive = false; }
+      }
+
+      // ── 1. White background ───────────────────────────────────────────
+      doc.setFillColor(255, 255, 255);
+      doc.rect(0, 0, W, H, "F");
+
+      // ── 2. TOP-RIGHT: red large triangle ─────────────────────────────
+      // Points: (W,0) (W-90,0) (W,65) — closed polygon
+      doc.setFillColor(...RED);
+      doc.lines([[90,0],[0,65]], W-90, 0, [1,1], "F", true);
+
+      // ── 3. TOP-RIGHT: small navy corner ──────────────────────────────
+      doc.setFillColor(...NAVY);
+      doc.lines([[36,0],[0,26]], W-36, 0, [1,1], "F", true);
+
+      // ── 4. BOTTOM-LEFT: navy wave ─────────────────────────────────────
+      // Start (0,210), go to (0,135), wave up to (240,95), then (240,210)
+      doc.setFillColor(...NAVY);
+      doc.lines(
+        [[0,-75], [30,-20],[30,5],[30,-10],[40,8],[40,-18],[40,8],[30,-13],[0,115]],
+        0, 210, [1,1], "F", true
+      );
+
+      // ── 5. BOTTOM-LEFT: red wave (smaller, on top) ───────────────────
+      doc.setFillColor(...RED);
+      doc.lines(
+        [[0,-58],[28,-22],[32,7],[30,-12],[38,9],[32,-18],[0,94]],
+        0, 210, [1,1], "F", true
+      );
+
+      // ── 6. Border: outer navy thick ──────────────────────────────────
+      doc.setDrawColor(...NAVY);
+      doc.setLineWidth(1.0);
+      doc.rect(9, 9, W-18, H-18, "S");
+
+      // ── 7. Border: inner red thin ─────────────────────────────────────
+      doc.setDrawColor(...RED);
+      doc.setLineWidth(0.25);
+      doc.rect(12.5, 12.5, W-25, H-25, "S");
+
+      // ── 8. Corner ornaments (L-brackets navy + red) ───────────────────
+      const drawCorner = (x: number, y: number, dx: number, dy: number) => {
+        // Navy outer L
+        doc.setDrawColor(...NAVY); doc.setLineWidth(0.9);
+        doc.line(x, y + dy*18, x, y); doc.line(x, y, x + dx*18, y);
+        // Red inner L
+        doc.setDrawColor(...RED); doc.setLineWidth(0.3);
+        doc.line(x + dx*3.5, y + dy*18, x + dx*3.5, y + dy*3.5); doc.line(x + dx*3.5, y + dy*3.5, x + dx*18, y + dy*3.5);
+        // Red square dot
+        doc.setFillColor(...RED);
+        doc.rect(x + dx*1 - (dx>0?0:2), y + dy*1 - (dy>0?0:2), 2, 2, "F");
+      };
+      drawCorner(9, 9, 1, 1);       // top-left
+      drawCorner(W-9, 9, -1, 1);    // top-right
+      drawCorner(9, H-9, 1, -1);    // bottom-left
+      drawCorner(W-9, H-9, -1, -1); // bottom-right
+
+      // ── 9. UNV Logo ───────────────────────────────────────────────────
+      const logoH = 20, logoW = 26;
+      doc.addImage(logoB64, "PNG", W/2 - logoW/2, 13, logoW, logoH);
+
+      // ── 10. CERTIFICADO ───────────────────────────────────────────────
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(44);
+      doc.setTextColor(...NAVY);
+      doc.text("CERTIFICADO", W/2, 50, { align: "center", charSpace: 2 });
+
+      // Subtitle line
+      doc.setFontSize(8.5);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...NAVY);
+      const sub = `PARTICIPAÇÃO EM AULA AO VIVO  *${lesson.title.toUpperCase()}*`;
+      doc.text(sub, W/2, 57, { align: "center", charSpace: 2 });
+
+      // Red decorative rule
+      doc.setDrawColor(...RED); doc.setLineWidth(0.4);
+      doc.line(W/2 - 55, 60, W/2 + 55, 60);
+
+      // ── 11. "Este Certificado é concedido a:" ─────────────────────────
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(10);
+      doc.setTextColor(80, 80, 80);
+      doc.text("Este Certificado é concedido a:", W/2, 73, { align: "center" });
+
+      // ── 12. NAME ──────────────────────────────────────────────────────
+      if (hasCursive) {
+        doc.setFont("DancingScript", "normal");
+        doc.setFontSize(38);
+      } else {
+        doc.setFont("helvetica", "bolditalic");
+        doc.setFontSize(32);
+      }
+      doc.setTextColor(...NAVY);
+      doc.text(entry.name, W/2, 93, { align: "center" });
+
+      // ── 13. Description paragraph ─────────────────────────────────────
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(50, 50, 50);
+      const paraFull = `Como forma de reconhecimento pela participação na aula ao vivo, desenvolvida pela Universidade Nacional de Vendas, com foco no aprimoramento de competências em ${lesson.title}, o participante demonstrou comprometimento com sua evolução, participação ativa nas etapas propostas e dedicação à construção de resultados.`;
+      const paraLines = doc.splitTextToSize(paraFull, 165);
+      doc.text(paraLines, W/2, 108, { align: "center" });
+
+      // Bold the lesson title inside paragraph
+      const titleStart = paraFull.indexOf(lesson.title);
+      if (titleStart !== -1) {
+        // Approximate bold overlay for lesson.title on first paragraph line
+        const beforeTitle = paraFull.slice(0, titleStart);
+        const firstLine = paraLines[0] as string;
+        if (firstLine.includes(lesson.title)) {
+          const bx = W/2 - doc.getTextWidth(firstLine)/2 + doc.getTextWidth(beforeTitle);
+          doc.setFont("helvetica", "bold");
+          doc.text(lesson.title, bx, 108);
+        }
+      }
+
+      // ── 14. Signature ─────────────────────────────────────────────────
+      const sigY = 158;
+      doc.addImage(assinaturaB64, "PNG", W/2 - 20, sigY - 20, 40, 18);
+      doc.setDrawColor(...NAVY); doc.setLineWidth(0.4);
+      doc.line(W/2 - 35, sigY, W/2 + 35, sigY);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(...NAVY);
+      doc.text("Fabrício Nunnes", W/2, sigY + 7, { align: "center" });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(140, 140, 140);
+      doc.text(dateStr, W/2, sigY + 13, { align: "center" });
+
       doc.save(`certificado-${entry.name.replace(/\s+/g, "-").toLowerCase()}.pdf`);
 
       if (entry.log_id) {
