@@ -198,3 +198,9 @@ jobs:
         run: supabase functions deploy finalize-envelope --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy generate-pdf-tasks
+        continue-on-error: true
+        run: supabase functions deploy generate-pdf-tasks --project-ref xrncvhzxjmddqluxoosu --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
