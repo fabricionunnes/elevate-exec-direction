@@ -59,30 +59,30 @@ interface BoardOpinion {
 }
 
 const ADVISOR_CONFIG: Record<string, { icon: React.ReactNode; color: string; bgColor: string }> = {
-  'CFO': { 
-    icon: <DollarSign className="h-5 w-5" />, 
-    color: 'text-green-600', 
-    bgColor: 'bg-green-100' 
+  'CFO': {
+    icon: <DollarSign className="h-5 w-5" />,
+    color: 'text-green-600 dark:text-green-400',
+    bgColor: 'bg-green-100 dark:bg-green-950/40 border border-green-200 dark:border-green-800'
   },
-  'COO': { 
-    icon: <Settings className="h-5 w-5" />, 
-    color: 'text-blue-600', 
-    bgColor: 'bg-blue-100' 
+  'COO': {
+    icon: <Settings className="h-5 w-5" />,
+    color: 'text-blue-600 dark:text-blue-400',
+    bgColor: 'bg-blue-100 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800'
   },
-  'CRO': { 
-    icon: <TrendingUp className="h-5 w-5" />, 
-    color: 'text-orange-600', 
-    bgColor: 'bg-orange-100' 
+  'CRO': {
+    icon: <TrendingUp className="h-5 w-5" />,
+    color: 'text-orange-600 dark:text-orange-400',
+    bgColor: 'bg-orange-100 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800'
   },
-  'CPO': { 
-    icon: <Heart className="h-5 w-5" />, 
-    color: 'text-pink-600', 
-    bgColor: 'bg-pink-100' 
+  'CPO': {
+    icon: <Heart className="h-5 w-5" />,
+    color: 'text-pink-600 dark:text-pink-400',
+    bgColor: 'bg-pink-100 dark:bg-pink-950/40 border border-pink-200 dark:border-pink-800'
   },
-  'Board Chair': { 
-    icon: <Crown className="h-5 w-5" />, 
-    color: 'text-purple-600', 
-    bgColor: 'bg-purple-100' 
+  'Board Chair': {
+    icon: <Crown className="h-5 w-5" />,
+    color: 'text-purple-600 dark:text-purple-400',
+    bgColor: 'bg-purple-100 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800'
   },
 };
 
