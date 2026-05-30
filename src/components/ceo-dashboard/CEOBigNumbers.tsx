@@ -135,8 +135,8 @@ export function CEOBigNumbers() {
             trend: "up",
             trendValue: "+8.2%",
             icon: <DollarSign className="h-5 w-5" />,
-            colorClass: "text-emerald-700",
-            bgClass: "bg-emerald-50 border-emerald-200"
+            colorClass: "text-emerald-600 dark:text-emerald-400",
+            bgClass: "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800"
           },
           {
             label: "Receita YTD",
@@ -144,8 +144,8 @@ export function CEOBigNumbers() {
             trend: "up",
             trendValue: "+12.4%",
             icon: <BarChart3 className="h-5 w-5" />,
-            colorClass: "text-blue-700",
-            bgClass: "bg-blue-50 border-blue-200"
+            colorClass: "text-blue-600 dark:text-blue-400",
+            bgClass: "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800"
           },
           {
             label: "Clientes Ativos",
@@ -153,8 +153,8 @@ export function CEOBigNumbers() {
             trend: "up",
             trendValue: "+3",
             icon: <Users className="h-5 w-5" />,
-            colorClass: "text-violet-700",
-            bgClass: "bg-violet-50 border-violet-200"
+            colorClass: "text-violet-600 dark:text-violet-400",
+            bgClass: "bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800"
           },
           {
             label: "Ticket Médio Mensal",
@@ -162,8 +162,8 @@ export function CEOBigNumbers() {
             trend: "stable",
             trendValue: "0%",
             icon: <Target className="h-5 w-5" />,
-            colorClass: "text-amber-700",
-            bgClass: "bg-amber-50 border-amber-200"
+            colorClass: "text-amber-600 dark:text-amber-400",
+            bgClass: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800"
           },
           {
             label: "LTV Médio",
@@ -171,8 +171,8 @@ export function CEOBigNumbers() {
             trend: "up",
             trendValue: "+5.2%",
             icon: <Wallet className="h-5 w-5" />,
-            colorClass: "text-purple-700",
-            bgClass: "bg-purple-50 border-purple-200"
+            colorClass: "text-purple-600 dark:text-purple-400",
+            bgClass: "bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800"
           },
           {
             label: "Churn Rate",
@@ -180,8 +180,8 @@ export function CEOBigNumbers() {
             trend: Number(churnRate) > 5 ? "down" : "up",
             trendValue: `${Number(churnRate) > 5 ? '+' : '-'}${churnRate}%`,
             icon: <AlertTriangle className="h-5 w-5" />,
-            colorClass: "text-rose-700",
-            bgClass: "bg-rose-50 border-rose-200"
+            colorClass: "text-rose-600 dark:text-rose-400",
+            bgClass: "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800"
           },
           {
             label: "NPS Médio",
@@ -189,8 +189,8 @@ export function CEOBigNumbers() {
             trend: Number(avgNPS) >= 50 ? "up" : "down",
             trendValue: avgNPS !== "N/A" ? `${Number(avgNPS) >= 50 ? '+' : ''}${avgNPS}` : undefined,
             icon: <ThumbsUp className="h-5 w-5" />,
-            colorClass: "text-cyan-700",
-            bgClass: "bg-cyan-50 border-cyan-200"
+            colorClass: "text-cyan-600 dark:text-cyan-400",
+            bgClass: "bg-cyan-50 dark:bg-cyan-950/40 border-cyan-200 dark:border-cyan-800"
           },
         ]);
       } catch (error) {
