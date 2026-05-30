@@ -223,7 +223,7 @@ export function CEOBigNumbers() {
         case "down":
           return "text-emerald-600 bg-emerald-50";
         default:
-          return "text-slate-500 bg-slate-50";
+          return "text-muted-foreground bg-muted";
       }
     }
     
@@ -233,7 +233,7 @@ export function CEOBigNumbers() {
       case "down":
         return "text-rose-600 bg-rose-50";
       default:
-        return "text-slate-500 bg-slate-50";
+        return "text-muted-foreground bg-muted";
     }
   };
 
@@ -241,7 +241,7 @@ export function CEOBigNumbers() {
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         {[...Array(7)].map((_, i) => (
-          <div key={i} className="h-28 bg-slate-100 rounded-xl animate-pulse" />
+          <div key={i} className="h-28 bg-muted rounded-xl animate-pulse" />
         ))}
       </div>
     );
@@ -255,7 +255,7 @@ export function CEOBigNumbers() {
           className={`p-4 rounded-xl border-2 ${metric.bgClass} transition-all duration-200 hover:shadow-lg hover:scale-[1.02]`}
         >
           <div className="flex items-start justify-between mb-2">
-            <div className={`p-2 rounded-lg bg-white shadow-sm ${metric.colorClass}`}>
+            <div className={`p-2 rounded-lg bg-card shadow-sm ${metric.colorClass}`}>
               {metric.icon}
             </div>
             {metric.trendValue && (
@@ -268,7 +268,7 @@ export function CEOBigNumbers() {
           <div className={`text-xl font-bold ${metric.colorClass} mb-1`}>
             {metric.value}
           </div>
-          <div className="text-xs text-slate-600 font-medium">
+          <div className="text-xs text-muted-foreground font-medium">
             {metric.label}
           </div>
         </div>

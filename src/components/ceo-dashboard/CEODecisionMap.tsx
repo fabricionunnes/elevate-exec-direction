@@ -833,16 +833,16 @@ Foque em:
 
       {/* Summary Cards - Premium Design */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card className="relative overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 border-slate-200 dark:border-slate-700">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-slate-200/50 dark:bg-slate-700/30 rounded-full -mr-8 -mt-8" />
+        <Card className="relative overflow-hidden bg-card">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-muted/50 rounded-full -mr-8 -mt-8" />
           <CardContent className="pt-5 pb-4">
             <div className="flex items-start justify-between">
-              <div className="p-2 rounded-xl bg-slate-200/80 dark:bg-slate-700">
-                <Target className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+              <div className="p-2 rounded-xl bg-muted">
+                <Target className="h-5 w-5 text-muted-foreground" />
               </div>
-              <span className="text-3xl font-bold text-slate-700 dark:text-slate-200">{stats.total}</span>
+              <span className="text-3xl font-bold text-foreground">{stats.total}</span>
             </div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-3">Total Decisões</p>
+            <p className="text-sm font-medium text-muted-foreground mt-3">Total Decisões</p>
           </CardContent>
         </Card>
         
@@ -901,24 +901,24 @@ Foque em:
 
       <Tabs defaultValue="table" className="space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <TabsList className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+          <TabsList className="bg-muted p-1 rounded-xl">
             <TabsTrigger 
               value="table" 
-              className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm rounded-lg px-4 py-2 font-medium transition-all"
+              className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg px-4 py-2 font-medium transition-all"
             >
               <BarChart3 className="h-4 w-4 mr-2" />
               Tabela
             </TabsTrigger>
             <TabsTrigger 
               value="timeline" 
-              className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm rounded-lg px-4 py-2 font-medium transition-all"
+              className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg px-4 py-2 font-medium transition-all"
             >
               <Calendar className="h-4 w-4 mr-2" />
               Linha do Tempo
             </TabsTrigger>
             <TabsTrigger 
               value="insights" 
-              className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm rounded-lg px-4 py-2 font-medium transition-all"
+              className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg px-4 py-2 font-medium transition-all"
             >
               <Sparkles className="h-4 w-4 mr-2" />
               Insights IA
