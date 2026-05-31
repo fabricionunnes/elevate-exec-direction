@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Copy, ArrowLeft, Download, CheckCircle2, Clock, Eye, XCircle, AlertCircle } from "lucide-react";
+import { Copy, ArrowLeft, Download, CheckCircle2, Clock, Eye, XCircle, AlertCircle, Link2, Loader2 } from "lucide-react";
 import type { Envelope, Signer, AuditEvent, SignerStatus, AuditEventType } from "@/types/signatures";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -47,6 +47,7 @@ export function EnvelopeDetail({ envelopeId, onBack }: Props) {
   const [signers, setSigners] = useState<Signer[]>([]);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [copyingLink, setCopyingLink] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -72,6 +73,32 @@ export function EnvelopeDetail({ envelopeId, onBack }: Props) {
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text).then(() => toast.success(`${label} copiado`));
+  };
+
+  const handleCopySigningLink = async (signerId: string) => {
+    setCopyingLink(signerId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return toast.error("Sessão expirada");
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-signing-link`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ signer_id: signerId }),
+        }
+      );
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error ?? "Erro ao gerar link");
+
+      await navigator.clipboard.writeText(data.data.signing_url);
+      toast.success(`Link de assinatura copiado para ${data.data.signer_name}`);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Erro ao gerar link");
+    } finally {
+      setCopyingLink(null);
+    }
   };
 
   const handleDownloadFinal = async () => {
@@ -172,6 +199,21 @@ export function EnvelopeDetail({ envelopeId, onBack }: Props) {
                     <p className="font-medium text-sm">{signer.name}</p>
                     <Badge variant="outline" className="text-xs">{SIGNER_STATUS_LABELS[signer.status]}</Badge>
                     {signer.order_index > 0 && <Badge variant="secondary" className="text-xs">{signer.order_index + 1}º</Badge>}
+                    {(signer.status === "pending" || signer.status === "viewed") && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 text-xs gap-1"
+                        disabled={copyingLink === signer.id}
+                        onClick={() => handleCopySigningLink(signer.id)}
+                      >
+                        {copyingLink === signer.id
+                          ? <Loader2 className="h-3 w-3 animate-spin" />
+                          : <Link2 className="h-3 w-3" />
+                        }
+                        Copiar link
+                      </Button>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">{signer.email}</p>
                   {signer.status === "signed" && signer.signed_at && (
