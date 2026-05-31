@@ -1,11 +1,14 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EnvelopeCreator } from "@/components/signatures/EnvelopeCreator";
 import { EnvelopesList } from "@/components/signatures/EnvelopesList";
 import { EnvelopeDetail } from "@/components/signatures/EnvelopeDetail";
-import { FileSignature, List, Plus } from "lucide-react";
+import { FileSignature, List, Plus, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function SignaturesAdminPage() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("lista");
   const [selectedEnvelopeId, setSelectedEnvelopeId] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -29,6 +32,9 @@ export default function SignaturesAdminPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
         <FileSignature className="h-6 w-6 text-primary" />
         <div>
           <h1 className="text-xl font-bold">Assinaturas Eletrônicas</h1>
