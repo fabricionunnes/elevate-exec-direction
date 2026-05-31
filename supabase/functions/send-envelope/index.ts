@@ -44,7 +44,8 @@ serve(async (req: Request) => {
       await supabaseAdmin.from("audit_events").insert({ envelope_id, signer_id: signer.id, event_type: "sent", ip: clientIp, metadata: { email: signer.email, resend_id: rd.id, success: true } });
       results.push({ signer_id: signer.id, email: signer.email, sent: true });
     }
-    if (results.some(r => r.sent)) await supabaseAdmin.from("envelopes").update({ status: "sent" }).eq("id", envelope_id);
+    // Sempre marca como sent (envelope está pronto para assinar, independente do e-mail)
+    await supabaseAdmin.from("envelopes").update({ status: "sent" }).eq("id", envelope_id);
     return createSuccessResponse({ envelope_id, emails_sent: results.filter(r => r.sent).length, results, sequential: isSeq });
   } catch (err) { console.error(err); return createErrorResponse("Erro interno", 500); }
 });
