@@ -786,7 +786,40 @@ export default function AdsPage() {
           </div>
 
           {/* Cards dos planos */}
-          <div className="grid lg:grid-cols-3 gap-6 mb-10 max-w-5xl mx-auto">
+          <div className="grid lg:grid-cols-4 gap-5 mb-10 max-w-6xl mx-auto">
+
+            {/* STARTER */}
+            <div className="card-premium p-6 bg-background flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-slate-500/10 flex items-center justify-center text-2xl">🚀</div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Starter</p>
+                  <p className="text-sm text-muted-foreground">Primeiro Passo</p>
+                </div>
+              </div>
+              <div className="mb-5">
+                <p className="text-3xl font-bold text-foreground">R$ 1.000<span className="text-base font-normal text-muted-foreground">/mês</span></p>
+                <p className="text-xs text-muted-foreground mt-1">+ Mídia: R$ 300 – R$ 600</p>
+              </div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">O que está incluído</p>
+              <ul className="space-y-2 flex-1">
+                {[
+                  { label: "Plataforma", value: "Facebook ou Instagram Ads" },
+                  { label: "Objetivo", value: "Engajamento e reconhecimento de marca" },
+                  { label: "Campanhas", value: "1 campanha ativa otimizada" },
+                  { label: "Relatórios", value: "Relatório mensal simplificado" },
+                  { label: "Suporte", value: "WhatsApp e e-mail" },
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <CheckCircle className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
+                    <span><span className="font-medium text-foreground">{item.label}:</span>{" "}<span className="text-muted-foreground">{item.value}</span></span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-5 p-3 bg-slate-500/5 border border-slate-500/20 rounded-lg text-xs text-muted-foreground italic">
+                💡 Ideal para quem quer dar o primeiro passo no tráfego pago com baixo risco.
+              </div>
+            </div>
 
             {/* BRONZE */}
             <div className="card-premium p-6 bg-background flex flex-col">
@@ -892,11 +925,12 @@ export default function AdsPage() {
           </div>
 
           {/* Comparativo */}
-          <div className="max-w-4xl mx-auto mb-10 overflow-x-auto">
+          <div className="max-w-5xl mx-auto mb-10 overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left py-3 pr-4 text-muted-foreground font-medium">Item</th>
+                  <th className="text-center py-3 px-3 text-slate-500 font-bold">🚀 Starter</th>
                   <th className="text-center py-3 px-3 text-amber-700 font-bold">🥉 Bronze</th>
                   <th className="text-center py-3 px-3 text-blue-400 font-bold bg-[#0D2B5E]/10 rounded-t-lg">🥈 Prata</th>
                   <th className="text-center py-3 px-3 text-yellow-600 font-bold">🥇 Ouro</th>
@@ -904,21 +938,23 @@ export default function AdsPage() {
               </thead>
               <tbody className="divide-y divide-border/50">
                 {[
-                  ["Honorário mensal", "R$ 2.000", "R$ 3.000", "R$ 4.000"],
-                  ["Investimento mínimo em mídia", "R$ 600 – 1.000", "R$ 2.000+", "R$ 4.000+"],
-                  ["Facebook & Instagram Ads", "✔", "✔", "✔"],
-                  ["Google Ads", "✘", "✘", "✔"],
-                  ["Todos os objetivos de campanha", "✘", "✔", "✔"],
-                  ["Segmentação lookalike / avançada", "✘", "✔", "✔"],
-                  ["Relatório mensal", "✔", "✔", "✔"],
-                  ["Relatório quinzenal/semanal", "✘", "Quinzenal", "Semanal"],
-                  ["Reunião de estratégia", "✘", "Mensal", "Semanal"],
-                ].map(([item, bronze, prata, ouro], i) => (
+                  ["Honorário mensal", "R$ 1.000", "R$ 2.000", "R$ 3.000", "R$ 4.000"],
+                  ["Invest. mínimo em mídia", "R$ 300–600", "R$ 600–1.000", "R$ 2.000+", "R$ 4.000+"],
+                  ["Facebook ou Instagram Ads", "✔", "✔", "✔", "✔"],
+                  ["Facebook + Instagram Ads", "✘", "✔", "✔", "✔"],
+                  ["Google Ads", "✘", "✘", "✘", "✔"],
+                  ["Todos os objetivos de campanha", "✘", "✘", "✔", "✔"],
+                  ["Segmentação lookalike / avançada", "✘", "✘", "✔", "✔"],
+                  ["Relatório mensal", "✔", "✔", "✔", "✔"],
+                  ["Relatório quinzenal/semanal", "✘", "✘", "Quinzenal", "Semanal"],
+                  ["Reunião de estratégia", "✘", "✘", "Mensal", "Semanal"],
+                ].map((row, i) => (
                   <tr key={i} className="text-sm">
-                    <td className="py-2.5 pr-4 text-foreground">{item}</td>
-                    <td className="py-2.5 px-3 text-center text-muted-foreground">{bronze}</td>
-                    <td className="py-2.5 px-3 text-center text-foreground font-medium bg-[#0D2B5E]/5">{prata}</td>
-                    <td className="py-2.5 px-3 text-center text-muted-foreground">{ouro}</td>
+                    <td className="py-2.5 pr-4 text-foreground">{row[0]}</td>
+                    <td className="py-2.5 px-3 text-center text-muted-foreground">{row[1]}</td>
+                    <td className="py-2.5 px-3 text-center text-muted-foreground">{row[2]}</td>
+                    <td className="py-2.5 px-3 text-center text-foreground font-medium bg-[#0D2B5E]/5">{row[3]}</td>
+                    <td className="py-2.5 px-3 text-center text-muted-foreground">{row[4]}</td>
                   </tr>
                 ))}
               </tbody>
