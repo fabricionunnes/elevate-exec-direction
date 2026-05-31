@@ -11,6 +11,13 @@ import { toast } from "sonner";
 import { Plus, Trash2, Upload, Send, GripVertical, FileText } from "lucide-react";
 import type { SignerInput } from "@/types/signatures";
 
+const DEFAULT_SIGNER: SignerInput = {
+  name: "Fabrício Augusto Nunes Oliveira",
+  email: "fabricio@universidadevendas.com.br",
+  cpf: "07810271601",
+  order_index: 0,
+};
+
 interface Props {
   onCreated?: (envelopeId: string) => void;
 }
@@ -21,7 +28,7 @@ export function EnvelopeCreator({ onCreated }: Props) {
   const [expiresInDays, setExpiresInDays] = useState("30");
   const [sequential, setSequential] = useState(false);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [signers, setSigners] = useState<SignerInput[]>([{ name: "", email: "", order_index: 0 }]);
+  const [signers, setSigners] = useState<SignerInput[]>([{ ...DEFAULT_SIGNER }]);
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
@@ -97,7 +104,7 @@ export function EnvelopeCreator({ onCreated }: Props) {
 
       // Reset
       setTitle(""); setMessage(""); setPdfFile(null); setExpiresInDays("30"); setSequential(false);
-      setSigners([{ name: "", email: "", order_index: 0 }]);
+      setSigners([{ ...DEFAULT_SIGNER }]);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erro inesperado");
     } finally {
@@ -178,31 +185,35 @@ export function EnvelopeCreator({ onCreated }: Props) {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {signers.map((signer, idx) => (
-            <div key={idx} className="flex gap-2 items-start p-3 border rounded-lg bg-muted/30">
-              {sequential && <GripVertical className="h-4 w-4 mt-2 text-muted-foreground flex-shrink-0" />}
-              {sequential && <Badge variant="outline" className="mt-1.5 flex-shrink-0 text-xs">{idx + 1}º</Badge>}
-              <div className="flex-1 grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Nome *</Label>
-                  <Input value={signer.name} onChange={e => updateSigner(idx, "name", e.target.value)} placeholder="Nome completo" className="h-8 text-sm" />
+          {signers.map((signer, idx) => {
+            const isDefault = signer.email === DEFAULT_SIGNER.email;
+            return (
+              <div key={idx} className={`flex gap-2 items-start p-3 border rounded-lg ${isDefault ? "bg-primary/5 border-primary/20" : "bg-muted/30"}`}>
+                {sequential && <GripVertical className="h-4 w-4 mt-2 text-muted-foreground flex-shrink-0" />}
+                {sequential && <Badge variant="outline" className="mt-1.5 flex-shrink-0 text-xs">{idx + 1}º</Badge>}
+                <div className="flex-1 grid grid-cols-2 gap-2">
+                  <div className="space-y-1 col-span-2 flex items-center gap-2">
+                    {isDefault && <Badge variant="secondary" className="text-xs h-5">Padrão</Badge>}
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Nome *</Label>
+                    <Input value={signer.name} onChange={e => updateSigner(idx, "name", e.target.value)} placeholder="Nome completo" className="h-8 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">E-mail *</Label>
+                    <Input type="email" value={signer.email} onChange={e => updateSigner(idx, "email", e.target.value)} placeholder="email@exemplo.com" className="h-8 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">CPF (opcional)</Label>
+                    <Input value={signer.cpf ?? ""} onChange={e => updateSigner(idx, "cpf", e.target.value)} placeholder="00000000000" maxLength={14} className="h-8 text-sm" />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">E-mail *</Label>
-                  <Input type="email" value={signer.email} onChange={e => updateSigner(idx, "email", e.target.value)} placeholder="email@exemplo.com" className="h-8 text-sm" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">CPF (opcional)</Label>
-                  <Input value={signer.cpf ?? ""} onChange={e => updateSigner(idx, "cpf", e.target.value)} placeholder="00000000000" maxLength={14} className="h-8 text-sm" />
-                </div>
-              </div>
-              {signers.length > 1 && (
                 <Button size="icon" variant="ghost" className="h-8 w-8 mt-5 text-destructive hover:text-destructive" onClick={() => removeSigner(idx)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
-              )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
 
