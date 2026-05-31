@@ -5,7 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Download, Send, Eye, RefreshCw, FileCheck, Clock, AlertCircle, FileX, CheckCircle2 } from "lucide-react";
+import { Download, Send, Eye, RefreshCw, FileCheck, Clock, AlertCircle, FileX, CheckCircle2, Trash2 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { EnvelopeSummary, EnvelopeStatus } from "@/types/signatures";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -28,6 +33,8 @@ export function EnvelopesList({ onViewDetail, refreshTrigger }: Props) {
   const [envelopes, setEnvelopes] = useState<EnvelopeSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<EnvelopeSummary | null>(null);
 
   const fetchEnvelopes = async () => {
     setLoading(true);
@@ -68,6 +75,30 @@ export function EnvelopesList({ onViewDetail, refreshTrigger }: Props) {
       toast.error(err instanceof Error ? err.message : "Erro ao reenviar");
     } finally {
       setSendingId(null);
+    }
+  };
+
+  const handleDelete = async (envelope: EnvelopeSummary) => {
+    setDeletingId(envelope.id);
+    setConfirmDelete(null);
+    try {
+      // Remove arquivos do storage
+      const filesToRemove: string[] = [];
+      if (envelope.original_file_path) filesToRemove.push(envelope.original_file_path);
+      if (envelope.final_file_path) filesToRemove.push(envelope.final_file_path);
+      if (filesToRemove.length > 0) {
+        await supabase.storage.from("envelopes").remove(filesToRemove);
+      }
+      // Deleta o envelope (cascade apaga signers, tokens, audit_events)
+      const { error } = await supabase.from("envelopes" as never).delete().eq("id", envelope.id);
+      if (error) throw error;
+      setEnvelopes(prev => prev.filter(e => e.id !== envelope.id));
+      toast.success("Envelope excluído");
+    } catch (err: unknown) {
+      console.error(err);
+      toast.error("Erro ao excluir envelope");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -163,12 +194,42 @@ export function EnvelopesList({ onViewDetail, refreshTrigger }: Props) {
                       <Download className="h-3 w-3 mr-1" /> Download
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => setConfirmDelete(env)}
+                    disabled={deletingId === env.id}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
         );
       })}
+      {/* Dialog de confirmação */}
+      <AlertDialog open={!!confirmDelete} onOpenChange={open => !open && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir envelope?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você está prestes a excluir <strong>"{confirmDelete?.title}"</strong>.
+              {confirmDelete?.status === "completed" && " O PDF final assinado também será removido."} Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={() => confirmDelete && handleDelete(confirmDelete)}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
