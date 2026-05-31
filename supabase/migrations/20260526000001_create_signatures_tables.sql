@@ -106,3 +106,8 @@ USING (bucket_id = 'envelopes' AND EXISTS (SELECT 1 FROM public.envelopes e WHER
 
 DROP POLICY IF EXISTS "storage_envelopes_service_insert" ON storage.objects;
 CREATE POLICY "storage_envelopes_service_insert" ON storage.objects FOR INSERT TO service_role WITH CHECK (bucket_id = 'envelopes');
+
+-- Grants para service_role (necessário para edge functions usarem supabaseAdmin)
+GRANT ALL ON public.envelopes, public.signers, public.audit_events, public.signing_tokens TO service_role;
+GRANT ALL ON public.envelopes, public.signers, public.audit_events, public.signing_tokens TO authenticated;
+GRANT SELECT ON public.envelopes, public.signers, public.audit_events, public.signing_tokens TO anon;
