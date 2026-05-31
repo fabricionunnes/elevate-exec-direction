@@ -770,41 +770,170 @@ export default function AdsPage() {
         </div>
       </section>
 
-      {/* Investment */}
+      {/* Pacotes */}
       <section className="section-padding bg-card border-y border-border/30 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-glow opacity-30 pointer-events-none" />
-        <div className="container-premium text-center relative">
-          <h2 className="heading-section text-foreground mb-8">Investimento</h2>
-          <div className="max-w-md mx-auto bg-card border border-border rounded-2xl p-6 mb-8">
-            <p className="text-sm text-muted-foreground mb-4">Fee mensal conforme investimento em mídia:</p>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center py-2 border-b border-border/50">
-                <span className="text-muted-foreground">Até R$ 10.000 em mídia</span>
-                <span className="font-bold text-foreground">R$ 1.800</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-border/50">
-                <span className="text-muted-foreground">Até R$ 20.000 em mídia</span>
-                <span className="font-bold text-foreground">R$ 2.500</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-border/50">
-                <span className="text-muted-foreground">Até R$ 50.000 em mídia</span>
-                <span className="font-bold text-foreground">R$ 4.000</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-muted-foreground">Acima de R$ 50.000</span>
-                <span className="font-bold text-foreground">% do investido</span>
-              </div>
+        <div className="container-premium relative">
+          <div className="text-center mb-4">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary text-sm font-medium rounded-full mb-4 border border-primary/30">
+              <Layers className="h-4 w-4" />
+              Três Níveis. Uma Jornada.
             </div>
-            <p className="text-xs text-muted-foreground/60 mt-4 text-center">
-              + Mídia paga: investimento do cliente
+            <h2 className="heading-section text-foreground mb-4">Pacotes UNV Ads</h2>
+            <p className="text-body max-w-2xl mx-auto">
+              Uma estratégia escalável — do primeiro investimento ao máximo de performance.
             </p>
           </div>
-          <Link to="/diagnostico">
-            <Button variant="hero" size="xl">
-              Aplicar Agora
-              <ArrowRight className="ml-2" />
-            </Button>
-          </Link>
+
+          {/* Cards dos planos */}
+          <div className="grid lg:grid-cols-3 gap-6 mb-10 max-w-5xl mx-auto">
+
+            {/* BRONZE */}
+            <div className="card-premium p-6 bg-background flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-amber-700/10 flex items-center justify-center text-2xl">🥉</div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-amber-700">Bronze</p>
+                  <p className="text-sm text-muted-foreground">Porta de Entrada</p>
+                </div>
+              </div>
+              <div className="mb-5">
+                <p className="text-3xl font-bold text-foreground">R$ 2.000<span className="text-base font-normal text-muted-foreground">/mês</span></p>
+                <p className="text-xs text-muted-foreground mt-1">+ Mídia: R$ 600 – R$ 1.000</p>
+              </div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">O que está incluído</p>
+              <ul className="space-y-2 flex-1">
+                {[
+                  { label: "Plataforma", value: "Facebook & Instagram Ads" },
+                  { label: "Objetivo", value: "Engajamento, seguidores e alcance" },
+                  { label: "Campanhas", value: "Crescimento de audiência orgânica" },
+                  { label: "Relatórios", value: "Relatório mensal de resultados" },
+                  { label: "Suporte", value: "WhatsApp e e-mail" },
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <CheckCircle className="h-4 w-4 text-amber-700 flex-shrink-0 mt-0.5" />
+                    <span><span className="font-medium text-foreground">{item.label}:</span>{" "}<span className="text-muted-foreground">{item.value}</span></span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-5 p-3 bg-amber-700/5 border border-amber-700/20 rounded-lg text-xs text-muted-foreground italic">
+                💡 Cria a base de confiança para escalar ao Prata e depois ao Ouro.
+              </div>
+            </div>
+
+            {/* PRATA — destaque */}
+            <div className="card-premium p-6 bg-[#0D2B5E] flex flex-col relative ring-2 ring-[#0D2B5E] shadow-xl">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="bg-[#CC1B1B] text-white text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wider">Mais popular</span>
+              </div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-2xl">🥈</div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-blue-300">Prata</p>
+                  <p className="text-sm text-white/70">Crescimento</p>
+                </div>
+              </div>
+              <div className="mb-5">
+                <p className="text-3xl font-bold text-white">R$ 3.000<span className="text-base font-normal text-white/60">/mês</span></p>
+                <p className="text-xs text-white/50 mt-1">+ Mídia: R$ 2.000+</p>
+              </div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">O que está incluído</p>
+              <ul className="space-y-2 flex-1">
+                {[
+                  { label: "Plataformas", value: "Facebook Ads + Instagram Ads" },
+                  { label: "Objetivos", value: "Tráfego, leads, vendas e todos os objetivos" },
+                  { label: "Segmentação", value: "Públicos personalizados e lookalike" },
+                  { label: "Relatórios", value: "Quinzenal + dashboard de resultados" },
+                  { label: "Suporte", value: "Reunião mensal de estratégia + WhatsApp" },
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <CheckCircle className="h-4 w-4 text-blue-300 flex-shrink-0 mt-0.5" />
+                    <span><span className="font-medium text-white">{item.label}:</span>{" "}<span className="text-white/70">{item.value}</span></span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-5 p-3 bg-white/5 border border-white/10 rounded-lg text-xs text-white/60 italic">
+                💡 Upsell natural do Bronze — mais canais, mais objetivos, com dados.
+              </div>
+            </div>
+
+            {/* OURO */}
+            <div className="card-premium p-6 bg-background flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-yellow-500/10 flex items-center justify-center text-2xl">🥇</div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-yellow-600">Ouro</p>
+                  <p className="text-sm text-muted-foreground">Performance Total</p>
+                </div>
+              </div>
+              <div className="mb-5">
+                <p className="text-3xl font-bold text-foreground">R$ 4.000<span className="text-base font-normal text-muted-foreground">/mês</span></p>
+                <p className="text-xs text-muted-foreground mt-1">+ Mídia: R$ 4.000+</p>
+              </div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">O que está incluído</p>
+              <ul className="space-y-2 flex-1">
+                {[
+                  { label: "Plataformas", value: "Facebook + Instagram + Google Ads" },
+                  { label: "Objetivos", value: "Tráfego, conversão, leads e vendas" },
+                  { label: "Segmentação", value: "Públicos avançados, retargeting e automações" },
+                  { label: "Relatórios", value: "Semanal + dashboard ao vivo" },
+                  { label: "Suporte", value: "Reuniões semanais + atendimento prioritário" },
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <CheckCircle className="h-4 w-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <span><span className="font-medium text-foreground">{item.label}:</span>{" "}<span className="text-muted-foreground">{item.value}</span></span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-5 p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg text-xs text-muted-foreground italic">
+                💡 O destino final — máxima performance e cliente fidelizado.
+              </div>
+            </div>
+          </div>
+
+          {/* Comparativo */}
+          <div className="max-w-4xl mx-auto mb-10 overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-3 pr-4 text-muted-foreground font-medium">Item</th>
+                  <th className="text-center py-3 px-3 text-amber-700 font-bold">🥉 Bronze</th>
+                  <th className="text-center py-3 px-3 text-blue-400 font-bold bg-[#0D2B5E]/10 rounded-t-lg">🥈 Prata</th>
+                  <th className="text-center py-3 px-3 text-yellow-600 font-bold">🥇 Ouro</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {[
+                  ["Honorário mensal", "R$ 2.000", "R$ 3.000", "R$ 4.000"],
+                  ["Investimento mínimo em mídia", "R$ 600 – 1.000", "R$ 2.000+", "R$ 4.000+"],
+                  ["Facebook & Instagram Ads", "✔", "✔", "✔"],
+                  ["Google Ads", "✘", "✘", "✔"],
+                  ["Todos os objetivos de campanha", "✘", "✔", "✔"],
+                  ["Segmentação lookalike / avançada", "✘", "✔", "✔"],
+                  ["Relatório mensal", "✔", "✔", "✔"],
+                  ["Relatório quinzenal/semanal", "✘", "Quinzenal", "Semanal"],
+                  ["Reunião de estratégia", "✘", "Mensal", "Semanal"],
+                ].map(([item, bronze, prata, ouro], i) => (
+                  <tr key={i} className="text-sm">
+                    <td className="py-2.5 pr-4 text-foreground">{item}</td>
+                    <td className="py-2.5 px-3 text-center text-muted-foreground">{bronze}</td>
+                    <td className="py-2.5 px-3 text-center text-foreground font-medium bg-[#0D2B5E]/5">{prata}</td>
+                    <td className="py-2.5 px-3 text-center text-muted-foreground">{ouro}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground mb-6">* Valores de honorário. Investimento em mídia é pago pelo cliente diretamente nas plataformas.</p>
+            <Link to="/diagnostico">
+              <Button variant="hero" size="xl">
+                Aplicar Agora
+                <ArrowRight className="ml-2" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
