@@ -579,14 +579,14 @@ export const CRMLeadDetailPage = () => {
           console.log("[WON NOTIFICATION] Result:", JSON.stringify(result));
           if (result.success) {
             toast.success("📱 Notificação enviada para o grupo!");
-          } else if (result.error && result.error !== "Notificações desativadas" && result.error !== "Configuração incompleta") {
-            console.error("[WON NOTIFICATION] Falha:", result.error);
-            toast.error("Erro ao enviar notificação: " + result.error);
+          } else {
+            // Só loga no console — não exibe erro para o usuário pois a venda já foi registrada
+            console.warn("[WON NOTIFICATION] Falha ao notificar grupo:", result.error);
           }
         })
         .catch((e) => {
+          // Falha silenciosa — instância WhatsApp pode estar desconectada
           console.error("[WON NOTIFICATION] Exception:", e);
-          toast.error("Erro ao enviar notificação para o grupo");
         });
 
       setWonDialogOpen(false);
