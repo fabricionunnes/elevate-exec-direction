@@ -798,7 +798,7 @@ export default function AdsPage() {
                 </div>
               </div>
               <div className="mb-5">
-                <p className="text-3xl font-bold text-foreground">R$ 1.000<span className="text-base font-normal text-muted-foreground">/mês</span></p>
+                <p className="text-3xl font-bold text-foreground">R$ 1.200<span className="text-base font-normal text-muted-foreground">/mês</span></p>
                 <p className="text-xs text-muted-foreground mt-1">+ Mídia: R$ 300 – R$ 600</p>
               </div>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">O que está incluído</p>
@@ -938,7 +938,7 @@ export default function AdsPage() {
               </thead>
               <tbody className="divide-y divide-border/50">
                 {[
-                  ["Honorário mensal", "R$ 1.000", "R$ 2.000", "R$ 3.000", "R$ 4.000"],
+                  ["Honorário mensal", "R$ 1.200", "R$ 2.000", "R$ 3.000", "R$ 4.000"],
                   ["Invest. mínimo em mídia", "R$ 300–600", "R$ 600–1.000", "R$ 2.000+", "R$ 4.000+"],
                   ["Facebook ou Instagram Ads", "✔", "✔", "✔", "✔"],
                   ["Facebook + Instagram Ads", "✘", "✔", "✔", "✔"],
