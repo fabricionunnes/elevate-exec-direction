@@ -146,7 +146,7 @@ const pillars = [
       "Gravações de todos os workshops de IA",
       "Templates Claude + Lovable testados pelo grupo"
     ],
-    gain: "Enquanto meu concorrente ainda pensa em contratar, eu já automatizei, criei e escaiei — com IA.",
+    gain: "Enquanto meu concorrente ainda pensa em contratar, eu já automatizei, criei e escalei — com IA.",
     icon: Bot
   }
 ];
