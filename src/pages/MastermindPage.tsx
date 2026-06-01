@@ -24,7 +24,8 @@ import {
   Award,
   Clock,
   UserCheck,
-  AlertTriangle
+  AlertTriangle,
+  Bot
 } from "lucide-react";
 import { ProductTrailSummary } from "@/components/ProductTrailSummary";
 import { ROISimulator } from "@/components/ROISimulator";
@@ -123,6 +124,30 @@ const pillars = [
     ],
     gain: "Não substitui o grupo. Ela sustenta clareza entre encontros.",
     icon: Sparkles
+  },
+  {
+    title: "Inteligência Artificial Aplicada ao Negócio",
+    description: "O empresário que dominar IA nos próximos 12 meses vai ter uma vantagem competitiva que levaria 5 anos para construir antes. No Mastermind, você aprende a usar, construir e escalar agentes de IA — usando Claude e Lovable — para liberar tempo, automatizar processos e tomar decisões mais rápidas.",
+    frequency: "Workshops mensais + implementação prática",
+    items: [
+      "O que são agentes de IA e como funcionam na prática",
+      "Como criar seu Assistente Executivo de IA no Claude",
+      "Agentes para Comercial: SDR, follow-up e CRM automatizado",
+      "Agentes para Financeiro: alertas, relatórios e análises automáticas",
+      "Agentes para RH: recrutamento, onboarding e cultura",
+      "Criação de sistemas e ferramentas internas com Lovable (sem código)",
+      "Construção ao vivo: cada membro sai com 1 agente funcionando",
+      "Como escalar: do agente piloto ao time de IA do seu negócio"
+    ],
+    deliverables: [
+      "1 agente de IA criado e funcionando por workshop",
+      "Biblioteca de prompts e fluxos prontos para usar",
+      "Acesso ao grupo exclusivo de IA do Mastermind",
+      "Gravações de todos os workshops de IA",
+      "Templates Claude + Lovable testados pelo grupo"
+    ],
+    gain: "Enquanto meu concorrente ainda pensa em contratar, eu já automatizei, criei e escaiei — com IA.",
+    icon: Bot
   }
 ];
 
@@ -134,6 +159,8 @@ const deliverables = [
   "Direção individual pontual",
   "Benchmark real",
   "UNV AI Advisor avançado",
+  "Workshops de IA aplicada (Claude + Lovable)",
+  "Agentes de IA criados ao vivo",
   "Comunidade ultra seletiva"
 ];
 
