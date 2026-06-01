@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   ManagerV2,
   isManagerV2Url,
@@ -1036,22 +1036,38 @@ Deno.serve(async (req) => {
 
         // Use instance-specific API credentials if available
         const apiBaseUrl = instance.api_url ? normalizeBaseUrl(instance.api_url) : evolutionBaseUrl;
-        const apiHeaders = instance.api_key ? buildEvolutionHeaders(instance.api_key) : evolutionHeaders;
+        const apiKey = instance.api_key || EVOLUTION_API_KEY;
+        const apiHeaders = buildEvolutionHeaders(apiKey);
+        const isManagerV2 = isManagerV2Url(apiBaseUrl);
 
-        console.log(`[evolution-api] sendGroupText using ${instance.api_url ? 'custom' : 'global'} credentials for instance ${instance.instance_name}`);
+        console.log(`[evolution-api] sendGroupText using ${isManagerV2 ? 'Manager V2' : 'Evolution'} for instance ${instance.instance_name}`);
         console.log(`[evolution-api] sendGroupText to group: ${groupId}`);
 
         // Ensure groupId has the correct format (should end with @g.us)
         const formattedGroupId = groupId.includes('@g.us') ? groupId : `${groupId}@g.us`;
 
-        const response = await fetch(`${apiBaseUrl}/message/sendText/${instance.instance_name}`, {
-          method: 'POST',
-          headers: apiHeaders,
-          body: JSON.stringify({
-            number: formattedGroupId,
-            text: message,
-          }),
-        });
+        let response: Response;
+        if (isManagerV2) {
+          // Manager V2 (Stevo) uses /send/text
+          const result = await ManagerV2.sendText(
+            { baseUrl: apiBaseUrl, apiKey },
+            { number: formattedGroupId, text: message }
+          );
+          return new Response(
+            JSON.stringify(result.data ?? result),
+            { status: result.ok !== false ? 200 : 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } else {
+          // Standard Evolution API uses /message/sendText/{instanceName}
+          response = await fetch(`${apiBaseUrl}/message/sendText/${instance.instance_name}`, {
+            method: 'POST',
+            headers: apiHeaders,
+            body: JSON.stringify({
+              number: formattedGroupId,
+              text: message,
+            }),
+          });
+        }
 
         const data = await response.json();
         console.log('[evolution-api] sendGroupText response:', JSON.stringify(data).substring(0, 500));
