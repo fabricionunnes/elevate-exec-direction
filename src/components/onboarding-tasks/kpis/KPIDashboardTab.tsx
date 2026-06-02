@@ -24,7 +24,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { format, startOfMonth, endOfMonth, subDays, startOfWeek, endOfWeek, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2, Check, Filter, UsersRound, Layers, ExternalLink } from "lucide-react";
+import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2, Check, Filter, UsersRound, Layers, ExternalLink, ChevronDown } from "lucide-react";
 import { parseDateLocal } from "@/lib/dateUtils";
 import { isHoliday } from "@/lib/businessDays";
 import { CampaignDashboardWidget } from "../endomarketing/CampaignDashboardWidget";
@@ -153,6 +153,7 @@ export const KPIDashboardTab = ({
   const [selectedTeam, setSelectedTeam] = useState<string>("all");
   const [selectedSector, setSelectedSector] = useState<string>("all");
   const [salesHistoryRefreshKey, setSalesHistoryRefreshKey] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [contractStartDate, setContractStartDate] = useState<string | null>(null);
   const [salespersonAccessCode, setSalespersonAccessCode] = useState<string | null>(null);
   const [daySettings, setDaySettings] = useState({ includeSaturday: false, includeSunday: false, includeHolidays: false });
@@ -1450,15 +1451,20 @@ export const KPIDashboardTab = ({
     <div className="space-y-6">
       {/* Filters */}
       <Card className="border-border/50 shadow-sm overflow-hidden">
-        {/* Cabeçalho colorido */}
-        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-4 py-2.5 border-b border-border/40 flex items-center gap-2">
+        {/* Cabeçalho clicável para colapsar */}
+        <button
+          type="button"
+          onClick={() => setFiltersOpen(prev => !prev)}
+          className="w-full bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-4 py-2.5 border-b border-border/40 flex items-center gap-2 hover:from-primary/15 transition-colors"
+        >
           <div className="h-6 w-6 rounded-md bg-primary/15 flex items-center justify-center">
             <Filter className="h-3 w-3 text-primary" />
           </div>
-          <span className="text-xs font-semibold text-foreground tracking-wide uppercase">Filtros</span>
-        </div>
+          <span className="text-xs font-semibold text-foreground tracking-wide uppercase flex-1 text-left">Filtros</span>
+          <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${filtersOpen ? "rotate-180" : ""}`} />
+        </button>
 
-        <CardContent className="px-4 pt-4 pb-4 space-y-4">
+        {filtersOpen && <CardContent className="px-4 pt-4 pb-4 space-y-4">
           {/* Período */}
           <div className="space-y-2">
             <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
@@ -1657,7 +1663,7 @@ export const KPIDashboardTab = ({
               />
             </div>
           </div>
-        </CardContent>
+        </CardContent>}
       </Card>
 
       {/* Norte Estratégico (NSM) — em destaque, acima da Projeção do Mês */}
