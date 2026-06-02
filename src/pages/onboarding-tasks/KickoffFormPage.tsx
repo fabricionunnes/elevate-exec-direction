@@ -25,6 +25,7 @@ import {
   History,
   Plus,
   Trash2,
+  Building2,
 } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -34,6 +35,13 @@ interface QuarterlyGoals {
   q2: { pessimista: string; realista: string; otimista: string };
   q3: { pessimista: string; realista: string; otimista: string };
   q4: { pessimista: string; realista: string; otimista: string };
+}
+
+interface CompanyUnit {
+  id: string;
+  name: string;
+  briefing: string;
+  monthly_revenue: number;
 }
 
 interface SalesHistoryEntry {
@@ -82,6 +90,9 @@ interface KickoffFormData {
   growth_expectation_6m: string;
   growth_expectation_12m: string;
   
+  // Unidades
+  company_units: CompanyUnit[];
+
   // Notas
   notes: string;
 }
@@ -91,8 +102,9 @@ const STEPS = [
   { id: 2, title: "Análise SWOT", icon: Compass },
   { id: 3, title: "Checklist & OKRs", icon: Target },
   { id: 4, title: "Metas Trimestrais", icon: TrendingUp },
-  { id: 5, title: "Histórico de Vendas", icon: History },
-  { id: 6, title: "Expectativas", icon: Flag },
+  { id: 5, title: "Unidades", icon: Building2 },
+  { id: 6, title: "Histórico de Vendas", icon: History },
+  { id: 7, title: "Expectativas", icon: Flag },
 ];
 
 // Generate last 12 months for sales history
@@ -138,6 +150,7 @@ const initialFormData: KickoffFormData = {
   growth_expectation_3m: "",
   growth_expectation_6m: "",
   growth_expectation_12m: "",
+  company_units: [],
   notes: "",
 };
 
@@ -238,6 +251,7 @@ const KickoffFormPage = () => {
           growth_expectation_3m: (data as any).growth_expectation_3m || "",
           growth_expectation_6m: (data as any).growth_expectation_6m || "",
           growth_expectation_12m: (data as any).growth_expectation_12m || "",
+          company_units: Array.isArray((data as any).company_units) ? (data as any).company_units : [],
           notes: data.notes || "",
         });
       }
@@ -322,6 +336,7 @@ const KickoffFormPage = () => {
           growth_expectation_3m: formData.growth_expectation_3m || null,
           growth_expectation_6m: formData.growth_expectation_6m || null,
           growth_expectation_12m: formData.growth_expectation_12m || null,
+          company_units: JSON.parse(JSON.stringify(formData.company_units)),
           notes: formData.notes || null,
         } as any)
         .eq("id", companyId);
@@ -883,6 +898,89 @@ const KickoffFormPage = () => {
         );
 
       case 5:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-2">
+              <h3 className="text-lg font-semibold">Unidades da Empresa</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Se sua empresa possui mais de uma unidade, filial ou ponto de venda, adicione cada uma abaixo com seu nome, contexto e faturamento mensal.
+              </p>
+            </div>
+
+            <div className="flex justify-center">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setFormData(prev => ({
+                  ...prev,
+                  company_units: [...prev.company_units, { id: crypto.randomUUID(), name: "", briefing: "", monthly_revenue: 0 }]
+                }))}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" /> Adicionar Unidade
+              </Button>
+            </div>
+
+            {formData.company_units.length === 0 && (
+              <div className="text-center py-10 border-2 border-dashed rounded-xl text-muted-foreground">
+                <Building2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p className="text-sm font-medium">Nenhuma unidade adicionada</p>
+                <p className="text-xs mt-1 max-w-xs mx-auto">Se sua empresa tem apenas uma unidade, pode pular esta etapa. Se tiver mais de uma, clique em "Adicionar Unidade".</p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {formData.company_units.map((unit, index) => (
+                <Card key={unit.id} className="border border-border/60">
+                  <CardContent className="p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-primary">Unidade #{index + 1}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        onClick={() => setFormData(prev => ({ ...prev, company_units: prev.company_units.filter(u => u.id !== unit.id) }))}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label>Nome da Unidade *</Label>
+                        <Input
+                          placeholder="Ex: Unidade Centro, Filial SP, Loja 2..."
+                          value={unit.name}
+                          onChange={(e) => setFormData(prev => ({ ...prev, company_units: prev.company_units.map(u => u.id === unit.id ? { ...u, name: e.target.value } : u) }))}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Faturamento Mensal (R$)</Label>
+                        <Input
+                          type="number"
+                          placeholder="Ex: 50000"
+                          value={unit.monthly_revenue || ""}
+                          onChange={(e) => setFormData(prev => ({ ...prev, company_units: prev.company_units.map(u => u.id === unit.id ? { ...u, monthly_revenue: Number(e.target.value) } : u) }))}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Briefing da Unidade *</Label>
+                      <Textarea
+                        placeholder="Descreva o contexto desta unidade: o que vende, perfil de clientes, equipe, principais desafios, ticket médio, canais de aquisição..."
+                        value={unit.briefing}
+                        onChange={(e) => setFormData(prev => ({ ...prev, company_units: prev.company_units.map(u => u.id === unit.id ? { ...u, briefing: e.target.value } : u) }))}
+                        rows={4}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 6:
         const formatMonthLabel = (dateStr: string) => {
           const date = new Date(dateStr + "T12:00:00");
           return format(date, "MMM/yyyy", { locale: ptBR });
@@ -964,7 +1062,7 @@ const KickoffFormPage = () => {
           </div>
         );
 
-      case 6:
+      case 7:
         return (
           <div className="space-y-6">
             <div className="text-center mb-4">

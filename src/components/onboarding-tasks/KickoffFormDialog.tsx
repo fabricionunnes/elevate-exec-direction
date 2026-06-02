@@ -44,6 +44,13 @@ interface Stakeholder {
   isDecisionMaker: boolean;
 }
 
+interface CompanyUnit {
+  id: string;
+  name: string;
+  briefing: string;
+  monthly_revenue: number;
+}
+
 interface KickoffFormData {
   // Empresa
   name: string;
@@ -69,6 +76,9 @@ interface KickoffFormData {
   contract_value: number | null;
   billing_day: number | null;
   
+  // Unidades
+  company_units: CompanyUnit[];
+
   // Stakeholders
   stakeholders: Stakeholder[];
   
@@ -95,9 +105,10 @@ const STEPS = [
   { id: 1, title: "Dados da Empresa", icon: Building2 },
   { id: 2, title: "Negócio & Mercado", icon: Briefcase },
   { id: 3, title: "Objetivos & Desafios", icon: Target },
-  { id: 4, title: "Stakeholders", icon: Users },
-  { id: 5, title: "Contrato", icon: DollarSign },
-  { id: 6, title: "Cronograma", icon: Calendar },
+  { id: 4, title: "Unidades", icon: Building2 },
+  { id: 5, title: "Stakeholders", icon: Users },
+  { id: 6, title: "Contrato", icon: DollarSign },
+  { id: 7, title: "Cronograma", icon: Calendar },
 ];
 
 const initialFormData: KickoffFormData = {
@@ -119,6 +130,7 @@ const initialFormData: KickoffFormData = {
   contract_end_date: "",
   contract_value: null,
   billing_day: null,
+  company_units: [],
   stakeholders: [],
   expected_timeline: {
     discovery: "",
@@ -197,6 +209,7 @@ export const KickoffFormDialog = ({
           contract_end_date: data.contract_end_date || "",
           contract_value: data.contract_value || null,
           billing_day: data.billing_day || null,
+          company_units: Array.isArray(data.company_units) ? data.company_units : [],
           stakeholders,
           expected_timeline: timeline,
           notes: data.notes || "",
@@ -218,6 +231,32 @@ export const KickoffFormDialog = ({
     setFormData((prev) => ({
       ...prev,
       expected_timeline: { ...prev.expected_timeline, [field]: value },
+    }));
+  };
+
+  const addUnit = () => {
+    setFormData((prev) => ({
+      ...prev,
+      company_units: [
+        ...prev.company_units,
+        { id: crypto.randomUUID(), name: "", briefing: "", monthly_revenue: 0 },
+      ],
+    }));
+  };
+
+  const removeUnit = (id: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      company_units: prev.company_units.filter((u) => u.id !== id),
+    }));
+  };
+
+  const updateUnit = (id: string, field: keyof CompanyUnit, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      company_units: prev.company_units.map((u) =>
+        u.id === id ? { ...u, [field]: value } : u
+      ),
     }));
   };
 
@@ -271,6 +310,7 @@ export const KickoffFormDialog = ({
           contract_end_date: formData.contract_end_date || null,
           contract_value: formData.contract_value,
           billing_day: formData.billing_day,
+          company_units: JSON.parse(JSON.stringify(formData.company_units)),
           stakeholders: JSON.parse(JSON.stringify(formData.stakeholders)),
           expected_timeline: JSON.parse(JSON.stringify(formData.expected_timeline)),
           notes: formData.notes || null,
@@ -476,6 +516,79 @@ export const KickoffFormDialog = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
+                <h3 className="font-medium">Unidades da Empresa</h3>
+                <p className="text-sm text-muted-foreground">
+                  Adicione cada unidade, filial ou ponto de venda com nome, briefing e faturamento mensal.
+                </p>
+              </div>
+              <Button onClick={addUnit} variant="outline" size="sm">
+                <Plus className="h-4 w-4 mr-1" /> Adicionar Unidade
+              </Button>
+            </div>
+
+            {formData.company_units.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                <Building2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">Nenhuma unidade adicionada.</p>
+                <p className="text-xs mt-1">Clique em "Adicionar Unidade" se a empresa tiver mais de uma unidade, filial ou loja.</p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {formData.company_units.map((unit, index) => (
+                <Card key={unit.id} className="border border-border/60">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline">Unidade #{index + 1}</Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        onClick={() => removeUnit(unit.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Nome da Unidade *</Label>
+                        <Input
+                          placeholder="Ex: Unidade Centro, Filial SP..."
+                          value={unit.name}
+                          onChange={(e) => updateUnit(unit.id, "name", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Faturamento Mensal (R$)</Label>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          value={unit.monthly_revenue || ""}
+                          onChange={(e) => updateUnit(unit.id, "monthly_revenue", Number(e.target.value))}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Briefing da Unidade *</Label>
+                      <Textarea
+                        placeholder="Descreva o contexto desta unidade: produtos/serviços que vende, perfil de clientes, desafios específicos, equipe comercial..."
+                        value={unit.briefing}
+                        onChange={(e) => updateUnit(unit.id, "briefing", e.target.value)}
+                        rows={3}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 5:
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
                 <h3 className="font-medium">Stakeholders do Projeto</h3>
                 <p className="text-sm text-muted-foreground">
                   Adicione as pessoas-chave envolvidas no projeto
@@ -566,7 +679,7 @@ export const KickoffFormDialog = ({
           </div>
         );
 
-      case 5:
+      case 6:
         return (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -640,7 +753,7 @@ export const KickoffFormDialog = ({
           </div>
         );
 
-      case 6:
+      case 7:
         return (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
