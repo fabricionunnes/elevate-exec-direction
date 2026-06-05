@@ -41,7 +41,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2, Building2, Wallet, ArrowUpRight, ArrowDownLeft, RefreshCw, History } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, Wallet, ArrowUpRight, ArrowDownLeft, RefreshCw, History, MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { format } from "date-fns";
@@ -115,6 +116,10 @@ export function ClientBankAccountsPanel({ projectId, canEdit }: Props) {
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [txDeleteTarget, setTxDeleteTarget] = useState<BankTransaction | null>(null);
+  const [txEditTarget, setTxEditTarget] = useState<BankTransaction | null>(null);
+  const [txEditDesc, setTxEditDesc] = useState("");
+  const [txSaving, setTxSaving] = useState(false);
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
   const [formData, setFormData] = useState(initialFormData);
@@ -361,6 +366,46 @@ export function ClientBankAccountsPanel({ projectId, canEdit }: Props) {
     return ACCOUNT_TYPES.find((t) => t.value === type)?.label || type;
   };
 
+  const handleTxEditSave = async () => {
+    if (!txEditTarget) return;
+    setTxSaving(true);
+    try {
+      const { error } = await supabase
+        .from("client_financial_bank_transactions")
+        .update({ description: txEditDesc.trim() })
+        .eq("id", txEditTarget.id);
+      if (error) throw error;
+      setTransactions(prev => prev.map(t => t.id === txEditTarget.id ? { ...t, description: txEditDesc.trim() } : t));
+      toast.success("Descrição atualizada");
+      setTxEditTarget(null);
+    } catch {
+      toast.error("Erro ao salvar");
+    } finally {
+      setTxSaving(false);
+    }
+  };
+
+  const handleTxDelete = async () => {
+    if (!txDeleteTarget) return;
+    setTxSaving(true);
+    try {
+      const { error } = await supabase
+        .from("client_financial_bank_transactions")
+        .delete()
+        .eq("id", txDeleteTarget.id);
+      if (error) throw error;
+      setTransactions(prev => prev.filter(t => t.id !== txDeleteTarget.id));
+      toast.success("Lançamento excluído");
+      setTxDeleteTarget(null);
+      // Reload to recalculate balances
+      loadData();
+    } catch {
+      toast.error("Erro ao excluir");
+    } finally {
+      setTxSaving(false);
+    }
+  };
+
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case "income":
@@ -545,6 +590,7 @@ export function ClientBankAccountsPanel({ projectId, canEdit }: Props) {
                     <TableHead>Descrição</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
                     <TableHead className="text-right">Saldo</TableHead>
+                    <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -583,6 +629,23 @@ export function ClientBankAccountsPanel({ projectId, canEdit }: Props) {
                           </TableCell>
                           <TableCell className="text-right">
                             {formatCurrency(tx.balance_after)}
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                  <MoreVertical className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => { setTxEditTarget(tx); setTxEditDesc(tx.description || ""); }}>
+                                  <Pencil className="h-4 w-4 mr-2" /> Editar descrição
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive" onClick={() => setTxDeleteTarget(tx)}>
+                                  <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       );
@@ -801,6 +864,44 @@ export function ClientBankAccountsPanel({ projectId, canEdit }: Props) {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit Transaction Description Dialog */}
+      <Dialog open={!!txEditTarget} onOpenChange={(o) => !o && setTxEditTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Lançamento</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label>Descrição</Label>
+            <Input value={txEditDesc} onChange={(e) => setTxEditDesc(e.target.value)} placeholder="Descrição do lançamento" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTxEditTarget(null)}>Cancelar</Button>
+            <Button onClick={handleTxEditSave} disabled={txSaving || !txEditDesc.trim()}>
+              {txSaving ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Transaction Confirmation */}
+      <AlertDialog open={!!txDeleteTarget} onOpenChange={(o) => !o && setTxDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Lançamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja excluir o lançamento <strong>"{txDeleteTarget?.description || "sem descrição"}"</strong>?<br />
+              O saldo da conta será recalculado. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleTxDelete} disabled={txSaving}>
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
