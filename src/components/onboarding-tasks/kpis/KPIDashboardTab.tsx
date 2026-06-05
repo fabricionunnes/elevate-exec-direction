@@ -2093,21 +2093,22 @@ export const KPIDashboardTab = ({
 
       {/* Period Comparison Card */}
       {showWidget("period_comparison") && (
-      <PeriodComparisonCard
-        companyId={companyId}
-        kpis={kpis.map(k => ({ id: k.id, name: k.name, kpi_type: k.kpi_type, is_main_goal: k.is_main_goal }))}
-        salespeople={salespeople.map(sp => ({ id: sp.id, name: sp.name, team_id: sp.team_id, unit_id: sp.unit_id, sector_id: sp.sector_id }))}
-        dateRange={dateRange}
-        selectedKpi={selectedKpi}
-        selectedSalesperson={selectedSalesperson}
-        selectedUnit={selectedUnit}
-        selectedTeam={selectedTeam}
-        selectedSector={selectedSector}
-        sectorTeams={sectorTeams}
-      />
+        <PeriodComparisonCard
+          companyId={companyId}
+          kpis={kpis.map(k => ({ id: k.id, name: k.name, kpi_type: k.kpi_type, is_main_goal: k.is_main_goal }))}
+          salespeople={salespeople.map(sp => ({ id: sp.id, name: sp.name, team_id: sp.team_id, unit_id: sp.unit_id, sector_id: sp.sector_id }))}
+          dateRange={dateRange}
+          selectedKpi={selectedKpi}
+          selectedSalesperson={selectedSalesperson}
+          selectedUnit={selectedUnit}
+          selectedTeam={selectedTeam}
+          selectedSector={selectedSector}
+          sectorTeams={sectorTeams}
+        />
+      )}
 
       {/* Daily Goal Card */}
-      {showWidget("daily_goal") && <DailyGoalCard
+      {showWidget("daily_goal") && (<DailyGoalCard
         companyId={companyId}
         kpis={kpis}
         salespeople={salespeople}
@@ -2127,7 +2128,7 @@ export const KPIDashboardTab = ({
         sectorTeams={sectorTeams}
         isClientView={isSalespersonView}
         currentSalespersonRankPosition={isSalespersonView ? getMyRankingPosition : undefined}
-      />
+      />)}
 
       {/* Salespeople Comparison Table */}
       {showWidget("salespeople_table") && !isSalespersonView && (hasMultipleMainGoalsForCharts ? (
