@@ -24,7 +24,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { format, startOfMonth, endOfMonth, subDays, startOfWeek, endOfWeek, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2, Check, Filter, UsersRound, Layers, ExternalLink, ChevronDown } from "lucide-react";
+import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2, Check, Filter, UsersRound, Layers, ExternalLink, ChevronDown, Settings2, Eye, EyeOff } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 import { parseDateLocal } from "@/lib/dateUtils";
 import { isHoliday } from "@/lib/businessDays";
 import { CampaignDashboardWidget } from "../endomarketing/CampaignDashboardWidget";
@@ -123,6 +125,29 @@ interface MonthlyTarget {
   salesperson_id: string | null;
 }
 
+const KPI_WIDGETS = [
+  { id: "nsm",                 label: "North Star Metric",             description: "Meta principal de faturamento mensal" },
+  { id: "projection",          label: "Projeção do Mês",               description: "Card de progresso em relação à meta" },
+  { id: "period_comparison",   label: "Comparação de Período",         description: "Compara períodos diferentes" },
+  { id: "daily_goal",          label: "Meta Diária / Ranking",         description: "Meta diária e ranking de vendedores" },
+  { id: "salespeople_table",   label: "Tabela de Vendedores",          description: "Comparativo detalhado entre vendedores" },
+  { id: "performance",         label: "Comparação de Performance",     description: "Performance por unidade, setor ou equipe" },
+  { id: "monthly_chart",       label: "Gráfico de Vendas Mensais",     description: "Evolução mensal dos KPIs" },
+  { id: "term_vision",         label: "Visão QTR / YTD / MAT",        description: "Visão acumulada por período" },
+  { id: "before_after",        label: "Antes vs Depois UNV",           description: "Comparação de resultados antes e depois" },
+  { id: "cac",                 label: "Calculadora CAC",               description: "Custo de aquisição de clientes" },
+  { id: "conversion",          label: "Taxa de Conversão",             description: "Funil de conversão detalhado" },
+  { id: "avg_ticket",          label: "Ticket Médio",                  description: "Ticket médio por venda" },
+  { id: "endomarketing",       label: "Endomarketing",                 description: "Campanhas internas" },
+  { id: "gamification",        label: "Gamificação",                   description: "Pontuação e conquistas" },
+];
+
+type WidgetId = typeof KPI_WIDGETS[number]["id"];
+
+const DEFAULT_WIDGET_CONFIG: Record<WidgetId, boolean> = Object.fromEntries(
+  KPI_WIDGETS.map(w => [w.id, true])
+) as Record<WidgetId, boolean>;
+
 export const KPIDashboardTab = ({
   companyId,
   projectId,
@@ -154,6 +179,9 @@ export const KPIDashboardTab = ({
   const [selectedSector, setSelectedSector] = useState<string>("all");
   const [salesHistoryRefreshKey, setSalesHistoryRefreshKey] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [widgetConfig, setWidgetConfig] = useState<Record<WidgetId, boolean>>(DEFAULT_WIDGET_CONFIG);
+  const [widgetConfigOpen, setWidgetConfigOpen] = useState(false);
+  const [savingWidgetConfig, setSavingWidgetConfig] = useState(false);
   const [contractStartDate, setContractStartDate] = useState<string | null>(null);
   const [salespersonAccessCode, setSalespersonAccessCode] = useState<string | null>(null);
   const [daySettings, setDaySettings] = useState({ includeSaturday: false, includeSunday: false, includeHolidays: false });
@@ -169,6 +197,39 @@ export const KPIDashboardTab = ({
   useEffect(() => {
     fetchData();
   }, [companyId, dateRange, salespersonId]);
+
+  // Load widget config from DB
+  useEffect(() => {
+    if (!companyId) return;
+    supabase
+      .from("onboarding_companies")
+      .select("dashboard_widget_config")
+      .eq("id", companyId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.dashboard_widget_config && typeof data.dashboard_widget_config === "object") {
+          setWidgetConfig({ ...DEFAULT_WIDGET_CONFIG, ...(data.dashboard_widget_config as Record<WidgetId, boolean>) });
+        }
+      });
+  }, [companyId]);
+
+  const saveWidgetConfig = async (config: Record<WidgetId, boolean>) => {
+    setSavingWidgetConfig(true);
+    try {
+      await supabase
+        .from("onboarding_companies")
+        .update({ dashboard_widget_config: config } as any)
+        .eq("id", companyId);
+      setWidgetConfig(config);
+      toast.success("Configuração salva");
+    } catch {
+      toast.error("Erro ao salvar configuração");
+    } finally {
+      setSavingWidgetConfig(false);
+    }
+  };
+
+  const showWidget = (id: WidgetId) => widgetConfig[id] !== false;
 
   // If salespersonId is set, auto-select that salesperson
   useEffect(() => {
@@ -1450,7 +1511,7 @@ export const KPIDashboardTab = ({
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <Card className="border-border/50 shadow-sm overflow-hidden">
+      <Card className="border-border/50 shadow-sm overflow-hidden relative">
         {/* Cabeçalho clicável para colapsar */}
         <button
           type="button"
@@ -1463,6 +1524,72 @@ export const KPIDashboardTab = ({
           <span className="text-xs font-semibold text-foreground tracking-wide uppercase flex-1 text-left">Filtros</span>
           <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${filtersOpen ? "rotate-180" : ""}`} />
         </button>
+        {/* Widget config button — only for non-client, non-salesperson views */}
+        {!isClientView && !isSalespersonView && (
+          <Sheet open={widgetConfigOpen} onOpenChange={setWidgetConfigOpen}>
+            <SheetTrigger asChild>
+              <button
+                type="button"
+                className="absolute top-1.5 right-8 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted/50 transition-colors"
+                onClick={e => { e.stopPropagation(); setWidgetConfigOpen(true); }}
+              >
+                <Settings2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Widgets</span>
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[340px] sm:w-[400px]">
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  <Settings2 className="h-5 w-5" />
+                  Configurar Widgets do Dashboard
+                </SheetTitle>
+                <p className="text-sm text-muted-foreground">
+                  Selecione quais seções devem aparecer. As alterações valem para você e para o cliente.
+                </p>
+              </SheetHeader>
+              <div className="mt-6 space-y-1 overflow-y-auto max-h-[calc(100vh-180px)] pr-1">
+                {KPI_WIDGETS.map(widget => (
+                  <div key={widget.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/40 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${widgetConfig[widget.id as WidgetId] !== false ? "bg-primary/10" : "bg-muted"}`}>
+                        {widgetConfig[widget.id as WidgetId] !== false
+                          ? <Eye className="h-3.5 w-3.5 text-primary" />
+                          : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                        }
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{widget.label}</p>
+                        <p className="text-xs text-muted-foreground truncate">{widget.description}</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={widgetConfig[widget.id as WidgetId] !== false}
+                      onCheckedChange={(checked) => {
+                        const newConfig = { ...widgetConfig, [widget.id]: checked };
+                        setWidgetConfig(newConfig);
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 pt-4 border-t flex gap-2">
+                <Button
+                  className="flex-1"
+                  onClick={() => saveWidgetConfig(widgetConfig)}
+                  disabled={savingWidgetConfig}
+                >
+                  {savingWidgetConfig ? "Salvando..." : "Salvar Configuração"}
+                </Button>
+                <Button variant="outline" onClick={() => {
+                  const all = Object.fromEntries(KPI_WIDGETS.map(w => [w.id, true])) as Record<WidgetId, boolean>;
+                  setWidgetConfig(all);
+                }}>
+                  Mostrar Tudo
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
+        )}
 
         {filtersOpen && <CardContent className="px-4 pt-4 pb-4 space-y-4">
           {/* Período */}
@@ -1667,10 +1794,10 @@ export const KPIDashboardTab = ({
       </Card>
 
       {/* Norte Estratégico (NSM) — em destaque, acima da Projeção do Mês */}
-      {!isSalespersonView && <NorthStarMetricCard companyId={companyId} />}
+      {!isSalespersonView && showWidget("nsm") && <NorthStarMetricCard companyId={companyId} />}
 
       {/* Monthly Projection Card - Shows individual main goals when there are multiple */}
-      {(projection.target > 0 || projection.hasDistinctCategories || projection.hasMultipleMainGoals) && (
+      {showWidget("projection") && (projection.target > 0 || projection.hasDistinctCategories || projection.hasMultipleMainGoals) && (
         <div className="space-y-4">
           {/* Warning when we have distinct categories (faturamento vs receita) that shouldn't be summed */}
           {projection.showDistinctCategoriesWarning && projection.individualProjections.length > 0 && (
@@ -1965,6 +2092,7 @@ export const KPIDashboardTab = ({
       )}
 
       {/* Period Comparison Card */}
+      {showWidget("period_comparison") && (
       <PeriodComparisonCard
         companyId={companyId}
         kpis={kpis.map(k => ({ id: k.id, name: k.name, kpi_type: k.kpi_type, is_main_goal: k.is_main_goal }))}
@@ -1979,7 +2107,7 @@ export const KPIDashboardTab = ({
       />
 
       {/* Daily Goal Card */}
-      <DailyGoalCard
+      {showWidget("daily_goal") && <DailyGoalCard
         companyId={companyId}
         kpis={kpis}
         salespeople={salespeople}
@@ -2002,7 +2130,7 @@ export const KPIDashboardTab = ({
       />
 
       {/* Salespeople Comparison Table */}
-      {!isSalespersonView && (hasMultipleMainGoalsForCharts ? (
+      {showWidget("salespeople_table") && !isSalespersonView && (hasMultipleMainGoalsForCharts ? (
         mainGoalKpisForCharts.map((kpi) => (
           <SalespeopleComparisonTable
             key={`comparison-${kpi.id}`}
@@ -2038,7 +2166,7 @@ export const KPIDashboardTab = ({
       ))}
 
       {/* Performance Comparison Card - Compare by units, sectors, teams, or salespeople */}
-      {(teams.length > 1 || units.length > 1 || sectors.length > 1 || salespeople.length > 1) && (
+      {showWidget("performance") && (teams.length > 1 || units.length > 1 || sectors.length > 1 || salespeople.length > 1) && (
         <PerformanceComparisonCard
           teams={teams}
           units={units}
@@ -2082,7 +2210,7 @@ export const KPIDashboardTab = ({
       )}
 
       {/* Monthly Sales Chart */}
-      {hasMultipleMainGoalsForCharts ? (
+      {showWidget("monthly_chart") && hasMultipleMainGoalsForCharts ? (
         mainGoalKpisForCharts.map((kpi) => (
           <MonthlySalesChart
             key={`monthly-${kpi.id}`}
@@ -2125,7 +2253,7 @@ export const KPIDashboardTab = ({
 
 
       {/* Term Vision Card - QTR/YTD/MAT */}
-      {hasMultipleMainGoalsForCharts ? (
+      {showWidget("term_vision") && hasMultipleMainGoalsForCharts ? (
         mainGoalKpisForCharts.map((kpi) => (
           <ProjectTermVisionCard
             key={`term-${kpi.id}`}
@@ -2151,22 +2279,22 @@ export const KPIDashboardTab = ({
       )}
 
       {/* Sales Comparison Chart - Before vs After UNV */}
-      <SalesComparisonChart 
+      {showWidget("before_after") && <SalesComparisonChart 
         companyId={companyId}
         projectId={projectId}
         contractStartDate={contractStartDate}
         currentMonthRevenue={calculatedMetrics.totalRevenue}
         refreshKey={salesHistoryRefreshKey}
         onlyShowIfPositive={isClientView}
-      />
+      />}
 
       {/* CAC Calculator Card */}
-      {projectId && (
+      {showWidget("cac") && projectId && (
         <CACCalculatorCard projectId={projectId} autoSalesCount={calculatedMetrics.totalSales} />
       )}
 
       {/* Conversion Card - Detailed */}
-      {calculatedMetrics.hasAnyConversionData && (
+      {showWidget("conversion") && calculatedMetrics.hasAnyConversionData && (
         <Card className="border-primary/50 bg-primary/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Taxas de Conversão</CardTitle>
@@ -2233,7 +2361,7 @@ export const KPIDashboardTab = ({
       )}
 
       {/* Average Ticket Card */}
-      {calculatedMetrics.hasRevenueData && calculatedMetrics.hasSalesData && calculatedMetrics.totalSales > 0 && (
+      {showWidget("avg_ticket") && calculatedMetrics.hasRevenueData && calculatedMetrics.hasSalesData && calculatedMetrics.totalSales > 0 && (
         <Card className="border-amber-500/50 bg-amber-500/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
@@ -3025,12 +3153,12 @@ export const KPIDashboardTab = ({
       )}
 
       {/* Endomarketing Campaigns Widget */}
-      {projectId && (
+      {showWidget("endomarketing") && projectId && (
         <CampaignDashboardWidget companyId={companyId} projectId={projectId} />
       )}
 
       {/* Gamification Widget */}
-      {projectId && (
+      {showWidget("gamification") && projectId && (
         <GamificationDashboardWidget companyId={companyId} projectId={projectId} />
       )}
     </div>
