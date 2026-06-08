@@ -141,9 +141,9 @@ const PublicPipelineForm = () => {
     setError(null);
 
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_PROJECT_ID && `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co`;
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/submit-pipeline-form`,
+        `${supabaseUrl}/functions/v1/submit-pipeline-form`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -213,9 +213,9 @@ const PublicPipelineForm = () => {
     setError(null);
 
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_PROJECT_ID && `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co`;
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/submit-pipeline-form`,
+        `${supabaseUrl}/functions/v1/submit-pipeline-form`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
