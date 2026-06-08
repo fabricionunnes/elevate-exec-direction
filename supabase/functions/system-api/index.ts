@@ -777,6 +777,34 @@ serve(async (req) => {
           if (error) throw error;
           return json({ data });
         },
+        delete_entry: async (c) => {
+          const { company_id, salesperson_id, kpi_id, date_from, date_to } = c.body;
+          // Delete one specific entry by id
+          if (c.id) {
+            const { error } = await c.supabase.from("kpi_entries").delete().eq("id", c.id);
+            if (error) throw error;
+            return json({ success: true, deleted: 1 });
+          }
+          // Delete all entries with optional filters
+          if (!company_id) return json({ error: "Informe 'id' para apagar um lançamento específico, ou 'company_id' para apagar em lote" }, 400);
+          let q = c.supabase.from("kpi_entries").delete().eq("company_id", company_id);
+          if (salesperson_id) q = q.eq("salesperson_id", salesperson_id);
+          if (kpi_id) q = q.eq("kpi_id", kpi_id);
+          if (date_from) q = q.gte("entry_date", date_from);
+          if (date_to) q = q.lte("entry_date", date_to);
+          const { error, count } = await (q as any).select("id", { count: "exact", head: true });
+          if (error) throw error;
+          const { error: delErr } = await (() => {
+            let dq = c.supabase.from("kpi_entries").delete().eq("company_id", company_id);
+            if (salesperson_id) dq = dq.eq("salesperson_id", salesperson_id);
+            if (kpi_id) dq = dq.eq("kpi_id", kpi_id);
+            if (date_from) dq = dq.gte("entry_date", date_from);
+            if (date_to) dq = dq.lte("entry_date", date_to);
+            return dq;
+          })();
+          if (delErr) throw delErr;
+          return json({ success: true });
+        },
         create: async (c) => {
           const { company_id, name, kpi_type, periodicity, target_value, is_individual, is_required, is_active, is_main_goal, scope, sort_order, sector_id, team_id, unit_id, salesperson_id } = c.body;
           if (!company_id) return json({ error: "Campo 'company_id' obrigatório" }, 400);
@@ -2060,7 +2088,7 @@ serve(async (req) => {
               activities: { actions: ["list", "create", "update", "complete", "delete"], description: "Atividades do CRM" },
               meetings: { actions: ["list", "schedule", "finalize"], description: "Reuniões do CRM" },
               sales: { actions: ["list", "create", "update"], description: "Histórico de vendas" },
-              kpis: { actions: ["list", "entries", "monthly_targets", "create_entry", "update_entry", "create", "update", "set_monthly_target"], description: "KPIs: cadastrar, editar, definir meta mensal, lançar e editar resultado" },
+              kpis: { actions: ["list", "entries", "monthly_targets", "create_entry", "update_entry", "delete_entry", "create", "update", "set_monthly_target"], description: "KPIs: cadastrar, editar, definir meta mensal, lançar, editar e apagar lançamentos" },
               salespeople: { actions: ["list", "create", "update", "delete", "kpi_links"], description: "Vendedores das empresas (kpi_links retorna link de lançamento individual por vendedor)" },
               job_openings: { actions: ["list", "create"], description: "Vagas de emprego: listar com link público de candidatura e criar novas vagas" },
               units: { actions: ["list", "create", "update"], description: "Unidades das empresas" },

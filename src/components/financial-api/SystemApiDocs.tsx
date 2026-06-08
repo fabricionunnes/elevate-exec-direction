@@ -536,6 +536,21 @@ const systemModules: ModuleDoc[] = [
         example: `POST ${API_URL}?module=kpis&action=update_entry&id=UUID\n\n{ "value": 18000, "observations": "Correção de lançamento" }`,
         response: `{ "data": { "id": "uuid", "value": 18000, "entry_date": "2026-06-08" } }`,
       },
+      {
+        action: "delete_entry", method: "POST", description: "Apagar lançamento(s) de KPI — específico ou em lote",
+        params: [
+          { name: "id", desc: "UUID do lançamento (apaga apenas este)", required: false },
+        ],
+        bodyFields: [
+          { name: "company_id", desc: "UUID da empresa — obrigatório para exclusão em lote", required: false },
+          { name: "salesperson_id", desc: "Filtrar por vendedor", required: false },
+          { name: "kpi_id", desc: "Filtrar por KPI", required: false },
+          { name: "date_from", desc: "Apagar a partir de (YYYY-MM-DD)", required: false },
+          { name: "date_to", desc: "Apagar até (YYYY-MM-DD)", required: false },
+        ],
+        example: `// Apagar um específico:\nPOST ${API_URL}?module=kpis&action=delete_entry&id=UUID\n\n// Apagar todos de um vendedor num período:\nPOST ${API_URL}?module=kpis&action=delete_entry\n\n{ "company_id": "UUID", "salesperson_id": "UUID", "date_from": "2026-06-01", "date_to": "2026-06-30" }`,
+        response: `{ "success": true }`,
+      },
     ],
   },
   {
