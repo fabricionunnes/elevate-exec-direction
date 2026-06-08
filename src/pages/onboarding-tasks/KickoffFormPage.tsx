@@ -386,7 +386,7 @@ const KickoffFormPage = () => {
       1: ['main_challenges', 'sales_team_size', 'conversion_rate', 'average_ticket', 'acquisition_channels', 'target_audience', 'has_structured_process', 'crm_usage', 'competitors', 'has_sales_goals'],
       2: ['swot_strengths', 'swot_weaknesses', 'swot_opportunities', 'swot_threats'],
       3: ['commercial_structure', 'growth_target', 'tools_used', 'objectives_with_unv', 'key_results'],
-      6: ['growth_expectation_3m', 'growth_expectation_6m', 'growth_expectation_12m'],
+      7: ['growth_expectation_3m', 'growth_expectation_6m', 'growth_expectation_12m'],
     };
 
     // Step 4: validate quarterly goals
@@ -411,8 +411,13 @@ const KickoffFormPage = () => {
       return false;
     }
 
-    // Step 5: validate sales history
+    // Step 5: Unidades — sem validação obrigatória
     if (step === 5) {
+      return true;
+    }
+
+    // Step 6: validate sales history
+    if (step === 6) {
       return validateSalesHistory();
     }
 
