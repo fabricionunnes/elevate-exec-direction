@@ -43,25 +43,11 @@ import { toast } from "sonner";
 import { History, Trash2, DollarSign, Hash, Percent, Pencil } from "lucide-react";
 import { formatDateLocal } from "@/lib/dateUtils";
 
-interface KPI {
-  id: string;
-  name: string;
-  kpi_type: string;
-}
-
-interface Salesperson {
-  id: string;
-  name: string;
-}
-
+interface KPI { id: string; name: string; kpi_type: string; }
+interface Salesperson { id: string; name: string; }
 interface Entry {
-  id: string;
-  kpi_id: string;
-  salesperson_id: string;
-  entry_date: string;
-  value: number;
-  observations: string | null;
-  created_at: string;
+  id: string; kpi_id: string; salesperson_id: string;
+  entry_date: string; value: number; observations: string | null; created_at: string;
 }
 
 interface KPIEntriesHistoryDialogProps {
@@ -73,12 +59,9 @@ interface KPIEntriesHistoryDialogProps {
 }
 
 export const KPIEntriesHistoryDialog = ({
-  companyId,
-  canDelete = false,
-  canEdit = false,
-  onEntryDeleted,
-  salespersonId,
+  companyId, canDelete = false, canEdit = false, onEntryDeleted, salespersonId,
 }: KPIEntriesHistoryDialogProps) => {
+  // ── State — mesma ordem do original + bulk selection ──────────────────────
   const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [kpis, setKpis] = useState<KPI[]>([]);
@@ -90,74 +73,56 @@ export const KPIEntriesHistoryDialog = ({
     start: format(startOfMonth(new Date()), "yyyy-MM-dd"),
     end: format(endOfMonth(new Date()), "yyyy-MM-dd"),
   });
-
-  // Single delete
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<Entry | null>(null);
-
-  // Bulk delete
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
-  const [bulkDeleting, setBulkDeleting] = useState(false);
-
-  // Edit state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [entryToEdit, setEntryToEdit] = useState<Entry | null>(null);
   const [editValue, setEditValue] = useState("");
   const [editObservations, setEditObservations] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  // ── Effects — mesma ordem do original ─────────────────────────────────────
   useEffect(() => {
     if (open) {
       fetchData();
-      setSelectedIds(new Set());
+      setSelectedIds([]);
     }
   }, [open, companyId, dateRange]);
 
+  // ── Data fetch ─────────────────────────────────────────────────────────────
   const fetchData = async () => {
     setLoading(true);
     try {
       let entriesQuery = supabase
-        .from("kpi_entries")
-        .select("*")
+        .from("kpi_entries").select("*")
         .eq("company_id", companyId)
         .gte("entry_date", dateRange.start)
         .lte("entry_date", dateRange.end);
-
-      if (salespersonId) {
-        entriesQuery = entriesQuery.eq("salesperson_id", salespersonId);
-      }
-
+      if (salespersonId) entriesQuery = entriesQuery.eq("salesperson_id", salespersonId);
       entriesQuery = entriesQuery
         .order("entry_date", { ascending: false })
         .order("created_at", { ascending: false });
 
       let salespeopleQuery = supabase
-        .from("company_salespeople")
-        .select("id, name")
-        .eq("company_id", companyId)
-        .eq("is_active", true);
-
-      if (salespersonId) {
-        salespeopleQuery = salespeopleQuery.eq("id", salespersonId);
-      } else {
-        salespeopleQuery = salespeopleQuery.order("name");
-      }
+        .from("company_salespeople").select("id, name")
+        .eq("company_id", companyId).eq("is_active", true);
+      if (salespersonId) salespeopleQuery = salespeopleQuery.eq("id", salespersonId);
+      else salespeopleQuery = salespeopleQuery.order("name");
 
       const [entriesRes, kpisRes, salespeopleRes] = await Promise.all([
         entriesQuery,
-        supabase
-          .from("company_kpis")
-          .select("id, name, kpi_type")
-          .eq("company_id", companyId)
-          .eq("is_active", true),
+        supabase.from("company_kpis").select("id, name, kpi_type")
+          .eq("company_id", companyId).eq("is_active", true),
         salespeopleQuery,
       ]);
-
       if (entriesRes.error) throw entriesRes.error;
       if (kpisRes.error) throw kpisRes.error;
       if (salespeopleRes.error) throw salespeopleRes.error;
-
       setEntries(entriesRes.data || []);
       setKpis(kpisRes.data || []);
       setSalespeople(salespeopleRes.data || []);
@@ -173,65 +138,37 @@ export const KPIEntriesHistoryDialog = ({
   const handleDelete = async () => {
     if (!entryToDelete) return;
     try {
-      const { error } = await supabase
-        .from("kpi_entries")
-        .delete()
-        .eq("id", entryToDelete.id);
+      const { error } = await supabase.from("kpi_entries").delete().eq("id", entryToDelete.id);
       if (error) throw error;
-      toast.success("Lançamento excluído com sucesso");
+      toast.success("Lançamento excluído");
       setEntries(prev => prev.filter(e => e.id !== entryToDelete.id));
-      setSelectedIds(prev => { const s = new Set(prev); s.delete(entryToDelete.id); return s; });
+      setSelectedIds(prev => prev.filter(id => id !== entryToDelete.id));
       setDeleteDialogOpen(false);
       setEntryToDelete(null);
       onEntryDeleted?.();
     } catch (error) {
-      console.error("Error deleting entry:", error);
       toast.error("Erro ao excluir lançamento");
     }
   };
 
   // ── Bulk delete ────────────────────────────────────────────────────────────
   const handleBulkDelete = async () => {
-    if (selectedIds.size === 0) return;
+    if (selectedIds.length === 0) return;
     setBulkDeleting(true);
     try {
-      const { error } = await supabase
-        .from("kpi_entries")
-        .delete()
-        .in("id", Array.from(selectedIds));
+      const { error } = await supabase.from("kpi_entries").delete().in("id", selectedIds);
       if (error) throw error;
-      toast.success(`${selectedIds.size} lançamento(s) excluído(s)`);
-      setEntries(prev => prev.filter(e => !selectedIds.has(e.id)));
-      setSelectedIds(new Set());
-      setBulkDeleteDialogOpen(false);
+      toast.success(`${selectedIds.length} lançamento(s) excluído(s)`);
+      setEntries(prev => prev.filter(e => !selectedIds.includes(e.id)));
+      setSelectedIds([]);
+      setBulkDeleteOpen(false);
       onEntryDeleted?.();
     } catch (error) {
-      console.error("Error bulk deleting:", error);
       toast.error("Erro ao excluir lançamentos");
     } finally {
       setBulkDeleting(false);
     }
   };
-
-  // ── Selection helpers ──────────────────────────────────────────────────────
-  const toggleSelect = (id: string) => {
-    setSelectedIds(prev => {
-      const s = new Set(prev);
-      s.has(id) ? s.delete(id) : s.add(id);
-      return s;
-    });
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === filteredEntries.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredEntries.map(e => e.id)));
-    }
-  };
-
-  const allSelected = filteredEntries.length > 0 && selectedIds.size === filteredEntries.length;
-  const someSelected = selectedIds.size > 0 && selectedIds.size < filteredEntries.length;
 
   // ── Edit ───────────────────────────────────────────────────────────────────
   const handleEdit = (entry: Entry) => {
@@ -244,37 +181,28 @@ export const KPIEntriesHistoryDialog = ({
   const handleSaveEdit = async () => {
     if (!entryToEdit) return;
     const newValue = parseFloat(editValue);
-    if (isNaN(newValue)) {
-      toast.error("Valor inválido");
-      return;
-    }
+    if (isNaN(newValue)) { toast.error("Valor inválido"); return; }
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("kpi_entries")
+      const { error } = await supabase.from("kpi_entries")
         .update({ value: newValue, observations: editObservations || null })
         .eq("id", entryToEdit.id);
       if (error) throw error;
-      toast.success("Lançamento atualizado com sucesso");
-      setEntries(prev =>
-        prev.map(e =>
-          e.id === entryToEdit.id
-            ? { ...e, value: newValue, observations: editObservations || null }
-            : e
-        )
-      );
+      toast.success("Lançamento atualizado");
+      setEntries(prev => prev.map(e =>
+        e.id === entryToEdit.id ? { ...e, value: newValue, observations: editObservations || null } : e
+      ));
       setEditDialogOpen(false);
       setEntryToEdit(null);
       onEntryDeleted?.();
     } catch (error) {
-      console.error("Error updating entry:", error);
       toast.error("Erro ao atualizar lançamento");
     } finally {
       setSaving(false);
     }
   };
 
-  // ── Formatters ─────────────────────────────────────────────────────────────
+  // ── Helpers ────────────────────────────────────────────────────────────────
   const formatValue = (value: number, kpiType: string) => {
     if (kpiType === "monetary")
       return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -299,21 +227,36 @@ export const KPIEntriesHistoryDialog = ({
     return true;
   });
 
-  // Clear selection when filters change
-  useEffect(() => { setSelectedIds(new Set()); }, [selectedSalesperson, selectedKpi]);
+  const summaryBySalesperson = salespeople.map(sp => {
+    const spEntries = filteredEntries.filter(e => e.salesperson_id === sp.id);
+    const totalValue = spEntries.reduce((sum, e) => {
+      const kpi = getKpiById(e.kpi_id);
+      return kpi?.kpi_type === "monetary" ? sum + e.value : sum;
+    }, 0);
+    return { ...sp, totalValue, totalEntries: spEntries.length };
+  }).filter(sp => sp.totalEntries > 0).sort((a, b) => b.totalValue - a.totalValue);
 
-  const summaryBySalesperson = salespeople
-    .map(sp => {
-      const spEntries = filteredEntries.filter(e => e.salesperson_id === sp.id);
-      const totalValue = spEntries.reduce((sum, e) => {
-        const kpi = getKpiById(e.kpi_id);
-        return kpi?.kpi_type === "monetary" ? sum + e.value : sum;
-      }, 0);
-      return { ...sp, totalValue, totalEntries: spEntries.length };
-    })
-    .filter(sp => sp.totalEntries > 0)
-    .sort((a, b) => b.totalValue - a.totalValue);
+  // Selection helpers
+  const filteredIds = filteredEntries.map(e => e.id);
+  const selectedInView = selectedIds.filter(id => filteredIds.includes(id));
+  const allSelected = filteredIds.length > 0 && selectedInView.length === filteredIds.length;
+  const someSelected = selectedInView.length > 0 && selectedInView.length < filteredIds.length;
 
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(prev => prev.filter(id => !filteredIds.includes(id)));
+    } else {
+      setSelectedIds(prev => [...new Set([...prev, ...filteredIds])]);
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -336,43 +279,31 @@ export const KPIEntriesHistoryDialog = ({
             <div className="flex flex-wrap gap-4">
               <div className="space-y-1">
                 <Label className="text-xs">Data Inicial</Label>
-                <Input
-                  type="date"
-                  value={dateRange.start}
-                  onChange={(e) => { if (e.target.value) setDateRange({ ...dateRange, start: e.target.value }); }}
-                  className="w-[150px]"
-                />
+                <Input type="date" value={dateRange.start} className="w-[150px]"
+                  onChange={(e) => { if (e.target.value) setDateRange({ ...dateRange, start: e.target.value }); }} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Data Final</Label>
-                <Input
-                  type="date"
-                  value={dateRange.end}
-                  onChange={(e) => { if (e.target.value) setDateRange({ ...dateRange, end: e.target.value }); }}
-                  className="w-[150px]"
-                />
+                <Input type="date" value={dateRange.end} className="w-[150px]"
+                  onChange={(e) => { if (e.target.value) setDateRange({ ...dateRange, end: e.target.value }); }} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Vendedor</Label>
-                <Select value={selectedSalesperson} onValueChange={setSelectedSalesperson}>
+                <Select value={selectedSalesperson} onValueChange={(v) => { setSelectedSalesperson(v); setSelectedIds([]); }}>
                   <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
-                    {salespeople.map(sp => (
-                      <SelectItem key={sp.id} value={sp.id}>{sp.name}</SelectItem>
-                    ))}
+                    {salespeople.map(sp => <SelectItem key={sp.id} value={sp.id}>{sp.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">KPI</Label>
-                <Select value={selectedKpi} onValueChange={setSelectedKpi}>
+                <Select value={selectedKpi} onValueChange={(v) => { setSelectedKpi(v); setSelectedIds([]); }}>
                   <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
-                    {kpis.map(kpi => (
-                      <SelectItem key={kpi.id} value={kpi.id}>{kpi.name}</SelectItem>
-                    ))}
+                    {kpis.map(kpi => <SelectItem key={kpi.id} value={kpi.id}>{kpi.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -394,24 +325,20 @@ export const KPIEntriesHistoryDialog = ({
             )}
 
             {/* Bulk action bar */}
-            {canDelete && selectedIds.size > 0 && (
+            {canDelete && selectedInView.length > 0 && (
               <div className="flex items-center justify-between bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2">
                 <span className="text-sm font-medium text-destructive">
-                  {selectedIds.size} lançamento(s) selecionado(s)
+                  {selectedInView.length} selecionado(s)
                 </span>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => setBulkDeleteDialogOpen(true)}
-                >
+                <Button variant="destructive" size="sm" className="gap-1.5"
+                  onClick={() => setBulkDeleteOpen(true)}>
                   <Trash2 className="h-3.5 w-3.5" />
                   Apagar selecionados
                 </Button>
               </div>
             )}
 
-            {/* Entries Table */}
+            {/* Table */}
             <ScrollArea className="h-[400px] border rounded-md">
               {loading ? (
                 <div className="flex justify-center items-center h-32">Carregando...</div>
@@ -428,7 +355,6 @@ export const KPIEntriesHistoryDialog = ({
                           <Checkbox
                             checked={allSelected ? true : someSelected ? "indeterminate" : false}
                             onCheckedChange={toggleSelectAll}
-                            aria-label="Selecionar todos"
                           />
                         </TableHead>
                       )}
@@ -444,20 +370,12 @@ export const KPIEntriesHistoryDialog = ({
                     {filteredEntries.map(entry => {
                       const kpi = getKpiById(entry.kpi_id);
                       const salesperson = getSalespersonById(entry.salesperson_id);
-                      const isSelected = selectedIds.has(entry.id);
-
+                      const isSelected = selectedIds.includes(entry.id);
                       return (
-                        <TableRow
-                          key={entry.id}
-                          className={isSelected ? "bg-destructive/5" : undefined}
-                        >
+                        <TableRow key={entry.id} className={isSelected ? "bg-destructive/5" : undefined}>
                           {canDelete && (
                             <TableCell>
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() => toggleSelect(entry.id)}
-                                aria-label="Selecionar lançamento"
-                              />
+                              <Checkbox checked={isSelected} onCheckedChange={() => toggleSelect(entry.id)} />
                             </TableCell>
                           )}
                           <TableCell className="font-medium">
@@ -480,22 +398,14 @@ export const KPIEntriesHistoryDialog = ({
                             <TableCell>
                               <div className="flex gap-1">
                                 {canEdit && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() => handleEdit(entry)}
-                                  >
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(entry)}>
                                     <Pencil className="h-4 w-4" />
                                   </Button>
                                 )}
                                 {canDelete && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
+                                  <Button variant="ghost" size="icon"
                                     className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => { setEntryToDelete(entry); setDeleteDialogOpen(true); }}
-                                  >
+                                    onClick={() => { setEntryToDelete(entry); setDeleteDialogOpen(true); }}>
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 )}
@@ -517,7 +427,7 @@ export const KPIEntriesHistoryDialog = ({
         </DialogContent>
       </Dialog>
 
-      {/* Single Delete Dialog */}
+      {/* Single Delete */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -525,13 +435,12 @@ export const KPIEntriesHistoryDialog = ({
             <AlertDialogDescription>
               Tem certeza que deseja excluir este lançamento?
               {entryToDelete && (
-                <div className="mt-2 p-3 bg-muted rounded-md">
-                  <p><strong>Data:</strong> {formatDateLocal(entryToDelete.entry_date, "dd/MM/yyyy")}</p>
-                  <p><strong>Vendedor:</strong> {getSalespersonById(entryToDelete.salesperson_id)?.name}</p>
-                  <p><strong>Valor:</strong> {formatValue(entryToDelete.value, getKpiById(entryToDelete.kpi_id)?.kpi_type || "numeric")}</p>
-                </div>
+                <span className="block mt-2 p-3 bg-muted rounded-md text-sm">
+                  <strong>Data:</strong> {formatDateLocal(entryToDelete.entry_date, "dd/MM/yyyy")} ·{" "}
+                  <strong>Vendedor:</strong> {getSalespersonById(entryToDelete.salesperson_id)?.name} ·{" "}
+                  <strong>Valor:</strong> {formatValue(entryToDelete.value, getKpiById(entryToDelete.kpi_id)?.kpi_type || "numeric")}
+                </span>
               )}
-              <p className="mt-2 text-destructive font-medium">Esta ação não pode ser desfeita.</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -543,30 +452,26 @@ export const KPIEntriesHistoryDialog = ({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Bulk Delete Dialog */}
-      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+      {/* Bulk Delete */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir {selectedIds.size} lançamento(s)</AlertDialogTitle>
+            <AlertDialogTitle>Excluir {selectedInView.length} lançamento(s)</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir os <strong>{selectedIds.size}</strong> lançamentos selecionados?
-              <p className="mt-2 text-destructive font-medium">Esta ação não pode ser desfeita.</p>
+              Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={bulkDeleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleBulkDelete}
-              disabled={bulkDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {bulkDeleting ? "Excluindo..." : `Excluir ${selectedIds.size} lançamento(s)`}
+            <AlertDialogAction onClick={handleBulkDelete} disabled={bulkDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {bulkDeleting ? "Excluindo..." : `Excluir ${selectedInView.length}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Edit Dialog */}
+      {/* Edit */}
       <AlertDialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -574,7 +479,7 @@ export const KPIEntriesHistoryDialog = ({
             <AlertDialogDescription asChild>
               <div>
                 {entryToEdit && (
-                  <div className="mt-2 p-3 bg-muted rounded-md mb-4">
+                  <div className="mt-2 p-3 bg-muted rounded-md mb-4 text-sm">
                     <p><strong>Data:</strong> {formatDateLocal(entryToEdit.entry_date, "dd/MM/yyyy")}</p>
                     <p><strong>Vendedor:</strong> {getSalespersonById(entryToEdit.salesperson_id)?.name}</p>
                     <p><strong>KPI:</strong> {getKpiById(entryToEdit.kpi_id)?.name}</p>
@@ -583,23 +488,14 @@ export const KPIEntriesHistoryDialog = ({
                 <div className="space-y-4">
                   <div>
                     <Label className="text-sm font-medium">Valor</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={editValue}
+                    <Input type="number" step="0.01" value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
-                      placeholder="Digite o novo valor"
-                      className="mt-1"
-                    />
+                      placeholder="Digite o novo valor" className="mt-1" />
                   </div>
                   <div>
                     <Label className="text-sm font-medium">Observações</Label>
-                    <Input
-                      value={editObservations}
-                      onChange={(e) => setEditObservations(e.target.value)}
-                      placeholder="Observações (opcional)"
-                      className="mt-1"
-                    />
+                    <Input value={editObservations} onChange={(e) => setEditObservations(e.target.value)}
+                      placeholder="Observações (opcional)" className="mt-1" />
                   </div>
                 </div>
               </div>
