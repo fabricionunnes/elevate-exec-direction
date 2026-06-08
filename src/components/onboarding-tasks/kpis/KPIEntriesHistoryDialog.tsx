@@ -426,8 +426,7 @@ export const KPIEntriesHistoryDialog = ({
                       {canDelete && (
                         <TableHead className="w-[40px]">
                           <Checkbox
-                            checked={allSelected}
-                            data-state={someSelected ? "indeterminate" : allSelected ? "checked" : "unchecked"}
+                            checked={allSelected ? true : someSelected ? "indeterminate" : false}
                             onCheckedChange={toggleSelectAll}
                             aria-label="Selecionar todos"
                           />
