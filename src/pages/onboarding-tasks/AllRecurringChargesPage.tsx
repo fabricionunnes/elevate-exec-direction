@@ -39,7 +39,7 @@ import {
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
   ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
   TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays, Bell, Truck, MessageSquare, ChevronDown, ChevronRight, Headphones,
-  ArrowUpDown, ArrowUp, ArrowDown, FileCheck, Link2, DollarSign,
+  ArrowUpDown, ArrowUp, ArrowDown, FileCheck, Link2, DollarSign, Scale,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -264,6 +264,10 @@ export default function AllRecurringChargesPage() {
   });
   const [showCustomReceiverRecv, setShowCustomReceiverRecv] = useState(false);
   const [savingReceivable, setSavingReceivable] = useState(false);
+
+  // Jurídico state
+  const [juridicoCompanyIds, setJuridicoCompanyIds] = useState<Set<string>>(new Set());
+  const [juridicoLoading, setJuridicoLoading] = useState<string | null>(null);
 
   // New payable dialog
   const [payableDialog, setPayableDialog] = useState(false);
@@ -514,9 +518,42 @@ export default function AllRecurringChargesPage() {
         const { data: suppData } = await (supabase as any).from("financial_suppliers").select("id, name").eq("is_active", true).order("name");
         setFinancialSuppliers(suppData || []);
       } catch { setFinancialSuppliers([]); }
+      // Load juridico state
+      try {
+        const { data: jurData } = await supabase.from("juridico_clientes").select("company_id");
+        setJuridicoCompanyIds(new Set((jurData || []).map((r: any) => r.company_id).filter(Boolean) as string[]));
+      } catch { setJuridicoCompanyIds(new Set()); }
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar dados");
+    }
+  };
+
+  // ── Toggle juridico for a company ─────────────────────────────────────────
+  const toggleJuridico = async (inv: Invoice) => {
+    if (!inv.company_id) return;
+    const cid = inv.company_id;
+    setJuridicoLoading(cid);
+    try {
+      const isIn = juridicoCompanyIds.has(cid);
+      if (isIn) {
+        await supabase.from("juridico_clientes").delete().eq("company_id", cid);
+        setJuridicoCompanyIds(prev => { const s = new Set(prev); s.delete(cid); return s; });
+        toast.success(`${inv.company_name} removida do Jurídico`);
+      } else {
+        await supabase.from("juridico_clientes").upsert({ company_id: cid, company_name: inv.company_name }, { onConflict: "company_id" });
+        setJuridicoCompanyIds(prev => new Set([...prev, cid]));
+        toast.success(`${inv.company_name} enviada ao Jurídico`);
+        // Notify via edge function (best-effort)
+        try {
+          const { data: notifyData } = await supabase.functions.invoke("juridico-notify", { body: { company_id: cid, company_name: inv.company_name } });
+          if (notifyData?.error) console.info("[Jurídico] WhatsApp não enviado:", notifyData.error);
+        } catch (wpErr) { console.warn("[Jurídico WhatsApp]", wpErr); }
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao atualizar Jurídico");
+    } finally {
+      setJuridicoLoading(null);
     }
   };
 
@@ -1940,6 +1977,22 @@ export default function AllRecurringChargesPage() {
                                     }}>
                                     <Copy className="h-3.5 w-3.5" />
                                   </Button>
+                                  {/* Jurídico button — only for company invoices with a company_id */}
+                                  {inv.company_id && inv.source_table === "company_invoices" && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className={`h-7 w-7 transition-colors ${juridicoCompanyIds.has(inv.company_id) ? "text-violet-600 hover:text-destructive" : "text-muted-foreground hover:text-violet-600"}`}
+                                      title={juridicoCompanyIds.has(inv.company_id) ? "Remover do Jurídico" : "Enviar para Jurídico"}
+                                      disabled={juridicoLoading === inv.company_id}
+                                      onClick={() => toggleJuridico(inv)}
+                                    >
+                                      {juridicoLoading === inv.company_id
+                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        : <Scale className={`h-3.5 w-3.5 ${juridicoCompanyIds.has(inv.company_id) ? "fill-violet-200" : ""}`} />
+                                      }
+                                    </Button>
+                                  )}
                                 </div>
                               </TableCell>
                             </TableRow>
