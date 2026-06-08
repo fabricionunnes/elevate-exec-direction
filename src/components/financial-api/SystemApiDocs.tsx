@@ -523,6 +523,19 @@ const systemModules: ModuleDoc[] = [
         example: `POST ${API_URL}?module=kpis&action=create_entry\n\n{ "company_id": "UUID", "salesperson_id": "UUID", "kpi_id": "UUID", "value": 15000 }`,
         response: `{ "data": { "id": "uuid", "value": 15000 } }`,
       },
+      {
+        action: "update_entry", method: "POST", description: "Editar lançamento de KPI existente",
+        params: [
+          { name: "id", desc: "UUID do lançamento a editar", required: true },
+        ],
+        bodyFields: [
+          { name: "value", desc: "Novo valor numérico", required: false },
+          { name: "entry_date", desc: "Nova data (YYYY-MM-DD)", required: false },
+          { name: "observations", desc: "Observações", required: false },
+        ],
+        example: `POST ${API_URL}?module=kpis&action=update_entry&id=UUID\n\n{ "value": 18000, "observations": "Correção de lançamento" }`,
+        response: `{ "data": { "id": "uuid", "value": 18000, "entry_date": "2026-06-08" } }`,
+      },
     ],
   },
   {
