@@ -1856,6 +1856,20 @@ const OnboardingTasksPage = () => {
                     <Video className="h-4 w-4 mr-2" />
                     Escritório UNV
                   </DropdownMenuItem>
+                  {/* ROI dos Clientes */}
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/roi-clientes")}>
+                      <TrendingUp className="h-4 w-4 mr-2" />
+                      ROI dos Clientes
+                    </DropdownMenuItem>
+                  )}
+                  {/* Pipeline de Renovações */}
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/renovacoes")}>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Pipeline de Renovações
+                    </DropdownMenuItem>
+                  )}
                   {/* Contratos */}
                   {(isAdmin || isCS || currentUserRole === "closer") && (
                     <DropdownMenuItem onClick={() => navigate("/contratos?history=true")}>

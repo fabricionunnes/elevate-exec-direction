@@ -184,6 +184,8 @@ const MRRDashboardPage = lazy(() => import("./pages/onboarding-tasks/MRRDashboar
 const SignaturesAdminPage = lazy(() => import("./pages/onboarding-tasks/SignaturesAdminPage"));
 const FacunicampsDashboardPage = lazy(() => import("./pages/onboarding-tasks/FacunicampsDashboardPage"));
 const JuridicoPage = lazy(() => import("./pages/onboarding-tasks/JuridicoPage"));
+const ROIClientePage = lazy(() => import("./pages/onboarding-tasks/ROIClientePage"));
+const RenovacoesPage = lazy(() => import("./pages/onboarding-tasks/RenovacoesPage"));
 const PontoDeEncontroPage = lazy(() => import("./pages/ponto-de-encontro/PontoDeEncontroPage"));
 const PeLessonPage = lazy(() => import("./pages/ponto-de-encontro/PeLessonPage"));
 const CheckinPage = lazy(() => import("./pages/ponto-de-encontro/CheckinPage"));
@@ -479,6 +481,8 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/task-manager" element={<TaskManagerPage />} />
               <Route path="/onboarding-tasks/automations" element={<AutomationsPage />} />
               <Route path="/onboarding-tasks/juridico" element={<JuridicoPage />} />
+              <Route path="/onboarding-tasks/roi-clientes" element={<ROIClientePage />} />
+              <Route path="/onboarding-tasks/renovacoes" element={<RenovacoesPage />} />
               <Route path="/onboarding-tasks/b2b-prospection" element={<B2BProspectionPage />} />
               <Route path="/onboarding-tasks/master-ai" element={<MasterAIConsultPage />} />
               <Route path="/onboarding-tasks/mrr" element={<MRRDashboardPage />} />
