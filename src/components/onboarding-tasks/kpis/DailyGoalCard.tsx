@@ -299,6 +299,11 @@ export const DailyGoalCard = ({
           const spRealized = spEntries.reduce((sum, e) => sum + e.value, 0);
           const spRemaining = Math.max(spTarget - spRealized, 0);
           const spDailyGoal = dayInfo.remaining > 0 ? spRemaining / dayInfo.remaining : 0;
+          // Projetado: ritmo atual extrapolado para o fim do mês
+          const spProjected = dayInfo.elapsed > 0
+            ? (spRealized / dayInfo.elapsed) * dayInfo.total
+            : 0;
+          const spProjectedPct = spTarget > 0 ? (spProjected / spTarget) * 100 : 0;
           return {
             id: sp.id,
             name: sp.name,
@@ -307,6 +312,7 @@ export const DailyGoalCard = ({
             remaining: spRemaining,
             dailyGoal: spDailyGoal,
             percentage: spTarget > 0 ? (spRealized / spTarget) * 100 : 0,
+            projectedPct: spProjectedPct,
           };
         })
         .sort((a, b) => {
@@ -530,18 +536,36 @@ export const DailyGoalCard = ({
                               <div className="flex items-center justify-between gap-2 mb-1">
                                 <p className="text-sm font-semibold truncate">{sp.name}</p>
                                 {sp.totalTarget > 0 ? (
-                                  <Badge
-                                    variant="outline"
-                                    className={`text-[10px] px-1.5 py-0 border-0 font-bold shrink-0 ${
-                                      isCompleted
-                                        ? "bg-emerald-500/15 text-emerald-600"
-                                        : sp.percentage >= 70
-                                        ? "bg-amber-500/15 text-amber-600"
-                                        : "bg-red-500/10 text-red-600"
-                                    }`}
-                                  >
-                                    {sp.percentage.toFixed(0)}%
-                                  </Badge>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-[10px] px-1.5 py-0 border-0 font-bold ${
+                                        isCompleted
+                                          ? "bg-emerald-500/15 text-emerald-600"
+                                          : sp.percentage >= 70
+                                          ? "bg-amber-500/15 text-amber-600"
+                                          : "bg-red-500/10 text-red-600"
+                                      }`}
+                                      title="Realizado"
+                                    >
+                                      {sp.percentage.toFixed(0)}%
+                                    </Badge>
+                                    {sp.projectedPct > 0 && (
+                                      <Badge
+                                        variant="outline"
+                                        className={`text-[10px] px-1.5 py-0 font-bold ${
+                                          sp.projectedPct >= 100
+                                            ? "border-emerald-500/40 text-emerald-500"
+                                            : sp.projectedPct >= 70
+                                            ? "border-amber-500/40 text-amber-500"
+                                            : "border-blue-500/40 text-blue-400"
+                                        }`}
+                                        title="Projetado ao fim do mês"
+                                      >
+                                        →{sp.projectedPct.toFixed(0)}%
+                                      </Badge>
+                                    )}
+                                  </div>
                                 ) : (
                                   <span className="text-[10px] font-bold text-primary shrink-0">
                                     {formatValue(sp.totalRealized, kpiBlock.kpiType)}
