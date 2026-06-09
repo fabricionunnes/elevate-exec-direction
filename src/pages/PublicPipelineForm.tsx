@@ -141,36 +141,29 @@ const PublicPipelineForm = () => {
     setError(null);
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_PROJECT_ID && `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co`;
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/submit-pipeline-form`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            form_token: form.form_token,
-            nome: finalNome,
-            telefone: finalTelefone,
-            email: finalEmail,
-            utm_source: searchParams.get("utm_source") || undefined,
-            utm_medium: searchParams.get("utm_medium") || undefined,
-            utm_campaign: searchParams.get("utm_campaign") || undefined,
-            utm_content: searchParams.get("utm_content") || undefined,
-            utm_term: searchParams.get("utm_term") || undefined,
-            fbclid: searchParams.get("fbclid") || undefined,
-            ad_name: searchParams.get("ad_name") || undefined,
-            adset_name: searchParams.get("adset_name") || undefined,
-            campaign_name: searchParams.get("campaign_name") || undefined,
-            // IDs do Meta Ads (preenchidos via URL Parameters do anúncio)
-            meta_campaign_id: searchParams.get("meta_campaign_id") || searchParams.get("campaign_id") || undefined,
-            meta_adset_id: searchParams.get("meta_adset_id") || searchParams.get("adset_id") || undefined,
-            meta_ad_id: searchParams.get("meta_ad_id") || searchParams.get("ad_id") || undefined,
-          }),
-        }
-      );
+      const { data, error } = await supabase.functions.invoke("submit-pipeline-form", {
+        body: {
+          form_token: form.form_token,
+          nome: finalNome,
+          telefone: finalTelefone,
+          email: finalEmail,
+          utm_source: searchParams.get("utm_source") || undefined,
+          utm_medium: searchParams.get("utm_medium") || undefined,
+          utm_campaign: searchParams.get("utm_campaign") || undefined,
+          utm_content: searchParams.get("utm_content") || undefined,
+          utm_term: searchParams.get("utm_term") || undefined,
+          fbclid: searchParams.get("fbclid") || undefined,
+          ad_name: searchParams.get("ad_name") || undefined,
+          adset_name: searchParams.get("adset_name") || undefined,
+          campaign_name: searchParams.get("campaign_name") || undefined,
+          meta_campaign_id: searchParams.get("meta_campaign_id") || searchParams.get("campaign_id") || undefined,
+          meta_adset_id: searchParams.get("meta_adset_id") || searchParams.get("adset_id") || undefined,
+          meta_ad_id: searchParams.get("meta_ad_id") || searchParams.get("ad_id") || undefined,
+        },
+      });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Erro ao enviar");
+      if (error) throw new Error(error.message || "Erro ao enviar");
+      if (!data?.lead_id) throw new Error(data?.error || "Erro ao criar lead");
 
       setLeadId(data.lead_id);
       if (questions.length > 0) {
@@ -213,26 +206,17 @@ const PublicPipelineForm = () => {
     setError(null);
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_PROJECT_ID && `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co`;
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/submit-pipeline-form`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "submit_answers",
-            lead_id: leadId,
-            answers: Object.entries(answers)
-              .filter(([, v]) => v.trim())
-              .map(([questionId, answerText]) => ({ question_id: questionId, answer_text: answerText })),
-          }),
-        }
-      );
+      const { error } = await supabase.functions.invoke("submit-pipeline-form", {
+        body: {
+          action: "submit_answers",
+          lead_id: leadId,
+          answers: Object.entries(answers)
+            .filter(([, v]) => v.trim())
+            .map(([questionId, answerText]) => ({ question_id: questionId, answer_text: answerText })),
+        },
+      });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Erro ao enviar respostas");
-      }
+      if (error) throw new Error(error.message || "Erro ao enviar respostas");
 
       handleFormComplete();
     } catch (err: any) {
