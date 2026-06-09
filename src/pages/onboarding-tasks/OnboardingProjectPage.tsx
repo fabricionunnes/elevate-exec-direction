@@ -890,8 +890,8 @@ const OnboardingProjectPage = () => {
       
       if (error) throw error;
       
-      // If status changed to completed, check if company should be inactivated
-      if (field === "status" && value === "completed" && project?.onboarding_company_id) {
+      // If status changed to completed or closed, check if company should be inactivated
+      if (field === "status" && (value === "completed" || value === "closed") && project?.onboarding_company_id) {
         const { data: otherProjects } = await supabase
           .from("onboarding_projects")
           .select("id, status")
@@ -899,7 +899,7 @@ const OnboardingProjectPage = () => {
           .neq("id", projectId);
 
         if (otherProjects) {
-          const hasActiveProjects = otherProjects.some(p => 
+          const hasActiveProjects = otherProjects.some(p =>
             p.status !== "closed" && p.status !== "completed"
           );
 
