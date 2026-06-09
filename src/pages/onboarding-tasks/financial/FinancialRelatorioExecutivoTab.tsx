@@ -58,9 +58,7 @@ export default function FinancialRelatorioExecutivoTab({ invoices, payables, for
   // Extra data fetched here
   const [banks, setBanks] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
-  const [kpiEntries, setKpiEntries] = useState<any[]>([]);
-  const [companyKpis, setCompanyKpis] = useState<any[]>([]);
-  const [salespeople, setSalespeople] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
   const [npsAvg, setNpsAvg] = useState<number | null>(null);
   const [masterPhone, setMasterPhone] = useState<string | null>(null);
   const [whatsappInstance, setWhatsappInstance] = useState<any>(null);
@@ -70,19 +68,15 @@ export default function FinancialRelatorioExecutivoTab({ invoices, payables, for
   const loadData = async () => {
     setLoading(true);
     try {
-      const [banksRes, companiesRes, kpiEntriesRes, companyKpisRes, salespeopleRes] = await Promise.all([
+      const [banksRes, companiesRes, staffRes] = await Promise.all([
         supabase.from("financial_banks").select("id, name, current_balance_cents, is_active").eq("is_active", true),
-        supabase.from("onboarding_companies").select("id, name, status, created_at").eq("is_simulator" as any, false),
-        (supabase as any).from("kpi_entries").select("*"),
-        (supabase as any).from("company_kpis").select("*"),
-        (supabase as any).from("company_salespeople").select("id, name, user_id"),
+        supabase.from("onboarding_companies").select("id, name, status, created_at, updated_at, consultant_id, cs_id, contract_value").eq("is_simulator" as any, false),
+        supabase.from("onboarding_staff").select("id, name, role, phone").eq("is_active", true).in("role", ["master", "admin", "consultant", "cs"]),
       ]);
 
       if (!banksRes.error) setBanks(banksRes.data || []);
       if (!companiesRes.error) setCompanies((companiesRes.data as any) || []);
-      if (!kpiEntriesRes.error) setKpiEntries(kpiEntriesRes.data || []);
-      if (!companyKpisRes.error) setCompanyKpis(companyKpisRes.data || []);
-      if (!salespeopleRes.error) setSalespeople(salespeopleRes.data || []);
+      if (!staffRes.error) setStaff(staffRes.data || []);
 
       // NPS - try nps_responses first, then nps_results
       try {
@@ -192,27 +186,24 @@ export default function FinancialRelatorioExecutivoTab({ invoices, payables, for
     return banks.reduce((s, b) => s + (b.current_balance_cents || 0), 0);
   }, [banks]);
 
-  // KPIs do time (vendedores)
+  // KPIs do time UNV (consultores e CS) — clientes ativos + MRR por pessoa
   const teamKpis = useMemo(() => {
-    if (!salespeople.length || !kpiEntries.length) return [];
-    return salespeople.map((sp) => {
-      // Entries no período
-      const entries = kpiEntries.filter((e: any) => {
-        if (e.salesperson_id !== sp.id && e.user_id !== sp.user_id) return false;
-        if (!e.created_at) return false;
-        const d = new Date(e.created_at);
+    if (!staff.length) return [];
+    const activeCompanies = companies.filter(c => c.status === "active" || c.status === "onboarding");
+    return staff.map((member) => {
+      const myCompanies = activeCompanies.filter(c =>
+        c.consultant_id === member.id || c.cs_id === member.id
+      );
+      const mrr = myCompanies.reduce((s: number, c: any) => s + (c.contract_value || 0), 0);
+      // Novos clientes no período atribuídos a este membro
+      const newInPeriod = myCompanies.filter(c => {
+        if (!c.created_at) return false;
+        const d = new Date(c.created_at);
         return d >= start && d <= end;
-      });
-      const totalSold = entries.reduce((s: number, e: any) => s + (e.value || e.amount || 0), 0);
-
-      // Meta do período (average from company_kpis linked to salesperson)
-      const kpis = companyKpis.filter((k: any) => k.salesperson_id === sp.id || k.user_id === sp.user_id);
-      const target = kpis.reduce((s: number, k: any) => s + (k.target || k.goal || 0), 0);
-
-      const pct = target > 0 ? Math.round((totalSold / target) * 100) : null;
-      return { name: sp.name, totalSold, target, pct };
-    }).filter((r) => r.totalSold > 0 || r.target > 0);
-  }, [salespeople, kpiEntries, companyKpis, start, end]);
+      }).length;
+      return { name: member.name, role: member.role, totalClients: myCompanies.length, mrr, newInPeriod };
+    }).filter(r => r.totalClients > 0);
+  }, [staff, companies, start, end]);
 
   // Clientes em risco (NPS baixo ou pagamentos atrasados)
   const atRiskCompanies = useMemo(() => {
@@ -253,10 +244,9 @@ export default function FinancialRelatorioExecutivoTab({ invoices, payables, for
     let kpisSection = "";
     if (teamKpis.length > 0) {
       const lines = teamKpis.map(
-        (k) =>
-          `• ${k.name}: ${formatCurrency(k.totalSold)}${k.pct !== null ? ` (${k.pct}% da meta)` : ""}`
+        (k) => `• ${k.name}: ${k.totalClients} cliente(s) | MRR R$ ${k.mrr.toLocaleString("pt-BR")}${k.newInPeriod > 0 ? ` | +${k.newInPeriod} novo(s)` : ""}`
       );
-      kpisSection = `\n\n📈 *KPIs DO TIME*\n${lines.join("\n")}`;
+      kpisSection = `\n\n👥 *TIME UNV*\n${lines.join("\n")}`;
     }
 
     let riskSection = "";
@@ -432,7 +422,7 @@ export default function FinancialRelatorioExecutivoTab({ invoices, payables, for
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-primary" />
-            KPIs do Time
+            Time UNV — Clientes & MRR
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -444,33 +434,29 @@ export default function FinancialRelatorioExecutivoTab({ invoices, payables, for
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Vendedor</TableHead>
-                  <TableHead className="text-right">Total Vendido</TableHead>
-                  <TableHead className="text-right">Meta</TableHead>
-                  <TableHead className="text-right">% Atingido</TableHead>
+                  <TableHead>Consultor / CS</TableHead>
+                  <TableHead className="text-right">Clientes Ativos</TableHead>
+                  <TableHead className="text-right">MRR</TableHead>
+                  <TableHead className="text-right">Novos no período</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {teamKpis.map((row, idx) => (
                   <TableRow key={idx}>
-                    <TableCell className="font-medium">{row.name}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(row.totalSold)}</TableCell>
-                    <TableCell className="text-right">
-                      {row.target > 0 ? formatCurrency(row.target) : "—"}
+                    <TableCell className="font-medium">
+                      <div>
+                        <p>{row.name}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{row.role}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">{row.totalClients}</TableCell>
+                    <TableCell className="text-right text-emerald-500 font-semibold">
+                      {formatCurrency(row.mrr)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {row.pct !== null ? (
-                        <Badge
-                          variant="outline"
-                          className={
-                            row.pct >= 100
-                              ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                              : row.pct >= 80
-                              ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                              : "bg-red-500/10 text-red-600 border-red-500/20"
-                          }
-                        >
-                          {row.pct}%
+                      {row.newInPeriod > 0 ? (
+                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                          +{row.newInPeriod}
                         </Badge>
                       ) : "—"}
                     </TableCell>
