@@ -2494,6 +2494,18 @@ const OnboardingTasksPage = () => {
                       Jurídico
                     </DropdownMenuItem>
                   )}
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/roi-clientes")}>
+                      <TrendingUp className="h-4 w-4 mr-2" />
+                      ROI dos Clientes
+                    </DropdownMenuItem>
+                  )}
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/renovacoes")}>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Pipeline de Renovações
+                    </DropdownMenuItem>
+                  )}
                   {(currentUserEmail === "fabricio@universidadevendas.com.br" || canAccessFinancial) && (
                     <DropdownMenuSeparator />
                   )}
