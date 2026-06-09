@@ -203,11 +203,34 @@ export default function RenovacoesPage() {
   const fetchData = async () => {
     setLoading(true);
 
+    // Busca projetos para filtrar empresas com todos os projetos encerrados
+    const { data: projectsData } = await supabase
+      .from("onboarding_projects")
+      .select("onboarding_company_id, status");
+
+    // IDs de empresas que têm pelo menos um projeto ativo
+    const closedStatuses = new Set(["closed", "completed", "inactive", "cancelled"]);
+    const companiesWithActiveProject = new Set(
+      (projectsData || [])
+        .filter((p: any) => !closedStatuses.has(p.status))
+        .map((p: any) => p.onboarding_company_id)
+    );
+    // Empresas sem nenhum projeto também entram (podem não ter projetos ainda)
+    const allCompanyIdsInProjects = new Set(
+      (projectsData || []).map((p: any) => p.onboarding_company_id)
+    );
+
     const { data: companiesData } = await supabase
       .from("onboarding_companies")
       .select("id, name, status, contract_start_date, contract_end_date, contract_value, consultant_id, cs_id, segment")
       .in("status", ["active", "onboarding"])
       .order("contract_end_date", { ascending: true, nullsFirst: false });
+
+    // Filtra empresas com todos os projetos encerrados
+    const filteredCompaniesData = (companiesData || []).filter((c: any) =>
+      // Não tem projetos OU tem pelo menos um projeto ativo
+      !allCompanyIdsInProjects.has(c.id) || companiesWithActiveProject.has(c.id)
+    );
 
     const { data: staffData } = await supabase
       .from("onboarding_staff")
@@ -269,7 +292,7 @@ export default function RenovacoesPage() {
       consultantsById[s.id] = s.name;
     });
 
-    const enriched: EnrichedCompany[] = (companiesData || []).map((c: CompanyRenewal) => {
+    const enriched: EnrichedCompany[] = filteredCompaniesData.map((c: CompanyRenewal) => {
       const daysUntilExpiry = c.contract_end_date
         ? Math.ceil((new Date(c.contract_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
         : null;
