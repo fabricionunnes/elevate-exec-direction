@@ -313,7 +313,9 @@ export default function OnboardingRenewalsPage() {
         .filter((p: any) => {
           const company = p.onboarding_company;
           if (!company) return false;
-          if (company.status === "inactive") return false;
+          if (company.status === "inactive" || company.status === "churned") return false;
+          // Excluir projetos já encerrados ou concluídos
+          if (p.status === "closed" || p.status === "completed" || p.status === "inactive") return false;
           if (company.payment_method && company.payment_method !== "card") return false;
           return true;
         })
