@@ -71,6 +71,7 @@ interface SavedContract {
   zapsign_signers: unknown;
   zapsign_sent_at: string | null;
   envelope_id: string | null;
+  envelope_status?: string | null;
   clauses_snapshot: unknown;
 }
 
@@ -225,10 +226,30 @@ export default function ContractGeneratorPage() {
         const bDate = new Date(b.zapsign_sent_at || b.created_at).getTime();
         return bDate - aDate;
       });
-      setSavedContracts(contracts);
+      // Batch-fetch envelope status for contracts using the internal system
+      const envelopeIds = contracts
+        .filter((c: any) => c.envelope_id)
+        .map((c: any) => c.envelope_id as string);
+
+      let envelopeStatusMap: Record<string, string> = {};
+      if (envelopeIds.length > 0) {
+        const { data: envelopes } = await supabase
+          .from("envelopes")
+          .select("id, status")
+          .in("id", envelopeIds);
+        envelopeStatusMap = Object.fromEntries(
+          (envelopes || []).map((e: any) => [e.id, e.status])
+        );
+      }
+
+      const contractsWithStatus = contracts.map((c: any) => ({
+        ...c,
+        envelope_status: c.envelope_id ? (envelopeStatusMap[c.envelope_id] ?? null) : null,
+      }));
+      setSavedContracts(contractsWithStatus);
 
       // Legacy: Batch-check ZapSign status for old contracts that used zapsign_document_token
-      const contractsWithZapSign = contracts.filter(c => c.zapsign_document_token && !c.envelope_id);
+      const contractsWithZapSign = contractsWithStatus.filter((c: any) => c.zapsign_document_token && !c.envelope_id);
       if (contractsWithZapSign.length > 0) {
         refreshZapSignStatuses(contractsWithZapSign);
       }
@@ -729,17 +750,24 @@ export default function ContractGeneratorPage() {
   const checkSignatureStatus = async (envelopeId: string) => {
     setIsLoadingSignatures(true);
     try {
-      const { data, error } = await supabase
-        .from("signers")
-        .select("id, name, email, status, signed_at")
-        .eq("envelope_id", envelopeId);
+      const [signersRes, envelopeRes] = await Promise.all([
+        supabase
+          .from("signers")
+          .select("id, name, email, status, signed_at")
+          .eq("envelope_id", envelopeId),
+        supabase
+          .from("envelopes")
+          .select("status, final_file_path")
+          .eq("id", envelopeId)
+          .maybeSingle(),
+      ]);
 
-      if (error) {
-        console.error("Erro ao verificar status:", error);
+      if (signersRes.error) {
+        console.error("Erro ao verificar status:", signersRes.error);
         return;
       }
 
-      const signers: EnvelopeSigner[] = (data || []).map((s: any) => ({
+      const signers: EnvelopeSigner[] = (signersRes.data || []).map((s: any) => ({
         id: s.id,
         name: s.name,
         email: s.email,
@@ -748,11 +776,17 @@ export default function ContractGeneratorPage() {
       }));
       const allSigned = signers.length > 0 && signers.every((s) => s.status === "signed");
 
-      setSignatureStatus({
-        signers,
-        allSigned,
-        signedFileUrl: null, // internal system does not expose signed file URL via signers table
-      });
+      // Se o envelope está completed e tem final_file_path, gera URL de download
+      let signedFileUrl: string | null = null;
+      const envelope = envelopeRes.data;
+      if (envelope?.status === "completed" && envelope.final_file_path) {
+        const { data: urlData } = await supabase.storage
+          .from("envelopes")
+          .createSignedUrl(envelope.final_file_path, 3600); // 1h
+        signedFileUrl = urlData?.signedUrl ?? null;
+      }
+
+      setSignatureStatus({ signers, allSigned, signedFileUrl });
     } catch (error) {
       console.error("Erro ao verificar status:", error);
     } finally {
@@ -1281,11 +1315,27 @@ export default function ContractGeneratorPage() {
                                     Recorrente
                                   </Badge>
                                 )}
-                                {contract.zapsign_sent_at && (() => {
+                                {(contract.zapsign_sent_at || contract.envelope_id) && (() => {
+                                  // Contratos novos (sistema interno): usa envelope_status
+                                  if (contract.envelope_id) {
+                                    const st = contract.envelope_status;
+                                    if (st === "completed") return (
+                                      <Badge variant="outline" className="text-xs border-green-500 text-green-700 bg-green-50">✅ Assinado</Badge>
+                                    );
+                                    if (st === "partially_signed") return (
+                                      <Badge variant="outline" className="text-xs border-blue-500 text-blue-700 bg-blue-50">🔄 Em andamento</Badge>
+                                    );
+                                    if (st === "cancelled") return (
+                                      <Badge variant="outline" className="text-xs border-red-400 text-red-600 bg-red-50">❌ Cancelado</Badge>
+                                    );
+                                    return (
+                                      <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-700 bg-yellow-50">⏳ Pendente</Badge>
+                                    );
+                                  }
+                                  // Contratos legados (ZapSign): usa zapsign_signers
                                   const signers = Array.isArray(contract.zapsign_signers) ? contract.zapsign_signers as any[] : [];
                                   const allSigned = signers.length > 0 && signers.every((s: any) => s.status === "signed");
                                   const someSigned = signers.some((s: any) => s.status === "signed");
-                                  
                                   if (allSigned) return (
                                     <Badge variant="outline" className="text-xs border-green-500 text-green-700 bg-green-50">✅ Assinado</Badge>
                                   );
