@@ -1489,6 +1489,9 @@ const OnboardingTasksPage = () => {
         } else if (activeMetricFilter.type === "status" && (activeMetricFilter.value === "cancellation_signaled" || activeMetricFilter.value === "notice_period")) {
           // For cancellation/notice filters, don't require date range - show all current
           matchesMetricFilter = company.projects?.some(p => p.status === activeMetricFilter.value) ?? false;
+        } else if (activeMetricFilter.type === "status" && activeMetricFilter.value === "all") {
+          // "Total" card — mostra todas as empresas sem filtro adicional
+          matchesMetricFilter = true;
         } else if (activeMetricFilter.type === "status") {
           // For other status filters (active, etc.), filter by date range
           matchesMetricFilter = company.projects?.some(p => {
