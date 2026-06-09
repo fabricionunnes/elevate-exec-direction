@@ -1684,17 +1684,40 @@ export default function ContractGeneratorPage() {
                                   <p className="text-xs text-muted-foreground">{signer.email}</p>
                                 </div>
                               </div>
-                              <div className="text-right">
+                              <div className="flex items-center gap-2">
                                 {signer.status === 'signed' ? (
                                   <Badge variant="default" className="bg-green-600">
                                     Assinado
                                   </Badge>
                                 ) : (
-                                  <div className="flex flex-col items-end gap-1">
+                                  <>
                                     <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
                                       Pendente
                                     </Badge>
-                                  </div>
+                                    {signer.id && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs gap-1"
+                                        onClick={async () => {
+                                          try {
+                                            const session = (await supabase.auth.getSession()).data.session;
+                                            const { data, error } = await supabase.functions.invoke("get-signing-link", {
+                                              body: { signer_id: signer.id },
+                                            });
+                                            if (error || !data?.data?.signing_url) throw new Error("Erro ao gerar link");
+                                            await navigator.clipboard.writeText(data.data.signing_url);
+                                            toast.success(`Link copiado para ${signer.name}`);
+                                          } catch (e: any) {
+                                            toast.error(e.message || "Erro ao copiar link");
+                                          }
+                                        }}
+                                      >
+                                        <Copy className="h-3 w-3" />
+                                        Copiar link
+                                      </Button>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             </div>
