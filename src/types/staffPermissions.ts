@@ -65,6 +65,7 @@ export const FINANCIAL_PERMISSION_KEYS = {
   fin_company_detail: "fin_company_detail",
   fin_bank_statement: "fin_bank_statement",
   fin_nfse: "fin_nfse",
+  fin_balanco: "fin_balanco",
 } as const;
 
 export type FinancialPermissionKey = typeof FINANCIAL_PERMISSION_KEYS[keyof typeof FINANCIAL_PERMISSION_KEYS];
@@ -81,6 +82,7 @@ export const FINANCIAL_PERMISSION_STRUCTURE = [
   { key: FINANCIAL_PERMISSION_KEYS.fin_categories, label: "Categorias / Plano de Contas", description: "Gerenciar categorias financeiras", group: "Relatórios" },
   { key: FINANCIAL_PERMISSION_KEYS.fin_dre, label: "DRE", description: "Visualizar Demonstrativo de Resultados", group: "Relatórios" },
   { key: FINANCIAL_PERMISSION_KEYS.fin_dfc, label: "DFC", description: "Visualizar Demonstrativo de Fluxo de Caixa", group: "Relatórios" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_balanco, label: "Balanço Patrimonial", description: "Visualizar Balanço Patrimonial automático", group: "Relatórios" },
   { key: FINANCIAL_PERMISSION_KEYS.fin_banks, label: "Bancos", description: "Gerenciar contas bancárias", group: "Administração" },
   { key: FINANCIAL_PERMISSION_KEYS.fin_cfo_executive, label: "CFO - Executive Board", description: "Visão executiva com KPIs estratégicos", group: "Dashboard CFO" },
   { key: FINANCIAL_PERMISSION_KEYS.fin_cfo_mrr, label: "CFO - Receita & MRR", description: "MRR Breakdown, Ticket Médio", group: "Dashboard CFO" },
