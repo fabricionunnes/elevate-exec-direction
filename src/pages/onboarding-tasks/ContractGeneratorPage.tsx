@@ -35,12 +35,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface ZapSignSigner {
+interface EnvelopeSigner {
   name: string;
   email: string;
   status: string;
-  signedAt: string | null;
-  signUrl: string;
+  signed_at: string | null;
+  id?: string;
 }
 
 interface SavedContract {
@@ -70,6 +70,7 @@ interface SavedContract {
   zapsign_document_url: string | null;
   zapsign_signers: unknown;
   zapsign_sent_at: string | null;
+  envelope_id: string | null;
   clauses_snapshot: unknown;
 }
 
@@ -144,7 +145,7 @@ export default function ContractGeneratorPage() {
   const [historyZapSignSent, setHistoryZapSignSent] = useState(false);
   const [isLoadingSignatures, setIsLoadingSignatures] = useState(false);
   const [signatureStatus, setSignatureStatus] = useState<{
-    signers: ZapSignSigner[];
+    signers: EnvelopeSigner[];
     allSigned: boolean;
     signedFileUrl: string | null;
   } | null>(null);
@@ -226,8 +227,8 @@ export default function ContractGeneratorPage() {
       });
       setSavedContracts(contracts);
 
-      // Batch-check ZapSign status for contracts that were sent
-      const contractsWithZapSign = contracts.filter(c => c.zapsign_document_token);
+      // Legacy: Batch-check ZapSign status for old contracts that used zapsign_document_token
+      const contractsWithZapSign = contracts.filter(c => c.zapsign_document_token && !c.envelope_id);
       if (contractsWithZapSign.length > 0) {
         refreshZapSignStatuses(contractsWithZapSign);
       }
@@ -380,26 +381,21 @@ export default function ContractGeneratorPage() {
     }
   };
 
-  // Cancel old ZapSign document when editing
-  const cancelOldZapSignDocument = async (documentToken: string) => {
+  // Cancel old envelope when editing
+  const cancelOldEnvelope = async (envelopeId: string) => {
     try {
-      console.log("Cancelling old ZapSign document:", documentToken);
-      const { data, error } = await supabase.functions.invoke("cancel-zapsign", {
-        body: { documentToken },
-      });
-
+      console.log("Cancelling old envelope:", envelopeId);
+      const { error } = await supabase
+        .from("envelopes")
+        .update({ status: "cancelled" })
+        .eq("id", envelopeId);
       if (error) {
-        console.error("Error cancelling ZapSign document:", error);
-        // Don't block the flow, just log the error
-        return;
-      }
-
-      console.log("ZapSign cancel result:", data);
-      if (data?.success) {
-        toast.info("Documento anterior cancelado na ZapSign.");
+        console.error("Error cancelling envelope:", error);
+      } else {
+        toast.info("Envelope anterior cancelado.");
       }
     } catch (err) {
-      console.error("Failed to cancel ZapSign document:", err);
+      console.error("Failed to cancel envelope:", err);
       // Don't block the flow
     }
   };
@@ -449,21 +445,27 @@ export default function ContractGeneratorPage() {
       let contractId: string;
       let isNewContract = true;
 
-      // If editing an existing contract, update it and cancel old ZapSign document
+      // If editing an existing contract, update it and cancel old envelope
       if (editingContractId) {
         isNewContract = false;
-        
-        // Cancel old ZapSign document if it exists
+
+        // Cancel old envelope if it exists
         if (editingOldZapSignToken) {
-          await cancelOldZapSignDocument(editingOldZapSignToken);
+          // editingOldZapSignToken now stores envelope_id for new contracts
+          // For legacy contracts it may hold zapsign token — we just skip cancellation
+          const isUUID = /^[0-9a-f-]{36}$/.test(editingOldZapSignToken);
+          if (isUUID) {
+            await cancelOldEnvelope(editingOldZapSignToken);
+          }
         }
 
-        // Update existing contract and clear ZapSign data (new document will be sent)
+        // Update existing contract and clear envelope/ZapSign data (new document will be sent)
         const { error } = await supabase
           .from("generated_contracts")
           .update({
             ...contractData,
-            // Clear ZapSign data since document was cancelled
+            // Clear envelope and ZapSign data since document was cancelled
+            envelope_id: null,
             zapsign_document_token: null,
             zapsign_document_url: null,
             zapsign_signers: null,
@@ -559,14 +561,14 @@ export default function ContractGeneratorPage() {
     }
   };
 
-  const handleSendToZapSign = async () => {
+  const handleSendToEnvelope = async () => {
     if (!lastGeneratedPdfUrl) {
       toast.error("PDF não disponível. Gere o contrato novamente.");
       return;
     }
 
     if (!formData.clientEmail) {
-      toast.error("E-mail do cliente (contratante) é obrigatório para envio via ZapSign.");
+      toast.error("E-mail do cliente (contratante) é obrigatório para envio para assinatura.");
       return;
     }
 
@@ -575,63 +577,67 @@ export default function ContractGeneratorPage() {
       const selectedProduct = productDetails[formData.productId];
       const documentName = `Contrato - ${formData.clientName} - ${selectedProduct?.name || formData.productId}`;
 
-      const { data, error } = await supabase.functions.invoke("send-to-zapsign", {
-        body: {
-          pdfUrl: lastGeneratedPdfUrl,
-          documentName,
-          signers: [
-            {
-              name: COMPANY_SIGNER_NAME,
-              email: COMPANY_SIGNER_EMAIL,
-            },
-            {
-              name: formData.clientName,
-              email: formData.clientEmail,
-              phone: formData.clientPhone,
-            },
-          ],
-          sendAutomatically: true,
-        },
+      // Fetch PDF blob from storage URL
+      const pdfRes = await fetch(lastGeneratedPdfUrl);
+      if (!pdfRes.ok) throw new Error(`Erro ao baixar PDF: HTTP ${pdfRes.status}`);
+      const pdfBlob = await pdfRes.blob();
+
+      // Build FormData for create-envelope
+      const session = (await supabase.auth.getSession()).data.session;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+      const formDataEnvelope = new FormData();
+      formDataEnvelope.append("title", documentName);
+      formDataEnvelope.append("message", "Por favor, assine o contrato abaixo.");
+      formDataEnvelope.append("signers", JSON.stringify([
+        { name: COMPANY_SIGNER_NAME, email: COMPANY_SIGNER_EMAIL, order_index: 0 },
+        { name: formData.clientName, email: formData.clientEmail, order_index: 1 },
+      ]));
+      formDataEnvelope.append("expires_in_days", "60");
+      formDataEnvelope.append("pdf", new File([pdfBlob], "contrato.pdf", { type: "application/pdf" }));
+
+      const createRes = await fetch(`${supabaseUrl}/functions/v1/create-envelope`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+        body: formDataEnvelope,
       });
+      const createData = await createRes.json();
+      if (!createRes.ok) throw new Error(createData.error || "Erro ao criar envelope");
 
-      if (error) {
-        console.error("Erro ao enviar para ZapSign:", error);
-        toast.error("Erro ao enviar para ZapSign. Verifique a configuração.");
-        return;
-      }
+      // Send envelope
+      const { error: sendError } = await supabase.functions.invoke("send-envelope", {
+        body: { envelope_id: createData.envelope_id },
+      });
+      if (sendError) throw sendError;
 
-      console.log("ZapSign response:", data);
-
-      // Persist ZapSign info to the most recently saved contract so history can show status
+      // Persist envelope_id and mark as sent
       if (lastSavedContractId) {
         const { error: updateError } = await supabase
           .from("generated_contracts")
           .update({
-            zapsign_document_token: data.documentToken,
-            zapsign_document_url: data.documentUrl,
-            zapsign_signers: data.signers,
+            envelope_id: createData.envelope_id,
             zapsign_sent_at: new Date().toISOString(),
           })
           .eq("id", lastSavedContractId);
 
         if (updateError) {
-          console.error("Erro ao salvar dados do ZapSign no contrato:", updateError);
+          console.error("Erro ao salvar envelope_id no contrato:", updateError);
         } else {
           loadContracts();
         }
       }
 
       setZapSignSent(true);
-      toast.success(data.message || "Contrato enviado para assinatura!");
+      toast.success("Contrato enviado para assinatura!");
     } catch (error) {
-      console.error("Erro ao enviar para ZapSign:", error);
-      toast.error("Erro ao enviar para ZapSign. Tente novamente.");
+      console.error("Erro ao enviar para assinatura:", error);
+      toast.error("Erro ao enviar para assinatura. Tente novamente.");
     } finally {
       setIsSendingToZapSign(false);
     }
   };
 
-  const handleSendToZapSignFromHistory = async () => {
+  const handleSendToEnvelopeFromHistory = async () => {
     if (!selectedContract?.pdf_url) {
       toast.error("PDF não disponível para este contrato.");
       return;
@@ -646,44 +652,46 @@ export default function ContractGeneratorPage() {
     try {
       const documentName = `Contrato - ${selectedContract.client_name} - ${selectedContract.product_name}`;
 
-      const { data, error } = await supabase.functions.invoke("send-to-zapsign", {
-        body: {
-          pdfUrl: selectedContract.pdf_url,
-          documentName,
-          signers: [
-            {
-              name: COMPANY_SIGNER_NAME,
-              email: COMPANY_SIGNER_EMAIL,
-            },
-            {
-              name: selectedContract.client_name,
-              email: selectedContract.client_email,
-              phone: selectedContract.client_phone || "",
-            },
-          ],
-          sendAutomatically: true,
-        },
+      // Fetch PDF blob
+      const pdfRes = await fetch(selectedContract.pdf_url);
+      if (!pdfRes.ok) throw new Error(`Erro ao baixar PDF: HTTP ${pdfRes.status}`);
+      const pdfBlob = await pdfRes.blob();
+
+      const session = (await supabase.auth.getSession()).data.session;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+      const formDataEnvelope = new FormData();
+      formDataEnvelope.append("title", documentName);
+      formDataEnvelope.append("message", "Por favor, assine o contrato abaixo.");
+      formDataEnvelope.append("signers", JSON.stringify([
+        { name: COMPANY_SIGNER_NAME, email: COMPANY_SIGNER_EMAIL, order_index: 0 },
+        { name: selectedContract.client_name, email: selectedContract.client_email, order_index: 1 },
+      ]));
+      formDataEnvelope.append("expires_in_days", "60");
+      formDataEnvelope.append("pdf", new File([pdfBlob], "contrato.pdf", { type: "application/pdf" }));
+
+      const createRes = await fetch(`${supabaseUrl}/functions/v1/create-envelope`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+        body: formDataEnvelope,
       });
+      const createData = await createRes.json();
+      if (!createRes.ok) throw new Error(createData.error || "Erro ao criar envelope");
 
-      if (error) {
-        console.error("Erro ao enviar para ZapSign:", error);
-        toast.error("Erro ao enviar para ZapSign. Verifique a configuração.");
-        return;
-      }
+      const { error: sendError } = await supabase.functions.invoke("send-envelope", {
+        body: { envelope_id: createData.envelope_id },
+      });
+      if (sendError) throw sendError;
 
-      console.log("ZapSign response:", data);
-      
-      // Update contract in database with ZapSign info
+      // Update contract in database with envelope_id
       const { error: updateError } = await supabase
         .from("generated_contracts")
         .update({
-          zapsign_document_token: data.documentToken,
-          zapsign_document_url: data.documentUrl,
-          zapsign_signers: data.signers,
+          envelope_id: createData.envelope_id,
           zapsign_sent_at: new Date().toISOString(),
         })
         .eq("id", selectedContract.id);
-      
+
       if (updateError) {
         console.error("Erro ao atualizar contrato no banco:", updateError);
         toast.error("Não consegui salvar o envio para assinatura. Recarregue a página e tente novamente.");
@@ -695,43 +703,50 @@ export default function ContractGeneratorPage() {
       setSelectedContract(
         fresh || {
           ...selectedContract,
-          zapsign_document_token: data.documentToken,
-          zapsign_document_url: data.documentUrl,
-          zapsign_signers: data.signers,
+          envelope_id: createData.envelope_id,
           zapsign_sent_at: new Date().toISOString(),
         }
       );
-      
+
       setHistoryZapSignSent(true);
-      // Refresh signature status
-      await checkSignatureStatus(data.documentToken);
-      // Reload contracts list
+      // Refresh signature status from internal system
+      await checkSignatureStatus(createData.envelope_id);
       await loadContracts();
-      toast.success(data.message || "Contrato enviado para assinatura!");
+      toast.success("Contrato enviado para assinatura!");
     } catch (error) {
-      console.error("Erro ao enviar para ZapSign:", error);
-      toast.error("Erro ao enviar para ZapSign. Tente novamente.");
+      console.error("Erro ao enviar para assinatura:", error);
+      toast.error("Erro ao enviar para assinatura. Tente novamente.");
     } finally {
       setIsSendingToZapSign(false);
     }
   };
 
-  const checkSignatureStatus = async (documentToken: string) => {
+  const checkSignatureStatus = async (envelopeId: string) => {
     setIsLoadingSignatures(true);
     try {
-      const { data, error } = await supabase.functions.invoke("check-zapsign-status", {
-        body: { documentToken },
-      });
+      const { data, error } = await supabase
+        .from("signers")
+        .select("id, name, email, status, signed_at")
+        .eq("envelope_id", envelopeId);
 
       if (error) {
         console.error("Erro ao verificar status:", error);
         return;
       }
 
+      const signers: EnvelopeSigner[] = (data || []).map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        email: s.email,
+        status: s.status,
+        signed_at: s.signed_at,
+      }));
+      const allSigned = signers.length > 0 && signers.every((s) => s.status === "signed");
+
       setSignatureStatus({
-        signers: data.signers || [],
-        allSigned: data.allSigned || false,
-        signedFileUrl: data.signedFileUrl || null,
+        signers,
+        allSigned,
+        signedFileUrl: null, // internal system does not expose signed file URL via signers table
       });
     } catch (error) {
       console.error("Erro ao verificar status:", error);
@@ -764,11 +779,11 @@ export default function ContractGeneratorPage() {
     const effective = fresh || contract;
 
     setSelectedContract(effective);
-    setHistoryZapSignSent(!!effective.zapsign_document_token || !!effective.zapsign_sent_at);
+    setHistoryZapSignSent(!!effective.envelope_id || !!effective.zapsign_sent_at);
 
-    // If contract was sent to ZapSign, check current status
-    if (effective.zapsign_document_token) {
-      await checkSignatureStatus(effective.zapsign_document_token);
+    // Check current signature status — prefer internal envelope, fall back to legacy ZapSign
+    if (effective.envelope_id) {
+      await checkSignatureStatus(effective.envelope_id);
     }
   };
 
@@ -908,9 +923,9 @@ export default function ContractGeneratorPage() {
   const handleEditContract = () => {
     if (!selectedContract) return;
     
-    // Store the contract ID and ZapSign token for editing mode
+    // Store the contract ID and envelope_id (or legacy zapsign token) for editing mode
     setEditingContractId(selectedContract.id);
-    setEditingOldZapSignToken(selectedContract.zapsign_document_token || null);
+    setEditingOldZapSignToken(selectedContract.envelope_id || selectedContract.zapsign_document_token || null);
     
     // Parse address parts from saved address if available
     let addressParts = {
@@ -993,10 +1008,10 @@ export default function ContractGeneratorPage() {
     setShowContractDialog(false);
     setShowHistory(false);
     
-    const hasZapSign = !!selectedContract.zapsign_document_token;
+    const hasEnvelope = !!selectedContract.envelope_id || !!selectedContract.zapsign_document_token;
     toast.success(
-      hasZapSign 
-        ? "Contrato carregado para edição. Ao gerar o novo PDF, o documento antigo será cancelado na ZapSign."
+      hasEnvelope
+        ? "Contrato carregado para edição. Ao gerar o novo PDF, o envelope anterior será cancelado."
         : "Contrato carregado para edição. Faça as alterações necessárias e gere um novo PDF."
     );
   };
@@ -1377,7 +1392,7 @@ export default function ContractGeneratorPage() {
                 <div className="flex-1">
                   <h3 className="font-medium text-amber-900">Modo Edição</h3>
                   <p className="text-sm text-amber-700">
-                    Você está editando um contrato existente. Ao gerar o novo PDF, o documento anterior será cancelado na ZapSign
+                    Você está editando um contrato existente. Ao gerar o novo PDF, o envelope anterior será cancelado
                     e você poderá enviar o novo contrato para assinatura.
                   </p>
                 </div>
@@ -1435,9 +1450,9 @@ export default function ContractGeneratorPage() {
               {wasEditMode ? "Contrato Atualizado com Sucesso!" : "Contrato Gerado com Sucesso!"}
             </DialogTitle>
             <DialogDescription>
-              {wasEditMode 
-                ? "O contrato foi atualizado e o documento anterior na ZapSign foi cancelado. Você pode baixá-lo ou enviar para nova assinatura digital."
-                : "O contrato foi gerado e salvo no histórico. Você pode baixá-lo ou enviar para assinatura digital via ZapSign."
+              {wasEditMode
+                ? "O contrato foi atualizado e o envelope anterior foi cancelado. Você pode baixá-lo ou enviar para nova assinatura digital."
+                : "O contrato foi gerado e salvo no histórico. Você pode baixá-lo ou enviar para assinatura digital."
               }
             </DialogDescription>
           </DialogHeader>
@@ -1448,7 +1463,7 @@ export default function ContractGeneratorPage() {
             <div className="space-y-3">
               <h4 className="text-sm font-medium flex items-center gap-2">
                 <Send className="h-4 w-4 text-primary" />
-                Enviar para Assinatura Digital (ZapSign)
+                Enviar para Assinatura Digital
               </h4>
               
               {zapSignSent ? (
@@ -1464,7 +1479,7 @@ export default function ContractGeneratorPage() {
                   </div>
                   
                   <Button
-                    onClick={handleSendToZapSign}
+                    onClick={handleSendToEnvelope}
                     disabled={isSendingToZapSign || !formData.clientEmail}
                     className="w-full"
                     variant="secondary"
@@ -1620,13 +1635,13 @@ export default function ContractGeneratorPage() {
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-medium flex items-center gap-2">
                         <Send className="h-4 w-4 text-primary" />
-                        Assinatura Digital (ZapSign)
+                        Assinatura Digital
                       </h4>
-                      {selectedContract.zapsign_document_token && (
+                      {selectedContract.envelope_id && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => checkSignatureStatus(selectedContract.zapsign_document_token!)}
+                          onClick={() => checkSignatureStatus(selectedContract.envelope_id!)}
                           disabled={isLoadingSignatures}
                         >
                           <RefreshCw className={`h-3 w-3 ${isLoadingSignatures ? "animate-spin" : ""}`} />
@@ -1674,29 +1689,6 @@ export default function ContractGeneratorPage() {
                                     <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
                                       Pendente
                                     </Badge>
-                                    {signer.signUrl && (
-                                      <div className="flex items-center gap-2">
-                                        <button
-                                          onClick={() => {
-                                            navigator.clipboard.writeText(signer.signUrl!);
-                                            toast.success("Link copiado!");
-                                          }}
-                                          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-                                          title="Copiar link"
-                                        >
-                                          <Copy className="h-3 w-3" />
-                                        </button>
-                                        <a
-                                          href={signer.signUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-xs text-primary hover:underline flex items-center gap-1"
-                                        >
-                                          Link para assinar
-                                          <ExternalLink className="h-3 w-3" />
-                                        </a>
-                                      </div>
-                                    )}
                                   </div>
                                 )}
                               </div>
@@ -1729,10 +1721,10 @@ export default function ContractGeneratorPage() {
                           </div>
                         )}
                       </div>
-                    ) : selectedContract.zapsign_document_token ? (
+                    ) : (selectedContract.envelope_id || selectedContract.zapsign_document_token) ? (
                       <div className="text-sm text-muted-foreground text-center py-2">
                         Contrato enviado para assinatura em{" "}
-                        {selectedContract.zapsign_sent_at 
+                        {selectedContract.zapsign_sent_at
                           ? format(new Date(selectedContract.zapsign_sent_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
                           : "data desconhecida"
                         }
@@ -1750,7 +1742,7 @@ export default function ContractGeneratorPage() {
                         </div>
                         
                         <Button
-                          onClick={handleSendToZapSignFromHistory}
+                          onClick={handleSendToEnvelopeFromHistory}
                           disabled={isSendingToZapSign || !selectedContract.client_email}
                           className="w-full"
                           size="sm"

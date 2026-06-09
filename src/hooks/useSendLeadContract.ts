@@ -37,8 +37,7 @@ interface SendContractResult {
   success: boolean;
   error?: string;
   missingFields?: MissingField[];
-  documentToken?: string;
-  documentUrl?: string;
+  envelope_id?: string;
 }
 
 const COMPANY_SIGNER_EMAIL = "fabricio@universidadevendas.com.br";
@@ -165,7 +164,7 @@ export function useSendLeadContract() {
       // Check if there's already a contract for this lead (same document AND same product)
       const { data: existingContract } = await supabase
         .from("generated_contracts")
-        .select("id, pdf_url, zapsign_document_token")
+        .select("id, pdf_url, zapsign_document_token, envelope_id")
         .eq("client_document", lead.document)
         .eq("product_id", lead.product_id)
         .order("created_at", { ascending: false })
@@ -180,14 +179,16 @@ export function useSendLeadContract() {
         pdfUrl = existingContract.pdf_url;
         contractId = existingContract.id;
 
-        // If already sent to ZapSign, cancel old document
-        if (existingContract.zapsign_document_token) {
+        // If already has an envelope, cancel it before creating a new one
+        const existingEnvelopeId = (existingContract as any).envelope_id;
+        if (existingEnvelopeId) {
           try {
-            await supabase.functions.invoke("cancel-zapsign", {
-              body: { documentToken: existingContract.zapsign_document_token }
-            });
+            await supabase
+              .from("envelopes")
+              .update({ status: "cancelled" })
+              .eq("id", existingEnvelopeId);
           } catch (e) {
-            console.warn("Não foi possível cancelar documento antigo no ZapSign:", e);
+            console.warn("Não foi possível cancelar envelope antigo:", e);
           }
         }
       } else {
@@ -236,42 +237,47 @@ export function useSendLeadContract() {
         };
       }
 
-      // Send to ZapSign - use contractual data
+      // Send via internal envelope system
       const signerName = lead.legal_representative_name || lead.name;
       const documentName = `Contrato - ${clientName} - ${productName}`;
 
-      const { data: zapSignData, error: zapSignError } = await supabase.functions.invoke("send-to-zapsign", {
-        body: {
-          pdfUrl,
-          documentName,
-          signers: [
-            {
-              name: COMPANY_SIGNER_NAME,
-              email: COMPANY_SIGNER_EMAIL,
-            },
-            {
-              name: signerName,
-              email: lead.email,
-              phone: lead.phone || "",
-            },
-          ],
-          sendAutomatically: true,
-        },
+      // Fetch PDF blob
+      const pdfRes = await fetch(pdfUrl!);
+      if (!pdfRes.ok) throw new Error(`Erro ao baixar PDF: HTTP ${pdfRes.status}`);
+      const pdfBlob = await pdfRes.blob();
+
+      const session = (await supabase.auth.getSession()).data.session;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+      const formDataEnvelope = new FormData();
+      formDataEnvelope.append("title", documentName);
+      formDataEnvelope.append("message", "Por favor, assine o contrato abaixo.");
+      formDataEnvelope.append("signers", JSON.stringify([
+        { name: COMPANY_SIGNER_NAME, email: COMPANY_SIGNER_EMAIL, order_index: 0 },
+        { name: signerName, email: lead.email, order_index: 1 },
+      ]));
+      formDataEnvelope.append("expires_in_days", "60");
+      formDataEnvelope.append("pdf", new File([pdfBlob], "contrato.pdf", { type: "application/pdf" }));
+
+      const createRes = await fetch(`${supabaseUrl}/functions/v1/create-envelope`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+        body: formDataEnvelope,
       });
+      const createData = await createRes.json();
+      if (!createRes.ok) throw new Error(createData.error || "Erro ao criar envelope");
 
-      if (zapSignError) {
-        console.error("Erro ao enviar para ZapSign:", zapSignError);
-        return { success: false, error: "Erro ao enviar contrato para assinatura. Verifique a configuração da ZapSign." };
-      }
+      const { error: sendError } = await supabase.functions.invoke("send-envelope", {
+        body: { envelope_id: createData.envelope_id },
+      });
+      if (sendError) throw sendError;
 
-      // Update contract with ZapSign info
+      // Update contract with envelope_id
       if (contractId) {
         await supabase
           .from("generated_contracts")
           .update({
-            zapsign_document_token: zapSignData.documentToken,
-            zapsign_document_url: zapSignData.documentUrl,
-            zapsign_signers: zapSignData.signers,
+            envelope_id: createData.envelope_id,
             zapsign_sent_at: new Date().toISOString(),
           })
           .eq("id", contractId);
@@ -279,8 +285,7 @@ export function useSendLeadContract() {
 
       return {
         success: true,
-        documentToken: zapSignData.documentToken,
-        documentUrl: zapSignData.documentUrl,
+        envelope_id: createData.envelope_id,
       };
 
     } catch (error) {

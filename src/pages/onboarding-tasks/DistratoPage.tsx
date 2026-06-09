@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Download, Eye, Loader2, FileText, History, Send, ExternalLink, Copy, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Download, Eye, Loader2, FileText, History, Send, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import DistratoForm, { defaultDistrato, type DistratoFormData } from "@/components/distrato/DistratoForm";
 import DistratoClausesEditor, { getDefaultDistratoClauses, type EditableDistratoClause } from "@/components/distrato/DistratoClausesEditor";
@@ -12,10 +12,11 @@ import { generateDistratoPDF, downloadDistratoPDF } from "@/components/distrato/
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
-interface ZapSignResult {
-  documentToken: string;
-  documentUrl: string;
-  signers: { name: string; email: string; signUrl: string; status: string }[];
+interface EnvelopeResult {
+  envelope_id: string;
+  status: string;
+  signers: { name: string; email: string; status: string }[];
+  expires_at: string;
 }
 
 export default function DistratoPage() {
@@ -35,7 +36,7 @@ export default function DistratoPage() {
   const [signerEmail, setSignerEmail] = useState("");
   const [signerPhone, setSignerPhone] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [zapSignResult, setZapSignResult] = useState<ZapSignResult | null>(null);
+  const [envelopeResult, setEnvelopeResult] = useState<EnvelopeResult | null>(null);
 
   const uploadPdfToStorage = async (blob: Blob): Promise<string | null> => {
     try {
@@ -64,7 +65,7 @@ export default function DistratoPage() {
     try {
       const blob = await generateDistratoPDF({ formData, clauses });
       setGeneratedBlob(blob);
-      setZapSignResult(null);
+      setEnvelopeResult(null);
 
       // Upload PDF to storage
       const pdfUrl = await uploadPdfToStorage(blob);
@@ -104,7 +105,7 @@ export default function DistratoPage() {
     }
   };
 
-  const handleSendToZapSign = async () => {
+  const handleSendToEnvelope = async () => {
     if (!signerName || !signerEmail) {
       toast.error("Preencha o nome e e-mail do signatário");
       return;
@@ -135,36 +136,51 @@ export default function DistratoPage() {
 
       const documentName = `Distrato - ${formData.companyName} - ${format(formData.distratoDate, "dd-MM-yyyy")}`;
 
-      const { data: zapData, error: zapError } = await supabase.functions.invoke("send-to-zapsign", {
-        body: {
-          pdfUrl,
-          documentName,
-          signers: [
-            { name: "Fabrício Nunnes", email: "fabricio@universidadevendas.com.br" },
-            { name: signerName, email: signerEmail, phone: signerPhone || undefined },
-          ],
-          sendAutomatically: true,
-        },
+      // Fetch PDF blob for envelope
+      const pdfRes = await fetch(pdfUrl);
+      if (!pdfRes.ok) throw new Error(`Erro ao baixar PDF: HTTP ${pdfRes.status}`);
+      const pdfBlob = await pdfRes.blob();
+
+      const session = (await supabase.auth.getSession()).data.session;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+      const formDataEnvelope = new FormData();
+      formDataEnvelope.append("title", documentName);
+      formDataEnvelope.append("message", "Por favor, assine o distrato abaixo.");
+      formDataEnvelope.append("signers", JSON.stringify([
+        { name: "Fabrício Nunnes", email: "fabricio@universidadevendas.com.br", order_index: 0 },
+        { name: signerName, email: signerEmail, order_index: 1 },
+      ]));
+      formDataEnvelope.append("expires_in_days", "60");
+      formDataEnvelope.append("pdf", new File([pdfBlob], "distrato.pdf", { type: "application/pdf" }));
+
+      const createRes = await fetch(`${supabaseUrl}/functions/v1/create-envelope`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+        body: formDataEnvelope,
       });
+      const createData = await createRes.json();
+      if (!createRes.ok) throw new Error(createData.error || "Erro ao criar envelope");
 
-      if (zapError) throw zapError;
+      const { error: sendError } = await supabase.functions.invoke("send-envelope", {
+        body: { envelope_id: createData.envelope_id },
+      });
+      if (sendError) throw sendError;
 
-      setZapSignResult(zapData);
+      setEnvelopeResult(createData);
 
-      // Update distrato with ZapSign info
+      // Update distrato with envelope_id
       if (savedDistratoId) {
         await supabase.from("distratos").update({
-          zapsign_document_token: zapData.documentToken,
-          zapsign_document_url: zapData.documentUrl,
-          zapsign_signers: zapData.signers,
+          envelope_id: createData.envelope_id,
           zapsign_sent_at: new Date().toISOString(),
         }).eq("id", savedDistratoId);
       }
 
-      toast.success("Distrato enviado para assinatura via ZapSign!");
+      toast.success("Distrato enviado para assinatura!");
     } catch (err: any) {
       console.error(err);
-      toast.error("Erro ao enviar para ZapSign");
+      toast.error("Erro ao enviar para assinatura");
     } finally {
       setIsSending(false);
     }
@@ -180,11 +196,6 @@ export default function DistratoPage() {
       window.open(url, "_blank");
       setTimeout(() => URL.revokeObjectURL(url), 30000);
     }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success("Link copiado!");
   };
 
   return (
@@ -241,14 +252,14 @@ export default function DistratoPage() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Send className="h-4 w-4" /> Enviar para Assinatura (ZapSign)
+                <Send className="h-4 w-4" /> Enviar para Assinatura
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {!zapSignResult ? (
+              {!envelopeResult ? (
                 <>
                   <p className="text-sm text-muted-foreground">
-                    Preencha os dados do signatário do contratante para enviar o distrato via ZapSign.
+                    Preencha os dados do signatário do contratante para enviar o distrato para assinatura digital.
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
@@ -278,12 +289,12 @@ export default function DistratoPage() {
                     </div>
                   </div>
                   <Button
-                    onClick={handleSendToZapSign}
+                    onClick={handleSendToEnvelope}
                     disabled={isSending}
                     className="gap-2"
                   >
                     {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    Enviar para ZapSign
+                    Enviar para Assinatura
                   </Button>
                 </>
               ) : (
@@ -292,49 +303,16 @@ export default function DistratoPage() {
                     <CheckCircle2 className="h-4 w-4" />
                     <span className="font-medium">Documento enviado com sucesso!</span>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(zapSignResult.documentUrl, "_blank")}
-                      className="gap-1"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" /> Ver no ZapSign
-                    </Button>
-                  </div>
-
-                  {zapSignResult.signers?.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Os signatários receberão um e-mail com o link para assinatura.
+                  </p>
+                  {envelopeResult?.signers?.length > 0 && (
                     <div className="space-y-2">
-                      <Label className="text-xs font-medium">Links de assinatura:</Label>
-                      {zapSignResult.signers.map((s, i) => (
+                      <Label className="text-xs font-medium">Signatários:</Label>
+                      {envelopeResult.signers.map((s, i) => (
                         <div key={i} className="flex items-center gap-2 text-sm">
                           <span className="font-medium min-w-[120px]">{s.name}:</span>
-                          {s.signUrl ? (
-                            <>
-                              <code className="text-xs bg-muted px-2 py-1 rounded truncate max-w-[300px]">
-                                {s.signUrl}
-                              </code>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => copyToClipboard(s.signUrl)}
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => window.open(s.signUrl, "_blank")}
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                              </Button>
-                            </>
-                          ) : (
-                            <span className="text-muted-foreground">E-mail enviado</span>
-                          )}
+                          <span className="text-muted-foreground">{s.email} — E-mail enviado</span>
                         </div>
                       ))}
                     </div>
