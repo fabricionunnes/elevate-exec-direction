@@ -66,6 +66,7 @@ export const FINANCIAL_PERMISSION_KEYS = {
   fin_bank_statement: "fin_bank_statement",
   fin_nfse: "fin_nfse",
   fin_balanco: "fin_balanco",
+  fin_relatorio_executivo: "fin_relatorio_executivo",
 } as const;
 
 export type FinancialPermissionKey = typeof FINANCIAL_PERMISSION_KEYS[keyof typeof FINANCIAL_PERMISSION_KEYS];
@@ -100,6 +101,7 @@ export const FINANCIAL_PERMISSION_STRUCTURE = [
   { key: FINANCIAL_PERMISSION_KEYS.fin_company_detail, label: "Financeiro da Empresa", description: "Acessar aba financeira nos detalhes da empresa", group: "Visão Geral" },
   { key: FINANCIAL_PERMISSION_KEYS.fin_bank_statement, label: "Extrato Bancário", description: "Visualizar extrato consolidado de todos os bancos", group: "Administração" },
   { key: FINANCIAL_PERMISSION_KEYS.fin_nfse, label: "NFS-e", description: "Emitir e gerenciar Notas Fiscais de Serviço via NFE.io", group: "Operacional" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_relatorio_executivo, label: "Relatório Executivo", description: "Visualizar e enviar relatório executivo automático", group: "Relatórios" },
 ] as const;
 
 export type StaffMenuKey = typeof STAFF_MENU_KEYS[keyof typeof STAFF_MENU_KEYS];

@@ -51,6 +51,7 @@ import FinancialCategoriesTab from "./financial/FinancialCategoriesTab";
 import FinancialDRETab from "./financial/FinancialDRETab";
 import FinancialDFCTab from "./financial/FinancialDFCTab";
 import FinancialBalancoTab from "./financial/FinancialBalancoTab";
+import FinancialRelatorioExecutivoTab from "./financial/FinancialRelatorioExecutivoTab";
 import CFOExecutiveBoardTab from "./financial/CFOExecutiveBoardTab";
 import CFORevenueMRRTab from "./financial/CFORevenueMRRTab";
 import CFOChurnRetentionTab from "./financial/CFOChurnRetentionTab";
@@ -166,6 +167,7 @@ const NAV_ITEMS = [
   { key: "dre", label: "DRE", icon: FileText, permKey: FINANCIAL_PERMISSION_KEYS.fin_dre },
   { key: "dfc", label: "DFC", icon: ArrowRightLeft, permKey: FINANCIAL_PERMISSION_KEYS.fin_dfc },
   { key: "balanco", label: "Balanço Patrimonial", icon: Scale, permKey: FINANCIAL_PERMISSION_KEYS.fin_balanco },
+  { key: "relatorio-executivo", label: "Relatório Executivo", icon: FileCheck, permKey: FINANCIAL_PERMISSION_KEYS.fin_relatorio_executivo },
   { key: "banks", label: "Bancos", icon: Landmark, permKey: FINANCIAL_PERMISSION_KEYS.fin_banks },
   { key: "separator-cfo-ai", label: "── CFO IA ──", icon: Brain, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_ai, isSeparator: true },
   { key: "cfo-ai", label: "CFO IA", icon: Brain, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_ai },
@@ -2362,6 +2364,9 @@ export default function AllRecurringChargesPage() {
           {/* Balanço Patrimonial */}
           {activeTab === "balanco" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_balanco) && (
             <FinancialBalancoTab invoices={invoices} payables={payables} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
+          )}
+          {activeTab === "relatorio-executivo" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_relatorio_executivo) && (
+            <FinancialRelatorioExecutivoTab invoices={invoices} payables={payables} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
           )}
 
           {/* Bancos */}
