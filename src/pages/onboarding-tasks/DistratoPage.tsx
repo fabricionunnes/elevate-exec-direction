@@ -160,10 +160,10 @@ export default function DistratoPage() {
         body: formDataEnvelope,
       });
       const createData = await createRes.json();
-      if (!createRes.ok) throw new Error(createData.error || "Erro ao criar envelope");
+      if (!createRes.ok) throw new Error(createData.error || createData.data?.error || "Erro ao criar envelope");
 
       const { error: sendError } = await supabase.functions.invoke("send-envelope", {
-        body: { envelope_id: createData.envelope_id },
+        body: { envelope_id: createData.data?.envelope_id },
       });
       if (sendError) throw sendError;
 
@@ -172,7 +172,7 @@ export default function DistratoPage() {
       // Update distrato with envelope_id
       if (savedDistratoId) {
         await supabase.from("distratos").update({
-          envelope_id: createData.envelope_id,
+          envelope_id: createData.data?.envelope_id,
           zapsign_sent_at: new Date().toISOString(),
         }).eq("id", savedDistratoId);
       }

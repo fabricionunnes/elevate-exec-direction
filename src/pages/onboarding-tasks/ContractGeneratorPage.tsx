@@ -562,7 +562,7 @@ export default function ContractGeneratorPage() {
   };
 
   const handleSendToEnvelope = async () => {
-    if (!lastGeneratedPdfUrl) {
+    if (!generatedBlob && !lastGeneratedPdfUrl) {
       toast.error("PDF não disponível. Gere o contrato novamente.");
       return;
     }
@@ -577,10 +577,15 @@ export default function ContractGeneratorPage() {
       const selectedProduct = productDetails[formData.productId];
       const documentName = `Contrato - ${formData.clientName} - ${selectedProduct?.name || formData.productId}`;
 
-      // Fetch PDF blob from storage URL
-      const pdfRes = await fetch(lastGeneratedPdfUrl);
-      if (!pdfRes.ok) throw new Error(`Erro ao baixar PDF: HTTP ${pdfRes.status}`);
-      const pdfBlob = await pdfRes.blob();
+      // Use in-memory blob if available, otherwise fetch from storage URL
+      let pdfBlob: Blob;
+      if (generatedBlob) {
+        pdfBlob = generatedBlob;
+      } else {
+        const pdfRes = await fetch(lastGeneratedPdfUrl!);
+        if (!pdfRes.ok) throw new Error(`Erro ao baixar PDF: HTTP ${pdfRes.status}`);
+        pdfBlob = await pdfRes.blob();
+      }
 
       // Build FormData for create-envelope
       const session = (await supabase.auth.getSession()).data.session;
@@ -602,11 +607,11 @@ export default function ContractGeneratorPage() {
         body: formDataEnvelope,
       });
       const createData = await createRes.json();
-      if (!createRes.ok) throw new Error(createData.error || "Erro ao criar envelope");
+      if (!createRes.ok) throw new Error(createData.error || createData.data?.error || "Erro ao criar envelope");
 
       // Send envelope
       const { error: sendError } = await supabase.functions.invoke("send-envelope", {
-        body: { envelope_id: createData.envelope_id },
+        body: { envelope_id: createData.data?.envelope_id },
       });
       if (sendError) throw sendError;
 
@@ -615,7 +620,7 @@ export default function ContractGeneratorPage() {
         const { error: updateError } = await supabase
           .from("generated_contracts")
           .update({
-            envelope_id: createData.envelope_id,
+            envelope_id: createData.data?.envelope_id,
             zapsign_sent_at: new Date().toISOString(),
           })
           .eq("id", lastSavedContractId);
@@ -629,9 +634,9 @@ export default function ContractGeneratorPage() {
 
       setZapSignSent(true);
       toast.success("Contrato enviado para assinatura!");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao enviar para assinatura:", error);
-      toast.error("Erro ao enviar para assinatura. Tente novamente.");
+      toast.error(error?.message || "Erro ao enviar para assinatura. Tente novamente.");
     } finally {
       setIsSendingToZapSign(false);
     }
@@ -676,10 +681,10 @@ export default function ContractGeneratorPage() {
         body: formDataEnvelope,
       });
       const createData = await createRes.json();
-      if (!createRes.ok) throw new Error(createData.error || "Erro ao criar envelope");
+      if (!createRes.ok) throw new Error(createData.error || createData.data?.error || "Erro ao criar envelope");
 
       const { error: sendError } = await supabase.functions.invoke("send-envelope", {
-        body: { envelope_id: createData.envelope_id },
+        body: { envelope_id: createData.data?.envelope_id },
       });
       if (sendError) throw sendError;
 
@@ -687,7 +692,7 @@ export default function ContractGeneratorPage() {
       const { error: updateError } = await supabase
         .from("generated_contracts")
         .update({
-          envelope_id: createData.envelope_id,
+          envelope_id: createData.data?.envelope_id,
           zapsign_sent_at: new Date().toISOString(),
         })
         .eq("id", selectedContract.id);
@@ -703,14 +708,14 @@ export default function ContractGeneratorPage() {
       setSelectedContract(
         fresh || {
           ...selectedContract,
-          envelope_id: createData.envelope_id,
+          envelope_id: createData.data?.envelope_id,
           zapsign_sent_at: new Date().toISOString(),
         }
       );
 
       setHistoryZapSignSent(true);
       // Refresh signature status from internal system
-      await checkSignatureStatus(createData.envelope_id);
+      await checkSignatureStatus(createData.data?.envelope_id);
       await loadContracts();
       toast.success("Contrato enviado para assinatura!");
     } catch (error) {
