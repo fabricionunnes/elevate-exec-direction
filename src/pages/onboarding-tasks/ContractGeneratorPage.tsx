@@ -1701,13 +1701,26 @@ export default function ContractGeneratorPage() {
                                         className="h-7 text-xs gap-1"
                                         onClick={async () => {
                                           try {
-                                            const session = (await supabase.auth.getSession()).data.session;
                                             const { data, error } = await supabase.functions.invoke("get-signing-link", {
                                               body: { signer_id: signer.id },
                                             });
-                                            if (error || !data?.data?.signing_url) throw new Error("Erro ao gerar link");
-                                            await navigator.clipboard.writeText(data.data.signing_url);
-                                            toast.success(`Link copiado para ${signer.name}`);
+                                            if (error) throw new Error(error.message || "Erro ao gerar link");
+                                            const url = data?.data?.signing_url ?? data?.signing_url;
+                                            if (!url) throw new Error("Link não retornado pela função");
+                                            // Fallback para ambientes onde clipboard API não funciona
+                                            try {
+                                              await navigator.clipboard.writeText(url);
+                                            } catch {
+                                              const el = document.createElement("textarea");
+                                              el.value = url;
+                                              el.style.position = "fixed";
+                                              el.style.opacity = "0";
+                                              document.body.appendChild(el);
+                                              el.select();
+                                              document.execCommand("copy");
+                                              document.body.removeChild(el);
+                                            }
+                                            toast.success(`Link copiado para ${signer.name}!`, { description: url });
                                           } catch (e: any) {
                                             toast.error(e.message || "Erro ao copiar link");
                                           }
