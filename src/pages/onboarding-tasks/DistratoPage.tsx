@@ -167,7 +167,7 @@ export default function DistratoPage() {
       });
       if (sendError) throw sendError;
 
-      setEnvelopeResult(createData);
+      setEnvelopeResult(createData.data);
 
       // Update distrato with envelope_id
       if (savedDistratoId) {
