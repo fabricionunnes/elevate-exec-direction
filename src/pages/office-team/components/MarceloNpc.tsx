@@ -4,17 +4,9 @@ import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
-import HumanBody from './HumanBody'
-import { useTeamStore, AvatarConfig } from '../store/useTeamStore'
+import RobotBody from './RobotBody'
+import { useTeamStore } from '../store/useTeamStore'
 import type { OfficeRoom } from '../lib/rooms'
-
-export const MARCELO_AVATAR: AvatarConfig = {
-  skin: '#e0ac69',
-  hairStyle: 'short',
-  hairColor: '#2d2017',
-  shirt: '#0D2B5E',
-  pants: '#16181d',
-}
 
 const INTERACT_RADIUS = 3
 
@@ -67,7 +59,7 @@ export default function MarceloNpc() {
       onPointerOver={() => (document.body.style.cursor = 'pointer')}
       onPointerOut={() => (document.body.style.cursor = 'default')}
     >
-      <HumanBody avatar={MARCELO_AVATAR} isWalking={false} />
+      <RobotBody />
 
       <Billboard position={[0, 2.25, 0]} follow={true}>
         <Text

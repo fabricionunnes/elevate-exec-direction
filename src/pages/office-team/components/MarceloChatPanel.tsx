@@ -23,8 +23,11 @@ export default function MarceloChatPanel() {
   const [messages, setMessages] = useState<NpcMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [recording, setRecording] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null!)
   const inputRef = useRef<HTMLInputElement>(null!)
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const recordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (open && inputRef.current) {
@@ -43,6 +46,13 @@ export default function MarceloChatPanel() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open, setOpen])
+
+  // Fechou o painel gravando → para o recorder e libera o microfone
+  useEffect(() => {
+    if (!open && recorderRef.current?.state === 'recording') {
+      recorderRef.current.stop()
+    }
+  }, [open])
 
   const sendMessage = useCallback(async () => {
     const text = input.trim()
@@ -91,6 +101,85 @@ export default function MarceloChatPanel() {
     }
   }, [input, loading, messages, me])
 
+  // Envia o áudio gravado: a function transcreve (Whisper) e responde
+  const sendAudio = useCallback(
+    async (blob: Blob, mime: string) => {
+      if (blob.size < 1500) return // gravação acidental
+      const placeholderId = crypto.randomUUID()
+      const historySnapshot = messages.slice(-10).map((m) => ({ role: m.role, content: m.content }))
+      setMessages((prev) => [
+        ...prev,
+        { id: placeholderId, role: 'user', content: '🎙️ Mensagem de voz...', timestamp: Date.now() },
+      ])
+      setLoading(true)
+      try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '')
+          reader.onerror = reject
+          reader.readAsDataURL(blob)
+        })
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        if (!session) throw new Error('sem sessão')
+        const res = await fetch(MARCELO_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ audioBase64: base64, audioMime: mime, history: historySnapshot, senderName: me?.name }),
+        })
+        const data = await res.json()
+        const transcript = typeof data?.transcript === 'string' && data.transcript ? data.transcript : null
+        const reply =
+          data?.reply || (data?.ok === false ? `Não consegui te ouvir agora (${data.error}).` : 'Não consegui te ouvir agora.')
+        setMessages((prev) => [
+          ...prev.map((m) => (m.id === placeholderId && transcript ? { ...m, content: `🎙️ ${transcript}` } : m)),
+          { id: crypto.randomUUID(), role: 'assistant', content: reply, timestamp: Date.now() },
+        ])
+      } catch {
+        setMessages((prev) => [
+          ...prev,
+          { id: crypto.randomUUID(), role: 'assistant', content: 'Não consegui processar o áudio. Tenta de novo.', timestamp: Date.now() },
+        ])
+      } finally {
+        setLoading(false)
+      }
+    },
+    [messages, me]
+  )
+
+  const toggleRecording = useCallback(async () => {
+    if (recording) {
+      recorderRef.current?.stop()
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm'
+      const recorder = new MediaRecorder(stream, { mimeType: mime })
+      const chunks: Blob[] = []
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data)
+      }
+      recorder.onstop = () => {
+        setRecording(false)
+        if (recordTimerRef.current) clearTimeout(recordTimerRef.current)
+        stream.getTracks().forEach((t) => t.stop())
+        void sendAudio(new Blob(chunks, { type: mime }), mime)
+      }
+      recorderRef.current = recorder
+      recorder.start()
+      setRecording(true)
+      // Limite de 60s por mensagem de voz
+      recordTimerRef.current = setTimeout(() => recorder.stop(), 60_000)
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), role: 'assistant', content: 'Permita o acesso ao microfone no navegador pra mandar áudio.', timestamp: Date.now() },
+      ])
+    }
+  }, [recording, sendAudio])
+
   if (!open) return null
 
   return (
@@ -125,6 +214,10 @@ export default function MarceloChatPanel() {
         .npc-md strong { color: #fff; }
         .npc-md ul, .npc-md ol { margin: 0 0 10px 0; padding-left: 18px; }
         .npc-md li { margin: 0 0 5px 0; }
+        @keyframes npc-rec {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(229,57,53,0.5); }
+          50% { box-shadow: 0 0 0 6px rgba(229,57,53,0); }
+        }
       `}</style>
 
       {/* Header */}
@@ -246,10 +339,28 @@ export default function MarceloChatPanel() {
                 void sendMessage()
               }
             }}
-            placeholder="Falar com o Marcelo..."
-            disabled={loading}
+            placeholder={recording ? 'Gravando... clique no microfone pra enviar' : 'Falar com o Marcelo...'}
+            disabled={loading || recording}
             style={{ flex: 1, background: 'none', border: 'none', outline: 'none', color: '#f0f0f0', fontSize: '13px', fontFamily: 'inherit' }}
           />
+          <button
+            onClick={() => void toggleRecording()}
+            disabled={loading}
+            title={recording ? 'Parar e enviar' : 'Gravar mensagem de voz'}
+            style={{
+              background: recording ? '#c62828' : 'rgba(255,255,255,0.1)',
+              border: `1px solid ${recording ? '#e53935' : 'rgba(255,255,255,0.2)'}`,
+              borderRadius: '8px',
+              width: '32px',
+              height: '32px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              color: '#fff',
+              fontSize: '13px',
+              animation: recording ? 'npc-rec 1s infinite' : undefined,
+            }}
+          >
+            🎙️
+          </button>
           <button
             onClick={() => void sendMessage()}
             disabled={loading || !input.trim()}
