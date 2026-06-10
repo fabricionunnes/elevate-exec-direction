@@ -29,7 +29,7 @@ export interface Wall {
 }
 
 // Limites do prédio (perímetro com colisão)
-export const BUILDING = { minX: -30, maxX: 30, minZ: -20, maxZ: 21 }
+export const BUILDING = { minX: -30, maxX: 30, minZ: -20, maxZ: 29 }
 
 const WALL_T = 0.32 // espessura
 const DOOR_W = 2.6 // vão da porta
@@ -59,13 +59,18 @@ const SLOTS: Record<RoomType, { x: number; z: number; w: number; d: number; door
     { x: 14, z: 7, w: 10, d: 9, door: 'N' },
     { x: 24, z: 7, w: 10, d: 9, door: 'N' },
   ],
-  personal: Array.from({ length: 10 }, (_, i) => ({
-    x: -27 + i * 6,
-    z: 17.4,
-    w: 5.4,
-    d: 6,
-    door: 'N' as const,
-  })),
+  // Ala privada: duas fileiras de 8 salas com vão central de passagem
+  // (x -5.1..5.1 livre) e corredor entre fileiras em z 20.4–22
+  personal: Array.from({ length: 16 }, (_, i) => {
+    const col = i % 8
+    return {
+      x: col < 4 ? -25.8 + col * 6 : 7.8 + (col - 4) * 6,
+      z: i < 8 ? 17.4 : 25,
+      w: 5.4,
+      d: 6,
+      door: 'N' as const,
+    }
+  }),
 }
 
 function mapRow(row: Record<string, unknown>): OfficeRoom {
@@ -157,12 +162,14 @@ export function isEffectivelyLocked(room: OfficeRoom, onlineUserIds: Set<string>
 
 /**
  * Colisão do mundo: perímetro + paredes de todas as salas.
- * Sala trancada (com locker online) fecha a porta — exceto para quem está dentro dela.
+ * Sala trancada (com locker online) fecha a porta — exceto para quem está
+ * dentro dela ou para quem trancou (pode voltar pra própria sala trancada).
  */
 export function buildCollisionWalls(
   rooms: OfficeRoom[],
   onlineUserIds: Set<string>,
-  insideRoomId: string | null
+  insideRoomId: string | null,
+  meId?: string
 ): Wall[] {
   const walls: Wall[] = [
     { minX: BUILDING.minX - 1, maxX: BUILDING.minX, minZ: BUILDING.minZ - 1, maxZ: BUILDING.maxZ + 1 },
@@ -172,7 +179,7 @@ export function buildCollisionWalls(
   ]
   for (const room of rooms) {
     const locked = isEffectivelyLocked(room, onlineUserIds)
-    const doorOpen = !locked || insideRoomId === room.id
+    const doorOpen = !locked || insideRoomId === room.id || (!!meId && room.lockedBy === meId)
     walls.push(...roomWalls(room, doorOpen))
   }
   return walls

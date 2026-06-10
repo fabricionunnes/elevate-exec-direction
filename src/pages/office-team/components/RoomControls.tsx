@@ -35,7 +35,7 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
   const rooms = useTeamStore((s) => s.rooms)
   const myRoomId = useTeamStore((s) => s.myRoomId)
   const remotePlayers = useTeamStore((s) => s.remotePlayers)
-  const setPendingTeleport = useTeamStore((s) => s.setPendingTeleport)
+  const setPendingWalkTo = useTeamStore((s) => s.setPendingWalkTo)
   const setAvatarEditorOpen = useTeamStore((s) => s.setAvatarEditorOpen)
   const { isMaster } = useStaffPermissions()
 
@@ -67,7 +67,7 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
   }
 
   const goToMyRoom = () => {
-    if (myPersonalRoom) setPendingTeleport([myPersonalRoom.x, myPersonalRoom.z])
+    if (myPersonalRoom) setPendingWalkTo([myPersonalRoom.x, myPersonalRoom.z])
   }
 
   const submitCreate = async () => {
@@ -142,8 +142,8 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
       {/* Ações */}
       <div style={{ ...panelStyle, display: 'flex', flexDirection: 'column', gap: '6px' }}>
         {myPersonalRoom && (
-          <button onClick={goToMyRoom} style={btnStyle}>
-            🚪 Ir pra minha sala
+          <button onClick={goToMyRoom} style={btnStyle} title="Atalho: tecla X">
+            🚪 Ir pra minha sala (X)
           </button>
         )}
         <button onClick={() => setAvatarEditorOpen(true)} style={btnStyle}>

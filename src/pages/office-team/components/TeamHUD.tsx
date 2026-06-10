@@ -173,7 +173,7 @@ export default function TeamHUD() {
           fontFamily: font,
         }}
       >
-        WASD / setas para andar · Scroll para zoom · Botão direito para mover a câmera
+        WASD / setas para andar · X = ir pra minha sala · Scroll para zoom · Botão direito move a câmera
       </div>
     </>
   )

@@ -1,24 +1,6 @@
 // Escritório UNV multiplayer — estado global (zustand).
-// Jogador local + jogadores remotos (via Supabase Realtime) + chat + chamada
-// + salas dinâmicas (banco) + avatar personalizado.
+// Jogador local + jogadores remotos (via Supabase Realtime) + chat + chamada.
 import { create } from 'zustand'
-import type { OfficeRoom } from '../lib/rooms'
-
-export interface AvatarConfig {
-  skin: string
-  hairStyle: 'short' | 'long' | 'bun' | 'bald'
-  hairColor: string
-  shirt: string
-  pants: string
-}
-
-export const DEFAULT_AVATAR: AvatarConfig = {
-  skin: '#e0ac69',
-  hairStyle: 'short',
-  hairColor: '#2d2017',
-  shirt: '#1A4A8A',
-  pants: '#2b3445',
-}
 
 export interface TeamProfile {
   id: string // user_id do Supabase Auth
@@ -26,7 +8,6 @@ export interface TeamProfile {
   role: string
   color: string
   pantsColor: string
-  avatar: AvatarConfig
 }
 
 export interface RemotePlayerState extends TeamProfile {
@@ -63,15 +44,6 @@ interface TeamState {
   playerRotation: number
   remotePlayers: Record<string, RemotePlayerState>
 
-  rooms: OfficeRoom[]
-  /** sala em que o jogador local está (null = corredor/área aberta) */
-  myRoomId: string | null
-  avatarEditorOpen: boolean
-  /** teleporte pendente (consumido pelo LocalPlayer no próximo frame) */
-  pendingTeleport: [number, number] | null
-  /** destino de auto-walk (anda sozinho até lá; WASD cancela) */
-  pendingWalkTo: [number, number] | null
-
   chatOpen: boolean
   chatMessages: TeamMessage[]
   unreadCount: number
@@ -80,19 +52,12 @@ interface TeamState {
 
   // Actions
   setMe: (me: TeamProfile) => void
-  setAvatar: (avatar: AvatarConfig) => void
   setPlayerPosition: (pos: [number, number, number]) => void
   setPlayerRotation: (rot: number) => void
   upsertRemotePlayer: (player: Partial<RemotePlayerState> & { id: string }) => void
   setRemotePlayerPos: (id: string, pos: [number, number, number], rot: number, moving: boolean) => void
   removeRemotePlayer: (id: string) => void
   setRemotePlayers: (players: Record<string, RemotePlayerState>) => void
-
-  setRooms: (rooms: OfficeRoom[]) => void
-  setMyRoomId: (id: string | null) => void
-  setAvatarEditorOpen: (open: boolean) => void
-  setPendingTeleport: (target: [number, number] | null) => void
-  setPendingWalkTo: (target: [number, number] | null) => void
 
   toggleChat: () => void
   addChatMessage: (msg: TeamMessage) => void
@@ -108,12 +73,6 @@ export const useTeamStore = create<TeamState>((set) => ({
   playerRotation: 0,
   remotePlayers: {},
 
-  rooms: [],
-  myRoomId: null,
-  avatarEditorOpen: false,
-  pendingTeleport: null,
-  pendingWalkTo: null,
-
   chatOpen: false,
   chatMessages: [],
   unreadCount: 0,
@@ -127,8 +86,6 @@ export const useTeamStore = create<TeamState>((set) => ({
   },
 
   setMe: (me) => set({ me }),
-  setAvatar: (avatar) =>
-    set((prev) => (prev.me ? { me: { ...prev.me, avatar } } : prev)),
   setPlayerPosition: (pos) => set({ playerPosition: pos }),
   setPlayerRotation: (rot) => set({ playerRotation: rot }),
 
@@ -143,8 +100,7 @@ export const useTeamStore = create<TeamState>((set) => ({
             role: '',
             color: '#1A4A8A',
             pantsColor: '#0e2d57',
-            avatar: DEFAULT_AVATAR,
-            position: [0, 0, 1] as [number, number, number],
+            position: [0, 0, 4] as [number, number, number],
             rotation: 0,
             moving: false,
             inCall: false,
@@ -177,12 +133,6 @@ export const useTeamStore = create<TeamState>((set) => ({
     }),
 
   setRemotePlayers: (players) => set({ remotePlayers: players }),
-
-  setRooms: (rooms) => set({ rooms }),
-  setMyRoomId: (id) => set({ myRoomId: id }),
-  setAvatarEditorOpen: (open) => set({ avatarEditorOpen: open }),
-  setPendingTeleport: (target) => set({ pendingTeleport: target }),
-  setPendingWalkTo: (target) => set({ pendingWalkTo: target }),
 
   toggleChat: () =>
     set((prev) => ({

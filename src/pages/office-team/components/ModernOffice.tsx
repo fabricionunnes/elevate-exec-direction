@@ -283,6 +283,16 @@ export default function ModernOffice() {
         <planeGeometry args={[W, 3]} />
         <meshStandardMaterial color="#b7bdc9" roughness={0.95} />
       </mesh>
+      {/* Corredor entre as duas fileiras da ala privada */}
+      <mesh position={[cx, 0.004, 21.2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[W, 1.6]} />
+        <meshStandardMaterial color="#b7bdc9" roughness={0.95} />
+      </mesh>
+      {/* Passagem vertical central da ala privada */}
+      <mesh position={[0, 0.005, 21.2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[10.2, 13.6]} />
+        <meshStandardMaterial color="#b7bdc9" roughness={0.95} />
+      </mesh>
 
       {/* Perímetro do prédio */}
       {[

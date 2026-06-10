@@ -8,6 +8,7 @@ import * as THREE from 'three'
 import { useKeyboard } from '../../office/hooks/useKeyboard'
 import HumanBody from './HumanBody'
 import { BUILDING, buildCollisionWalls, checkWallCollision, roomAt } from '../lib/rooms'
+import { findPath } from '../lib/pathfinding'
 import { useTeamStore } from '../store/useTeamStore'
 import type { TeamRealtime } from '../lib/realtime'
 
@@ -53,10 +54,27 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
   const walls = useMemo(() => {
     const onlineIds = new Set(Object.keys(remotePlayers))
     if (me) onlineIds.add(me.id)
-    return buildCollisionWalls(rooms, onlineIds, myRoomId)
+    return buildCollisionWalls(rooms, onlineIds, myRoomId, me?.id)
   }, [rooms, remotePlayers, me, myRoomId])
   const wallsRef = useRef(walls)
   wallsRef.current = walls
+
+  // Auto-walk (tecla X / "Ir pra minha sala"): waypoints a seguir
+  const autoPathRef = useRef<{ points: [number, number][]; idx: number } | null>(null)
+
+  // Tecla X → andar até a minha sala individual
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'KeyX' || isTypingInField()) return
+      const state = useTeamStore.getState()
+      const myRoom = state.rooms.find(
+        (r) => r.roomType === 'personal' && r.ownerUserId === state.me?.id
+      )
+      if (myRoom) state.setPendingWalkTo([myRoom.x, myRoom.z])
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // Zoom com scroll
   useEffect(() => {
@@ -115,14 +133,32 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
 
     const pos = groupRef.current.position
 
-    // Teleporte pendente (ex: "Ir pra minha sala")
+    // Teleporte pendente
     const teleport = useTeamStore.getState().pendingTeleport
     if (teleport) {
       pos.x = teleport[0]
       pos.z = teleport[1]
       useTeamStore.getState().setPendingTeleport(null)
+      autoPathRef.current = null
       setPlayerPosition([pos.x, 0, pos.z])
       realtime.sendPosition(pos.x, pos.z, rotationRef.current, false)
+    }
+
+    // Novo destino de auto-walk (tecla X / "Ir pra minha sala")
+    const walkTo = useTeamStore.getState().pendingWalkTo
+    if (walkTo) {
+      useTeamStore.getState().setPendingWalkTo(null)
+      const path = findPath(pos.x, pos.z, walkTo[0], walkTo[1], wallsRef.current)
+      if (path && path.length > 0) {
+        autoPathRef.current = { points: path, idx: 0 }
+      } else {
+        // Sem rota (ex: caminho trancado) — teleporta como fallback
+        pos.x = walkTo[0]
+        pos.z = walkTo[1]
+        autoPathRef.current = null
+        setPlayerPosition([pos.x, 0, pos.z])
+        realtime.sendPosition(pos.x, pos.z, rotationRef.current, false)
+      }
     }
 
     let dx = 0
@@ -133,6 +169,25 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       if (keys.current.backward) dz += 1
       if (keys.current.left) dx -= 1
       if (keys.current.right) dx += 1
+    }
+
+    // Input manual cancela o auto-walk
+    if (dx !== 0 || dz !== 0) {
+      autoPathRef.current = null
+    } else if (autoPathRef.current) {
+      // Segue os waypoints do caminho calculado
+      const ap = autoPathRef.current
+      const [wx, wz] = ap.points[ap.idx]
+      const ddx = wx - pos.x
+      const ddz = wz - pos.z
+      const d = Math.sqrt(ddx * ddx + ddz * ddz)
+      if (d < 0.18) {
+        ap.idx++
+        if (ap.idx >= ap.points.length) autoPathRef.current = null
+      } else {
+        dx = ddx / d
+        dz = ddz / d
+      }
     }
 
     const isMoving = dx !== 0 || dz !== 0
