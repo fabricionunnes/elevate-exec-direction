@@ -125,8 +125,9 @@ async function loadProfile(): Promise<TeamProfile | null> {
 
   const colors = avatarColorsFor(user.id)
 
-  // Avatar personalizado salvo (se existir)
+  // Avatar personalizado + última posição salva (se existirem)
   let avatar: AvatarConfig = { ...DEFAULT_AVATAR, shirt: colors.color, pants: colors.pantsColor }
+  let spawn: [number, number, number] | undefined
   const { data: saved } = await supabase
     .from('office_team_avatars' as never)
     .select('*')
@@ -139,6 +140,9 @@ async function loadProfile(): Promise<TeamProfile | null> {
       hair_color: string
       shirt_color: string
       pants_color: string
+      last_x: number | string | null
+      last_z: number | string | null
+      last_rot: number | string | null
     }
     avatar = {
       skin: s.skin_color,
@@ -147,9 +151,12 @@ async function loadProfile(): Promise<TeamProfile | null> {
       shirt: s.shirt_color,
       pants: s.pants_color,
     }
+    if (s.last_x != null && s.last_z != null) {
+      spawn = [Number(s.last_x), Number(s.last_z), Number(s.last_rot ?? 0)]
+    }
   }
 
-  return { id: user.id, name, role, ...colors, avatar }
+  return { id: user.id, name, role, ...colors, avatar, spawn }
 }
 
 export default function TeamOfficePage() {

@@ -122,10 +122,18 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
     }
   }, [gl])
 
+  // Spawn: última posição salva do usuário (ou centro do corredor)
   useEffect(() => {
+    const spawn = useTeamStore.getState().me?.spawn
+    const sx = Math.max(BUILDING.minX + 0.5, Math.min(BUILDING.maxX - 0.5, spawn?.[0] ?? START_POSITION[0]))
+    const sz = Math.max(BUILDING.minZ + 0.5, Math.min(BUILDING.maxZ - 0.5, spawn?.[1] ?? START_POSITION[2]))
     if (groupRef.current) {
-      groupRef.current.position.set(...START_POSITION)
+      groupRef.current.position.set(sx, 0, sz)
+      rotationRef.current = spawn?.[2] ?? 0
+      groupRef.current.rotation.y = rotationRef.current
     }
+    cameraTargetRef.current.set(sx, 16, sz + CAMERA_DISTANCE_DEFAULT)
+    useTeamStore.getState().setPlayerPosition([sx, 0, sz])
   }, [])
 
   useFrame((_, delta) => {

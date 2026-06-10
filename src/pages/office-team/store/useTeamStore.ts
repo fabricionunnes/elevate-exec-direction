@@ -27,6 +27,8 @@ export interface TeamProfile {
   color: string
   pantsColor: string
   avatar: AvatarConfig
+  /** última posição salva [x, z, rot] — spawn ao reabrir o escritório */
+  spawn?: [number, number, number]
 }
 
 export interface RemotePlayerState extends TeamProfile {

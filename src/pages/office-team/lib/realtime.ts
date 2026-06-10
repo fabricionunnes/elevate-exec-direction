@@ -35,6 +35,11 @@ interface PresencePayload {
   inCall: boolean
   micOn: boolean
   camOn: boolean
+  // Última posição parada — quem entra depois sincroniza por aqui
+  // (o broadcast 'pos' é efêmero e só flui enquanto o jogador anda)
+  x: number
+  z: number
+  rot: number
 }
 
 export class TeamRealtime {
@@ -56,6 +61,9 @@ export class TeamRealtime {
       inCall: false,
       micOn: false,
       camOn: false,
+      x: me.spawn?.[0] ?? 0,
+      z: me.spawn?.[1] ?? 0.5,
+      rot: me.spawn?.[2] ?? 0,
     }
   }
 
@@ -92,8 +100,10 @@ export class TeamRealtime {
             inCall: meta.inCall,
             micOn: meta.micOn,
             camOn: meta.camOn,
-            position: existing?.position ?? [0, 0, 1],
-            rotation: existing?.rotation ?? 0,
+            // Jogador novo pra mim: usa a posição do presence; se eu já
+            // acompanho ele, mantém a posição dos broadcasts (mais fresca)
+            position: existing?.position ?? [meta.x ?? 0, 0, meta.z ?? 0.5],
+            rotation: existing?.rotation ?? meta.rot ?? 0,
             moving: existing?.moving ?? false,
           }
         }
@@ -186,6 +196,41 @@ export class TeamRealtime {
         moving,
       },
     })
+    // Parou de andar → grava a posição no presence (pra quem entrar depois)
+    // e agenda a persistência no banco (spawn da próxima sessão)
+    if (!moving) {
+      this.presenceState = {
+        ...this.presenceState,
+        x: Number(x.toFixed(2)),
+        z: Number(z.toFixed(2)),
+        rot: Number(rot.toFixed(2)),
+      }
+      void this.channel.track(this.presenceState)
+      this.schedulePositionSave()
+    }
+  }
+
+  private saveTimer: ReturnType<typeof setTimeout> | null = null
+
+  private schedulePositionSave() {
+    if (this.saveTimer) clearTimeout(this.saveTimer)
+    this.saveTimer = setTimeout(() => void this.savePositionNow(), 1500)
+  }
+
+  private async savePositionNow() {
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer)
+      this.saveTimer = null
+    }
+    await supabase.from('office_team_avatars' as never).upsert(
+      {
+        user_id: this.me.id,
+        last_x: this.presenceState.x,
+        last_z: this.presenceState.z,
+        last_rot: this.presenceState.rot,
+      } as never,
+      { onConflict: 'user_id' } as never
+    )
   }
 
   async sendChat(content: string) {
@@ -232,6 +277,8 @@ export class TeamRealtime {
   }
 
   disconnect() {
+    // Salva a posição final antes de sair
+    void this.savePositionNow()
     if (this.channel) {
       void supabase.removeChannel(this.channel)
       this.channel = null
