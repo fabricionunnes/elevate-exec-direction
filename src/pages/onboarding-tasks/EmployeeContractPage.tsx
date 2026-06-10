@@ -44,6 +44,7 @@ const COMPANY_SIGNER_NAME = employeeContractCompanyInfo.representative;
 const COMPANY_SIGNER_EMAIL = employeeContractCompanyInfo.email;
 
 interface EnvelopeSigner {
+  id?: string;
   name: string;
   email: string;
   status?: string;
@@ -155,6 +156,7 @@ export default function EmployeeContractPage() {
   const [lastGeneratedPdfUrl, setLastGeneratedPdfUrl] = useState<string | null>(null);
   const [zapSignSent, setZapSignSent] = useState(false);
   const [isLoadingSignatures, setIsLoadingSignatures] = useState(false);
+  const [copyingLink, setCopyingLink] = useState<string | null>(null);
   const [signatureStatus, setSignatureStatus] = useState<{
     signers: any[];
     allSigned: boolean;
@@ -268,6 +270,7 @@ export default function EmployeeContractPage() {
       }
 
       const signers: EnvelopeSigner[] = (data || []).map((s: any) => ({
+        id: s.id,
         name: s.name,
         email: s.email,
         status: s.status,
@@ -284,6 +287,33 @@ export default function EmployeeContractPage() {
       console.error("Erro ao verificar status:", error);
     } finally {
       setIsLoadingSignatures(false);
+    }
+  };
+
+  const handleCopySigningLink = async (signer: EnvelopeSigner) => {
+    if (!signer.id) return;
+    setCopyingLink(signer.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return toast.error("Sessão expirada");
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-signing-link`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ signer_id: signer.id }),
+        }
+      );
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error ?? "Erro ao gerar link");
+
+      await navigator.clipboard.writeText(data.data.signing_url);
+      toast.success(`Link de assinatura copiado para ${data.data.signer_name}`);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Erro ao gerar link");
+    } finally {
+      setCopyingLink(null);
     }
   };
 
@@ -915,9 +945,25 @@ export default function EmployeeContractPage() {
                                   <CheckCircle2 className="h-3 w-3 mr-1" /> Assinado
                                 </Badge>
                               ) : (
-                                <Badge variant="outline" className="bg-amber-500/20 text-amber-700 border-amber-500/30 text-xs">
-                                  <Clock className="h-3 w-3 mr-1" /> Pendente
-                                </Badge>
+                                <div className="flex flex-col items-end gap-1">
+                                  <Badge variant="outline" className="bg-amber-500/20 text-amber-700 border-amber-500/30 text-xs">
+                                    <Clock className="h-3 w-3 mr-1" /> Pendente
+                                  </Badge>
+                                  {signer.id && (
+                                    <button
+                                      onClick={() => handleCopySigningLink(signer)}
+                                      disabled={copyingLink === signer.id}
+                                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                                    >
+                                      {copyingLink === signer.id ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <Copy className="h-3 w-3" />
+                                      )}
+                                      Copiar link
+                                    </button>
+                                  )}
+                                </div>
                               )}
                             </div>
                           </div>
