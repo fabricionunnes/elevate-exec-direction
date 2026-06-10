@@ -203,6 +203,8 @@ export function findFreeSlot(
   return null
 }
 
+export type CreateRoomResult = { ok: true; room: OfficeRoom } | { ok: false; reason: 'no_slot' | 'db_error' }
+
 export async function createRoom(opts: {
   name: string
   type: RoomType
@@ -211,9 +213,9 @@ export async function createRoom(opts: {
   ownerUserId?: string | null
   createdBy: string
   rooms: OfficeRoom[]
-}): Promise<OfficeRoom | null> {
+}): Promise<CreateRoomResult> {
   const slot = findFreeSlot(opts.type, opts.rooms)
-  if (!slot) return null
+  if (!slot) return { ok: false, reason: 'no_slot' }
   const { data, error } = await supabase
     .from('office_team_rooms' as never)
     .insert({
@@ -231,8 +233,11 @@ export async function createRoom(opts: {
     } as never)
     .select('*')
     .single()
-  if (error || !data) return null
-  return mapRow(data as unknown as Record<string, unknown>)
+  if (error || !data) {
+    console.error('[office] createRoom falhou:', error)
+    return { ok: false, reason: 'db_error' }
+  }
+  return { ok: true, room: mapRow(data as unknown as Record<string, unknown>) }
 }
 
 export async function setRoomLock(roomId: string, locked: boolean, userId: string): Promise<boolean> {
@@ -253,7 +258,7 @@ export async function ensurePersonalRoom(
   const existing = rooms.find((r) => r.roomType === 'personal' && r.ownerUserId === userId)
   if (existing) return existing
   const firstName = userName.split(' ')[0]
-  return createRoom({
+  const result = await createRoom({
     name: `Sala ${firstName}`,
     type: 'personal',
     color,
@@ -261,4 +266,5 @@ export async function ensurePersonalRoom(
     createdBy: userId,
     rooms,
   })
+  return result.ok ? result.room : null
 }

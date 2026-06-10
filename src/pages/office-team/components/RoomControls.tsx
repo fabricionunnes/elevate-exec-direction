@@ -74,7 +74,7 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
     if (!newName.trim() || busy) return
     setBusy(true)
     setFeedback(null)
-    const room = await createRoom({
+    const result = await createRoom({
       name: newName.trim(),
       type: newType,
       sector: newType === 'sector' ? newName.trim().toLowerCase() : null,
@@ -82,13 +82,15 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
       createdBy: me.id,
       rooms,
     })
-    if (room) {
+    if (result.ok) {
       realtime.announceRoomsChanged()
       setNewName('')
       setCreating(false)
       setFeedback(null)
-    } else {
+    } else if (result.reason === 'no_slot') {
       setFeedback('Sem espaço livre para esse tipo de sala.')
+    } else {
+      setFeedback('Erro ao salvar a sala. Tente novamente.')
     }
     setBusy(false)
   }
