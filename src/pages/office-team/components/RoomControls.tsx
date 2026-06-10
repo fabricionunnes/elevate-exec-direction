@@ -67,7 +67,9 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
   }
 
   const goToMyRoom = () => {
-    if (myPersonalRoom) setPendingWalkTo([myPersonalRoom.x, myPersonalRoom.z])
+    if (myPersonalRoom) {
+      setPendingWalkTo({ x: myPersonalRoom.x, z: myPersonalRoom.z, teleportFallback: true })
+    }
   }
 
   const submitCreate = async () => {

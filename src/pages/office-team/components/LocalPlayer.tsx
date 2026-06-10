@@ -70,7 +70,7 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       const myRoom = state.rooms.find(
         (r) => r.roomType === 'personal' && r.ownerUserId === state.me?.id
       )
-      if (myRoom) state.setPendingWalkTo([myRoom.x, myRoom.z])
+      if (myRoom) state.setPendingWalkTo({ x: myRoom.x, z: myRoom.z, teleportFallback: true })
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -152,21 +152,22 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       realtime.sendPosition(pos.x, pos.z, rotationRef.current, false)
     }
 
-    // Novo destino de auto-walk (tecla X / "Ir pra minha sala")
+    // Novo destino de auto-walk (tecla X / "Ir pra minha sala" / duplo clique)
     const walkTo = useTeamStore.getState().pendingWalkTo
     if (walkTo) {
       useTeamStore.getState().setPendingWalkTo(null)
-      const path = findPath(pos.x, pos.z, walkTo[0], walkTo[1], wallsRef.current)
+      const path = findPath(pos.x, pos.z, walkTo.x, walkTo.z, wallsRef.current)
       if (path && path.length > 0) {
         autoPathRef.current = { points: path, idx: 0 }
-      } else {
+      } else if (walkTo.teleportFallback) {
         // Sem rota (ex: caminho trancado) — teleporta como fallback
-        pos.x = walkTo[0]
-        pos.z = walkTo[1]
+        pos.x = walkTo.x
+        pos.z = walkTo.z
         autoPathRef.current = null
         setPlayerPosition([pos.x, 0, pos.z])
         realtime.sendPosition(pos.x, pos.z, rotationRef.current, false)
       }
+      // Duplo clique sem rota (sala trancada etc): não se move
     }
 
     let dx = 0

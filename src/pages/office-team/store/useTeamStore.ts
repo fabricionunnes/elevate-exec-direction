@@ -71,8 +71,9 @@ interface TeamState {
   avatarEditorOpen: boolean
   /** teleporte pendente (consumido pelo LocalPlayer no próximo frame) */
   pendingTeleport: [number, number] | null
-  /** destino de auto-walk (anda sozinho até lá; WASD cancela) */
-  pendingWalkTo: [number, number] | null
+  /** destino de auto-walk (anda sozinho até lá; WASD cancela).
+   * teleportFallback: se não houver rota, teleporta (usado pelo "minha sala") */
+  pendingWalkTo: { x: number; z: number; teleportFallback?: boolean } | null
 
   chatOpen: boolean
   chatMessages: TeamMessage[]
@@ -94,7 +95,7 @@ interface TeamState {
   setMyRoomId: (id: string | null) => void
   setAvatarEditorOpen: (open: boolean) => void
   setPendingTeleport: (target: [number, number] | null) => void
-  setPendingWalkTo: (target: [number, number] | null) => void
+  setPendingWalkTo: (target: { x: number; z: number; teleportFallback?: boolean } | null) => void
 
   toggleChat: () => void
   addChatMessage: (msg: TeamMessage) => void

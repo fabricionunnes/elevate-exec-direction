@@ -274,6 +274,19 @@ export default function ModernOffice() {
         <meshStandardMaterial color="#cfd4dc" roughness={0.95} />
       </mesh>
 
+      {/* Plano invisível de clique: duplo clique = andar até o ponto */}
+      <mesh
+        position={[cx, 0.012, cz]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        onDoubleClick={(e) => {
+          e.stopPropagation()
+          useTeamStore.getState().setPendingWalkTo({ x: e.point.x, z: e.point.z })
+        }}
+      >
+        <planeGeometry args={[W, D]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+
       {/* Faixas de corredor */}
       <mesh position={[cx, 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[W, 5]} />
