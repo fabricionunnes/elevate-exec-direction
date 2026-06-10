@@ -1,16 +1,43 @@
 // Dock de chamada (áudio/vídeo) + tiles de vídeo dos participantes.
-// Áudio dos peers toca em <audio> ocultos; vídeo aparece quando camOn.
+// ÁUDIO ESPACIAL: você só ouve quem está na MESMA SALA; em área aberta
+// (corredores), o volume cai com a distância; salas diferentes = silêncio.
 import { useEffect, useRef, useState } from 'react'
-import { useTeamStore } from '../store/useTeamStore'
+import { useTeamStore, RemotePlayerState } from '../store/useTeamStore'
+import { roomAt, OfficeRoom } from '../lib/rooms'
 import type { CallManager } from '../lib/webrtc'
 
-function MediaAudio({ stream }: { stream: MediaStream }) {
+const HEAR_NEAR = 2.5 // até aqui, volume 1 em área aberta
+const HEAR_FAR = 11 // a partir daqui, silêncio em área aberta
+
+function spatialVolume(
+  myPos: [number, number, number],
+  myRoomId: string | null,
+  peer: RemotePlayerState,
+  rooms: OfficeRoom[]
+): number {
+  const peerRoom = roomAt(peer.position[0], peer.position[2], rooms)
+  const peerRoomId = peerRoom?.id ?? null
+  if (myRoomId || peerRoomId) {
+    return myRoomId === peerRoomId ? 1 : 0
+  }
+  const dx = peer.position[0] - myPos[0]
+  const dz = peer.position[2] - myPos[2]
+  const d = Math.sqrt(dx * dx + dz * dz)
+  if (d <= HEAR_NEAR) return 1
+  if (d >= HEAR_FAR) return 0
+  return 1 - (d - HEAR_NEAR) / (HEAR_FAR - HEAR_NEAR)
+}
+
+function MediaAudio({ stream, volume }: { stream: MediaStream; volume: number }) {
   const ref = useRef<HTMLAudioElement>(null!)
   useEffect(() => {
     if (ref.current && ref.current.srcObject !== stream) {
       ref.current.srcObject = stream
     }
   }, [stream])
+  useEffect(() => {
+    if (ref.current) ref.current.volume = volume
+  }, [volume])
   return <audio ref={ref} autoPlay />
 }
 
@@ -110,10 +137,37 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
   const call = useTeamStore((s) => s.call)
   const remotePlayers = useTeamStore((s) => s.remotePlayers)
   const me = useTeamStore((s) => s.me)
+  const myRoomId = useTeamStore((s) => s.myRoomId)
+  const rooms = useTeamStore((s) => s.rooms)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [volumes, setVolumes] = useState<Record<string, number>>({})
+
+  // Recalcula volumes espaciais a cada 250ms
+  useEffect(() => {
+    if (!call.joined) return
+    const tick = () => {
+      const state = useTeamStore.getState()
+      const next: Record<string, number> = {}
+      for (const peer of Object.values(state.remotePlayers)) {
+        if (!peer.inCall) continue
+        next[peer.id] = spatialVolume(state.playerPosition, state.myRoomId, peer, state.rooms)
+      }
+      setVolumes((prev) => {
+        const keys = new Set([...Object.keys(prev), ...Object.keys(next)])
+        for (const k of keys) {
+          if (Math.abs((prev[k] ?? -1) - (next[k] ?? -1)) > 0.02) return next
+        }
+        return prev
+      })
+    }
+    tick()
+    const interval = setInterval(tick, 250)
+    return () => clearInterval(interval)
+  }, [call.joined])
 
   const inCallCount = Object.values(remotePlayers).filter((p) => p.inCall).length + (call.joined ? 1 : 0)
+  const myRoomName = myRoomId ? rooms.find((r) => r.id === myRoomId)?.name ?? null : null
 
   const run = async (fn: () => Promise<void>) => {
     if (busy) return
@@ -133,17 +187,21 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
     }
   }
 
+  const audible = (id: string) => (volumes[id] ?? 0) > 0.04
+
   const remoteTiles = Object.values(remotePlayers).filter(
-    (p) => p.inCall && p.camOn && call.remoteStreams[p.id]
+    (p) => p.inCall && p.camOn && call.remoteStreams[p.id] && audible(p.id)
   )
 
   return (
     <>
-      {/* Áudio dos peers (sempre que houver stream) */}
+      {/* Áudio dos peers com volume espacial */}
       {call.joined &&
-        Object.entries(call.remoteStreams).map(([id, stream]) => <MediaAudio key={id} stream={stream} />)}
+        Object.entries(call.remoteStreams).map(([id, stream]) => (
+          <MediaAudio key={id} stream={stream} volume={volumes[id] ?? 0} />
+        ))}
 
-      {/* Tiles de vídeo — topo central */}
+      {/* Tiles de vídeo — topo central (só quem está audível) */}
       {call.joined && (remoteTiles.length > 0 || (call.camOn && call.localStream)) && (
         <div
           style={{
@@ -154,7 +212,7 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
             display: 'flex',
             gap: '10px',
             zIndex: 90,
-            maxWidth: 'calc(100vw - 420px)',
+            maxWidth: 'calc(100vw - 460px)',
             overflowX: 'auto',
             padding: '4px',
           }}
@@ -197,6 +255,21 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
           </div>
         )}
 
+        {call.joined && (
+          <div
+            style={{
+              background: 'rgba(10,10,20,0.75)',
+              color: 'rgba(255,255,255,0.6)',
+              fontSize: '11px',
+              padding: '4px 12px',
+              borderRadius: '999px',
+              border: '1px solid rgba(255,255,255,0.1)',
+            }}
+          >
+            {myRoomName ? `Voz na sala: ${myRoomName}` : 'Voz por proximidade (corredor)'}
+          </div>
+        )}
+
         <div
           style={{
             display: 'flex',
@@ -228,7 +301,7 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
                 cursor: busy ? 'wait' : 'pointer',
               }}
             >
-              📞 Entrar na chamada
+              🎙️ Ativar voz
               {inCallCount > 0 && (
                 <span
                   style={{
@@ -238,7 +311,7 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
                     fontSize: '11px',
                   }}
                 >
-                  {inCallCount} na chamada
+                  {inCallCount} com voz ativa
                 </span>
               )}
             </button>
@@ -258,7 +331,7 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
               >
                 {call.camOn ? '📹' : '🚫'}
               </DockButton>
-              <DockButton onClick={() => run(() => callManager.leaveCall())} danger title="Sair da chamada">
+              <DockButton onClick={() => run(() => callManager.leaveCall())} danger title="Desativar voz">
                 ✕
               </DockButton>
             </>

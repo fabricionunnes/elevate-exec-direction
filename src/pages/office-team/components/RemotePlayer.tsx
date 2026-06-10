@@ -3,7 +3,7 @@ import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
-import { PlayerBody } from '../../office/components/Player'
+import HumanBody from './HumanBody'
 import type { RemotePlayerState } from '../store/useTeamStore'
 
 const LERP_SPEED = 10
@@ -29,7 +29,7 @@ export default function RemotePlayer({ player }: { player: RemotePlayerState }) 
     const dz = tz - g.position.z
     const dist = Math.sqrt(dx * dx + dz * dz)
 
-    // Teleporta se a distância for grande demais (ex: reconexão)
+    // Teleporta se a distância for grande demais (ex: reconexão / "minha sala")
     if (dist > 8) {
       g.position.set(tx, 0, tz)
     } else {
@@ -49,11 +49,11 @@ export default function RemotePlayer({ player }: { player: RemotePlayerState }) 
 
   return (
     <group ref={groupRef}>
-      <PlayerBody color={player.color} pantsColor={player.pantsColor} isWalking={isWalking} />
+      <HumanBody avatar={player.avatar} isWalking={isWalking} />
 
-      <Billboard position={[0, 2.1, 0]} follow={true}>
+      <Billboard position={[0, 2.25, 0]} follow={true}>
         <Text
-          fontSize={0.26}
+          fontSize={0.25}
           color="#ffffff"
           anchorX="center"
           anchorY="middle"
@@ -65,9 +65,9 @@ export default function RemotePlayer({ player }: { player: RemotePlayerState }) 
       </Billboard>
 
       {player.role ? (
-        <Billboard position={[0, 1.86, 0]} follow={true}>
+        <Billboard position={[0, 2.01, 0]} follow={true}>
           <Text
-            fontSize={0.15}
+            fontSize={0.145}
             color="#c8d4e8"
             anchorX="center"
             anchorY="middle"
@@ -79,14 +79,14 @@ export default function RemotePlayer({ player }: { player: RemotePlayerState }) 
         </Billboard>
       ) : null}
 
-      {/* Indicador de chamada: anel verde + ícone de mic */}
+      {/* Indicador de chamada: anel + ícone de mic */}
       {player.inCall && (
         <>
-          <mesh position={[0, -0.83, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <mesh position={[0, 0.014, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <ringGeometry args={[0.38, 0.5, 16]} />
             <meshBasicMaterial color={player.micOn ? '#4CAF50' : '#e53935'} transparent opacity={0.7} />
           </mesh>
-          <Billboard position={[0, 2.45, 0]} follow={true}>
+          <Billboard position={[0, 2.55, 0]} follow={true}>
             <Text fontSize={0.22} anchorX="center" anchorY="middle">
               {player.micOn ? '🎙️' : '🔇'}
             </Text>

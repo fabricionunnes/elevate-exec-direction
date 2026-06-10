@@ -1,46 +1,48 @@
-// Escritório UNV multiplayer — usuários reais do Nexus num escritório 3D,
-// com presença em tempo real, chat de texto e chamada de áudio/vídeo (WebRTC).
-// Mesma engine visual do escritório de agentes (/office).
-import { Suspense, useEffect, useState, useMemo } from 'react'
+// Escritório UNV multiplayer — usuários reais do Nexus num escritório 3D
+// moderno (salas por setor, reuniões, salas privadas), com presença em tempo
+// real, chat de texto, áudio/vídeo espacial (WebRTC) e avatares humanos
+// personalizáveis. Salas vêm do banco (office_team_rooms).
+import { Suspense, useEffect, useRef, useState, useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
 import * as THREE from 'three'
 import { supabase } from '@/integrations/supabase/client'
-import OfficeLayout from '../office/components/OfficeLayout'
+import ModernOffice from './components/ModernOffice'
 import LocalPlayer from './components/LocalPlayer'
 import RemotePlayer from './components/RemotePlayer'
 import TeamChatPanel from './components/TeamChatPanel'
 import CallDock from './components/CallDock'
 import TeamHUD from './components/TeamHUD'
-import { useTeamStore, avatarColorsFor, TeamProfile } from './store/useTeamStore'
+import RoomControls from './components/RoomControls'
+import AvatarEditor from './components/AvatarEditor'
+import {
+  useTeamStore,
+  avatarColorsFor,
+  TeamProfile,
+  AvatarConfig,
+  DEFAULT_AVATAR,
+} from './store/useTeamStore'
 import { TeamRealtime } from './lib/realtime'
 import { CallManager } from './lib/webrtc'
+import { ensurePersonalRoom } from './lib/rooms'
 
 function SceneLights() {
   return (
     <>
-      <ambientLight intensity={1.4} color="#ffffff" />
+      <ambientLight intensity={1.35} color="#ffffff" />
       <directionalLight
-        position={[0, 15, 5]}
-        intensity={1.8}
+        position={[8, 22, 10]}
+        intensity={1.7}
         color="#fff8e8"
         castShadow
         shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-25}
-        shadow-camera-right={25}
-        shadow-camera-top={20}
-        shadow-camera-bottom={-20}
+        shadow-camera-left={-38}
+        shadow-camera-right={38}
+        shadow-camera-top={30}
+        shadow-camera-bottom={-30}
         shadow-bias={-0.001}
       />
-      <directionalLight position={[-5, 10, -5]} intensity={0.8} color="#f0f4ff" />
-      <pointLight position={[-12, 4, -8]} intensity={0.9} color="#1B2951" distance={12} />
-      <pointLight position={[4, 4, -8]} intensity={0.9} color="#1B6B3A" distance={10} />
-      <pointLight position={[-12, 4, 0]} intensity={0.9} color="#1A4A8A" distance={10} />
-      <pointLight position={[5, 4, 0]} intensity={0.9} color="#6B2FA0" distance={12} />
-      <pointLight position={[-3, 4, 6]} intensity={0.7} color="#c8a870" distance={14} />
-      <pointLight position={[-12, 4, 12]} intensity={1.2} color="#ffcc66" distance={10} />
-      <pointLight position={[-4, 4, 12]} intensity={0.9} color="#B85C00" distance={10} />
-      <pointLight position={[6, 4, 12]} intensity={0.9} color="#C2185B" distance={10} />
-      <hemisphereLight args={['#fff3e0', '#1a1a2e', 0.4]} />
+      <directionalLight position={[-10, 14, -8]} intensity={0.7} color="#f0f4ff" />
+      <hemisphereLight args={['#fff3e0', '#202434', 0.45]} />
     </>
   )
 }
@@ -82,7 +84,7 @@ function RemotePlayers() {
   )
 }
 
-/** Resolve o perfil exibido no escritório: staff → office_user_avatars → metadata/email. */
+/** Resolve o perfil exibido: staff → office_user_avatars → metadata/email. */
 async function loadProfile(): Promise<TeamProfile | null> {
   const {
     data: { user },
@@ -122,13 +124,40 @@ async function loadProfile(): Promise<TeamProfile | null> {
   }
 
   const colors = avatarColorsFor(user.id)
-  return { id: user.id, name, role, ...colors }
+
+  // Avatar personalizado salvo (se existir)
+  let avatar: AvatarConfig = { ...DEFAULT_AVATAR, shirt: colors.color, pants: colors.pantsColor }
+  const { data: saved } = await supabase
+    .from('office_team_avatars' as never)
+    .select('*')
+    .eq('user_id', user.id)
+    .maybeSingle()
+  if (saved) {
+    const s = saved as unknown as {
+      skin_color: string
+      hair_style: AvatarConfig['hairStyle']
+      hair_color: string
+      shirt_color: string
+      pants_color: string
+    }
+    avatar = {
+      skin: s.skin_color,
+      hairStyle: s.hair_style,
+      hairColor: s.hair_color,
+      shirt: s.shirt_color,
+      pants: s.pants_color,
+    }
+  }
+
+  return { id: user.id, name, role, ...colors, avatar }
 }
 
 export default function TeamOfficePage() {
   const me = useTeamStore((s) => s.me)
   const setMe = useTeamStore((s) => s.setMe)
+  const rooms = useTeamStore((s) => s.rooms)
   const [authError, setAuthError] = useState(false)
+  const personalRoomChecked = useRef(false)
 
   useEffect(() => {
     let cancelled = false
@@ -159,6 +188,17 @@ export default function TeamOfficePage() {
     }
   }, [managers])
 
+  // Garante a sala pessoal do usuário (uma vez, depois que as salas carregam)
+  useEffect(() => {
+    if (!me || !managers || rooms.length === 0 || personalRoomChecked.current) return
+    personalRoomChecked.current = true
+    void ensurePersonalRoom(me.id, me.name, me.color, rooms).then((room) => {
+      if (room && !rooms.some((r) => r.id === room.id)) {
+        managers.realtime.announceRoomsChanged()
+      }
+    })
+  }, [me, managers, rooms])
+
   if (authError) {
     return <LoadingScreen label="Faça login no Nexus para entrar no escritório." />
   }
@@ -167,11 +207,11 @@ export default function TeamOfficePage() {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#c8d4e8', zIndex: 50 }}>
+    <div style={{ position: 'fixed', inset: 0, background: '#aeb6c4', zIndex: 50 }}>
       <Suspense fallback={<LoadingScreen />}>
         <Canvas
           shadows
-          camera={{ position: [0, 16, 18], fov: 60, near: 0.1, far: 300 }}
+          camera={{ position: [0, 16, 18], fov: 60, near: 0.1, far: 320 }}
           gl={{
             antialias: true,
             toneMapping: THREE.ACESFilmicToneMapping,
@@ -180,8 +220,8 @@ export default function TeamOfficePage() {
           style={{ width: '100%', height: '100%' }}
         >
           <SceneLights />
-          <fog attach="fog" args={['#c8d4e8', 45, 120]} />
-          <OfficeLayout />
+          <fog attach="fog" args={['#aeb6c4', 55, 140]} />
+          <ModernOffice />
           <LocalPlayer realtime={managers.realtime} />
           <RemotePlayers />
         </Canvas>
@@ -189,8 +229,10 @@ export default function TeamOfficePage() {
 
       {/* Overlays */}
       <TeamHUD />
+      <RoomControls realtime={managers.realtime} />
       <TeamChatPanel realtime={managers.realtime} />
       <CallDock callManager={managers.callManager} />
+      <AvatarEditor realtime={managers.realtime} />
     </div>
   )
 }

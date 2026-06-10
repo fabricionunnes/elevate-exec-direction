@@ -1,37 +1,28 @@
 // Jogador local do escritório multiplayer — WASD + câmera isométrica.
-// Mesma engine do escritório de agentes; publica posição no canal Realtime.
-import { useRef, useEffect } from 'react'
+// Colisão dinâmica gerada das salas do banco (porta trancada = parede),
+// detecção da sala atual e avatar humano personalizado.
+import { useRef, useEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import { useKeyboard } from '../../office/hooks/useKeyboard'
-import { PlayerBody } from '../../office/components/Player'
-import { OFFICE_BOUNDS, COLLISION_WALLS } from '../../office/config/office'
+import HumanBody from './HumanBody'
+import { BUILDING, buildCollisionWalls, checkWallCollision, roomAt } from '../lib/rooms'
 import { useTeamStore } from '../store/useTeamStore'
 import type { TeamRealtime } from '../lib/realtime'
-
-function checkCollision(x: number, z: number, radius: number): boolean {
-  for (const wall of COLLISION_WALLS) {
-    if (x + radius > wall.minX && x - radius < wall.maxX &&
-        z + radius > wall.minZ && z - radius < wall.maxZ) {
-      return true
-    }
-  }
-  return false
-}
 
 const SPEED = 5
 const CAMERA_DISTANCE_DEFAULT = 18
 const CAMERA_LAG = 0.06
 const CAMERA_MIN_DIST = 8
-const CAMERA_MAX_DIST = 38
-const START_POSITION: [number, number, number] = [0, 0, 2]
+const CAMERA_MAX_DIST = 44
+const START_POSITION: [number, number, number] = [0, 0, 0.5]
 
 function isTypingInField(): boolean {
   const el = document.activeElement
   if (!el) return false
   const tag = el.tagName
-  return tag === 'INPUT' || tag === 'TEXTAREA' || (el as HTMLElement).isContentEditable
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el as HTMLElement).isContentEditable
 }
 
 export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
@@ -45,12 +36,27 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
   const { camera, gl } = useThree()
 
   const me = useTeamStore((s) => s.me)
+  const rooms = useTeamStore((s) => s.rooms)
+  const remotePlayers = useTeamStore((s) => s.remotePlayers)
+  const myRoomId = useTeamStore((s) => s.myRoomId)
+  const setMyRoomId = useTeamStore((s) => s.setMyRoomId)
   const setPlayerPosition = useTeamStore((s) => s.setPlayerPosition)
   const setPlayerRotation = useTeamStore((s) => s.setPlayerRotation)
 
   const isMovingRef = useRef(false)
   const wasMovingRef = useRef(false)
   const rotationRef = useRef(0)
+  const roomCheckRef = useRef(0)
+
+  // Paredes de colisão: dependem das salas, de quem está online (locks órfãos
+  // não valem) e da minha sala atual (porta trancada abre por dentro)
+  const walls = useMemo(() => {
+    const onlineIds = new Set(Object.keys(remotePlayers))
+    if (me) onlineIds.add(me.id)
+    return buildCollisionWalls(rooms, onlineIds, myRoomId)
+  }, [rooms, remotePlayers, me, myRoomId])
+  const wallsRef = useRef(walls)
+  wallsRef.current = walls
 
   // Zoom com scroll
   useEffect(() => {
@@ -79,8 +85,8 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       const dy = e.clientY - lastMouseRef.current.y
       cameraPanOffsetRef.current.x -= dx * 0.05
       cameraPanOffsetRef.current.z -= dy * 0.05
-      cameraPanOffsetRef.current.x = Math.max(-15, Math.min(15, cameraPanOffsetRef.current.x))
-      cameraPanOffsetRef.current.z = Math.max(-15, Math.min(15, cameraPanOffsetRef.current.z))
+      cameraPanOffsetRef.current.x = Math.max(-20, Math.min(20, cameraPanOffsetRef.current.x))
+      cameraPanOffsetRef.current.z = Math.max(-20, Math.min(20, cameraPanOffsetRef.current.z))
       lastMouseRef.current = { x: e.clientX, y: e.clientY }
     }
     const onMouseUp = () => { isDraggingRef.current = false }
@@ -108,6 +114,17 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
     if (!groupRef.current) return
 
     const pos = groupRef.current.position
+
+    // Teleporte pendente (ex: "Ir pra minha sala")
+    const teleport = useTeamStore.getState().pendingTeleport
+    if (teleport) {
+      pos.x = teleport[0]
+      pos.z = teleport[1]
+      useTeamStore.getState().setPendingTeleport(null)
+      setPlayerPosition([pos.x, 0, pos.z])
+      realtime.sendPosition(pos.x, pos.z, rotationRef.current, false)
+    }
+
     let dx = 0
     let dz = 0
 
@@ -126,11 +143,12 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       dx /= len
       dz /= len
 
-      const RADIUS = 0.35
-      const tryX = Math.max(OFFICE_BOUNDS.minX + 0.5, Math.min(OFFICE_BOUNDS.maxX - 0.5, pos.x + dx * SPEED * delta))
-      const tryZ = Math.max(OFFICE_BOUNDS.minZ + 0.5, Math.min(OFFICE_BOUNDS.maxZ - 0.5, pos.z + dz * SPEED * delta))
-      const newX = checkCollision(tryX, pos.z, RADIUS) ? pos.x : tryX
-      const newZ = checkCollision(newX, tryZ, RADIUS) ? pos.z : tryZ
+      const RADIUS = 0.32
+      const tryX = Math.max(BUILDING.minX + 0.5, Math.min(BUILDING.maxX - 0.5, pos.x + dx * SPEED * delta))
+      const tryZ = Math.max(BUILDING.minZ + 0.5, Math.min(BUILDING.maxZ - 0.5, pos.z + dz * SPEED * delta))
+      const w = wallsRef.current
+      const newX = checkWallCollision(tryX, pos.z, RADIUS, w) ? pos.x : tryX
+      const newZ = checkWallCollision(newX, tryZ, RADIUS, w) ? pos.z : tryZ
 
       groupRef.current.position.x = newX
       groupRef.current.position.z = newZ
@@ -154,6 +172,15 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
     }
     wasMovingRef.current = isMoving
 
+    // Detecção da sala atual (a cada ~150ms)
+    roomCheckRef.current += delta
+    if (roomCheckRef.current > 0.15) {
+      roomCheckRef.current = 0
+      const room = roomAt(pos.x, pos.z, useTeamStore.getState().rooms)
+      const current = useTeamStore.getState().myRoomId
+      if ((room?.id ?? null) !== current) setMyRoomId(room?.id ?? null)
+    }
+
     // Câmera com lag + zoom
     const camDist = cameraDistRef.current
     const camHeight = camDist * 0.88
@@ -169,11 +196,11 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
 
   return (
     <group ref={groupRef} position={START_POSITION}>
-      <PlayerBody color={me.color} pantsColor={me.pantsColor} isWalking={isMovingRef.current} />
+      <HumanBody avatar={me.avatar} isWalking={isMovingRef.current} />
 
-      <Billboard position={[0, 2.1, 0]} follow={true}>
+      <Billboard position={[0, 2.25, 0]} follow={true}>
         <Text
-          fontSize={0.28}
+          fontSize={0.27}
           color="#FFD700"
           anchorX="center"
           anchorY="middle"
@@ -185,9 +212,9 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       </Billboard>
 
       {me.role ? (
-        <Billboard position={[0, 1.85, 0]} follow={true}>
+        <Billboard position={[0, 2.0, 0]} follow={true}>
           <Text
-            fontSize={0.16}
+            fontSize={0.155}
             color="#FFD700"
             anchorX="center"
             anchorY="middle"
@@ -199,7 +226,8 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
         </Billboard>
       ) : null}
 
-      <mesh position={[0, -0.83, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      {/* Anel de identificação do jogador local */}
+      <mesh position={[0, 0.014, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.38, 0.5, 16]} />
         <meshBasicMaterial color="#FFD700" transparent opacity={0.6} />
       </mesh>

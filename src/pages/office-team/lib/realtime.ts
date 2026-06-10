@@ -1,11 +1,20 @@
 // Canal Supabase Realtime do escritório multiplayer.
-// Presence = quem está online (com perfil e estado de chamada).
+// Presence = quem está online (perfil + avatar + estado de chamada).
 // Broadcast 'pos' = posição dos jogadores (throttled).
 // Broadcast 'chat' = mensagens de texto.
 // Broadcast 'rtc' = signaling WebRTC (offer/answer/ice), endereçado por "to".
+// Broadcast 'rooms' = alguém criou/trancou sala → todos refazem o fetch.
 import { supabase } from '@/integrations/supabase/client'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { useTeamStore, TeamProfile, TeamMessage, RemotePlayerState } from '../store/useTeamStore'
+import {
+  useTeamStore,
+  TeamProfile,
+  TeamMessage,
+  RemotePlayerState,
+  AvatarConfig,
+  DEFAULT_AVATAR,
+} from '../store/useTeamStore'
+import { fetchRooms } from './rooms'
 
 const POS_INTERVAL_MS = 110
 
@@ -22,6 +31,7 @@ interface PresencePayload {
   role: string
   color: string
   pantsColor: string
+  avatar: AvatarConfig
   inCall: boolean
   micOn: boolean
   camOn: boolean
@@ -42,6 +52,7 @@ export class TeamRealtime {
       role: me.role,
       color: me.color,
       pantsColor: me.pantsColor,
+      avatar: me.avatar,
       inCall: false,
       micOn: false,
       camOn: false,
@@ -53,8 +64,6 @@ export class TeamRealtime {
   }
 
   connect() {
-    const store = useTeamStore.getState()
-
     this.channel = supabase.channel('office-team', {
       config: {
         presence: { key: this.me.id },
@@ -79,10 +88,11 @@ export class TeamRealtime {
             role: meta.role,
             color: meta.color,
             pantsColor: meta.pantsColor,
+            avatar: meta.avatar ?? DEFAULT_AVATAR,
             inCall: meta.inCall,
             micOn: meta.micOn,
             camOn: meta.camOn,
-            position: existing?.position ?? [0, 0, 4],
+            position: existing?.position ?? [0, 0, 1],
             rotation: existing?.rotation ?? 0,
             moving: existing?.moving ?? false,
           }
@@ -99,6 +109,9 @@ export class TeamRealtime {
         if (!m || m.userId === this.me.id) return
         useTeamStore.getState().addChatMessage(m)
       })
+      .on('broadcast', { event: 'rooms' }, () => {
+        void this.refreshRooms()
+      })
       .on('broadcast', { event: 'rtc' }, ({ payload }) => {
         const signal = payload as RtcSignal
         if (!signal || signal.to !== this.me.id) return
@@ -110,9 +123,19 @@ export class TeamRealtime {
         }
       })
 
-    // Histórico de chat
     void this.loadChatHistory()
-    void store
+    void this.refreshRooms()
+  }
+
+  async refreshRooms() {
+    const rooms = await fetchRooms()
+    useTeamStore.getState().setRooms(rooms)
+  }
+
+  /** Avisa os outros clientes que o conjunto de salas mudou (criação/lock). */
+  announceRoomsChanged() {
+    void this.channel?.send({ type: 'broadcast', event: 'rooms', payload: { by: this.me.id } })
+    void this.refreshRooms()
   }
 
   private async loadChatHistory() {
@@ -199,6 +222,12 @@ export class TeamRealtime {
   /** Atualiza estado de chamada no presence (todos veem). */
   async updateCallState(patch: Partial<Pick<PresencePayload, 'inCall' | 'micOn' | 'camOn'>>) {
     this.presenceState = { ...this.presenceState, ...patch }
+    await this.channel?.track(this.presenceState)
+  }
+
+  /** Atualiza o avatar no presence (após salvar personalização). */
+  async updateAvatar(avatar: AvatarConfig) {
+    this.presenceState = { ...this.presenceState, avatar }
     await this.channel?.track(this.presenceState)
   }
 
