@@ -14,6 +14,8 @@ import CallDock from './components/CallDock'
 import TeamHUD from './components/TeamHUD'
 import RoomControls from './components/RoomControls'
 import AvatarEditor from './components/AvatarEditor'
+import MarceloNpc from './components/MarceloNpc'
+import MarceloChatPanel from './components/MarceloChatPanel'
 import {
   useTeamStore,
   avatarColorsFor,
@@ -231,6 +233,7 @@ export default function TeamOfficePage() {
           <ModernOffice />
           <LocalPlayer realtime={managers.realtime} />
           <RemotePlayers />
+          <MarceloNpc />
         </Canvas>
       </Suspense>
 
@@ -240,6 +243,7 @@ export default function TeamOfficePage() {
       <TeamChatPanel realtime={managers.realtime} />
       <CallDock callManager={managers.callManager} />
       <AvatarEditor realtime={managers.realtime} />
+      <MarceloChatPanel />
     </div>
   )
 }

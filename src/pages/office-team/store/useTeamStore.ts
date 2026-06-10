@@ -79,6 +79,9 @@ interface TeamState {
   chatMessages: TeamMessage[]
   unreadCount: number
 
+  /** chat com o NPC Marcelo Almeida (agente IA na sala dele) */
+  npcChatOpen: boolean
+
   call: CallState
 
   // Actions
@@ -100,6 +103,7 @@ interface TeamState {
   toggleChat: () => void
   addChatMessage: (msg: TeamMessage) => void
   setChatHistory: (msgs: TeamMessage[]) => void
+  setNpcChatOpen: (open: boolean) => void
 
   setCall: (patch: Partial<CallState>) => void
   setRemoteStream: (id: string, stream: MediaStream | null) => void
@@ -120,6 +124,7 @@ export const useTeamStore = create<TeamState>((set) => ({
   chatOpen: false,
   chatMessages: [],
   unreadCount: 0,
+  npcChatOpen: false,
 
   call: {
     joined: false,
@@ -200,6 +205,7 @@ export const useTeamStore = create<TeamState>((set) => ({
     })),
 
   setChatHistory: (msgs) => set({ chatMessages: msgs }),
+  setNpcChatOpen: (open) => set({ npcChatOpen: open }),
 
   setCall: (patch) => set((prev) => ({ call: { ...prev.call, ...patch } })),
 
