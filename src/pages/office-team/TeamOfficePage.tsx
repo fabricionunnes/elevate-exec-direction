@@ -25,7 +25,7 @@ import {
 } from './store/useTeamStore'
 import { TeamRealtime } from './lib/realtime'
 import { CallManager } from './lib/webrtc'
-import { ensurePersonalRoom } from './lib/rooms'
+import { ensurePersonalRoom, roomAt, isEffectivelyLocked } from './lib/rooms'
 
 function SceneLights() {
   return (
@@ -77,9 +77,24 @@ function LoadingScreen({ label = 'Carregando escritório...' }: { label?: string
 
 function RemotePlayers() {
   const remotePlayers = useTeamStore((s) => s.remotePlayers)
+  const rooms = useTeamStore((s) => s.rooms)
+  const myRoomId = useTeamStore((s) => s.myRoomId)
+  const me = useTeamStore((s) => s.me)
+
+  // Privacidade: quem está numa sala trancada só é visível pra quem
+  // está DENTRO da mesma sala (o áudio já segue a mesma regra)
+  const onlineIds = new Set(Object.keys(remotePlayers))
+  if (me) onlineIds.add(me.id)
+
+  const visible = Object.values(remotePlayers).filter((p) => {
+    const room = roomAt(p.position[0], p.position[2], rooms)
+    if (room && room.id !== myRoomId && isEffectivelyLocked(room, onlineIds)) return false
+    return true
+  })
+
   return (
     <>
-      {Object.values(remotePlayers).map((p) => (
+      {visible.map((p) => (
         <RemotePlayer key={p.id} player={p} />
       ))}
     </>
@@ -94,7 +109,6 @@ async function loadProfile(): Promise<TeamProfile | null> {
   if (!user) return null
 
   let name: string | null = null
-  let role = ''
 
   const { data: staff } = await supabase
     .from('onboarding_staff')
@@ -104,8 +118,8 @@ async function loadProfile(): Promise<TeamProfile | null> {
     .maybeSingle()
   if (staff) {
     name = (staff as { name: string | null }).name
-    role = ((staff as { role: string | null }).role ?? '') as string
   }
+  const isActiveStaff = !!staff
 
   if (!name) {
     const { data: avatar } = await supabase
@@ -127,9 +141,11 @@ async function loadProfile(): Promise<TeamProfile | null> {
 
   const colors = avatarColorsFor(user.id)
 
-  // Avatar personalizado + última posição salva (se existirem)
+  // Avatar personalizado + cargo + última posição salva (se existirem)
   let avatar: AvatarConfig = { ...DEFAULT_AVATAR, shirt: colors.color, pants: colors.pantsColor }
   let spawn: [number, number, number] | undefined
+  let role = '' // cargo exibido embaixo do nome (office_team_avatars.title)
+  let personalRoom = true
   const { data: saved } = await supabase
     .from('office_team_avatars' as never)
     .select('*')
@@ -145,6 +161,8 @@ async function loadProfile(): Promise<TeamProfile | null> {
       last_x: number | string | null
       last_z: number | string | null
       last_rot: number | string | null
+      title: string | null
+      personal_room: boolean | null
     }
     avatar = {
       skin: s.skin_color,
@@ -156,9 +174,19 @@ async function loadProfile(): Promise<TeamProfile | null> {
     if (s.last_x != null && s.last_z != null) {
       spawn = [Number(s.last_x), Number(s.last_z), Number(s.last_rot ?? 0)]
     }
+    role = s.title ?? ''
+    personalRoom = s.personal_room !== false
   }
 
-  return { id: user.id, name, role, ...colors, avatar, spawn }
+  return {
+    id: user.id,
+    name,
+    role,
+    ...colors,
+    avatar,
+    spawn,
+    canHavePersonalRoom: isActiveStaff && personalRoom,
+  }
 }
 
 export default function TeamOfficePage() {
@@ -201,6 +229,7 @@ export default function TeamOfficePage() {
   useEffect(() => {
     if (!me || !managers || rooms.length === 0 || personalRoomChecked.current) return
     personalRoomChecked.current = true
+    if (!me.canHavePersonalRoom) return
     void ensurePersonalRoom(me.id, me.name, me.color, rooms).then((room) => {
       if (room && !rooms.some((r) => r.id === room.id)) {
         managers.realtime.announceRoomsChanged()

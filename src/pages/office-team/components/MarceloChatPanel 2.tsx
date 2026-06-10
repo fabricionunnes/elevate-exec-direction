@@ -158,7 +158,7 @@ export default function MarceloChatPanel() {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ color: '#fff', fontWeight: 700, fontSize: '15px' }}>Marcelo Almeida</div>
-          <div style={{ color: ACCENT, fontSize: '11.5px', marginTop: '2px' }}>Consultor · IA</div>
+          <div style={{ color: ACCENT, fontSize: '11.5px', marginTop: '2px' }}>Consultor Comercial · IA</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
             <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#4CAF50', boxShadow: '0 0 6px #4CAF50' }} />
             <span style={{ color: '#4CAF50', fontSize: '11px' }}>Sempre disponível</span>

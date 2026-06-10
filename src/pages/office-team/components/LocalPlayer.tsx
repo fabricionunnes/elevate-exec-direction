@@ -7,7 +7,7 @@ import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import { useKeyboard } from '../../office/hooks/useKeyboard'
 import HumanBody from './HumanBody'
-import { BUILDING, buildCollisionWalls, checkWallCollision, roomAt } from '../lib/rooms'
+import { BUILDING, buildCollisionWalls, checkWallCollision, roomAt, setRoomLock, isEffectivelyLocked } from '../lib/rooms'
 import { findPath } from '../lib/pathfinding'
 import { useTeamStore } from '../store/useTeamStore'
 import type { TeamRealtime } from '../lib/realtime'
@@ -75,6 +75,24 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // Tecla Z → tranca/destranca a sala em que estou
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'KeyZ' || isTypingInField()) return
+      const state = useTeamStore.getState()
+      const meId = state.me?.id
+      if (!meId || !state.myRoomId) return
+      const room = state.rooms.find((r) => r.id === state.myRoomId)
+      if (!room) return
+      const onlineIds = new Set([meId, ...Object.keys(state.remotePlayers)])
+      const locked = isEffectivelyLocked(room, onlineIds)
+      if (locked && room.lockedBy !== meId) return // trancada por outra pessoa
+      void setRoomLock(room.id, !locked, meId).then(() => realtime.announceRoomsChanged())
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [realtime])
 
   // Zoom com scroll
   useEffect(() => {

@@ -514,7 +514,22 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
                 active={call.camOn}
                 title={call.camOn ? 'Desligar câmera' : 'Ligar câmera'}
               >
-                {call.camOn ? '📹' : '🚫'}
+                <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  📹
+                  {!call.camOn && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        width: '26px',
+                        height: '3px',
+                        background: '#e53935',
+                        transform: 'rotate(-45deg)',
+                        borderRadius: '2px',
+                        boxShadow: '0 0 2px rgba(0,0,0,0.6)',
+                      }}
+                    />
+                  )}
+                </span>
               </DockButton>
               <DockButton onClick={() => run(() => callManager.leaveCall())} danger title="Desativar voz">
                 ✕

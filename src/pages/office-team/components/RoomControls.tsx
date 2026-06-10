@@ -134,9 +134,9 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
           >
             {currentLocked
               ? canUnlock
-                ? '🔓 Destrancar sala'
+                ? '🔓 Destrancar sala (Z)'
                 : '🔒 Trancada por outro usuário'
-              : '🔒 Trancar sala'}
+              : '🔒 Trancar sala (Z)'}
           </button>
         )}
       </div>

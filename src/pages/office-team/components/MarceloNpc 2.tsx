@@ -90,7 +90,7 @@ export default function MarceloNpc() {
           outlineWidth={0.015}
           outlineColor="#000000"
         >
-          Consultor · IA
+          Consultor Comercial · IA
         </Text>
       </Billboard>
 

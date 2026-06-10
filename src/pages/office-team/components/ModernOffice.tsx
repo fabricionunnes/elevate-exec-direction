@@ -156,27 +156,165 @@ function LoungeFurniture({ room }: { room: OfficeRoom }) {
   )
 }
 
+function Sofa({ x, z, rotation = 0, color = '#5a6b7d' }: { x: number; z: number; rotation?: number; color?: string }) {
+  return (
+    <group position={[x, 0, z]} rotation={[0, rotation, 0]}>
+      <mesh position={[0, 0.28, 0]} castShadow>
+        <boxGeometry args={[1.7, 0.5, 0.8]} />
+        <meshStandardMaterial color={color} roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 0.62, -0.32]} castShadow>
+        <boxGeometry args={[1.7, 0.45, 0.18]} />
+        <meshStandardMaterial color={color} roughness={0.9} />
+      </mesh>
+      <mesh position={[-0.78, 0.5, 0]} castShadow>
+        <boxGeometry args={[0.16, 0.42, 0.8]} />
+        <meshStandardMaterial color={color} roughness={0.9} />
+      </mesh>
+      <mesh position={[0.78, 0.5, 0]} castShadow>
+        <boxGeometry args={[0.16, 0.42, 0.8]} />
+        <meshStandardMaterial color={color} roughness={0.9} />
+      </mesh>
+    </group>
+  )
+}
+
+function Armchair({ x, z, rotation = 0, color = '#7d6b5a' }: { x: number; z: number; rotation?: number; color?: string }) {
+  return (
+    <group position={[x, 0, z]} rotation={[0, rotation, 0]}>
+      <mesh position={[0, 0.3, 0]} castShadow>
+        <boxGeometry args={[0.75, 0.45, 0.7]} />
+        <meshStandardMaterial color={color} roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 0.65, -0.28]} castShadow>
+        <boxGeometry args={[0.75, 0.5, 0.15]} />
+        <meshStandardMaterial color={color} roughness={0.9} />
+      </mesh>
+    </group>
+  )
+}
+
+function Bookshelf({ x, z, rotation = 0 }: { x: number; z: number; rotation?: number }) {
+  return (
+    <group position={[x, 0, z]} rotation={[0, rotation, 0]}>
+      <mesh position={[0, 0.9, 0]} castShadow>
+        <boxGeometry args={[1.3, 1.8, 0.32]} />
+        <meshStandardMaterial color="#5d4a36" roughness={0.7} />
+      </mesh>
+      {[0.45, 0.95, 1.45].map((y) => (
+        <mesh key={y} position={[0, y, 0.05]}>
+          <boxGeometry args={[1.14, 0.26, 0.24]} />
+          <meshStandardMaterial color="#8a7256" roughness={0.6} />
+        </mesh>
+      ))}
+      {/* Livros */}
+      {[-0.35, 0, 0.35].map((bx, i) => (
+        <mesh key={i} position={[bx, 1.02, 0.1]}>
+          <boxGeometry args={[0.26, 0.2, 0.12]} />
+          <meshStandardMaterial color={['#8a3030', '#2f5d8a', '#3f7245'][i]} roughness={0.8} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+function Rug({ x, z, color }: { x: number; z: number; color: string }) {
+  return (
+    <mesh position={[x, 0.009, z]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <circleGeometry args={[1, 24]} />
+      <meshStandardMaterial color={color} roughness={1} transparent opacity={0.55} />
+    </mesh>
+  )
+}
+
+function CoffeeTable({ x, z }: { x: number; z: number }) {
+  return (
+    <group position={[x, 0, z]}>
+      <mesh position={[0, 0.3, 0]} castShadow>
+        <cylinderGeometry args={[0.42, 0.42, 0.06, 14]} />
+        <meshStandardMaterial color="#d9d2c5" roughness={0.4} />
+      </mesh>
+      <mesh position={[0, 0.14, 0]}>
+        <cylinderGeometry args={[0.05, 0.05, 0.28, 8]} />
+        <meshStandardMaterial color="#7a7d83" />
+      </mesh>
+    </group>
+  )
+}
+
+function WallArt({ x, z, color }: { x: number; z: number; color: string }) {
+  return (
+    <group position={[x, 1.35, z]}>
+      <mesh castShadow>
+        <boxGeometry args={[0.9, 0.6, 0.05]} />
+        <meshStandardMaterial color="#2a2d33" roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 0, 0.03]}>
+        <boxGeometry args={[0.78, 0.48, 0.01]} />
+        <meshStandardMaterial color={color} roughness={0.7} />
+      </mesh>
+    </group>
+  )
+}
+
+function hashRoom(id: string): number {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0
+  return h
+}
+
+/** Salas individuais: mesa de trabalho + decoração variada por sala. */
+function PersonalFurniture({ room }: { room: OfficeRoom }) {
+  // door é sempre N nas pessoais: fundo = z + depth/2
+  const backZ = room.z + room.depth / 2
+  const deskZ = backZ - 1.3
+  const variant = hashRoom(room.id) % 4
+  return (
+    <group>
+      <Desk x={room.x} z={deskZ} rotation={Math.PI} />
+      <WallArt x={room.x + (variant % 2 === 0 ? 1.6 : -1.6)} z={backZ - 0.25} color={room.color} />
+      {variant === 0 && (
+        <>
+          <Plant x={room.x - room.width / 2 + 0.7} z={deskZ} />
+          <Rug x={room.x} z={room.z - 0.6} color={room.color} />
+          <Armchair x={room.x + room.width / 2 - 0.85} z={room.z - 0.7} rotation={-Math.PI / 2} />
+        </>
+      )}
+      {variant === 1 && (
+        <>
+          <Sofa x={room.x - room.width / 2 + 1.05} z={room.z - 0.5} rotation={Math.PI / 2} color="#6b5a7d" />
+          <CoffeeTable x={room.x + 0.3} z={room.z - 0.5} />
+          <Plant x={room.x + room.width / 2 - 0.7} z={backZ - 0.8} />
+        </>
+      )}
+      {variant === 2 && (
+        <>
+          <Bookshelf x={room.x - room.width / 2 + 0.35} z={room.z - 0.4} rotation={Math.PI / 2} />
+          <Armchair x={room.x + 0.9} z={room.z - 1} rotation={Math.PI} color="#5a7d6b" />
+          <Plant x={room.x + room.width / 2 - 0.7} z={deskZ} />
+        </>
+      )}
+      {variant === 3 && (
+        <>
+          <Armchair x={room.x - 0.9} z={room.z - 1} rotation={Math.PI / 4} color="#8a6248" />
+          <Armchair x={room.x + 0.9} z={room.z - 1} rotation={-Math.PI / 4} color="#8a6248" />
+          <CoffeeTable x={room.x} z={room.z - 1.4} />
+          <Rug x={room.x} z={room.z - 1.2} color={room.color} />
+          <Plant x={room.x - room.width / 2 + 0.7} z={backZ - 0.8} />
+        </>
+      )}
+    </group>
+  )
+}
+
 function RoomFurniture({ room }: { room: OfficeRoom }) {
   if (room.roomType === 'meeting') return <MeetingTable room={room} />
   if (room.roomType === 'lounge') return <LoungeFurniture room={room} />
-  if (room.roomType === 'personal') {
-    const deskZ = room.doorSide === 'N' ? room.z + room.depth / 2 - 1.3 : room.z - room.depth / 2 + 1.3
-    const rot = room.doorSide === 'N' ? Math.PI : 0
-    return (
-      <group>
-        <Desk x={room.x} z={deskZ} rotation={rot} />
-        <Plant x={room.x - room.width / 2 + 0.7} z={deskZ} />
-      </group>
-    )
-  }
-  // sector: duas ilhas de mesas frente a frente
-  const off = room.width / 4.5
+  if (room.roomType === 'personal') return <PersonalFurniture room={room} />
+  // sector: mesa de reunião grande (time trabalha junto)
   return (
     <group>
-      <Desk x={room.x - off} z={room.z - 1.4} rotation={0} />
-      <Desk x={room.x + off} z={room.z - 1.4} rotation={0} />
-      <Desk x={room.x - off} z={room.z + 1.6} rotation={Math.PI} />
-      <Desk x={room.x + off} z={room.z + 1.6} rotation={Math.PI} />
+      <MeetingTable room={room} />
       <Plant x={room.x + room.width / 2 - 0.8} z={room.z - room.depth / 2 + 0.8} />
     </group>
   )

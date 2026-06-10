@@ -29,6 +29,8 @@ export interface TeamProfile {
   avatar: AvatarConfig
   /** última posição salva [x, z, rot] — spawn ao reabrir o escritório */
   spawn?: [number, number, number]
+  /** false para terceirizados/não-staff: não ganha sala individual */
+  canHavePersonalRoom?: boolean
 }
 
 export interface RemotePlayerState extends TeamProfile {
