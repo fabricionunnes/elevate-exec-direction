@@ -28989,6 +28989,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           project_id: string
+          role_name: string | null
         }
         Insert: {
           access_token?: string
@@ -28998,6 +28999,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           project_id: string
+          role_name?: string | null
         }
         Update: {
           access_token?: string
@@ -29007,6 +29009,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           project_id?: string
+          role_name?: string | null
         }
         Relationships: [
           {

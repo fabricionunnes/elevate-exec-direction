@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Plus, Copy, Trash2, Link, ExternalLink } from "lucide-react";
+import { Plus, Copy, Trash2, Link, ExternalLink, Briefcase } from "lucide-react";
 import { format } from "date-fns";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 
@@ -16,6 +17,7 @@ interface Props {
 
 export const RoutineFormConfig = ({ projectId, isAdmin }: Props) => {
   const queryClient = useQueryClient();
+  const [roleName, setRoleName] = useState("");
 
   const { data: links, isLoading } = useQuery({
     queryKey: ["routine-form-links", projectId],
@@ -34,11 +36,12 @@ export const RoutineFormConfig = ({ projectId, isAdmin }: Props) => {
     mutationFn: async () => {
       const { error } = await supabase
         .from("routine_form_links")
-        .insert({ project_id: projectId });
+        .insert({ project_id: projectId, role_name: roleName.trim() || null });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["routine-form-links", projectId] });
+      setRoleName("");
       toast.success("Link criado com sucesso!");
     },
     onError: () => toast.error("Erro ao criar link"),
@@ -70,13 +73,28 @@ export const RoutineFormConfig = ({ projectId, isAdmin }: Props) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="text-lg font-semibold">Links do Formulário</h3>
         {isAdmin && (
-          <Button onClick={() => createLink.mutate()} size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Criar Link
-          </Button>
+          <div className="flex items-center gap-2">
+            <Input
+              value={roleName}
+              onChange={(e) => setRoleName(e.target.value)}
+              placeholder="Nome do cargo (ex: Vendedor)"
+              className="h-9 w-[240px]"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && roleName.trim()) createLink.mutate();
+              }}
+            />
+            <Button
+              onClick={() => createLink.mutate()}
+              size="sm"
+              disabled={!roleName.trim() || createLink.isPending}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Criar Link
+            </Button>
+          </div>
         )}
       </div>
 
@@ -97,13 +115,15 @@ export const RoutineFormConfig = ({ projectId, isAdmin }: Props) => {
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <code className="text-xs bg-muted px-2 py-1 rounded break-all max-w-[300px] truncate">
-                        {getPublicUrl(link.access_token)}
-                      </code>
+                      <Briefcase className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-semibold">{link.role_name || "Sem cargo definido"}</span>
                       <Badge variant={link.is_active ? "default" : "secondary"}>
                         {link.is_active ? "Ativo" : "Inativo"}
                       </Badge>
                     </div>
+                    <code className="block text-xs bg-muted px-2 py-1 rounded break-all max-w-[360px] truncate">
+                      {getPublicUrl(link.access_token)}
+                    </code>
                     <p className="text-xs text-muted-foreground">
                       Criado em {format(new Date(link.created_at), "dd/MM/yyyy HH:mm")}
                     </p>
