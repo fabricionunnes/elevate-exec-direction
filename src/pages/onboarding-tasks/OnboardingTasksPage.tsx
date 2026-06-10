@@ -1859,6 +1859,13 @@ const OnboardingTasksPage = () => {
                     <Video className="h-4 w-4 mr-2" />
                     Escritório UNV
                   </DropdownMenuItem>
+                  {/* Escritório 3D dos agentes IA — somente master */}
+                  {isMaster && (
+                    <DropdownMenuItem onClick={() => navigate("/office")}>
+                      <Gamepad2 className="h-4 w-4 mr-2" />
+                      Escritório Agentes
+                    </DropdownMenuItem>
+                  )}
                   {/* ROI dos Clientes */}
                   {isAdmin && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/roi-clientes")}>
@@ -2218,6 +2225,12 @@ const OnboardingTasksPage = () => {
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/unv-office")}>
                   <Building2 className="h-4 w-4 mr-2" /> UNV Office
                 </DropdownMenuItem>
+                {/* Escritório 3D dos agentes IA — somente master */}
+                {isMaster && (
+                  <DropdownMenuItem onClick={() => navigate("/office")}>
+                    <Gamepad2 className="h-4 w-4 mr-2" /> Escritório Agentes
+                  </DropdownMenuItem>
+                )}
                 {currentUserRole && currentStaffId && (
                   <DropdownMenuItem onClick={() => setShowMyTasks(true)}>
                     <CheckCircle2 className="h-4 w-4 mr-2" /> Minhas Tarefas
