@@ -8,7 +8,27 @@ import { supabase } from '@/integrations/supabase/client'
 import type { TeamProfile } from '../store/useTeamStore'
 
 const TRANSCRIBE_URL = 'https://kktocqnwlmmxjzgmnxgs.supabase.co/functions/v1/marcelo-webhook?transcribe=1'
+const ATA_URL = 'https://kktocqnwlmmxjzgmnxgs.supabase.co/functions/v1/marcelo-webhook?ata=1'
 export const MAX_RECORDING_MS = 90 * 60 * 1000 // 90 min
+
+/** Gera a ata estruturada (resumo/tópicos/decisões/ações) a partir da transcrição. */
+export async function generateAta(transcript: string): Promise<Record<string, unknown> | null> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (!session) return null
+    const res = await fetch(ATA_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ transcript }),
+    })
+    const data = await res.json()
+    return data?.ok && data.ata ? (data.ata as Record<string, unknown>) : null
+  } catch {
+    return null
+  }
+}
 
 export interface RecordingParticipant {
   id: string
@@ -276,6 +296,12 @@ export async function saveRecording(
     // segue sem transcrição
   }
 
+  // Ata estruturada (resumo executivo) — best-effort
+  let minutes: Record<string, unknown> | null = null
+  if (transcript && transcript.length > 80) {
+    minutes = await generateAta(transcript)
+  }
+
   const { error } = await supabase.from('office_meeting_recordings' as never).insert({
     room_name: roomName,
     started_by: me.id,
@@ -283,6 +309,7 @@ export async function saveRecording(
     duration_s: durationS,
     audio_path: path,
     transcript,
+    minutes,
   } as never)
   return { ok: !error, transcribed: !!transcript }
 }

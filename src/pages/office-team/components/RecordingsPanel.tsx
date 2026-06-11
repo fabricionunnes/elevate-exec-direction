@@ -2,6 +2,8 @@
 // Lista, baixa o áudio e mostra a transcrição; cada gravação expira em 30 dias.
 import { useEffect, useState } from 'react'
 import { supabase } from '@/integrations/supabase/client'
+import { generateAta } from '../lib/recording'
+import { generateAtaPdf, AtaData } from '../lib/ata'
 
 interface RecordingRow {
   id: string
@@ -11,6 +13,7 @@ interface RecordingRow {
   duration_s: number | null
   audio_path: string
   transcript: string | null
+  minutes: AtaData | null
   created_at: string
   expires_at: string
 }
@@ -61,6 +64,39 @@ export default function RecordingsPanel({ open, onClose }: { open: boolean; onCl
       .update({ title } as never)
       .eq('id', rec.id)
     if (!error) setItems((prev) => prev.map((r) => (r.id === rec.id ? { ...r, title } : r)))
+  }
+
+  // Ata em PDF (branding UNV). Gravações antigas sem ata: gera na hora.
+  const downloadAta = async (rec: RecordingRow) => {
+    if (!rec.transcript) return
+    setBusyId(rec.id)
+    try {
+      let ata = rec.minutes
+      if (!ata) {
+        ata = (await generateAta(rec.transcript)) as AtaData | null
+        if (ata) {
+          await supabase
+            .from('office_meeting_recordings' as never)
+            .update({ minutes: ata } as never)
+            .eq('id', rec.id)
+          setItems((prev) => prev.map((r) => (r.id === rec.id ? { ...r, minutes: ata } : r)))
+        }
+      }
+      if (!ata) return
+      await generateAtaPdf(
+        {
+          title: rec.title ?? rec.room_name ?? 'Reunião',
+          roomName: rec.room_name,
+          createdAt: rec.created_at,
+          byName: rec.started_by_name,
+          durationS: rec.duration_s,
+        },
+        ata,
+        rec.transcript
+      )
+    } finally {
+      setBusyId(null)
+    }
   }
 
   const remove = async (rec: RecordingRow) => {
@@ -243,6 +279,23 @@ export default function RecordingsPanel({ open, onClose }: { open: boolean; onCl
                     🗑️
                   </button>
                 )}
+                <button
+                  onClick={() => void downloadAta(rec)}
+                  disabled={!rec.transcript || busyId === rec.id}
+                  title={rec.transcript ? 'Ata com resumo em PDF (branding UNV)' : 'Sem transcrição — sem ata'}
+                  style={{
+                    background: rec.transcript ? '#0D2B5E' : 'rgba(255,255,255,0.06)',
+                    border: `1px solid ${rec.transcript ? 'rgba(127,212,255,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius: '8px',
+                    padding: '7px 12px',
+                    color: rec.transcript ? '#fff' : 'rgba(255,255,255,0.3)',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: rec.transcript && busyId !== rec.id ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  📄 Ata PDF
+                </button>
                 <button
                   onClick={() => setExpandedId(expandedId === rec.id ? null : rec.id)}
                   disabled={!rec.transcript}
