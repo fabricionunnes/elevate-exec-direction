@@ -45,6 +45,10 @@ interface GameState {
   meetingStartTime: number | null
   meetingMessages: MeetingMessage[]
   meetingPanelVisible: boolean
+  // Fila de falas aguardando reprodução (uma por vez, com balão 3D)
+  meetingQueue: MeetingMessage[]
+  // Fala sendo exibida agora no balão sobre a cabeça do agente
+  currentSpeech: MeetingMessage | null
 
   // Actions
   setPlayerPosition: (pos: [number, number, number]) => void
@@ -61,10 +65,13 @@ interface GameState {
   addMeetingMessage: (msg: MeetingMessage) => void
   setMeetingMessages: (msgs: MeetingMessage[]) => void
   setMeetingPanelVisible: (visible: boolean) => void
+  enqueueMeetingMessage: (msg: MeetingMessage) => void
+  playNextMeetingMessage: () => MeetingMessage | null
+  clearCurrentSpeech: () => void
   initAgentStates: (states: AgentRuntimeState[]) => void
 }
 
-export const useGameStore = create<GameState>((set) => ({
+export const useGameStore = create<GameState>((set, get) => ({
   playerPosition: [0, 0, 0],
   playerRotation: 0,
   agentStates: {},
@@ -73,6 +80,8 @@ export const useGameStore = create<GameState>((set) => ({
   meetingStartTime: null,
   meetingMessages: [],
   meetingPanelVisible: false,
+  meetingQueue: [],
+  currentSpeech: null,
   chat: {
     isOpen: false,
     activeAgentId: null,
@@ -154,6 +163,36 @@ export const useGameStore = create<GameState>((set) => ({
   setMeetingMessages: (msgs) => set({ meetingMessages: msgs }),
 
   setMeetingPanelVisible: (visible) => set({ meetingPanelVisible: visible }),
+
+  enqueueMeetingMessage: (msg) =>
+    set((prev) =>
+      prev.meetingQueue.some((m) => m.id === msg.id) ||
+      prev.meetingMessages.some((m) => m.id === msg.id)
+        ? prev
+        : {
+            meetingQueue: [...prev.meetingQueue, msg],
+            meetingTriggered: true,
+            meetingStartTime: prev.meetingStartTime ?? Date.now(),
+            meetingPanelVisible: true,
+          }
+    ),
+
+  // Tira a próxima fala da fila: vira o balão atual e entra no painel
+  playNextMeetingMessage: () => {
+    const { meetingQueue } = get()
+    if (meetingQueue.length === 0) return null
+    const next = meetingQueue[0]
+    set((prev) => ({
+      meetingQueue: prev.meetingQueue.slice(1),
+      currentSpeech: next,
+      meetingMessages: prev.meetingMessages.some((m) => m.id === next.id)
+        ? prev.meetingMessages
+        : [...prev.meetingMessages, next],
+    }))
+    return next
+  },
+
+  clearCurrentSpeech: () => set({ currentSpeech: null }),
 
   initAgentStates: (states) =>
     set({

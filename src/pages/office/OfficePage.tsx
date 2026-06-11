@@ -56,18 +56,23 @@ function SceneLights() {
 }
 
 function SupabaseRealtimeHandler() {
-  const { triggerMeeting, endMeeting, addMeetingMessage, setMeetingMessages, setMeetingPanelVisible } = useGameStore()
+  const { triggerMeeting, endMeeting, enqueueMeetingMessage, setMeetingMessages, setMeetingPanelVisible } = useGameStore()
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Reinicia o timer de segurança: encerra a reunião se nada chegar em 5 min
+  // Timer de segurança: encerra a reunião se nada chegar em 5 min
   const armFallbackTimer = () => {
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => endMeeting(), 5 * 60 * 1000)
   }
 
   useEffect(() => {
-    // Reunião em andamento? Carrega as falas dos últimos 15 minutos
+    // Reunião recente? Carrega as falas dos últimos 15 minutos
     ;(async () => {
+      // Garante que o canal realtime usa o token do usuário logado —
+      // sem isso o RLS filtra os eventos e nada chega no escritório
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.access_token) supabase.realtime.setAuth(session.access_token)
+
       const since = new Date(Date.now() - 15 * 60 * 1000).toISOString()
       const { data } = await supabase
         .from('office_meeting_messages')
@@ -76,25 +81,27 @@ function SupabaseRealtimeHandler() {
         .order('created_at', { ascending: true })
         .limit(100)
       if (data && data.length > 0) {
-        setMeetingMessages(
-          data.map((m: any) => ({
-            id: m.id,
-            agent: m.agent,
-            content: m.content,
-            kind: m.kind,
-            timestamp: new Date(m.created_at).getTime(),
-          }))
-        )
-        setMeetingPanelVisible(true)
-        const last = data[data.length - 1]
-        if (last.kind !== 'fim') {
-          triggerMeeting()
+        const msgs = data.map((m: any) => ({
+          id: m.id,
+          agent: m.agent,
+          content: m.content,
+          kind: m.kind,
+          timestamp: new Date(m.created_at).getTime(),
+        }))
+        const finished = msgs[msgs.length - 1].kind === 'fim'
+        if (finished) {
+          // Reunião já encerrou: mostra a ata completa no painel, sem teatro
+          setMeetingMessages(msgs)
+          setMeetingPanelVisible(true)
+        } else {
+          // Em andamento: entra no modo diálogo (balões, uma fala por vez)
+          msgs.forEach((m) => enqueueMeetingMessage(m))
           armFallbackTimer()
         }
       }
     })()
 
-    // Falas da reunião em tempo real → agentes vão pra sala + papo no painel
+    // Falas em tempo real → entram na fila do diálogo
     const meetingChannel = supabase
       .channel('office_meeting_realtime')
       .on(
@@ -102,21 +109,14 @@ function SupabaseRealtimeHandler() {
         { event: 'INSERT', schema: 'public', table: 'office_meeting_messages' },
         (payload: any) => {
           const row = payload.new
-          addMeetingMessage({
+          enqueueMeetingMessage({
             id: row.id,
             agent: row.agent,
             content: row.content,
             kind: row.kind,
             timestamp: new Date(row.created_at).getTime(),
           })
-          if (row.kind === 'fim') {
-            // Max encerrou — agentes voltam pros postos depois de lerem a ata
-            if (timerRef.current) clearTimeout(timerRef.current)
-            timerRef.current = setTimeout(() => endMeeting(), 10 * 1000)
-          } else {
-            triggerMeeting()
-            armFallbackTimer()
-          }
+          armFallbackTimer()
         }
       )
       .subscribe()
@@ -148,6 +148,37 @@ function SupabaseRealtimeHandler() {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
   }, [])
+
+  return null
+}
+
+// Rege o ritmo do diálogo da reunião: uma fala por vez, com pausa
+// proporcional ao tamanho do texto, balão sobre a cabeça de quem fala.
+function MeetingDirector() {
+  const { meetingQueue, currentSpeech, playNextMeetingMessage, clearCurrentSpeech, endMeeting } = useGameStore()
+
+  useEffect(() => {
+    if (currentSpeech || meetingQueue.length === 0) return
+
+    // Primeira fala espera 6s (tempo do pessoal levantar e ir pra sala)
+    const isFirst = useGameStore.getState().meetingMessages.length === 0
+    const startDelay = isFirst ? 6000 : 600
+
+    const t0 = setTimeout(() => {
+      const msg = playNextMeetingMessage()
+      if (!msg) return
+      // Tempo de leitura: 4s base + 18ms por caractere, entre 5s e 16s
+      const dur = Math.min(16000, Math.max(5000, 4000 + msg.content.length * 18))
+      setTimeout(() => {
+        clearCurrentSpeech()
+        if (msg.kind === 'fim') {
+          setTimeout(() => endMeeting(), 2000)
+        }
+      }, dur)
+    }, startDelay)
+
+    return () => clearTimeout(t0)
+  }, [currentSpeech, meetingQueue])
 
   return null
 }
@@ -271,6 +302,7 @@ function OfficeApp() {
       {/* HTML Overlays */}
       <ChatPanel />
       <MeetingPanel />
+      <MeetingDirector />
       <HUD />
     </div>
   )

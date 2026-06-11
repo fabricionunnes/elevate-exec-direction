@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Text, Billboard } from '@react-three/drei'
+import { Text, Billboard, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { AgentConfig } from '../config/agents'
 import { useGameStore } from '../store/useGameStore'
@@ -190,11 +190,15 @@ export default function AgentCharacter({ agent, playerPosition, meetingTriggered
   // Path (list of [x, z] waypoints) toward the current target, routed through doorways
   const pathRef = useRef<[number, number][] | null>(null)
   const pathGoalRef = useRef<string | null>(null)
-  const { agentStates, setAgentState, nearbyAgentId, chat } = useGameStore()
+  const { agentStates, setAgentState, nearbyAgentId, chat, currentSpeech } = useGameStore()
 
   const runtime = agentStates[agent.id]
-  // Em conversa, o agente fica parado olhando pro player até o chat fechar
-  const isChatting = chat.isOpen && chat.activeAgentId === agent.id
+  // Em conversa, o agente fica parado olhando pro player até o chat fechar.
+  // REUNIÃO TEM PRIORIDADE: se o Max convocou, o agente se levanta e vai
+  // pra sala mesmo com o chat aberto (era o bug do Max preso no chat).
+  const isChatting = chat.isOpen && chat.activeAgentId === agent.id && !meetingTriggered
+  // Fala da reunião sendo exibida por este agente (balão sobre a cabeça)
+  const isSpeaking = currentSpeech?.agent === agent.id
 
   // Initialize runtime state
   useEffect(() => {
@@ -231,6 +235,20 @@ export default function AgentCharacter({ agent, playerPosition, meetingTriggered
 
     const pos = runtime.position
     const target = runtime.targetPosition
+
+    // Auto-correção: reunião ativa e agente parado fora da sala → vai pra sala.
+    // Cobre o caso de o alvo ter sido cancelado (ex.: estava em conversa quando
+    // a reunião começou) ou de o trigger ter chegado durante outra transição.
+    if (meetingTriggered && !target) {
+      const mdx = agent.meetingPosition[0] - pos[0]
+      const mdz = agent.meetingPosition[2] - pos[2]
+      if (mdx * mdx + mdz * mdz > 1.5) {
+        setAgentState(agent.id, {
+          state: 'MEETING',
+          targetPosition: agent.meetingPosition,
+        })
+      }
+    }
 
     // Conversa aberta: congela no lugar, cancela deslocamento pendente e
     // vira de frente pro player. O timer da rotina não anda — ao fechar o
@@ -407,6 +425,50 @@ export default function AgentCharacter({ agent, playerPosition, meetingTriggered
           {STATE_LABELS[state] || state}
         </Text>
       </Billboard>
+
+      {/* Balão de diálogo da reunião */}
+      {isSpeaking && currentSpeech && (
+        <Html position={[0, 3.0, 0]} center distanceFactor={14} style={{ pointerEvents: 'none' }} zIndexRange={[60, 40]}>
+          <div
+            style={{
+              width: '260px',
+              background: 'rgba(10, 10, 20, 0.94)',
+              border: `1.5px solid ${agent.color}`,
+              borderRadius: '12px',
+              padding: '10px 12px',
+              color: 'rgba(255,255,255,0.92)',
+              fontSize: '12px',
+              lineHeight: 1.45,
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+              boxShadow: `0 4px 24px rgba(0,0,0,0.5), 0 0 12px ${agent.color}44`,
+              position: 'relative',
+            }}
+          >
+            <div style={{ color: agent.color, fontWeight: 700, fontSize: '11px', marginBottom: '4px' }}>
+              {agent.name}
+            </div>
+            {currentSpeech.content
+              .replace(/[*#_`>]/g, '')
+              .replace(/\n{2,}/g, '\n')
+              .slice(0, 220)}
+            {currentSpeech.content.length > 220 ? '…' : ''}
+            {/* Rabicho do balão */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '-7px',
+                left: '50%',
+                marginLeft: '-7px',
+                width: 0,
+                height: 0,
+                borderLeft: '7px solid transparent',
+                borderRight: '7px solid transparent',
+                borderTop: `7px solid ${agent.color}`,
+              }}
+            />
+          </div>
+        </Html>
+      )}
 
       {/* Interaction prompt */}
       {isNearby && (

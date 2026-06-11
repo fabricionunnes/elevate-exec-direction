@@ -97,7 +97,7 @@ export default function ChatPanel() {
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
+        throw new Error(response.status === 403 ? 'sessao-invalida' : `HTTP ${response.status}`)
       }
 
       const data = await response.json()
@@ -116,10 +116,15 @@ export default function ChatPanel() {
       }
       addMessage(agent.id, assistantMsg)
     } catch (err) {
+      const isAuth =
+        err instanceof Error &&
+        (err.message === 'sessao-invalida' || err.message.startsWith('Sessão'))
       const errMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `Desculpe, não consegui conectar agora. Tente novamente em instantes.`,
+        content: isAuth
+          ? 'Sua sessão expirou. Recarrega a página (Cmd+Shift+R) e faz login no Nexus de novo — aí eu respondo na hora.'
+          : 'Desculpe, não consegui conectar agora. Tente novamente em instantes.',
         timestamp: Date.now(),
       }
       addMessage(agent.id, errMsg)
