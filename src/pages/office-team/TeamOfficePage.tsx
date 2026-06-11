@@ -25,7 +25,7 @@ import {
 } from './store/useTeamStore'
 import { TeamRealtime } from './lib/realtime'
 import { CallManager } from './lib/webrtc'
-import { ensurePersonalRoom, roomAt, isEffectivelyLocked } from './lib/rooms'
+import { ensurePersonalRoom, personalOwnerSeat, roomAt, isEffectivelyLocked } from './lib/rooms'
 
 function SceneLights() {
   return (
@@ -233,15 +233,22 @@ export default function TeamOfficePage() {
     }
   }, [managers])
 
-  // Garante a sala pessoal do usuário (uma vez, depois que as salas carregam)
+  // Garante a sala pessoal do usuário e já o coloca SENTADO na cadeira dele
+  // (uma vez, depois que as salas carregam)
   useEffect(() => {
     if (!me || !managers || rooms.length === 0 || personalRoomChecked.current) return
     personalRoomChecked.current = true
     if (!me.canHavePersonalRoom) return
     void ensurePersonalRoom(me.id, me.name, me.color, rooms).then((room) => {
-      if (room && !rooms.some((r) => r.id === room.id)) {
+      if (!room) return
+      if (!rooms.some((r) => r.id === room.id)) {
         managers.realtime.announceRoomsChanged()
       }
+      // Spawn padrão: sentado na cadeira da própria sala, atrás da mesa
+      const seat = personalOwnerSeat(room)
+      const st = useTeamStore.getState()
+      st.setPendingTeleport([seat.x, seat.z])
+      st.setPendingSeat(seat)
     })
   }, [me, managers, rooms])
 

@@ -37,9 +37,18 @@ export interface RemotePlayerState extends TeamProfile {
   position: [number, number, number]
   rotation: number
   moving: boolean
+  sitting: boolean
   inCall: boolean
   micOn: boolean
   camOn: boolean
+}
+
+/** Assento alvo: clicar numa cadeira anda até lá e senta */
+export interface Seat {
+  x: number
+  z: number
+  /** rotação do jogador sentado (pra onde olha) */
+  rot: number
 }
 
 export interface TeamMessage {
@@ -76,6 +85,10 @@ interface TeamState {
   /** destino de auto-walk (anda sozinho até lá; WASD cancela).
    * teleportFallback: se não houver rota, teleporta (usado pelo "minha sala") */
   pendingWalkTo: { x: number; z: number; teleportFallback?: boolean } | null
+  /** assento pendente: ao chegar no destino, senta */
+  pendingSeat: Seat | null
+  /** jogador local está sentado */
+  seated: boolean
 
   chatOpen: boolean
   chatMessages: TeamMessage[]
@@ -97,7 +110,7 @@ interface TeamState {
   setPlayerPosition: (pos: [number, number, number]) => void
   setPlayerRotation: (rot: number) => void
   upsertRemotePlayer: (player: Partial<RemotePlayerState> & { id: string }) => void
-  setRemotePlayerPos: (id: string, pos: [number, number, number], rot: number, moving: boolean) => void
+  setRemotePlayerPos: (id: string, pos: [number, number, number], rot: number, moving: boolean, sitting: boolean) => void
   removeRemotePlayer: (id: string) => void
   setRemotePlayers: (players: Record<string, RemotePlayerState>) => void
 
@@ -106,6 +119,8 @@ interface TeamState {
   setAvatarEditorOpen: (open: boolean) => void
   setPendingTeleport: (target: [number, number] | null) => void
   setPendingWalkTo: (target: { x: number; z: number; teleportFallback?: boolean } | null) => void
+  setPendingSeat: (seat: Seat | null) => void
+  setSeated: (seated: boolean) => void
 
   toggleChat: () => void
   addChatMessage: (msg: TeamMessage) => void
@@ -129,6 +144,8 @@ export const useTeamStore = create<TeamState>((set) => ({
   avatarEditorOpen: false,
   pendingTeleport: null,
   pendingWalkTo: null,
+  pendingSeat: null,
+  seated: false,
 
   chatOpen: false,
   chatMessages: [],
@@ -166,6 +183,7 @@ export const useTeamStore = create<TeamState>((set) => ({
             position: [0, 0, 1] as [number, number, number],
             rotation: 0,
             moving: false,
+            sitting: false,
             inCall: false,
             micOn: false,
             camOn: false,
@@ -176,14 +194,14 @@ export const useTeamStore = create<TeamState>((set) => ({
       }
     }),
 
-  setRemotePlayerPos: (id, pos, rot, moving) =>
+  setRemotePlayerPos: (id, pos, rot, moving, sitting) =>
     set((prev) => {
       const existing = prev.remotePlayers[id]
       if (!existing) return prev
       return {
         remotePlayers: {
           ...prev.remotePlayers,
-          [id]: { ...existing, position: pos, rotation: rot, moving },
+          [id]: { ...existing, position: pos, rotation: rot, moving, sitting },
         },
       }
     }),
@@ -202,6 +220,8 @@ export const useTeamStore = create<TeamState>((set) => ({
   setAvatarEditorOpen: (open) => set({ avatarEditorOpen: open }),
   setPendingTeleport: (target) => set({ pendingTeleport: target }),
   setPendingWalkTo: (target) => set({ pendingWalkTo: target }),
+  setPendingSeat: (seat) => set({ pendingSeat: seat }),
+  setSeated: (seated) => set({ seated }),
 
   toggleChat: () =>
     set((prev) => ({

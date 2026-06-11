@@ -8,6 +8,7 @@ import type { AvatarConfig } from '../store/useTeamStore'
 interface HumanBodyProps {
   avatar: AvatarConfig
   isWalking: boolean
+  isSitting?: boolean
 }
 
 function Hair({ avatar }: { avatar: AvatarConfig }) {
@@ -37,7 +38,7 @@ function Hair({ avatar }: { avatar: AvatarConfig }) {
   )
 }
 
-export default function HumanBody({ avatar, isWalking }: HumanBodyProps) {
+export default function HumanBody({ avatar, isWalking, isSitting = false }: HumanBodyProps) {
   const leftLegRef = useRef<THREE.Group>(null!)
   const rightLegRef = useRef<THREE.Group>(null!)
   const leftArmRef = useRef<THREE.Group>(null!)
@@ -46,6 +47,16 @@ export default function HumanBody({ avatar, isWalking }: HumanBodyProps) {
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime()
+    if (isSitting) {
+      // Sentado: corpo desce até o assento, coxas pra frente
+      const breathe = Math.sin(t * 1.5) * 0.01
+      if (bodyRef.current) bodyRef.current.position.y = -0.31 + breathe
+      if (leftLegRef.current) leftLegRef.current.rotation.x = -1.45
+      if (rightLegRef.current) rightLegRef.current.rotation.x = -1.45
+      if (leftArmRef.current) leftArmRef.current.rotation.x = -0.35
+      if (rightArmRef.current) rightArmRef.current.rotation.x = -0.35
+      return
+    }
     if (isWalking) {
       const swing = Math.sin(t * 8) * 0.55
       if (leftLegRef.current) leftLegRef.current.rotation.x = swing

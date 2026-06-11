@@ -24,7 +24,56 @@ function Plant({ x, z }: { x: number; z: number }) {
   )
 }
 
-function Desk({ x, z, rotation = 0, color = '#e8e2d6' }: { x: number; z: number; rotation?: number; color?: string }) {
+/** Clicar numa cadeira manda o boneco andar até ela e sentar. */
+function sitAt(x: number, z: number, rot: number) {
+  const st = useTeamStore.getState()
+  st.setPendingWalkTo({ x, z })
+  st.setPendingSeat({ x, z, rot })
+}
+
+/** Cadeira de escritório clicável. `rotation` = direção do ENCOSTO (+z local);
+ * o jogador senta olhando pro lado oposto. */
+function OfficeChair({
+  x,
+  z,
+  rotation = 0,
+  color = '#2f3640',
+}: {
+  x: number
+  z: number
+  rotation?: number
+  color?: string
+}) {
+  const sitRot = rotation + Math.PI // sentado olhando pro lado oposto ao encosto
+  return (
+    <group
+      position={[x, 0, z]}
+      rotation={[0, rotation, 0]}
+      onClick={(e) => {
+        e.stopPropagation()
+        if (e.delta > 6) return
+        sitAt(x, z, sitRot)
+      }}
+      onPointerOver={() => (document.body.style.cursor = 'pointer')}
+      onPointerOut={() => (document.body.style.cursor = 'default')}
+    >
+      <mesh position={[0, 0.42, 0]} castShadow>
+        <boxGeometry args={[0.42, 0.07, 0.42]} />
+        <meshStandardMaterial color={color} roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 0.68, 0.19]} castShadow>
+        <boxGeometry args={[0.42, 0.5, 0.06]} />
+        <meshStandardMaterial color={color} roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 0.2, 0]}>
+        <cylinderGeometry args={[0.04, 0.04, 0.4, 8]} />
+        <meshStandardMaterial color="#5a5f6a" />
+      </mesh>
+    </group>
+  )
+}
+
+function Desk({ x, z, rotation = 0, color = '#e8e2d6', chair = true }: { x: number; z: number; rotation?: number; color?: string; chair?: boolean }) {
   return (
     <group position={[x, 0, z]} rotation={[0, rotation, 0]}>
       {/* Tampo */}
@@ -54,69 +103,66 @@ function Desk({ x, z, rotation = 0, color = '#e8e2d6' }: { x: number; z: number;
         <cylinderGeometry args={[0.04, 0.07, 0.12, 8]} />
         <meshStandardMaterial color="#3a3d44" />
       </mesh>
-      {/* Cadeira */}
-      <group position={[0, 0, 0.65]}>
-        <mesh position={[0, 0.42, 0]} castShadow>
-          <boxGeometry args={[0.42, 0.07, 0.42]} />
-          <meshStandardMaterial color="#2f3640" roughness={0.7} />
-        </mesh>
-        <mesh position={[0, 0.68, 0.19]} castShadow>
-          <boxGeometry args={[0.42, 0.5, 0.06]} />
-          <meshStandardMaterial color="#2f3640" roughness={0.7} />
-        </mesh>
-        <mesh position={[0, 0.2, 0]}>
-          <cylinderGeometry args={[0.04, 0.04, 0.4, 8]} />
-          <meshStandardMaterial color="#5a5f6a" />
-        </mesh>
-      </group>
+      {/* Cadeira (opcional — salas pessoais usam OfficeChair clicável) */}
+      {chair && (
+        <group position={[0, 0, 0.65]}>
+          <mesh position={[0, 0.42, 0]} castShadow>
+            <boxGeometry args={[0.42, 0.07, 0.42]} />
+            <meshStandardMaterial color="#2f3640" roughness={0.7} />
+          </mesh>
+          <mesh position={[0, 0.68, 0.19]} castShadow>
+            <boxGeometry args={[0.42, 0.5, 0.06]} />
+            <meshStandardMaterial color="#2f3640" roughness={0.7} />
+          </mesh>
+          <mesh position={[0, 0.2, 0]}>
+            <cylinderGeometry args={[0.04, 0.04, 0.4, 8]} />
+            <meshStandardMaterial color="#5a5f6a" />
+          </mesh>
+        </group>
+      )}
     </group>
   )
 }
 
 function MeetingTable({ room }: { room: OfficeRoom }) {
   const len = Math.max(3, room.width - 4.5)
+  // Cadeiras em coordenadas de mundo (clicáveis → sentar). Encosto sempre
+  // pro lado oposto da mesa (sentado olhando pra mesa).
   const chairs = useMemo(() => {
     const perSide = Math.max(2, Math.floor(len / 1.3))
-    const out: { x: number; z: number; rot: number }[] = []
+    const out: { x: number; z: number; backRot: number }[] = []
     for (let i = 0; i < perSide; i++) {
-      const cx = -len / 2 + (i + 0.5) * (len / perSide)
-      out.push({ x: cx, z: -1.15, rot: 0 })
-      out.push({ x: cx, z: 1.15, rot: Math.PI })
+      const cx = room.x - len / 2 + (i + 0.5) * (len / perSide)
+      out.push({ x: cx, z: room.z - 1.15, backRot: Math.PI }) // lado norte: olha pro sul
+      out.push({ x: cx, z: room.z + 1.15, backRot: 0 }) // lado sul: olha pro norte
     }
     return out
-  }, [len])
+  }, [len, room.x, room.z])
 
   return (
-    <group position={[room.x, 0, room.z]}>
-      <mesh position={[0, 0.76, 0]} castShadow>
-        <boxGeometry args={[len, 0.07, 1.7]} />
-        <meshStandardMaterial color="#6e4f35" roughness={0.45} />
-      </mesh>
-      <mesh position={[-len / 2 + 0.5, 0.38, 0]}>
-        <boxGeometry args={[0.12, 0.76, 1.3]} />
-        <meshStandardMaterial color="#4f3a28" />
-      </mesh>
-      <mesh position={[len / 2 - 0.5, 0.38, 0]}>
-        <boxGeometry args={[0.12, 0.76, 1.3]} />
-        <meshStandardMaterial color="#4f3a28" />
-      </mesh>
+    <group>
+      <group position={[room.x, 0, room.z]}>
+        <mesh position={[0, 0.76, 0]} castShadow>
+          <boxGeometry args={[len, 0.07, 1.7]} />
+          <meshStandardMaterial color="#6e4f35" roughness={0.45} />
+        </mesh>
+        <mesh position={[-len / 2 + 0.5, 0.38, 0]}>
+          <boxGeometry args={[0.12, 0.76, 1.3]} />
+          <meshStandardMaterial color="#4f3a28" />
+        </mesh>
+        <mesh position={[len / 2 - 0.5, 0.38, 0]}>
+          <boxGeometry args={[0.12, 0.76, 1.3]} />
+          <meshStandardMaterial color="#4f3a28" />
+        </mesh>
+        {/* TV na parede do fundo */}
+        <mesh position={[0, 1.7, -room.depth / 2 + 0.25]} castShadow>
+          <boxGeometry args={[2.2, 1.15, 0.08]} />
+          <meshStandardMaterial color="#0d0f13" roughness={0.3} />
+        </mesh>
+      </group>
       {chairs.map((c, i) => (
-        <group key={i} position={[c.x, 0, c.z]} rotation={[0, c.rot, 0]}>
-          <mesh position={[0, 0.42, 0]} castShadow>
-            <boxGeometry args={[0.42, 0.07, 0.42]} />
-            <meshStandardMaterial color="#37404d" roughness={0.7} />
-          </mesh>
-          <mesh position={[0, 0.68, 0.19]} castShadow>
-            <boxGeometry args={[0.42, 0.5, 0.06]} />
-            <meshStandardMaterial color="#37404d" roughness={0.7} />
-          </mesh>
-        </group>
+        <OfficeChair key={i} x={c.x} z={c.z} rotation={c.backRot} color="#37404d" />
       ))}
-      {/* TV na parede do fundo */}
-      <mesh position={[0, 1.7, -room.depth / 2 + 0.25]} castShadow>
-        <boxGeometry args={[2.2, 1.15, 0.08]} />
-        <meshStandardMaterial color="#0d0f13" roughness={0.3} />
-      </mesh>
     </group>
   )
 }
@@ -308,7 +354,9 @@ function hashRoom(id: string): number {
   return h
 }
 
-/** Salas individuais: mesa de trabalho + decoração variada por sala. */
+/** Salas individuais: mesa de trabalho + decoração variada por sala.
+ * Layout executivo: dono senta ATRÁS da mesa olhando pra porta, com duas
+ * cadeiras de visita na frente. Todas as cadeiras são clicáveis (sentar). */
 function PersonalFurniture({ room }: { room: OfficeRoom }) {
   // door é sempre N nas pessoais: fundo = z + depth/2
   const backZ = room.z + room.depth / 2
@@ -316,7 +364,12 @@ function PersonalFurniture({ room }: { room: OfficeRoom }) {
   const variant = hashRoom(room.id) % 4
   return (
     <group>
-      <Desk x={room.x} z={deskZ} rotation={Math.PI} />
+      <Desk x={room.x} z={deskZ} rotation={0} chair={false} />
+      {/* Cadeira do dono: atrás da mesa, de frente pra porta */}
+      <OfficeChair x={room.x} z={deskZ + 0.7} rotation={0} />
+      {/* Cadeiras de visita: na frente da mesa, de frente pro dono */}
+      <OfficeChair x={room.x - 0.55} z={deskZ - 1.4} rotation={Math.PI} color="#6b4f34" />
+      <OfficeChair x={room.x + 0.55} z={deskZ - 1.4} rotation={Math.PI} color="#6b4f34" />
       <WallArt x={room.x + (variant % 2 === 0 ? 1.6 : -1.6)} z={backZ - 0.25} color={room.color} />
       {variant === 0 && (
         <>

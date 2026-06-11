@@ -49,7 +49,7 @@ export default function RemotePlayer({ player }: { player: RemotePlayerState }) 
 
   return (
     <group ref={groupRef}>
-      <HumanBody avatar={player.avatar} isWalking={isWalking} />
+      <HumanBody avatar={player.avatar} isWalking={isWalking && !player.sitting} isSitting={player.sitting} />
 
       <Billboard position={[0, 2.25, 0]} follow={true}>
         <Text

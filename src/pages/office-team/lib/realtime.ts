@@ -40,6 +40,7 @@ interface PresencePayload {
   x: number
   z: number
   rot: number
+  sit: boolean
 }
 
 export class TeamRealtime {
@@ -67,6 +68,7 @@ export class TeamRealtime {
       x: me.spawn?.[0] ?? 0,
       z: me.spawn?.[1] ?? 0.5,
       rot: me.spawn?.[2] ?? 0,
+      sit: false,
     }
   }
 
@@ -108,14 +110,15 @@ export class TeamRealtime {
             position: existing?.position ?? [meta.x ?? 0, 0, meta.z ?? 0.5],
             rotation: existing?.rotation ?? meta.rot ?? 0,
             moving: existing?.moving ?? false,
+            sitting: existing?.sitting ?? meta.sit ?? false,
           }
         }
         useTeamStore.getState().setRemotePlayers(next)
       })
       .on('broadcast', { event: 'pos' }, ({ payload }) => {
-        const p = payload as { id: string; x: number; z: number; rot: number; moving: boolean }
+        const p = payload as { id: string; x: number; z: number; rot: number; moving: boolean; sit?: boolean }
         if (!p || p.id === this.me.id) return
-        useTeamStore.getState().setRemotePlayerPos(p.id, [p.x, 0, p.z], p.rot, p.moving)
+        useTeamStore.getState().setRemotePlayerPos(p.id, [p.x, 0, p.z], p.rot, p.moving, p.sit ?? false)
       })
       .on('broadcast', { event: 'chat' }, ({ payload }) => {
         const m = payload as TeamMessage
@@ -207,10 +210,10 @@ export class TeamRealtime {
   }
 
   /** Publica posição do jogador local (throttled, só quando muda). */
-  sendPosition(x: number, z: number, rot: number, moving: boolean) {
+  sendPosition(x: number, z: number, rot: number, moving: boolean, sitting = false) {
     if (!this.channel) return
     const now = performance.now()
-    const payload = `${x.toFixed(2)}|${z.toFixed(2)}|${rot.toFixed(2)}|${moving}`
+    const payload = `${x.toFixed(2)}|${z.toFixed(2)}|${rot.toFixed(2)}|${moving}|${sitting}`
     if (payload === this.lastPosPayload) return
     if (now - this.lastPosSent < POS_INTERVAL_MS && moving) return
     this.lastPosSent = now
@@ -224,6 +227,7 @@ export class TeamRealtime {
         z: Number(z.toFixed(2)),
         rot: Number(rot.toFixed(2)),
         moving,
+        sit: sitting,
       },
     })
     // Parou de andar → grava a posição no presence (pra quem entrar depois)
@@ -234,6 +238,7 @@ export class TeamRealtime {
         x: Number(x.toFixed(2)),
         z: Number(z.toFixed(2)),
         rot: Number(rot.toFixed(2)),
+        sit: sitting,
       }
       void this.channel.track(this.presenceState)
       this.schedulePositionSave()

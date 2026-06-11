@@ -40,6 +40,7 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
   const rooms = useTeamStore((s) => s.rooms)
   const remotePlayers = useTeamStore((s) => s.remotePlayers)
   const myRoomId = useTeamStore((s) => s.myRoomId)
+  const seated = useTeamStore((s) => s.seated)
   const setMyRoomId = useTeamStore((s) => s.setMyRoomId)
   const setPlayerPosition = useTeamStore((s) => s.setPlayerPosition)
   const setPlayerRotation = useTeamStore((s) => s.setPlayerRotation)
@@ -199,9 +200,12 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       if (keys.current.right) dx += 1
     }
 
-    // Input manual cancela o auto-walk
+    // Input manual cancela o auto-walk e levanta da cadeira
     if (dx !== 0 || dz !== 0) {
       autoPathRef.current = null
+      const st = useTeamStore.getState()
+      if (st.seated) st.setSeated(false)
+      if (st.pendingSeat) st.setPendingSeat(null)
     } else if (autoPathRef.current) {
       // Segue os waypoints do caminho calculado
       const ap = autoPathRef.current
@@ -255,6 +259,26 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
     }
     wasMovingRef.current = isMoving
 
+    // Chegou no assento pendente → senta (vira pro lado certo e avisa todos)
+    if (!isMoving && !autoPathRef.current) {
+      const st = useTeamStore.getState()
+      const seat = st.pendingSeat
+      if (seat && !st.seated) {
+        const dSeat = Math.hypot(seat.x - pos.x, seat.z - pos.z)
+        if (dSeat < 0.4) {
+          pos.x = seat.x
+          pos.z = seat.z
+          rotationRef.current = seat.rot
+          groupRef.current.rotation.y = seat.rot
+          st.setSeated(true)
+          st.setPendingSeat(null)
+          setPlayerPosition([seat.x, 0, seat.z])
+          setPlayerRotation(seat.rot)
+          realtime.sendPosition(seat.x, seat.z, seat.rot, false, true)
+        }
+      }
+    }
+
     // Detecção da sala atual (a cada ~150ms)
     roomCheckRef.current += delta
     if (roomCheckRef.current > 0.15) {
@@ -279,7 +303,7 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
 
   return (
     <group ref={groupRef} position={START_POSITION}>
-      <HumanBody avatar={me.avatar} isWalking={isMovingRef.current} />
+      <HumanBody avatar={me.avatar} isWalking={isMovingRef.current} isSitting={seated} />
 
       <Billboard position={[0, 2.25, 0]} follow={true}>
         <Text

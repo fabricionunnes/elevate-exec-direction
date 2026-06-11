@@ -258,6 +258,12 @@ export async function setRoomLock(roomId: string, locked: boolean, userId: strin
   return !error
 }
 
+/** Assento do dono na sala pessoal: cadeira atrás da mesa, olhando pra porta. */
+export function personalOwnerSeat(room: OfficeRoom): { x: number; z: number; rot: number } {
+  const deskZ = room.z + room.depth / 2 - 1.3
+  return { x: room.x, z: deskZ + 0.7, rot: Math.PI }
+}
+
 /** Garante a sala pessoal do usuário (cria na ala privada se não existir). */
 export async function ensurePersonalRoom(
   userId: string,
