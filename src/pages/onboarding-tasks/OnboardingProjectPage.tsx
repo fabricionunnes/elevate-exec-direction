@@ -94,6 +94,7 @@ import { Ticket } from "lucide-react";
 import { HRRecruitmentPanel } from "@/components/hr-recruitment/HRRecruitmentPanel";
 import { ClientVirtualBoard } from "@/components/onboarding-tasks/ClientVirtualBoard";
 import { ClientFinancialModule } from "@/components/client-financial/ClientFinancialModule";
+import { CfinSistemaModule } from "@/components/client-financial/cfin/CfinSistemaModule";
 import { ClientAccessHistory } from "@/components/onboarding-tasks/ClientAccessHistory";
 import { ProjectHistoryPanel } from "@/components/onboarding-tasks/ProjectHistoryPanel";
 import { ProjectMenuPermissionsDialog } from "@/components/onboarding-tasks/ProjectMenuPermissionsDialog";
@@ -241,7 +242,8 @@ const OnboardingProjectPage = () => {
   const tabGroupMap: Record<string, string> = {
     indicadores: "principal", kpis: "principal", briefing: "principal", diagnostic: "principal", tasks: "principal", "ai-coach": "principal",
     nps: "relacionamento", csat: "relacionamento", assessments: "relacionamento", meetings: "relacionamento", support: "relacionamento", whatsapp: "relacionamento",
-    health: "gestao", hr: "gestao", board: "gestao", financial: temCfin ? "sistema" : "gestao", history: "gestao",
+    health: "gestao", hr: "gestao", board: "gestao", financial: "gestao", history: "gestao",
+    cfin_sistema: "sistema",
     commercial_actions: "comercial", sales_funnel: "comercial", routine_contract: "comercial", commercial_director: "comercial",
     paid_traffic: "marketing", access: "marketing", instagram: "marketing", social: "marketing",
     sf_commissions: "salesforce",
@@ -1525,11 +1527,11 @@ const OnboardingProjectPage = () => {
                   <TabsTrigger key="health" value="health"><Heart className="h-3.5 w-3.5 shrink-0" />Saúde</TabsTrigger>,
                   <TabsTrigger key="hr" value="hr"><Briefcase className="h-3.5 w-3.5 shrink-0" />RH</TabsTrigger>,
                   <TabsTrigger key="board" value="board"><Users className="h-3.5 w-3.5 shrink-0" />Board</TabsTrigger>,
-                  ...(temCfin ? [] : [<TabsTrigger key="financial" value="financial"><Wallet className="h-3.5 w-3.5 shrink-0" />Financeiro</TabsTrigger>]),
+                  <TabsTrigger key="financial" value="financial"><Wallet className="h-3.5 w-3.5 shrink-0" />Financeiro</TabsTrigger>,
                   <TabsTrigger key="history" value="history"><Clock className="h-3.5 w-3.5 shrink-0" />Histórico</TabsTrigger>,
                 ],
                 sistema: [
-                  <TabsTrigger key="financial" value="financial"><Wallet className="h-3.5 w-3.5 shrink-0" />Financeiro da Loja</TabsTrigger>,
+                  <TabsTrigger key="cfin_sistema" value="cfin_sistema"><Wallet className="h-3.5 w-3.5 shrink-0" />Sistema da Loja</TabsTrigger>,
                 ],
                 comercial: [
                   ...(currentUserRole !== "client" ? [<TabsTrigger key="commercial_actions" value="commercial_actions"><Target className="h-3.5 w-3.5 shrink-0" />Ações Comerciais</TabsTrigger>] : []),
@@ -1561,7 +1563,7 @@ const OnboardingProjectPage = () => {
                       return (
                         <button
                           key={g.id}
-                          onClick={() => { setNavGroup(g.id); if (g.id === "sistema") setActiveTab("financial"); }}
+                          onClick={() => { setNavGroup(g.id); if (g.id === "sistema") setActiveTab("cfin_sistema"); }}
                           className={`flex flex-1 flex-col items-center gap-0.5 px-1 py-1.5 rounded-lg text-[10px] font-semibold transition-all relative ${
                             isActive
                               ? "bg-background text-foreground shadow-sm"
@@ -1884,6 +1886,13 @@ const OnboardingProjectPage = () => {
               projectId={projectId!}
               companyId={project.onboarding_company_id || undefined}
               companyName={project.onboarding_company?.name}
+            />
+          </TabsContent>
+
+          <TabsContent value="cfin_sistema">
+            <CfinSistemaModule
+              projectId={projectId!}
+              userRole={currentUserRole || 'staff'}
             />
           </TabsContent>
 

@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, ChevronLeft, ChevronRight, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { fmtMoney, fmtDate, hojeISO, parseValor } from "./helpers";
@@ -23,7 +22,6 @@ interface Lanc {
 }
 interface Plano { codigo: string; nome: string; natureza: string | null; grupo_dre: string | null }
 interface Loja { codigo: string; nome: string }
-interface DreRow { grupo_dre: string | null; plano_codigo: string; plano_nome: string; natureza: string | null; total: number }
 
 const PAGE = 50;
 const formVazio = { data: hojeISO(), loja_codigo: "", plano_codigo: "", descricao: "", detalhado: "", num_cheque: "", tipo: "debito", valor: "" };
@@ -39,12 +37,6 @@ export function CfinExtratosPanel({ projectId, canEdit }: { projectId: string; c
   const [busca, setBusca] = useState("");
   const [form, setForm] = useState<(typeof formVazio & { id?: number }) | null>(null);
   const [busy, setBusy] = useState(false);
-  // DRE
-  const ano = new Date().getFullYear();
-  const [dreDe, setDreDe] = useState(`${ano}-01-01`);
-  const [dreAte, setDreAte] = useState(hojeISO());
-  const [dreLoja, setDreLoja] = useState("");
-  const [dre, setDre] = useState<DreRow[]>([]);
 
   useEffect(() => {
     supabase.from("cfin_v_saldo_contas").select("*").eq("project_id", projectId).eq("ativo", true)
@@ -73,15 +65,6 @@ export function CfinExtratosPanel({ projectId, canEdit }: { projectId: string; c
     setTotal(count ?? 0);
   }, [contaId, page, busca]);
   useEffect(() => { carregar(); }, [carregar]);
-
-  const carregarDre = useCallback(async () => {
-    const { data, error } = await supabase.rpc("cfin_dre_periodo", {
-      p_project: projectId, p_inicio: dreDe, p_fim: dreAte, p_loja: dreLoja || null,
-    });
-    if (error) { toast.error("Erro ao calcular DRE"); return; }
-    setDre((data as DreRow[]) ?? []);
-  }, [projectId, dreDe, dreAte, dreLoja]);
-  useEffect(() => { carregarDre(); }, [carregarDre]);
 
   const salvar = async () => {
     if (!form || contaId == null) return;
@@ -120,21 +103,9 @@ export function CfinExtratosPanel({ projectId, canEdit }: { projectId: string; c
   };
 
   const conta = contas.find(c => c.id === contaId);
-  const grupos = new Map<string, DreRow[]>();
-  for (const r of dre) {
-    const g = r.grupo_dre ?? "Sem grupo DRE";
-    if (!grupos.has(g)) grupos.set(g, []);
-    grupos.get(g)!.push(r);
-  }
 
   return (
-    <Tabs defaultValue="extrato" className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="extrato">Extrato</TabsTrigger>
-        <TabsTrigger value="dre">DRE</TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="extrato" className="space-y-4">
+    <div className="space-y-4">
         <div className="flex flex-wrap items-end gap-2">
           <div className="space-y-1">
             <Label className="text-xs">Conta bancária</Label>
@@ -230,46 +201,6 @@ export function CfinExtratosPanel({ projectId, canEdit }: { projectId: string; c
           <Button variant="outline" size="icon" className="h-7 w-7" disabled={page === 0} onClick={() => setPage(p => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
           <Button variant="outline" size="icon" className="h-7 w-7" disabled={(page + 1) * PAGE >= total} onClick={() => setPage(p => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
         </div>
-      </TabsContent>
-
-      <TabsContent value="dre" className="space-y-4">
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="space-y-1"><Label className="text-xs">De</Label><Input type="date" value={dreDe} onChange={e => setDreDe(e.target.value)} /></div>
-          <div className="space-y-1"><Label className="text-xs">Até</Label><Input type="date" value={dreAte} onChange={e => setDreAte(e.target.value)} /></div>
-          <div className="space-y-1">
-            <Label className="text-xs">Loja</Label>
-            <Select value={dreLoja || "todas"} onValueChange={v => setDreLoja(v === "todas" ? "" : v)}>
-              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Todas</SelectItem>
-                {lojas.map(l => <SelectItem key={l.codigo} value={l.codigo}>{l.codigo} — {l.nome}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        {[...grupos.entries()].map(([grupo, items]) => (
-          <Card key={grupo}>
-            <CardContent className="pt-4">
-              <div className="font-semibold mb-2">{grupo} <span className="text-muted-foreground text-sm">({fmtMoney(items.reduce((s, i) => s + i.total, 0))})</span></div>
-              <Table>
-                <TableHeader>
-                  <TableRow><TableHead>Código</TableHead><TableHead>Conta</TableHead><TableHead className="text-right">Total</TableHead></TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map(i => (
-                    <TableRow key={i.plano_codigo}>
-                      <TableCell>{i.plano_codigo}</TableCell>
-                      <TableCell>{i.plano_nome}</TableCell>
-                      <TableCell className={`text-right ${i.natureza === "CREDITO" ? "text-emerald-600" : "text-red-600"}`}>{fmtMoney(i.total)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        ))}
-        {!dre.length && <p className="text-sm text-muted-foreground">Nenhum lançamento classificado no período.</p>}
-      </TabsContent>
 
       <Dialog open={!!form} onOpenChange={o => !o && setForm(null)}>
         <DialogContent className="max-w-lg">
@@ -318,6 +249,6 @@ export function CfinExtratosPanel({ projectId, canEdit }: { projectId: string; c
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Tabs>
+    </div>
   );
 }

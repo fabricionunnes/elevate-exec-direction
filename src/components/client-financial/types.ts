@@ -134,12 +134,7 @@ export type FinancialViewType =
   | 'cashflow' 
   | 'reports' 
   | 'products'
-  | 'settings'
-  | 'cfin_extratos'
-  | 'cfin_folha'
-  | 'cfin_emprestimos'
-  | 'cfin_cadastros'
-  | 'cfin_backup';
+  | 'settings';
 
 export interface FinancialProduct {
   id: string;
