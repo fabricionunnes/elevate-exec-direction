@@ -16,11 +16,13 @@ import {
   Users,
   HandCoins,
   Download,
+  ListPlus,
 } from "lucide-react";
 import { CfinExtratosPanel } from "./cfin/CfinExtratosPanel";
 import { CfinFolhaPanel } from "./cfin/CfinFolhaPanel";
 import { CfinEmprestimosPanel } from "./cfin/CfinEmprestimosPanel";
 import { CfinBackupPanel } from "./cfin/CfinBackupPanel";
+import { CfinCadastrosPanel } from "./cfin/CfinCadastrosPanel";
 import { useClientFinancialPermissions } from "./useClientFinancialPermissions";
 import { ClientFinancialDashboard } from "./ClientFinancialDashboard";
 import { ClientReceivablesPanel } from "./ClientReceivablesPanel";
@@ -54,6 +56,7 @@ export function ClientFinancialModule({ projectId, userRole }: Props) {
     { id: "cfin_extratos" as FinancialViewType, label: "Extratos", icon: Landmark },
     { id: "cfin_folha" as FinancialViewType, label: "Folha de Pagamento", icon: Users },
     { id: "cfin_emprestimos" as FinancialViewType, label: "Empréstimos", icon: HandCoins },
+    { id: "cfin_cadastros" as FinancialViewType, label: "Cadastros", icon: ListPlus },
     { id: "cfin_backup" as FinancialViewType, label: "Backup", icon: Download },
   ] : [];
 
@@ -142,6 +145,9 @@ export function ClientFinancialModule({ projectId, userRole }: Props) {
             </TabsContent>
             <TabsContent value="cfin_emprestimos" className="mt-0">
               <CfinEmprestimosPanel projectId={projectId} canEdit={canEdit} />
+            </TabsContent>
+            <TabsContent value="cfin_cadastros" className="mt-0">
+              <CfinCadastrosPanel projectId={projectId} canEdit={canEdit} />
             </TabsContent>
             <TabsContent value="cfin_backup" className="mt-0">
               <CfinBackupPanel projectId={projectId} />

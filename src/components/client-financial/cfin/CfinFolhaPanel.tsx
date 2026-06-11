@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Printer, Trash2, ArrowLeft } from "lucide-react";
+import { Plus, Printer, Trash2, ArrowLeft, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { fmtMoney, fmtDate, MESES, parseValor } from "./helpers";
 
@@ -35,7 +35,8 @@ export function CfinFolhaPanel({ projectId, canEdit }: { projectId: string; canE
   const [novaFolha, setNovaFolha] = useState(false);
   const [novoFunc, setNovoFunc] = useState("");
   const [novoTipo, setNovoTipo] = useState("mensal");
-  const [novoItem, setNovoItem] = useState<{ verba: string; ref: string; tipo: string; valor: string } | null>(null);
+  const [novoItem, setNovoItem] = useState<{ id?: number; verba: string; ref: string; tipo: string; valor: string } | null>(null);
+  const [editFolha, setEditFolha] = useState<{ loja_codigo: string; funcao: string; empresa: string; dt_inicio: string; dt_fim: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -93,14 +94,33 @@ export function CfinFolhaPanel({ projectId, canEdit }: { projectId: string; canE
     if (!novoItem || !aberta) return;
     setBusy(true);
     const v = parseValor(novoItem.valor);
-    const { error } = await supabase.from("cfin_folha_itens").insert({
-      folha_id: aberta.id, ordem: itens.length + 1, verba: novoItem.verba, ref: novoItem.ref || null,
+    const row = {
+      verba: novoItem.verba, ref: novoItem.ref || null,
       credito: novoItem.tipo === "credito" ? v : null,
       debito: novoItem.tipo === "debito" ? v : null,
-    });
+    };
+    const { error } = novoItem.id
+      ? await supabase.from("cfin_folha_itens").update(row).eq("id", novoItem.id)
+      : await supabase.from("cfin_folha_itens").insert({ ...row, folha_id: aberta.id, ordem: itens.length + 1 });
     setBusy(false);
-    if (error) { toast.error("Erro ao adicionar verba"); return; }
+    if (error) { toast.error("Erro ao salvar verba"); return; }
     setNovoItem(null); abrirFolha(aberta); carregar();
+  };
+
+  const salvarFolha = async () => {
+    if (!editFolha || !aberta) return;
+    setBusy(true);
+    const row = {
+      loja_codigo: editFolha.loja_codigo || null, funcao: editFolha.funcao || null,
+      empresa: editFolha.empresa || null,
+      dt_inicio: editFolha.dt_inicio || null, dt_fim: editFolha.dt_fim || null,
+    };
+    const { error } = await supabase.from("cfin_folhas").update(row).eq("id", aberta.id);
+    setBusy(false);
+    if (error) { toast.error("Erro ao salvar folha"); return; }
+    toast.success("Folha atualizada");
+    setAberta({ ...aberta, ...row });
+    setEditFolha(null); carregar();
   };
 
   const delItem = async (id: number) => {
@@ -168,6 +188,10 @@ ${itens.map(i => `<tr><td>${i.verba}</td><td>${i.ref ?? ""}</td><td class="n">${
           </h3>
           <div className="flex-1" />
           <Button variant="outline" size="sm" onClick={imprimir}><Printer className="h-4 w-4 mr-1" /> Imprimir holerite</Button>
+          {canEdit && <Button variant="outline" size="sm" onClick={() => setEditFolha({
+            loja_codigo: aberta.loja_codigo ?? "", funcao: aberta.funcao ?? "", empresa: aberta.empresa ?? "",
+            dt_inicio: aberta.dt_inicio ?? "", dt_fim: aberta.dt_fim ?? "",
+          })}><Pencil className="h-4 w-4 mr-1" /> Editar dados</Button>}
           {canEdit && <Button size="sm" onClick={() => setNovoItem({ verba: "", ref: "", tipo: "credito", valor: "" })}><Plus className="h-4 w-4 mr-1" /> Verba</Button>}
           {canEdit && <Button variant="destructive" size="sm" onClick={excluirFolha}><Trash2 className="h-4 w-4 mr-1" /> Excluir</Button>}
         </div>
@@ -184,7 +208,18 @@ ${itens.map(i => `<tr><td>${i.verba}</td><td>${i.ref ?? ""}</td><td class="n">${
                   <TableCell className="text-xs text-muted-foreground">{i.ref ?? ""}</TableCell>
                   <TableCell className="text-right text-emerald-600">{i.credito != null ? fmtMoney(i.credito) : ""}</TableCell>
                   <TableCell className="text-right text-red-600">{i.debito != null ? fmtMoney(i.debito) : ""}</TableCell>
-                  <TableCell>{canEdit && <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => delItem(i.id)}><Trash2 className="h-3.5 w-3.5" /></Button>}</TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {canEdit && (
+                      <>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setNovoItem({
+                          id: i.id, verba: i.verba, ref: i.ref ?? "",
+                          tipo: i.debito != null ? "debito" : "credito",
+                          valor: String(i.debito ?? i.credito ?? ""),
+                        })}><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => delItem(i.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      </>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
               <TableRow className="font-semibold">
@@ -196,9 +231,28 @@ ${itens.map(i => `<tr><td>${i.verba}</td><td>${i.ref ?? ""}</td><td class="n">${
           </Table>
         </div>
 
+        <Dialog open={!!editFolha} onOpenChange={o => !o && setEditFolha(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>Editar dados da folha</DialogTitle></DialogHeader>
+            {editFolha && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1 col-span-2"><Label>Empresa (impresso no holerite)</Label><Input value={editFolha.empresa} onChange={e => setEditFolha({ ...editFolha, empresa: e.target.value })} /></div>
+                <div className="space-y-1"><Label>Loja</Label><Input value={editFolha.loja_codigo} onChange={e => setEditFolha({ ...editFolha, loja_codigo: e.target.value })} /></div>
+                <div className="space-y-1"><Label>Função</Label><Input value={editFolha.funcao} onChange={e => setEditFolha({ ...editFolha, funcao: e.target.value })} /></div>
+                <div className="space-y-1"><Label>Período início</Label><Input type="date" value={editFolha.dt_inicio} onChange={e => setEditFolha({ ...editFolha, dt_inicio: e.target.value })} /></div>
+                <div className="space-y-1"><Label>Período fim</Label><Input type="date" value={editFolha.dt_fim} onChange={e => setEditFolha({ ...editFolha, dt_fim: e.target.value })} /></div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditFolha(null)}>Cancelar</Button>
+              <Button disabled={busy} onClick={salvarFolha}>Salvar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={!!novoItem} onOpenChange={o => !o && setNovoItem(null)}>
           <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle>Adicionar verba</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{novoItem?.id ? "Editar verba" : "Adicionar verba"}</DialogTitle></DialogHeader>
             {novoItem && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1 col-span-2">
@@ -222,7 +276,7 @@ ${itens.map(i => `<tr><td>${i.verba}</td><td>${i.ref ?? ""}</td><td class="n">${
             )}
             <DialogFooter>
               <Button variant="outline" onClick={() => setNovoItem(null)}>Cancelar</Button>
-              <Button disabled={busy || !novoItem?.verba || !novoItem?.valor} onClick={addItem}>Adicionar</Button>
+              <Button disabled={busy || !novoItem?.verba || !novoItem?.valor} onClick={addItem}>{novoItem?.id ? "Salvar" : "Adicionar"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

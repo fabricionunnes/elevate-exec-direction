@@ -138,6 +138,7 @@ export type FinancialViewType =
   | 'cfin_extratos'
   | 'cfin_folha'
   | 'cfin_emprestimos'
+  | 'cfin_cadastros'
   | 'cfin_backup';
 
 export interface FinancialProduct {
