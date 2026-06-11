@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   LayoutDashboard,
@@ -11,7 +12,15 @@ import {
   Lock,
   Building2,
   Package,
+  Landmark,
+  Users,
+  HandCoins,
+  Download,
 } from "lucide-react";
+import { CfinExtratosPanel } from "./cfin/CfinExtratosPanel";
+import { CfinFolhaPanel } from "./cfin/CfinFolhaPanel";
+import { CfinEmprestimosPanel } from "./cfin/CfinEmprestimosPanel";
+import { CfinBackupPanel } from "./cfin/CfinBackupPanel";
 import { useClientFinancialPermissions } from "./useClientFinancialPermissions";
 import { ClientFinancialDashboard } from "./ClientFinancialDashboard";
 import { ClientReceivablesPanel } from "./ClientReceivablesPanel";
@@ -32,6 +41,21 @@ interface Props {
 export function ClientFinancialModule({ projectId, userRole }: Props) {
   const [activeTab, setActiveTab] = useState<FinancialViewType>("dashboard");
   const { canEdit, isReadOnly } = useClientFinancialPermissions(userRole);
+  // projetos com dados migrados de planilha (cfin_*) ganham abas extras
+  const [temCfin, setTemCfin] = useState(false);
+
+  useEffect(() => {
+    supabase.from("cfin_contas_bancarias").select("id", { count: "exact", head: true })
+      .eq("project_id", projectId)
+      .then(({ count }) => setTemCfin((count ?? 0) > 0));
+  }, [projectId]);
+
+  const cfinTabs = temCfin ? [
+    { id: "cfin_extratos" as FinancialViewType, label: "Extratos", icon: Landmark },
+    { id: "cfin_folha" as FinancialViewType, label: "Folha de Pagamento", icon: Users },
+    { id: "cfin_emprestimos" as FinancialViewType, label: "Empréstimos", icon: HandCoins },
+    { id: "cfin_backup" as FinancialViewType, label: "Backup", icon: Download },
+  ] : [];
 
   const tabs = [
     { id: "dashboard" as FinancialViewType, label: "Visão Geral", icon: LayoutDashboard },
@@ -42,6 +66,7 @@ export function ClientFinancialModule({ projectId, userRole }: Props) {
     { id: "cashflow" as FinancialViewType, label: "Fluxo de Caixa", icon: TrendingUp },
     { id: "products" as FinancialViewType, label: "Produtos", icon: Package },
     { id: "reports" as FinancialViewType, label: "Relatórios", icon: FileText },
+    ...cfinTabs,
     { id: "settings" as FinancialViewType, label: "Configurações", icon: Settings },
   ];
 
@@ -106,6 +131,23 @@ export function ClientFinancialModule({ projectId, userRole }: Props) {
         <TabsContent value="reports" className="mt-0">
           <ClientFinancialReportsPanel projectId={projectId} />
         </TabsContent>
+
+        {temCfin && (
+          <>
+            <TabsContent value="cfin_extratos" className="mt-0">
+              <CfinExtratosPanel projectId={projectId} canEdit={canEdit} />
+            </TabsContent>
+            <TabsContent value="cfin_folha" className="mt-0">
+              <CfinFolhaPanel projectId={projectId} canEdit={canEdit} />
+            </TabsContent>
+            <TabsContent value="cfin_emprestimos" className="mt-0">
+              <CfinEmprestimosPanel projectId={projectId} canEdit={canEdit} />
+            </TabsContent>
+            <TabsContent value="cfin_backup" className="mt-0">
+              <CfinBackupPanel projectId={projectId} />
+            </TabsContent>
+          </>
+        )}
 
         <TabsContent value="settings" className="mt-0">
           <ClientFinancialSettingsPanel projectId={projectId} canEdit={canEdit} />
