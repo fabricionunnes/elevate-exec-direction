@@ -102,6 +102,8 @@ export async function fetchRooms(): Promise<OfficeRoom[]> {
 
 /** Paredes de uma sala, com vão de porta no lado indicado (ou fechado se trancada). */
 export function roomWalls(room: OfficeRoom, doorOpen: boolean): Wall[] {
+  // Lounge é área aberta: sem paredes, sem porta, sem colisão
+  if (room.roomType === 'lounge') return []
   const hw = room.width / 2
   const hd = room.depth / 2
   const ht = WALL_T / 2
@@ -157,6 +159,7 @@ export function roomAt(x: number, z: number, rooms: OfficeRoom[]): OfficeRoom | 
  * (evita sala trancada "órfã" quando a pessoa cai/sai).
  */
 export function isEffectivelyLocked(room: OfficeRoom, onlineUserIds: Set<string>): boolean {
+  if (room.roomType === 'lounge') return false // área aberta não tranca
   return room.isLocked && !!room.lockedBy && onlineUserIds.has(room.lockedBy)
 }
 

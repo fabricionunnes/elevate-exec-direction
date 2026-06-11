@@ -121,37 +121,82 @@ function MeetingTable({ room }: { room: OfficeRoom }) {
   )
 }
 
-function LoungeFurniture({ room }: { room: OfficeRoom }) {
+function BistroTable({ x, z }: { x: number; z: number }) {
   return (
-    <group position={[room.x, 0, room.z]}>
-      {/* Sofás em L */}
-      <mesh position={[-1.6, 0.3, -1]} castShadow>
-        <boxGeometry args={[2.6, 0.6, 1]} />
-        <meshStandardMaterial color="#7a5c3e" roughness={0.85} />
+    <group position={[x, 0, z]}>
+      {/* Mesa alta */}
+      <mesh position={[0, 1.02, 0]} castShadow>
+        <cylinderGeometry args={[0.45, 0.45, 0.05, 14]} />
+        <meshStandardMaterial color="#e8e2d6" roughness={0.4} />
       </mesh>
-      <mesh position={[-1.6, 0.75, -1.45]} castShadow>
-        <boxGeometry args={[2.6, 0.55, 0.25]} />
-        <meshStandardMaterial color="#6b4f34" roughness={0.85} />
+      <mesh position={[0, 0.5, 0]}>
+        <cylinderGeometry args={[0.05, 0.08, 1, 8]} />
+        <meshStandardMaterial color="#3a3d44" metalness={0.5} roughness={0.4} />
       </mesh>
-      <mesh position={[0.6, 0.3, 0.6]} rotation={[0, Math.PI / 2, 0]} castShadow>
-        <boxGeometry args={[2.4, 0.6, 1]} />
-        <meshStandardMaterial color="#7a5c3e" roughness={0.85} />
-      </mesh>
-      {/* Mesa de centro */}
-      <mesh position={[-1.2, 0.32, 0.6]} castShadow>
-        <cylinderGeometry args={[0.55, 0.55, 0.08, 16]} />
-        <meshStandardMaterial color="#d9d2c5" roughness={0.4} />
-      </mesh>
-      {/* Balcão de café */}
-      <mesh position={[room.width / 2 - 1, 0.55, -room.depth / 2 + 1]} castShadow>
-        <boxGeometry args={[1.8, 1.1, 0.7]} />
-        <meshStandardMaterial color="#3e4450" roughness={0.5} />
-      </mesh>
-      <mesh position={[room.width / 2 - 1.3, 1.32, -room.depth / 2 + 1]} castShadow>
-        <boxGeometry args={[0.35, 0.45, 0.35]} />
-        <meshStandardMaterial color="#15171c" roughness={0.4} />
-      </mesh>
-      <Plant x={room.width / 2 - 0.8} z={room.depth / 2 - 0.9} />
+      {/* Banquetas */}
+      {[0, Math.PI].map((a) => (
+        <group key={a} position={[Math.sin(a) * 0.75, 0, Math.cos(a) * 0.75]}>
+          <mesh position={[0, 0.62, 0]} castShadow>
+            <cylinderGeometry args={[0.18, 0.18, 0.06, 10]} />
+            <meshStandardMaterial color="#6b4f34" roughness={0.7} />
+          </mesh>
+          <mesh position={[0, 0.3, 0]}>
+            <cylinderGeometry args={[0.04, 0.06, 0.6, 8]} />
+            <meshStandardMaterial color="#3a3d44" metalness={0.5} roughness={0.4} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  )
+}
+
+/** Lounge aberto — praça de convivência com vários núcleos de conversa. */
+function LoungeFurniture({ room }: { room: OfficeRoom }) {
+  const left = room.x - room.width / 2
+  const right = room.x + room.width / 2
+  const backZ = room.z - room.depth / 2
+
+  return (
+    <group>
+      {/* Balcão de café (fundo, lado leste) */}
+      <group position={[right - 2.4, 0, backZ + 1.1]}>
+        <mesh position={[0, 0.55, 0]} castShadow>
+          <boxGeometry args={[3, 1.1, 0.8]} />
+          <meshStandardMaterial color="#3e4450" roughness={0.5} />
+        </mesh>
+        <mesh position={[-0.9, 1.32, 0]} castShadow>
+          <boxGeometry args={[0.35, 0.45, 0.35]} />
+          <meshStandardMaterial color="#15171c" roughness={0.4} />
+        </mesh>
+        <mesh position={[0.5, 1.16, 0]}>
+          <boxGeometry args={[0.6, 0.1, 0.45]} />
+          <meshStandardMaterial color="#d9d2c5" roughness={0.4} />
+        </mesh>
+      </group>
+
+      {/* Núcleo oeste: sofás em L + mesa de centro */}
+      <Rug x={left + 3.2} z={room.z - 0.2} color="#8B6F47" />
+      <Sofa x={left + 3.2} z={room.z - 1.7} rotation={0} color="#7a5c3e" />
+      <Sofa x={left + 1.6} z={room.z - 0.2} rotation={Math.PI / 2} color="#7a5c3e" />
+      <CoffeeTable x={left + 3.4} z={room.z - 0.3} />
+      <Armchair x={left + 4.9} z={room.z - 0.3} rotation={-Math.PI / 2} color="#8a6248" />
+
+      {/* Núcleo central: sofás frente a frente */}
+      <Rug x={room.x - 0.5} z={room.z + 1.4} color="#5a6b7d" />
+      <Sofa x={room.x - 0.5} z={room.z + 2.5} rotation={Math.PI} color="#5a6b7d" />
+      <Sofa x={room.x - 0.5} z={room.z + 0.3} rotation={0} color="#5a6b7d" />
+      <CoffeeTable x={room.x - 0.5} z={room.z + 1.4} />
+
+      {/* Mesas bistrô (leste) */}
+      <BistroTable x={right - 3} z={room.z + 0.6} />
+      <BistroTable x={right - 5.4} z={room.z + 2.2} />
+      <BistroTable x={right - 1.8} z={room.z + 2.8} />
+
+      {/* Verde espalhado */}
+      <Plant x={left + 0.8} z={backZ + 0.9} />
+      <Plant x={left + 0.8} z={room.z + room.depth / 2 - 0.9} />
+      <Plant x={room.x + 1.5} z={backZ + 0.8} />
+      <Plant x={right - 0.8} z={room.z + room.depth / 2 - 0.9} />
     </group>
   )
 }
@@ -329,10 +374,15 @@ function Room({ room, locked }: { room: OfficeRoom; locked: boolean }) {
 
   return (
     <group>
-      {/* Carpete da sala */}
+      {/* Carpete da sala (mais forte no lounge aberto, que não tem paredes) */}
       <mesh position={[room.x, 0.006, room.z]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[room.width - 0.2, room.depth - 0.2]} />
-        <meshStandardMaterial color={room.color} transparent opacity={0.16} roughness={1} />
+        <meshStandardMaterial
+          color={room.color}
+          transparent
+          opacity={room.roomType === 'lounge' ? 0.28 : 0.16}
+          roughness={1}
+        />
       </mesh>
 
       {/* Paredes: sólida embaixo + vidro em cima */}

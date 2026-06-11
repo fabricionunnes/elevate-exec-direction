@@ -84,7 +84,7 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       const meId = state.me?.id
       if (!meId || !state.myRoomId) return
       const room = state.rooms.find((r) => r.id === state.myRoomId)
-      if (!room) return
+      if (!room || room.roomType === 'lounge') return
       const onlineIds = new Set([meId, ...Object.keys(state.remotePlayers)])
       const locked = isEffectivelyLocked(room, onlineIds)
       if (locked && room.lockedBy !== meId) return // trancada por outra pessoa

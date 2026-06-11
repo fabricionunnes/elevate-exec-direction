@@ -119,7 +119,7 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
         <div style={{ fontSize: '13px', fontWeight: 700, marginTop: '3px', color: currentRoom ? '#fff' : 'rgba(255,255,255,0.5)' }}>
           {currentRoom ? `${currentLocked ? '🔒 ' : ''}${currentRoom.name}` : 'Corredor'}
         </div>
-        {currentRoom && (
+        {currentRoom && currentRoom.roomType !== 'lounge' && (
           <button
             onClick={toggleLock}
             disabled={busy || (currentLocked && !canUnlock)}

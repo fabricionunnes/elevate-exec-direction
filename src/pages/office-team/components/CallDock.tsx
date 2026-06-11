@@ -15,10 +15,13 @@ function spatialVolume(
   peer: RemotePlayerState,
   rooms: OfficeRoom[]
 ): number {
+  // Lounge é área aberta: conta como corredor (voz por proximidade)
+  const myRoom = myRoomId ? rooms.find((r) => r.id === myRoomId) ?? null : null
+  const myEffId = myRoom && myRoom.roomType !== 'lounge' ? myRoom.id : null
   const peerRoom = roomAt(peer.position[0], peer.position[2], rooms)
-  const peerRoomId = peerRoom?.id ?? null
-  if (myRoomId || peerRoomId) {
-    return myRoomId === peerRoomId ? 1 : 0
+  const peerRoomId = peerRoom && peerRoom.roomType !== 'lounge' ? peerRoom.id : null
+  if (myEffId || peerRoomId) {
+    return myEffId === peerRoomId ? 1 : 0
   }
   const dx = peer.position[0] - myPos[0]
   const dz = peer.position[2] - myPos[2]
