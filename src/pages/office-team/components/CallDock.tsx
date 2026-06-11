@@ -384,7 +384,8 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
     if (!result) return
     st.addToast('Gravação salva — processando transcrição...', 'in')
     const saved = await saveRecording(
-      result.blob,
+      result.videoBlob,
+      result.audioBlob,
       result.durationS,
       myRoomId ? rooms.find((r) => r.id === myRoomId)?.name ?? null : null,
       me
@@ -404,7 +405,32 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
       return
     }
     if (recording.on) return // outra pessoa já está gravando
-    rec.start(call.localStream, call.remoteStreams)
+    // Participantes pro vídeo composto (sempre o estado atual)
+    const getParticipants = () => {
+      const st = useTeamStore.getState()
+      const meNow = st.me
+      const list = [
+        {
+          id: 'me',
+          name: meNow?.name ?? 'Você',
+          stream: st.call.localStream,
+          camOn: st.call.camOn,
+          color: meNow?.color ?? '#1A4A8A',
+        },
+      ]
+      for (const p of Object.values(st.remotePlayers)) {
+        if (!p.inCall) continue
+        list.push({
+          id: p.id,
+          name: p.name,
+          stream: st.call.remoteStreams[p.id] ?? null,
+          camOn: p.camOn,
+          color: p.color,
+        })
+      }
+      return list
+    }
+    rec.start(call.localStream, call.remoteStreams, getParticipants)
     useTeamStore.getState().setRecording({ on: true, byId: me.id, byName: me.name })
     realtime.sendRecording(true)
   }

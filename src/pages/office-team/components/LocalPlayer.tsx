@@ -7,7 +7,7 @@ import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import { useKeyboard } from '../../office/hooks/useKeyboard'
 import HumanBody from './HumanBody'
-import { BUILDING, buildCollisionWalls, checkWallCollision, roomAt, setRoomLock, isEffectivelyLocked } from '../lib/rooms'
+import { BUILDING, buildCollisionWalls, checkWallCollision, roomAt, setRoomLock, isEffectivelyLocked, personalOwnerSeat } from '../lib/rooms'
 import { findPath } from '../lib/pathfinding'
 import { useTeamStore } from '../store/useTeamStore'
 import type { TeamRealtime } from '../lib/realtime'
@@ -71,7 +71,12 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       const myRoom = state.rooms.find(
         (r) => r.roomType === 'personal' && r.ownerUserId === state.me?.id
       )
-      if (myRoom) state.setPendingWalkTo({ x: myRoom.x, z: myRoom.z, teleportFallback: true })
+      if (myRoom) {
+        // Vai até a sala E senta na própria cadeira
+        const seat = personalOwnerSeat(myRoom)
+        state.setPendingWalkTo({ x: seat.x, z: seat.z, teleportFallback: true })
+        state.setPendingSeat(seat)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

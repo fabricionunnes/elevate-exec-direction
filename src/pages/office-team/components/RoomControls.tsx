@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useStaffPermissions } from '@/hooks/useStaffPermissions'
 import { useTeamStore } from '../store/useTeamStore'
-import { createRoom, setRoomLock, isEffectivelyLocked, RoomType } from '../lib/rooms'
+import { createRoom, setRoomLock, isEffectivelyLocked, personalOwnerSeat, RoomType } from '../lib/rooms'
 import RecordingsPanel from './RecordingsPanel'
 import type { TeamRealtime } from '../lib/realtime'
 
@@ -68,9 +68,14 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
     setBusy(false)
   }
 
+  const setPendingSeat = useTeamStore((s) => s.setPendingSeat)
+
   const goToMyRoom = () => {
     if (myPersonalRoom) {
-      setPendingWalkTo({ x: myPersonalRoom.x, z: myPersonalRoom.z, teleportFallback: true })
+      // Vai até a sala E senta na própria cadeira
+      const seat = personalOwnerSeat(myPersonalRoom)
+      setPendingWalkTo({ x: seat.x, z: seat.z, teleportFallback: true })
+      setPendingSeat(seat)
     }
   }
 
