@@ -8,6 +8,14 @@ export interface Message {
   timestamp: number
 }
 
+export interface MeetingMessage {
+  id: string
+  agent: string
+  content: string
+  kind: 'inicio' | 'fala' | 'fim'
+  timestamp: number
+}
+
 export interface AgentRuntimeState {
   id: string
   state: AgentState
@@ -23,6 +31,8 @@ interface ChatState {
   activeAgentId: string | null
   messages: Record<string, Message[]>
   isLoading: boolean
+  // Agentes cujo histórico salvo já foi carregado do banco nesta sessão
+  historyLoaded: Record<string, boolean>
 }
 
 interface GameState {
@@ -33,6 +43,8 @@ interface GameState {
   chat: ChatState
   meetingTriggered: boolean
   meetingStartTime: number | null
+  meetingMessages: MeetingMessage[]
+  meetingPanelVisible: boolean
 
   // Actions
   setPlayerPosition: (pos: [number, number, number]) => void
@@ -42,9 +54,13 @@ interface GameState {
   openChat: (agentId: string) => void
   closeChat: () => void
   addMessage: (agentId: string, message: Message) => void
+  setSavedHistory: (agentId: string, messages: Message[]) => void
   setLoading: (loading: boolean) => void
   triggerMeeting: () => void
   endMeeting: () => void
+  addMeetingMessage: (msg: MeetingMessage) => void
+  setMeetingMessages: (msgs: MeetingMessage[]) => void
+  setMeetingPanelVisible: (visible: boolean) => void
   initAgentStates: (states: AgentRuntimeState[]) => void
 }
 
@@ -55,11 +71,14 @@ export const useGameStore = create<GameState>((set) => ({
   nearbyAgentId: null,
   meetingTriggered: false,
   meetingStartTime: null,
+  meetingMessages: [],
+  meetingPanelVisible: false,
   chat: {
     isOpen: false,
     activeAgentId: null,
     messages: {},
     isLoading: false,
+    historyLoaded: {},
   },
 
   setPlayerPosition: (pos) => set({ playerPosition: pos }),
@@ -103,14 +122,38 @@ export const useGameStore = create<GameState>((set) => ({
       },
     })),
 
+  // Coloca o histórico vindo do banco ANTES das mensagens da sessão atual
+  setSavedHistory: (agentId, messages) =>
+    set((prev) => ({
+      chat: {
+        ...prev.chat,
+        historyLoaded: { ...prev.chat.historyLoaded, [agentId]: true },
+        messages: {
+          ...prev.chat.messages,
+          [agentId]: [...messages, ...(prev.chat.messages[agentId] || [])],
+        },
+      },
+    })),
+
   setLoading: (loading) =>
     set((prev) => ({ chat: { ...prev.chat, isLoading: loading } })),
 
   triggerMeeting: () =>
-    set({ meetingTriggered: true, meetingStartTime: Date.now() }),
+    set({ meetingTriggered: true, meetingStartTime: Date.now(), meetingPanelVisible: true }),
 
   endMeeting: () =>
     set({ meetingTriggered: false, meetingStartTime: null }),
+
+  addMeetingMessage: (msg) =>
+    set((prev) =>
+      prev.meetingMessages.some((m) => m.id === msg.id)
+        ? prev
+        : { meetingMessages: [...prev.meetingMessages, msg] }
+    ),
+
+  setMeetingMessages: (msgs) => set({ meetingMessages: msgs }),
+
+  setMeetingPanelVisible: (visible) => set({ meetingPanelVisible: visible }),
 
   initAgentStates: (states) =>
     set({

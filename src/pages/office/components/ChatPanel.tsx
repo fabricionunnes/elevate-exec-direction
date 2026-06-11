@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useGameStore, Message } from '../store/useGameStore'
 import { AGENTS } from '../config/agents'
-import { AGENT_API_URL, getAgentAuthToken } from '../lib/supabase'
+import { AGENT_API_URL, getAgentAuthToken, supabase } from '../lib/supabase'
 
 function hexToRgb(hex: string) {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
@@ -13,7 +13,7 @@ function hexToRgb(hex: string) {
 }
 
 export default function ChatPanel() {
-  const { chat, closeChat, addMessage, setLoading } = useGameStore()
+  const { chat, closeChat, addMessage, setSavedHistory, setLoading } = useGameStore()
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null!)
   const inputRef = useRef<HTMLInputElement>(null!)
@@ -26,6 +26,32 @@ export default function ChatPanel() {
       setTimeout(() => inputRef.current?.focus(), 100)
     }
   }, [chat.isOpen])
+
+  // Ao abrir a conversa, carrega o histórico salvo no banco (uma vez por agente)
+  useEffect(() => {
+    if (!chat.isOpen || !agent || chat.historyLoaded[agent.id]) return
+    let cancelled = false
+    ;(async () => {
+      const { data, error } = await supabase
+        .from('office_agent_chats')
+        .select('role, content, created_at')
+        .eq('agent', agent.apiType)
+        .order('created_at', { ascending: true })
+        .limit(200)
+      if (cancelled) return
+      const saved: Message[] = (error || !data ? [] : data).map((m, i) => ({
+        id: `saved-${i}-${new Date(m.created_at).getTime()}`,
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+        timestamp: new Date(m.created_at).getTime(),
+      }))
+      // Marca como carregado mesmo vazio, pra não rebuscar a cada abertura
+      setSavedHistory(agent.id, saved)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [chat.isOpen, agent?.id])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -67,7 +93,6 @@ export default function ChatPanel() {
         body: JSON.stringify({
           message: sentInput,
           agent: agent.apiType,
-          history: messages.slice(-12).map((m) => ({ role: m.role, content: m.content })),
         }),
       })
 

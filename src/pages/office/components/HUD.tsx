@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useGameStore } from '../store/useGameStore'
 import { AGENTS } from '../config/agents'
 import { OFFICE_BOUNDS } from '../config/office'
@@ -275,6 +276,7 @@ function MeetingBanner() {
 }
 
 function Title() {
+  const navigate = useNavigate()
   return (
     <div
       style={{
@@ -294,7 +296,7 @@ function Title() {
       <img
         src="/unv-logo.png"
         alt="UNV"
-        style={{ height: '36px', width: 'auto', objectFit: 'contain' }}
+        style={{ height: '36px', width: 'auto', objectFit: 'contain', background: '#fff', borderRadius: '8px', padding: '3px' }}
       />
       <div>
         <div style={{ fontSize: '13px', fontWeight: '800', color: '#fff', letterSpacing: '0.5px' }}>
@@ -304,6 +306,30 @@ function Title() {
           Virtual HQ
         </div>
       </div>
+      <button
+        onClick={() => navigate('/onboarding-tasks')}
+        title="Voltar ao UNV Nexus"
+        style={{
+          marginLeft: '8px',
+          background: 'rgba(255,255,255,0.08)',
+          border: '1px solid rgba(255,255,255,0.18)',
+          color: 'rgba(255,255,255,0.85)',
+          borderRadius: '8px',
+          padding: '6px 10px',
+          fontSize: '11px',
+          fontWeight: 600,
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+        }}
+        onMouseEnter={(e) => {
+          ;(e.target as HTMLButtonElement).style.background = 'rgba(255,255,255,0.18)'
+        }}
+        onMouseLeave={(e) => {
+          ;(e.target as HTMLButtonElement).style.background = 'rgba(255,255,255,0.08)'
+        }}
+      >
+        ← Voltar ao Nexus
+      </button>
     </div>
   )
 }

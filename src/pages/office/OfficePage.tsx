@@ -10,6 +10,7 @@ import Player from './components/Player'
 import AgentCharacter from './components/AgentCharacter'
 import OfficeLayout from './components/OfficeLayout'
 import ChatPanel from './components/ChatPanel'
+import MeetingPanel from './components/MeetingPanel'
 import HUD from './components/HUD'
 import { AGENTS } from './config/agents'
 import { useGameStore } from './store/useGameStore'
@@ -55,19 +56,77 @@ function SceneLights() {
 }
 
 function SupabaseRealtimeHandler() {
-  const { triggerMeeting, endMeeting } = useGameStore()
+  const { triggerMeeting, endMeeting, addMeetingMessage, setMeetingMessages, setMeetingPanelVisible } = useGameStore()
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Reinicia o timer de segurança: encerra a reunião se nada chegar em 5 min
+  const armFallbackTimer = () => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => endMeeting(), 5 * 60 * 1000)
+  }
+
   useEffect(() => {
-    const channel = supabase
+    // Reunião em andamento? Carrega as falas dos últimos 15 minutos
+    ;(async () => {
+      const since = new Date(Date.now() - 15 * 60 * 1000).toISOString()
+      const { data } = await supabase
+        .from('office_meeting_messages')
+        .select('id, agent, content, kind, created_at')
+        .gte('created_at', since)
+        .order('created_at', { ascending: true })
+        .limit(100)
+      if (data && data.length > 0) {
+        setMeetingMessages(
+          data.map((m: any) => ({
+            id: m.id,
+            agent: m.agent,
+            content: m.content,
+            kind: m.kind,
+            timestamp: new Date(m.created_at).getTime(),
+          }))
+        )
+        setMeetingPanelVisible(true)
+        const last = data[data.length - 1]
+        if (last.kind !== 'fim') {
+          triggerMeeting()
+          armFallbackTimer()
+        }
+      }
+    })()
+
+    // Falas da reunião em tempo real → agentes vão pra sala + papo no painel
+    const meetingChannel = supabase
+      .channel('office_meeting_realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'office_meeting_messages' },
+        (payload: any) => {
+          const row = payload.new
+          addMeetingMessage({
+            id: row.id,
+            agent: row.agent,
+            content: row.content,
+            kind: row.kind,
+            timestamp: new Date(row.created_at).getTime(),
+          })
+          if (row.kind === 'fim') {
+            // Max encerrou — agentes voltam pros postos depois de lerem a ata
+            if (timerRef.current) clearTimeout(timerRef.current)
+            timerRef.current = setTimeout(() => endMeeting(), 10 * 1000)
+          } else {
+            triggerMeeting()
+            armFallbackTimer()
+          }
+        }
+      )
+      .subscribe()
+
+    // Compatibilidade: briefing disparado pelo fluxo Telegram (tabela antiga)
+    const legacyChannel = supabase
       .channel('agent_messages_realtime')
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'agent_messages',
-        },
+        { event: 'INSERT', schema: 'public', table: 'agent_messages' },
         (payload: any) => {
           const row = payload.new
           if (
@@ -77,20 +136,18 @@ function SupabaseRealtimeHandler() {
             row.content.includes('BRIEFING')
           ) {
             triggerMeeting()
-            if (timerRef.current) clearTimeout(timerRef.current)
-            timerRef.current = setTimeout(() => {
-              endMeeting()
-            }, 5 * 60 * 1000) // 5 minutes
+            armFallbackTimer()
           }
         }
       )
       .subscribe()
 
     return () => {
-      supabase.removeChannel(channel)
+      supabase.removeChannel(meetingChannel)
+      supabase.removeChannel(legacyChannel)
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [triggerMeeting, endMeeting])
+  }, [])
 
   return null
 }
@@ -213,6 +270,7 @@ function OfficeApp() {
 
       {/* HTML Overlays */}
       <ChatPanel />
+      <MeetingPanel />
       <HUD />
     </div>
   )
