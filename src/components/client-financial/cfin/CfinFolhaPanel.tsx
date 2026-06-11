@@ -38,11 +38,16 @@ export function CfinFolhaPanel({ projectId, canEdit }: { projectId: string; canE
   const [novoItem, setNovoItem] = useState<{ verba: string; ref: string; tipo: string; valor: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
   useEffect(() => {
     supabase.from("cfin_funcionarios").select("*").eq("project_id", projectId).order("nome")
       .then(({ data }) => setFuncs((data as Func[]) ?? []));
     supabase.from("cfin_verbas").select("nome").eq("project_id", projectId).eq("ativo", true).order("nome")
       .then(({ data }) => setVerbas((data ?? []).map((v: { nome: string }) => v.nome)));
+    supabase.from("cfin_empresas").select("logo_url").eq("project_id", projectId)
+      .not("logo_url", "is", null).limit(1)
+      .then(({ data }) => setLogoUrl(data?.[0]?.logo_url ?? null));
   }, [projectId]);
 
   const carregar = useCallback(async () => {
@@ -119,14 +124,20 @@ export function CfinFolhaPanel({ projectId, canEdit }: { projectId: string; canE
     const deb = itens.reduce((s, i) => s + (i.debito ?? 0), 0);
     const fm = (v: number | null) => v != null ? v.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "";
     const periodo = aberta.tipo === "decimo" ? `13º SALARIO ${aberta.ano}` : `${fmtDate(aberta.dt_inicio)} a ${fmtDate(aberta.dt_fim)}`;
+    const logoImg = logoUrl
+      ? `<div class="logo"><img src="${window.location.origin}${logoUrl}" alt="Logomarca" /></div>`
+      : "";
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Holerite</title>
 <style>body{font-family:'Courier New',monospace;font-size:13px;max-width:620px;margin:20px auto;padding:0 16px}
+.logo{text-align:center;margin-bottom:10px}
+.logo img{max-height:72px;max-width:200px}
 .t{text-align:center;font-weight:700;border-bottom:1px dashed #888;padding-bottom:6px;margin-bottom:8px}
 .r{display:flex;justify-content:space-between;padding:2px 0}
 table{width:100%;border-collapse:collapse;margin:8px 0}
 th{text-align:left;border-bottom:1px dashed #888;font-size:12px;padding:3px 4px}
 td{padding:3px 4px}.n{text-align:right}.tot{border-top:1px dashed #888;font-weight:700}
 .ass{margin-top:30px;border-top:1px solid #333;padding-top:4px;text-align:center;font-size:12px}</style></head><body>
+${logoImg}
 <div class="t">COMPROVANTE DE PAGAMENTO DE SALARIO</div>
 <div class="r"><span>EMPRESA: ${aberta.empresa ?? "LOJA MIX BRASIL"}</span><span>LOJA: ${aberta.loja_codigo ?? "—"}</span></div>
 <div class="r"><span>FUNCIONARIO: ${nomeFmt}</span></div>
@@ -137,7 +148,7 @@ ${itens.map(i => `<tr><td>${i.verba}</td><td>${i.ref ?? ""}</td><td class="n">${
 <tr class="tot"><td>Total a Receber</td><td></td><td class="n" colspan="2">${fmtMoney(cred - deb)}</td></tr>
 </tbody></table>
 <div class="ass">______/______/______&nbsp;&nbsp;&nbsp;Assinatura do funcionário</div>
-<script>window.print()</script></body></html>`;
+<script>window.onload = function(){ window.print() }</script></body></html>`;
     const w = window.open("", "_blank", "width=700,height=800");
     if (w) { w.document.write(html); w.document.close(); }
   };
