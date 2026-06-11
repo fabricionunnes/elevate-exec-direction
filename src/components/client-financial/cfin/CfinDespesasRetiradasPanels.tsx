@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { CfinImportDialog } from "./CfinImportDialog";
 import { toast } from "sonner";
 import { fmtMoney, fmtDate, hojeISO, parseValor } from "./helpers";
 
@@ -34,11 +35,12 @@ interface Despesa {
 }
 const despesaVazia = { data: hojeISO(), loja_codigo: "", plano_codigo: "", conta_ref: "", descricao: "", detalhado: "", valor: "" };
 
-export function CfinDespesasFixasPanel({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
+export function CfinDespesasFixasPanel({ projectId, canEdit, canDelete = canEdit }: { projectId: string; canEdit: boolean; canDelete?: boolean }) {
   const { lojas, planos } = useLojasPlanos(projectId);
   const [rows, setRows] = useState<Despesa[]>([]);
   const [form, setForm] = useState<(typeof despesaVazia & { id?: number }) | null>(null);
   const [busy, setBusy] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const carregar = useCallback(async () => {
     const { data } = await supabase.from("cfin_despesas_fixas").select("*")
@@ -84,8 +86,11 @@ export function CfinDespesasFixasPanel({ projectId, canEdit }: { projectId: stri
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted-foreground">Total listado: <b className="text-foreground">{fmtMoney(total)}</b></span>
         <div className="flex-1" />
+        {canEdit && <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}><Sparkles className="h-4 w-4 mr-1" /> Importar (PDF/foto)</Button>}
         {canEdit && <Button size="sm" onClick={() => setForm({ ...despesaVazia })}><Plus className="h-4 w-4 mr-1" /> Nova despesa</Button>}
       </div>
+      <CfinImportDialog open={importOpen} onOpenChange={setImportOpen} tipo="despesas"
+        projectId={projectId} lojas={lojas} onDone={carregar} />
       <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
@@ -116,7 +121,7 @@ export function CfinDespesasFixasPanel({ projectId, canEdit }: { projectId: stri
                         id: d.id, data: d.data ?? "", loja_codigo: d.loja_codigo ?? "", plano_codigo: d.plano_codigo ?? "",
                         conta_ref: d.conta_ref ?? "", descricao: d.descricao, detalhado: d.detalhado ?? "", valor: String(d.valor),
                       })}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => excluir(d.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      {canDelete && <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => excluir(d.id)}><Trash2 className="h-3.5 w-3.5" /></Button>}
                     </>
                   )}
                 </TableCell>
@@ -130,7 +135,7 @@ export function CfinDespesasFixasPanel({ projectId, canEdit }: { projectId: stri
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>{form?.id ? "Editar despesa" : "Nova despesa fixa"}</DialogTitle></DialogHeader>
           {form && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1"><Label>Data</Label><Input type="date" value={form.data} onChange={e => setForm({ ...form, data: e.target.value })} /></div>
               <div className="space-y-1">
                 <Label>Loja</Label>
@@ -142,7 +147,7 @@ export function CfinDespesasFixasPanel({ projectId, canEdit }: { projectId: stri
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1 col-span-2">
+              <div className="space-y-1 sm:col-span-2">
                 <Label>Plano de contas</Label>
                 <Select value={form.plano_codigo || "none"} onValueChange={v => setForm({ ...form, plano_codigo: v === "none" ? "" : v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -152,10 +157,10 @@ export function CfinDespesasFixasPanel({ projectId, canEdit }: { projectId: stri
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1 col-span-2"><Label>Descrição</Label><Input value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} /></div>
+              <div className="space-y-1 sm:col-span-2"><Label>Descrição</Label><Input value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} /></div>
               <div className="space-y-1"><Label>Conta (ref.)</Label><Input value={form.conta_ref} onChange={e => setForm({ ...form, conta_ref: e.target.value })} placeholder="BRAD-27470" /></div>
               <div className="space-y-1"><Label>Valor (R$)</Label><Input value={form.valor} onChange={e => setForm({ ...form, valor: e.target.value })} placeholder="0,00" /></div>
-              <div className="space-y-1 col-span-2"><Label>Detalhado</Label><Input value={form.detalhado} onChange={e => setForm({ ...form, detalhado: e.target.value })} /></div>
+              <div className="space-y-1 sm:col-span-2"><Label>Detalhado</Label><Input value={form.detalhado} onChange={e => setForm({ ...form, detalhado: e.target.value })} /></div>
             </div>
           )}
           <DialogFooter>
@@ -176,7 +181,7 @@ interface Retirada {
 const retiradaVazia = { data: hojeISO(), loja_codigo: "", descricao: "RETIRADA EM DINHEIRO", valor: "" };
 const PAGE = 50;
 
-export function CfinRetiradasPanel({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
+export function CfinRetiradasPanel({ projectId, canEdit, canDelete = canEdit }: { projectId: string; canEdit: boolean; canDelete?: boolean }) {
   const { lojas } = useLojasPlanos(projectId);
   const [rows, setRows] = useState<Retirada[]>([]);
   const [total, setTotal] = useState(0);
@@ -185,6 +190,7 @@ export function CfinRetiradasPanel({ projectId, canEdit }: { projectId: string; 
   const [ate, setAte] = useState("");
   const [form, setForm] = useState<(typeof retiradaVazia & { id?: number }) | null>(null);
   const [busy, setBusy] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const carregar = useCallback(async () => {
     let q = supabase.from("cfin_retiradas").select("*", { count: "exact" })
@@ -226,8 +232,11 @@ export function CfinRetiradasPanel({ projectId, canEdit }: { projectId: string; 
         <div className="space-y-1"><Label className="text-xs">De</Label><Input type="date" value={de} onChange={e => { setDe(e.target.value); setPage(0); }} /></div>
         <div className="space-y-1"><Label className="text-xs">Até</Label><Input type="date" value={ate} onChange={e => { setAte(e.target.value); setPage(0); }} /></div>
         <div className="flex-1" />
+        {canEdit && <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}><Sparkles className="h-4 w-4 mr-1" /> Importar (PDF/foto)</Button>}
         {canEdit && <Button size="sm" onClick={() => setForm({ ...retiradaVazia })}><Plus className="h-4 w-4 mr-1" /> Nova retirada</Button>}
       </div>
+      <CfinImportDialog open={importOpen} onOpenChange={setImportOpen} tipo="retiradas"
+        projectId={projectId} lojas={lojas} onDone={carregar} />
       <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
@@ -247,7 +256,7 @@ export function CfinRetiradasPanel({ projectId, canEdit }: { projectId: string; 
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setForm({
                         id: r.id, data: r.data ?? "", loja_codigo: r.loja_codigo ?? "", descricao: r.descricao, valor: String(r.valor),
                       })}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => excluir(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      {canDelete && <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => excluir(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>}
                     </>
                   )}
                 </TableCell>
@@ -266,7 +275,7 @@ export function CfinRetiradasPanel({ projectId, canEdit }: { projectId: string; 
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{form?.id ? "Editar retirada" : "Nova retirada"}</DialogTitle></DialogHeader>
           {form && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1"><Label>Data</Label><Input type="date" value={form.data} onChange={e => setForm({ ...form, data: e.target.value })} /></div>
               <div className="space-y-1">
                 <Label>Loja</Label>
@@ -278,7 +287,7 @@ export function CfinRetiradasPanel({ projectId, canEdit }: { projectId: string; 
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1 col-span-2"><Label>Descrição</Label><Input value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} /></div>
+              <div className="space-y-1 sm:col-span-2"><Label>Descrição</Label><Input value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} /></div>
               <div className="space-y-1"><Label>Valor (R$)</Label><Input value={form.valor} onChange={e => setForm({ ...form, valor: e.target.value })} placeholder="0,00" /></div>
             </div>
           )}

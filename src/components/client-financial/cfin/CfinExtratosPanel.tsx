@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, ChevronLeft, ChevronRight, Trash2, Pencil } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Trash2, Pencil, Sparkles } from "lucide-react";
+import { CfinImportDialog } from "./CfinImportDialog";
 import { toast } from "sonner";
 import { fmtMoney, fmtDate, hojeISO, parseValor } from "./helpers";
 
@@ -26,7 +27,7 @@ interface Loja { codigo: string; nome: string }
 const PAGE = 50;
 const formVazio = { data: hojeISO(), loja_codigo: "", plano_codigo: "", descricao: "", detalhado: "", num_cheque: "", tipo: "debito", valor: "" };
 
-export function CfinExtratosPanel({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
+export function CfinExtratosPanel({ projectId, canEdit, canDelete = canEdit }: { projectId: string; canEdit: boolean; canDelete?: boolean }) {
   const [contas, setContas] = useState<Conta[]>([]);
   const [contaId, setContaId] = useState<number | null>(null);
   const [lancs, setLancs] = useState<Lanc[]>([]);
@@ -37,6 +38,7 @@ export function CfinExtratosPanel({ projectId, canEdit }: { projectId: string; c
   const [busca, setBusca] = useState("");
   const [form, setForm] = useState<(typeof formVazio & { id?: number }) | null>(null);
   const [busy, setBusy] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     supabase.from("cfin_v_saldo_contas").select("*").eq("project_id", projectId).eq("ativo", true)
@@ -106,11 +108,13 @@ export function CfinExtratosPanel({ projectId, canEdit }: { projectId: string; c
 
   return (
     <div className="space-y-4">
+        <CfinImportDialog open={importOpen} onOpenChange={setImportOpen} tipo="extrato"
+          projectId={projectId} contas={contas} contaIdInicial={contaId} onDone={carregar} />
         <div className="flex flex-wrap items-end gap-2">
           <div className="space-y-1">
             <Label className="text-xs">Conta bancária</Label>
             <Select value={contaId != null ? String(contaId) : undefined} onValueChange={v => { setContaId(Number(v)); setPage(0); }}>
-              <SelectTrigger className="w-[300px]"><SelectValue placeholder="Selecione a conta" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[300px]"><SelectValue placeholder="Selecione a conta" /></SelectTrigger>
               <SelectContent>
                 {contas.map(c => (
                   <SelectItem key={c.id} value={String(c.id)}>
@@ -122,13 +126,18 @@ export function CfinExtratosPanel({ projectId, canEdit }: { projectId: string; c
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Buscar</Label>
-            <Input className="w-[220px]" placeholder="Descrição…" value={busca} onChange={e => { setBusca(e.target.value); setPage(0); }} />
+            <Input className="w-full sm:w-[220px]" placeholder="Descrição…" value={busca} onChange={e => { setBusca(e.target.value); setPage(0); }} />
           </div>
           <div className="flex-1" />
           {canEdit && (
-            <Button size="sm" onClick={() => setForm({ ...formVazio })}>
-              <Plus className="h-4 w-4 mr-1" /> Novo lançamento
-            </Button>
+            <>
+              <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
+                <Sparkles className="h-4 w-4 mr-1" /> Importar (PDF/foto)
+              </Button>
+              <Button size="sm" onClick={() => setForm({ ...formVazio })}>
+                <Plus className="h-4 w-4 mr-1" /> Novo lançamento
+              </Button>
+            </>
           )}
         </div>
 
@@ -184,9 +193,9 @@ export function CfinExtratosPanel({ projectId, canEdit }: { projectId: string; c
                           tipo: l.credito != null ? "credito" : "debito",
                           valor: String(l.credito ?? l.debito ?? l.valor_real ?? ""),
                         })}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => excluir(l.id)}>
+                        {canDelete && <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => excluir(l.id)}>
                           <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        </Button>}
                       </>
                     )}
                   </TableCell>
@@ -206,7 +215,7 @@ export function CfinExtratosPanel({ projectId, canEdit }: { projectId: string; c
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>{form?.id ? "Editar lançamento" : "Novo lançamento"} — {conta?.codigo}</DialogTitle></DialogHeader>
           {form && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1"><Label>Data</Label><Input type="date" value={form.data} onChange={e => setForm({ ...form, data: e.target.value })} /></div>
               <div className="space-y-1">
                 <Label>Loja</Label>
@@ -218,7 +227,7 @@ export function CfinExtratosPanel({ projectId, canEdit }: { projectId: string; c
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1 col-span-2">
+              <div className="space-y-1 sm:col-span-2">
                 <Label>Plano de contas</Label>
                 <Select value={form.plano_codigo || "none"} onValueChange={v => setForm({ ...form, plano_codigo: v === "none" ? "" : v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -228,8 +237,8 @@ export function CfinExtratosPanel({ projectId, canEdit }: { projectId: string; c
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1 col-span-2"><Label>Descrição</Label><Input value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} /></div>
-              <div className="space-y-1 col-span-2"><Label>Detalhado</Label><Input value={form.detalhado} onChange={e => setForm({ ...form, detalhado: e.target.value })} /></div>
+              <div className="space-y-1 sm:col-span-2"><Label>Descrição</Label><Input value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} /></div>
+              <div className="space-y-1 sm:col-span-2"><Label>Detalhado</Label><Input value={form.detalhado} onChange={e => setForm({ ...form, detalhado: e.target.value })} /></div>
               <div className="space-y-1">
                 <Label>Tipo</Label>
                 <Select value={form.tipo} onValueChange={v => setForm({ ...form, tipo: v })}>

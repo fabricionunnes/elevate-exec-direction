@@ -23,7 +23,7 @@ interface FolhaRow {
 interface Item { id: number; ordem: number | null; verba: string; ref: string | null; credito: number | null; debito: number | null }
 interface Totais { folha_id: number; liquido: number }
 
-export function CfinFolhaPanel({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
+export function CfinFolhaPanel({ projectId, canEdit, canDelete = canEdit }: { projectId: string; canEdit: boolean; canDelete?: boolean }) {
   const now = new Date();
   const [ano, setAno] = useState(now.getFullYear());
   const [mes, setMes] = useState(now.getMonth() + 1);
@@ -194,7 +194,7 @@ ${itens.map(i => `<tr><td>${i.verba}</td><td>${i.ref ?? ""}</td><td class="n">${
             dt_inicio: aberta.dt_inicio ?? "", dt_fim: aberta.dt_fim ?? "",
           })}><Pencil className="h-4 w-4 mr-1" /> Editar dados</Button>}
           {canEdit && <Button size="sm" onClick={() => setNovoItem({ verba: "", ref: "", tipo: "credito", valor: "" })}><Plus className="h-4 w-4 mr-1" /> Verba</Button>}
-          {canEdit && <Button variant="destructive" size="sm" onClick={excluirFolha}><Trash2 className="h-4 w-4 mr-1" /> Excluir</Button>}
+          {canDelete && <Button variant="destructive" size="sm" onClick={excluirFolha}><Trash2 className="h-4 w-4 mr-1" /> Excluir</Button>}
         </div>
 
         <div className="rounded-md border">
@@ -217,7 +217,7 @@ ${itens.map(i => `<tr><td>${i.verba}</td><td>${i.ref ?? ""}</td><td class="n">${
                           tipo: i.debito != null ? "debito" : "credito",
                           valor: String(i.debito ?? i.credito ?? ""),
                         })}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => delItem(i.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                        {canDelete && <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => delItem(i.id)}><Trash2 className="h-3.5 w-3.5" /></Button>}
                       </>
                     )}
                   </TableCell>
@@ -236,8 +236,8 @@ ${itens.map(i => `<tr><td>${i.verba}</td><td>${i.ref ?? ""}</td><td class="n">${
           <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle>Editar dados da folha</DialogTitle></DialogHeader>
             {editFolha && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1 col-span-2"><Label>Empresa (impresso no holerite)</Label><Input value={editFolha.empresa} onChange={e => setEditFolha({ ...editFolha, empresa: e.target.value })} /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1 sm:col-span-2"><Label>Empresa (impresso no holerite)</Label><Input value={editFolha.empresa} onChange={e => setEditFolha({ ...editFolha, empresa: e.target.value })} /></div>
                 <div className="space-y-1"><Label>Loja</Label><Input value={editFolha.loja_codigo} onChange={e => setEditFolha({ ...editFolha, loja_codigo: e.target.value })} /></div>
                 <div className="space-y-1"><Label>Função</Label><Input value={editFolha.funcao} onChange={e => setEditFolha({ ...editFolha, funcao: e.target.value })} /></div>
                 <div className="space-y-1"><Label>Período início</Label><Input type="date" value={editFolha.dt_inicio} onChange={e => setEditFolha({ ...editFolha, dt_inicio: e.target.value })} /></div>
@@ -255,8 +255,8 @@ ${itens.map(i => `<tr><td>${i.verba}</td><td>${i.ref ?? ""}</td><td class="n">${
           <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle>{novoItem?.id ? "Editar verba" : "Adicionar verba"}</DialogTitle></DialogHeader>
             {novoItem && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1 col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1 sm:col-span-2">
                   <Label>Verba</Label>
                   <CfinVerbaCombobox verbas={verbas} value={novoItem.verba} onChange={v => setNovoItem({ ...novoItem, verba: v })} />
                 </div>
@@ -271,7 +271,7 @@ ${itens.map(i => `<tr><td>${i.verba}</td><td>${i.ref ?? ""}</td><td class="n">${
                   </Select>
                 </div>
                 <div className="space-y-1"><Label>Valor (R$)</Label><Input value={novoItem.valor} onChange={e => setNovoItem({ ...novoItem, valor: e.target.value })} placeholder="0,00" /></div>
-                <div className="space-y-1 col-span-2"><Label>Referência</Label><Input value={novoItem.ref} onChange={e => setNovoItem({ ...novoItem, ref: e.target.value })} placeholder="opcional" /></div>
+                <div className="space-y-1 sm:col-span-2"><Label>Referência</Label><Input value={novoItem.ref} onChange={e => setNovoItem({ ...novoItem, ref: e.target.value })} placeholder="opcional" /></div>
               </div>
             )}
             <DialogFooter>
@@ -290,14 +290,14 @@ ${itens.map(i => `<tr><td>${i.verba}</td><td>${i.ref ?? ""}</td><td class="n">${
         <div className="space-y-1">
           <Label className="text-xs">Mês</Label>
           <Select value={String(mes)} onValueChange={v => setMes(Number(v))}>
-            <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
             <SelectContent>{MESES.map((m, i) => i > 0 ? <SelectItem key={i} value={String(i)}>{m}</SelectItem> : null)}</SelectContent>
           </Select>
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Ano</Label>
           <Select value={String(ano)} onValueChange={v => setAno(Number(v))}>
-            <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[110px]"><SelectValue /></SelectTrigger>
             <SelectContent>{Array.from({ length: now.getFullYear() - 2021 }, (_, i) => now.getFullYear() - i).map(a => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}</SelectContent>
           </Select>
         </div>

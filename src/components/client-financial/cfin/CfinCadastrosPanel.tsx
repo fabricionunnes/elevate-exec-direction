@@ -64,7 +64,7 @@ const ABAS: { key: string; label: string; campos: Campo[]; busca?: string }[] = 
   },
 ];
 
-export function CfinCadastrosPanel({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
+export function CfinCadastrosPanel({ projectId, canEdit, canDelete = canEdit }: { projectId: string; canEdit: boolean; canDelete?: boolean }) {
   const [aba, setAba] = useState(ABAS[0]);
   const [rows, setRows] = useState<Row[]>([]);
   const [busca, setBusca] = useState("");
@@ -123,7 +123,7 @@ export function CfinCadastrosPanel({ projectId, canEdit }: { projectId: string; 
       </Tabs>
 
       <div className="flex flex-wrap items-center gap-2">
-        {aba.busca && <Input className="w-[240px]" placeholder="Buscar…" value={busca} onChange={e => setBusca(e.target.value)} />}
+        {aba.busca && <Input className="w-full sm:w-[240px]" placeholder="Buscar…" value={busca} onChange={e => setBusca(e.target.value)} />}
         <span className="text-xs text-muted-foreground">{filtrados.length} registros</span>
         <div className="flex-1" />
         {canEdit && (
@@ -159,7 +159,7 @@ export function CfinCadastrosPanel({ projectId, canEdit }: { projectId: string; 
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setForm({
                         id: r.id, ...Object.fromEntries(aba.campos.map(c => [c.campo, String(r[c.campo] ?? "")])),
                       })}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => excluir(r)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      {canDelete && <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => excluir(r)}><Trash2 className="h-3.5 w-3.5" /></Button>}
                     </>
                   )}
                 </TableCell>
@@ -173,7 +173,7 @@ export function CfinCadastrosPanel({ projectId, canEdit }: { projectId: string; 
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>{form?.id ? "Editar" : "Novo"} — {aba.label}</DialogTitle></DialogHeader>
           {form && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {aba.campos.map(c => (
                 <div key={c.campo} className={`space-y-1 ${c.campo.includes("nome") || c.campo === "logo_url" ? "col-span-2" : ""}`}>
                   <Label>{c.label}</Label>

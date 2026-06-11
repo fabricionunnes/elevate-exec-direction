@@ -20,7 +20,7 @@ interface Parcela { id: number; emprestimo_id: number; competencia: string; valo
 
 const vazio = { credor: "", dia_vencimento: "", valor_original: "", taxa: "", valor_parcela: "", prazo_meses: "", saldo_devedor: "", observacao: "" };
 
-export function CfinEmprestimosPanel({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
+export function CfinEmprestimosPanel({ projectId, canEdit, canDelete = canEdit }: { projectId: string; canEdit: boolean; canDelete?: boolean }) {
   const [rows, setRows] = useState<Emp[]>([]);
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
   const [aberto, setAberto] = useState<number | null>(null);
@@ -153,7 +153,7 @@ export function CfinEmprestimosPanel({ projectId, canEdit }: { projectId: string
                             saldo_devedor: String(e.saldo_devedor ?? ""), observacao: e.observacao ?? "",
                           })}><Pencil className="h-3.5 w-3.5" /></Button>
                           <Button variant="ghost" size="sm" onClick={() => quitar(e)}>{e.ativo ? "quitar" : "reativar"}</Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => excluir(e)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                          {canDelete && <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => excluir(e)}><Trash2 className="h-3.5 w-3.5" /></Button>}
                         </>
                       )}
                     </TableCell>
@@ -181,7 +181,7 @@ export function CfinEmprestimosPanel({ projectId, canEdit }: { projectId: string
                                       {p.pago ? "pago" : "pendente"}
                                     </Badge>
                                   </TableCell>
-                                  <TableCell>{canEdit && <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500" onClick={() => delParcela(p.id)}><Trash2 className="h-3 w-3" /></Button>}</TableCell>
+                                  <TableCell>{canDelete && <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500" onClick={() => delParcela(p.id)}><Trash2 className="h-3 w-3" /></Button>}</TableCell>
                                 </TableRow>
                               ))}
                             </TableBody>
@@ -201,15 +201,15 @@ export function CfinEmprestimosPanel({ projectId, canEdit }: { projectId: string
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>{form?.id ? "Editar contrato" : "Novo contrato de empréstimo"}</DialogTitle></DialogHeader>
           {form && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1 col-span-2"><Label>Credor / contrato</Label><Input value={form.credor} onChange={e => setForm({ ...form, credor: e.target.value })} /></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1 sm:col-span-2"><Label>Credor / contrato</Label><Input value={form.credor} onChange={e => setForm({ ...form, credor: e.target.value })} /></div>
               <div className="space-y-1"><Label>Dia vencimento</Label><Input value={form.dia_vencimento} onChange={e => setForm({ ...form, dia_vencimento: e.target.value })} /></div>
               <div className="space-y-1"><Label>Taxa</Label><Input value={form.taxa} onChange={e => setForm({ ...form, taxa: e.target.value })} placeholder="ex: 1,88% a.m." /></div>
               <div className="space-y-1"><Label>Valor original (R$)</Label><Input value={form.valor_original} onChange={e => setForm({ ...form, valor_original: e.target.value })} /></div>
               <div className="space-y-1"><Label>Valor parcela (R$)</Label><Input value={form.valor_parcela} onChange={e => setForm({ ...form, valor_parcela: e.target.value })} /></div>
               <div className="space-y-1"><Label>Prazo (meses)</Label><Input value={form.prazo_meses} onChange={e => setForm({ ...form, prazo_meses: e.target.value })} /></div>
               <div className="space-y-1"><Label>Saldo devedor (R$)</Label><Input value={form.saldo_devedor} onChange={e => setForm({ ...form, saldo_devedor: e.target.value })} /></div>
-              <div className="space-y-1 col-span-2"><Label>Observação</Label><Input value={form.observacao} onChange={e => setForm({ ...form, observacao: e.target.value })} /></div>
+              <div className="space-y-1 sm:col-span-2"><Label>Observação</Label><Input value={form.observacao} onChange={e => setForm({ ...form, observacao: e.target.value })} /></div>
             </div>
           )}
           <DialogFooter>
@@ -223,7 +223,7 @@ export function CfinEmprestimosPanel({ projectId, canEdit }: { projectId: string
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Adicionar parcela</DialogTitle></DialogHeader>
           {novaParcela && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1"><Label>Competência</Label><Input type="date" value={novaParcela.competencia} onChange={e => setNovaParcela({ ...novaParcela, competencia: e.target.value })} /></div>
               <div className="space-y-1"><Label>Valor (R$)</Label><Input value={novaParcela.valor} onChange={e => setNovaParcela({ ...novaParcela, valor: e.target.value })} /></div>
             </div>

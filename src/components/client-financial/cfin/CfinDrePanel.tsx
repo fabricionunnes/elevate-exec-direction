@@ -53,7 +53,7 @@ export function CfinDrePanel({ projectId }: { projectId: string }) {
         <div className="space-y-1">
           <Label className="text-xs">Loja</Label>
           <Select value={loja || "todas"} onValueChange={v => setLoja(v === "todas" ? "" : v)}>
-            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas</SelectItem>
               {lojas.map(l => <SelectItem key={l.codigo} value={l.codigo}>{l.codigo} — {l.nome}</SelectItem>)}

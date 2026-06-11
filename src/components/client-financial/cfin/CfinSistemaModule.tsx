@@ -12,8 +12,7 @@ import {
   Download,
   Lock,
 } from "lucide-react";
-import { useClientFinancialPermissions } from "../useClientFinancialPermissions";
-import { CfinVisaoGeralPanel } from "./CfinVisaoGeralPanel";
+import { CfinDashboardPanel } from "./CfinDashboardPanel";
 import { CfinExtratosPanel } from "./CfinExtratosPanel";
 import { CfinDespesasFixasPanel, CfinRetiradasPanel } from "./CfinDespesasRetiradasPanels";
 import { CfinFolhaPanel } from "./CfinFolhaPanel";
@@ -35,10 +34,13 @@ interface Props {
  */
 export function CfinSistemaModule({ projectId, userRole }: Props) {
   const [activeTab, setActiveTab] = useState<SistemaTab>("visao");
-  const { canEdit, isReadOnly } = useClientFinancialPermissions(userRole);
+  // client = tudo; gerente = edita mas não exclui (ex: Aline); demais = leitura
+  const canEdit = userRole === "client" || userRole === "gerente";
+  const canDelete = userRole === "client";
+  const isReadOnly = !canEdit;
 
   const tabs: { id: SistemaTab; label: string; icon: typeof LayoutDashboard }[] = [
-    { id: "visao", label: "Visão Geral", icon: LayoutDashboard },
+    { id: "visao", label: "Dashboard", icon: LayoutDashboard },
     { id: "extratos", label: "Contas e Extratos", icon: Landmark },
     { id: "despesas", label: "Despesas Fixas", icon: ReceiptText },
     { id: "retiradas", label: "Retiradas", icon: Banknote },
@@ -80,28 +82,28 @@ export function CfinSistemaModule({ projectId, userRole }: Props) {
         </div>
 
         <TabsContent value="visao" className="mt-0">
-          <CfinVisaoGeralPanel projectId={projectId} />
+          <CfinDashboardPanel projectId={projectId} />
         </TabsContent>
         <TabsContent value="extratos" className="mt-0">
-          <CfinExtratosPanel projectId={projectId} canEdit={canEdit} />
+          <CfinExtratosPanel projectId={projectId} canEdit={canEdit} canDelete={canDelete} />
         </TabsContent>
         <TabsContent value="despesas" className="mt-0">
-          <CfinDespesasFixasPanel projectId={projectId} canEdit={canEdit} />
+          <CfinDespesasFixasPanel projectId={projectId} canEdit={canEdit} canDelete={canDelete} />
         </TabsContent>
         <TabsContent value="retiradas" className="mt-0">
-          <CfinRetiradasPanel projectId={projectId} canEdit={canEdit} />
+          <CfinRetiradasPanel projectId={projectId} canEdit={canEdit} canDelete={canDelete} />
         </TabsContent>
         <TabsContent value="folha" className="mt-0">
-          <CfinFolhaPanel projectId={projectId} canEdit={canEdit} />
+          <CfinFolhaPanel projectId={projectId} canEdit={canEdit} canDelete={canDelete} />
         </TabsContent>
         <TabsContent value="emprestimos" className="mt-0">
-          <CfinEmprestimosPanel projectId={projectId} canEdit={canEdit} />
+          <CfinEmprestimosPanel projectId={projectId} canEdit={canEdit} canDelete={canDelete} />
         </TabsContent>
         <TabsContent value="dre" className="mt-0">
           <CfinDrePanel projectId={projectId} />
         </TabsContent>
         <TabsContent value="cadastros" className="mt-0">
-          <CfinCadastrosPanel projectId={projectId} canEdit={canEdit} />
+          <CfinCadastrosPanel projectId={projectId} canEdit={canEdit} canDelete={canDelete} />
         </TabsContent>
         <TabsContent value="backup" className="mt-0">
           <CfinBackupPanel projectId={projectId} />
