@@ -81,6 +81,7 @@ const baseNavTabs = [
   { title: "Aplicações", href: "/crm/applications", icon: BarChart3 },
   { title: "Nota Fiscal", href: "/onboarding-tasks/nota-fiscal", icon: FileText },
   { title: "Escritório", href: "/crm/office", icon: Building2 },
+  { title: "UNV Office", href: "/onboarding-tasks/unv-office", icon: Building2 },
 ];
 
 const getNavTabs = (role: string | null) => {

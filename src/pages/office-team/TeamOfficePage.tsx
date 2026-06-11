@@ -218,7 +218,15 @@ export default function TeamOfficePage() {
   useEffect(() => {
     if (!managers) return
     managers.realtime.connect()
+    // Voz sempre ativa: conecta o microfone automaticamente ao entrar.
+    // Se a permissão for negada, o dock mostra o fallback manual.
+    const voiceTimer = setTimeout(() => {
+      managers.callManager.joinCall().catch(() => {
+        useTeamStore.getState().setVoiceBlocked(true)
+      })
+    }, 600)
     return () => {
+      clearTimeout(voiceTimer)
       managers.callManager.destroy()
       managers.realtime.disconnect()
       useTeamStore.getState().setRemotePlayers({})
@@ -267,7 +275,7 @@ export default function TeamOfficePage() {
       </Suspense>
 
       {/* Overlays */}
-      <TeamHUD />
+      <TeamHUD realtime={managers.realtime} />
       <RoomControls realtime={managers.realtime} />
       <TeamChatPanel realtime={managers.realtime} />
       <CallDock callManager={managers.callManager} />

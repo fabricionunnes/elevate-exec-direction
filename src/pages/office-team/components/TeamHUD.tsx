@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/integrations/supabase/client'
 import { useTeamStore } from '../store/useTeamStore'
+import type { TeamRealtime } from '../lib/realtime'
 
 interface TeamMember {
   user_id: string
@@ -10,7 +11,7 @@ interface TeamMember {
   title: string | null
 }
 
-export default function TeamHUD() {
+export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
   const navigate = useNavigate()
   const me = useTeamStore((s) => s.me)
   const remotePlayers = useTeamStore((s) => s.remotePlayers)
@@ -135,6 +136,23 @@ export default function TeamHUD() {
                 {p.role && <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>{p.role}</div>}
               </div>
               {p.inCall && <span style={{ fontSize: '11px' }}>{p.micOn ? '🎙️' : '🔇'}</span>}
+              <button
+                onClick={() => realtime.sendRing(p.id)}
+                title={`Tocar a campainha de ${p.name}`}
+                style={{
+                  background: 'rgba(255,215,0,0.12)',
+                  border: '1px solid rgba(255,215,0,0.35)',
+                  borderRadius: '6px',
+                  width: '24px',
+                  height: '24px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  flexShrink: 0,
+                  padding: 0,
+                }}
+              >
+                🔔
+              </button>
             </div>
           ))}
 

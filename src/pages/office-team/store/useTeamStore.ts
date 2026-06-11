@@ -84,6 +84,11 @@ interface TeamState {
   /** chat com o NPC Marcelo Almeida (agente IA na sala dele) */
   npcChatOpen: boolean
 
+  /** campainha recebida (alguém me chamando) */
+  incomingRing: { fromName: string; ts: number } | null
+  /** voz automática falhou (permissão negada) — mostra fallback manual */
+  voiceBlocked: boolean
+
   call: CallState
 
   // Actions
@@ -106,6 +111,8 @@ interface TeamState {
   addChatMessage: (msg: TeamMessage) => void
   setChatHistory: (msgs: TeamMessage[]) => void
   setNpcChatOpen: (open: boolean) => void
+  setIncomingRing: (ring: { fromName: string; ts: number } | null) => void
+  setVoiceBlocked: (blocked: boolean) => void
 
   setCall: (patch: Partial<CallState>) => void
   setRemoteStream: (id: string, stream: MediaStream | null) => void
@@ -127,6 +134,8 @@ export const useTeamStore = create<TeamState>((set) => ({
   chatMessages: [],
   unreadCount: 0,
   npcChatOpen: false,
+  incomingRing: null,
+  voiceBlocked: false,
 
   call: {
     joined: false,
@@ -208,6 +217,8 @@ export const useTeamStore = create<TeamState>((set) => ({
 
   setChatHistory: (msgs) => set({ chatMessages: msgs }),
   setNpcChatOpen: (open) => set({ npcChatOpen: open }),
+  setIncomingRing: (ring) => set({ incomingRing: ring }),
+  setVoiceBlocked: (blocked) => set({ voiceBlocked: blocked }),
 
   setCall: (patch) => set((prev) => ({ call: { ...prev.call, ...patch } })),
 

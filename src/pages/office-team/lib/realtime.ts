@@ -49,6 +49,9 @@ export class TeamRealtime {
   private lastPosPayload = ''
   private presenceState: PresencePayload
   private onRtcSignal: ((signal: RtcSignal) => void) | null = null
+  /** Keepalive num Web Worker: timers de worker NÃO sofrem throttling em aba
+   * background, então o presence continua vivo mesmo com a aba inativa. */
+  private keepaliveWorker: Worker | null = null
 
   constructor(me: TeamProfile) {
     this.me = me
@@ -127,14 +130,41 @@ export class TeamRealtime {
         if (!signal || signal.to !== this.me.id) return
         this.onRtcSignal?.(signal)
       })
+      .on('broadcast', { event: 'ring' }, ({ payload }) => {
+        const r = payload as { to: string; fromName: string }
+        if (!r || r.to !== this.me.id) return
+        useTeamStore.getState().setIncomingRing({ fromName: r.fromName, ts: Date.now() })
+      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await this.channel?.track(this.presenceState)
         }
       })
 
+    // Keepalive imune ao throttling de aba em background
+    try {
+      const blob = new Blob(["setInterval(function(){postMessage('tick')}, 20000)"], {
+        type: 'application/javascript',
+      })
+      this.keepaliveWorker = new Worker(URL.createObjectURL(blob))
+      this.keepaliveWorker.onmessage = () => {
+        void this.channel?.track(this.presenceState)
+      }
+    } catch {
+      // sem worker (ambiente restrito): segue com o heartbeat padrão
+    }
+
     void this.loadChatHistory()
     void this.refreshRooms()
+  }
+
+  /** Toca a campainha de outro usuário online. */
+  sendRing(toUserId: string) {
+    void this.channel?.send({
+      type: 'broadcast',
+      event: 'ring',
+      payload: { to: toUserId, fromName: this.me.name },
+    })
   }
 
   async refreshRooms() {
@@ -277,6 +307,10 @@ export class TeamRealtime {
   }
 
   disconnect() {
+    if (this.keepaliveWorker) {
+      this.keepaliveWorker.terminate()
+      this.keepaliveWorker = null
+    }
     // Salva a posição final antes de sair
     void this.savePositionNow()
     if (this.channel) {

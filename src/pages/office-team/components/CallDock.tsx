@@ -34,9 +34,17 @@ function spatialVolume(
 function MediaAudio({ stream, volume }: { stream: MediaStream; volume: number }) {
   const ref = useRef<HTMLAudioElement>(null!)
   useEffect(() => {
-    if (ref.current && ref.current.srcObject !== stream) {
-      ref.current.srcObject = stream
-    }
+    const el = ref.current
+    if (!el) return
+    if (el.srcObject !== stream) el.srcObject = stream
+    // Autoplay pode ser bloqueado sem interação — destrava no próximo clique
+    el.play().catch(() => {
+      const unlock = () => {
+        el.play().catch(() => undefined)
+        document.removeEventListener('click', unlock)
+      }
+      document.addEventListener('click', unlock)
+    })
   }, [stream])
   useEffect(() => {
     if (ref.current) ref.current.volume = volume
@@ -228,16 +236,66 @@ function DockButton({
   )
 }
 
+// Toca um "ding-dong" via WebAudio (sem asset; funciona em aba background)
+function playRingSound() {
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    const ctx = new Ctx()
+    void ctx.resume()
+    const ding = (freq: number, t0: number) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + t0)
+      gain.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + t0 + 0.03)
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t0 + 0.8)
+      osc.start(ctx.currentTime + t0)
+      osc.stop(ctx.currentTime + t0 + 0.85)
+    }
+    ding(880, 0)
+    ding(660, 0.45)
+    ding(880, 1.3)
+    ding(660, 1.75)
+    setTimeout(() => void ctx.close(), 3500)
+  } catch {
+    // sem áudio disponível
+  }
+}
+
 export default function CallDock({ callManager }: { callManager: CallManager }) {
   const call = useTeamStore((s) => s.call)
   const remotePlayers = useTeamStore((s) => s.remotePlayers)
   const me = useTeamStore((s) => s.me)
   const myRoomId = useTeamStore((s) => s.myRoomId)
   const rooms = useTeamStore((s) => s.rooms)
+  const incomingRing = useTeamStore((s) => s.incomingRing)
+  const setIncomingRing = useTeamStore((s) => s.setIncomingRing)
+  const voiceBlocked = useTeamStore((s) => s.voiceBlocked)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [volumes, setVolumes] = useState<Record<string, number>>({})
   const [expanded, setExpanded] = useState(false)
+
+  // Campainha recebida: som + título da aba piscando + banner por 8s
+  useEffect(() => {
+    if (!incomingRing) return
+    playRingSound()
+    const originalTitle = document.title
+    let flip = false
+    const flash = setInterval(() => {
+      flip = !flip
+      document.title = flip ? `🔔 ${incomingRing.fromName} está te chamando!` : originalTitle
+    }, 900)
+    const clear = setTimeout(() => setIncomingRing(null), 8000)
+    return () => {
+      clearInterval(flash)
+      clearTimeout(clear)
+      document.title = originalTitle
+    }
+  }, [incomingRing, setIncomingRing])
 
   // Esc fecha o modo reunião; saiu da chamada → fecha também
   useEffect(() => {
@@ -272,7 +330,6 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
     return () => clearInterval(interval)
   }, [call.joined])
 
-  const inCallCount = Object.values(remotePlayers).filter((p) => p.inCall).length + (call.joined ? 1 : 0)
   const myRoomName = myRoomId ? rooms.find((r) => r.id === myRoomId)?.name ?? null : null
 
   const run = async (fn: () => Promise<void>) => {
@@ -463,6 +520,8 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
           }}
         >
           {!call.joined ? (
+            // Voz conecta sozinha ao entrar; isso aqui é só o fallback
+            // quando a permissão do microfone foi negada/falhou
             <button
               onClick={() => run(() => callManager.joinCall())}
               disabled={busy}
@@ -470,7 +529,7 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                background: '#2e7d32',
+                background: voiceBlocked ? '#c62828' : '#2e7d32',
                 border: 'none',
                 borderRadius: '999px',
                 padding: '10px 18px',
@@ -480,19 +539,7 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
                 cursor: busy ? 'wait' : 'pointer',
               }}
             >
-              🎙️ Ativar voz
-              {inCallCount > 0 && (
-                <span
-                  style={{
-                    background: 'rgba(255,255,255,0.25)',
-                    borderRadius: '999px',
-                    padding: '1px 8px',
-                    fontSize: '11px',
-                  }}
-                >
-                  {inCallCount} com voz ativa
-                </span>
-              )}
+              {voiceBlocked ? '🎙️ Liberar microfone' : '🎙️ Conectando voz...'}
             </button>
           ) : (
             <>
@@ -534,13 +581,61 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
                   )}
                 </span>
               </DockButton>
-              <DockButton onClick={() => run(() => callManager.leaveCall())} danger title="Desativar voz">
-                ✕
-              </DockButton>
             </>
           )}
         </div>
       </div>
+
+      {/* Banner de campainha */}
+      {incomingRing && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '70px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(10,10,20,0.95)',
+            border: '1px solid rgba(255,215,0,0.5)',
+            borderRadius: '14px',
+            padding: '14px 22px',
+            color: '#fff',
+            fontSize: '14px',
+            fontWeight: 700,
+            zIndex: 120,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+            animation: 'ring-shake 0.6s ease-in-out 3',
+          }}
+        >
+          <style>{`
+            @keyframes ring-shake {
+              0%, 100% { transform: translateX(-50%) rotate(0); }
+              25% { transform: translateX(-50%) rotate(-1.5deg); }
+              75% { transform: translateX(-50%) rotate(1.5deg); }
+            }
+          `}</style>
+          <span style={{ fontSize: '22px' }}>🔔</span>
+          {incomingRing.fromName} está te chamando!
+          <button
+            onClick={() => setIncomingRing(null)}
+            style={{
+              background: 'rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: '#ccc',
+              borderRadius: '8px',
+              width: '26px',
+              height: '26px',
+              cursor: 'pointer',
+              fontSize: '13px',
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </>
   )
 }
