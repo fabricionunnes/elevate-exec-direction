@@ -64,6 +64,8 @@ interface CallState {
   joined: boolean
   micOn: boolean
   camOn: boolean
+  /** compartilhando a tela (substitui o vídeo da câmera) */
+  screenOn: boolean
   /** stream local (mic/cam) — para preview e para os peers */
   localStream: MediaStream | null
   /** streams remotos por user_id */
@@ -163,6 +165,7 @@ export const useTeamStore = create<TeamState>((set) => ({
     joined: false,
     micOn: false,
     camOn: false,
+    screenOn: false,
     localStream: null,
     remoteStreams: {},
   },

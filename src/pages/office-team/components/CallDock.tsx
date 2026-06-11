@@ -115,6 +115,9 @@ function GridTile({
   mirrored,
   color,
   micOn,
+  onClick,
+  fill,
+  fit,
 }: {
   stream: MediaStream | null
   name: string
@@ -123,6 +126,10 @@ function GridTile({
   mirrored?: boolean
   color: string
   micOn: boolean
+  onClick?: () => void
+  /** ocupa todo o espaço do container (modo destaque) */
+  fill?: boolean
+  fit?: 'cover' | 'contain'
 }) {
   const ref = useRef<HTMLVideoElement>(null!)
   useEffect(() => {
@@ -132,10 +139,12 @@ function GridTile({
   }, [stream])
   return (
     <div
+      onClick={onClick}
+      title={onClick ? 'Clique para destacar / voltar' : undefined}
       style={{
         position: 'relative',
         width: '100%',
-        aspectRatio: '16 / 10',
+        ...(fill ? { height: '100%' } : { aspectRatio: '16 / 10' }),
         borderRadius: '14px',
         overflow: 'hidden',
         background: '#101218',
@@ -143,6 +152,7 @@ function GridTile({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        cursor: onClick ? 'pointer' : 'default',
       }}
     >
       {camOn && stream ? (
@@ -154,7 +164,7 @@ function GridTile({
           style={{
             width: '100%',
             height: '100%',
-            objectFit: 'cover',
+            objectFit: fit ?? 'cover',
             transform: mirrored ? 'scaleX(-1)' : undefined,
           }}
         />
@@ -295,6 +305,12 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
   const [error, setError] = useState<string | null>(null)
   const [volumes, setVolumes] = useState<Record<string, number>>({})
   const [expanded, setExpanded] = useState(false)
+  const [focusedId, setFocusedId] = useState<string | null>(null)
+
+  // Fechou o modo reunião → limpa o destaque
+  useEffect(() => {
+    if (!expanded && focusedId) setFocusedId(null)
+  }, [expanded, focusedId])
 
   // Destrava o áudio do sino no primeiro gesto do usuário (autoplay policy)
   useEffect(() => {
@@ -443,37 +459,68 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
               Voltar ao escritório (Esc)
             </button>
           </div>
-          <div
-            style={{
-              flex: 1,
-              display: 'grid',
-              gridTemplateColumns: `repeat(auto-fit, minmax(${meetingPeers.length >= 3 ? 320 : 420}px, 1fr))`,
-              gap: '14px',
-              alignContent: 'center',
-              overflowY: 'auto',
-            }}
-          >
-            <GridTile
-              stream={call.localStream}
-              name={`${me?.name ?? 'Você'} (você)`}
-              camOn={call.camOn}
-              muted
-              mirrored
-              color={me?.color ?? '#1A4A8A'}
-              micOn={call.micOn}
-            />
-            {meetingPeers.map((p) => (
-              <GridTile
-                key={p.id}
-                stream={call.remoteStreams[p.id] ?? null}
-                name={p.name}
-                camOn={p.camOn}
-                muted
-                color={p.color}
-                micOn={p.micOn}
-              />
-            ))}
-          </div>
+          {(() => {
+            // Lista unificada de participantes (eu + audíveis)
+            const participants = [
+              {
+                id: 'me',
+                name: `${me?.name ?? 'Você'} (você)`,
+                stream: call.localStream,
+                camOn: call.camOn,
+                mirrored: !call.screenOn, // tela compartilhada não espelha
+                color: me?.color ?? '#1A4A8A',
+                micOn: call.micOn,
+              },
+              ...meetingPeers.map((p) => ({
+                id: p.id,
+                name: p.name,
+                stream: call.remoteStreams[p.id] ?? null,
+                camOn: p.camOn,
+                mirrored: false,
+                color: p.color,
+                micOn: p.micOn,
+              })),
+            ]
+            const focused = focusedId ? participants.find((p) => p.id === focusedId) : null
+
+            if (focused) {
+              const others = participants.filter((p) => p.id !== focused.id)
+              return (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0 }}>
+                  {/* Destaque: clique pra voltar ao grid */}
+                  <div style={{ flex: 1, minHeight: 0 }}>
+                    <GridTile {...focused} muted fill fit="contain" onClick={() => setFocusedId(null)} />
+                  </div>
+                  {others.length > 0 && (
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexShrink: 0 }}>
+                      {others.map((p) => (
+                        <div key={p.id} style={{ width: '176px' }}>
+                          <GridTile {...p} muted onClick={() => setFocusedId(p.id)} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            }
+
+            return (
+              <div
+                style={{
+                  flex: 1,
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(auto-fit, minmax(${meetingPeers.length >= 3 ? 320 : 420}px, 1fr))`,
+                  gap: '14px',
+                  alignContent: 'center',
+                  overflowY: 'auto',
+                }}
+              >
+                {participants.map((p) => (
+                  <GridTile key={p.id} {...p} muted onClick={() => setFocusedId(p.id)} />
+                ))}
+              </div>
+            )
+          })()}
         </div>
       )}
 
@@ -494,7 +541,12 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
           }}
         >
           {call.camOn && call.localStream && (
-            <VideoTile stream={call.localStream} label={`${me?.name ?? 'Você'} (você)`} muted mirrored />
+            <VideoTile
+              stream={call.localStream}
+              label={`${me?.name ?? 'Você'} (você)`}
+              muted
+              mirrored={!call.screenOn}
+            />
           )}
           {remoteTiles.map((p) => (
             <VideoTile key={p.id} stream={call.remoteStreams[p.id]} label={p.name} muted={false} />
@@ -600,9 +652,22 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
                 {call.micOn ? '🎙️' : '🔇'}
               </DockButton>
               <DockButton
+                onClick={() => run(() => callManager.toggleScreenShare())}
+                active={call.screenOn}
+                title={call.screenOn ? 'Parar de compartilhar a tela' : 'Compartilhar tela'}
+              >
+                🖥️
+              </DockButton>
+              <DockButton
                 onClick={() => run(() => callManager.toggleCam())}
-                active={call.camOn}
-                title={call.camOn ? 'Desligar câmera' : 'Ligar câmera'}
+                active={call.camOn && !call.screenOn}
+                title={
+                  call.screenOn
+                    ? 'Pare o compartilhamento de tela primeiro'
+                    : call.camOn
+                      ? 'Desligar câmera'
+                      : 'Ligar câmera'
+                }
               >
                 <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                   📹

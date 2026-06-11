@@ -23,7 +23,13 @@ export class CallManager {
   private peers = new Map<string, PeerEntry>()
   private localStream: MediaStream | null = null
   private camTrack: MediaStreamTrack | null = null
+  private screenTrack: MediaStreamTrack | null = null
   private unsubscribe: (() => void) | null = null
+
+  /** vídeo ativo a transmitir: tela compartilhada tem prioridade sobre câmera */
+  private get activeVideoTrack(): MediaStreamTrack | null {
+    return this.screenTrack ?? this.camTrack
+  }
 
   constructor(myId: string, realtime: TeamRealtime) {
     this.myId = myId
@@ -100,7 +106,7 @@ export class CallManager {
     const audioTrack = this.localStream.getAudioTracks()[0]
     if (audioTrack) entry.pc.addTrack(audioTrack, this.localStream)
     const videoTx = entry.pc.addTransceiver('video', { direction: 'sendrecv' })
-    if (this.camTrack) await videoTx.sender.replaceTrack(this.camTrack)
+    if (this.activeVideoTrack) await videoTx.sender.replaceTrack(this.activeVideoTrack)
 
     const offer = await entry.pc.createOffer()
     await entry.pc.setLocalDescription(offer)
@@ -124,7 +130,7 @@ export class CallManager {
       const videoTx = entry.pc.getTransceivers().find((t) => t.receiver.track?.kind === 'video')
       if (videoTx) {
         videoTx.direction = 'sendrecv'
-        if (this.camTrack) await videoTx.sender.replaceTrack(this.camTrack)
+        if (this.activeVideoTrack) await videoTx.sender.replaceTrack(this.activeVideoTrack)
       }
 
       const answer = await entry.pc.createAnswer()
@@ -164,9 +170,60 @@ export class CallManager {
     void this.realtime.updateCallState({ micOn: next })
   }
 
+  /** Compartilhar tela: substitui o vídeo transmitido (modelo "câmera OU tela"). */
+  async toggleScreenShare() {
+    const { call } = useTeamStore.getState()
+    if (!this.localStream || !call.joined) return
+    if (this.screenTrack) {
+      await this.stopScreenShare()
+      return
+    }
+    const display = await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: { ideal: 15 } },
+      audio: false,
+    })
+    const track = display.getVideoTracks()[0]
+    if (!track) return
+    this.screenTrack = track
+    // Usuário pode parar pelo controle do navegador
+    track.addEventListener('ended', () => void this.stopScreenShare())
+    for (const { pc } of this.peers.values()) {
+      const videoTx = pc.getTransceivers().find(
+        (t) => t.sender.track?.kind === 'video' || t.receiver.track?.kind === 'video'
+      )
+      if (videoTx) await videoTx.sender.replaceTrack(track)
+    }
+    // Preview local mostra a tela no lugar da câmera
+    if (this.camTrack) this.localStream.removeTrack(this.camTrack)
+    this.localStream.addTrack(track)
+    useTeamStore.getState().setCall({ screenOn: true, camOn: true })
+    await this.realtime.updateCallState({ camOn: true })
+  }
+
+  async stopScreenShare() {
+    if (!this.screenTrack || !this.localStream) return
+    const track = this.screenTrack
+    this.screenTrack = null
+    track.stop()
+    this.localStream.removeTrack(track)
+    // Restaura a câmera se estava ligada antes do compartilhamento
+    const restore = this.camTrack
+    if (restore) this.localStream.addTrack(restore)
+    for (const { pc } of this.peers.values()) {
+      const videoTx = pc.getTransceivers().find(
+        (t) => t.sender.track?.kind === 'video' || t.receiver.track?.kind === 'video'
+      )
+      if (videoTx) await videoTx.sender.replaceTrack(restore ?? null)
+    }
+    const camOn = !!restore
+    useTeamStore.getState().setCall({ screenOn: false, camOn })
+    await this.realtime.updateCallState({ camOn })
+  }
+
   async toggleCam() {
     const { call } = useTeamStore.getState()
     if (!this.localStream || !call.joined) return
+    if (call.screenOn) return // pare o compartilhamento de tela primeiro
 
     if (call.camOn && this.camTrack) {
       this.camTrack.stop()
@@ -200,6 +257,10 @@ export class CallManager {
     this.unsubscribe?.()
     this.unsubscribe = null
     for (const id of [...this.peers.keys()]) this.closePeer(id)
+    if (this.screenTrack) {
+      this.screenTrack.stop()
+      this.screenTrack = null
+    }
     if (this.camTrack) {
       this.camTrack.stop()
       this.camTrack = null
@@ -212,6 +273,7 @@ export class CallManager {
       joined: false,
       micOn: false,
       camOn: false,
+      screenOn: false,
       localStream: null,
       remoteStreams: {},
     })
