@@ -236,33 +236,50 @@ function DockButton({
   )
 }
 
-// Toca um "ding-dong" via WebAudio (sem asset; funciona em aba background)
-function playRingSound() {
+// AudioContext persistente do sino — criado/resumido em interações do usuário
+// (autoplay policy: contexto criado fora de um gesto nasce 'suspended' e não toca)
+let ringCtx: AudioContext | null = null
+function ensureRingCtx() {
   try {
-    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-    const ctx = new Ctx()
-    void ctx.resume()
-    const ding = (freq: number, t0: number) => {
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.type = 'sine'
-      osc.frequency.value = freq
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      gain.gain.setValueAtTime(0.0001, ctx.currentTime + t0)
-      gain.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + t0 + 0.03)
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t0 + 0.8)
-      osc.start(ctx.currentTime + t0)
-      osc.stop(ctx.currentTime + t0 + 0.85)
+    if (!ringCtx) {
+      const Ctx =
+        window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+      ringCtx = new Ctx()
     }
-    ding(880, 0)
-    ding(660, 0.45)
-    ding(880, 1.3)
-    ding(660, 1.75)
-    setTimeout(() => void ctx.close(), 3500)
+    if (ringCtx.state === 'suspended') void ringCtx.resume()
   } catch {
     // sem áudio disponível
   }
+}
+
+// Toca um "ding-dong" via WebAudio (sem asset; funciona em aba background)
+async function playRingSound() {
+  ensureRingCtx()
+  const ctx = ringCtx
+  if (!ctx) return
+  try {
+    if (ctx.state === 'suspended') await ctx.resume()
+  } catch {
+    return
+  }
+  if (ctx.state !== 'running') return
+  const ding = (freq: number, t0: number) => {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.value = freq
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime + t0)
+    gain.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + t0 + 0.03)
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t0 + 0.8)
+    osc.start(ctx.currentTime + t0)
+    osc.stop(ctx.currentTime + t0 + 0.85)
+  }
+  ding(880, 0)
+  ding(660, 0.45)
+  ding(880, 1.3)
+  ding(660, 1.75)
 }
 
 export default function CallDock({ callManager }: { callManager: CallManager }) {
@@ -279,23 +296,46 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
   const [volumes, setVolumes] = useState<Record<string, number>>({})
   const [expanded, setExpanded] = useState(false)
 
-  // Campainha recebida: som + título da aba piscando + banner por 8s
+  // Destrava o áudio do sino no primeiro gesto do usuário (autoplay policy)
+  useEffect(() => {
+    document.addEventListener('click', ensureRingCtx)
+    document.addEventListener('keydown', ensureRingCtx)
+    return () => {
+      document.removeEventListener('click', ensureRingCtx)
+      document.removeEventListener('keydown', ensureRingCtx)
+    }
+  }, [])
+
+  // Campainha recebida: som + título da aba piscando + banner por 15s
   useEffect(() => {
     if (!incomingRing) return
-    playRingSound()
+    void playRingSound()
     const originalTitle = document.title
     let flip = false
     const flash = setInterval(() => {
       flip = !flip
       document.title = flip ? `🔔 ${incomingRing.fromName} está te chamando!` : originalTitle
     }, 900)
-    const clear = setTimeout(() => setIncomingRing(null), 8000)
+    const clear = setTimeout(() => setIncomingRing(null), 15000)
     return () => {
       clearInterval(flash)
       clearTimeout(clear)
       document.title = originalTitle
     }
   }, [incomingRing, setIncomingRing])
+
+  // Aceitar o chamado: anda automaticamente até quem chamou
+  const goToCaller = () => {
+    if (!incomingRing) return
+    const st = useTeamStore.getState()
+    // usa a posição ATUAL de quem chamou, se ainda estiver online
+    const caller = st.remotePlayers[incomingRing.fromId]
+    const target = caller
+      ? { x: caller.position[0], z: caller.position[2] }
+      : { x: incomingRing.x, z: incomingRing.z }
+    st.setPendingWalkTo(target)
+    setIncomingRing(null)
+  }
 
   // Esc fecha o modo reunião; saiu da chamada → fecha também
   useEffect(() => {
@@ -620,19 +660,33 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
           <span style={{ fontSize: '22px' }}>🔔</span>
           {incomingRing.fromName} está te chamando!
           <button
+            onClick={goToCaller}
+            style={{
+              background: '#2e7d32',
+              border: 'none',
+              color: '#fff',
+              borderRadius: '8px',
+              padding: '7px 14px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 700,
+            }}
+          >
+            🚶 Ir até {incomingRing.fromName.split(' ')[0]}
+          </button>
+          <button
             onClick={() => setIncomingRing(null)}
             style={{
               background: 'rgba(255,255,255,0.1)',
               border: '1px solid rgba(255,255,255,0.2)',
               color: '#ccc',
               borderRadius: '8px',
-              width: '26px',
-              height: '26px',
+              padding: '7px 12px',
               cursor: 'pointer',
-              fontSize: '13px',
+              fontSize: '12px',
             }}
           >
-            ✕
+            Agora não
           </button>
         </div>
       )}

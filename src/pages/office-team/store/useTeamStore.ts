@@ -97,8 +97,8 @@ interface TeamState {
   /** chat com o NPC Marcelo Almeida (agente IA na sala dele) */
   npcChatOpen: boolean
 
-  /** campainha recebida (alguém me chamando) */
-  incomingRing: { fromName: string; ts: number } | null
+  /** campainha recebida (alguém me chamando/cutucando) */
+  incomingRing: { fromId: string; fromName: string; x: number; z: number; ts: number } | null
   /** notificações pequenas (entrou/saiu do escritório) */
   toasts: { id: string; text: string; kind: 'in' | 'out' }[]
   /** voz automática falhou (permissão negada) — mostra fallback manual */
@@ -128,7 +128,7 @@ interface TeamState {
   addChatMessage: (msg: TeamMessage) => void
   setChatHistory: (msgs: TeamMessage[]) => void
   setNpcChatOpen: (open: boolean) => void
-  setIncomingRing: (ring: { fromName: string; ts: number } | null) => void
+  setIncomingRing: (ring: { fromId: string; fromName: string; x: number; z: number; ts: number } | null) => void
   addToast: (text: string, kind: 'in' | 'out') => void
   removeToast: (id: string) => void
   setVoiceBlocked: (blocked: boolean) => void

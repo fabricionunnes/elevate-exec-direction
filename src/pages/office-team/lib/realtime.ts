@@ -175,9 +175,15 @@ export class TeamRealtime {
         this.onRtcSignal?.(signal)
       })
       .on('broadcast', { event: 'ring' }, ({ payload }) => {
-        const r = payload as { to: string; fromName: string }
+        const r = payload as { to: string; fromId: string; fromName: string; x?: number; z?: number }
         if (!r || r.to !== this.me.id) return
-        useTeamStore.getState().setIncomingRing({ fromName: r.fromName, ts: Date.now() })
+        useTeamStore.getState().setIncomingRing({
+          fromId: r.fromId,
+          fromName: r.fromName,
+          x: r.x ?? 0,
+          z: r.z ?? 0.5,
+          ts: Date.now(),
+        })
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -208,12 +214,20 @@ export class TeamRealtime {
     void this.refreshRooms()
   }
 
-  /** Toca a campainha de outro usuário online. */
+  /** Toca a campainha/cutuca outro usuário online (leva minha posição
+   * pra ele poder aceitar e vir andando até mim). */
   sendRing(toUserId: string) {
+    const [x, , z] = useTeamStore.getState().playerPosition
     void this.channel?.send({
       type: 'broadcast',
       event: 'ring',
-      payload: { to: toUserId, fromName: this.me.name },
+      payload: {
+        to: toUserId,
+        fromId: this.me.id,
+        fromName: this.me.name,
+        x: Number(x.toFixed(2)),
+        z: Number(z.toFixed(2)),
+      },
     })
   }
 

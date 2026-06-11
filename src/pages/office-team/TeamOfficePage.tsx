@@ -82,14 +82,23 @@ function RemotePlayers() {
   const myRoomId = useTeamStore((s) => s.myRoomId)
   const me = useTeamStore((s) => s.me)
 
-  // Privacidade: quem está numa sala trancada só é visível pra quem
-  // está DENTRO da mesma sala (o áudio já segue a mesma regra)
+  // Privacidade: quem está numa sala trancada só é visível pra quem está
+  // DENTRO da mesma sala — com duas exceções: o DONO da sala e quem TRANCOU
+  // sempre veem o que acontece nela (o áudio segue a mesma regra de sala)
   const onlineIds = new Set(Object.keys(remotePlayers))
   if (me) onlineIds.add(me.id)
 
   const visible = Object.values(remotePlayers).filter((p) => {
     const room = roomAt(p.position[0], p.position[2], rooms)
-    if (room && room.id !== myRoomId && isEffectivelyLocked(room, onlineIds)) return false
+    if (
+      room &&
+      room.id !== myRoomId &&
+      room.ownerUserId !== me?.id &&
+      room.lockedBy !== me?.id &&
+      isEffectivelyLocked(room, onlineIds)
+    ) {
+      return false
+    }
     return true
   })
 

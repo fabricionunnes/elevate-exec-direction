@@ -288,9 +288,18 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
     roomCheckRef.current += delta
     if (roomCheckRef.current > 0.15) {
       roomCheckRef.current = 0
-      const room = roomAt(pos.x, pos.z, useTeamStore.getState().rooms)
-      const current = useTeamStore.getState().myRoomId
-      if ((room?.id ?? null) !== current) setMyRoomId(room?.id ?? null)
+      const state = useTeamStore.getState()
+      const room = roomAt(pos.x, pos.z, state.rooms)
+      const current = state.myRoomId
+      if ((room?.id ?? null) !== current) {
+        // Saí de uma sala que EU tranquei → destranca automaticamente
+        // (tranca esquecida não fica escondendo a sala dos outros)
+        const prevRoom = current ? state.rooms.find((r) => r.id === current) : null
+        if (prevRoom && prevRoom.isLocked && prevRoom.lockedBy === state.me?.id) {
+          void setRoomLock(prevRoom.id, false, state.me!.id).then(() => realtime.announceRoomsChanged())
+        }
+        setMyRoomId(room?.id ?? null)
+      }
     }
 
     // Câmera com lag + zoom
