@@ -9,19 +9,44 @@ const METAL_DARK = '#6b737d'
 const NAVY = '#0D2B5E'
 const GLOW = '#7fd4ff'
 
-export default function RobotBody() {
+export default function RobotBody({ isWalking = false, isSitting = false }: { isWalking?: boolean; isSitting?: boolean }) {
   const bodyRef = useRef<THREE.Group>(null!)
   const coreRef = useRef<THREE.MeshStandardMaterial>(null!)
   const eyeLRef = useRef<THREE.MeshStandardMaterial>(null!)
   const eyeRRef = useRef<THREE.MeshStandardMaterial>(null!)
   const antennaRef = useRef<THREE.MeshStandardMaterial>(null!)
   const headRef = useRef<THREE.Group>(null!)
+  const leftLegRef = useRef<THREE.Group>(null!)
+  const rightLegRef = useRef<THREE.Group>(null!)
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime()
-    // Flutuação leve + cabeça olhando em volta de vez em quando
-    if (bodyRef.current) bodyRef.current.position.y = Math.sin(t * 1.6) * 0.03
-    if (headRef.current) headRef.current.rotation.y = Math.sin(t * 0.4) * 0.25
+    if (isSitting) {
+      // Sentado: corpo desce até o assento, pernas recolhidas
+      if (bodyRef.current) bodyRef.current.position.y = -0.3 + Math.sin(t * 1.6) * 0.015
+      if (leftLegRef.current) {
+        leftLegRef.current.visible = false
+        rightLegRef.current.visible = false
+      }
+    } else if (isWalking) {
+      if (bodyRef.current) bodyRef.current.position.y = Math.abs(Math.sin(t * 7)) * 0.05
+      if (leftLegRef.current) {
+        leftLegRef.current.visible = true
+        rightLegRef.current.visible = true
+        const swing = Math.sin(t * 7) * 0.45
+        leftLegRef.current.rotation.x = swing
+        rightLegRef.current.rotation.x = -swing
+      }
+    } else {
+      if (bodyRef.current) bodyRef.current.position.y = Math.sin(t * 1.6) * 0.03
+      if (leftLegRef.current) {
+        leftLegRef.current.visible = true
+        rightLegRef.current.visible = true
+        leftLegRef.current.rotation.x = 0
+        rightLegRef.current.rotation.x = 0
+      }
+    }
+    if (headRef.current) headRef.current.rotation.y = isWalking ? 0 : Math.sin(t * 0.4) * 0.25
     // Luzes pulsando
     const pulse = 0.75 + Math.sin(t * 2.2) * 0.45
     if (coreRef.current) coreRef.current.emissiveIntensity = pulse
@@ -38,25 +63,29 @@ export default function RobotBody() {
         <meshBasicMaterial color="#000000" transparent opacity={0.22} />
       </mesh>
 
-      {/* Pés */}
-      <mesh position={[-0.13, 0.07, 0.02]} castShadow>
-        <boxGeometry args={[0.2, 0.14, 0.32]} />
-        <meshStandardMaterial color={METAL_DARK} metalness={0.7} roughness={0.35} />
-      </mesh>
-      <mesh position={[0.13, 0.07, 0.02]} castShadow>
-        <boxGeometry args={[0.2, 0.14, 0.32]} />
-        <meshStandardMaterial color={METAL_DARK} metalness={0.7} roughness={0.35} />
-      </mesh>
+      {/* Perna esquerda (pivô no quadril) */}
+      <group ref={leftLegRef} position={[-0.13, 0.68, 0]}>
+        <mesh position={[0, -0.28, 0]} castShadow>
+          <cylinderGeometry args={[0.07, 0.09, 0.55, 10]} />
+          <meshStandardMaterial color={METAL} metalness={0.75} roughness={0.3} />
+        </mesh>
+        <mesh position={[0, -0.61, 0.02]} castShadow>
+          <boxGeometry args={[0.2, 0.14, 0.32]} />
+          <meshStandardMaterial color={METAL_DARK} metalness={0.7} roughness={0.35} />
+        </mesh>
+      </group>
 
-      {/* Pernas */}
-      <mesh position={[-0.13, 0.4, 0]} castShadow>
-        <cylinderGeometry args={[0.07, 0.09, 0.55, 10]} />
-        <meshStandardMaterial color={METAL} metalness={0.75} roughness={0.3} />
-      </mesh>
-      <mesh position={[0.13, 0.4, 0]} castShadow>
-        <cylinderGeometry args={[0.07, 0.09, 0.55, 10]} />
-        <meshStandardMaterial color={METAL} metalness={0.75} roughness={0.3} />
-      </mesh>
+      {/* Perna direita */}
+      <group ref={rightLegRef} position={[0.13, 0.68, 0]}>
+        <mesh position={[0, -0.28, 0]} castShadow>
+          <cylinderGeometry args={[0.07, 0.09, 0.55, 10]} />
+          <meshStandardMaterial color={METAL} metalness={0.75} roughness={0.3} />
+        </mesh>
+        <mesh position={[0, -0.61, 0.02]} castShadow>
+          <boxGeometry args={[0.2, 0.14, 0.32]} />
+          <meshStandardMaterial color={METAL_DARK} metalness={0.7} roughness={0.35} />
+        </mesh>
+      </group>
 
       {/* Tronco */}
       <mesh position={[0, 0.98, 0]} castShadow>

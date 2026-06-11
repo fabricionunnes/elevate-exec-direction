@@ -143,6 +143,9 @@ function MeetingTable({ room }: { room: OfficeRoom }) {
       out.push({ x: cx, z: room.z - 1.15, backRot: Math.PI }) // lado norte: olha pro sul
       out.push({ x: cx, z: room.z + 1.15, backRot: 0 }) // lado sul: olha pro norte
     }
+    // Cabeceiras: uma cadeira em cada ponta da mesa
+    out.push({ x: room.x - len / 2 - 0.55, z: room.z, backRot: -Math.PI / 2 }) // ponta oeste: olha pro leste
+    out.push({ x: room.x + len / 2 + 0.55, z: room.z, backRot: Math.PI / 2 }) // ponta leste: olha pro oeste
     return out
   }, [len, room.x, room.z])
 
