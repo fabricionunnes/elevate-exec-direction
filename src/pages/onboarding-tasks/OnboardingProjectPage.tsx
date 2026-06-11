@@ -228,11 +228,20 @@ const OnboardingProjectPage = () => {
   const [showAddTaskDialog, setShowAddTaskDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("kpis");
 
+  // Projetos com sistema financeiro migrado de planilha (cfin_*) ganham o grupo "Sistema"
+  const [temCfin, setTemCfin] = useState(false);
+  useEffect(() => {
+    if (!projectId) return;
+    supabase.from("cfin_contas_bancarias").select("id", { count: "exact", head: true })
+      .eq("project_id", projectId)
+      .then(({ count }) => setTemCfin((count ?? 0) > 0));
+  }, [projectId]);
+
   // Two-level navigation: group → sub-tabs
   const tabGroupMap: Record<string, string> = {
     indicadores: "principal", kpis: "principal", briefing: "principal", diagnostic: "principal", tasks: "principal", "ai-coach": "principal",
     nps: "relacionamento", csat: "relacionamento", assessments: "relacionamento", meetings: "relacionamento", support: "relacionamento", whatsapp: "relacionamento",
-    health: "gestao", hr: "gestao", board: "gestao", financial: "gestao", history: "gestao",
+    health: "gestao", hr: "gestao", board: "gestao", financial: temCfin ? "sistema" : "gestao", history: "gestao",
     commercial_actions: "comercial", sales_funnel: "comercial", routine_contract: "comercial", commercial_director: "comercial",
     paid_traffic: "marketing", access: "marketing", instagram: "marketing", social: "marketing",
     sf_commissions: "salesforce",
@@ -1484,6 +1493,7 @@ const OnboardingProjectPage = () => {
             {(() => {
               const groups = [
                 { id: "principal",      label: "Principal",  icon: <BarChart3 className="h-4 w-4" /> },
+                ...(temCfin ? [{ id: "sistema", label: "Sistema", icon: <Wallet className="h-4 w-4" /> }] : []),
                 { id: "relacionamento", label: "Relac.",     icon: <Heart className="h-4 w-4" /> },
                 { id: "gestao",         label: "Gestão",     icon: <Settings className="h-4 w-4" /> },
                 { id: "comercial",      label: "Comerc.",    icon: <Target className="h-4 w-4" /> },
@@ -1515,8 +1525,11 @@ const OnboardingProjectPage = () => {
                   <TabsTrigger key="health" value="health"><Heart className="h-3.5 w-3.5 shrink-0" />Saúde</TabsTrigger>,
                   <TabsTrigger key="hr" value="hr"><Briefcase className="h-3.5 w-3.5 shrink-0" />RH</TabsTrigger>,
                   <TabsTrigger key="board" value="board"><Users className="h-3.5 w-3.5 shrink-0" />Board</TabsTrigger>,
-                  <TabsTrigger key="financial" value="financial"><Wallet className="h-3.5 w-3.5 shrink-0" />Financeiro</TabsTrigger>,
+                  ...(temCfin ? [] : [<TabsTrigger key="financial" value="financial"><Wallet className="h-3.5 w-3.5 shrink-0" />Financeiro</TabsTrigger>]),
                   <TabsTrigger key="history" value="history"><Clock className="h-3.5 w-3.5 shrink-0" />Histórico</TabsTrigger>,
+                ],
+                sistema: [
+                  <TabsTrigger key="financial" value="financial"><Wallet className="h-3.5 w-3.5 shrink-0" />Financeiro da Loja</TabsTrigger>,
                 ],
                 comercial: [
                   ...(currentUserRole !== "client" ? [<TabsTrigger key="commercial_actions" value="commercial_actions"><Target className="h-3.5 w-3.5 shrink-0" />Ações Comerciais</TabsTrigger>] : []),
@@ -1548,7 +1561,7 @@ const OnboardingProjectPage = () => {
                       return (
                         <button
                           key={g.id}
-                          onClick={() => setNavGroup(g.id)}
+                          onClick={() => { setNavGroup(g.id); if (g.id === "sistema") setActiveTab("financial"); }}
                           className={`flex flex-1 flex-col items-center gap-0.5 px-1 py-1.5 rounded-lg text-[10px] font-semibold transition-all relative ${
                             isActive
                               ? "bg-background text-foreground shadow-sm"
