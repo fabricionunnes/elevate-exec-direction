@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Printer, Trash2, ArrowLeft, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { fmtMoney, fmtDate, MESES, parseValor } from "./helpers";
+import { CfinVerbaCombobox } from "./CfinVerbaCombobox";
 
 interface Func { id: number; codigo: string | null; nome: string; nome_completo: string | null; funcao: string | null; loja_codigo: string | null; ativo: boolean }
 interface FolhaRow {
@@ -257,8 +258,7 @@ ${itens.map(i => `<tr><td>${i.verba}</td><td>${i.ref ?? ""}</td><td class="n">${
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1 col-span-2">
                   <Label>Verba</Label>
-                  <Input list="cfin-verbas" value={novoItem.verba} onChange={e => setNovoItem({ ...novoItem, verba: e.target.value })} placeholder="ex: SALARIO CONTRATUAL" />
-                  <datalist id="cfin-verbas">{verbas.map(v => <option key={v} value={v} />)}</datalist>
+                  <CfinVerbaCombobox verbas={verbas} value={novoItem.verba} onChange={v => setNovoItem({ ...novoItem, verba: v })} />
                 </div>
                 <div className="space-y-1">
                   <Label>Tipo</Label>
