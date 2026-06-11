@@ -41,6 +41,8 @@ function Hair({ avatar }: { avatar: AvatarConfig }) {
 export default function HumanBody({ avatar, isWalking, isSitting = false }: HumanBodyProps) {
   const leftLegRef = useRef<THREE.Group>(null!)
   const rightLegRef = useRef<THREE.Group>(null!)
+  const leftShinRef = useRef<THREE.Group>(null!)
+  const rightShinRef = useRef<THREE.Group>(null!)
   const leftArmRef = useRef<THREE.Group>(null!)
   const rightArmRef = useRef<THREE.Group>(null!)
   const bodyRef = useRef<THREE.Group>(null!)
@@ -48,11 +50,14 @@ export default function HumanBody({ avatar, isWalking, isSitting = false }: Huma
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime()
     if (isSitting) {
-      // Sentado: corpo desce até o assento, coxas pra frente
+      // Sentado: corpo desce até o assento, coxa horizontal e JOELHO
+      // dobrado 90° (canela vertical pro chão)
       const breathe = Math.sin(t * 1.5) * 0.01
       if (bodyRef.current) bodyRef.current.position.y = -0.31 + breathe
-      if (leftLegRef.current) leftLegRef.current.rotation.x = -1.45
-      if (rightLegRef.current) rightLegRef.current.rotation.x = -1.45
+      if (leftLegRef.current) leftLegRef.current.rotation.x = -1.5
+      if (rightLegRef.current) rightLegRef.current.rotation.x = -1.5
+      if (leftShinRef.current) leftShinRef.current.rotation.x = 1.5
+      if (rightShinRef.current) rightShinRef.current.rotation.x = 1.5
       if (leftArmRef.current) leftArmRef.current.rotation.x = -0.35
       if (rightArmRef.current) rightArmRef.current.rotation.x = -0.35
       return
@@ -61,6 +66,9 @@ export default function HumanBody({ avatar, isWalking, isSitting = false }: Huma
       const swing = Math.sin(t * 8) * 0.55
       if (leftLegRef.current) leftLegRef.current.rotation.x = swing
       if (rightLegRef.current) rightLegRef.current.rotation.x = -swing
+      // Joelho flexiona quando a perna vai pra trás (passada natural)
+      if (leftShinRef.current) leftShinRef.current.rotation.x = Math.max(0, swing) * 0.9
+      if (rightShinRef.current) rightShinRef.current.rotation.x = Math.max(0, -swing) * 0.9
       if (leftArmRef.current) leftArmRef.current.rotation.x = -swing * 0.75
       if (rightArmRef.current) rightArmRef.current.rotation.x = swing * 0.75
       if (bodyRef.current) bodyRef.current.position.y = Math.abs(Math.sin(t * 8)) * 0.035
@@ -69,6 +77,8 @@ export default function HumanBody({ avatar, isWalking, isSitting = false }: Huma
       if (bodyRef.current) bodyRef.current.position.y = breathe
       if (leftLegRef.current) leftLegRef.current.rotation.x = 0
       if (rightLegRef.current) rightLegRef.current.rotation.x = 0
+      if (leftShinRef.current) leftShinRef.current.rotation.x = 0
+      if (rightShinRef.current) rightShinRef.current.rotation.x = 0
       if (leftArmRef.current) leftArmRef.current.rotation.x = 0
       if (rightArmRef.current) rightArmRef.current.rotation.x = 0
     }
@@ -84,29 +94,41 @@ export default function HumanBody({ avatar, isWalking, isSitting = false }: Huma
         <meshBasicMaterial color="#000000" transparent opacity={0.22} />
       </mesh>
 
-      {/* Perna esquerda (pivô no quadril) */}
+      {/* Perna esquerda: coxa (pivô no quadril) + canela (pivô no joelho) */}
       <group ref={leftLegRef} position={[-0.1, 0.78, 0]}>
-        <mesh position={[0, -0.34, 0]} castShadow>
-          <capsuleGeometry args={[0.082, 0.5, 4, 8]} />
+        <mesh position={[0, -0.17, 0]} castShadow>
+          <capsuleGeometry args={[0.085, 0.22, 4, 8]} />
           <meshStandardMaterial color={pants} roughness={0.9} />
         </mesh>
-        {/* Sapato */}
-        <mesh position={[0, -0.73, 0.045]} castShadow>
-          <boxGeometry args={[0.15, 0.1, 0.27]} />
-          <meshStandardMaterial color="#23211f" roughness={0.6} />
-        </mesh>
+        <group ref={leftShinRef} position={[0, -0.36, 0]}>
+          <mesh position={[0, -0.16, 0]} castShadow>
+            <capsuleGeometry args={[0.074, 0.2, 4, 8]} />
+            <meshStandardMaterial color={pants} roughness={0.9} />
+          </mesh>
+          {/* Sapato */}
+          <mesh position={[0, -0.34, 0.045]} castShadow>
+            <boxGeometry args={[0.15, 0.1, 0.27]} />
+            <meshStandardMaterial color="#23211f" roughness={0.6} />
+          </mesh>
+        </group>
       </group>
 
       {/* Perna direita */}
       <group ref={rightLegRef} position={[0.1, 0.78, 0]}>
-        <mesh position={[0, -0.34, 0]} castShadow>
-          <capsuleGeometry args={[0.082, 0.5, 4, 8]} />
+        <mesh position={[0, -0.17, 0]} castShadow>
+          <capsuleGeometry args={[0.085, 0.22, 4, 8]} />
           <meshStandardMaterial color={pants} roughness={0.9} />
         </mesh>
-        <mesh position={[0, -0.73, 0.045]} castShadow>
-          <boxGeometry args={[0.15, 0.1, 0.27]} />
-          <meshStandardMaterial color="#23211f" roughness={0.6} />
-        </mesh>
+        <group ref={rightShinRef} position={[0, -0.36, 0]}>
+          <mesh position={[0, -0.16, 0]} castShadow>
+            <capsuleGeometry args={[0.074, 0.2, 4, 8]} />
+            <meshStandardMaterial color={pants} roughness={0.9} />
+          </mesh>
+          <mesh position={[0, -0.34, 0.045]} castShadow>
+            <boxGeometry args={[0.15, 0.1, 0.27]} />
+            <meshStandardMaterial color="#23211f" roughness={0.6} />
+          </mesh>
+        </group>
       </group>
 
       {/* Quadril */}

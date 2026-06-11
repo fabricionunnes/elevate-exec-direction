@@ -225,6 +225,11 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
     const isMoving = dx !== 0 || dz !== 0
     isMovingRef.current = isMoving
 
+    // Qualquer movimento (manual OU auto-walk) levanta da cadeira
+    if (isMoving && useTeamStore.getState().seated) {
+      useTeamStore.getState().setSeated(false)
+    }
+
     if (isMoving) {
       const len = Math.sqrt(dx * dx + dz * dz)
       dx /= len
