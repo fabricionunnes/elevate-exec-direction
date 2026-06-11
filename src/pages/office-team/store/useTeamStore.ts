@@ -99,6 +99,8 @@ interface TeamState {
 
   /** campainha recebida (alguém me chamando) */
   incomingRing: { fromName: string; ts: number } | null
+  /** notificações pequenas (entrou/saiu do escritório) */
+  toasts: { id: string; text: string; kind: 'in' | 'out' }[]
   /** voz automática falhou (permissão negada) — mostra fallback manual */
   voiceBlocked: boolean
 
@@ -127,6 +129,8 @@ interface TeamState {
   setChatHistory: (msgs: TeamMessage[]) => void
   setNpcChatOpen: (open: boolean) => void
   setIncomingRing: (ring: { fromName: string; ts: number } | null) => void
+  addToast: (text: string, kind: 'in' | 'out') => void
+  removeToast: (id: string) => void
   setVoiceBlocked: (blocked: boolean) => void
 
   setCall: (patch: Partial<CallState>) => void
@@ -152,6 +156,7 @@ export const useTeamStore = create<TeamState>((set) => ({
   unreadCount: 0,
   npcChatOpen: false,
   incomingRing: null,
+  toasts: [],
   voiceBlocked: false,
 
   call: {
@@ -238,6 +243,12 @@ export const useTeamStore = create<TeamState>((set) => ({
   setChatHistory: (msgs) => set({ chatMessages: msgs }),
   setNpcChatOpen: (open) => set({ npcChatOpen: open }),
   setIncomingRing: (ring) => set({ incomingRing: ring }),
+  addToast: (text, kind) =>
+    set((prev) => ({
+      toasts: [...prev.toasts.slice(-3), { id: crypto.randomUUID(), text, kind }],
+    })),
+  removeToast: (id) =>
+    set((prev) => ({ toasts: prev.toasts.filter((t) => t.id !== id) })),
   setVoiceBlocked: (blocked) => set({ voiceBlocked: blocked }),
 
   setCall: (patch) => set((prev) => ({ call: { ...prev.call, ...patch } })),

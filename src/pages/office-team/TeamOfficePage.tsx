@@ -16,6 +16,7 @@ import RoomControls from './components/RoomControls'
 import AvatarEditor from './components/AvatarEditor'
 import MarceloNpc from './components/MarceloNpc'
 import MarceloChatPanel from './components/MarceloChatPanel'
+import OfficeToasts from './components/OfficeToasts'
 import {
   useTeamStore,
   avatarColorsFor,
@@ -288,6 +289,7 @@ export default function TeamOfficePage() {
       <CallDock callManager={managers.callManager} />
       <AvatarEditor realtime={managers.realtime} />
       <MarceloChatPanel />
+      <OfficeToasts />
     </div>
   )
 }

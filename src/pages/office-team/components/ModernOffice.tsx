@@ -31,6 +31,13 @@ function sitAt(x: number, z: number, rot: number) {
   st.setPendingSeat({ x, z, rot })
 }
 
+/** Converte um ponto local de um móvel rotacionado pra coordenada de mundo. */
+function localToWorld(x: number, z: number, rotation: number, lx: number, lz: number): [number, number] {
+  const c = Math.cos(rotation)
+  const s = Math.sin(rotation)
+  return [x + lx * c + lz * s, z - lx * s + lz * c]
+}
+
 /** Cadeira de escritório clicável. `rotation` = direção do ENCOSTO (+z local);
  * o jogador senta olhando pro lado oposto. */
 function OfficeChair({
@@ -179,9 +186,19 @@ function BistroTable({ x, z }: { x: number; z: number }) {
         <cylinderGeometry args={[0.05, 0.08, 1, 8]} />
         <meshStandardMaterial color="#3a3d44" metalness={0.5} roughness={0.4} />
       </mesh>
-      {/* Banquetas */}
+      {/* Banquetas (clicáveis — senta olhando pra mesa) */}
       {[0, Math.PI].map((a) => (
-        <group key={a} position={[Math.sin(a) * 0.75, 0, Math.cos(a) * 0.75]}>
+        <group
+          key={a}
+          position={[Math.sin(a) * 0.75, 0, Math.cos(a) * 0.75]}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (e.delta > 6) return
+            sitAt(x + Math.sin(a) * 0.75, z + Math.cos(a) * 0.75, a + Math.PI)
+          }}
+          onPointerOver={() => (document.body.style.cursor = 'pointer')}
+          onPointerOut={() => (document.body.style.cursor = 'default')}
+        >
           <mesh position={[0, 0.62, 0]} castShadow>
             <cylinderGeometry args={[0.18, 0.18, 0.06, 10]} />
             <meshStandardMaterial color="#6b4f34" roughness={0.7} />
@@ -248,8 +265,30 @@ function LoungeFurniture({ room }: { room: OfficeRoom }) {
 }
 
 function Sofa({ x, z, rotation = 0, color = '#5a6b7d' }: { x: number; z: number; rotation?: number; color?: string }) {
+  // Dois lugares; clique escolhe o assento mais próximo do ponto clicado.
+  // Sentado olhando pra fora do encosto (+z local).
+  const onSit = (px: number, pz: number) => {
+    const seats: [number, number][] = [
+      localToWorld(x, z, rotation, -0.42, 0.08),
+      localToWorld(x, z, rotation, 0.42, 0.08),
+    ]
+    const seat = seats.reduce((a, b) =>
+      Math.hypot(a[0] - px, a[1] - pz) <= Math.hypot(b[0] - px, b[1] - pz) ? a : b
+    )
+    sitAt(seat[0], seat[1], rotation)
+  }
   return (
-    <group position={[x, 0, z]} rotation={[0, rotation, 0]}>
+    <group
+      position={[x, 0, z]}
+      rotation={[0, rotation, 0]}
+      onClick={(e) => {
+        e.stopPropagation()
+        if (e.delta > 6) return
+        onSit(e.point.x, e.point.z)
+      }}
+      onPointerOver={() => (document.body.style.cursor = 'pointer')}
+      onPointerOut={() => (document.body.style.cursor = 'default')}
+    >
       <mesh position={[0, 0.28, 0]} castShadow>
         <boxGeometry args={[1.7, 0.5, 0.8]} />
         <meshStandardMaterial color={color} roughness={0.9} />
@@ -271,8 +310,19 @@ function Sofa({ x, z, rotation = 0, color = '#5a6b7d' }: { x: number; z: number;
 }
 
 function Armchair({ x, z, rotation = 0, color = '#7d6b5a' }: { x: number; z: number; rotation?: number; color?: string }) {
+  const seat = localToWorld(x, z, rotation, 0, 0.06)
   return (
-    <group position={[x, 0, z]} rotation={[0, rotation, 0]}>
+    <group
+      position={[x, 0, z]}
+      rotation={[0, rotation, 0]}
+      onClick={(e) => {
+        e.stopPropagation()
+        if (e.delta > 6) return
+        sitAt(seat[0], seat[1], rotation)
+      }}
+      onPointerOver={() => (document.body.style.cursor = 'pointer')}
+      onPointerOut={() => (document.body.style.cursor = 'default')}
+    >
       <mesh position={[0, 0.3, 0]} castShadow>
         <boxGeometry args={[0.75, 0.45, 0.7]} />
         <meshStandardMaterial color={color} roughness={0.9} />

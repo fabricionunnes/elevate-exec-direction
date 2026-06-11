@@ -53,6 +53,8 @@ export class TeamRealtime {
   /** Keepalive num Web Worker: timers de worker NÃO sofrem throttling em aba
    * background, então o presence continua vivo mesmo com a aba inativa. */
   private keepaliveWorker: Worker | null = null
+  /** primeira sync já aconteceu (evita toasts de entrada no mount) */
+  private hadFirstSync = false
 
   constructor(me: TeamProfile) {
     this.me = me
@@ -77,6 +79,16 @@ export class TeamRealtime {
   }
 
   connect() {
+    // Reconexão limpa (auto-heal): derruba canal/worker anteriores
+    if (this.channel) {
+      void supabase.removeChannel(this.channel)
+      this.channel = null
+    }
+    if (this.keepaliveWorker) {
+      this.keepaliveWorker.terminate()
+      this.keepaliveWorker = null
+    }
+
     this.channel = supabase.channel('office-team', {
       config: {
         presence: { key: this.me.id },
@@ -95,6 +107,23 @@ export class TeamRealtime {
           const meta = metas[metas.length - 1]
           if (!meta) continue
           const existing = current[key]
+
+          // Posição: broadcasts são a fonte mais fresca, mas se o jogador
+          // está PARADO e a posição local divergiu do presence (broadcast
+          // perdido por hiccup de rede), reconcilia pela do presence —
+          // qualquer dessincronização se corrige em até 20s (keepalive)
+          let position: [number, number, number] = existing?.position ?? [meta.x ?? 0, 0, meta.z ?? 0.5]
+          let rotation = existing?.rotation ?? meta.rot ?? 0
+          let sitting = existing?.sitting ?? meta.sit ?? false
+          if (existing && !existing.moving && typeof meta.x === 'number' && typeof meta.z === 'number') {
+            const drift = Math.hypot(existing.position[0] - meta.x, existing.position[2] - meta.z)
+            if (drift > 1.5) {
+              position = [meta.x, 0, meta.z]
+              rotation = meta.rot ?? rotation
+              sitting = meta.sit ?? false
+            }
+          }
+
           next[key] = {
             id: key,
             name: meta.name,
@@ -105,14 +134,26 @@ export class TeamRealtime {
             inCall: meta.inCall,
             micOn: meta.micOn,
             camOn: meta.camOn,
-            // Jogador novo pra mim: usa a posição do presence; se eu já
-            // acompanho ele, mantém a posição dos broadcasts (mais fresca)
-            position: existing?.position ?? [meta.x ?? 0, 0, meta.z ?? 0.5],
-            rotation: existing?.rotation ?? meta.rot ?? 0,
+            position,
+            rotation,
             moving: existing?.moving ?? false,
-            sitting: existing?.sitting ?? meta.sit ?? false,
+            sitting,
           }
         }
+
+        // Notificações de entrada/saída (depois da primeira sync)
+        if (this.hadFirstSync) {
+          const store = useTeamStore.getState()
+          for (const id of Object.keys(next)) {
+            if (!current[id]) store.addToast(`${next[id].name} entrou no escritório`, 'in')
+          }
+          for (const id of Object.keys(current)) {
+            if (!next[id]) store.addToast(`${current[id].name} saiu do escritório`, 'out')
+          }
+        } else {
+          this.hadFirstSync = true
+        }
+
         useTeamStore.getState().setRemotePlayers(next)
       })
       .on('broadcast', { event: 'pos' }, ({ payload }) => {
@@ -151,7 +192,13 @@ export class TeamRealtime {
       })
       this.keepaliveWorker = new Worker(URL.createObjectURL(blob))
       this.keepaliveWorker.onmessage = () => {
-        void this.channel?.track(this.presenceState)
+        // Auto-heal: se o canal caiu, refaz a conexão; senão, re-track
+        const chState = (this.channel as unknown as { state?: string } | null)?.state
+        if (!this.channel || chState === 'closed' || chState === 'errored') {
+          this.connect()
+        } else {
+          void this.channel.track(this.presenceState)
+        }
       }
     } catch {
       // sem worker (ambiente restrito): segue com o heartbeat padrão
