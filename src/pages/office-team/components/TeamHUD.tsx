@@ -1,6 +1,14 @@
-// HUD do escritório multiplayer: voltar, quem está online, dicas e botão de chat.
+// HUD do escritório multiplayer: voltar, equipe online/offline, dicas e chat.
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '@/integrations/supabase/client'
 import { useTeamStore } from '../store/useTeamStore'
+
+interface TeamMember {
+  user_id: string
+  name: string
+  title: string | null
+}
 
 export default function TeamHUD() {
   const navigate = useNavigate()
@@ -9,9 +17,27 @@ export default function TeamHUD() {
   const toggleChat = useTeamStore((s) => s.toggleChat)
   const chatOpen = useTeamStore((s) => s.chatOpen)
   const unreadCount = useTeamStore((s) => s.unreadCount)
+  const [directory, setDirectory] = useState<TeamMember[]>([])
+
+  // Diretório do time (staff ativo) — pra mostrar também quem está offline
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      const { data } = await supabase.from('office_team_directory' as never).select('*')
+      if (!cancelled && data) setDirectory(data as unknown as TeamMember[])
+    }
+    void load()
+    const interval = setInterval(load, 120_000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [])
 
   const others = Object.values(remotePlayers)
   const onlineCount = others.length + 1
+  const onlineIds = new Set([me?.id, ...others.map((p) => p.id)])
+  const offline = directory.filter((m) => !onlineIds.has(m.user_id))
 
   const font = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
 
@@ -84,25 +110,63 @@ export default function TeamHUD() {
           }}
         >
           <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-            No escritório
+            Equipe · {onlineCount} online
           </div>
+
+          {/* Online */}
           {me && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: me.color, flexShrink: 0 }} />
-              <span style={{ fontSize: '12px', color: '#FFD700', fontWeight: 600 }}>{me.name} (você)</span>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4CAF50', boxShadow: '0 0 5px #4CAF50', flexShrink: 0 }} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: '12px', color: '#FFD700', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {me.name} (você)
+                </div>
+                {me.role && <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>{me.role}</div>}
+              </div>
             </div>
           )}
           {others.map((p) => (
             <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: p.color, flexShrink: 0 }} />
-              <span style={{ fontSize: '12px', color: '#eee', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {p.name}
-              </span>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4CAF50', boxShadow: '0 0 5px #4CAF50', flexShrink: 0 }} />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: '12px', color: '#eee', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {p.name}
+                </div>
+                {p.role && <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>{p.role}</div>}
+              </div>
               {p.inCall && <span style={{ fontSize: '11px' }}>{p.micOn ? '🎙️' : '🔇'}</span>}
             </div>
           ))}
-          {others.length === 0 && (
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>Só você por enquanto</div>
+
+          {/* Marcelo — IA sempre disponível */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#7fd4ff', boxShadow: '0 0 5px #7fd4ff', flexShrink: 0 }} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '12px', color: '#7fd4ff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                🤖 Marcelo Almeida
+              </div>
+              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>Consultor · IA · sempre on</div>
+            </div>
+          </div>
+
+          {/* Offline */}
+          {offline.length > 0 && (
+            <>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '10px 0 6px' }}>
+                Offline
+              </div>
+              {offline.map((m) => (
+                <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px', opacity: 0.45 }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#9aa3ad', flexShrink: 0 }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '12px', color: '#ccc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {m.name}
+                    </div>
+                    {m.title && <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>{m.title}</div>}
+                  </div>
+                </div>
+              ))}
+            </>
           )}
         </div>
       </div>
@@ -173,7 +237,7 @@ export default function TeamHUD() {
           fontFamily: font,
         }}
       >
-        WASD / setas ou duplo clique para andar · X = minha sala · Z = trancar sala · Scroll = zoom · Botão direito move a câmera
+        WASD / duplo clique = andar · Arrastar = olhar o escritório · X = minha sala · Z = trancar · Scroll = zoom
       </div>
     </>
   )

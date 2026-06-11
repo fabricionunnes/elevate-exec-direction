@@ -106,14 +106,13 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
     return () => gl.domElement.removeEventListener('wheel', onWheel)
   }, [gl])
 
-  // Pan com botão direito/meio
+  // Pan da câmera: arrastar com QUALQUER botão no canvas explora o escritório
+  // sem mover o boneco (andar traz a câmera de volta pro jogador)
   useEffect(() => {
     const onMouseDown = (e: MouseEvent) => {
-      if (e.button === 2 || e.button === 1) {
-        isDraggingRef.current = true
-        lastMouseRef.current = { x: e.clientX, y: e.clientY }
-        e.preventDefault()
-      }
+      isDraggingRef.current = true
+      lastMouseRef.current = { x: e.clientX, y: e.clientY }
+      if (e.button === 2 || e.button === 1) e.preventDefault()
     }
     const onMouseMove = (e: MouseEvent) => {
       if (!isDraggingRef.current) return
@@ -121,19 +120,21 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       const dy = e.clientY - lastMouseRef.current.y
       cameraPanOffsetRef.current.x -= dx * 0.05
       cameraPanOffsetRef.current.z -= dy * 0.05
-      cameraPanOffsetRef.current.x = Math.max(-20, Math.min(20, cameraPanOffsetRef.current.x))
-      cameraPanOffsetRef.current.z = Math.max(-20, Math.min(20, cameraPanOffsetRef.current.z))
+      // Alcance cobre o prédio inteiro
+      cameraPanOffsetRef.current.x = Math.max(-48, Math.min(48, cameraPanOffsetRef.current.x))
+      cameraPanOffsetRef.current.z = Math.max(-42, Math.min(42, cameraPanOffsetRef.current.z))
       lastMouseRef.current = { x: e.clientX, y: e.clientY }
     }
     const onMouseUp = () => { isDraggingRef.current = false }
     const onContextMenu = (e: Event) => e.preventDefault()
 
-    window.addEventListener('mousedown', onMouseDown)
+    // mousedown só no canvas (não rouba cliques dos painéis/botões da UI)
+    gl.domElement.addEventListener('mousedown', onMouseDown)
     window.addEventListener('mousemove', onMouseMove)
     window.addEventListener('mouseup', onMouseUp)
     gl.domElement.addEventListener('contextmenu', onContextMenu)
     return () => {
-      window.removeEventListener('mousedown', onMouseDown)
+      gl.domElement.removeEventListener('mousedown', onMouseDown)
       window.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('mouseup', onMouseUp)
       gl.domElement.removeEventListener('contextmenu', onContextMenu)

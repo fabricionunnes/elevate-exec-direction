@@ -54,6 +54,7 @@ export default function MarceloNpc() {
       rotation={[0, Math.PI, 0]}
       onClick={(e) => {
         e.stopPropagation()
+        if (e.delta > 6) return // arrasto de câmera, não clique
         setNpcChatOpen(true)
       }}
       onPointerOver={() => (document.body.style.cursor = 'pointer')}

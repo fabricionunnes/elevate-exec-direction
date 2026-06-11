@@ -468,6 +468,7 @@ export default function ModernOffice() {
         rotation={[-Math.PI / 2, 0, 0]}
         onDoubleClick={(e) => {
           e.stopPropagation()
+          if (e.delta > 6) return // arrasto de câmera, não clique
           useTeamStore.getState().setPendingWalkTo({ x: e.point.x, z: e.point.z })
         }}
       >
