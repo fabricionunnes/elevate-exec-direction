@@ -150,6 +150,11 @@ export class TeamRealtime {
           for (const id of Object.keys(current)) {
             if (!next[id]) store.addToast(`${current[id].name} saiu do escritório`, 'out')
           }
+          // Quem estava gravando saiu → limpa o indicador
+          const rec = store.recording
+          if (rec.on && rec.byId && rec.byId !== this.me.id && !next[rec.byId]) {
+            store.setRecording({ on: false, byId: null, byName: null })
+          }
         } else {
           this.hadFirstSync = true
         }
@@ -173,6 +178,11 @@ export class TeamRealtime {
         const signal = payload as RtcSignal
         if (!signal || signal.to !== this.me.id) return
         this.onRtcSignal?.(signal)
+      })
+      .on('broadcast', { event: 'rec' }, ({ payload }) => {
+        const r = payload as { on: boolean; byId: string; byName: string }
+        if (!r || r.byId === this.me.id) return
+        useTeamStore.getState().setRecording({ on: r.on, byId: r.on ? r.byId : null, byName: r.on ? r.byName : null })
       })
       .on('broadcast', { event: 'ring' }, ({ payload }) => {
         const r = payload as { to: string; fromId: string; fromName: string; x?: number; z?: number }
@@ -212,6 +222,15 @@ export class TeamRealtime {
 
     void this.loadChatHistory()
     void this.refreshRooms()
+  }
+
+  /** Avisa todos que a gravação de reunião começou/terminou. */
+  sendRecording(on: boolean) {
+    void this.channel?.send({
+      type: 'broadcast',
+      event: 'rec',
+      payload: { on, byId: this.me.id, byName: this.me.name },
+    })
   }
 
   /** Toca a campainha/cutuca outro usuário online (leva minha posição

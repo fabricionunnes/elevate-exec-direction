@@ -4,7 +4,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTeamStore, RemotePlayerState } from '../store/useTeamStore'
 import { roomAt, OfficeRoom } from '../lib/rooms'
+import { MeetingRecorder, saveRecording } from '../lib/recording'
 import type { CallManager } from '../lib/webrtc'
+import type { TeamRealtime } from '../lib/realtime'
 
 const HEAR_NEAR = 2.5 // até aqui, volume 1 em área aberta
 const HEAR_FAR = 11 // a partir daqui, silêncio em área aberta
@@ -292,7 +294,7 @@ async function playRingSound() {
   ding(660, 1.75)
 }
 
-export default function CallDock({ callManager }: { callManager: CallManager }) {
+export default function CallDock({ callManager, realtime }: { callManager: CallManager; realtime: TeamRealtime }) {
   const call = useTeamStore((s) => s.call)
   const remotePlayers = useTeamStore((s) => s.remotePlayers)
   const me = useTeamStore((s) => s.me)
@@ -301,6 +303,9 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
   const incomingRing = useTeamStore((s) => s.incomingRing)
   const setIncomingRing = useTeamStore((s) => s.setIncomingRing)
   const voiceBlocked = useTeamStore((s) => s.voiceBlocked)
+  const recording = useTeamStore((s) => s.recording)
+  const recorderRef = useRef<MeetingRecorder | null>(null)
+  if (!recorderRef.current) recorderRef.current = new MeetingRecorder()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [volumes, setVolumes] = useState<Record<string, number>>({})
@@ -312,20 +317,39 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
     if (!expanded && focusedId) setFocusedId(null)
   }, [expanded, focusedId])
 
-  // Destrava o áudio do sino no primeiro gesto do usuário (autoplay policy)
+  // Destrava o áudio do sino e pede permissão de notificação de sistema
+  // no primeiro gesto do usuário (autoplay/notification policies)
   useEffect(() => {
-    document.addEventListener('click', ensureRingCtx)
-    document.addEventListener('keydown', ensureRingCtx)
+    const unlock = () => {
+      ensureRingCtx()
+      try {
+        if ('Notification' in window && Notification.permission === 'default') {
+          void Notification.requestPermission()
+        }
+      } catch {
+        // sem suporte a Notification
+      }
+    }
+    document.addEventListener('click', unlock)
+    document.addEventListener('keydown', unlock)
     return () => {
-      document.removeEventListener('click', ensureRingCtx)
-      document.removeEventListener('keydown', ensureRingCtx)
+      document.removeEventListener('click', unlock)
+      document.removeEventListener('keydown', unlock)
     }
   }, [])
 
-  // Campainha recebida: som + título da aba piscando + banner por 15s
+  // Campainha recebida: som + notificação de sistema (se em background)
+  // + título da aba piscando + banner por 15s
   useEffect(() => {
     if (!incomingRing) return
     void playRingSound()
+    try {
+      if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+        new Notification('🔔 UNV Office', { body: `${incomingRing.fromName} está te chamando!` })
+      }
+    } catch {
+      // sem suporte a Notification
+    }
     const originalTitle = document.title
     let flip = false
     const flash = setInterval(() => {
@@ -339,6 +363,59 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
       document.title = originalTitle
     }
   }, [incomingRing, setIncomingRing])
+
+  // ── Gravação de reunião ───────────────────────────────────────────────
+  // Peers que entram no meio da gravação têm o áudio plugado na hora
+  useEffect(() => {
+    const rec = recorderRef.current
+    if (!rec?.active) return
+    for (const [id, stream] of Object.entries(call.remoteStreams)) {
+      rec.addStream(id, stream)
+    }
+  }, [call.remoteStreams])
+
+  const stopAndSaveRecording = async () => {
+    const rec = recorderRef.current
+    if (!rec?.active || !me) return
+    const st = useTeamStore.getState()
+    st.setRecording({ on: false, byId: null, byName: null })
+    realtime.sendRecording(false)
+    const result = await rec.stop()
+    if (!result) return
+    st.addToast('Gravação salva — processando transcrição...', 'in')
+    const saved = await saveRecording(
+      result.blob,
+      result.durationS,
+      myRoomId ? rooms.find((r) => r.id === myRoomId)?.name ?? null : null,
+      me
+    )
+    if (saved.ok) {
+      st.addToast(saved.transcribed ? 'Gravação e transcrição prontas (30 dias)' : 'Gravação salva (sem transcrição)', 'in')
+    } else {
+      st.addToast('Falha ao salvar a gravação', 'out')
+    }
+  }
+
+  const toggleRecording = () => {
+    const rec = recorderRef.current
+    if (!rec || !me) return
+    if (rec.active) {
+      void stopAndSaveRecording()
+      return
+    }
+    if (recording.on) return // outra pessoa já está gravando
+    rec.start(call.localStream, call.remoteStreams)
+    useTeamStore.getState().setRecording({ on: true, byId: me.id, byName: me.name })
+    realtime.sendRecording(true)
+  }
+
+  // Saiu da chamada/escritório gravando → para e salva
+  useEffect(() => {
+    if (!call.joined && recorderRef.current?.active) {
+      void stopAndSaveRecording()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [call.joined])
 
   // Aceitar o chamado: anda automaticamente até quem chamou
   const goToCaller = () => {
@@ -659,6 +736,19 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
                 🖥️
               </DockButton>
               <DockButton
+                onClick={toggleRecording}
+                danger={recording.on && recording.byId === me?.id}
+                title={
+                  recording.on
+                    ? recording.byId === me?.id
+                      ? 'Parar gravação'
+                      : `${recording.byName} está gravando`
+                    : 'Gravar reunião (áudio + transcrição, 30 dias, acesso admin)'
+                }
+              >
+                ⏺
+              </DockButton>
+              <DockButton
                 onClick={() => run(() => callManager.toggleCam())}
                 active={call.camOn && !call.screenOn}
                 title={
@@ -690,6 +780,42 @@ export default function CallDock({ callManager }: { callManager: CallManager }) 
           )}
         </div>
       </div>
+
+      {/* Indicador de gravação — visível pra TODOS */}
+      {recording.on && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '16px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(150, 20, 20, 0.92)',
+            border: '1px solid rgba(255,255,255,0.25)',
+            borderRadius: '999px',
+            padding: '6px 16px',
+            color: '#fff',
+            fontSize: '12px',
+            fontWeight: 700,
+            zIndex: 118,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          }}
+        >
+          <span
+            style={{
+              width: '9px',
+              height: '9px',
+              borderRadius: '50%',
+              background: '#ff5252',
+              animation: 'npc-pulse-rec 1.2s infinite',
+            }}
+          />
+          <style>{`@keyframes npc-pulse-rec { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }`}</style>
+          Gravando — {recording.byName}
+        </div>
+      )}
 
       {/* Banner de campainha */}
       {incomingRing && (

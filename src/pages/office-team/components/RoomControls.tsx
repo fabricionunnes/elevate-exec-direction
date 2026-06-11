@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useStaffPermissions } from '@/hooks/useStaffPermissions'
 import { useTeamStore } from '../store/useTeamStore'
 import { createRoom, setRoomLock, isEffectivelyLocked, RoomType } from '../lib/rooms'
+import RecordingsPanel from './RecordingsPanel'
 import type { TeamRealtime } from '../lib/realtime'
 
 const ROOM_COLORS = ['#CC1B1B', '#1A4A8A', '#1B6B3A', '#6B2FA0', '#B85C00', '#C2185B', '#0D2B5E', '#006B6B']
@@ -40,6 +41,7 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
   const { isMaster } = useStaffPermissions()
 
   const [creating, setCreating] = useState(false)
+  const [recordingsOpen, setRecordingsOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [newType, setNewType] = useState<RoomType>('sector')
   const [newColor, setNewColor] = useState(ROOM_COLORS[0])
@@ -156,7 +158,14 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
             ➕ Nova sala
           </button>
         )}
+        {isMaster && (
+          <button onClick={() => setRecordingsOpen(true)} style={btnStyle}>
+            🎞️ Gravações
+          </button>
+        )}
       </div>
+
+      <RecordingsPanel open={recordingsOpen} onClose={() => setRecordingsOpen(false)} />
 
       {/* Form de criação (master) */}
       {creating && isMaster && (

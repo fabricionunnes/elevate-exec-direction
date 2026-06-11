@@ -295,7 +295,7 @@ export default function TeamOfficePage() {
       <TeamHUD realtime={managers.realtime} />
       <RoomControls realtime={managers.realtime} />
       <TeamChatPanel realtime={managers.realtime} />
-      <CallDock callManager={managers.callManager} />
+      <CallDock callManager={managers.callManager} realtime={managers.realtime} />
       <AvatarEditor realtime={managers.realtime} />
       <MarceloChatPanel />
       <OfficeToasts />

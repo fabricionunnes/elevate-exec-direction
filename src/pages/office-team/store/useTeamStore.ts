@@ -103,6 +103,8 @@ interface TeamState {
   incomingRing: { fromId: string; fromName: string; x: number; z: number; ts: number } | null
   /** notificações pequenas (entrou/saiu do escritório) */
   toasts: { id: string; text: string; kind: 'in' | 'out' }[]
+  /** gravação de reunião em andamento (visível pra todos) */
+  recording: { on: boolean; byId: string | null; byName: string | null }
   /** voz automática falhou (permissão negada) — mostra fallback manual */
   voiceBlocked: boolean
 
@@ -133,6 +135,7 @@ interface TeamState {
   setIncomingRing: (ring: { fromId: string; fromName: string; x: number; z: number; ts: number } | null) => void
   addToast: (text: string, kind: 'in' | 'out') => void
   removeToast: (id: string) => void
+  setRecording: (rec: { on: boolean; byId: string | null; byName: string | null }) => void
   setVoiceBlocked: (blocked: boolean) => void
 
   setCall: (patch: Partial<CallState>) => void
@@ -159,6 +162,7 @@ export const useTeamStore = create<TeamState>((set) => ({
   npcChatOpen: false,
   incomingRing: null,
   toasts: [],
+  recording: { on: false, byId: null, byName: null },
   voiceBlocked: false,
 
   call: {
@@ -252,6 +256,7 @@ export const useTeamStore = create<TeamState>((set) => ({
     })),
   removeToast: (id) =>
     set((prev) => ({ toasts: prev.toasts.filter((t) => t.id !== id) })),
+  setRecording: (rec) => set({ recording: rec }),
   setVoiceBlocked: (blocked) => set({ voiceBlocked: blocked }),
 
   setCall: (patch) => set((prev) => ({ call: { ...prev.call, ...patch } })),
