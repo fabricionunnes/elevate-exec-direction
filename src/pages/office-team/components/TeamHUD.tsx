@@ -224,8 +224,8 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
         </div>
       </div>
 
-      {/* Botão de chat — canto inferior direito */}
-      {!chatOpen && (
+      {/* Botão de chat — canto inferior direito (visitante não tem chat global) */}
+      {!chatOpen && !me?.isGuest && (
         <button
           onClick={toggleChat}
           title="Chat do escritório"

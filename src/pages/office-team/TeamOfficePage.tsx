@@ -27,6 +27,7 @@ import SaleCelebration from './components/SaleCelebration'
 import MusicPlayer from './components/MusicPlayer'
 import CoffeeChat from './components/CoffeeChat'
 import ScreenShareTvs from './components/ScreenShareTv'
+import TourGuide from './components/TourGuide'
 import { fetchInMeetingNow, fetchAgendaToday, AgendaItem } from './lib/agenda'
 import { playMeetingPing } from './lib/sfx'
 import {
@@ -155,6 +156,24 @@ async function loadProfile(): Promise<TeamProfile | null> {
   } = await supabase.auth.getUser()
   if (!user) return null
 
+  // Visitante (login anônimo via convite): perfil reduzido, spawn na
+  // Reunião Principal, sem sala pessoal e sem dados de negócio
+  if ((user as { is_anonymous?: boolean }).is_anonymous) {
+    const meta = user.user_metadata as Record<string, unknown> | null
+    const gname = ((meta?.guest_name as string) || 'Visitante').slice(0, 32)
+    const colors = avatarColorsFor(user.id)
+    return {
+      id: user.id,
+      name: gname,
+      role: 'Visitante',
+      ...colors,
+      avatar: { ...DEFAULT_AVATAR, shirt: colors.color, pants: colors.pantsColor },
+      spawn: [-21, 8.6, 0], // Reunião Principal
+      canHavePersonalRoom: false,
+      isGuest: true,
+    }
+  }
+
   let name: string | null = null
 
   const { data: staff } = await supabase
@@ -234,6 +253,109 @@ async function loadProfile(): Promise<TeamProfile | null> {
     spawn,
     canHavePersonalRoom: isActiveStaff && personalRoom,
   }
+}
+
+/** Entrada de visitante: valida o convite, pede o nome e entra anônimo. */
+function GuestEntry({ token }: { token: string }) {
+  const [name, setName] = useState('')
+  const [state, setState] = useState<'checking' | 'ok' | 'invalid' | 'joining'>('checking')
+
+  useEffect(() => {
+    void supabase
+      .rpc('office_validate_invite' as never, { p_token: token } as never)
+      .then(({ data }) => setState(data ? 'ok' : 'invalid'))
+  }, [token])
+
+  const join = async () => {
+    if (!name.trim() || state === 'joining') return
+    setState('joining')
+    const { error } = await supabase.auth.signInAnonymously({
+      options: { data: { guest_name: name.trim(), invite_token: token } },
+    })
+    if (error) {
+      setState('ok')
+      return
+    }
+    window.location.reload()
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: '#0a0a14',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '14px',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        color: '#fff',
+        zIndex: 999,
+        padding: '20px',
+      }}
+    >
+      <div style={{ fontSize: '44px' }}>🏢</div>
+      <div style={{ fontSize: '24px', fontWeight: 800 }}>
+        UNV <span style={{ color: '#FFD700' }}>Office</span>
+      </div>
+      {state === 'checking' && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>Validando convite...</div>}
+      {state === 'invalid' && (
+        <div style={{ fontSize: '13px', color: '#ff8a80', textAlign: 'center' }}>
+          Convite inválido ou expirado.
+          <br />
+          Peça um link novo pra quem te convidou.
+        </div>
+      )}
+      {(state === 'ok' || state === 'joining') && (
+        <>
+          <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
+            Você foi convidado pra uma reunião. Como quer ser chamado?
+          </div>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void join()
+            }}
+            placeholder="Seu nome"
+            maxLength={32}
+            autoFocus
+            style={{
+              width: 'min(300px, 80vw)',
+              padding: '12px 16px',
+              borderRadius: '12px',
+              border: '1px solid rgba(255,215,0,0.4)',
+              background: 'rgba(255,255,255,0.06)',
+              color: '#fff',
+              fontSize: '15px',
+              outline: 'none',
+              textAlign: 'center',
+              fontFamily: 'inherit',
+            }}
+          />
+          <button
+            onClick={() => void join()}
+            disabled={!name.trim() || state === 'joining'}
+            style={{
+              width: 'min(300px, 80vw)',
+              padding: '12px',
+              borderRadius: '12px',
+              border: '1px solid #FFD700',
+              background: name.trim() ? '#0D2B5E' : 'rgba(255,255,255,0.06)',
+              color: '#fff',
+              fontWeight: 700,
+              fontSize: '14px',
+              cursor: name.trim() ? 'pointer' : 'not-allowed',
+            }}
+          >
+            {state === 'joining' ? 'Entrando...' : 'Entrar no escritório'}
+          </button>
+        </>
+      )}
+    </div>
+  )
 }
 
 export default function TeamOfficePage() {
@@ -359,6 +481,8 @@ export default function TeamOfficePage() {
   }, [me])
 
   if (authError) {
+    const inviteToken = new URLSearchParams(window.location.search).get('invite')
+    if (inviteToken) return <GuestEntry token={inviteToken} />
     return <LoadingScreen label="Faça login no Nexus para entrar no escritório." />
   }
   if (!me || !managers) {
@@ -400,18 +524,19 @@ export default function TeamOfficePage() {
         </Canvas>
       </Suspense>
 
-      {/* Overlays */}
+      {/* Overlays (visitante tem UI reduzida: só voz, dock e avisos) */}
       <TeamHUD realtime={managers.realtime} />
-      <RoomControls realtime={managers.realtime} />
-      <TeamChatPanel realtime={managers.realtime} />
+      {!me.isGuest && <RoomControls realtime={managers.realtime} />}
+      {!me.isGuest && <TeamChatPanel realtime={managers.realtime} />}
       <CallDock callManager={managers.callManager} realtime={managers.realtime} />
       <AvatarEditor realtime={managers.realtime} />
-      <MarceloChatPanel />
-      <AgentChatPanel />
-      <SaleCelebration />
+      {!me.isGuest && <MarceloChatPanel />}
+      {!me.isGuest && <AgentChatPanel />}
+      {!me.isGuest && <SaleCelebration />}
       <MusicPlayer realtime={managers.realtime} />
       <OfficeToasts />
-      <DeskNotes realtime={managers.realtime} />
+      {!me.isGuest && <DeskNotes realtime={managers.realtime} />}
+      <TourGuide />
     </div>
   )
 }

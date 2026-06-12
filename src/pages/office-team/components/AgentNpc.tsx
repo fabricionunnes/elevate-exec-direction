@@ -24,6 +24,9 @@ import RobotBody from './RobotBody'
 
 const CYCLE = 360 // segundos por ciclo de rotina
 
+/** Posição atual do MAX (pro balão do tour de boas-vindas). */
+export const maxNpcState = { x: 0, z: 0 }
+
 function slotHash(slot: number): number {
   let h = slot >>> 0
   h = (h ^ (h >> 16)) * 0x45d9f3b
@@ -247,6 +250,25 @@ function AgentFigure({
       return true
     }
 
+    // ── Tour de boas-vindas: o MAX larga tudo e guia o usuário ──
+    const tour = useTeamStore.getState().tour
+    if (agent.key === 'ceo' && tour) {
+      planPath(`tour:${tour.x.toFixed(1)}:${tour.z.toFixed(1)}`, tour.x, tour.z)
+      if (!followPath()) {
+        if (Math.hypot(g.position.x - tour.x, g.position.z - tour.z) > 4) {
+          g.position.set(tour.x, 0, tour.z) // path falhou: garante presença
+        }
+        setPoseIfChanged('stand')
+      }
+      maxNpcState.x = g.position.x
+      maxNpcState.z = g.position.z
+      return
+    }
+    if (agent.key === 'ceo') {
+      maxNpcState.x = g.position.x
+      maxNpcState.z = g.position.z
+    }
+
     // ── Escalado pro café: sobrepõe a rotina individual ──
     if (cafeSeat && cafePhase) {
       if (cafePhase === 'go') {
@@ -369,6 +391,18 @@ function AgentFigure({
   )
 }
 
+/** Balão do MAX durante o tour (segue a posição dele). */
+function TourBubble() {
+  const tour = useTeamStore((s) => s.tour)
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const i = setInterval(() => setTick((v) => v + 1), 400)
+    return () => clearInterval(i)
+  }, [])
+  if (!tour) return null
+  return <SpeechBubble x={maxNpcState.x} z={maxNpcState.z} y={2.55} text={tour.text} isDots={false} />
+}
+
 export default function AgentNpcs() {
   const rooms = useTeamStore((s) => s.rooms)
   const [cafe, setCafe] = useState<CafeShift | null>(null)
@@ -440,6 +474,7 @@ export default function AgentNpcs() {
           slot={cafe.slot}
         />
       )}
+      <TourBubble />
     </>
   )
 }

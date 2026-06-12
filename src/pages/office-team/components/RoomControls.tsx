@@ -1,7 +1,8 @@
 // Controles de sala: sala atual + trancar/destrancar, ir pra minha sala,
-// criar novas salas (master) e personalizar avatar.
+// criar novas salas (master), convidar visitante e personalizar avatar.
 import { useState } from 'react'
 import { useStaffPermissions } from '@/hooks/useStaffPermissions'
+import { supabase } from '@/integrations/supabase/client'
 import { useTeamStore } from '../store/useTeamStore'
 import { createRoom, setRoomLock, isEffectivelyLocked, personalOwnerSeat, RoomType } from '../lib/rooms'
 import RecordingsPanel from './RecordingsPanel'
@@ -39,6 +40,32 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
   const setPendingWalkTo = useTeamStore((s) => s.setPendingWalkTo)
   const setAvatarEditorOpen = useTeamStore((s) => s.setAvatarEditorOpen)
   const { isMaster } = useStaffPermissions()
+  const [inviteBusy, setInviteBusy] = useState(false)
+
+  // Convite de visitante: gera token de 24h e copia o link
+  const inviteGuest = async () => {
+    if (!me || inviteBusy) return
+    setInviteBusy(true)
+    const { data, error } = await supabase
+      .from('office_guest_invites' as never)
+      .insert({ created_by: me.id } as never)
+      .select('token')
+      .single()
+    setInviteBusy(false)
+    const token = (data as { token?: string } | null)?.token
+    const st = useTeamStore.getState()
+    if (error || !token) {
+      st.addToast('Não consegui gerar o convite. Tenta de novo.', 'out')
+      return
+    }
+    const link = `${window.location.origin}/onboarding-tasks/unv-office?invite=${token}`
+    try {
+      await navigator.clipboard.writeText(link)
+      st.addToast('✉️ Link de visitante copiado (vale 24h) — manda pro convidado', 'in')
+    } catch {
+      window.prompt('Copie o link do convite (vale 24h):', link)
+    }
+  }
 
   const [creating, setCreating] = useState(false)
   const [recordingsOpen, setRecordingsOpen] = useState(false)
@@ -166,6 +193,15 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
         {isMaster && (
           <button onClick={() => setRecordingsOpen(true)} style={btnStyle}>
             🎞️ Gravações
+          </button>
+        )}
+        {isMaster && (
+          <button
+            onClick={() => void inviteGuest()}
+            style={btnStyle}
+            title="Gera um link de 24h pra um convidado entrar direto na Reunião Principal"
+          >
+            {inviteBusy ? '⏳ Gerando link...' : '✉️ Convidar visitante'}
           </button>
         )}
       </div>

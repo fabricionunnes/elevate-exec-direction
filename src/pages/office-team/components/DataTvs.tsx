@@ -268,6 +268,8 @@ const TV_Y = 1.85
 
 export default function DataTvs({ agendaToday }: { agendaToday: AgendaItem[] }) {
   const rooms = useTeamStore((s) => s.rooms)
+  // Visitante convidado: TVs apagadas (sem dados de negócio; o banco também bloqueia)
+  const isGuest = useTeamStore((s) => s.me?.isGuest === true)
   const [comercial, setComercial] = useState<TvComercial | null>(null)
   const [produto, setProduto] = useState<TvProduto | null>(null)
 
@@ -333,7 +335,7 @@ export default function DataTvs({ agendaToday }: { agendaToday: AgendaItem[] }) 
           z={comercialRoom.z - comercialRoom.depth / 2 + 0.36}
           w={TV_W}
           h={TV_H}
-          texture={comercialTex}
+          texture={isGuest ? undefined : comercialTex}
         />
       )}
       {produtoRoom && (
@@ -343,11 +345,11 @@ export default function DataTvs({ agendaToday }: { agendaToday: AgendaItem[] }) 
           z={produtoRoom.z - produtoRoom.depth / 2 + 0.36}
           w={TV_W}
           h={TV_H}
-          texture={produtoTex}
+          texture={isGuest ? undefined : produtoTex}
         />
       )}
       {/* Termômetro de meta: parede leste da sala Comercial */}
-      {comercialRoom && (
+      {comercialRoom && !isGuest && (
         <group
           position={[comercialRoom.x + comercialRoom.width / 2 - 0.36, 1.7, comercialRoom.z + 0.6]}
           rotation={[0, -Math.PI / 2, 0]}
@@ -366,7 +368,7 @@ export default function DataTvs({ agendaToday }: { agendaToday: AgendaItem[] }) 
         />
       )}
       {/* Placa da agenda do dia, na parede externa da Reunião Principal (lado do corredor) */}
-      {mainMeeting && (
+      {mainMeeting && !isGuest && (
         <group
           position={[mainMeeting.x + 3.4, 1.62, mainMeeting.z - mainMeeting.depth / 2 - 0.06]}
           rotation={[0, Math.PI, 0]}

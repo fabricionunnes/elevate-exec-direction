@@ -31,6 +31,8 @@ export interface TeamProfile {
   spawn?: [number, number, number]
   /** false para terceirizados/não-staff: não ganha sala individual */
   canHavePersonalRoom?: boolean
+  /** visitante convidado (login anônimo): UI reduzida, sem dados de negócio */
+  isGuest?: boolean
 }
 
 export interface RemotePlayerState extends TeamProfile {
@@ -145,6 +147,8 @@ interface TeamState {
 
   /** modo foco local (F): silencia cutucadas com auto-resposta */
   focused: boolean
+  /** tour de boas-vindas: destino atual do MAX + fala do balão */
+  tour: { x: number; z: number; text: string } | null
   /** venda ganha no CRM (sino + confete pra todo o escritório) */
   saleEvent: { lead: string; value: number; by: string; ts: number } | null
   /** user_ids com reunião agendada acontecendo agora (status "Em reunião") */
@@ -187,6 +191,7 @@ interface TeamState {
   removeCutscene: (id: string) => void
   setVoiceBlocked: (blocked: boolean) => void
   setFocused: (on: boolean) => void
+  setTour: (t: { x: number; z: number; text: string } | null) => void
   setSaleEvent: (s: { lead: string; value: number; by: string; ts: number } | null) => void
   setInMeetingIds: (ids: string[]) => void
   setAgentChatFor: (key: string | null) => void
@@ -222,6 +227,7 @@ export const useTeamStore = create<TeamState>((set) => ({
   cutscenes: [],
   voiceBlocked: false,
   focused: false,
+  tour: null,
   saleEvent: null,
   inMeetingIds: [],
   agentChatFor: null,
@@ -332,6 +338,7 @@ export const useTeamStore = create<TeamState>((set) => ({
     set((prev) => ({ cutscenes: prev.cutscenes.filter((c) => c.id !== id) })),
   setVoiceBlocked: (blocked) => set({ voiceBlocked: blocked }),
   setFocused: (on) => set({ focused: on }),
+  setTour: (t) => set({ tour: t }),
   setSaleEvent: (s) => set({ saleEvent: s }),
   setInMeetingIds: (ids) => set({ inMeetingIds: ids }),
   setAgentChatFor: (key) => set({ agentChatFor: key }),
