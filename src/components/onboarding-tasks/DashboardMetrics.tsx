@@ -109,6 +109,7 @@ interface Company {
   cs_id?: string | null;
   is_simulator?: boolean;
   renewal_status?: string | null;
+  goal_not_required?: boolean | null;
 }
 
 interface OverdueCompanyData {
@@ -1032,7 +1033,14 @@ const DashboardMetrics = ({
       .filter(t => t.company_id && filteredCompanyIds.has(t.company_id) && t.target_value > 0)
       .forEach(t => companiesWithAnyKpiIds.add(t.company_id));
 
-    const noGoalCount = Array.from(filteredCompanyIds).filter(id => id && !companiesWithAnyKpiIds.has(id)).length;
+    // Empresas marcadas como "meta não necessária" não contam como sem meta
+    // (mesma regra da lista de empresas)
+    const goalNotRequiredIds = new Set(
+      filteredCompanies.filter(c => c.goal_not_required).map(c => c.id)
+    );
+    const noGoalCount = Array.from(filteredCompanyIds).filter(
+      id => id && !companiesWithAnyKpiIds.has(id) && !goalNotRequiredIds.has(id)
+    ).length;
     
     // Projeções são calculadas APENAS para empresas com lançamentos
     const meetingGoal = companiesWithEntries.filter(([_, m]) => m.projectionPercent >= 100).length;
