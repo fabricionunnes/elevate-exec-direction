@@ -344,8 +344,8 @@ function BistroTable({ x, z }: { x: number; z: number }) {
         <cylinderGeometry args={[0.05, 0.08, 1, 8]} />
         <meshStandardMaterial color="#3a3d44" metalness={0.5} roughness={0.4} />
       </mesh>
-      {/* Banquetas (clicáveis — senta olhando pra mesa) */}
-      {[0, Math.PI].map((a) => (
+      {/* Banquetas (4 por mesa, clicáveis — senta olhando pra mesa) */}
+      {[0, Math.PI / 2, Math.PI, Math.PI * 1.5].map((a) => (
         <group
           key={a}
           position={[Math.sin(a) * 0.75, 0, Math.cos(a) * 0.75]}

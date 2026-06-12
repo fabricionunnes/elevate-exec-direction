@@ -10,7 +10,9 @@ import { useTeamStore } from '../store/useTeamStore'
 import type { OfficeRoom } from '../lib/rooms'
 
 const SEAT_DIST = 0.75 // banqueta fica a 0.75 do centro da mesa (LoungeFurniture)
-const MATCH_R = 0.45 // tolerância pra considerar "sentado naquela banqueta"
+// Sentado a até esse raio do centro da mesa = "está na mesinha" (robusto a
+// qualquer drift de posição — match por banqueta exata falhava com remotos)
+const TABLE_R = 1.35
 
 export interface BistroSeat {
   tableKey: string
@@ -20,22 +22,35 @@ export interface BistroSeat {
   z: number
 }
 
-/** Mesmas posições do LoungeFurniture: 3 mesas bistrô por lounge, 2 banquetas cada. */
-export function bistroSeatsFor(rooms: OfficeRoom[]): BistroSeat[] {
-  const seats: BistroSeat[] = []
+export interface BistroTablePos {
+  key: string
+  x: number
+  z: number
+}
+
+/** Mesmas posições do LoungeFurniture: 3 mesas bistrô por lounge. */
+export function bistroTablesFor(rooms: OfficeRoom[]): BistroTablePos[] {
+  const tables: BistroTablePos[] = []
   for (const room of rooms) {
     if (room.roomType !== 'lounge') continue
     const right = room.x + room.width / 2
-    const tables: [number, number][] = [
+    for (const [tx, tz] of [
       [right - 3, room.z + 0.6],
       [right - 5.4, room.z + 2.2],
       [right - 1.8, room.z + 2.8],
-    ]
-    for (const [tx, tz] of tables) {
-      const tableKey = `${room.id}:${tx.toFixed(1)}:${tz.toFixed(1)}`
-      for (const a of [0, Math.PI]) {
-        seats.push({ tableKey, tableX: tx, tableZ: tz, x: tx + Math.sin(a) * SEAT_DIST, z: tz + Math.cos(a) * SEAT_DIST })
-      }
+    ] as [number, number][]) {
+      tables.push({ key: `${room.id}:${tx.toFixed(1)}:${tz.toFixed(1)}`, x: tx, z: tz })
+    }
+  }
+  return tables
+}
+
+/** 4 banquetas por mesa (mesmos ângulos do BistroTable do ModernOffice). */
+export function bistroSeatsFor(rooms: OfficeRoom[]): BistroSeat[] {
+  const seats: BistroSeat[] = []
+  for (const t of bistroTablesFor(rooms)) {
+    for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
+      seats.push({ tableKey: t.key, tableX: t.x, tableZ: t.z, x: t.x + Math.sin(a) * SEAT_DIST, z: t.z + Math.cos(a) * SEAT_DIST })
     }
   }
   return seats
@@ -185,32 +200,41 @@ function TableChat({ sitters }: { sitters: Sitter[] }) {
   return <SpeechBubble x={speaker.x} z={speaker.z} text={lastMsg ? lastMsg.content : dots} isDots={!lastMsg} />
 }
 
-/** Caixinha de diálogo estilo quadrinho (reusada pelos agentes no café). */
-export function SpeechBubble({ x, z, y = 2.0, text: raw, isDots }: { x: number; z: number; y?: number; text: string; isDots: boolean }) {
+/** Caixinha de diálogo estilo quadrinho (reusada pelos agentes no café).
+ * Tamanho generoso: precisa ser legível com a câmera no zoom normal. */
+export function SpeechBubble({ x, z, y = 2.05, text: raw, isDots }: { x: number; z: number; y?: number; text: string; isDots: boolean }) {
   let text = raw
-  if (text.length > 64) text = `${text.slice(0, 62)}…`
-  const bubbleW = isDots ? 0.42 : Math.min(1.7, 0.34 + text.length * 0.052)
+  if (text.length > 84) text = `${text.slice(0, 82)}…`
+  const twoLines = text.length > 36
+  const bubbleH = isDots ? 0.4 : twoLines ? 0.78 : 0.52
+  const bubbleW = isDots ? 0.56 : Math.min(3.1, Math.max(1.1, 0.5 + (twoLines ? text.length / 2 : text.length) * 0.082))
 
   return (
-    <Billboard position={[x, y, z]} follow>
+    <Billboard position={[x, y + (twoLines ? 0.14 : 0), z]} follow>
       {/* Caixinha */}
       <mesh>
-        <planeGeometry args={[bubbleW, isDots ? 0.3 : 0.42]} />
-        <meshBasicMaterial color="#ffffff" transparent opacity={0.94} depthWrite={false} />
+        <planeGeometry args={[bubbleW, bubbleH]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.95} depthWrite={false} />
+      </mesh>
+      {/* Borda fina */}
+      <mesh position={[0, 0, -0.001]}>
+        <planeGeometry args={[bubbleW + 0.04, bubbleH + 0.04]} />
+        <meshBasicMaterial color="#1a1d24" transparent opacity={0.85} depthWrite={false} />
       </mesh>
       {/* Rabinho do balão */}
-      <mesh position={[0, isDots ? -0.21 : -0.27, 0]} rotation={[0, 0, Math.PI]}>
-        <coneGeometry args={[0.05, 0.12, 3]} />
-        <meshBasicMaterial color="#ffffff" transparent opacity={0.94} depthWrite={false} />
+      <mesh position={[0, -bubbleH / 2 - 0.05, 0]} rotation={[0, 0, Math.PI]}>
+        <coneGeometry args={[0.08, 0.16, 3]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.95} depthWrite={false} />
       </mesh>
       <Text
         position={[0, 0, 0.001]}
-        fontSize={isDots ? 0.16 : 0.095}
+        fontSize={isDots ? 0.22 : 0.155}
         color="#1a1d24"
         anchorX="center"
         anchorY="middle"
-        maxWidth={1.55}
+        maxWidth={bubbleW - 0.18}
         textAlign="center"
+        lineHeight={1.25}
       >
         {text}
       </Text>
@@ -225,11 +249,11 @@ export default function CoffeeChat() {
   const seated = useTeamStore((s) => s.seated)
   const playerPosition = useTeamStore((s) => s.playerPosition)
 
-  const seats = useMemo(() => bistroSeatsFor(rooms), [rooms])
+  const tables = useMemo(() => bistroTablesFor(rooms), [rooms])
 
   // Sentou numa banqueta → lembra na hora que a conversa aqui é pública
   const meInBistro =
-    !!me && seated && seats.some((s) => Math.hypot(playerPosition[0] - s.x, playerPosition[2] - s.z) < MATCH_R)
+    !!me && seated && tables.some((t) => Math.hypot(playerPosition[0] - t.x, playerPosition[2] - t.z) < TABLE_R)
   const wasInBistro = useRef(false)
   useEffect(() => {
     if (meInBistro && !wasInBistro.current) {
@@ -240,12 +264,12 @@ export default function CoffeeChat() {
     wasInBistro.current = meInBistro
   }, [meInBistro])
 
-  // Quem está sentado em qual banqueta (local + remotos)
+  // Quem está sentado em qual MESA (match por proximidade do centro — robusto)
   const sitters: Sitter[] = []
   const tryMatch = (id: string, name: string, px: number, pz: number) => {
-    for (const seat of seats) {
-      if (Math.hypot(px - seat.x, pz - seat.z) < MATCH_R) {
-        sitters.push({ id, name, x: seat.x, z: seat.z, tableKey: seat.tableKey, tableX: seat.tableX, tableZ: seat.tableZ })
+    for (const t of tables) {
+      if (Math.hypot(px - t.x, pz - t.z) < TABLE_R) {
+        sitters.push({ id, name, x: px, z: pz, tableKey: t.key, tableX: t.x, tableZ: t.z })
         return
       }
     }

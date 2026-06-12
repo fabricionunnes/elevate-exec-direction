@@ -224,6 +224,7 @@ async function loadProfile(): Promise<TeamProfile | null> {
       hair_color: string
       shirt_color: string
       pants_color: string
+      facial_hair: AvatarConfig['facialHair'] | null
       last_x: number | string | null
       last_z: number | string | null
       last_rot: number | string | null
@@ -236,6 +237,7 @@ async function loadProfile(): Promise<TeamProfile | null> {
       hairColor: s.hair_color,
       shirt: s.shirt_color,
       pants: s.pants_color,
+      facialHair: s.facial_hair ?? 'none',
     }
     if (s.last_x != null && s.last_z != null) {
       spawn = [Number(s.last_x), Number(s.last_z), Number(s.last_rot ?? 0)]
@@ -531,7 +533,7 @@ export default function TeamOfficePage() {
       <CallDock callManager={managers.callManager} realtime={managers.realtime} />
       <AvatarEditor realtime={managers.realtime} />
       {!me.isGuest && <MarceloChatPanel />}
-      {!me.isGuest && <AgentChatPanel />}
+      {!me.isGuest && <AgentChatPanel realtime={managers.realtime} />}
       {!me.isGuest && <SaleCelebration />}
       <MusicPlayer realtime={managers.realtime} />
       <OfficeToasts />

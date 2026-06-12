@@ -9,8 +9,9 @@ import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import RobotBody from './RobotBody'
 import { useTeamStore } from '../store/useTeamStore'
-import { buildCollisionWalls, personalOwnerSeat } from '../lib/rooms'
+import { personalOwnerSeat } from '../lib/rooms'
 import { findPath } from '../lib/pathfinding'
+import { npcObstacles, personAvoidance } from '../lib/npcNav'
 import type { OfficeRoom } from '../lib/rooms'
 
 const INTERACT_RADIUS = 3
@@ -108,10 +109,8 @@ export default function MarceloNpc() {
     const phaseKey = `${slot}:${phase}`
     if (phaseKey !== phaseRef.current) {
       phaseRef.current = phaseKey
-      const state = useTeamStore.getState()
-      const onlineIds = new Set(Object.keys(state.remotePlayers))
-      if (state.me) onlineIds.add(state.me.id)
-      const walls = buildCollisionWalls(state.rooms, onlineIds, null)
+      // Obstáculos completos: paredes + mobília + pessoas
+      const walls = npcObstacles(g.position.x, g.position.z)
       if (phase === 'go') {
         const pts = findPath(g.position.x, g.position.z, dest[0], dest[1], walls)
         pathRef.current = pts ? { pts, i: 0 } : null
@@ -130,13 +129,15 @@ export default function MarceloNpc() {
       const dx = wx - g.position.x
       const dz = wz - g.position.z
       const d = Math.hypot(dx, dz)
-      if (d < 0.15) {
+      const isLast = path.i === path.pts.length - 1
+      if (d < (isLast ? 0.5 : 0.15)) {
         path.i++
         if (path.i >= path.pts.length) pathRef.current = null
       } else {
         const step = Math.min(d, WALK_SPEED * delta)
-        g.position.x += (dx / d) * step
-        g.position.z += (dz / d) * step
+        const [avx, avz] = personAvoidance(g.position.x, g.position.z)
+        g.position.x += (dx / d) * step + avx * delta
+        g.position.z += (dz / d) * step + avz * delta
         const targetAngle = Math.atan2(dx, dz)
         let diff = targetAngle - rotRef.current
         while (diff > Math.PI) diff -= Math.PI * 2

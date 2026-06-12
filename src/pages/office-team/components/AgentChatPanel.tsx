@@ -7,7 +7,9 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { supabase } from '@/integrations/supabase/client'
 import { useTeamStore } from '../store/useTeamStore'
-import { agentByKey, fetchAgentPermissions, grantAgentPermission, revokeAgentPermission } from '../lib/agents'
+import { agentByKey, fetchAgentPermissions, fetchMyAgentKeys, grantAgentPermission, revokeAgentPermission } from '../lib/agents'
+import { bistroTablesFor, bistroSeatsFor } from './CoffeeChat'
+import type { TeamRealtime } from '../lib/realtime'
 
 const AGENT_URL = 'https://xrncvhzxjmddqluxoosu.supabase.co/functions/v1/agente-unv'
 /** user_ids master (Fabrício) — mesmos com poder de delete nas gravações */
@@ -92,12 +94,53 @@ function PermissionsEditor({ agentKey, accent }: { agentKey: string; accent: str
   )
 }
 
-export default function AgentChatPanel() {
+export default function AgentChatPanel({ realtime }: { realtime: TeamRealtime }) {
   const agentKey = useTeamStore((s) => s.agentChatFor)
   const setAgentChatFor = useTeamStore((s) => s.setAgentChatFor)
   const me = useTeamStore((s) => s.me)
   const agent = agentByKey(agentKey)
   const isMaster = !!me && MASTER_IDS.includes(me.id)
+
+  // Aceno: chama o agente até mim — se eu estiver numa mesinha do café,
+  // ele senta numa banqueta livre da mesma mesa (sincronizado pra todos)
+  const summonAgent = async () => {
+    if (!me || !agent) return
+    const st = useTeamStore.getState()
+    const [px, , pz] = st.playerPosition
+    let seat: NonNullable<typeof st.agentSummon>['seat'] = null
+    if (st.seated) {
+      const table = bistroTablesFor(st.rooms).find((t) => Math.hypot(px - t.x, pz - t.z) < 1.35)
+      if (table) {
+        const taken = (sx: number, sz: number) => {
+          if (Math.hypot(px - sx, pz - sz) < 0.5) return true
+          for (const p of Object.values(st.remotePlayers)) {
+            if (p.sitting && Math.hypot(p.position[0] - sx, p.position[2] - sz) < 0.5) return true
+          }
+          return false
+        }
+        const free = bistroSeatsFor(st.rooms).find((s) => s.tableKey === table.key && !taken(s.x, s.z))
+        if (free) seat = { x: free.x, z: free.z, tableX: free.tableX, tableZ: free.tableZ, tableKey: free.tableKey }
+      }
+    }
+    // Sem autorização = papo informal apenas (a prosa filtra os assuntos)
+    let allowed = isMaster
+    if (!allowed) {
+      const keys = await fetchMyAgentKeys(me.id)
+      allowed = keys.includes(agent.key)
+    }
+    realtime.sendAgentSummon({
+      agentKey: agent.key,
+      x: Number(px.toFixed(2)),
+      z: Number(pz.toFixed(2)),
+      seat,
+      byId: me.id,
+      byName: me.name,
+      allowed,
+      ts: Date.now(),
+    })
+    st.addToast(seat ? `👋 ${agent.name} está indo tomar um café com você` : `👋 ${agent.name} está indo até você`, 'in')
+    setAgentChatFor(null)
+  }
 
   const [byAgent, setByAgent] = useState<Record<string, AgentMessage[]>>({})
   const [input, setInput] = useState('')
@@ -232,6 +275,23 @@ export default function AgentChatPanel() {
           <div style={{ color: '#fff', fontWeight: 700, fontSize: '15px' }}>🤖 {agent.name}</div>
           <div style={{ color: ACCENT, fontSize: '11px', marginTop: '2px' }}>{agent.title}</div>
         </div>
+        <button
+          onClick={() => void summonAgent()}
+          title="O agente vem até você — sentado no café, ele senta junto"
+          style={{
+            background: 'rgba(255,215,0,0.12)',
+            border: '1px solid rgba(255,215,0,0.4)',
+            color: '#fff',
+            padding: '6px 10px',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '11px',
+            fontWeight: 700,
+            flexShrink: 0,
+          }}
+        >
+          👋 Chamar
+        </button>
         {isMaster && (
           <button
             onClick={() => setShowPerms((v) => !v)}

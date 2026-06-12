@@ -11,9 +11,18 @@ const SHIRTS = ['#1A4A8A', '#CC1B1B', '#1B6B3A', '#6B2FA0', '#B85C00', '#C2185B'
 const PANTS = ['#2b3445', '#16181d', '#4a3526', '#3d4f5c', '#6b7280', '#1f2a44']
 const HAIR_STYLES: { id: AvatarConfig['hairStyle']; label: string }[] = [
   { id: 'short', label: 'Curto' },
+  { id: 'buzz', label: 'Raspado' },
+  { id: 'curly', label: 'Cacheado' },
   { id: 'long', label: 'Comprido' },
+  { id: 'ponytail', label: 'Rabo de cavalo' },
   { id: 'bun', label: 'Coque' },
   { id: 'bald', label: 'Sem cabelo' },
+]
+const FACIAL_STYLES: { id: NonNullable<AvatarConfig['facialHair']>; label: string }[] = [
+  { id: 'none', label: 'Sem barba' },
+  { id: 'stubble', label: 'Por fazer' },
+  { id: 'beard', label: 'Barba cheia' },
+  { id: 'mustache', label: 'Bigode' },
 ]
 
 function SwatchRow({
@@ -77,6 +86,7 @@ export default function AvatarEditor({ realtime }: { realtime: TeamRealtime }) {
       hair_color: avatar.hairColor,
       shirt_color: avatar.shirt,
       pants_color: avatar.pants,
+      facial_hair: avatar.facialHair ?? 'none',
       updated_at: new Date().toISOString(),
     } as never)
     setSaving(false)
@@ -150,6 +160,32 @@ export default function AvatarEditor({ realtime }: { realtime: TeamRealtime }) {
       {avatar.hairStyle !== 'bald' && (
         <SwatchRow title="Cor do cabelo" colors={HAIR_COLORS} value={avatar.hairColor} onPick={(c) => update({ hairColor: c })} />
       )}
+
+      <div style={{ marginBottom: '14px' }}>
+        <div style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+          Barba
+        </div>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {FACIAL_STYLES.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => update({ facialHair: f.id })}
+              style={{
+                padding: '6px 10px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                background: (avatar.facialHair ?? 'none') === f.id ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.07)',
+                border: (avatar.facialHair ?? 'none') === f.id ? '1px solid rgba(255,215,0,0.6)' : '1px solid rgba(255,255,255,0.15)',
+                color: '#eee',
+                cursor: 'pointer',
+              }}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <SwatchRow title="Camisa" colors={SHIRTS} value={avatar.shirt} onPick={(c) => update({ shirt: c })} />
       <SwatchRow title="Calça" colors={PANTS} value={avatar.pants} onPick={(c) => update({ pants: c })} />
 

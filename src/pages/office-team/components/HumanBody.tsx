@@ -15,38 +15,124 @@ interface HumanBodyProps {
 function Hair({ avatar }: { avatar: AvatarConfig }) {
   const { hairStyle, hairColor } = avatar
   if (hairStyle === 'bald') return null
+  const mat = <meshStandardMaterial color={hairColor} roughness={0.78} />
+
+  // Raspado (máquina): só uma calota rasa, sem laterais — visual masculino
+  if (hairStyle === 'buzz') {
+    return (
+      <group position={[0, 1.56, 0]}>
+        <mesh position={[0, 0.05, -0.02]} castShadow scale={[1, 0.72, 1]}>
+          <sphereGeometry args={[0.158, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
+          {mat}
+        </mesh>
+      </group>
+    )
+  }
+
+  // Cacheado volumoso
+  if (hairStyle === 'curly') {
+    return (
+      <group position={[0, 1.56, 0]}>
+        {[
+          [0, 0.12, -0.02, 0.115],
+          [-0.09, 0.08, -0.03, 0.085],
+          [0.09, 0.08, -0.03, 0.085],
+          [0, 0.07, -0.12, 0.09],
+          [-0.05, 0.13, 0.05, 0.07],
+          [0.06, 0.12, 0.04, 0.07],
+        ].map(([x, y, z, r], i) => (
+          <mesh key={i} position={[x, y, z]} castShadow>
+            <sphereGeometry args={[r, 10, 8]} />
+            {mat}
+          </mesh>
+        ))}
+        {/* Nuca */}
+        <mesh position={[0, -0.02, -0.115]}>
+          <boxGeometry args={[0.24, 0.16, 0.08]} />
+          {mat}
+        </mesh>
+      </group>
+    )
+  }
+
   return (
     <group position={[0, 1.56, 0]}>
       {/* Topo com volume */}
       <mesh position={[0, 0.06, -0.02]} castShadow>
         <sphereGeometry args={[0.168, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.52]} />
-        <meshStandardMaterial color={hairColor} roughness={0.78} />
+        {mat}
       </mesh>
       {/* Laterais (costeletas) */}
       <mesh position={[-0.14, -0.01, -0.04]}>
         <boxGeometry args={[0.045, 0.14, 0.13]} />
-        <meshStandardMaterial color={hairColor} roughness={0.78} />
+        {mat}
       </mesh>
       <mesh position={[0.14, -0.01, -0.04]}>
         <boxGeometry args={[0.045, 0.14, 0.13]} />
-        <meshStandardMaterial color={hairColor} roughness={0.78} />
+        {mat}
       </mesh>
       {/* Nuca */}
       <mesh position={[0, -0.02, -0.115]}>
         <boxGeometry args={[0.24, 0.16, 0.08]} />
-        <meshStandardMaterial color={hairColor} roughness={0.78} />
+        {mat}
       </mesh>
       {hairStyle === 'long' && (
         // Comprimento descendo até os ombros
         <mesh position={[0, -0.18, -0.1]} castShadow>
           <boxGeometry args={[0.3, 0.34, 0.12]} />
-          <meshStandardMaterial color={hairColor} roughness={0.78} />
+          {mat}
         </mesh>
       )}
       {hairStyle === 'bun' && (
         <mesh position={[0, 0.13, -0.16]} castShadow>
           <sphereGeometry args={[0.072, 10, 8]} />
-          <meshStandardMaterial color={hairColor} roughness={0.78} />
+          {mat}
+        </mesh>
+      )}
+      {hairStyle === 'ponytail' && (
+        <>
+          <mesh position={[0, 0.1, -0.17]} castShadow>
+            <sphereGeometry args={[0.055, 10, 8]} />
+            {mat}
+          </mesh>
+          <mesh position={[0, -0.08, -0.2]} rotation={[0.35, 0, 0]} castShadow>
+            <cylinderGeometry args={[0.035, 0.05, 0.3, 8]} />
+            {mat}
+          </mesh>
+        </>
+      )}
+    </group>
+  )
+}
+
+/** Barba/bigode — dá identidade masculina ao rosto. */
+function FacialHair({ avatar }: { avatar: AvatarConfig }) {
+  const style = avatar.facialHair ?? 'none'
+  if (style === 'none') return null
+  const color = avatar.hairColor
+  return (
+    <group position={[0, 1.56, 0]}>
+      {(style === 'beard' || style === 'stubble') && (
+        // Queixo + bochechas (barba cheia é mais grossa que a por fazer)
+        <>
+          <mesh position={[0, -0.105, 0.1]} castShadow>
+            <boxGeometry args={style === 'beard' ? [0.235, 0.115, 0.1] : [0.22, 0.08, 0.075]} />
+            <meshStandardMaterial color={color} roughness={0.85} />
+          </mesh>
+          <mesh position={[-0.105, -0.06, 0.06]}>
+            <boxGeometry args={[0.04, style === 'beard' ? 0.12 : 0.09, 0.12]} />
+            <meshStandardMaterial color={color} roughness={0.85} />
+          </mesh>
+          <mesh position={[0.105, -0.06, 0.06]}>
+            <boxGeometry args={[0.04, style === 'beard' ? 0.12 : 0.09, 0.12]} />
+            <meshStandardMaterial color={color} roughness={0.85} />
+          </mesh>
+        </>
+      )}
+      {(style === 'beard' || style === 'mustache') && (
+        <mesh position={[0, -0.052, 0.145]}>
+          <boxGeometry args={[0.13, 0.032, 0.025]} />
+          <meshStandardMaterial color={color} roughness={0.85} />
         </mesh>
       )}
     </group>
@@ -280,6 +366,7 @@ export default function HumanBody({ avatar, isWalking, isSitting = false }: Huma
       </mesh>
 
       <Hair avatar={avatar} />
+      <FacialHair avatar={avatar} />
     </group>
   )
 }

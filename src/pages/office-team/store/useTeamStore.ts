@@ -6,10 +6,12 @@ import type { OfficeRoom } from '../lib/rooms'
 
 export interface AvatarConfig {
   skin: string
-  hairStyle: 'short' | 'long' | 'bun' | 'bald'
+  hairStyle: 'short' | 'long' | 'bun' | 'bald' | 'buzz' | 'curly' | 'ponytail'
   hairColor: string
   shirt: string
   pants: string
+  /** barba/bigode (opcional — payloads antigos não têm) */
+  facialHair?: 'none' | 'stubble' | 'beard' | 'mustache'
 }
 
 export const DEFAULT_AVATAR: AvatarConfig = {
@@ -18,6 +20,7 @@ export const DEFAULT_AVATAR: AvatarConfig = {
   hairColor: '#2d2017',
   shirt: '#1A4A8A',
   pants: '#2b3445',
+  facialHair: 'none',
 }
 
 export interface TeamProfile {
@@ -149,6 +152,19 @@ interface TeamState {
   focused: boolean
   /** tour de boas-vindas: destino atual do MAX + fala do balão */
   tour: { x: number; z: number; text: string } | null
+  /** aceno: agente chamado até alguém (sincronizado por broadcast pra todos) */
+  agentSummon: {
+    agentKey: string
+    x: number
+    z: number
+    /** banqueta livre da mesa (se o chamador estava sentado no bistrô) */
+    seat: { x: number; z: number; tableX: number; tableZ: number; tableKey: string } | null
+    byId: string
+    byName: string
+    /** chamador tem permissão de falar com o agente (libera dados na prosa) */
+    allowed: boolean
+    ts: number
+  } | null
   /** venda ganha no CRM (sino + confete pra todo o escritório) */
   saleEvent: { lead: string; value: number; by: string; ts: number } | null
   /** user_ids com reunião agendada acontecendo agora (status "Em reunião") */
@@ -192,6 +208,7 @@ interface TeamState {
   setVoiceBlocked: (blocked: boolean) => void
   setFocused: (on: boolean) => void
   setTour: (t: { x: number; z: number; text: string } | null) => void
+  setAgentSummon: (s: TeamState['agentSummon']) => void
   setSaleEvent: (s: { lead: string; value: number; by: string; ts: number } | null) => void
   setInMeetingIds: (ids: string[]) => void
   setAgentChatFor: (key: string | null) => void
@@ -228,6 +245,7 @@ export const useTeamStore = create<TeamState>((set) => ({
   voiceBlocked: false,
   focused: false,
   tour: null,
+  agentSummon: null,
   saleEvent: null,
   inMeetingIds: [],
   agentChatFor: null,
@@ -339,6 +357,7 @@ export const useTeamStore = create<TeamState>((set) => ({
   setVoiceBlocked: (blocked) => set({ voiceBlocked: blocked }),
   setFocused: (on) => set({ focused: on }),
   setTour: (t) => set({ tour: t }),
+  setAgentSummon: (s) => set({ agentSummon: s }),
   setSaleEvent: (s) => set({ saleEvent: s }),
   setInMeetingIds: (ids) => set({ inMeetingIds: ids }),
   setAgentChatFor: (key) => set({ agentChatFor: key }),

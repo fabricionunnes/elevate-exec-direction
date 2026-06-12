@@ -259,6 +259,13 @@ export class TeamRealtime {
           ts: Date.now(),
         })
       })
+      .on('broadcast', { event: 'summon' }, ({ payload }) => {
+        // Aceno: agente chamado pro café/até alguém — TODOS veem a mesma cena
+        const s = payload as NonNullable<ReturnType<typeof useTeamStore.getState>['agentSummon']>
+        if (!s || !s.agentKey) return
+        useTeamStore.getState().setAgentSummon(s)
+        useTeamStore.getState().addToast(`👋 ${s.byName} chamou um agente pro café`, 'in')
+      })
       .on('broadcast', { event: 'focus-reply' }, ({ payload }) => {
         const r = payload as { to: string; name: string }
         if (!r || r.to !== this.me.id) return
@@ -487,6 +494,12 @@ export class TeamRealtime {
   async updateCallState(patch: Partial<Pick<PresencePayload, 'inCall' | 'micOn' | 'camOn' | 'screen'>>) {
     this.presenceState = { ...this.presenceState, ...patch }
     await this.channel?.track(this.presenceState)
+  }
+
+  /** Acena pra um agente: todos os clientes veem ele atender o chamado. */
+  sendAgentSummon(summon: NonNullable<ReturnType<typeof useTeamStore.getState>['agentSummon']>) {
+    useTeamStore.getState().setAgentSummon(summon)
+    void this.channel?.send({ type: 'broadcast', event: 'summon', payload: summon })
   }
 
   /** Liga/desliga o modo foco no presence. */

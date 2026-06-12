@@ -16,8 +16,8 @@ import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import { useTeamStore } from '../store/useTeamStore'
 import { OFFICE_AGENTS, OfficeAgent } from '../lib/agents'
-import { buildCollisionWalls } from '../lib/rooms'
 import { findPath } from '../lib/pathfinding'
+import { npcObstacles, personAvoidance } from '../lib/npcNav'
 import { fetchTvComercial, fetchTvProduto, formatBRL, TvComercial, TvProduto } from '../lib/tvdata'
 import { bistroSeatsFor, BistroSeat, CoffeeSip, SpeechBubble } from './CoffeeChat'
 import RobotBody from './RobotBody'
@@ -26,6 +26,24 @@ const CYCLE = 360 // segundos por ciclo de rotina
 
 /** Posição atual do MAX (pro balão do tour de boas-vindas). */
 export const maxNpcState = { x: 0, z: 0 }
+
+/** Posição atual de cada agente (pro balão do aceno seguir o robô). */
+export const agentPosState: Record<string, { x: number; z: number }> = {}
+
+const SUMMON_TTL = 150_000 // o agente fica ~2,5min e volta pro posto
+
+/** Papo seguro: NADA de sistema, empresa ou números — pra quem não tem
+ * autorização de falar com o agente (e como tempero pra quem tem). */
+const SAFE_SMALL_TALK = [
+  'Esse café tá no ponto.',
+  'Pausa boa é pausa curta — mas essa vale.',
+  'E aí, como tá o dia?',
+  'Eu funciono à base de cafeína estatística.',
+  'Esse lounge ficou bom demais.',
+  'Dizem que café une mais que reunião.',
+  'Se eu pudesse, pedia um expresso duplo.',
+  'Essa lofi de fundo é boa demais.',
+]
 
 function slotHash(slot: number): number {
   let h = slot >>> 0
@@ -210,6 +228,14 @@ function AgentFigure({
     }
   }
 
+  // Banqueta em uso (rotina de café em dupla OU aceno de usuário)
+  const summon = useTeamStore((s) => s.agentSummon)
+  const summonSeat =
+    summon && summon.agentKey === agent.key && summon.seat
+      ? { ...summon.seat, tableKey: summon.seat.tableKey }
+      : null
+  const sitSeat = cafeSeat ?? summonSeat
+
   useFrame((_, delta) => {
     if (!groupRef.current || dests.length === 0) return
     const g = groupRef.current
@@ -217,10 +243,8 @@ function AgentFigure({
     const planPath = (key: string, tx: number, tz: number) => {
       if (key === phaseRef.current) return
       phaseRef.current = key
-      const state = useTeamStore.getState()
-      const onlineIds = new Set(Object.keys(state.remotePlayers))
-      if (state.me) onlineIds.add(state.me.id)
-      const walls = buildCollisionWalls(state.rooms, onlineIds, null)
+      // Obstáculos completos: paredes + mobília + pessoas (não atravessa mais)
+      const walls = npcObstacles(g.position.x, g.position.z)
       const pts = findPath(g.position.x, g.position.z, tx, tz, walls)
       pathRef.current = pts ? { pts, i: 0 } : null
     }
@@ -232,13 +256,17 @@ function AgentFigure({
       const dx = wx - g.position.x
       const dz = wz - g.position.z
       const d = Math.hypot(dx, dz)
-      if (d < 0.15) {
+      const isLast = path.i === path.pts.length - 1
+      // Último waypoint com pessoa em cima: aceita chegada mais folgada
+      if (d < (isLast ? 0.5 : 0.15)) {
         path.i++
         if (path.i >= path.pts.length) pathRef.current = null
       } else {
         const step = Math.min(d, walkSpeed * delta)
-        g.position.x += (dx / d) * step
-        g.position.z += (dz / d) * step
+        // Repulsão de pessoas no caminho (steering local)
+        const [ax, az] = personAvoidance(g.position.x, g.position.z)
+        g.position.x += (dx / d) * step + ax * delta
+        g.position.z += (dz / d) * step + az * delta
         const targetAngle = Math.atan2(dx, dz)
         let diff = targetAngle - rotRef.current
         while (diff > Math.PI) diff -= Math.PI * 2
@@ -248,6 +276,13 @@ function AgentFigure({
       }
       setPoseIfChanged('walk')
       return true
+    }
+
+    // Posição exposta (balões do tour e do aceno seguem o robô)
+    agentPosState[agent.key] = { x: g.position.x, z: g.position.z }
+    if (agent.key === 'ceo') {
+      maxNpcState.x = g.position.x
+      maxNpcState.z = g.position.z
     }
 
     // ── Tour de boas-vindas: o MAX larga tudo e guia o usuário ──
@@ -260,13 +295,33 @@ function AgentFigure({
         }
         setPoseIfChanged('stand')
       }
-      maxNpcState.x = g.position.x
-      maxNpcState.z = g.position.z
       return
     }
-    if (agent.key === 'ceo') {
-      maxNpcState.x = g.position.x
-      maxNpcState.z = g.position.z
+
+    // ── Aceno: alguém chamou ESTE agente (sincronizado por broadcast) ──
+    const summon = useTeamStore.getState().agentSummon
+    if (summon && summon.agentKey === agent.key && Date.now() - summon.ts < SUMMON_TTL) {
+      const target = summon.seat ?? { x: summon.x + 0.9, z: summon.z + 0.4 }
+      planPath(`summon:${summon.ts}:go`, target.x, target.z)
+      if (!followPath()) {
+        const arrived = Math.hypot(g.position.x - target.x, g.position.z - target.z) < 0.6
+        if (!arrived) {
+          g.position.set(target.x, 0, target.z) // path falhou: garante presença
+        }
+        if (summon.seat) {
+          // Senta na banqueta livre olhando pra mesa, caneca na mão
+          g.position.set(summon.seat.x, 0, summon.seat.z)
+          rotRef.current = Math.atan2(summon.seat.tableX - summon.seat.x, summon.seat.tableZ - summon.seat.z)
+          g.rotation.y = rotRef.current
+          setPoseIfChanged('sit')
+        } else {
+          // Fica em pé olhando pra quem chamou
+          rotRef.current = Math.atan2(summon.x - g.position.x, summon.z - g.position.z)
+          g.rotation.y = rotRef.current
+          setPoseIfChanged('stand')
+        }
+      }
+      return
     }
 
     // ── Escalado pro café: sobrepõe a rotina individual ──
@@ -373,22 +428,68 @@ function AgentFigure({
           </Billboard>
         )}
       </group>
-      {/* Caneca de café enquanto está sentado na banqueta */}
-      {pose === 'sit' && cafeSeat && (
+      {/* Caneca de café enquanto está sentado na banqueta (rotina ou aceno) */}
+      {pose === 'sit' && sitSeat && (
         <CoffeeSip
           sitter={{
             id: `agent-${agent.key}`,
             name: agent.name,
-            x: cafeSeat.x,
-            z: cafeSeat.z,
-            tableKey: cafeSeat.tableKey,
-            tableX: cafeSeat.tableX,
-            tableZ: cafeSeat.tableZ,
+            x: sitSeat.x,
+            z: sitSeat.z,
+            tableKey: sitSeat.tableKey,
+            tableX: sitSeat.tableX,
+            tableZ: sitSeat.tableZ,
           }}
         />
       )}
     </>
   )
+}
+
+/** Prosa do agente convocado por aceno: balão a cada ~6s seguindo o robô.
+ * REGRA: quem chamou sem autorização só ouve papo informal — nada de
+ * sistema, empresa ou números. Autorizado mistura dados públicos das TVs. */
+function SummonTalk() {
+  const summon = useTeamStore((s) => s.agentSummon)
+  const [, setTick] = useState(0)
+  const [data, setData] = useState<{ com: TvComercial | null; prod: TvProduto | null }>({ com: null, prod: null })
+
+  useEffect(() => {
+    if (!summon?.allowed) return
+    let cancelled = false
+    void getTvData().then((d) => {
+      if (!cancelled) setData({ com: d.com, prod: d.prod })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [summon?.allowed, summon?.ts])
+
+  useEffect(() => {
+    const i = setInterval(() => setTick((v) => v + 1), 500)
+    return () => clearInterval(i)
+  }, [])
+
+  if (!summon) return null
+  const agent = OFFICE_AGENTS.find((a) => a.key === summon.agentKey)
+  const pos = agentPosState[summon.agentKey]
+  if (!agent || !pos) return null
+
+  // Só conversa depois de chegar perto do destino
+  const target = summon.seat ?? { x: summon.x, z: summon.z }
+  if (Math.hypot(pos.x - target.x, pos.z - target.z) > 1.6) return null
+
+  const elapsed = Date.now() - summon.ts
+  if (elapsed > SUMMON_TTL) return null
+  const turn = Math.floor(elapsed / 6000)
+  // Balão fica visível 4,5s de cada janela de 6s (respiro entre falas)
+  if (elapsed % 6000 > 4500) return null
+
+  const pool = summon.allowed
+    ? [...SAFE_SMALL_TALK, ...cafeLines(agent, data.com, data.prod)]
+    : SAFE_SMALL_TALK
+  const text = pool[slotHash(Math.floor(summon.ts / 1000) * 97 + turn * 13) % pool.length]
+  return <SpeechBubble x={pos.x} z={pos.z} y={summon.seat ? 1.75 : 2.3} text={text} isDots={false} />
 }
 
 /** Balão do MAX durante o tour (segue a posição dele). */
@@ -421,8 +522,15 @@ export default function AgentNpcs() {
   const seats = useMemo(() => bistroSeatsFor(rooms), [rooms])
 
   // Escalação do café recalculada a cada segundo (determinística pelo relógio)
+  // + expiração do aceno (agente volta pro posto depois do TTL)
   useEffect(() => {
-    const update = () => setCafe(cafeShift(Date.now() / 1000, placed.length))
+    const update = () => {
+      setCafe(cafeShift(Date.now() / 1000, placed.length))
+      const st = useTeamStore.getState()
+      if (st.agentSummon && Date.now() - st.agentSummon.ts > SUMMON_TTL) {
+        st.setAgentSummon(null)
+      }
+    }
     update()
     const i = setInterval(update, 1000)
     return () => clearInterval(i)
@@ -447,8 +555,9 @@ export default function AgentNpcs() {
     return out
   }, [rooms])
 
-  const seatA = cafe ? (seats[cafe.table * 2] ?? null) : null
-  const seatB = cafe ? (seats[cafe.table * 2 + 1] ?? null) : null
+  // 4 banquetas por mesa agora: a dupla senta frente a frente (índices 0 e 2)
+  const seatA = cafe ? (seats[cafe.table * 4] ?? null) : null
+  const seatB = cafe ? (seats[cafe.table * 4 + 2] ?? null) : null
 
   return (
     <>
@@ -475,6 +584,7 @@ export default function AgentNpcs() {
         />
       )}
       <TourBubble />
+      <SummonTalk />
     </>
   )
 }
