@@ -18,7 +18,7 @@ import { useTeamStore } from '../store/useTeamStore'
 import { OFFICE_AGENTS, OfficeAgent } from '../lib/agents'
 import { findPath } from '../lib/pathfinding'
 import { npcObstacles, personAvoidance } from '../lib/npcNav'
-import { cafeDialogueLine, summonLine, getCafeNames } from '../lib/cafeDialogues'
+import { cafeDialogueLine, summonLine, getCafeNames, getCafeFacts, CafeFact } from '../lib/cafeDialogues'
 import { bistroSeatsFor, BistroSeat, CoffeeSip, SpeechBubble } from './CoffeeChat'
 import RobotBody from './RobotBody'
 
@@ -81,11 +81,15 @@ function AgentCafeTalk({
 }) {
   const [, setTick] = useState(0)
   const [names, setNames] = useState<{ staff: string[]; clients: string[] }>({ staff: [], clients: [] })
+  const [facts, setFacts] = useState<CafeFact[]>([])
 
   useEffect(() => {
     let cancelled = false
     void getCafeNames().then((n) => {
       if (!cancelled) setNames(n)
+    })
+    void getCafeFacts().then((f) => {
+      if (!cancelled) setFacts(f)
     })
     const i = setInterval(() => setTick((v) => v + 1), 400)
     return () => {
@@ -100,7 +104,7 @@ function AgentCafeTalk({
   const turn = Math.floor(elapsed / 4.6)
   // Respiro de 0.7s entre uma fala e outra (conversa com cadência natural)
   if (elapsed % 4.6 > 3.9) return null
-  const line = cafeDialogueLine(slot, turn, names)
+  const line = cafeDialogueLine(slot, turn, names, facts)
   const seat = line.who === 'A' ? seatA : seatB
 
   return <SpeechBubble x={seat.x} z={seat.z} y={1.92} text={line.text} isDots={false} />
@@ -370,6 +374,7 @@ function SummonTalk() {
   const summon = useTeamStore((s) => s.agentSummon)
   const [, setTick] = useState(0)
   const [names, setNames] = useState<{ staff: string[]; clients: string[] }>({ staff: [], clients: [] })
+  const [facts, setFacts] = useState<CafeFact[]>([])
 
   useEffect(() => {
     if (!summon) return
@@ -377,6 +382,11 @@ function SummonTalk() {
     void getCafeNames().then((n) => {
       if (!cancelled) setNames(n)
     })
+    if (summon.allowed) {
+      void getCafeFacts().then((f) => {
+        if (!cancelled) setFacts(f)
+      })
+    }
     return () => {
       cancelled = true
     }
@@ -401,7 +411,7 @@ function SummonTalk() {
   // Balão fica visível 4,5s de cada janela de 6s (respiro entre falas)
   if (elapsed % 6000 > 4500) return null
 
-  const text = summonLine(summon.ts, turn, summon.allowed, names)
+  const text = summonLine(summon.ts, turn, summon.allowed, names, facts)
   return <SpeechBubble x={pos.x} z={pos.z} y={summon.seat ? 1.75 : 2.3} text={text} isDots={false} />
 }
 

@@ -1,9 +1,14 @@
 // Motor de diálogos do café — 100% local, ZERO tokens de IA.
-// Mini-roteiros de pergunta/resposta com lacunas preenchidas por nomes REAIS
-// (time e clientes ativos, sempre em tom positivo). A escolha de roteiro,
-// nomes e turno é derivada do relógio (determinística: todos veem o mesmo),
-// e roteiros consecutivos nunca se repetem (passo coprimo na rotação).
-// REGRA: nada de números, métricas ou assuntos sensíveis — papo de café.
+//
+// Duas fontes de conteúdo:
+// 1. FATOS REAIS (view office_cafe_facts): reuniões realizadas e tarefas
+//    concluídas nos últimos 7 dias — pessoa, cliente e título vêm do MESMO
+//    registro (nunca misturados: quem conduziu é quem conduziu de verdade).
+// 2. Roteiros sociais: humor e elogios de característica, SEM inventar
+//    acontecimentos (nada de "fulano fez X pra cliente Y" fora dos fatos).
+//
+// A escolha de roteiro/fato/turno é derivada do relógio (determinística:
+// todos veem o mesmo) com rotação sem repetição imediata. Sem números.
 import { supabase } from '@/integrations/supabase/client'
 
 export interface DialogueTurn {
@@ -11,43 +16,27 @@ export interface DialogueTurn {
   text: string
 }
 
-// {user}/{user2} = colaborador · {client} = cliente ativo (sempre elogio)
-const SCRIPTS: DialogueTurn[][] = [
-  [
-    { who: 'A', text: 'Viu o atendimento que {user} fez ontem?' },
-    { who: 'B', text: 'Vi. O pessoal da {client} saiu elogiando.' },
-    { who: 'A', text: 'É disso que eu tô falando. Padrão alto.' },
-    { who: 'B', text: 'Padrão UNV. Café pra comemorar.' },
-  ],
+export interface CafeFact {
+  kind: 'meeting' | 'task'
+  title: string
+  person: string
+  client: string
+  dt: string
+}
+
+// ── Roteiros sociais (sem claims factuais) · {user} = colaborador real ──
+const SOCIAL_SCRIPTS: DialogueTurn[][] = [
   [
     { who: 'A', text: 'Esse café tá forte hoje, hein.' },
     { who: 'B', text: 'Do jeito que eu gosto.' },
-    { who: 'A', text: 'Forte igual o ritmo de {user} essa semana.' },
+    { who: 'A', text: 'Forte igual o ritmo de {user}.' },
     { who: 'B', text: 'Aquilo lá não para. Inspirador.' },
-  ],
-  [
-    { who: 'A', text: 'Tô gostando de ver a {client} evoluindo.' },
-    { who: 'B', text: 'Demais. O time deles comprou a ideia.' },
-    { who: 'A', text: 'Quando o cliente joga junto, vai longe.' },
-    { who: 'B', text: 'E com {user} acompanhando de perto, vai mais longe ainda.' },
   ],
   [
     { who: 'A', text: 'Se eu tomar mais um desses, viro a madrugada.' },
     { who: 'B', text: 'Você é um robô. Você JÁ vira a madrugada.' },
     { who: 'A', text: 'Detalhe técnico.' },
     { who: 'B', text: 'Há. Me serve mais um também.' },
-  ],
-  [
-    { who: 'A', text: '{user} me pediu uma coisa ontem que me deixou pensando.' },
-    { who: 'B', text: 'Coisa boa?' },
-    { who: 'A', text: 'Ideia boa. Esse time pensa grande.' },
-    { who: 'B', text: 'Por isso eu gosto daqui.' },
-  ],
-  [
-    { who: 'A', text: 'A reunião com a {client} hoje foi redonda.' },
-    { who: 'B', text: 'Ouvi dizer. {user} conduziu bem demais.' },
-    { who: 'A', text: 'Preparação é tudo.' },
-    { who: 'B', text: 'Preparação e café. Nessa ordem? Não sei.' },
   ],
   [
     { who: 'A', text: 'Qual sua parte favorita do escritório novo?' },
@@ -62,12 +51,6 @@ const SCRIPTS: DialogueTurn[][] = [
     { who: 'B', text: 'Melhor que contar carneirinho.' },
   ],
   [
-    { who: 'A', text: 'O onboarding da {client} foi dos mais rápidos que já vi.' },
-    { who: 'B', text: 'Time afiado dos dois lados.' },
-    { who: 'A', text: 'Cliente bom merece entrega boa.' },
-    { who: 'B', text: 'E entrega boa traz cliente bom. Ciclo virtuoso.' },
-  ],
-  [
     { who: 'A', text: 'Sabe o que eu admiro em {user}?' },
     { who: 'B', text: 'Diz.' },
     { who: 'A', text: 'Constância. Todo dia no mesmo nível.' },
@@ -78,12 +61,6 @@ const SCRIPTS: DialogueTurn[][] = [
     { who: 'B', text: 'Cientificamente discutível, mas concordo.' },
     { who: 'A', text: 'Música boa, café bom, time bom.' },
     { who: 'B', text: 'Dia perfeito pra construir coisa grande.' },
-  ],
-  [
-    { who: 'A', text: 'Recebi um obrigado da {client} hoje.' },
-    { who: 'B', text: 'Espontâneo? Esses valem ouro.' },
-    { who: 'A', text: 'Espontâneo. Guardei no meu banco de memórias.' },
-    { who: 'B', text: 'Robô sentimental. Gostei.' },
   ],
   [
     { who: 'A', text: '{user} e {user2} formam uma dupla boa, né?' },
@@ -98,22 +75,10 @@ const SCRIPTS: DialogueTurn[][] = [
     { who: 'B', text: 'Poético. Mas a gente ia sentir falta daqui em dois dias.' },
   ],
   [
-    { who: 'A', text: 'A {client} renovou com a gente, soube?' },
-    { who: 'B', text: 'Soube! Renovação é o melhor elogio que existe.' },
-    { who: 'A', text: 'Resultado de trabalho bem feito o ano todo.' },
-    { who: 'B', text: 'Brinde com café. Tim-tim.' },
-  ],
-  [
-    { who: 'A', text: 'Viu que {user} chegou cedo de novo hoje?' },
-    { who: 'B', text: 'Vi. Aquela energia contagia o escritório.' },
-    { who: 'A', text: 'Exemplo arrasta mais que discurso.' },
-    { who: 'B', text: 'Anotei essa. Vou usar.' },
-  ],
-  [
-    { who: 'A', text: 'Me conta uma coisa boa da semana.' },
-    { who: 'B', text: 'O feedback que a {client} mandou. E a sua?' },
-    { who: 'A', text: 'Ver {user} resolvendo aquele desafio com calma.' },
-    { who: 'B', text: 'Semana boa, então. Que venham as próximas.' },
+    { who: 'A', text: 'A energia de {user} contagia o escritório.' },
+    { who: 'B', text: 'Contagia mesmo. Exemplo arrasta mais que discurso.' },
+    { who: 'A', text: 'Anotei essa. Vou usar.' },
+    { who: 'B', text: 'Direitos autorais: um expresso.' },
   ],
   [
     { who: 'A', text: 'Esse cafezinho virtual tem gosto de quê pra você?' },
@@ -123,20 +88,69 @@ const SCRIPTS: DialogueTurn[][] = [
   ],
 ]
 
-/** Falas do agente convocado por aceno, com autorização (menciona time/clientes — sem números). */
+// ── Roteiros de FATO · {person}/{client}/{title}/{day} vêm do mesmo registro ──
+const MEETING_SCRIPTS: DialogueTurn[][] = [
+  [
+    { who: 'A', text: '{person} teve reunião com a {client} {day}.' },
+    { who: 'B', text: '"{title}", né? Fiquei sabendo.' },
+    { who: 'A', text: 'Cliente acompanhado de perto é cliente bem servido.' },
+    { who: 'B', text: 'Assim que se constrói confiança.' },
+  ],
+  [
+    { who: 'A', text: 'Viu a agenda? "{title}" com a {client}, {day}.' },
+    { who: 'B', text: 'Com {person} à frente. Agenda girando.' },
+    { who: 'A', text: 'Agenda girando, cliente evoluindo.' },
+    { who: 'B', text: 'Café pra brindar isso.' },
+  ],
+  [
+    { who: 'A', text: 'A {client} esteve em pauta {day}.' },
+    { who: 'B', text: 'Na "{title}", com {person}.' },
+    { who: 'A', text: 'Acompanhamento em dia. Gosto de ver.' },
+    { who: 'B', text: 'Rotina bem feita aparece no resultado.' },
+  ],
+]
+
+const TASK_SCRIPTS: DialogueTurn[][] = [
+  [
+    { who: 'A', text: '{person} concluiu "{title}" pra {client}.' },
+    { who: 'B', text: 'Vi no sistema. Entrega limpa.' },
+    { who: 'A', text: 'Tarefa fechada é confiança ganha.' },
+    { who: 'B', text: 'Checklist que anda, cliente que fica.' },
+  ],
+  [
+    { who: 'A', text: 'Saiu do forno {day}: "{title}".' },
+    { who: 'B', text: 'Da conta da {client}, trabalho de {person}.' },
+    { who: 'A', text: 'Gosto de ver o board andando.' },
+    { who: 'B', text: 'Eu também. Café pra celebrar.' },
+  ],
+  [
+    { who: 'A', text: 'Mais uma entregue: "{title}", da {client}.' },
+    { who: 'B', text: '{person} que tocou. Ritmo bom.' },
+    { who: 'A', text: 'Ritmo de time profissional.' },
+    { who: 'B', text: 'Do jeito que a casa gosta.' },
+  ],
+]
+
+/** Falas do agente convocado por aceno, com autorização (sem números). */
 const SOLO_ALLOWED = [
   'E aí! Bom te ver fora da tela.',
   'Esse café tá no ponto. Prova aí.',
-  'O time falou bem do seu trabalho essa semana, viu?',
-  'A {client} anda contente com a gente. Dá gosto.',
   'Pausa boa rende mais que hora extra. Comprovado.',
-  '{user} comentou uma ideia boa hoje. Esse time pensa.',
   'Se precisar de mim depois, é só clicar. Mas agora: café.',
   'O escritório fica melhor com gente circulando.',
   'Dia puxado? Café resolve metade. A outra metade é foco.',
-  'Tô de olho nas suas entregas. Tá num bom caminho.',
-  'A {client} é daqueles clientes que jogam junto. Bom trabalhar assim.',
   'Qualquer coisa que travar, me chama que a gente destrava junto.',
+  'Time em movimento — é disso que eu gosto.',
+]
+
+/** Templates de fato pro aceno autorizado (preenchidos com registro real). */
+const SOLO_FACT_MEETING = [
+  'Vi que {person} esteve com a {client} {day}. Acompanhamento em dia.',
+  '"{title}" com a {client} aconteceu {day} — agenda girando.',
+]
+const SOLO_FACT_TASK = [
+  'Saiu "{title}" pra {client}, {day}. Trabalho de {person}.',
+  '{person} fechou "{title}" da {client}. Board andando.',
 ]
 
 /** Falas pra quem NÃO tem autorização: papo 100% informal — nada de
@@ -158,8 +172,9 @@ const SOLO_SMALL_TALK = [
   'Um dia ainda inventam café sem fim. Vou ser o primeiro da fila.',
 ]
 
-// ── Nomes reais (cache local, sem custo) ──
+// ── Dados reais (cache local, sem custo de IA) ──
 let namesCache: { staff: string[]; clients: string[]; ts: number } = { staff: [], clients: [], ts: 0 }
+let factsCache: { facts: CafeFact[]; ts: number } = { facts: [], ts: 0 }
 
 export async function getCafeNames(): Promise<{ staff: string[]; clients: string[] }> {
   if (Date.now() - namesCache.ts > 600_000) {
@@ -176,6 +191,14 @@ export async function getCafeNames(): Promise<{ staff: string[]; clients: string
   return namesCache
 }
 
+export async function getCafeFacts(): Promise<CafeFact[]> {
+  if (Date.now() - factsCache.ts > 600_000) {
+    const { data } = await supabase.from('office_cafe_facts' as never).select('*')
+    factsCache = { facts: ((data ?? []) as unknown as CafeFact[]).filter((f) => f.person && f.client), ts: Date.now() }
+  }
+  return factsCache.facts
+}
+
 function hash(n: number): number {
   let h = n >>> 0
   h = (h ^ (h >> 16)) * 0x45d9f3b
@@ -183,37 +206,78 @@ function hash(n: number): number {
   return (h ^ (h >> 16)) >>> 0
 }
 
-function fill(text: string, seed: number, names: { staff: string[]; clients: string[] }): string {
-  const staff = names.staff.length > 0 ? names.staff : ['o time']
-  const clients = names.clients.length > 0 ? names.clients : ['um cliente']
-  const user = staff[hash(seed * 31 + 7) % staff.length]
-  const user2 = staff[(hash(seed * 31 + 7) + 1 + (hash(seed * 53) % Math.max(1, staff.length - 1))) % staff.length]
-  const client = clients[hash(seed * 17 + 3) % clients.length]
-  return text.replace('{user2}', user2).replace('{user}', user).replace('{client}', client)
+function relativeDay(dt: string): string {
+  const d = new Date(dt)
+  const today = new Date()
+  const days = Math.floor((today.setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86_400_000)
+  if (days <= 0) return 'hoje'
+  if (days === 1) return 'ontem'
+  return 'essa semana'
 }
 
-/** Linha do diálogo do café em dupla: roteiros encadeados sem repetição
- * imediata (passo 7, coprimo com o tamanho da lista). */
+function clip(s: string, max = 42): string {
+  return s.length > max ? `${s.slice(0, max - 1)}…` : s
+}
+
+/** Preenche um roteiro de FATO — tudo do MESMO registro real. */
+function fillFact(text: string, fact: CafeFact): string {
+  return text
+    .replace('{person}', fact.person)
+    .replace('{client}', clip(fact.client, 34))
+    .replace('{title}', clip(fact.title))
+    .replace('{day}', relativeDay(fact.dt))
+}
+
+/** Preenche roteiro social — só nomes de colaboradores (sem claims). */
+function fillSocial(text: string, seed: number, staff: string[]): string {
+  const pool = staff.length > 0 ? staff : ['o time']
+  const user = pool[hash(seed * 31 + 7) % pool.length]
+  const user2 = pool[(hash(seed * 31 + 7) + 1 + (hash(seed * 53) % Math.max(1, pool.length - 1))) % pool.length]
+  return text.replace('{user2}', user2).replace('{user}', user)
+}
+
+/** Linha do diálogo do café em dupla: alterna roteiros de FATO REAL e
+ * sociais, com rotação sem repetição imediata. */
 export function cafeDialogueLine(
   slot: number,
   turn: number,
-  names: { staff: string[]; clients: string[] }
+  names: { staff: string[]; clients: string[] },
+  facts: CafeFact[]
 ): { who: 'A' | 'B'; text: string } {
-  const chunk = Math.floor(turn / 4) // a cada 4 turnos muda o roteiro
-  const scriptIdx = (hash(slot * 13 + 5) + chunk * 7) % SCRIPTS.length
-  const script = SCRIPTS[scriptIdx]
-  const line = script[turn % 4 >= script.length ? script.length - 1 : turn % 4]
-  return { who: line.who, text: fill(line.text, slot * 101 + scriptIdx, names) }
+  const chunk = Math.floor(turn / 4) // a cada 4 turnos muda o assunto
+  const useFact = facts.length > 0 && chunk % 2 === 1 // intercala social/fato
+
+  if (useFact) {
+    const fact = facts[(hash(slot * 19 + 1) + Math.floor(chunk / 2) * 7) % facts.length]
+    const scripts = fact.kind === 'meeting' ? MEETING_SCRIPTS : TASK_SCRIPTS
+    const script = scripts[(hash(slot * 13 + 5) + chunk * 3) % scripts.length]
+    const line = script[Math.min(turn % 4, script.length - 1)]
+    return { who: line.who, text: fillFact(line.text, fact) }
+  }
+
+  const script = SOCIAL_SCRIPTS[(hash(slot * 13 + 5) + chunk * 7) % SOCIAL_SCRIPTS.length]
+  const line = script[Math.min(turn % 4, script.length - 1)]
+  return { who: line.who, text: fillSocial(line.text, slot * 101 + chunk, names.staff) }
 }
 
-/** Fala do agente convocado por aceno (rotação sem repetição imediata). */
+/** Fala do agente convocado por aceno (fatos reais quando autorizado). */
 export function summonLine(
   ts: number,
   turn: number,
   allowed: boolean,
-  names: { staff: string[]; clients: string[] }
+  names: { staff: string[]; clients: string[] },
+  facts: CafeFact[]
 ): string {
-  const pool = allowed ? SOLO_ALLOWED : SOLO_SMALL_TALK
-  const idx = (hash(Math.floor(ts / 1000) * 97) + turn * 5) % pool.length
-  return fill(pool[idx], ts + turn * 7, names)
+  if (!allowed) {
+    const idx = (hash(Math.floor(ts / 1000) * 97) + turn * 5) % SOLO_SMALL_TALK.length
+    return SOLO_SMALL_TALK[idx]
+  }
+  // A cada 3 falas, uma é um fato real do sistema
+  if (facts.length > 0 && turn % 3 === 2) {
+    const fact = facts[(hash(Math.floor(ts / 1000) * 41) + Math.floor(turn / 3) * 5) % facts.length]
+    const templates = fact.kind === 'meeting' ? SOLO_FACT_MEETING : SOLO_FACT_TASK
+    return fillFact(templates[hash(ts + turn) % templates.length], fact)
+  }
+  const idx = (hash(Math.floor(ts / 1000) * 97) + turn * 5) % SOLO_ALLOWED.length
+  return SOLO_ALLOWED[idx]
 }
