@@ -436,6 +436,11 @@ const AppShell = () => {
             {/* Staff Self-Registration */}
             <Route path="/staff-register/:token" element={<StaffRegistrationPage />} />
             
+            {/* UNV Office 3D: FORA do OnboardingStaffLayout — o layout expulsa
+                pro login quem não tem sessão de staff, e o escritório aceita
+                visitante convidado (a própria página faz a checagem) */}
+            <Route path="/onboarding-tasks/unv-office" element={<UNVOfficePage />} />
+
             {/* Staff pages with global notifications */}
             <Route element={<OnboardingStaffLayout />}>
               <Route path="/onboarding-tasks" element={<OnboardingTasksPage />} />
@@ -450,7 +455,6 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/import" element={<OnboardingImportPage />} />
               <Route path="/onboarding-tasks/payment-notifications" element={<PaymentNotificationsPage />} />
               <Route path="/onboarding-tasks/office" element={<VirtualOfficePage />} />
-              <Route path="/onboarding-tasks/unv-office" element={<UNVOfficePage />} />
               <Route path="/office" element={<OfficePage />} />
               <Route path="/onboarding-tasks/reschedule" element={<RescheduleTasks />} />
               <Route path="/onboarding-tasks/renewals" element={<OnboardingRenewalsPage />} />
