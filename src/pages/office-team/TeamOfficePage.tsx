@@ -4,6 +4,7 @@
 // personalizáveis. Salas vêm do banco (office_team_rooms).
 import { Suspense, useEffect, useRef, useState, useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
+import { Environment, Lightformer } from '@react-three/drei'
 import * as THREE from 'three'
 import { supabase } from '@/integrations/supabase/client'
 import ModernOffice from './components/ModernOffice'
@@ -31,7 +32,26 @@ import { ensurePersonalRoom, personalOwnerSeat, roomAt, isEffectivelyLocked } fr
 function SceneLights() {
   return (
     <>
-      <ambientLight intensity={1.15} color="#fff6ea" />
+      <ambientLight intensity={0.9} color="#fff6ea" />
+      {/* Ambiente procedural: dá reflexo real em metais, vidros e telas
+          (gerado em código — nenhum asset externo) */}
+      <Environment resolution={64} frames={1}>
+        <Lightformer
+          intensity={1.1}
+          position={[0, 6, 0]}
+          rotation={[Math.PI / 2, 0, 0]}
+          scale={[12, 12, 1]}
+          color="#fff2dd"
+        />
+        <Lightformer intensity={0.55} position={[-8, 2, -2]} scale={[12, 3, 1]} color="#bcd8f0" />
+        <Lightformer
+          intensity={0.45}
+          position={[10, 2, 1]}
+          rotation={[0, -Math.PI / 2, 0]}
+          scale={[12, 3, 1]}
+          color="#ffffff"
+        />
+      </Environment>
       <directionalLight
         position={[8, 22, 10]}
         intensity={1.9}
@@ -278,7 +298,10 @@ export default function TeamOfficePage() {
           gl={{
             antialias: true,
             toneMapping: THREE.ACESFilmicToneMapping,
-            toneMappingExposure: 1.1,
+            toneMappingExposure: 1.12,
+          }}
+          onCreated={({ gl }) => {
+            gl.shadowMap.type = THREE.PCFSoftShadowMap // sombras suaves
           }}
           style={{ width: '100%', height: '100%' }}
         >

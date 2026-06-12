@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { Text, Billboard } from '@react-three/drei'
 import { useTeamStore } from '../store/useTeamStore'
 import { BUILDING, OfficeRoom, isEffectivelyLocked, roomWalls } from '../lib/rooms'
+import { woodTexture, floorTexture, carpetTexture, artTexture, unvFloorLogo } from '../lib/textures'
 
 const WALL_H = 1.15 // parede sólida (meia-altura, estilo maquete)
 const GLASS_H = 1.0 // vidro acima da parede
@@ -103,18 +104,41 @@ function OfficeChair({
       onPointerOver={() => (document.body.style.cursor = 'pointer')}
       onPointerOut={() => (document.body.style.cursor = 'default')}
     >
+      {/* Assento e encosto levemente arredondados */}
       <mesh position={[0, 0.42, 0]} castShadow>
         <boxGeometry args={[0.42, 0.07, 0.42]} />
-        <meshStandardMaterial color={color} roughness={0.7} />
+        <meshStandardMaterial color={color} roughness={0.75} />
       </mesh>
       <mesh position={[0, 0.68, 0.19]} castShadow>
         <boxGeometry args={[0.42, 0.5, 0.06]} />
-        <meshStandardMaterial color={color} roughness={0.7} />
+        <meshStandardMaterial color={color} roughness={0.75} />
       </mesh>
-      <mesh position={[0, 0.2, 0]}>
-        <cylinderGeometry args={[0.04, 0.04, 0.4, 8]} />
-        <meshStandardMaterial color="#5a5f6a" />
+      {/* Braços */}
+      <mesh position={[-0.22, 0.55, 0.02]} castShadow>
+        <boxGeometry args={[0.04, 0.04, 0.3]} />
+        <meshStandardMaterial color="#3a3d44" metalness={0.4} roughness={0.5} />
       </mesh>
+      <mesh position={[0.22, 0.55, 0.02]} castShadow>
+        <boxGeometry args={[0.04, 0.04, 0.3]} />
+        <meshStandardMaterial color="#3a3d44" metalness={0.4} roughness={0.5} />
+      </mesh>
+      {/* Coluna a gás + base 5 hastes com rodízios */}
+      <mesh position={[0, 0.25, 0]}>
+        <cylinderGeometry args={[0.03, 0.035, 0.3, 8]} />
+        <meshStandardMaterial color="#6b737d" metalness={0.6} roughness={0.35} />
+      </mesh>
+      {[0, 1.257, 2.513, 3.77, 5.027].map((a) => (
+        <group key={a} rotation={[0, a, 0]}>
+          <mesh position={[0, 0.075, 0.13]} rotation={[0.25, 0, 0]}>
+            <boxGeometry args={[0.035, 0.03, 0.26]} />
+            <meshStandardMaterial color="#3a3d44" metalness={0.55} roughness={0.4} />
+          </mesh>
+          <mesh position={[0, 0.03, 0.25]}>
+            <sphereGeometry args={[0.03, 8, 6]} />
+            <meshStandardMaterial color="#1d1f24" roughness={0.5} />
+          </mesh>
+        </group>
+      ))}
     </group>
   )
 }
@@ -125,7 +149,7 @@ function Desk({ x, z, rotation = 0, color = '#e8e2d6', chair = true }: { x: numb
       {/* Tampo de madeira com borda */}
       <mesh position={[0, 0.74, 0]} castShadow>
         <boxGeometry args={[1.7, 0.05, 0.8]} />
-        <meshStandardMaterial color="#b58a5a" roughness={0.42} />
+        <meshStandardMaterial map={woodTexture()} color="#caa06a" roughness={0.42} />
       </mesh>
       <mesh position={[0, 0.708, 0]}>
         <boxGeometry args={[1.7, 0.02, 0.8]} />
@@ -207,7 +231,7 @@ function MeetingTable({ room }: { room: OfficeRoom }) {
         {/* Tampo nobre com folha de madeira */}
         <mesh position={[0, 0.76, 0]} castShadow>
           <boxGeometry args={[len, 0.06, 1.7]} />
-          <meshStandardMaterial color="#8a5f3c" roughness={0.35} />
+          <meshStandardMaterial map={woodTexture()} color="#9a6a40" roughness={0.32} />
         </mesh>
         <mesh position={[0, 0.722, 0]}>
           <boxGeometry args={[len, 0.025, 1.7]} />
@@ -474,15 +498,51 @@ function CoffeeTable({ x, z }: { x: number; z: number }) {
 }
 
 function WallArt({ x, z, color }: { x: number; z: number; color: string }) {
+  // Arte abstrata gerada por seed derivada da posição
+  const seed = Math.abs(Math.round(x * 3 + z * 7)) % 8
   return (
     <group position={[x, 1.35, z]}>
       <mesh castShadow>
-        <boxGeometry args={[0.9, 0.6, 0.05]} />
+        <boxGeometry args={[0.9, 0.66, 0.05]} />
         <meshStandardMaterial color="#2a2d33" roughness={0.5} />
       </mesh>
       <mesh position={[0, 0, 0.03]}>
-        <boxGeometry args={[0.78, 0.48, 0.01]} />
-        <meshStandardMaterial color={color} roughness={0.7} />
+        <planeGeometry args={[0.78, 0.54]} />
+        <meshStandardMaterial map={artTexture(seed)} color="#ffffff" roughness={0.65} />
+      </mesh>
+      {/* Borda interna na cor da sala */}
+      <mesh position={[0, -0.31, 0.028]}>
+        <boxGeometry args={[0.9, 0.04, 0.01]} />
+        <meshStandardMaterial color={color} roughness={0.6} />
+      </mesh>
+    </group>
+  )
+}
+
+/** Relógio de parede (face voltada pro sul/+z), marcando 10:10. */
+function WallClock({ x, z, y = 2.05 }: { x: number; z: number; y?: number }) {
+  return (
+    <group position={[x, y, z]}>
+      <mesh rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.22, 0.22, 0.04, 20]} />
+        <meshStandardMaterial color="#f4f1ea" roughness={0.4} />
+      </mesh>
+      <mesh position={[0, 0, 0.012]}>
+        <torusGeometry args={[0.21, 0.018, 8, 24]} />
+        <meshStandardMaterial color="#23262c" metalness={0.4} roughness={0.4} />
+      </mesh>
+      {/* Ponteiros (10:10) */}
+      <mesh position={[-0.045, 0.045, 0.028]} rotation={[0, 0, 0.8]}>
+        <boxGeometry args={[0.018, 0.13, 0.008]} />
+        <meshStandardMaterial color="#23262c" />
+      </mesh>
+      <mesh position={[0.05, 0.05, 0.028]} rotation={[0, 0, -0.75]}>
+        <boxGeometry args={[0.013, 0.17, 0.008]} />
+        <meshStandardMaterial color="#23262c" />
+      </mesh>
+      <mesh position={[0, 0, 0.03]}>
+        <sphereGeometry args={[0.014, 8, 6]} />
+        <meshStandardMaterial color="#CC1B1B" />
       </mesh>
     </group>
   )
@@ -617,6 +677,11 @@ function Room({ room, locked }: { room: OfficeRoom; locked: boolean }) {
         </mesh>
       )}
 
+      {/* Relógio de parede nas salas de trabalho/reunião */}
+      {(room.roomType === 'sector' || room.roomType === 'meeting') && (
+        <WallClock x={room.x + room.width / 2 - 1.1} z={room.z - room.depth / 2 + 0.28} />
+      )}
+
       {/* Nome da sala */}
       <Billboard position={[room.x, WALL_H + GLASS_H + 0.55, room.z]} follow={true}>
         <Text
@@ -654,18 +719,24 @@ export default function ModernOffice() {
 
   return (
     <group>
-      {/* Piso geral: porcelanato quente */}
+      {/* Piso geral: porcelanato texturizado */}
       <mesh position={[cx, 0, cz]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[W, D]} />
-        <meshStandardMaterial color="#ddd6c9" roughness={0.7} />
+        <meshStandardMaterial
+          map={(() => {
+            const t = floorTexture()
+            t.repeat.set(W / 4, D / 4)
+            return t
+          })()}
+          roughness={0.62}
+        />
       </mesh>
-      {/* Juntas do piso (linhas sutis) */}
-      {Array.from({ length: 11 }, (_, i) => BUILDING.minX + (i + 1) * (W / 12)).map((gx) => (
-        <mesh key={`gx${gx}`} position={[gx, 0.002, cz]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[0.04, D]} />
-          <meshStandardMaterial color="#c4bcab" roughness={0.9} />
-        </mesh>
-      ))}
+
+      {/* Selo UNV no piso do hall central */}
+      <mesh position={[0, 0.007, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[6.5, 6.5]} />
+        <meshStandardMaterial map={unvFloorLogo()} transparent roughness={0.7} />
+      </mesh>
 
       {/* Plano invisível de clique: duplo clique = andar até o ponto */}
       <mesh
@@ -684,21 +755,49 @@ export default function ModernOffice() {
       {/* Faixas de corredor (carpete azul-petróleo) */}
       <mesh position={[cx, 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[W, 5]} />
-        <meshStandardMaterial color="#7d92a8" roughness={1} />
+        <meshStandardMaterial
+          map={(() => {
+            const t = carpetTexture()
+            t.repeat.set(12, 1.6)
+            return t
+          })()}
+          roughness={1}
+        />
       </mesh>
       <mesh position={[cx, 0.004, 13]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[W, 3]} />
-        <meshStandardMaterial color="#7d92a8" roughness={1} />
+        <meshStandardMaterial
+          map={(() => {
+            const t = carpetTexture()
+            t.repeat.set(12, 1.6)
+            return t
+          })()}
+          roughness={1}
+        />
       </mesh>
       {/* Corredor entre as duas fileiras da ala privada */}
       <mesh position={[cx, 0.004, 21.2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[W, 1.6]} />
-        <meshStandardMaterial color="#7d92a8" roughness={1} />
+        <meshStandardMaterial
+          map={(() => {
+            const t = carpetTexture()
+            t.repeat.set(12, 1.6)
+            return t
+          })()}
+          roughness={1}
+        />
       </mesh>
       {/* Passagem vertical central da ala privada */}
       <mesh position={[0, 0.005, 21.2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[10.2, 13.6]} />
-        <meshStandardMaterial color="#7d92a8" roughness={1} />
+        <meshStandardMaterial
+          map={(() => {
+            const t = carpetTexture()
+            t.repeat.set(12, 1.6)
+            return t
+          })()}
+          roughness={1}
+        />
       </mesh>
 
       {/* Perímetro do prédio */}
