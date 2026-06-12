@@ -2888,11 +2888,22 @@ const OnboardingTasksPage = () => {
               // Get the realized goal percentage for this company
               const companyGoalPercent = currentMonthProjectionByCompany.get(company.id);
 
+              // Borda lateral indica a saúde do cliente — escaneável sem ler o score
+              const healthBorderClass = !companyHealthData
+                ? "border-l-[#0A2240]"
+                : companyHealthData.riskLevel === "critical"
+                  ? "border-l-red-500"
+                  : companyHealthData.riskLevel === "at_risk"
+                    ? "border-l-orange-500"
+                    : companyHealthData.riskLevel === "attention"
+                      ? "border-l-yellow-500"
+                      : "border-l-emerald-500";
+
               return (
               <div key={company.id}>
                 {/* Company Card - Mobile Optimized */}
                 <Card
-                  className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-[#0A2240] bg-gradient-to-r from-[#0A2240]/5 to-transparent"
+                  className={`cursor-pointer hover:shadow-lg transition-shadow border-l-4 ${healthBorderClass} bg-gradient-to-r from-[#0A2240]/5 to-transparent`}
                   onClick={() => handleCompanyClick(company.id)}
                 >
                   <CardContent className="p-3 sm:p-4">
@@ -2912,8 +2923,8 @@ const OnboardingTasksPage = () => {
                                 new Date(),
                                 new Date(company.contract_start_date ?? company.created_at)
                               ) <= 30 && (
-                                <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] sm:text-xs font-semibold shadow-md animate-pulse">
-                                  ✨ Empresa Nova
+                                <Badge className="bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 text-[10px] sm:text-xs font-semibold">
+                                  Empresa Nova
                                 </Badge>
                               )}
                             </div>
@@ -2926,7 +2937,7 @@ const OnboardingTasksPage = () => {
                               <>
                                 <span className="hidden sm:inline">•</span>
                                 <span className="hidden sm:inline">
-                                  {company.completed_tasks}/{company.total_tasks} tarefas
+                                  {company.completed_tasks}/{company.total_tasks} tarefas ({Math.round(((company.completed_tasks || 0) / company.total_tasks) * 100)}%)
                                 </span>
                               </>
                             ) : null}
@@ -2936,9 +2947,9 @@ const OnboardingTasksPage = () => {
                             <span>CS: {company.cs?.name || "—"}</span>
                             <span>Cons: {company.consultant?.name || "—"}</span>
                             {/* Contract info */}
-                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-100">
-                              <Calendar className="h-2.5 w-2.5 text-slate-600" />
-                              <span className="font-medium text-slate-700">
+                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-muted">
+                              <Calendar className="h-2.5 w-2.5 text-muted-foreground" />
+                              <span className="font-medium text-foreground">
                                 {company.payment_method === 'monthly'
                                   ? 'Recorr.'
                                   : company.contract_end_date 
@@ -2964,7 +2975,7 @@ const OnboardingTasksPage = () => {
                                         ? 'bg-yellow-100' 
                                         : 'bg-red-100'
                               }`}
-                              title={(company as any).goal_not_required ? "Meta Não Necessária" : "Projeção da Meta Principal"}
+                              title={(company as any).goal_not_required ? "Meta não necessária" : companyGoalPercent === null || companyGoalPercent === undefined ? "S/M — sem meta definida para esta empresa" : "Projeção da meta principal no mês"}
                             >
                               <Target className={`h-2.5 w-2.5 ${
                                 (company as any).goal_not_required
@@ -3017,7 +3028,7 @@ const OnboardingTasksPage = () => {
                                     ? 'bg-yellow-100' 
                                     : 'bg-red-100'
                           }`}
-                          title={(company as any).goal_not_required ? "Meta Não Necessária" : "Projeção da Meta Principal"}
+                          title={(company as any).goal_not_required ? "Meta não necessária" : companyGoalPercent === null || companyGoalPercent === undefined ? "S/M — sem meta definida para esta empresa" : "Projeção da meta principal no mês"}
                         >
                           <Target className={`h-3.5 w-3.5 ${
                             (company as any).goal_not_required
@@ -3044,17 +3055,33 @@ const OnboardingTasksPage = () => {
                             {(company as any).goal_not_required ? '—' : companyGoalPercent === null || companyGoalPercent === undefined ? 'S/M' : `${companyGoalPercent}%`}
                           </span>
                         </div>
-                        {/* Contract End Date / Recurring */}
-                        <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-100">
-                          <Calendar className="h-3.5 w-3.5 text-slate-600" />
-                          <span className="text-sm font-medium text-slate-700">
-                            {company.payment_method === 'monthly'
-                              ? 'Recorrente'
-                              : company.contract_end_date 
-                                ? format(new Date(company.contract_end_date), "dd/MM/yyyy")
-                                : '—'}
-                          </span>
-                        </div>
+                        {/* Contract End Date / Recurring — com contagem de dias até a renovação */}
+                        {(() => {
+                          if (company.payment_method === 'monthly' || !company.contract_end_date) {
+                            return (
+                              <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-muted">
+                                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="text-sm font-medium text-foreground">
+                                  {company.payment_method === 'monthly' ? 'Recorrente' : '—'}
+                                </span>
+                              </div>
+                            );
+                          }
+                          const daysToEnd = differenceInDays(new Date(company.contract_end_date), new Date());
+                          const contractExpired = daysToEnd < 0;
+                          return (
+                            <div
+                              className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full ${contractExpired ? 'bg-red-500/10' : 'bg-muted'}`}
+                              title={contractExpired ? 'Contrato vencido' : 'Fim do contrato · dias restantes'}
+                            >
+                              <Calendar className={`h-3.5 w-3.5 ${contractExpired ? 'text-red-500' : 'text-muted-foreground'}`} />
+                              <span className={`text-sm font-medium ${contractExpired ? 'text-red-500' : 'text-foreground'}`}>
+                                {format(new Date(company.contract_end_date), "dd/MM/yyyy")}
+                                {contractExpired ? ' · vencido' : daysToEnd <= 365 ? ` · ${daysToEnd}d` : ''}
+                              </span>
+                            </div>
+                          );
+                        })()}
                         {/* Desktop: Show CS/Consultant */}
                         <div className="hidden sm:block text-right text-sm">
                           <div className="text-muted-foreground">CS: {company.cs?.name || "—"}</div>
@@ -3070,17 +3097,25 @@ const OnboardingTasksPage = () => {
                       </div>
                     </div>
 
-                    {/* Progress bar */}
-                    {company.total_tasks ? (
-                      <div className="mt-2 sm:mt-3 w-full bg-muted rounded-full h-1.5 sm:h-2">
-                        <div
-                          className="bg-[#C41E3A] h-1.5 sm:h-2 rounded-full transition-all"
-                          style={{
-                            width: `${(company.completed_tasks! / company.total_tasks) * 100}%`,
-                          }}
-                        />
-                      </div>
-                    ) : null}
+                    {/* Progress bar — cor acompanha o avanço, não fica vermelha o tempo todo */}
+                    {company.total_tasks ? (() => {
+                      const progressPercent = ((company.completed_tasks || 0) / company.total_tasks) * 100;
+                      const progressColor = progressPercent >= 100
+                        ? "bg-emerald-500"
+                        : progressPercent >= 70
+                          ? "bg-blue-500"
+                          : progressPercent >= 40
+                            ? "bg-amber-500"
+                            : "bg-[#C41E3A]";
+                      return (
+                        <div className="mt-2 sm:mt-3 w-full bg-muted rounded-full h-1.5 sm:h-2">
+                          <div
+                            className={`${progressColor} h-1.5 sm:h-2 rounded-full transition-all`}
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </div>
+                      );
+                    })() : null}
                   </CardContent>
                 </Card>
 
