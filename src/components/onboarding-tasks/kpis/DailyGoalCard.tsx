@@ -209,15 +209,55 @@ export const DailyGoalCard = ({
     return Math.max(salespeople.filter((sp) => sp.is_active).length, 1);
   }, [salespeople]);
 
+  const activeCountByUnit = useMemo(() => {
+    const map: Record<string, number> = {};
+    salespeople.forEach((sp) => {
+      if (sp.is_active && sp.unit_id) map[sp.unit_id] = (map[sp.unit_id] || 0) + 1;
+    });
+    return map;
+  }, [salespeople]);
+
+  const activeCountByTeam = useMemo(() => {
+    const map: Record<string, number> = {};
+    salespeople.forEach((sp) => {
+      if (sp.is_active && sp.team_id) map[sp.team_id] = (map[sp.team_id] || 0) + 1;
+    });
+    return map;
+  }, [salespeople]);
+
+  const pickMeta = (targets: MonthlyTarget[]): number =>
+    targets.find((t) => t.level_name === "Meta")?.target_value ?? targets[0].target_value;
+
   const getTarget = (kpiId: string, salespersonId?: string): number => {
     if (salespersonId) {
       const spTargets = allMonthlyTargets.filter(
         (mt) => mt.kpi_id === kpiId && mt.salesperson_id === salespersonId
       );
       if (spTargets.length > 0) {
-        const meta = spTargets.find((t) => t.level_name === "Meta");
-        return meta?.target_value ?? spTargets[0].target_value;
+        return pickMeta(spTargets);
       }
+
+      const sp = salespeople.find((s) => s.id === salespersonId);
+
+      // Sem meta individual: herda a meta do escopo mais próximo (time → unidade → empresa)
+      // dividida igualmente entre os vendedores ativos daquele escopo
+      if (sp?.team_id) {
+        const teamTargets = allMonthlyTargets.filter(
+          (mt) => mt.kpi_id === kpiId && mt.team_id === sp.team_id && mt.salesperson_id === null
+        );
+        if (teamTargets.length > 0) {
+          return pickMeta(teamTargets) / Math.max(activeCountByTeam[sp.team_id] || 0, 1);
+        }
+      }
+      if (sp?.unit_id) {
+        const unitTargets = allMonthlyTargets.filter(
+          (mt) => mt.kpi_id === kpiId && mt.unit_id === sp.unit_id && mt.team_id === null && mt.salesperson_id === null
+        );
+        if (unitTargets.length > 0) {
+          return pickMeta(unitTargets) / Math.max(activeCountByUnit[sp.unit_id] || 0, 1);
+        }
+      }
+
       const companyTargets = allMonthlyTargets.filter(
         (mt) =>
           mt.kpi_id === kpiId &&
@@ -226,8 +266,7 @@ export const DailyGoalCard = ({
           mt.salesperson_id === null
       );
       if (companyTargets.length > 0) {
-        const meta = companyTargets.find((t) => t.level_name === "Meta");
-        return (meta?.target_value ?? companyTargets[0].target_value) / activeSalespeopleCount;
+        return pickMeta(companyTargets) / activeSalespeopleCount;
       }
       const kpi = mainGoalKpis.find((k) => k.id === kpiId);
       return (kpi?.effective_target ?? kpi?.target_value ?? 0) / activeSalespeopleCount;
@@ -241,9 +280,22 @@ export const DailyGoalCard = ({
         mt.salesperson_id === null
     );
     if (targets.length > 0) {
-      const meta = targets.find((t) => t.level_name === "Meta");
-      return meta?.target_value ?? targets[0].target_value;
+      return pickMeta(targets);
     }
+
+    // Sem meta nível empresa: soma das metas por unidade
+    const unitLevelTargets = allMonthlyTargets.filter(
+      (mt) => mt.kpi_id === kpiId && mt.unit_id !== null && mt.team_id === null && mt.salesperson_id === null
+    );
+    if (unitLevelTargets.length > 0) {
+      const byUnit: Record<string, MonthlyTarget[]> = {};
+      unitLevelTargets.forEach((mt) => {
+        if (!byUnit[mt.unit_id!]) byUnit[mt.unit_id!] = [];
+        byUnit[mt.unit_id!].push(mt);
+      });
+      return Object.values(byUnit).reduce((sum, list) => sum + pickMeta(list), 0);
+    }
+
     const kpi = mainGoalKpis.find((k) => k.id === kpiId);
     return kpi?.effective_target ?? kpi?.target_value ?? 0;
   };

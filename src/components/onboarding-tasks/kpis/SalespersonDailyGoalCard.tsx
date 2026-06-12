@@ -99,7 +99,7 @@ export const SalespersonDailyGoalCard = ({
 
       const kpiIds = kpis.map((k) => k.id);
 
-      const [{ data: targets }, { count: salespeopleCount }, { data: entries }] = await Promise.all([
+      const [{ data: targets }, { data: allSalespeople }, { data: entries }] = await Promise.all([
         supabase
           .from("kpi_monthly_targets")
           .select("kpi_id, target_value, level_name, salesperson_id, unit_id, team_id")
@@ -108,7 +108,7 @@ export const SalespersonDailyGoalCard = ({
           .in("kpi_id", kpiIds),
         supabase
           .from("company_salespeople")
-          .select("id", { count: "exact", head: true })
+          .select("id, unit_id, team_id")
           .eq("company_id", companyId)
           .eq("is_active", true),
         supabase
@@ -120,17 +120,43 @@ export const SalespersonDailyGoalCard = ({
           .lte("entry_date", monthEnd),
       ]);
 
-      const divisor = Math.max(salespeopleCount || 1, 1);
+      const salespeopleList = allSalespeople || [];
+      const divisor = Math.max(salespeopleList.length, 1);
+      const me = salespeopleList.find((sp) => sp.id === salespersonId);
+      const teamCount = me?.team_id
+        ? Math.max(salespeopleList.filter((sp) => sp.team_id === me.team_id).length, 1)
+        : 1;
+      const unitCount = me?.unit_id
+        ? Math.max(salespeopleList.filter((sp) => sp.unit_id === me.unit_id).length, 1)
+        : 1;
+
+      const pickMeta = (list: { level_name: string; target_value: number }[]) =>
+        list.find((t) => t.level_name === "Meta")?.target_value ?? list[0].target_value;
 
       const goals: KpiGoalData[] = kpis.map((kpi) => {
-        // Calculate target
+        // Calculate target — sem meta individual, herda do escopo mais próximo
+        // (time → unidade → empresa) dividido pelos vendedores ativos do escopo
         let monthlyTarget = 0;
         const spTargets = (targets || []).filter(
           (t) => t.kpi_id === kpi.id && t.salesperson_id === salespersonId
         );
+        const teamTargets = me?.team_id
+          ? (targets || []).filter(
+              (t) => t.kpi_id === kpi.id && t.team_id === me.team_id && t.salesperson_id === null
+            )
+          : [];
+        const unitTargets = me?.unit_id
+          ? (targets || []).filter(
+              (t) =>
+                t.kpi_id === kpi.id && t.unit_id === me.unit_id && t.team_id === null && t.salesperson_id === null
+            )
+          : [];
         if (spTargets.length > 0) {
-          const meta = spTargets.find((t) => t.level_name === "Meta");
-          monthlyTarget = meta?.target_value ?? spTargets[0].target_value;
+          monthlyTarget = pickMeta(spTargets);
+        } else if (teamTargets.length > 0) {
+          monthlyTarget = pickMeta(teamTargets) / teamCount;
+        } else if (unitTargets.length > 0) {
+          monthlyTarget = pickMeta(unitTargets) / unitCount;
         } else {
           const companyTargets = (targets || []).filter(
             (t) =>
@@ -140,8 +166,7 @@ export const SalespersonDailyGoalCard = ({
               t.salesperson_id === null
           );
           if (companyTargets.length > 0) {
-            const meta = companyTargets.find((t) => t.level_name === "Meta");
-            monthlyTarget = (meta?.target_value ?? companyTargets[0].target_value) / divisor;
+            monthlyTarget = pickMeta(companyTargets) / divisor;
           } else {
             monthlyTarget = kpi.target_value / divisor;
           }
