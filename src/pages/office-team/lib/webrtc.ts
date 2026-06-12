@@ -29,10 +29,20 @@ export class CallManager {
   private unsubscribe: (() => void) | null = null
   /** watchdog: reconecta pares que ficaram presos (offer/ICE perdidos) */
   private watchdog: ReturnType<typeof setInterval> | null = null
+  /** áudio da tela compartilhada, mixado com o microfone num track só
+   * (replaceTrack no sender de áudio — sem renegociação) */
+  private screenAudioTrack: MediaStreamTrack | null = null
+  private mixedAudioTrack: MediaStreamTrack | null = null
+  private mixCtx: AudioContext | null = null
 
   /** vídeo ativo a transmitir: tela compartilhada tem prioridade sobre câmera */
   private get activeVideoTrack(): MediaStreamTrack | null {
     return this.screenTrack ?? this.camTrack
+  }
+
+  /** áudio ativo a transmitir: mix mic+tela durante o compartilhamento */
+  private get activeAudioTrack(): MediaStreamTrack | null {
+    return this.mixedAudioTrack ?? this.localStream?.getAudioTracks()[0] ?? null
   }
 
   constructor(myId: string, realtime: TeamRealtime) {
@@ -141,7 +151,7 @@ export class CallManager {
   private async createOfferTo(peerId: string) {
     if (!this.localStream) return
     const entry = this.createPeer(peerId)
-    const audioTrack = this.localStream.getAudioTracks()[0]
+    const audioTrack = this.activeAudioTrack
     if (audioTrack) entry.pc.addTrack(audioTrack, this.localStream)
     const videoTx = entry.pc.addTransceiver('video', { direction: 'sendrecv' })
     if (this.activeVideoTrack) await videoTx.sender.replaceTrack(this.activeVideoTrack)
@@ -162,7 +172,7 @@ export class CallManager {
       await entry.pc.setRemoteDescription({ type: 'offer', sdp: signal.sdp })
 
       if (this.localStream) {
-        const audioTrack = this.localStream.getAudioTracks()[0]
+        const audioTrack = this.activeAudioTrack
         if (audioTrack) entry.pc.addTrack(audioTrack, this.localStream)
       }
       const videoTx = entry.pc.getTransceivers().find((t) => t.receiver.track?.kind === 'video')
@@ -218,7 +228,9 @@ export class CallManager {
     }
     const display = await navigator.mediaDevices.getDisplayMedia({
       video: { frameRate: { ideal: 15 } },
-      audio: false,
+      // Pede o áudio da tela também (Chrome: marque "compartilhar áudio da
+      // guia/sistema" no seletor). Se o usuário não marcar, segue sem.
+      audio: true,
     })
     const track = display.getVideoTracks()[0]
     if (!track) return
@@ -230,6 +242,34 @@ export class CallManager {
         (t) => t.sender.track?.kind === 'video' || t.receiver.track?.kind === 'video'
       )
       if (videoTx) await videoTx.sender.replaceTrack(track)
+    }
+
+    // Áudio da tela: mixa com o microfone num único track e troca o que está
+    // sendo transmitido (replaceTrack — sem renegociar). Mutar o mic continua
+    // funcionando: o track original silencia e o mix só leva o som da tela.
+    const sAudio = display.getAudioTracks()[0] ?? null
+    if (sAudio) {
+      this.screenAudioTrack = sAudio
+      try {
+        const Ctx =
+          window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+        const ctx = new Ctx()
+        this.mixCtx = ctx
+        const dest = ctx.createMediaStreamDestination()
+        ctx.createMediaStreamSource(new MediaStream([sAudio])).connect(dest)
+        const micTrack = this.localStream.getAudioTracks()[0]
+        if (micTrack) ctx.createMediaStreamSource(new MediaStream([micTrack])).connect(dest)
+        this.mixedAudioTrack = dest.stream.getAudioTracks()[0] ?? null
+        if (this.mixedAudioTrack) {
+          for (const { pc } of this.peers.values()) {
+            const aSender = pc.getSenders().find((s) => s.track?.kind === 'audio')
+            if (aSender) await aSender.replaceTrack(this.mixedAudioTrack)
+          }
+        }
+      } catch {
+        // mix indisponível: segue compartilhando só o vídeo
+        this.mixedAudioTrack = null
+      }
     }
     // Preview local mostra a tela no lugar da câmera
     if (this.camTrack) this.localStream.removeTrack(this.camTrack)
@@ -244,6 +284,25 @@ export class CallManager {
     this.screenTrack = null
     track.stop()
     this.localStream.removeTrack(track)
+
+    // Desfaz o mix de áudio: volta a transmitir só o microfone
+    if (this.mixedAudioTrack) {
+      const micTrack = this.localStream.getAudioTracks()[0] ?? null
+      for (const { pc } of this.peers.values()) {
+        const aSender = pc.getSenders().find((s) => s.track?.kind === 'audio')
+        if (aSender) await aSender.replaceTrack(micTrack)
+      }
+      this.mixedAudioTrack.stop()
+      this.mixedAudioTrack = null
+    }
+    if (this.screenAudioTrack) {
+      this.screenAudioTrack.stop()
+      this.screenAudioTrack = null
+    }
+    if (this.mixCtx) {
+      void this.mixCtx.close().catch(() => undefined)
+      this.mixCtx = null
+    }
     // Restaura a câmera se estava ligada antes do compartilhamento
     const restore = this.camTrack
     if (restore) this.localStream.addTrack(restore)
@@ -302,6 +361,18 @@ export class CallManager {
     if (this.screenTrack) {
       this.screenTrack.stop()
       this.screenTrack = null
+    }
+    if (this.screenAudioTrack) {
+      this.screenAudioTrack.stop()
+      this.screenAudioTrack = null
+    }
+    if (this.mixedAudioTrack) {
+      this.mixedAudioTrack.stop()
+      this.mixedAudioTrack = null
+    }
+    if (this.mixCtx) {
+      void this.mixCtx.close().catch(() => undefined)
+      this.mixCtx = null
     }
     if (this.camTrack) {
       this.camTrack.stop()
