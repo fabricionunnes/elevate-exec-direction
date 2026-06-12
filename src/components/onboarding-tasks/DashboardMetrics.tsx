@@ -1021,12 +1021,16 @@ const DashboardMetrics = ({
     // Empresas com meta E com lançamentos (só estas contam nas projeções)
     const companiesWithEntries = companiesWithGoals.filter(([_, m]) => m.hasEntries);
 
-    // A empresa "tem meta" se existir QUALQUER KPI cadastrado com target_value > 0
+    // A empresa "tem meta" se existir KPI com target_value > 0 OU meta lançada
+    // em Metas Mensais (kpi_monthly_targets) para o período — qualquer nível
     const companiesWithAnyKpiIds = new Set(
       companyKpis
         .filter(k => filteredCompanyIds.has(k.company_id) && k.target_value > 0)
         .map(k => k.company_id)
     );
+    monthlyTargets
+      .filter(t => t.company_id && filteredCompanyIds.has(t.company_id) && t.target_value > 0)
+      .forEach(t => companiesWithAnyKpiIds.add(t.company_id));
 
     const noGoalCount = Array.from(filteredCompanyIds).filter(id => id && !companiesWithAnyKpiIds.has(id)).length;
     
