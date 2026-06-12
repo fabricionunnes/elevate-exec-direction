@@ -31,11 +31,11 @@ import { ensurePersonalRoom, personalOwnerSeat, roomAt, isEffectivelyLocked } fr
 function SceneLights() {
   return (
     <>
-      <ambientLight intensity={1.35} color="#ffffff" />
+      <ambientLight intensity={1.15} color="#fff6ea" />
       <directionalLight
         position={[8, 22, 10]}
-        intensity={1.7}
-        color="#fff8e8"
+        intensity={1.9}
+        color="#fff3dd"
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-38}
@@ -44,8 +44,8 @@ function SceneLights() {
         shadow-camera-bottom={-30}
         shadow-bias={-0.001}
       />
-      <directionalLight position={[-10, 14, -8]} intensity={0.7} color="#f0f4ff" />
-      <hemisphereLight args={['#fff3e0', '#202434', 0.45]} />
+      <directionalLight position={[-10, 14, -8]} intensity={0.75} color="#e8f0ff" />
+      <hemisphereLight args={['#ffeed8', '#2a2e3a', 0.55]} />
     </>
   )
 }
@@ -270,7 +270,7 @@ export default function TeamOfficePage() {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#aeb6c4', zIndex: 50 }}>
+    <div style={{ position: 'fixed', inset: 0, background: '#9fb0c2', zIndex: 50 }}>
       <Suspense fallback={<LoadingScreen />}>
         <Canvas
           shadows
@@ -283,7 +283,7 @@ export default function TeamOfficePage() {
           style={{ width: '100%', height: '100%' }}
         >
           <SceneLights />
-          <fog attach="fog" args={['#aeb6c4', 55, 140]} />
+          <fog attach="fog" args={['#9fb0c2', 55, 140]} />
           <ModernOffice />
           <LocalPlayer realtime={managers.realtime} />
           <RemotePlayers />

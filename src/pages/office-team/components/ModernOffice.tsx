@@ -10,16 +10,55 @@ const GLASS_H = 1.0 // vidro acima da parede
 const DOOR_W = 2.6
 
 function Plant({ x, z }: { x: number; z: number }) {
+  // Duas espécies, escolhidas pela posição (determinístico)
+  const palm = Math.abs(Math.round(x * 7 + z * 13)) % 2 === 0
   return (
     <group position={[x, 0, z]}>
-      <mesh position={[0, 0.22, 0]} castShadow>
-        <cylinderGeometry args={[0.18, 0.14, 0.44, 10]} />
-        <meshStandardMaterial color="#8a8d93" roughness={0.6} />
+      {/* Vaso cerâmica */}
+      <mesh position={[0, 0.2, 0]} castShadow>
+        <cylinderGeometry args={[0.17, 0.13, 0.4, 12]} />
+        <meshStandardMaterial color={palm ? '#b0682f' : '#9aa3ad'} roughness={0.55} />
       </mesh>
-      <mesh position={[0, 0.62, 0]} castShadow>
-        <sphereGeometry args={[0.3, 10, 8]} />
-        <meshStandardMaterial color="#2e7d46" roughness={0.9} />
+      <mesh position={[0, 0.41, 0]}>
+        <cylinderGeometry args={[0.15, 0.15, 0.04, 12]} />
+        <meshStandardMaterial color="#4a3424" roughness={0.95} />
       </mesh>
+      {palm ? (
+        <>
+          {/* Palmeira: caule + folhas inclinadas */}
+          <mesh position={[0, 0.62, 0]} castShadow>
+            <cylinderGeometry args={[0.025, 0.04, 0.45, 8]} />
+            <meshStandardMaterial color="#6b4f2f" roughness={0.9} />
+          </mesh>
+          {[0, 1.2, 2.4, 3.7, 5].map((a) => (
+            <mesh
+              key={a}
+              position={[Math.sin(a) * 0.16, 0.9, Math.cos(a) * 0.16]}
+              rotation={[Math.cos(a) * 0.9, a, Math.sin(a) * 0.9]}
+              castShadow
+            >
+              <coneGeometry args={[0.07, 0.5, 5]} />
+              <meshStandardMaterial color="#3f8a4f" roughness={0.85} />
+            </mesh>
+          ))}
+        </>
+      ) : (
+        <>
+          {/* Arbusto denso em camadas */}
+          <mesh position={[0, 0.6, 0]} castShadow>
+            <sphereGeometry args={[0.26, 10, 8]} />
+            <meshStandardMaterial color="#2e7d46" roughness={0.95} />
+          </mesh>
+          <mesh position={[0.12, 0.74, 0.06]} castShadow>
+            <sphereGeometry args={[0.17, 9, 7]} />
+            <meshStandardMaterial color="#3c9457" roughness={0.95} />
+          </mesh>
+          <mesh position={[-0.12, 0.72, -0.05]} castShadow>
+            <sphereGeometry args={[0.15, 9, 7]} />
+            <meshStandardMaterial color="#27693b" roughness={0.95} />
+          </mesh>
+        </>
+      )}
     </group>
   )
 }
@@ -83,32 +122,45 @@ function OfficeChair({
 function Desk({ x, z, rotation = 0, color = '#e8e2d6', chair = true }: { x: number; z: number; rotation?: number; color?: string; chair?: boolean }) {
   return (
     <group position={[x, 0, z]} rotation={[0, rotation, 0]}>
-      {/* Tampo */}
+      {/* Tampo de madeira com borda */}
       <mesh position={[0, 0.74, 0]} castShadow>
-        <boxGeometry args={[1.7, 0.06, 0.8]} />
-        <meshStandardMaterial color={color} roughness={0.5} />
+        <boxGeometry args={[1.7, 0.05, 0.8]} />
+        <meshStandardMaterial color="#b58a5a" roughness={0.42} />
       </mesh>
-      {/* Painéis laterais */}
+      <mesh position={[0, 0.708, 0]}>
+        <boxGeometry args={[1.7, 0.02, 0.8]} />
+        <meshStandardMaterial color="#8a6238" roughness={0.6} />
+      </mesh>
+      {/* Painéis laterais metálicos */}
       <mesh position={[-0.78, 0.37, 0]}>
-        <boxGeometry args={[0.05, 0.74, 0.7]} />
-        <meshStandardMaterial color="#b8b2a6" roughness={0.6} />
+        <boxGeometry args={[0.05, 0.72, 0.7]} />
+        <meshStandardMaterial color="#7c828c" metalness={0.55} roughness={0.4} />
       </mesh>
       <mesh position={[0.78, 0.37, 0]}>
-        <boxGeometry args={[0.05, 0.74, 0.7]} />
-        <meshStandardMaterial color="#b8b2a6" roughness={0.6} />
+        <boxGeometry args={[0.05, 0.72, 0.7]} />
+        <meshStandardMaterial color="#7c828c" metalness={0.55} roughness={0.4} />
       </mesh>
-      {/* Monitor */}
+      {/* Monitor com tela acesa */}
       <mesh position={[0, 1.02, -0.18]} castShadow>
         <boxGeometry args={[0.62, 0.38, 0.04]} />
         <meshStandardMaterial color="#16181d" roughness={0.3} />
       </mesh>
-      <mesh position={[0, 1.02, -0.16]}>
+      <mesh position={[0, 1.02, -0.157]}>
         <boxGeometry args={[0.56, 0.32, 0.005]} />
-        <meshBasicMaterial color="#2a3f5f" />
+        <meshStandardMaterial color="#5b7fb5" emissive="#4a6fa5" emissiveIntensity={0.55} />
       </mesh>
       <mesh position={[0, 0.8, -0.18]}>
         <cylinderGeometry args={[0.04, 0.07, 0.12, 8]} />
-        <meshStandardMaterial color="#3a3d44" />
+        <meshStandardMaterial color="#3a3d44" metalness={0.5} roughness={0.4} />
+      </mesh>
+      {/* Teclado e caneca */}
+      <mesh position={[0, 0.775, 0.08]}>
+        <boxGeometry args={[0.4, 0.02, 0.14]} />
+        <meshStandardMaterial color="#d8d5cf" roughness={0.6} />
+      </mesh>
+      <mesh position={[0.55, 0.795, 0.05]} castShadow>
+        <cylinderGeometry args={[0.04, 0.035, 0.09, 10]} />
+        <meshStandardMaterial color="#CC1B1B" roughness={0.45} />
       </mesh>
       {/* Cadeira (opcional — salas pessoais usam OfficeChair clicável) */}
       {chair && (
@@ -152,23 +204,49 @@ function MeetingTable({ room }: { room: OfficeRoom }) {
   return (
     <group>
       <group position={[room.x, 0, room.z]}>
+        {/* Tampo nobre com folha de madeira */}
         <mesh position={[0, 0.76, 0]} castShadow>
-          <boxGeometry args={[len, 0.07, 1.7]} />
-          <meshStandardMaterial color="#6e4f35" roughness={0.45} />
+          <boxGeometry args={[len, 0.06, 1.7]} />
+          <meshStandardMaterial color="#8a5f3c" roughness={0.35} />
+        </mesh>
+        <mesh position={[0, 0.722, 0]}>
+          <boxGeometry args={[len, 0.025, 1.7]} />
+          <meshStandardMaterial color="#5f3f26" roughness={0.55} />
         </mesh>
         <mesh position={[-len / 2 + 0.5, 0.38, 0]}>
-          <boxGeometry args={[0.12, 0.76, 1.3]} />
-          <meshStandardMaterial color="#4f3a28" />
+          <boxGeometry args={[0.12, 0.74, 1.3]} />
+          <meshStandardMaterial color="#4f3a28" roughness={0.6} />
         </mesh>
         <mesh position={[len / 2 - 0.5, 0.38, 0]}>
-          <boxGeometry args={[0.12, 0.76, 1.3]} />
-          <meshStandardMaterial color="#4f3a28" />
+          <boxGeometry args={[0.12, 0.74, 1.3]} />
+          <meshStandardMaterial color="#4f3a28" roughness={0.6} />
         </mesh>
-        {/* TV na parede do fundo */}
+        {/* TV na parede do fundo (tela acesa) */}
         <mesh position={[0, 1.7, -room.depth / 2 + 0.25]} castShadow>
           <boxGeometry args={[2.2, 1.15, 0.08]} />
           <meshStandardMaterial color="#0d0f13" roughness={0.3} />
         </mesh>
+        <mesh position={[0, 1.7, -room.depth / 2 + 0.295]}>
+          <boxGeometry args={[2.05, 1.0, 0.005]} />
+          <meshStandardMaterial color="#1e3a5f" emissive="#16304f" emissiveIntensity={0.5} />
+        </mesh>
+        {/* Luminárias pendentes sobre a mesa */}
+        {[-len / 4, len / 4].map((lx) => (
+          <group key={lx} position={[lx, 0, 0]}>
+            <mesh position={[0, 2.45, 0]}>
+              <cylinderGeometry args={[0.008, 0.008, 0.5, 6]} />
+              <meshStandardMaterial color="#2a2d33" />
+            </mesh>
+            <mesh position={[0, 2.16, 0]} castShadow>
+              <cylinderGeometry args={[0.16, 0.22, 0.16, 14]} />
+              <meshStandardMaterial color="#23262c" roughness={0.4} metalness={0.4} />
+            </mesh>
+            <mesh position={[0, 2.075, 0]}>
+              <cylinderGeometry args={[0.13, 0.13, 0.02, 14]} />
+              <meshStandardMaterial color="#ffe9b8" emissive="#ffdf9e" emissiveIntensity={1.2} />
+            </mesh>
+          </group>
+        ))}
       </group>
       {chairs.map((c, i) => (
         <OfficeChair key={i} x={c.x} z={c.z} rotation={c.backRot} color="#37404d" />
@@ -294,19 +372,28 @@ function Sofa({ x, z, rotation = 0, color = '#5a6b7d' }: { x: number; z: number;
     >
       <mesh position={[0, 0.28, 0]} castShadow>
         <boxGeometry args={[1.7, 0.5, 0.8]} />
-        <meshStandardMaterial color={color} roughness={0.9} />
+        <meshStandardMaterial color={color} roughness={0.92} />
       </mesh>
       <mesh position={[0, 0.62, -0.32]} castShadow>
         <boxGeometry args={[1.7, 0.45, 0.18]} />
-        <meshStandardMaterial color={color} roughness={0.9} />
+        <meshStandardMaterial color={color} roughness={0.92} />
       </mesh>
       <mesh position={[-0.78, 0.5, 0]} castShadow>
         <boxGeometry args={[0.16, 0.42, 0.8]} />
-        <meshStandardMaterial color={color} roughness={0.9} />
+        <meshStandardMaterial color={color} roughness={0.92} />
       </mesh>
       <mesh position={[0.78, 0.5, 0]} castShadow>
         <boxGeometry args={[0.16, 0.42, 0.8]} />
-        <meshStandardMaterial color={color} roughness={0.9} />
+        <meshStandardMaterial color={color} roughness={0.92} />
+      </mesh>
+      {/* Almofadas */}
+      <mesh position={[-0.4, 0.62, -0.18]} rotation={[0.25, 0, 0.1]} castShadow>
+        <boxGeometry args={[0.34, 0.3, 0.12]} />
+        <meshStandardMaterial color="#e8ddc8" roughness={0.95} />
+      </mesh>
+      <mesh position={[0.42, 0.62, -0.18]} rotation={[0.22, 0, -0.12]} castShadow>
+        <boxGeometry args={[0.34, 0.3, 0.12]} />
+        <meshStandardMaterial color="#c9762e" roughness={0.95} />
       </mesh>
     </group>
   )
@@ -486,7 +573,7 @@ function Room({ room, locked }: { room: OfficeRoom; locked: boolean }) {
         <meshStandardMaterial
           color={room.color}
           transparent
-          opacity={room.roomType === 'lounge' ? 0.28 : 0.16}
+          opacity={room.roomType === 'lounge' ? 0.32 : 0.26}
           roughness={1}
         />
       </mesh>
@@ -501,17 +588,22 @@ function Room({ room, locked }: { room: OfficeRoom; locked: boolean }) {
           <group key={i}>
             <mesh position={[cx, WALL_H / 2, cz]} castShadow receiveShadow>
               <boxGeometry args={[sx, WALL_H, sz]} />
-              <meshStandardMaterial color="#eceef2" roughness={0.85} />
+              <meshStandardMaterial color="#f6f2ea" roughness={0.88} />
+            </mesh>
+            {/* Rodapé */}
+            <mesh position={[cx, 0.05, cz]}>
+              <boxGeometry args={[sx + 0.015, 0.1, sz + 0.015]} />
+              <meshStandardMaterial color="#8b8e95" roughness={0.6} />
             </mesh>
             {/* Faixa de acento na cor da sala */}
             <mesh position={[cx, WALL_H - 0.06, cz]}>
               <boxGeometry args={[sx + 0.01, 0.1, sz + 0.01]} />
-              <meshStandardMaterial color={room.color} roughness={0.6} />
+              <meshStandardMaterial color={room.color} roughness={0.55} />
             </mesh>
             {/* Vidro */}
             <mesh position={[cx, WALL_H + GLASS_H / 2, cz]}>
               <boxGeometry args={[sx, GLASS_H, Math.min(sz, 0.08)]} />
-              <meshStandardMaterial color="#aaccee" transparent opacity={0.16} roughness={0.1} metalness={0.2} />
+              <meshStandardMaterial color="#aaccee" transparent opacity={0.18} roughness={0.08} metalness={0.25} />
             </mesh>
           </group>
         )
@@ -562,11 +654,18 @@ export default function ModernOffice() {
 
   return (
     <group>
-      {/* Piso geral */}
+      {/* Piso geral: porcelanato quente */}
       <mesh position={[cx, 0, cz]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[W, D]} />
-        <meshStandardMaterial color="#cfd4dc" roughness={0.95} />
+        <meshStandardMaterial color="#ddd6c9" roughness={0.7} />
       </mesh>
+      {/* Juntas do piso (linhas sutis) */}
+      {Array.from({ length: 11 }, (_, i) => BUILDING.minX + (i + 1) * (W / 12)).map((gx) => (
+        <mesh key={`gx${gx}`} position={[gx, 0.002, cz]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[0.04, D]} />
+          <meshStandardMaterial color="#c4bcab" roughness={0.9} />
+        </mesh>
+      ))}
 
       {/* Plano invisível de clique: duplo clique = andar até o ponto */}
       <mesh
@@ -582,24 +681,24 @@ export default function ModernOffice() {
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
 
-      {/* Faixas de corredor */}
+      {/* Faixas de corredor (carpete azul-petróleo) */}
       <mesh position={[cx, 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[W, 5]} />
-        <meshStandardMaterial color="#b7bdc9" roughness={0.95} />
+        <meshStandardMaterial color="#7d92a8" roughness={1} />
       </mesh>
       <mesh position={[cx, 0.004, 13]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[W, 3]} />
-        <meshStandardMaterial color="#b7bdc9" roughness={0.95} />
+        <meshStandardMaterial color="#7d92a8" roughness={1} />
       </mesh>
       {/* Corredor entre as duas fileiras da ala privada */}
       <mesh position={[cx, 0.004, 21.2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[W, 1.6]} />
-        <meshStandardMaterial color="#b7bdc9" roughness={0.95} />
+        <meshStandardMaterial color="#7d92a8" roughness={1} />
       </mesh>
       {/* Passagem vertical central da ala privada */}
       <mesh position={[0, 0.005, 21.2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[10.2, 13.6]} />
-        <meshStandardMaterial color="#b7bdc9" roughness={0.95} />
+        <meshStandardMaterial color="#7d92a8" roughness={1} />
       </mesh>
 
       {/* Perímetro do prédio */}
@@ -611,8 +710,27 @@ export default function ModernOffice() {
       ].map((p, i) => (
         <mesh key={i} position={[p.x, 1.3, p.z]} castShadow receiveShadow>
           <boxGeometry args={[p.w, 2.6, p.d]} />
-          <meshStandardMaterial color="#dfe2e8" roughness={0.85} />
+          <meshStandardMaterial color="#ece8df" roughness={0.88} />
         </mesh>
+      ))}
+
+      {/* Janelas com luz de dia na fachada norte */}
+      {Array.from({ length: 8 }, (_, i) => BUILDING.minX + 4.5 + i * 7).map((wx) => (
+        <group key={`win${wx}`}>
+          <mesh position={[wx, 1.55, BUILDING.minZ + 0.22]}>
+            <boxGeometry args={[3.6, 1.35, 0.05]} />
+            <meshStandardMaterial color="#bcd8f0" emissive="#a8cdef" emissiveIntensity={0.55} roughness={0.1} />
+          </mesh>
+          {/* Caixilho */}
+          <mesh position={[wx, 1.55, BUILDING.minZ + 0.25]}>
+            <boxGeometry args={[0.06, 1.35, 0.03]} />
+            <meshStandardMaterial color="#6b737d" metalness={0.5} roughness={0.4} />
+          </mesh>
+          <mesh position={[wx, 1.55, BUILDING.minZ + 0.25]} rotation={[0, 0, Math.PI / 2]}>
+            <boxGeometry args={[0.06, 3.6, 0.03]} />
+            <meshStandardMaterial color="#6b737d" metalness={0.5} roughness={0.4} />
+          </mesh>
+        </group>
       ))}
 
       {/* Plantas no corredor central */}
