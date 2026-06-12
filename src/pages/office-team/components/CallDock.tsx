@@ -224,27 +224,56 @@ function DockButton({
   title: string
   children: React.ReactNode
 }) {
+  // Tooltip próprio (o title nativo demora ~1s pra aparecer)
+  const [hover, setHover] = useState(false)
   return (
-    <button
-      onClick={onClick}
-      title={title}
-      style={{
-        width: '46px',
-        height: '46px',
-        borderRadius: '50%',
-        border: '1px solid rgba(255,255,255,0.2)',
-        background: danger ? '#c62828' : active ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.12)',
-        color: danger ? '#fff' : active ? '#111' : '#fff',
-        fontSize: '18px',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        transition: 'all 0.15s',
-      }}
-    >
-      {children}
-    </button>
+    <div style={{ position: 'relative', display: 'inline-flex' }}>
+      {hover && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '54px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(10,10,20,0.95)',
+            border: '1px solid rgba(255,255,255,0.2)',
+            borderRadius: '8px',
+            padding: '6px 10px',
+            color: '#fff',
+            fontSize: '11.5px',
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.45)',
+            zIndex: 5,
+          }}
+        >
+          {title}
+        </div>
+      )}
+      <button
+        onClick={onClick}
+        aria-label={title}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={{
+          width: '46px',
+          height: '46px',
+          borderRadius: '50%',
+          border: '1px solid rgba(255,255,255,0.2)',
+          background: danger ? '#c62828' : active ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.12)',
+          color: danger ? '#fff' : active ? '#111' : '#fff',
+          fontSize: '18px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.15s',
+        }}
+      >
+        {children}
+      </button>
+    </div>
   )
 }
 
@@ -750,39 +779,19 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
               <DockButton
                 onClick={() => callManager.toggleMic()}
                 active={call.micOn}
-                title={call.micOn ? 'Desativar microfone' : 'Ativar microfone'}
+                title={call.micOn ? 'Microfone — clique para desativar' : 'Microfone — clique para ativar'}
               >
                 {call.micOn ? '🎙️' : '🔇'}
-              </DockButton>
-              <DockButton
-                onClick={() => run(() => callManager.toggleScreenShare())}
-                active={call.screenOn}
-                title={call.screenOn ? 'Parar de compartilhar a tela' : 'Compartilhar tela'}
-              >
-                🖥️
-              </DockButton>
-              <DockButton
-                onClick={toggleRecording}
-                danger={recording.on && recording.byId === me?.id}
-                title={
-                  recording.on
-                    ? recording.byId === me?.id
-                      ? 'Parar gravação'
-                      : `${recording.byName} está gravando`
-                    : 'Gravar reunião (áudio + transcrição, 30 dias, acesso admin)'
-                }
-              >
-                ⏺
               </DockButton>
               <DockButton
                 onClick={() => run(() => callManager.toggleCam())}
                 active={call.camOn && !call.screenOn}
                 title={
                   call.screenOn
-                    ? 'Pare o compartilhamento de tela primeiro'
+                    ? 'Câmera — pare o compartilhamento de tela primeiro'
                     : call.camOn
-                      ? 'Desligar câmera'
-                      : 'Ligar câmera'
+                      ? 'Câmera — clique para desligar'
+                      : 'Câmera — clique para ligar'
                 }
               >
                 <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -801,6 +810,26 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
                     />
                   )}
                 </span>
+              </DockButton>
+              <DockButton
+                onClick={() => run(() => callManager.toggleScreenShare())}
+                active={call.screenOn}
+                title={call.screenOn ? 'Compartilhar tela — clique para parar' : 'Compartilhar tela — mostrar sua tela pra sala'}
+              >
+                🖥️
+              </DockButton>
+              <DockButton
+                onClick={toggleRecording}
+                danger={recording.on && recording.byId === me?.id}
+                title={
+                  recording.on
+                    ? recording.byId === me?.id
+                      ? 'Gravar reunião — clique para parar'
+                      : `Gravação em andamento por ${recording.byName}`
+                    : 'Gravar reunião — vídeo + transcrição e ata (30 dias, acesso admin)'
+                }
+              >
+                ⏺
               </DockButton>
             </>
           )}
