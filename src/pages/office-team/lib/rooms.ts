@@ -19,6 +19,9 @@ export interface OfficeRoom {
   ownerUserId: string | null
   isLocked: boolean
   lockedBy: string | null
+  /** música lofi tocando na sala (todo mundo dentro ouve) */
+  musicOn: boolean
+  musicVideoId: string
 }
 
 export interface Wall {
@@ -88,7 +91,18 @@ function mapRow(row: Record<string, unknown>): OfficeRoom {
     ownerUserId: (row.owner_user_id as string) ?? null,
     isLocked: Boolean(row.is_locked),
     lockedBy: (row.locked_by as string) ?? null,
+    musicOn: Boolean(row.music_on),
+    musicVideoId: (row.music_video_id as string) || 'X4VbdwhkE10',
   }
+}
+
+/** Liga/desliga a música lofi da sala (só o dono usa — o front garante). */
+export async function setRoomMusic(roomId: string, on: boolean): Promise<boolean> {
+  const { error } = await supabase
+    .from('office_team_rooms' as never)
+    .update({ music_on: on } as never)
+    .eq('id', roomId)
+  return !error
 }
 
 export async function fetchRooms(): Promise<OfficeRoom[]> {

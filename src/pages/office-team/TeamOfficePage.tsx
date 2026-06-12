@@ -24,6 +24,8 @@ import AgentNpcs from './components/AgentNpc'
 import AgentChatPanel from './components/AgentChatPanel'
 import DataTvs from './components/DataTvs'
 import SaleCelebration from './components/SaleCelebration'
+import MusicPlayer from './components/MusicPlayer'
+import CoffeeChat from './components/CoffeeChat'
 import { fetchInMeetingNow, fetchAgendaToday, AgendaItem } from './lib/agenda'
 import { playMeetingPing } from './lib/sfx'
 import {
@@ -365,6 +367,7 @@ export default function TeamOfficePage() {
           <MarceloNpc />
           <AgentNpcs />
           <DataTvs agendaToday={agendaToday} />
+          <CoffeeChat />
         </Canvas>
       </Suspense>
 
@@ -377,6 +380,7 @@ export default function TeamOfficePage() {
       <MarceloChatPanel />
       <AgentChatPanel />
       <SaleCelebration />
+      <MusicPlayer realtime={managers.realtime} />
       <OfficeToasts />
       <DeskNotes realtime={managers.realtime} />
     </div>
