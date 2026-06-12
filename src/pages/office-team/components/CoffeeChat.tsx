@@ -135,6 +135,34 @@ function CoffeeSip({ sitter }: { sitter: Sitter }) {
   )
 }
 
+/** Placa da área de café: deixa claro que os balões são públicos. */
+function CafeSign({ room }: { room: OfficeRoom }) {
+  // Sobre o balcão de café (mesma posição do LoungeFurniture)
+  const x = room.x + room.width / 2 - 2.4
+  const z = room.z - room.depth / 2 + 1.1
+  return (
+    <group position={[x, 0, z]}>
+      {/* Poste */}
+      <mesh position={[0, 1.85, 0]}>
+        <cylinderGeometry args={[0.025, 0.025, 0.5, 8]} />
+        <meshStandardMaterial color="#3a3d44" metalness={0.5} roughness={0.4} />
+      </mesh>
+      <Billboard position={[0, 2.35, 0]} follow>
+        <mesh>
+          <planeGeometry args={[2.5, 0.62]} />
+          <meshBasicMaterial color="#1a1d24" transparent opacity={0.92} depthWrite={false} />
+        </mesh>
+        <Text position={[0, 0.14, 0.001]} fontSize={0.15} color="#FFD700" anchorX="center" anchorY="middle">
+          ☕ ÁREA DE CAFÉ — PAPO INFORMAL
+        </Text>
+        <Text position={[0, -0.13, 0.001]} fontSize={0.095} color="#e8e8e8" anchorX="center" anchorY="middle" maxWidth={2.3} textAlign="center">
+          As conversas aqui aparecem em balões visíveis pra todo mundo
+        </Text>
+      </Billboard>
+    </group>
+  )
+}
+
 /** Balão de conversa alternando entre os sentados da mesma mesinha. */
 function TableChat({ sitters }: { sitters: Sitter[] }) {
   const chatMessages = useTeamStore((s) => s.chatMessages)
@@ -195,6 +223,19 @@ export default function CoffeeChat() {
 
   const seats = useMemo(() => bistroSeatsFor(rooms), [rooms])
 
+  // Sentou numa banqueta → lembra na hora que a conversa aqui é pública
+  const meInBistro =
+    !!me && seated && seats.some((s) => Math.hypot(playerPosition[0] - s.x, playerPosition[2] - s.z) < MATCH_R)
+  const wasInBistro = useRef(false)
+  useEffect(() => {
+    if (meInBistro && !wasInBistro.current) {
+      useTeamStore
+        .getState()
+        .addToast('☕ Área de café: os balões de conversa são visíveis pra todo mundo — papo informal', 'in')
+    }
+    wasInBistro.current = meInBistro
+  }, [meInBistro])
+
   // Quem está sentado em qual banqueta (local + remotos)
   const sitters: Sitter[] = []
   const tryMatch = (id: string, name: string, px: number, pz: number) => {
@@ -220,6 +261,11 @@ export default function CoffeeChat() {
 
   return (
     <>
+      {rooms
+        .filter((r) => r.roomType === 'lounge')
+        .map((r) => (
+          <CafeSign key={r.id} room={r} />
+        ))}
       {sitters.map((s) => (
         <CoffeeSip key={s.id} sitter={s} />
       ))}
