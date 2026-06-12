@@ -62,6 +62,7 @@ interface DailyGoalCardProps {
   selectedSector: string;
   selectedSalesperson: string;
   sectorTeams: SectorTeam[];
+  leadershipSectorIds?: string[];
   isClientView?: boolean;
   currentSalespersonRankPosition?: (kpiId: string) => number | null;
 }
@@ -106,6 +107,7 @@ export const DailyGoalCard = ({
   selectedSector,
   selectedSalesperson,
   sectorTeams,
+  leadershipSectorIds = [],
   isClientView = false,
   currentSalespersonRankPosition,
 }: DailyGoalCardProps) => {
@@ -205,25 +207,32 @@ export const DailyGoalCard = ({
     };
   }, [dateRange.start, includeSaturday, includeSunday, includeHolidays]);
 
+  // Gerentes (setor Liderança) não entram no rateio da meta nem herdam meta do escopo
+  const isLeader = useCallback(
+    (sp?: { sector_id: string | null }) =>
+      !!sp?.sector_id && leadershipSectorIds.includes(sp.sector_id),
+    [leadershipSectorIds]
+  );
+
   const activeSalespeopleCount = useMemo(() => {
-    return Math.max(salespeople.filter((sp) => sp.is_active).length, 1);
-  }, [salespeople]);
+    return Math.max(salespeople.filter((sp) => sp.is_active && !isLeader(sp)).length, 1);
+  }, [salespeople, isLeader]);
 
   const activeCountByUnit = useMemo(() => {
     const map: Record<string, number> = {};
     salespeople.forEach((sp) => {
-      if (sp.is_active && sp.unit_id) map[sp.unit_id] = (map[sp.unit_id] || 0) + 1;
+      if (sp.is_active && sp.unit_id && !isLeader(sp)) map[sp.unit_id] = (map[sp.unit_id] || 0) + 1;
     });
     return map;
-  }, [salespeople]);
+  }, [salespeople, isLeader]);
 
   const activeCountByTeam = useMemo(() => {
     const map: Record<string, number> = {};
     salespeople.forEach((sp) => {
-      if (sp.is_active && sp.team_id) map[sp.team_id] = (map[sp.team_id] || 0) + 1;
+      if (sp.is_active && sp.team_id && !isLeader(sp)) map[sp.team_id] = (map[sp.team_id] || 0) + 1;
     });
     return map;
-  }, [salespeople]);
+  }, [salespeople, isLeader]);
 
   const pickMeta = (targets: MonthlyTarget[]): number =>
     targets.find((t) => t.level_name === "Meta")?.target_value ?? targets[0].target_value;
@@ -238,6 +247,9 @@ export const DailyGoalCard = ({
       }
 
       const sp = salespeople.find((s) => s.id === salespersonId);
+
+      // Gerente sem meta própria não herda rateio
+      if (isLeader(sp)) return 0;
 
       // Sem meta individual: herda a meta do escopo mais próximo (time → unidade → empresa)
       // dividida igualmente entre os vendedores ativos daquele escopo
