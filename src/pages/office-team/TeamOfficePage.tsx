@@ -26,6 +26,7 @@ import DataTvs from './components/DataTvs'
 import SaleCelebration from './components/SaleCelebration'
 import MusicPlayer from './components/MusicPlayer'
 import CoffeeChat from './components/CoffeeChat'
+import ScreenShareTvs from './components/ScreenShareTv'
 import { fetchInMeetingNow, fetchAgendaToday, AgendaItem } from './lib/agenda'
 import { playMeetingPing } from './lib/sfx'
 import {
@@ -263,6 +264,26 @@ export default function TeamOfficePage() {
     return { realtime, callManager }
   }, [me])
 
+  // Tecla F: liga/desliga o modo foco (cutucadas silenciadas com auto-resposta)
+  useEffect(() => {
+    if (!managers) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'KeyF') return
+      const el = document.activeElement
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return
+      const st = useTeamStore.getState()
+      const next = !st.focused
+      st.setFocused(next)
+      void managers.realtime.updateFocus(next)
+      st.addToast(
+        next ? '🔕 Modo foco ligado — cutucadas serão respondidas sozinhas (F pra sair)' : '🔔 Modo foco desligado',
+        next ? 'out' : 'in'
+      )
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [managers])
+
   useEffect(() => {
     if (!managers) return
     managers.realtime.connect()
@@ -374,6 +395,7 @@ export default function TeamOfficePage() {
           <MarceloNpc />
           <AgentNpcs />
           <DataTvs agendaToday={agendaToday} />
+          <ScreenShareTvs />
           <CoffeeChat />
         </Canvas>
       </Suspense>

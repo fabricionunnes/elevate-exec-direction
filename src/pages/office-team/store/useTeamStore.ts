@@ -41,6 +41,10 @@ export interface RemotePlayerState extends TeamProfile {
   inCall: boolean
   micOn: boolean
   camOn: boolean
+  /** compartilhando a tela (pra projetar no telão da sala) */
+  screenOn: boolean
+  /** modo foco: não recebe cutucada (auto-responde) */
+  focused: boolean
 }
 
 /** Assento alvo: clicar numa cadeira anda até lá e senta */
@@ -139,6 +143,8 @@ interface TeamState {
   /** voz automática falhou (permissão negada) — mostra fallback manual */
   voiceBlocked: boolean
 
+  /** modo foco local (F): silencia cutucadas com auto-resposta */
+  focused: boolean
   /** venda ganha no CRM (sino + confete pra todo o escritório) */
   saleEvent: { lead: string; value: number; by: string; ts: number } | null
   /** user_ids com reunião agendada acontecendo agora (status "Em reunião") */
@@ -180,6 +186,7 @@ interface TeamState {
   addCutscene: (c: Cutscene) => void
   removeCutscene: (id: string) => void
   setVoiceBlocked: (blocked: boolean) => void
+  setFocused: (on: boolean) => void
   setSaleEvent: (s: { lead: string; value: number; by: string; ts: number } | null) => void
   setInMeetingIds: (ids: string[]) => void
   setAgentChatFor: (key: string | null) => void
@@ -214,6 +221,7 @@ export const useTeamStore = create<TeamState>((set) => ({
   notesPanelOpen: false,
   cutscenes: [],
   voiceBlocked: false,
+  focused: false,
   saleEvent: null,
   inMeetingIds: [],
   agentChatFor: null,
@@ -252,6 +260,8 @@ export const useTeamStore = create<TeamState>((set) => ({
             inCall: false,
             micOn: false,
             camOn: false,
+            screenOn: false,
+            focused: false,
             ...existing,
             ...player,
           },
@@ -321,6 +331,7 @@ export const useTeamStore = create<TeamState>((set) => ({
   removeCutscene: (id) =>
     set((prev) => ({ cutscenes: prev.cutscenes.filter((c) => c.id !== id) })),
   setVoiceBlocked: (blocked) => set({ voiceBlocked: blocked }),
+  setFocused: (on) => set({ focused: on }),
   setSaleEvent: (s) => set({ saleEvent: s }),
   setInMeetingIds: (ids) => set({ inMeetingIds: ids }),
   setAgentChatFor: (key) => set({ agentChatFor: key }),

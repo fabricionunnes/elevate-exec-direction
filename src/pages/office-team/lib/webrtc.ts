@@ -275,7 +275,7 @@ export class CallManager {
     if (this.camTrack) this.localStream.removeTrack(this.camTrack)
     this.localStream.addTrack(track)
     useTeamStore.getState().setCall({ screenOn: true, camOn: true })
-    await this.realtime.updateCallState({ camOn: true })
+    await this.realtime.updateCallState({ camOn: true, screen: true })
   }
 
   async stopScreenShare() {
@@ -314,7 +314,7 @@ export class CallManager {
     }
     const camOn = !!restore
     useTeamStore.getState().setCall({ screenOn: false, camOn })
-    await this.realtime.updateCallState({ camOn })
+    await this.realtime.updateCallState({ camOn, screen: false })
   }
 
   async toggleCam() {

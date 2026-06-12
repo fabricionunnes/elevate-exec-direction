@@ -136,6 +136,101 @@ function drawAgenda(ctx: CanvasRenderingContext2D, w: number, h: number, items: 
   }
 }
 
+const MESES = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO']
+
+/** Termômetro de meta: receita do mês vs Meta/Super/Hiper lançadas no CRM. */
+function drawTermometro(ctx: CanvasRenderingContext2D, w: number, h: number, d: TvComercial | null) {
+  ctx.fillStyle = '#0a1424'
+  ctx.fillRect(0, 0, w, h)
+  const grad = ctx.createLinearGradient(0, 0, w, 0)
+  grad.addColorStop(0, NAVY)
+  grad.addColorStop(1, '#13294a')
+  ctx.fillStyle = grad
+  ctx.fillRect(0, 0, w, 54)
+  ctx.fillStyle = RED
+  ctx.fillRect(0, 54, w, 4)
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '700 27px -apple-system, "Segoe UI", sans-serif'
+  ctx.fillText(`🎯 META DE ${MESES[new Date().getMonth()]}`, 22, 38)
+
+  if (!d) {
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'
+    ctx.font = '600 20px sans-serif'
+    ctx.fillText('Carregando...', 22, 130)
+    return
+  }
+  if (d.meta_mes <= 0) {
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'
+    ctx.font = '600 21px -apple-system, "Segoe UI", sans-serif'
+    ctx.fillText('Meta do mês ainda não lançada.', 22, 125)
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'
+    ctx.font = '500 17px -apple-system, "Segoe UI", sans-serif'
+    ctx.fillText('Lance as metas de Vendas no CRM Comercial', 22, 158)
+    ctx.fillText('(Configurações → Metas) e o termômetro liga sozinho.', 22, 184)
+    return
+  }
+
+  const cur = d.receita_mes
+  const marks = [
+    { v: d.meta_mes, label: 'META', color: '#FFD700' },
+    { v: d.super_meta_mes, label: 'SUPER', color: '#FF8A65' },
+    { v: d.hiper_meta_mes, label: 'HIPER', color: '#CE93D8' },
+  ].filter((m) => m.v > 0)
+  const maxV = Math.max(...marks.map((m) => m.v)) * 1.06
+  const bx = 28
+  const bw = w - 56
+  const by = 132
+  const bh = 56
+
+  // % da meta em destaque
+  const pctMeta = Math.round((cur / d.meta_mes) * 100)
+  ctx.fillStyle = pctMeta >= 100 ? '#4CAF50' : '#FFD700'
+  ctx.font = '800 44px -apple-system, "Segoe UI", sans-serif'
+  ctx.fillText(`${pctMeta}%`, bx, 112)
+  ctx.fillStyle = 'rgba(255,255,255,0.65)'
+  ctx.font = '600 19px -apple-system, "Segoe UI", sans-serif'
+  ctx.fillText(`${formatBRL(cur)} de ${formatBRL(d.meta_mes)}`, bx + 130, 105)
+
+  // Trilho
+  ctx.fillStyle = 'rgba(255,255,255,0.1)'
+  ctx.beginPath()
+  ctx.roundRect(bx, by, bw, bh, 12)
+  ctx.fill()
+  // Preenchimento
+  const fillW = Math.max(10, Math.min(1, cur / maxV) * bw)
+  const fillGrad = ctx.createLinearGradient(bx, 0, bx + bw, 0)
+  fillGrad.addColorStop(0, '#CC1B1B')
+  fillGrad.addColorStop(0.55, '#FFD700')
+  fillGrad.addColorStop(1, '#4CAF50')
+  ctx.save()
+  ctx.beginPath()
+  ctx.roundRect(bx, by, fillW, bh, 12)
+  ctx.clip()
+  ctx.fillStyle = fillGrad
+  ctx.fillRect(bx, by, bw, bh)
+  ctx.restore()
+
+  // Marcos Meta/Super/Hiper
+  for (const m of marks) {
+    const mx = bx + Math.min(1, m.v / maxV) * bw
+    ctx.strokeStyle = m.color
+    ctx.lineWidth = 3
+    ctx.setLineDash([6, 4])
+    ctx.beginPath()
+    ctx.moveTo(mx, by - 10)
+    ctx.lineTo(mx, by + bh + 10)
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.fillStyle = m.color
+    ctx.font = '700 14px -apple-system, "Segoe UI", sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText(m.label, mx, by + bh + 30)
+    ctx.font = '600 13px -apple-system, "Segoe UI", sans-serif'
+    ctx.fillText(formatBRL(m.v), mx, by + bh + 48)
+    ctx.textAlign = 'left'
+  }
+}
+
 /** Telão de parede: moldura fina + tela grande (cobre a TV pequena original). */
 function BigTv({ x, y, z, w, h, texture }: { x: number; y: number; z: number; w: number; h: number; texture?: THREE.CanvasTexture }) {
   return (
@@ -216,6 +311,14 @@ export default function DataTvs({ agendaToday }: { agendaToday: AgendaItem[] }) 
     return tex
   }, [agendaToday])
 
+  const termTex = useMemo(() => {
+    const { canvas, ctx, w, h } = makeCanvas(700, 300)
+    drawTermometro(ctx, w, h, comercial)
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.colorSpace = THREE.SRGBColorSpace
+    return tex
+  }, [comercial])
+
   const comercialRoom = rooms.find((r) => r.roomType === 'sector' && r.sector === 'comercial')
   const produtoRoom = rooms.find((r) => r.roomType === 'sector' && r.sector === 'produto')
   const financeiroRoom = rooms.find((r) => r.roomType === 'sector' && r.sector === 'financeiro')
@@ -242,6 +345,15 @@ export default function DataTvs({ agendaToday }: { agendaToday: AgendaItem[] }) 
           h={TV_H}
           texture={produtoTex}
         />
+      )}
+      {/* Termômetro de meta: parede leste da sala Comercial */}
+      {comercialRoom && (
+        <group
+          position={[comercialRoom.x + comercialRoom.width / 2 - 0.36, 1.7, comercialRoom.z + 0.6]}
+          rotation={[0, -Math.PI / 2, 0]}
+        >
+          <BigTv x={0} y={0} z={0} w={3.3} h={1.42} texture={termTex} />
+        </group>
       )}
       {/* Financeiro: telão igual, mas desligado — números sigilosos não vão pra TV */}
       {financeiroRoom && (

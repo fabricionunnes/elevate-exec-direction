@@ -11,6 +11,10 @@ export interface TvComercial {
   pipeline_valor: number
   vendas_mes: number
   receita_mes: number
+  /** metas do mês (soma das metas de "Vendas" do CRM); 0 = não lançada */
+  meta_mes: number
+  super_meta_mes: number
+  hiper_meta_mes: number
 }
 
 export interface TvProduto {
@@ -29,6 +33,9 @@ export async function fetchTvComercial(): Promise<TvComercial | null> {
     pipeline_valor: Number(d.pipeline_valor ?? 0),
     vendas_mes: Number(d.vendas_mes ?? 0),
     receita_mes: Number(d.receita_mes ?? 0),
+    meta_mes: Number(d.meta_mes ?? 0),
+    super_meta_mes: Number(d.super_meta_mes ?? 0),
+    hiper_meta_mes: Number(d.hiper_meta_mes ?? 0),
   }
 }
 

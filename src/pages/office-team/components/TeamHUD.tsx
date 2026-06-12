@@ -21,10 +21,15 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
   const [directory, setDirectory] = useState<TeamMember[]>([])
   const inMeetingIds = useTeamStore((s) => s.inMeetingIds)
   const inMeeting = new Set(inMeetingIds)
+  const myFocus = useTeamStore((s) => s.focused)
 
-  // Status pela AGENDA: reunião agendada acontecendo agora = "Em reunião"
-  const StatusBadge = ({ userId }: { userId: string }) => {
+  // Status: Em reunião (agenda) > Focado (modo foco) > Disponível
+  const StatusBadge = ({ userId, focused }: { userId: string; focused?: boolean }) => {
     const busy = inMeeting.has(userId)
+    const focus = !busy && focused
+    const color = busy ? '#FFA726' : focus ? '#B388FF' : '#4CAF50'
+    const bg = busy ? 'rgba(255,167,38,0.18)' : focus ? 'rgba(179,136,255,0.16)' : 'rgba(76,175,80,0.15)'
+    const border = busy ? 'rgba(255,167,38,0.45)' : focus ? 'rgba(179,136,255,0.45)' : 'rgba(76,175,80,0.35)'
     return (
       <span
         style={{
@@ -32,14 +37,14 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
           fontWeight: 700,
           padding: '1px 6px',
           borderRadius: '999px',
-          background: busy ? 'rgba(255,167,38,0.18)' : 'rgba(76,175,80,0.15)',
-          color: busy ? '#FFA726' : '#4CAF50',
-          border: `1px solid ${busy ? 'rgba(255,167,38,0.45)' : 'rgba(76,175,80,0.35)'}`,
+          background: bg,
+          color,
+          border: `1px solid ${border}`,
           whiteSpace: 'nowrap',
           flexShrink: 0,
         }}
       >
-        {busy ? '📅 Em reunião' : 'Disponível'}
+        {busy ? '📅 Em reunião' : focus ? '🔕 Focado' : 'Disponível'}
       </span>
     )
   }
@@ -147,7 +152,7 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
                   <div style={{ fontSize: '12px', color: '#FFD700', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {me.name} (você)
                   </div>
-                  <StatusBadge userId={me.id} />
+                  <StatusBadge userId={me.id} focused={myFocus} />
                 </div>
                 {me.role && <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>{me.role}</div>}
               </div>
@@ -161,7 +166,7 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
                   <div style={{ fontSize: '12px', color: '#eee', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {p.name}
                   </div>
-                  <StatusBadge userId={p.id} />
+                  <StatusBadge userId={p.id} focused={p.focused} />
                 </div>
                 {p.role && <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>{p.role}</div>}
               </div>
@@ -285,7 +290,7 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
           fontFamily: font,
         }}
       >
-        WASD / duplo clique = andar · Arrastar = olhar o escritório · X = minha sala · Z = trancar · Scroll = zoom
+        WASD / duplo clique = andar · Arrastar = olhar · X = minha sala · Z = trancar · F = foco · Scroll = zoom
       </div>
     </>
   )

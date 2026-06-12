@@ -36,6 +36,10 @@ interface PresencePayload {
   inCall: boolean
   micOn: boolean
   camOn: boolean
+  /** compartilhando tela (projeta no telão 3D da sala) */
+  screen: boolean
+  /** modo foco (não recebe cutucada) */
+  focus: boolean
   // Última posição parada — quem entra depois sincroniza por aqui
   // (o broadcast 'pos' é efêmero e só flui enquanto o jogador anda)
   x: number
@@ -72,6 +76,8 @@ export class TeamRealtime {
       inCall: false,
       micOn: false,
       camOn: false,
+      screen: false,
+      focus: false,
       x: me.spawn?.[0] ?? 0,
       z: me.spawn?.[1] ?? 0.5,
       rot: me.spawn?.[2] ?? 0,
@@ -139,6 +145,8 @@ export class TeamRealtime {
             inCall: meta.inCall,
             micOn: meta.micOn,
             camOn: meta.camOn,
+            screenOn: meta.screen ?? false,
+            focused: meta.focus ?? false,
             position,
             rotation,
             moving: existing?.moving ?? false,
@@ -234,6 +242,15 @@ export class TeamRealtime {
       .on('broadcast', { event: 'ring' }, ({ payload }) => {
         const r = payload as { to: string; fromId: string; fromName: string; x?: number; z?: number }
         if (!r || r.to !== this.me.id) return
+        // Modo foco: não toca — responde sozinho pra quem chamou
+        if (useTeamStore.getState().focused) {
+          void this.channel?.send({
+            type: 'broadcast',
+            event: 'focus-reply',
+            payload: { to: r.fromId, name: this.me.name },
+          })
+          return
+        }
         useTeamStore.getState().setIncomingRing({
           fromId: r.fromId,
           fromName: r.fromName,
@@ -241,6 +258,11 @@ export class TeamRealtime {
           z: r.z ?? 0.5,
           ts: Date.now(),
         })
+      })
+      .on('broadcast', { event: 'focus-reply' }, ({ payload }) => {
+        const r = payload as { to: string; name: string }
+        if (!r || r.to !== this.me.id) return
+        useTeamStore.getState().addToast(`🔕 ${r.name} está em modo foco — te chama assim que sair`, 'out')
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -462,8 +484,14 @@ export class TeamRealtime {
   }
 
   /** Atualiza estado de chamada no presence (todos veem). */
-  async updateCallState(patch: Partial<Pick<PresencePayload, 'inCall' | 'micOn' | 'camOn'>>) {
+  async updateCallState(patch: Partial<Pick<PresencePayload, 'inCall' | 'micOn' | 'camOn' | 'screen'>>) {
     this.presenceState = { ...this.presenceState, ...patch }
+    await this.channel?.track(this.presenceState)
+  }
+
+  /** Liga/desliga o modo foco no presence. */
+  async updateFocus(on: boolean) {
+    this.presenceState = { ...this.presenceState, focus: on }
     await this.channel?.track(this.presenceState)
   }
 
