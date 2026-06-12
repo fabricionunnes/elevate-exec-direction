@@ -55,12 +55,14 @@ function MediaAudio({ stream, volume }: { stream: MediaStream; volume: number })
 }
 
 function VideoTile({ stream, label, muted, mirrored }: { stream: MediaStream; label: string; muted: boolean; mirrored?: boolean }) {
-  const ref = useRef<HTMLVideoElement>(null!)
-  useEffect(() => {
-    if (ref.current && ref.current.srcObject !== stream) {
-      ref.current.srcObject = stream
+  // Callback ref: reconecta o stream sempre que o elemento (re)monta —
+  // useEffect([stream]) perde a remontagem quando a referência não muda
+  const setVideoEl = (el: HTMLVideoElement | null) => {
+    if (el && el.srcObject !== stream) {
+      el.srcObject = stream
+      void el.play().catch(() => undefined)
     }
-  }, [stream])
+  }
   return (
     <div
       style={{
@@ -76,7 +78,7 @@ function VideoTile({ stream, label, muted, mirrored }: { stream: MediaStream; la
       }}
     >
       <video
-        ref={ref}
+        ref={setVideoEl}
         autoPlay
         playsInline
         muted={muted}
@@ -133,12 +135,15 @@ function GridTile({
   fill?: boolean
   fit?: 'cover' | 'contain'
 }) {
-  const ref = useRef<HTMLVideoElement>(null!)
-  useEffect(() => {
-    if (ref.current && stream && ref.current.srcObject !== stream) {
-      ref.current.srcObject = stream
+  // Callback ref: o <video> desmonta quando a câmera desliga (vira avatar) e
+  // REMONTA quando liga de novo — um useEffect([stream]) não re-roda nesse
+  // caso (mesma referência de stream) e o elemento ficava sem srcObject.
+  const setVideoEl = (el: HTMLVideoElement | null) => {
+    if (el && stream && el.srcObject !== stream) {
+      el.srcObject = stream
+      void el.play().catch(() => undefined)
     }
-  }, [stream])
+  }
   return (
     <div
       onClick={onClick}
@@ -159,7 +164,7 @@ function GridTile({
     >
       {camOn && stream ? (
         <video
-          ref={ref}
+          ref={setVideoEl}
           autoPlay
           playsInline
           muted={muted}
