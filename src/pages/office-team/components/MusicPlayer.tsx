@@ -134,8 +134,9 @@ export default function MusicPlayer({ realtime }: { realtime: TeamRealtime }) {
     <div
       style={{
         position: 'fixed',
-        bottom: '64px',
-        left: '16px',
+        // Canto inferior direito (a coluna esquerda é dos painéis de equipe/ações)
+        bottom: '84px',
+        right: '16px',
         zIndex: 96,
         background: 'rgba(10,10,20,0.88)',
         backdropFilter: 'blur(14px)',
