@@ -2126,6 +2126,9 @@ export const KPIDashboardTab = ({
         selectedSector={selectedSector}
         selectedSalesperson={selectedSalesperson}
         sectorTeams={sectorTeams}
+        leadershipSectorIds={sectors
+          .filter((s) => (s.name || "").toLowerCase().includes("lideran"))
+          .map((s) => s.id)}
         isClientView={isSalespersonView}
         currentSalespersonRankPosition={isSalespersonView ? getMyRankingPosition : undefined}
       />)}

@@ -99,7 +99,7 @@ export const SalespersonDailyGoalCard = ({
 
       const kpiIds = kpis.map((k) => k.id);
 
-      const [{ data: targets }, { data: allSalespeople }, { data: entries }] = await Promise.all([
+      const [{ data: targets }, { data: allSalespeople }, { data: entries }, { data: sectors }] = await Promise.all([
         supabase
           .from("kpi_monthly_targets")
           .select("kpi_id, target_value, level_name, salesperson_id, unit_id, team_id")
@@ -108,7 +108,7 @@ export const SalespersonDailyGoalCard = ({
           .in("kpi_id", kpiIds),
         supabase
           .from("company_salespeople")
-          .select("id, unit_id, team_id")
+          .select("id, unit_id, team_id, sector_id")
           .eq("company_id", companyId)
           .eq("is_active", true),
         supabase
@@ -118,11 +118,23 @@ export const SalespersonDailyGoalCard = ({
           .in("kpi_id", kpiIds)
           .gte("entry_date", monthStart)
           .lte("entry_date", monthEnd),
+        supabase
+          .from("company_sectors")
+          .select("id, name")
+          .eq("company_id", companyId),
       ]);
 
-      const salespeopleList = allSalespeople || [];
+      // Gerentes (setor Liderança) não entram no rateio nem herdam meta do escopo
+      const leadershipSectorIds = (sectors || [])
+        .filter((s) => (s.name || "").toLowerCase().includes("lideran"))
+        .map((s) => s.id);
+      const isLeader = (sp?: { sector_id: string | null }) =>
+        !!sp?.sector_id && leadershipSectorIds.includes(sp.sector_id);
+
+      const salespeopleList = (allSalespeople || []).filter((sp) => !isLeader(sp));
       const divisor = Math.max(salespeopleList.length, 1);
-      const me = salespeopleList.find((sp) => sp.id === salespersonId);
+      const me = (allSalespeople || []).find((sp) => sp.id === salespersonId);
+      const meIsLeader = isLeader(me);
       const teamCount = me?.team_id
         ? Math.max(salespeopleList.filter((sp) => sp.team_id === me.team_id).length, 1)
         : 1;
@@ -153,6 +165,8 @@ export const SalespersonDailyGoalCard = ({
           : [];
         if (spTargets.length > 0) {
           monthlyTarget = pickMeta(spTargets);
+        } else if (meIsLeader) {
+          monthlyTarget = 0; // gerente sem meta própria não herda rateio
         } else if (teamTargets.length > 0) {
           monthlyTarget = pickMeta(teamTargets) / teamCount;
         } else if (unitTargets.length > 0) {
