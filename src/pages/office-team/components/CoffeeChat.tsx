@@ -12,7 +12,7 @@ import type { OfficeRoom } from '../lib/rooms'
 const SEAT_DIST = 0.75 // banqueta fica a 0.75 do centro da mesa (LoungeFurniture)
 const MATCH_R = 0.45 // tolerância pra considerar "sentado naquela banqueta"
 
-interface BistroSeat {
+export interface BistroSeat {
   tableKey: string
   tableX: number
   tableZ: number
@@ -21,7 +21,7 @@ interface BistroSeat {
 }
 
 /** Mesmas posições do LoungeFurniture: 3 mesas bistrô por lounge, 2 banquetas cada. */
-function bistroSeatsFor(rooms: OfficeRoom[]): BistroSeat[] {
+export function bistroSeatsFor(rooms: OfficeRoom[]): BistroSeat[] {
   const seats: BistroSeat[] = []
   for (const room of rooms) {
     if (room.roomType !== 'lounge') continue
@@ -41,7 +41,7 @@ function bistroSeatsFor(rooms: OfficeRoom[]): BistroSeat[] {
   return seats
 }
 
-interface Sitter {
+export interface Sitter {
   id: string
   name: string
   x: number
@@ -58,7 +58,7 @@ function seedFor(id: string): number {
 }
 
 /** Caneca de café animada: descansa na borda da mesa, sobe até a boca, volta. */
-function CoffeeSip({ sitter }: { sitter: Sitter }) {
+export function CoffeeSip({ sitter }: { sitter: Sitter }) {
   const cup = useRef<THREE.Group>(null!)
   const steam1 = useRef<THREE.Mesh>(null!)
   const steam2 = useRef<THREE.Mesh>(null!)
@@ -182,13 +182,17 @@ function TableChat({ sitters }: { sitters: Sitter[] }) {
   // Mensagem real recente do falante (chat de texto) ou "..." de prosa
   const lastMsg = [...chatMessages].reverse().find((m) => m.userId === speaker.id && now - m.timestamp < 12_000)
   const dots = '.'.repeat(1 + (Math.floor(now / 450) % 3))
-  let text = lastMsg ? lastMsg.content : dots
+  return <SpeechBubble x={speaker.x} z={speaker.z} text={lastMsg ? lastMsg.content : dots} isDots={!lastMsg} />
+}
+
+/** Caixinha de diálogo estilo quadrinho (reusada pelos agentes no café). */
+export function SpeechBubble({ x, z, y = 2.0, text: raw, isDots }: { x: number; z: number; y?: number; text: string; isDots: boolean }) {
+  let text = raw
   if (text.length > 64) text = `${text.slice(0, 62)}…`
-  const isDots = !lastMsg
   const bubbleW = isDots ? 0.42 : Math.min(1.7, 0.34 + text.length * 0.052)
 
   return (
-    <Billboard position={[speaker.x, 2.0, speaker.z]} follow>
+    <Billboard position={[x, y, z]} follow>
       {/* Caixinha */}
       <mesh>
         <planeGeometry args={[bubbleW, isDots ? 0.3 : 0.42]} />
