@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route } from "react-router-dom";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { OAuthRedirectHandler } from "./components/OAuthRedirectHandler";
+import { InviteRedirectHandler } from "./components/InviteRedirectHandler";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeCustomizationProvider } from "@/contexts/ThemeCustomizationContext";
 import { TenantProvider } from "@/contexts/TenantContext";
@@ -353,6 +354,7 @@ const AppShell = () => {
             <HashRouter>
               <ScrollToTop />
               <OAuthRedirectHandler />
+              <InviteRedirectHandler />
               <Suspense fallback={<PageLoader />}>
               <Routes>
             <Route path="/" element={<HomePage />} />
