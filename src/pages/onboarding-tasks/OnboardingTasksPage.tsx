@@ -3008,10 +3008,13 @@ const OnboardingTasksPage = () => {
                       <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                         {/* Health Score Indicator */}
                         {companyHealthData && (
-                          <div className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full ${companyHealthData.riskInfo.bg}`}>
+                          <div className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full ${companyHealthData.riskInfo.bg}`} title="Saúde do cliente (0–100)">
                             <Heart className={`h-3.5 w-3.5 ${companyHealthData.riskInfo.color}`} />
                             <span className={`text-sm font-semibold ${companyHealthData.riskInfo.color}`}>
                               {companyHealthData.avgScore}
+                            </span>
+                            <span className={`hidden lg:inline text-[10px] font-medium ${companyHealthData.riskInfo.color}`}>
+                              {companyHealthData.riskLevel === "critical" ? "crítica" : companyHealthData.riskLevel === "at_risk" ? "em risco" : companyHealthData.riskLevel === "attention" ? "atenção" : "saudável"}
                             </span>
                           </div>
                         )}
