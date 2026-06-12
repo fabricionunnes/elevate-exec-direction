@@ -271,7 +271,9 @@ export function furnitureColliders(rooms: OfficeRoom[]): Wall[] {
   for (const r of rooms) {
     if (r.roomType === 'personal') {
       const deskZ = r.z + r.depth / 2 - 1.3
-      box(r.x, deskZ, 0.85, 0.38) // mesa
+      // Collider justo: precisa sobrar passagem entre a mesa e a parede
+      // do fundo (onde fica a cadeira do dono)
+      box(r.x, deskZ, 0.8, 0.28) // mesa
     } else if (r.roomType === 'meeting' || r.roomType === 'sector') {
       const len = Math.max(3, r.width - 4.5)
       box(r.x, r.z, len / 2, 0.8) // mesa de reunião

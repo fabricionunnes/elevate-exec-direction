@@ -261,7 +261,19 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       const d = Math.sqrt(ddx * ddx + ddz * ddz)
       if (d < 0.18) {
         ap.idx++
-        if (ap.idx >= ap.points.length) autoPathRef.current = null
+        if (ap.idx >= ap.points.length) {
+          autoPathRef.current = null
+          // O A* desvia de mesas, então o fim do caminho pode parar do
+          // lado da cadeira — aproximação final em linha reta até o
+          // assento (a mobília já não colide perto do assento)
+          const seat = useTeamStore.getState().pendingSeat
+          if (seat) {
+            const dSeat = Math.hypot(seat.x - pos.x, seat.z - pos.z)
+            if (dSeat > 0.25 && dSeat < 2.6) {
+              autoPathRef.current = { points: [[seat.x, seat.z]], idx: 0 } as typeof ap
+            }
+          }
+        }
       } else {
         dx = ddx / d
         dz = ddz / d
@@ -284,9 +296,13 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       const RADIUS = 0.32
       const tryX = Math.max(BUILDING.minX + 0.5, Math.min(BUILDING.maxX - 0.5, pos.x + dx * SPEED * delta))
       const tryZ = Math.max(BUILDING.minZ + 0.5, Math.min(BUILDING.maxZ - 0.5, pos.z + dz * SPEED * delta))
-      // Mobília colide, exceto na aproximação final do assento (encaixe)
+      // Mobília colide, exceto: (a) aproximação final do assento (encaixe)
+      // e (b) quando JÁ está encostado/dentro dela — deixa escapar
+      // (ex: levantando da cadeira atrás da mesa)
       const seatTarget = useTeamStore.getState().pendingSeat
-      const ignoreFurniture = !!seatTarget && Math.hypot(seatTarget.x - pos.x, seatTarget.z - pos.z) < 1.6
+      const nearSeat = !!seatTarget && Math.hypot(seatTarget.x - pos.x, seatTarget.z - pos.z) < 1.6
+      const stuckInFurniture = checkWallCollision(pos.x, pos.z, RADIUS, furnitureRef.current)
+      const ignoreFurniture = nearSeat || stuckInFurniture
       const solids = ignoreFurniture ? wallsRef.current : [...wallsRef.current, ...furnitureRef.current]
       let newX = checkWallCollision(tryX, pos.z, RADIUS, solids) ? pos.x : tryX
       let newZ = checkWallCollision(newX, tryZ, RADIUS, solids) ? pos.z : tryZ
