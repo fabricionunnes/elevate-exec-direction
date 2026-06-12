@@ -83,10 +83,12 @@ function drawProduto(ctx: CanvasRenderingContext2D, w: number, h: number, d: TvP
     return
   }
   const colW = (w - 66) / 2
+  const health = d.health_medio
+  const healthColor = health == null ? '#9aa3ad' : health >= 70 ? '#4CAF50' : health >= 50 ? '#FFD700' : '#FF8A65'
   drawKpi(ctx, 22, 86, colW, 'Clientes ativos', String(d.clientes_ativos), '#4CAF50')
-  drawKpi(ctx, 44 + colW, 86, colW, 'NPS (90 dias)', d.nps_90d == null ? '—' : String(d.nps_90d), '#FFD700')
-  drawKpi(ctx, 22, 204, colW, 'Novos (30 dias)', `+${d.novos_30d}`, '#81D4FA')
-  drawKpi(ctx, 44 + colW, 204, colW, 'Saídas no mês', String(d.saidas_mes), d.saidas_mes > 0 ? '#FF8A65' : '#4CAF50')
+  drawKpi(ctx, 44 + colW, 86, colW, 'Health médio (0-100)', health == null ? '—' : String(health), healthColor)
+  drawKpi(ctx, 22, 204, colW, 'Clientes em risco', d.em_risco == null ? '—' : String(d.em_risco), (d.em_risco ?? 0) > 0 ? '#FF8A65' : '#4CAF50')
+  drawKpi(ctx, 44 + colW, 204, colW, 'Reuniões no mês', String(d.reunioes_mes), '#81D4FA')
 }
 
 function drawAgenda(ctx: CanvasRenderingContext2D, w: number, h: number, items: AgendaItem[]) {
