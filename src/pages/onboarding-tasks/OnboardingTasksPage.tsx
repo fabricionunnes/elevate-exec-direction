@@ -1108,11 +1108,15 @@ const OnboardingTasksPage = () => {
       return hasMonetaryEntries ? monetaryKpis : mainGoalKpis;
     };
     
-    // Companies with KPI configured with target_value > 0 (same logic as DashboardMetrics)
+    // Companies with KPI configured with target_value > 0 OU meta lançada em
+    // Metas Mensais para o período (same logic as DashboardMetrics)
     const companiesWithAnyKpiIds = new Set(
       Array.from(activeCompanyIds).filter(companyId => {
         const kpis = getCompanyKpisList(companyId);
-        return kpis.some(k => k.target_value > 0);
+        if (kpis.some(k => k.target_value > 0)) return true;
+        return monthlyTargetsForProjection.some(
+          t => t.company_id === companyId && t.month_year === monthYear && t.target_value > 0
+        );
       })
     );
     
