@@ -882,12 +882,58 @@ function Room({ room, locked }: { room: OfficeRoom; locked: boolean }) {
         )
       })}
 
-      {/* Porta fechada quando trancada */}
+      {/* Porta dupla de madeira quando trancada (batente + almofadas + puxadores) */}
       {locked && (
-        <mesh position={[room.x, (WALL_H + GLASS_H) / 2, doorZ]} castShadow>
-          <boxGeometry args={[DOOR_W, WALL_H + GLASS_H, 0.18]} />
-          <meshStandardMaterial color="#5b4632" roughness={0.7} />
-        </mesh>
+        <group position={[room.x, 0, doorZ]}>
+          {/* Batente: ombreiras e verga */}
+          <mesh position={[-DOOR_W / 2 + 0.06, 1.0, 0]} castShadow>
+            <boxGeometry args={[0.12, 2.0, 0.24]} />
+            <meshStandardMaterial color="#4a3826" roughness={0.65} />
+          </mesh>
+          <mesh position={[DOOR_W / 2 - 0.06, 1.0, 0]} castShadow>
+            <boxGeometry args={[0.12, 2.0, 0.24]} />
+            <meshStandardMaterial color="#4a3826" roughness={0.65} />
+          </mesh>
+          <mesh position={[0, 1.95, 0]} castShadow>
+            <boxGeometry args={[DOOR_W, 0.1, 0.24]} />
+            <meshStandardMaterial color="#4a3826" roughness={0.65} />
+          </mesh>
+          {/* Folhas da porta */}
+          {[-1, 1].map((side) => (
+            <group key={side} position={[side * (DOOR_W / 2 - 0.12 - 0.585), 0, 0]}>
+              <mesh position={[0, 0.95, 0]} castShadow>
+                <boxGeometry args={[1.17, 1.9, 0.07]} />
+                <meshStandardMaterial map={woodTexture()} color="#8a6544" roughness={0.55} />
+              </mesh>
+              {/* Almofadas (painéis rebaixados) dos dois lados */}
+              {[0.0385, -0.0385].map((zOff) =>
+                [0.62, 1.45].map((py) => (
+                  <mesh key={`${zOff}:${py}`} position={[0, py, zOff]}>
+                    <boxGeometry args={[0.82, py < 1 ? 0.85 : 0.55, 0.012]} />
+                    <meshStandardMaterial color="#6b4d31" roughness={0.6} />
+                  </mesh>
+                ))
+              )}
+              {/* Puxador dourado vertical (lado do encontro central) */}
+              {[0.05, -0.05].map((zOff) => (
+                <mesh key={zOff} position={[side * -0.46, 1.02, zOff]}>
+                  <cylinderGeometry args={[0.018, 0.018, 0.34, 8]} />
+                  <meshStandardMaterial color="#c9a84c" metalness={0.85} roughness={0.25} />
+                </mesh>
+              ))}
+            </group>
+          ))}
+          {/* Fechadura central */}
+          <mesh position={[0, 1.02, 0.045]}>
+            <boxGeometry args={[0.05, 0.09, 0.02]} />
+            <meshStandardMaterial color="#c9a84c" metalness={0.85} roughness={0.3} />
+          </mesh>
+          {/* Travessa de vidro acima da porta (alinha com o vidro das paredes) */}
+          <mesh position={[0, (2.0 + WALL_H + GLASS_H) / 2, 0]}>
+            <boxGeometry args={[DOOR_W, WALL_H + GLASS_H - 2.0, 0.08]} />
+            <meshStandardMaterial color="#aaccee" transparent opacity={0.18} roughness={0.08} metalness={0.25} />
+          </mesh>
+        </group>
       )}
 
       {/* Relógio de parede nas salas de trabalho/reunião */}
