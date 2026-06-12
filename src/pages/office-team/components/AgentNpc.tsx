@@ -18,7 +18,7 @@ import { useTeamStore } from '../store/useTeamStore'
 import { OFFICE_AGENTS, OfficeAgent } from '../lib/agents'
 import { findPath } from '../lib/pathfinding'
 import { npcObstacles, personAvoidance } from '../lib/npcNav'
-import { fetchTvComercial, fetchTvProduto, formatBRL, TvComercial, TvProduto } from '../lib/tvdata'
+import { cafeDialogueLine, summonLine, getCafeNames } from '../lib/cafeDialogues'
 import { bistroSeatsFor, BistroSeat, CoffeeSip, SpeechBubble } from './CoffeeChat'
 import RobotBody from './RobotBody'
 
@@ -31,19 +31,6 @@ export const maxNpcState = { x: 0, z: 0 }
 export const agentPosState: Record<string, { x: number; z: number }> = {}
 
 const SUMMON_TTL = 150_000 // o agente fica ~2,5min e volta pro posto
-
-/** Papo seguro: NADA de sistema, empresa ou números — pra quem não tem
- * autorização de falar com o agente (e como tempero pra quem tem). */
-const SAFE_SMALL_TALK = [
-  'Esse café tá no ponto.',
-  'Pausa boa é pausa curta — mas essa vale.',
-  'E aí, como tá o dia?',
-  'Eu funciono à base de cafeína estatística.',
-  'Esse lounge ficou bom demais.',
-  'Dizem que café une mais que reunião.',
-  'Se eu pudesse, pedia um expresso duplo.',
-  'Essa lofi de fundo é boa demais.',
-]
 
 function slotHash(slot: number): number {
   let h = slot >>> 0
@@ -78,82 +65,10 @@ function cafeShift(nowS: number, nAgents: number): CafeShift | null {
   return { a, b, table, phase, slot }
 }
 
-// ── Dados públicos (mesmos das TVs) com cache de 5min ──
-let tvCache: { com: TvComercial | null; prod: TvProduto | null; ts: number } = { com: null, prod: null, ts: 0 }
-async function getTvData() {
-  if (Date.now() - tvCache.ts > 300_000) {
-    const [com, prod] = await Promise.all([fetchTvComercial(), fetchTvProduto()])
-    tvCache = { com, prod, ts: Date.now() }
-  }
-  return tvCache
-}
-
-/** Falas de café por agente. financeiro e ceo NUNCA citam números. */
-function cafeLines(agent: OfficeAgent, com: TvComercial | null, prod: TvProduto | null): string[] {
-  switch (agent.key) {
-    case 'ceo':
-      return [
-        'Visão sem execução é alucinação.',
-        'Bora pra cima — meta é o mínimo.',
-        'Cultura se constrói no dia a dia. Até no café.',
-        'Quem não mede não gerencia. Mas isso fica pra reunião.',
-      ]
-    case 'financeiro':
-      return [
-        'Café preto e custo sob controle — assim que eu gosto.',
-        'Números? Só na minha sala, com a porta fechada.',
-        'Disciplina no caixa é o que paga esse café.',
-        'Margem é o detalhe que separa amador de profissional.',
-      ]
-    case 'crm':
-      return com
-        ? [
-            `Temos ${com.deals_abertos} deals abertos no funil.`,
-            `Pipeline de 90 dias: ${formatBRL(com.pipeline_valor)}.`,
-            `${com.vendas_mes} venda${com.vendas_mes === 1 ? '' : 's'} no mês — bora por mais.`,
-            'Follow-up feito hoje é contrato assinado amanhã.',
-          ]
-        : ['Funil saudável é funil trabalhado.', 'Follow-up feito hoje é contrato amanhã.']
-    case 'projetos':
-      return prod
-        ? [
-            `${prod.clientes_ativos} clientes ativos na carteira.`,
-            `${prod.reunioes_mes} reuniões de CS este mês.`,
-            `Tenho ${prod.em_risco ?? 0} clientes pedindo atenção no health.`,
-            'Entrega no prazo é o melhor marketing.',
-          ]
-        : ['Entrega no prazo é o melhor marketing.', 'Onboarding bem feito segura cliente.']
-    case 'marketing':
-      return com
-        ? [
-            `Campanha alimentando o funil — ${com.deals_abertos} deals abertos.`,
-            'Criativos novos entrando no ar essa semana.',
-            'CAC bom é CAC vigiado de perto.',
-          ]
-        : ['Criativos novos entrando no ar essa semana.', 'CAC bom é CAC vigiado de perto.']
-    case 'social':
-      return [
-        'Calendário da semana tá fechado.',
-        'O conteúdo de ontem performou acima da média.',
-        'Lo-fi no escritório combina com a marca.',
-      ]
-    case 'gerente':
-      return com || prod
-        ? [
-            com ? `O time já fez ${com.vendas_mes} venda${com.vendas_mes === 1 ? '' : 's'} no mês.` : 'Ritmo bom no time.',
-            prod ? `${prod.reunioes_mes} reuniões com clientes no mês — ritmo bom.` : 'Agenda cheia, do jeito certo.',
-            'Rotina bem feita ganha de talento desorganizado.',
-          ]
-        : ['Rotina bem feita ganha de talento desorganizado.']
-    default:
-      return ['Bom café.']
-  }
-}
-
-/** Conversa do café: balão alternando entre os dois agentes sentados. */
+/** Conversa do café: DIÁLOGO de verdade (pergunta e resposta encadeadas),
+ * roteiros locais com nomes reais do time e de clientes (sempre elogio),
+ * sem números — e sem gastar um token de IA. */
 function AgentCafeTalk({
-  agentA,
-  agentB,
   seatA,
   seatB,
   slot,
@@ -165,14 +80,14 @@ function AgentCafeTalk({
   slot: number
 }) {
   const [, setTick] = useState(0)
-  const [data, setData] = useState<{ com: TvComercial | null; prod: TvProduto | null }>({ com: null, prod: null })
+  const [names, setNames] = useState<{ staff: string[]; clients: string[] }>({ staff: [], clients: [] })
 
   useEffect(() => {
     let cancelled = false
-    void getTvData().then((d) => {
-      if (!cancelled) setData({ com: d.com, prod: d.prod })
+    void getCafeNames().then((n) => {
+      if (!cancelled) setNames(n)
     })
-    const i = setInterval(() => setTick((v) => v + 1), 500)
+    const i = setInterval(() => setTick((v) => v + 1), 400)
     return () => {
       cancelled = true
       clearInterval(i)
@@ -181,13 +96,14 @@ function AgentCafeTalk({
 
   const t = (Date.now() / 1000) % CYCLE
   if (t < 158) return null // pausa pra sentar antes de começar a prosa
-  const turn = Math.floor((t - 158) / 4.5)
-  const speaker = turn % 2 === 0 ? agentA : agentB
-  const seat = turn % 2 === 0 ? seatA : seatB
-  const pool = cafeLines(speaker, data.com, data.prod)
-  const text = pool[slotHash(slot * 131 + turn * 7) % pool.length]
+  const elapsed = t - 158
+  const turn = Math.floor(elapsed / 4.6)
+  // Respiro de 0.7s entre uma fala e outra (conversa com cadência natural)
+  if (elapsed % 4.6 > 3.9) return null
+  const line = cafeDialogueLine(slot, turn, names)
+  const seat = line.who === 'A' ? seatA : seatB
 
-  return <SpeechBubble x={seat.x} z={seat.z} y={1.92} text={text} isDots={false} />
+  return <SpeechBubble x={seat.x} z={seat.z} y={1.92} text={line.text} isDots={false} />
 }
 
 type Pose = 'stand' | 'walk' | 'sit'
@@ -448,22 +364,23 @@ function AgentFigure({
 
 /** Prosa do agente convocado por aceno: balão a cada ~6s seguindo o robô.
  * REGRA: quem chamou sem autorização só ouve papo informal — nada de
- * sistema, empresa ou números. Autorizado mistura dados públicos das TVs. */
+ * sistema, empresa, clientes ou colegas. Autorizado ouve elogios ao time
+ * e a clientes (sem números). Tudo local — zero tokens. */
 function SummonTalk() {
   const summon = useTeamStore((s) => s.agentSummon)
   const [, setTick] = useState(0)
-  const [data, setData] = useState<{ com: TvComercial | null; prod: TvProduto | null }>({ com: null, prod: null })
+  const [names, setNames] = useState<{ staff: string[]; clients: string[] }>({ staff: [], clients: [] })
 
   useEffect(() => {
-    if (!summon?.allowed) return
+    if (!summon) return
     let cancelled = false
-    void getTvData().then((d) => {
-      if (!cancelled) setData({ com: d.com, prod: d.prod })
+    void getCafeNames().then((n) => {
+      if (!cancelled) setNames(n)
     })
     return () => {
       cancelled = true
     }
-  }, [summon?.allowed, summon?.ts])
+  }, [summon?.ts])
 
   useEffect(() => {
     const i = setInterval(() => setTick((v) => v + 1), 500)
@@ -471,9 +388,8 @@ function SummonTalk() {
   }, [])
 
   if (!summon) return null
-  const agent = OFFICE_AGENTS.find((a) => a.key === summon.agentKey)
   const pos = agentPosState[summon.agentKey]
-  if (!agent || !pos) return null
+  if (!pos) return null
 
   // Só conversa depois de chegar perto do destino
   const target = summon.seat ?? { x: summon.x, z: summon.z }
@@ -485,10 +401,7 @@ function SummonTalk() {
   // Balão fica visível 4,5s de cada janela de 6s (respiro entre falas)
   if (elapsed % 6000 > 4500) return null
 
-  const pool = summon.allowed
-    ? [...SAFE_SMALL_TALK, ...cafeLines(agent, data.com, data.prod)]
-    : SAFE_SMALL_TALK
-  const text = pool[slotHash(Math.floor(summon.ts / 1000) * 97 + turn * 13) % pool.length]
+  const text = summonLine(summon.ts, turn, summon.allowed, names)
   return <SpeechBubble x={pos.x} z={pos.z} y={summon.seat ? 1.75 : 2.3} text={text} isDots={false} />
 }
 
