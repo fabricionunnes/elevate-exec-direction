@@ -11,6 +11,7 @@ import { CarMesh, carForUser, MARCELO_CAR, CarSpec } from './Cars'
 import { useTeamStore, Cutscene } from '../store/useTeamStore'
 import { BUILDING, buildCollisionWalls, furnitureColliders } from '../lib/rooms'
 import { findPath } from '../lib/pathfinding'
+import { doorProximity } from '../lib/door'
 
 // Geometria do lote (ao sul do prédio; BUILDING.maxZ = 29)
 const LOT_Z0 = BUILDING.maxZ + 0.6 // início do asfalto
@@ -94,12 +95,20 @@ function CutsceneActor({ cutscene, spot }: { cutscene: Cutscene; spot: Spot }) {
     const st = useTeamStore.getState()
     // Failsafe: cutscene nunca passa de 35s
     if (Date.now() - startedRef.current > 35000) {
+      doorProximity.delete(cutscene.id)
       st.removeCutscene(cutscene.id)
       return
     }
     const car = carRef.current
     const person = personRef.current
     if (!car || !person) return
+
+    // Registra o ator no sensor da porta automática (abre quando passa)
+    if (personVisible) {
+      doorProximity.set(cutscene.id, { x: person.position.x, z: person.position.z })
+    } else {
+      doorProximity.delete(cutscene.id)
+    }
 
     const movePersonAlong = (): boolean => {
       const path = pathRef.current
@@ -163,6 +172,7 @@ function CutsceneActor({ cutscene, spot }: { cutscene: Cutscene; spot: Spot }) {
       }
       case 'walk': {
         if (movePersonAlong()) {
+          doorProximity.delete(cutscene.id)
           st.removeCutscene(cutscene.id) // revela o jogador real
           phaseRef.current = 'done'
         }
@@ -190,6 +200,7 @@ function CutsceneActor({ cutscene, spot }: { cutscene: Cutscene; spot: Spot }) {
           car.rotation.y += (-Math.PI / 2 - car.rotation.y) * Math.min(1, 5 * delta)
           car.position.x += CAR_SPEED * delta // vai embora pra +x
           if (car.position.x > CAR_SPAWN_X) {
+            doorProximity.delete(cutscene.id)
             useTeamStore.getState().removeCutscene(cutscene.id)
             phaseRef.current = 'done'
           }

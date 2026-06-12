@@ -1,11 +1,13 @@
 // Escritório moderno data-driven — renderiza piso, corredores, salas
 // (paredes meia-altura + vidro), portas trancadas e mobília por tipo de sala.
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useFrame } from '@react-three/fiber'
 import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import { useTeamStore } from '../store/useTeamStore'
 import { BUILDING, OfficeRoom, isEffectivelyLocked, roomWalls } from '../lib/rooms'
 import { woodTexture, floorTexture, carpetTexture, artTexture, officialLogoTexture } from '../lib/textures'
+import { doorProximity } from '../lib/door'
 import { marceloState } from './MarceloNpc'
 
 const WALL_H = 1.15 // parede sólida (meia-altura, estilo maquete)
@@ -599,6 +601,135 @@ function WallClock({ x, z, y = 2.05 }: { x: number; z: number; y?: number }) {
   )
 }
 
+/** Letreiro retroiluminado da fachada com a logomarca oficial. */
+function FacadeSign() {
+  const [tex, setTex] = useState<THREE.CanvasTexture | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void officialLogoTexture().then((t) => {
+      if (!cancelled) setTex(t)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const z = BUILDING.maxZ + 0.32
+  return (
+    <group position={[0, 4.05, z]}>
+      {/* Caixa do letreiro (moldura navy + painel branco retroiluminado) */}
+      <mesh castShadow>
+        <boxGeometry args={[8.4, 2.1, 0.35]} />
+        <meshStandardMaterial color="#0D2B5E" roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 0, 0.19]}>
+        <boxGeometry args={[8.0, 1.8, 0.04]} />
+        <meshStandardMaterial color="#ffffff" emissive="#f2f6ff" emissiveIntensity={0.75} />
+      </mesh>
+      {tex && (
+        <mesh position={[0, 0, 0.222]}>
+          <planeGeometry args={[2.0, 2.0]} />
+          <meshStandardMaterial map={tex} transparent emissive="#ffffff" emissiveMap={tex} emissiveIntensity={0.35} />
+        </mesh>
+      )}
+      {/* Nome da empresa ao lado da logo */}
+      <Text
+        position={[1.35, 0.18, 0.23]}
+        fontSize={0.52}
+        color="#0D2B5E"
+        anchorX="left"
+        anchorY="middle"
+        outlineWidth={0.02}
+        outlineColor="#0D2B5E"
+      >
+        UNV
+      </Text>
+      <Text position={[1.35, -0.32, 0.23]} fontSize={0.21} color="#CC1B1B" anchorX="left" anchorY="middle">
+        UNIVERSIDADE NACIONAL DE VENDAS
+      </Text>
+      {/* Spots de iluminação no topo */}
+      {[-3.2, 0, 3.2].map((sx) => (
+        <group key={sx} position={[sx, 1.25, 0.25]}>
+          <mesh rotation={[0.6, 0, 0]}>
+            <cylinderGeometry args={[0.07, 0.1, 0.22, 10]} />
+            <meshStandardMaterial color="#23262c" metalness={0.6} roughness={0.35} />
+          </mesh>
+          <mesh position={[0, -0.08, 0.1]} rotation={[0.6, 0, 0]}>
+            <cylinderGeometry args={[0.06, 0.06, 0.02, 10]} />
+            <meshStandardMaterial color="#fff4cc" emissive="#ffedb0" emissiveIntensity={1.4} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  )
+}
+
+/** Porta dupla de vidro que desliza ao detectar alguém perto (shopping). */
+function AutoDoor() {
+  const leftRef = useRef<THREE.Group>(null!)
+  const rightRef = useRef<THREE.Group>(null!)
+  const openTRef = useRef(0)
+
+  useFrame((_, delta) => {
+    const st = useTeamStore.getState()
+    const doorX = 0
+    const doorZ = BUILDING.maxZ
+    let near = false
+    const check = (x: number, z: number) => {
+      if (Math.hypot(x - doorX, z - doorZ) < 3.4) near = true
+    }
+    check(st.playerPosition[0], st.playerPosition[2])
+    for (const p of Object.values(st.remotePlayers)) check(p.position[0], p.position[2])
+    for (const a of doorProximity.values()) check(a.x, a.z)
+
+    const target = near ? 1 : 0
+    openTRef.current += (target - openTRef.current) * Math.min(1, 5 * delta)
+    const slide = openTRef.current * 1.65
+    if (leftRef.current) leftRef.current.position.x = -0.85 - slide
+    if (rightRef.current) rightRef.current.position.x = 0.85 + slide
+  })
+
+  return (
+    <group position={[0, 0, BUILDING.maxZ]}>
+      {/* Vão escuro atrás das folhas (recorte visual na fachada) */}
+      <mesh position={[0, 1.25, 0]}>
+        <boxGeometry args={[3.7, 2.5, 0.46]} />
+        <meshStandardMaterial color="#1c2026" roughness={0.7} />
+      </mesh>
+      {/* Folhas de vidro deslizantes */}
+      <group ref={leftRef} position={[-0.85, 0, 0]}>
+        <mesh position={[0, 1.2, 0.26]}>
+          <boxGeometry args={[1.7, 2.4, 0.05]} />
+          <meshStandardMaterial color="#aaccee" transparent opacity={0.4} roughness={0.05} metalness={0.3} />
+        </mesh>
+        <mesh position={[0.82, 1.2, 0.26]}>
+          <boxGeometry args={[0.07, 2.4, 0.08]} />
+          <meshStandardMaterial color="#6b737d" metalness={0.6} roughness={0.35} />
+        </mesh>
+      </group>
+      <group ref={rightRef} position={[0.85, 0, 0]}>
+        <mesh position={[0, 1.2, 0.26]}>
+          <boxGeometry args={[1.7, 2.4, 0.05]} />
+          <meshStandardMaterial color="#aaccee" transparent opacity={0.4} roughness={0.05} metalness={0.3} />
+        </mesh>
+        <mesh position={[-0.82, 1.2, 0.26]}>
+          <boxGeometry args={[0.07, 2.4, 0.08]} />
+          <meshStandardMaterial color="#6b737d" metalness={0.6} roughness={0.35} />
+        </mesh>
+      </group>
+      {/* Trilho superior */}
+      <mesh position={[0, 2.46, 0.26]}>
+        <boxGeometry args={[4.0, 0.14, 0.12]} />
+        <meshStandardMaterial color="#23262c" metalness={0.5} roughness={0.4} />
+      </mesh>
+      {/* Sensor (luzinha) */}
+      <mesh position={[0, 2.56, 0.3]}>
+        <sphereGeometry args={[0.04, 8, 6]} />
+        <meshStandardMaterial color="#3fdc6a" emissive="#2ec457" emissiveIntensity={1.2} />
+      </mesh>
+    </group>
+  )
+}
+
 /** Logomarca oficial (PNG com águia, fundo removido) aplicada no piso. */
 function FloorLogo() {
   const [tex, setTex] = useState<THREE.CanvasTexture | null>(null)
@@ -880,9 +1011,9 @@ export default function ModernOffice() {
       </mesh>
 
       {/* Perímetro do prédio */}
+      {/* Paredes externas (norte/leste/oeste claras) */}
       {[
         { x: cx, z: BUILDING.minZ, w: W + 0.4, d: 0.4 },
-        { x: cx, z: BUILDING.maxZ, w: W + 0.4, d: 0.4 },
         { x: BUILDING.minX, z: cz, w: 0.4, d: D + 0.4 },
         { x: BUILDING.maxX, z: cz, w: 0.4, d: D + 0.4 },
       ].map((p, i) => (
@@ -892,21 +1023,25 @@ export default function ModernOffice() {
         </mesh>
       ))}
 
-      {/* Porta de vidro automática na fachada sul (saída pro estacionamento) */}
-      <group position={[0, 0, BUILDING.maxZ]}>
-        <mesh position={[0, 1.15, 0.25]}>
-          <boxGeometry args={[3.6, 2.3, 0.06]} />
-          <meshStandardMaterial color="#aaccee" transparent opacity={0.35} roughness={0.05} metalness={0.3} />
-        </mesh>
-        <mesh position={[0, 1.15, 0.25]}>
-          <boxGeometry args={[0.06, 2.3, 0.08]} />
-          <meshStandardMaterial color="#6b737d" metalness={0.6} roughness={0.35} />
-        </mesh>
-        <mesh position={[0, 2.36, 0.25]}>
-          <boxGeometry args={[3.8, 0.12, 0.1]} />
-          <meshStandardMaterial color="#0D2B5E" roughness={0.5} />
-        </mesh>
-      </group>
+      {/* FACHADA SUL — cores da marca: navy com faixa vermelha, mais alta */}
+      <mesh position={[cx, 1.6, BUILDING.maxZ]} castShadow receiveShadow>
+        <boxGeometry args={[W + 0.4, 3.2, 0.4]} />
+        <meshStandardMaterial color="#0D2B5E" roughness={0.65} />
+      </mesh>
+      <mesh position={[cx, 0.45, BUILDING.maxZ + 0.21]}>
+        <boxGeometry args={[W + 0.42, 0.22, 0.02]} />
+        <meshStandardMaterial color="#CC1B1B" roughness={0.5} />
+      </mesh>
+      <mesh position={[cx, 3.05, BUILDING.maxZ + 0.21]}>
+        <boxGeometry args={[W + 0.42, 0.12, 0.02]} />
+        <meshStandardMaterial color="#CC1B1B" roughness={0.5} />
+      </mesh>
+
+      {/* Letreiro 3D iluminado com a logomarca */}
+      <FacadeSign />
+
+      {/* Porta automática de vidro (abre por proximidade, como em shopping) */}
+      <AutoDoor />
 
       {/* Janelas com luz de dia na fachada norte */}
       {Array.from({ length: 8 }, (_, i) => BUILDING.minX + 4.5 + i * 7).map((wx) => (
