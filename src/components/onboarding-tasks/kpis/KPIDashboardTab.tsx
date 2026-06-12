@@ -42,6 +42,7 @@ import { DailyGoalCard } from "./DailyGoalCard";
 import { ProjectTermVisionCard } from "./ProjectTermVisionCard";
 import { NorthStarMetricCard } from "./NorthStarMetricCard";
 import { SalesHeatmapCharts } from "./SalesHeatmapCharts";
+import { UnitRankingCard } from "./UnitRankingCard";
 import { PeriodComparisonCard } from "./PeriodComparisonCard";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 
@@ -2132,6 +2133,27 @@ export const KPIDashboardTab = ({
         isClientView={isSalespersonView}
         currentSalespersonRankPosition={isSalespersonView ? getMyRankingPosition : undefined}
       />)}
+
+      {/* Unit Ranking — empresas com mais de uma unidade */}
+      {!isSalespersonView && units.filter((u) => u.is_active).length > 1 && (
+        <UnitRankingCard
+          units={units}
+          salespeople={salespeople.map((sp) => ({
+            id: sp.id,
+            unit_id: sp.unit_id,
+            team_id: sp.team_id,
+          }))}
+          teamUnits={teamUnits}
+          entries={entries.map((e) => ({
+            kpi_id: e.kpi_id,
+            salesperson_id: e.salesperson_id,
+            unit_id: e.unit_id,
+            value: e.value,
+          }))}
+          kpis={kpis}
+          allMonthlyTargets={allMonthlyTargets}
+        />
+      )}
 
       {/* Salespeople Comparison Table */}
       {showWidget("salespeople_table") && !isSalespersonView && (hasMultipleMainGoalsForCharts ? (
