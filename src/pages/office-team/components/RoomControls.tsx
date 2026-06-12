@@ -133,10 +133,12 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
 
   return (
     <div
+      className="office-fade-panel"
       style={{
         position: 'fixed',
-        top: '16px',
-        right: '16px',
+        // Coluna esquerda, abaixo do painel da equipe (que tem altura limitada)
+        top: 'calc(32vh + 150px)',
+        left: '16px',
         display: 'flex',
         flexDirection: 'column',
         gap: '8px',

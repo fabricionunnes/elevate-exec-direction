@@ -73,8 +73,15 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
 
   return (
     <>
+      {/* Painéis laterais quase transparentes: escurecem no hover pra interagir */}
+      <style>{`
+        .office-fade-panel { opacity: 0.32; transition: opacity 0.18s ease; }
+        .office-fade-panel:hover { opacity: 1; }
+      `}</style>
+
       {/* Topo esquerdo: voltar + título + online */}
       <div
+        className="office-fade-panel"
         style={{
           position: 'fixed',
           top: '16px',
@@ -135,7 +142,7 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
             borderRadius: '10px',
             padding: '10px 12px',
             maxWidth: '230px',
-            maxHeight: '40vh',
+            maxHeight: '32vh',
             overflowY: 'auto',
           }}
         >
