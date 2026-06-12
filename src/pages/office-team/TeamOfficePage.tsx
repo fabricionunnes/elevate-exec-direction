@@ -67,7 +67,9 @@ function SceneLights() {
         intensity={1.9}
         color="#fff3dd"
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        // 1024 com PCFSoft fica visualmente quase igual a 2048 e corta 4x o
+        // custo da passada de sombra (a cena inteira re-renderiza pra ela)
+        shadow-mapSize={[1024, 1024]}
         shadow-camera-left={-38}
         shadow-camera-right={38}
         shadow-camera-top={30}
@@ -347,9 +349,14 @@ export default function TeamOfficePage() {
       <Suspense fallback={<LoadingScreen />}>
         <Canvas
           shadows
+          // Telas retina renderizam a 2-3x de DPR nativo = 4-9x mais pixels
+          // por frame. Cap em 1.5 mantém nitidez e devolve a fluidez no
+          // zoom/movimento (o maior ganho de performance da cena).
+          dpr={[1, 1.5]}
           camera={{ position: [0, 16, 18], fov: 60, near: 0.1, far: 320 }}
           gl={{
             antialias: true,
+            powerPreference: 'high-performance',
             toneMapping: THREE.ACESFilmicToneMapping,
             toneMappingExposure: 1.12,
           }}
