@@ -506,6 +506,17 @@ export const KPIDashboardTab = ({
     return allMainGoalKpis.length > 0 ? allMainGoalKpis : monetaryKpis;
   };
 
+  // Gerentes (setor Liderança) não entram no rateio da meta nem herdam meta do escopo
+  const leadershipSectorIds = sectors
+    .filter((s) => (s.name || "").toLowerCase().includes("lideran"))
+    .map((s) => s.id);
+  const isLeaderSp = (sp?: { sector_id?: string | null }) =>
+    !!sp?.sector_id && leadershipSectorIds.includes(sp.sector_id);
+  const activeSellersCount = Math.max(
+    salespeople.filter((sp) => sp.is_active && !isLeaderSp(sp)).length,
+    1
+  );
+
   // Helper function to get targets based on current filter (unit, team, sector, or salesperson)
   const getFilteredTargetsForKpi = (kpiId: string): Record<string, number> => {
     // Find the KPI to check its scope and unit_id
@@ -543,18 +554,55 @@ export const KPIDashboardTab = ({
       );
     }
     
+    // Vendedor sem meta própria: gerente não herda; demais herdam do escopo
+    // mais próximo (time → unidade) dividido pelos vendedores ativos não-gerentes
+    if (relevantTargets.length === 0 && selectedSalesperson !== "all") {
+      const selectedSp = salespeople.find(sp => sp.id === selectedSalesperson);
+      if (isLeaderSp(selectedSp)) {
+        return { Meta: 0 };
+      }
+      const divideScope = (targets: MonthlyTarget[], count: number): Record<string, number> => {
+        const divided: Record<string, number> = {};
+        targets.forEach(mt => {
+          divided[mt.level_name] = mt.target_value / Math.max(count, 1);
+        });
+        return divided;
+      };
+      if (selectedSp?.team_id) {
+        const teamTargets = allMonthlyTargets.filter(
+          mt => mt.kpi_id === kpiId && mt.team_id === selectedSp.team_id && mt.salesperson_id === null
+        );
+        if (teamTargets.length > 0) {
+          const teamSellers = salespeople.filter(
+            sp => sp.is_active && sp.team_id === selectedSp.team_id && !isLeaderSp(sp)
+          ).length;
+          return divideScope(teamTargets, teamSellers);
+        }
+      }
+      if (selectedSp?.unit_id) {
+        const unitTargets = allMonthlyTargets.filter(
+          mt => mt.kpi_id === kpiId && mt.unit_id === selectedSp.unit_id && mt.team_id === null && mt.salesperson_id === null
+        );
+        if (unitTargets.length > 0) {
+          const unitSellers = salespeople.filter(
+            sp => sp.is_active && sp.unit_id === selectedSp.unit_id && !isLeaderSp(sp)
+          ).length;
+          return divideScope(unitTargets, unitSellers);
+        }
+      }
+    }
+
     if (relevantTargets.length === 0) {
       // Try company-level targets first
       relevantTargets = allMonthlyTargets.filter(
         mt => mt.kpi_id === kpiId && mt.unit_id === null && mt.team_id === null && mt.salesperson_id === null
       );
-      
-      // When filtering by salesperson and falling back to company target, divide by active salespeople count
+
+      // When filtering by salesperson and falling back to company target, divide by active sellers (non-leaders)
       if (relevantTargets.length > 0 && selectedSalesperson !== "all") {
-        const activeSalespeopleCount = Math.max(salespeople.filter(sp => sp.is_active).length, 1);
         const dividedResult: Record<string, number> = {};
         relevantTargets.forEach(mt => {
-          dividedResult[mt.level_name] = mt.target_value / activeSalespeopleCount;
+          dividedResult[mt.level_name] = mt.target_value / activeSellersCount;
         });
         return dividedResult;
       }
@@ -610,10 +658,12 @@ export const KPIDashboardTab = ({
       return filteredTargets["Meta"] ?? Object.values(filteredTargets)[0];
     }
     const baseTarget = kpi.effective_target ?? kpi.target_value;
-    // When filtering by salesperson and no specific target found, divide by active salespeople
+    // When filtering by salesperson and no specific target found, divide by active sellers
+    // (gerentes do setor Liderança não têm meta nem entram no divisor)
     if (selectedSalesperson !== "all") {
-      const activeSalespeopleCount = Math.max(salespeople.filter(sp => sp.is_active).length, 1);
-      return baseTarget / activeSalespeopleCount;
+      const selectedSp = salespeople.find(sp => sp.id === selectedSalesperson);
+      if (isLeaderSp(selectedSp)) return 0;
+      return baseTarget / activeSellersCount;
     }
     return baseTarget;
   };

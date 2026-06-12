@@ -125,6 +125,19 @@ export const PerformanceComparisonCard = ({
     return map;
   }, [teamUnits]);
 
+  // Gerentes (setor Liderança) não entram no rateio da meta
+  const leadershipSectorIds = useMemo(
+    () =>
+      new Set(
+        sectors
+          .filter(s => (s.name || "").toLowerCase().includes("lideran"))
+          .map(s => s.id)
+      ),
+    [sectors]
+  );
+  const isLeaderSp = (sp?: { sector_id?: string | null }) =>
+    !!sp?.sector_id && leadershipSectorIds.has(sp.sector_id);
+
   const performances = useMemo(() => {
     const items: PerformanceItem[] = [];
     const monetaryKpiIds = new Set(kpis.filter(k => k.kpi_type === "monetary").map(k => k.id));
@@ -296,10 +309,13 @@ export const PerformanceComparisonCard = ({
         
         if (spKpis.length > 0) {
           target = spKpis.reduce((sum, k) => sum + (k.effective_target ?? k.target_value), 0);
+        } else if (isLeaderSp(sp)) {
+          // Gerente sem meta própria não herda rateio
+          target = 0;
         } else if (sp.team_id) {
-          // Use team KPI target divided by team members
+          // Use team KPI target divided by team members (excluindo gerentes)
           const teamKpis = kpis.filter(k => k.team_id === sp.team_id && k.kpi_type === "monetary");
-          const teamMembers = salespeople.filter(s => s.team_id === sp.team_id && s.is_active).length;
+          const teamMembers = salespeople.filter(s => s.team_id === sp.team_id && s.is_active && !isLeaderSp(s)).length;
           if (teamMembers > 0) {
             target = teamKpis.reduce((sum, k) => sum + (k.effective_target ?? k.target_value), 0) / teamMembers;
           }
