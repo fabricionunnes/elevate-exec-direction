@@ -142,14 +142,35 @@ export class TeamRealtime {
           }
         }
 
-        // Notificações de entrada/saída (depois da primeira sync)
+        // Notificações de entrada/saída + cutscenes do estacionamento
         if (this.hadFirstSync) {
           const store = useTeamStore.getState()
           for (const id of Object.keys(next)) {
-            if (!current[id]) store.addToast(`${next[id].name} entrou no escritório`, 'in')
+            if (!current[id]) {
+              store.addToast(`🚗 ${next[id].name} está chegando`, 'in')
+              store.addCutscene({
+                id: crypto.randomUUID(),
+                kind: 'arrive',
+                userId: id,
+                name: next[id].name,
+                avatar: next[id].avatar,
+                ts: Date.now(),
+              })
+            }
           }
           for (const id of Object.keys(current)) {
-            if (!next[id]) store.addToast(`${current[id].name} saiu do escritório`, 'out')
+            if (!next[id]) {
+              store.addToast(`🚗 ${current[id].name} foi embora`, 'out')
+              store.addCutscene({
+                id: crypto.randomUUID(),
+                kind: 'leave',
+                userId: id,
+                name: current[id].name,
+                avatar: current[id].avatar,
+                lastPos: [current[id].position[0], current[id].position[2]],
+                ts: Date.now(),
+              })
+            }
           }
           // Quem estava gravando saiu → limpa o indicador
           const rec = store.recording

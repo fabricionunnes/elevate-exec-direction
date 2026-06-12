@@ -51,6 +51,18 @@ export interface Seat {
   rot: number
 }
 
+/** Cutscene do estacionamento: alguém chegando de carro ou indo embora. */
+export interface Cutscene {
+  id: string
+  kind: 'arrive' | 'leave'
+  userId: string
+  name: string
+  avatar: AvatarConfig
+  /** última posição conhecida (pra saída: de onde o boneco sai andando) */
+  lastPos?: [number, number]
+  ts: number
+}
+
 /** Recado deixado na mesa de alguém (texto ou áudio). */
 export interface DeskNote {
   id: string
@@ -121,6 +133,9 @@ interface TeamState {
   composeNoteFor: { userId: string; name: string } | null
   unreadNotes: DeskNote[]
   notesPanelOpen: boolean
+
+  /** cutscenes do estacionamento (chegada/saída de carro) */
+  cutscenes: Cutscene[]
   /** voz automática falhou (permissão negada) — mostra fallback manual */
   voiceBlocked: boolean
 
@@ -155,6 +170,8 @@ interface TeamState {
   setComposeNoteFor: (target: { userId: string; name: string } | null) => void
   setUnreadNotes: (notes: DeskNote[]) => void
   setNotesPanelOpen: (open: boolean) => void
+  addCutscene: (c: Cutscene) => void
+  removeCutscene: (id: string) => void
   setVoiceBlocked: (blocked: boolean) => void
 
   setCall: (patch: Partial<CallState>) => void
@@ -185,6 +202,7 @@ export const useTeamStore = create<TeamState>((set) => ({
   composeNoteFor: null,
   unreadNotes: [],
   notesPanelOpen: false,
+  cutscenes: [],
   voiceBlocked: false,
 
   call: {
@@ -282,6 +300,13 @@ export const useTeamStore = create<TeamState>((set) => ({
   setComposeNoteFor: (target) => set({ composeNoteFor: target }),
   setUnreadNotes: (notes) => set({ unreadNotes: notes }),
   setNotesPanelOpen: (open) => set({ notesPanelOpen: open }),
+  addCutscene: (c) =>
+    set((prev) => ({
+      // máx 4 simultâneas; substitui cutscene anterior do mesmo usuário
+      cutscenes: [...prev.cutscenes.filter((x) => x.userId !== c.userId).slice(-3), c],
+    })),
+  removeCutscene: (id) =>
+    set((prev) => ({ cutscenes: prev.cutscenes.filter((c) => c.id !== id) })),
   setVoiceBlocked: (blocked) => set({ voiceBlocked: blocked }),
 
   setCall: (patch) => set((prev) => ({ call: { ...prev.call, ...patch } })),

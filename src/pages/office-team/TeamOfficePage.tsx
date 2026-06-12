@@ -19,6 +19,7 @@ import MarceloNpc from './components/MarceloNpc'
 import MarceloChatPanel from './components/MarceloChatPanel'
 import OfficeToasts from './components/OfficeToasts'
 import DeskNotes from './components/DeskNotes'
+import Parking from './components/Parking'
 import {
   useTeamStore,
   avatarColorsFor,
@@ -102,6 +103,9 @@ function RemotePlayers() {
   const rooms = useTeamStore((s) => s.rooms)
   const myRoomId = useTeamStore((s) => s.myRoomId)
   const me = useTeamStore((s) => s.me)
+  const cutscenes = useTeamStore((s) => s.cutscenes)
+  // Quem está "chegando de carro" fica oculto até a cutscene terminar
+  const arriving = new Set(cutscenes.filter((c) => c.kind === 'arrive').map((c) => c.userId))
 
   // Privacidade: quem está numa sala trancada só é visível pra quem está
   // DENTRO da mesma sala — com duas exceções: o DONO da sala e quem TRANCOU
@@ -110,6 +114,7 @@ function RemotePlayers() {
   if (me) onlineIds.add(me.id)
 
   const visible = Object.values(remotePlayers).filter((p) => {
+    if (arriving.has(p.id)) return false
     const room = roomAt(p.position[0], p.position[2], rooms)
     if (
       room &&
@@ -309,6 +314,7 @@ export default function TeamOfficePage() {
           <SceneLights />
           <fog attach="fog" args={['#9fb0c2', 55, 140]} />
           <ModernOffice />
+          <Parking />
           <LocalPlayer realtime={managers.realtime} />
           <RemotePlayers />
           <MarceloNpc />

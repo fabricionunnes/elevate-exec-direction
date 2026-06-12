@@ -892,6 +892,22 @@ export default function ModernOffice() {
         </mesh>
       ))}
 
+      {/* Porta de vidro automática na fachada sul (saída pro estacionamento) */}
+      <group position={[0, 0, BUILDING.maxZ]}>
+        <mesh position={[0, 1.15, 0.25]}>
+          <boxGeometry args={[3.6, 2.3, 0.06]} />
+          <meshStandardMaterial color="#aaccee" transparent opacity={0.35} roughness={0.05} metalness={0.3} />
+        </mesh>
+        <mesh position={[0, 1.15, 0.25]}>
+          <boxGeometry args={[0.06, 2.3, 0.08]} />
+          <meshStandardMaterial color="#6b737d" metalness={0.6} roughness={0.35} />
+        </mesh>
+        <mesh position={[0, 2.36, 0.25]}>
+          <boxGeometry args={[3.8, 0.12, 0.1]} />
+          <meshStandardMaterial color="#0D2B5E" roughness={0.5} />
+        </mesh>
+      </group>
+
       {/* Janelas com luz de dia na fachada norte */}
       {Array.from({ length: 8 }, (_, i) => BUILDING.minX + 4.5 + i * 7).map((wx) => (
         <group key={`win${wx}`}>
