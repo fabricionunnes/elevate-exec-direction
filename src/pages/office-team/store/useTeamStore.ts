@@ -51,6 +51,17 @@ export interface Seat {
   rot: number
 }
 
+/** Recado deixado na mesa de alguém (texto ou áudio). */
+export interface DeskNote {
+  id: string
+  from_user: string
+  from_name: string | null
+  kind: 'text' | 'audio'
+  content: string | null
+  audio_path: string | null
+  created_at: string
+}
+
 export interface TeamMessage {
   id: string
   userId: string
@@ -105,6 +116,11 @@ interface TeamState {
   toasts: { id: string; text: string; kind: 'in' | 'out' }[]
   /** gravação de reunião em andamento (visível pra todos) */
   recording: { on: boolean; byId: string | null; byName: string | null }
+
+  /** recados na mesa */
+  composeNoteFor: { userId: string; name: string } | null
+  unreadNotes: DeskNote[]
+  notesPanelOpen: boolean
   /** voz automática falhou (permissão negada) — mostra fallback manual */
   voiceBlocked: boolean
 
@@ -136,6 +152,9 @@ interface TeamState {
   addToast: (text: string, kind: 'in' | 'out') => void
   removeToast: (id: string) => void
   setRecording: (rec: { on: boolean; byId: string | null; byName: string | null }) => void
+  setComposeNoteFor: (target: { userId: string; name: string } | null) => void
+  setUnreadNotes: (notes: DeskNote[]) => void
+  setNotesPanelOpen: (open: boolean) => void
   setVoiceBlocked: (blocked: boolean) => void
 
   setCall: (patch: Partial<CallState>) => void
@@ -163,6 +182,9 @@ export const useTeamStore = create<TeamState>((set) => ({
   incomingRing: null,
   toasts: [],
   recording: { on: false, byId: null, byName: null },
+  composeNoteFor: null,
+  unreadNotes: [],
+  notesPanelOpen: false,
   voiceBlocked: false,
 
   call: {
@@ -257,6 +279,9 @@ export const useTeamStore = create<TeamState>((set) => ({
   removeToast: (id) =>
     set((prev) => ({ toasts: prev.toasts.filter((t) => t.id !== id) })),
   setRecording: (rec) => set({ recording: rec }),
+  setComposeNoteFor: (target) => set({ composeNoteFor: target }),
+  setUnreadNotes: (notes) => set({ unreadNotes: notes }),
+  setNotesPanelOpen: (open) => set({ notesPanelOpen: open }),
   setVoiceBlocked: (blocked) => set({ voiceBlocked: blocked }),
 
   setCall: (patch) => set((prev) => ({ call: { ...prev.call, ...patch } })),

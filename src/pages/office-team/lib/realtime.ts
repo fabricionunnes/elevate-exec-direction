@@ -15,6 +15,7 @@ import {
   DEFAULT_AVATAR,
 } from '../store/useTeamStore'
 import { fetchRooms } from './rooms'
+import { fetchUnreadNotes } from './notes'
 
 const POS_INTERVAL_MS = 110
 
@@ -179,6 +180,12 @@ export class TeamRealtime {
         if (!signal || signal.to !== this.me.id) return
         this.onRtcSignal?.(signal)
       })
+      .on('broadcast', { event: 'note' }, ({ payload }) => {
+        const n = payload as { to: string; fromName: string }
+        if (!n || n.to !== this.me.id) return
+        void fetchUnreadNotes(this.me.id)
+        useTeamStore.getState().addToast(`📨 Recado novo de ${n.fromName}`, 'in')
+      })
       .on('broadcast', { event: 'rec' }, ({ payload }) => {
         const r = payload as { on: boolean; byId: string; byName: string }
         if (!r || r.byId === this.me.id) return
@@ -222,6 +229,16 @@ export class TeamRealtime {
 
     void this.loadChatHistory()
     void this.refreshRooms()
+    void fetchUnreadNotes(this.me.id)
+  }
+
+  /** Avisa o destinatário que ganhou um recado novo. */
+  announceNote(toUserId: string) {
+    void this.channel?.send({
+      type: 'broadcast',
+      event: 'note',
+      payload: { to: toUserId, fromName: this.me.name },
+    })
   }
 
   /** Avisa todos que a gravação de reunião começou/terminou. */

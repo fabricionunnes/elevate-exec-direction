@@ -1,10 +1,12 @@
 // Escritório moderno data-driven — renderiza piso, corredores, salas
 // (paredes meia-altura + vidro), portas trancadas e mobília por tipo de sala.
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Text, Billboard } from '@react-three/drei'
+import * as THREE from 'three'
 import { useTeamStore } from '../store/useTeamStore'
 import { BUILDING, OfficeRoom, isEffectivelyLocked, roomWalls } from '../lib/rooms'
-import { woodTexture, floorTexture, carpetTexture, artTexture, unvFloorLogo } from '../lib/textures'
+import { woodTexture, floorTexture, carpetTexture, artTexture, officialLogoTexture } from '../lib/textures'
+import { marceloState } from './MarceloNpc'
 
 const WALL_H = 1.15 // parede sólida (meia-altura, estilo maquete)
 const GLASS_H = 1.0 // vidro acima da parede
@@ -64,9 +66,19 @@ function Plant({ x, z }: { x: number; z: number }) {
   )
 }
 
-/** Clicar numa cadeira manda o boneco andar até ela e sentar. */
+/** Clicar numa cadeira manda o boneco andar até ela e sentar —
+ * se ninguém estiver sentado nela. */
 function sitAt(x: number, z: number, rot: number) {
   const st = useTeamStore.getState()
+  const occupied =
+    Object.values(st.remotePlayers).some(
+      (p) => p.sitting && Math.hypot(p.position[0] - x, p.position[2] - z) < 0.5
+    ) ||
+    (marceloState.active && marceloState.sitting && Math.hypot(marceloState.x - x, marceloState.z - z) < 0.5)
+  if (occupied) {
+    st.addToast('Essa cadeira já está ocupada', 'out')
+    return
+  }
   st.setPendingWalkTo({ x, z })
   st.setPendingSeat({ x, z, rot })
 }
@@ -143,9 +155,39 @@ function OfficeChair({
   )
 }
 
-function Desk({ x, z, rotation = 0, color = '#e8e2d6', chair = true }: { x: number; z: number; rotation?: number; color?: string; chair?: boolean }) {
+function Desk({
+  x,
+  z,
+  rotation = 0,
+  chair = true,
+  noteTarget,
+}: {
+  x: number
+  z: number
+  rotation?: number
+  color?: string
+  chair?: boolean
+  /** mesa de outro usuário: clicar deixa recado pra ele */
+  noteTarget?: { userId: string; name: string }
+}) {
+  const me = useTeamStore((s) => s.me)
+  const clickable = !!noteTarget && noteTarget.userId !== me?.id
   return (
-    <group position={[x, 0, z]} rotation={[0, rotation, 0]}>
+    <group
+      position={[x, 0, z]}
+      rotation={[0, rotation, 0]}
+      onClick={
+        clickable
+          ? (e) => {
+              e.stopPropagation()
+              if (e.delta > 6) return
+              useTeamStore.getState().setComposeNoteFor(noteTarget!)
+            }
+          : undefined
+      }
+      onPointerOver={clickable ? () => (document.body.style.cursor = 'pointer') : undefined}
+      onPointerOut={clickable ? () => (document.body.style.cursor = 'default') : undefined}
+    >
       {/* Tampo de madeira com borda */}
       <mesh position={[0, 0.74, 0]} castShadow>
         <boxGeometry args={[1.7, 0.05, 0.8]} />
@@ -164,19 +206,28 @@ function Desk({ x, z, rotation = 0, color = '#e8e2d6', chair = true }: { x: numb
         <boxGeometry args={[0.05, 0.72, 0.7]} />
         <meshStandardMaterial color="#7c828c" metalness={0.55} roughness={0.4} />
       </mesh>
-      {/* Monitor com tela acesa */}
-      <mesh position={[0, 1.02, -0.18]} castShadow>
-        <boxGeometry args={[0.62, 0.38, 0.04]} />
-        <meshStandardMaterial color="#16181d" roughness={0.3} />
-      </mesh>
-      <mesh position={[0, 1.02, -0.157]}>
-        <boxGeometry args={[0.56, 0.32, 0.005]} />
-        <meshStandardMaterial color="#5b7fb5" emissive="#4a6fa5" emissiveIntensity={0.55} />
-      </mesh>
-      <mesh position={[0, 0.8, -0.18]}>
-        <cylinderGeometry args={[0.04, 0.07, 0.12, 8]} />
-        <meshStandardMaterial color="#3a3d44" metalness={0.5} roughness={0.4} />
-      </mesh>
+      {/* Dois monitores estilo Apple (alumínio, borda fina, braço central) */}
+      {[-0.36, 0.36].map((mx) => (
+        <group key={mx} position={[mx, 0, -0.17]} rotation={[0, mx < 0 ? 0.2 : -0.2, 0]}>
+          <mesh position={[0, 1.04, 0]} castShadow>
+            <boxGeometry args={[0.6, 0.38, 0.022]} />
+            <meshStandardMaterial color="#d3d6da" metalness={0.75} roughness={0.25} />
+          </mesh>
+          <mesh position={[0, 1.04, 0.013]}>
+            <boxGeometry args={[0.565, 0.345, 0.004]} />
+            <meshStandardMaterial color="#5b7fb5" emissive="#4a6fa5" emissiveIntensity={0.55} />
+          </mesh>
+          {/* Braço inclinado + base disco (alumínio) */}
+          <mesh position={[0, 0.875, -0.04]} rotation={[0.28, 0, 0]}>
+            <boxGeometry args={[0.05, 0.16, 0.018]} />
+            <meshStandardMaterial color="#c9ccd1" metalness={0.75} roughness={0.25} />
+          </mesh>
+          <mesh position={[0, 0.775, -0.06]}>
+            <cylinderGeometry args={[0.075, 0.085, 0.014, 16]} />
+            <meshStandardMaterial color="#c9ccd1" metalness={0.75} roughness={0.25} />
+          </mesh>
+        </group>
+      ))}
       {/* Teclado e caneca */}
       <mesh position={[0, 0.775, 0.08]}>
         <boxGeometry args={[0.4, 0.02, 0.14]} />
@@ -548,6 +599,27 @@ function WallClock({ x, z, y = 2.05 }: { x: number; z: number; y?: number }) {
   )
 }
 
+/** Logomarca oficial (PNG com águia, fundo removido) aplicada no piso. */
+function FloorLogo() {
+  const [tex, setTex] = useState<THREE.CanvasTexture | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void officialLogoTexture().then((t) => {
+      if (!cancelled) setTex(t)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  if (!tex) return null
+  return (
+    <mesh position={[0, 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[6, 6]} />
+      <meshStandardMaterial map={tex} transparent roughness={0.65} />
+    </mesh>
+  )
+}
+
 function hashRoom(id: string): number {
   let h = 0
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0
@@ -564,7 +636,17 @@ function PersonalFurniture({ room }: { room: OfficeRoom }) {
   const variant = hashRoom(room.id) % 4
   return (
     <group>
-      <Desk x={room.x} z={deskZ} rotation={0} chair={false} />
+      <Desk
+        x={room.x}
+        z={deskZ}
+        rotation={0}
+        chair={false}
+        noteTarget={
+          room.ownerUserId
+            ? { userId: room.ownerUserId, name: room.name.replace(/^Sala\s+/i, '') }
+            : undefined
+        }
+      />
       {/* Cadeira do dono: atrás da mesa, de frente pra porta */}
       <OfficeChair x={room.x} z={deskZ + 0.7} rotation={0} />
       {/* Cadeiras de visita: na frente da mesa, de frente pro dono */}
@@ -732,11 +814,8 @@ export default function ModernOffice() {
         />
       </mesh>
 
-      {/* Selo UNV no piso do hall central */}
-      <mesh position={[0, 0.007, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[6.5, 6.5]} />
-        <meshStandardMaterial map={unvFloorLogo()} transparent roughness={0.7} />
-      </mesh>
+      {/* Logomarca oficial UNV no piso do hall central */}
+      <FloorLogo />
 
       {/* Plano invisível de clique: duplo clique = andar até o ponto */}
       <mesh

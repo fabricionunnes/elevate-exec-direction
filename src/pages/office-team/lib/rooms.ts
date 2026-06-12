@@ -258,6 +258,40 @@ export async function setRoomLock(roomId: string, locked: boolean, userId: strin
   return !error
 }
 
+/**
+ * Colliders aproximados (AABB) da mobília — espelham as posições renderizadas
+ * no ModernOffice. Usados na colisão de movimento e no pathfinding pra
+ * ninguém atravessar mesa/sofá/balcão. (Assentos ficam DENTRO de alguns
+ * colliders: o LocalPlayer ignora mobília quando está indo sentar.)
+ */
+export function furnitureColliders(rooms: OfficeRoom[]): Wall[] {
+  const out: Wall[] = []
+  const box = (x: number, z: number, hw: number, hd: number) =>
+    out.push({ minX: x - hw, maxX: x + hw, minZ: z - hd, maxZ: z + hd })
+  for (const r of rooms) {
+    if (r.roomType === 'personal') {
+      const deskZ = r.z + r.depth / 2 - 1.3
+      box(r.x, deskZ, 0.85, 0.38) // mesa
+    } else if (r.roomType === 'meeting' || r.roomType === 'sector') {
+      const len = Math.max(3, r.width - 4.5)
+      box(r.x, r.z, len / 2, 0.8) // mesa de reunião
+    } else if (r.roomType === 'lounge') {
+      const left = r.x - r.width / 2
+      const right = r.x + r.width / 2
+      const backZ = r.z - r.depth / 2
+      box(right - 2.4, backZ + 1.1, 1.5, 0.4) // balcão de café
+      box(left + 3.2, r.z - 1.7, 0.85, 0.4) // sofás/mesas dos núcleos
+      box(left + 1.6, r.z - 0.2, 0.4, 0.85)
+      box(r.x - 0.5, r.z + 2.5, 0.85, 0.4)
+      box(r.x - 0.5, r.z + 0.3, 0.85, 0.4)
+      box(right - 3, r.z + 0.6, 0.28, 0.28) // bistrôs
+      box(right - 5.4, r.z + 2.2, 0.28, 0.28)
+      box(right - 1.8, r.z + 2.8, 0.28, 0.28)
+    }
+  }
+  return out
+}
+
 /** Assento do dono na sala pessoal: cadeira atrás da mesa, olhando pra porta. */
 export function personalOwnerSeat(room: OfficeRoom): { x: number; z: number; rot: number } {
   const deskZ = room.z + room.depth / 2 - 1.3

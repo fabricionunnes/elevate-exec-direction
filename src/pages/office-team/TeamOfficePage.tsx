@@ -18,6 +18,7 @@ import AvatarEditor from './components/AvatarEditor'
 import MarceloNpc from './components/MarceloNpc'
 import MarceloChatPanel from './components/MarceloChatPanel'
 import OfficeToasts from './components/OfficeToasts'
+import DeskNotes from './components/DeskNotes'
 import {
   useTeamStore,
   avatarColorsFor,
@@ -322,6 +323,7 @@ export default function TeamOfficePage() {
       <AvatarEditor realtime={managers.realtime} />
       <MarceloChatPanel />
       <OfficeToasts />
+      <DeskNotes realtime={managers.realtime} />
     </div>
   )
 }

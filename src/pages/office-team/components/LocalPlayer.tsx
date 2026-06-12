@@ -7,10 +7,45 @@ import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import { useKeyboard } from '../../office/hooks/useKeyboard'
 import HumanBody from './HumanBody'
-import { BUILDING, buildCollisionWalls, checkWallCollision, roomAt, setRoomLock, isEffectivelyLocked, personalOwnerSeat } from '../lib/rooms'
+import { BUILDING, buildCollisionWalls, checkWallCollision, roomAt, setRoomLock, isEffectivelyLocked, personalOwnerSeat, furnitureColliders } from '../lib/rooms'
 import { findPath } from '../lib/pathfinding'
 import { useTeamStore } from '../store/useTeamStore'
+import { marceloState } from './MarceloNpc'
 import type { TeamRealtime } from '../lib/realtime'
+
+const PLAYER_BLOCK_DIST = 0.6 // raio de colisão entre pessoas
+
+/** Bloqueia o passo se APROXIMA de outra pessoa (afastar é sempre permitido). */
+function blockedByPeople(curX: number, curZ: number, nx: number, nz: number): boolean {
+  const players = useTeamStore.getState().remotePlayers
+  for (const p of Object.values(players)) {
+    const dNew = Math.hypot(p.position[0] - nx, p.position[2] - nz)
+    if (dNew < PLAYER_BLOCK_DIST) {
+      const dOld = Math.hypot(p.position[0] - curX, p.position[2] - curZ)
+      if (dNew < dOld) return true
+    }
+  }
+  if (marceloState.active) {
+    const dNew = Math.hypot(marceloState.x - nx, marceloState.z - nz)
+    if (dNew < PLAYER_BLOCK_DIST) {
+      const dOld = Math.hypot(marceloState.x - curX, marceloState.z - curZ)
+      if (dNew < dOld) return true
+    }
+  }
+  return false
+}
+
+/** A cadeira/assento alvo já está ocupado por alguém sentado? */
+function seatOccupied(x: number, z: number): boolean {
+  const players = useTeamStore.getState().remotePlayers
+  for (const p of Object.values(players)) {
+    if (p.sitting && Math.hypot(p.position[0] - x, p.position[2] - z) < 0.5) return true
+  }
+  if (marceloState.active && marceloState.sitting && Math.hypot(marceloState.x - x, marceloState.z - z) < 0.5) {
+    return true
+  }
+  return false
+}
 
 const SPEED = 5
 const CAMERA_DISTANCE_DEFAULT = 18
@@ -59,6 +94,12 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
   }, [rooms, remotePlayers, me, myRoomId])
   const wallsRef = useRef(walls)
   wallsRef.current = walls
+
+  // Mobília colide também (mesa, sofá, balcão) — exceto quando indo sentar
+  const furniture = useMemo(() => furnitureColliders(rooms), [rooms])
+  const furnitureRef = useRef(furniture)
+  furnitureRef.current = furniture
+  const blockedSinceRef = useRef(0)
 
   // Auto-walk (tecla X / "Ir pra minha sala"): waypoints a seguir
   const autoPathRef = useRef<{ points: [number, number][]; idx: number } | null>(null)
@@ -181,7 +222,7 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
     const walkTo = useTeamStore.getState().pendingWalkTo
     if (walkTo) {
       useTeamStore.getState().setPendingWalkTo(null)
-      const path = findPath(pos.x, pos.z, walkTo.x, walkTo.z, wallsRef.current)
+      const path = findPath(pos.x, pos.z, walkTo.x, walkTo.z, [...wallsRef.current, ...furnitureRef.current])
       if (path && path.length > 0) {
         autoPathRef.current = { points: path, idx: 0 }
       } else if (walkTo.teleportFallback) {
@@ -243,9 +284,28 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       const RADIUS = 0.32
       const tryX = Math.max(BUILDING.minX + 0.5, Math.min(BUILDING.maxX - 0.5, pos.x + dx * SPEED * delta))
       const tryZ = Math.max(BUILDING.minZ + 0.5, Math.min(BUILDING.maxZ - 0.5, pos.z + dz * SPEED * delta))
-      const w = wallsRef.current
-      const newX = checkWallCollision(tryX, pos.z, RADIUS, w) ? pos.x : tryX
-      const newZ = checkWallCollision(newX, tryZ, RADIUS, w) ? pos.z : tryZ
+      // Mobília colide, exceto na aproximação final do assento (encaixe)
+      const seatTarget = useTeamStore.getState().pendingSeat
+      const ignoreFurniture = !!seatTarget && Math.hypot(seatTarget.x - pos.x, seatTarget.z - pos.z) < 1.6
+      const solids = ignoreFurniture ? wallsRef.current : [...wallsRef.current, ...furnitureRef.current]
+      let newX = checkWallCollision(tryX, pos.z, RADIUS, solids) ? pos.x : tryX
+      let newZ = checkWallCollision(newX, tryZ, RADIUS, solids) ? pos.z : tryZ
+      // Pessoas não se atravessam
+      if (blockedByPeople(pos.x, pos.z, newX, newZ)) {
+        newX = pos.x
+        newZ = pos.z
+      }
+      // Auto-walk travado por alguém parado no caminho? Desiste após 1.5s
+      if (newX === pos.x && newZ === pos.z && autoPathRef.current) {
+        blockedSinceRef.current += delta
+        if (blockedSinceRef.current > 1.5) {
+          autoPathRef.current = null
+          useTeamStore.getState().setPendingSeat(null)
+          blockedSinceRef.current = 0
+        }
+      } else {
+        blockedSinceRef.current = 0
+      }
 
       groupRef.current.position.x = newX
       groupRef.current.position.z = newZ
@@ -275,7 +335,11 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       const seat = st.pendingSeat
       if (seat && !st.seated) {
         const dSeat = Math.hypot(seat.x - pos.x, seat.z - pos.z)
-        if (dSeat < 0.4) {
+        // Alguém sentou aqui antes de você chegar? Fica em pé do lado.
+        if (dSeat < 1.2 && seatOccupied(seat.x, seat.z)) {
+          st.setPendingSeat(null)
+          st.addToast('Essa cadeira já está ocupada', 'out')
+        } else if (dSeat < 0.9) {
           pos.x = seat.x
           pos.z = seat.z
           rotationRef.current = seat.rot

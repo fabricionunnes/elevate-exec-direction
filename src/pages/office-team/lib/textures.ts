@@ -159,6 +159,49 @@ export function artTexture(seed: number): THREE.CanvasTexture {
   return t
 }
 
+// Logomarca OFICIAL (PNG com a águia) com o fundo branco removido em
+// código — vira "adesivo" pro piso do hall.
+import logoUrl from '@/assets/logo-unv-oficial.png'
+
+let _officialLogo: THREE.CanvasTexture | null = null
+let _officialLoading: Promise<THREE.CanvasTexture> | null = null
+export function officialLogoTexture(): Promise<THREE.CanvasTexture> {
+  if (_officialLogo) return Promise.resolve(_officialLogo)
+  if (_officialLoading) return _officialLoading
+  _officialLoading = new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const c = document.createElement('canvas')
+      c.width = img.width
+      c.height = img.height
+      const g = c.getContext('2d')!
+      g.drawImage(img, 0, 0)
+      // Chroma key: branco (e quase-branco) → transparente
+      const data = g.getImageData(0, 0, c.width, c.height)
+      const px = data.data
+      for (let i = 0; i < px.length; i += 4) {
+        const r = px[i]
+        const gg = px[i + 1]
+        const b = px[i + 2]
+        if (r > 235 && gg > 235 && b > 235) {
+          px[i + 3] = 0
+        } else if (r > 215 && gg > 215 && b > 215) {
+          px[i + 3] = Math.round(((235 - Math.min(r, gg, b)) / 20) * 255)
+        }
+      }
+      g.putImageData(data, 0, 0)
+      const t = new THREE.CanvasTexture(c)
+      t.colorSpace = THREE.SRGBColorSpace
+      t.anisotropy = 4
+      _officialLogo = t
+      resolve(t)
+    }
+    img.onerror = reject
+    img.src = logoUrl
+  })
+  return _officialLoading
+}
+
 let _logo: THREE.CanvasTexture | null = null
 export function unvFloorLogo(): THREE.CanvasTexture {
   if (_logo) return _logo

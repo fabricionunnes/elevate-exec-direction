@@ -17,6 +17,9 @@ const INTERACT_RADIUS = 3
 const WALK_SPEED = 2.2
 const CYCLE = 360 // segundos por ciclo de rotina
 
+/** Posição/estado atual do NPC (pra colisão e cadeira ocupada). */
+export const marceloState = { x: 0, z: 0, sitting: false, active: false }
+
 export function findMarceloRoom(rooms: OfficeRoom[]): OfficeRoom | null {
   return rooms.find((r) => /marcelo/i.test(r.name)) ?? null
 }
@@ -165,6 +168,12 @@ export default function MarceloNpc() {
       const [px, , pz] = useTeamStore.getState().playerPosition
       hintRef.current.visible = Math.hypot(px - g.position.x, pz - g.position.z) < INTERACT_RADIUS
     }
+
+    // Exposição pra colisão jogador-NPC e checagem de cadeira ocupada
+    marceloState.x = g.position.x
+    marceloState.z = g.position.z
+    marceloState.sitting = poseRef.current === 'sit'
+    marceloState.active = true
   })
 
   if (!room || !seat) return null
