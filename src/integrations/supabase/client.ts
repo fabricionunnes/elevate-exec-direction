@@ -15,5 +15,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-  }
+  },
+  realtime: {
+    // Default é 10 msg/s — o escritório 3D (posição + signaling WebRTC em
+    // rajada quando 3+ pessoas negociam áudio) estoura isso e o client
+    // DROPA broadcasts em silêncio, deixando conexões de voz pela metade.
+    params: { eventsPerSecond: 60 },
+  },
 });

@@ -15,6 +15,8 @@ interface PeerEntry {
   pc: RTCPeerConnection
   pendingCandidates: RTCIceCandidateInit[]
   remoteStream: MediaStream
+  /** última vez que a conexão esteve 'connected' (ou criação) — watchdog */
+  lastOk: number
 }
 
 export class CallManager {
@@ -25,6 +27,8 @@ export class CallManager {
   private camTrack: MediaStreamTrack | null = null
   private screenTrack: MediaStreamTrack | null = null
   private unsubscribe: (() => void) | null = null
+  /** watchdog: reconecta pares que ficaram presos (offer/ICE perdidos) */
+  private watchdog: ReturnType<typeof setInterval> | null = null
 
   /** vídeo ativo a transmitir: tela compartilhada tem prioridade sobre câmera */
   private get activeVideoTrack(): MediaStreamTrack | null {
@@ -56,6 +60,34 @@ export class CallManager {
 
     // Observa entradas/saídas da chamada
     this.unsubscribe = useTeamStore.subscribe(() => this.syncPeers())
+
+    // Watchdog: com 3+ pessoas, offers/ICE podem se perder no signaling.
+    // Qualquer par que não fique 'connected' em ~12s é derrubado e
+    // renegociado do zero (o lado de menor id re-oferece).
+    if (this.watchdog) clearInterval(this.watchdog)
+    this.watchdog = setInterval(() => this.checkPeerHealth(), 4000)
+  }
+
+  private checkPeerHealth() {
+    if (!this.joined) return
+    const now = Date.now()
+    for (const [id, entry] of [...this.peers.entries()]) {
+      const state = entry.pc.connectionState
+      if (state === 'connected') {
+        entry.lastOk = now
+        continue
+      }
+      // 'new'/'connecting' preso, ou 'disconnected' sem se recuperar
+      if (now - entry.lastOk > 12_000) {
+        this.closePeer(id)
+        // quem tem o menor id re-oferece na hora; o outro lado vai
+        // receber a offer nova (ou o watchdog dele faz o mesmo)
+        const player = useTeamStore.getState().remotePlayers[id]
+        if (player?.inCall && this.myId < id) void this.createOfferTo(id)
+      }
+    }
+    // Garante pares que nunca chegaram a ser criados (sinal perdido)
+    this.syncPeers()
   }
 
   /** Cria/derruba conexões conforme quem está com inCall=true no presence. */
@@ -79,7 +111,7 @@ export class CallManager {
 
   private createPeer(peerId: string): PeerEntry {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
-    const entry: PeerEntry = { pc, pendingCandidates: [], remoteStream: new MediaStream() }
+    const entry: PeerEntry = { pc, pendingCandidates: [], remoteStream: new MediaStream(), lastOk: Date.now() }
 
     pc.onicecandidate = (ev) => {
       if (ev.candidate) {
@@ -91,9 +123,15 @@ export class CallManager {
       useTeamStore.getState().setRemoteStream(peerId, entry.remoteStream)
     }
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+      if (pc.connectionState === 'connected') {
+        entry.lastOk = Date.now()
+      } else if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
         this.closePeer(peerId)
+        // Renegocia na hora em vez de esperar o watchdog
+        const player = useTeamStore.getState().remotePlayers[peerId]
+        if (player?.inCall && this.myId < peerId) void this.createOfferTo(peerId)
       }
+      // 'disconnected' costuma se recuperar sozinho — o watchdog cuida se não
     }
 
     this.peers.set(peerId, entry)
@@ -256,6 +294,10 @@ export class CallManager {
   async leaveCall() {
     this.unsubscribe?.()
     this.unsubscribe = null
+    if (this.watchdog) {
+      clearInterval(this.watchdog)
+      this.watchdog = null
+    }
     for (const id of [...this.peers.keys()]) this.closePeer(id)
     if (this.screenTrack) {
       this.screenTrack.stop()

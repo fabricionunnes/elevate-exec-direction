@@ -56,6 +56,10 @@ export class TeamRealtime {
   private keepaliveWorker: Worker | null = null
   /** primeira sync já aconteceu (evita toasts de entrada no mount) */
   private hadFirstSync = false
+  /** Saídas em quarentena: um soluço de rede derruba o presence por 1-3s e
+   * o usuário volta — sem isso, cada flap vira "fulano foi embora" + cutscene
+   * de chegada (que esconde o boneco). Só confirma a saída após 12s fora. */
+  private pendingLeaves = new Map<string, { player: RemotePlayerState; timer: ReturnType<typeof setTimeout> }>()
 
   constructor(me: TeamProfile) {
     this.me = me
@@ -142,6 +146,15 @@ export class TeamRealtime {
           }
         }
 
+        // Voltou dentro da quarentena → cancela a saída (era só um flap)
+        for (const id of Object.keys(next)) {
+          const pending = this.pendingLeaves.get(id)
+          if (pending) {
+            clearTimeout(pending.timer)
+            this.pendingLeaves.delete(id)
+          }
+        }
+
         // Notificações de entrada/saída + cutscenes do estacionamento
         if (this.hadFirstSync) {
           const store = useTeamStore.getState()
@@ -159,26 +172,20 @@ export class TeamRealtime {
             }
           }
           for (const id of Object.keys(current)) {
-            if (!next[id]) {
-              store.addToast(`🚗 ${current[id].name} foi embora`, 'out')
-              store.addCutscene({
-                id: crypto.randomUUID(),
-                kind: 'leave',
-                userId: id,
-                name: current[id].name,
-                avatar: current[id].avatar,
-                lastPos: [current[id].position[0], current[id].position[2]],
-                ts: Date.now(),
-              })
+            if (!next[id] && !this.pendingLeaves.has(id)) {
+              // Quarentena: mantém o boneco parado por 12s; só então confirma
+              const player = current[id]
+              const timer = setTimeout(() => this.confirmLeave(id), 12_000)
+              this.pendingLeaves.set(id, { player, timer })
             }
-          }
-          // Quem estava gravando saiu → limpa o indicador
-          const rec = store.recording
-          if (rec.on && rec.byId && rec.byId !== this.me.id && !next[rec.byId]) {
-            store.setRecording({ on: false, byId: null, byName: null })
           }
         } else {
           this.hadFirstSync = true
+        }
+
+        // Bonecos em quarentena continuam visíveis (congelados) até confirmar
+        for (const [id, pending] of this.pendingLeaves) {
+          if (!next[id]) next[id] = { ...pending.player, moving: false }
         }
 
         useTeamStore.getState().setRemotePlayers(next)
@@ -263,6 +270,31 @@ export class TeamRealtime {
     void this.loadChatHistory()
     void this.refreshRooms()
     void fetchUnreadNotes(this.me.id)
+  }
+
+  /** Saída confirmada (ficou 12s fora do presence): remove o boneco,
+   * avisa e roda a cutscene de ida embora. */
+  private confirmLeave(id: string) {
+    const pending = this.pendingLeaves.get(id)
+    if (!pending) return
+    this.pendingLeaves.delete(id)
+    const store = useTeamStore.getState()
+    store.removeRemotePlayer(id)
+    store.addToast(`🚗 ${pending.player.name} foi embora`, 'out')
+    store.addCutscene({
+      id: crypto.randomUUID(),
+      kind: 'leave',
+      userId: id,
+      name: pending.player.name,
+      avatar: pending.player.avatar,
+      lastPos: [pending.player.position[0], pending.player.position[2]],
+      ts: Date.now(),
+    })
+    // Quem estava gravando saiu de verdade → limpa o indicador
+    const rec = store.recording
+    if (rec.on && rec.byId === id) {
+      store.setRecording({ on: false, byId: null, byName: null })
+    }
   }
 
   /** Avisa o destinatário que ganhou um recado novo. */
@@ -446,6 +478,8 @@ export class TeamRealtime {
       this.keepaliveWorker.terminate()
       this.keepaliveWorker = null
     }
+    for (const { timer } of this.pendingLeaves.values()) clearTimeout(timer)
+    this.pendingLeaves.clear()
     // Salva a posição final antes de sair
     void this.savePositionNow()
     if (this.channel) {
