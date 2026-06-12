@@ -20,6 +20,12 @@ import MarceloChatPanel from './components/MarceloChatPanel'
 import OfficeToasts from './components/OfficeToasts'
 import DeskNotes from './components/DeskNotes'
 import Parking from './components/Parking'
+import AgentNpcs from './components/AgentNpc'
+import AgentChatPanel from './components/AgentChatPanel'
+import DataTvs from './components/DataTvs'
+import SaleCelebration from './components/SaleCelebration'
+import { fetchInMeetingNow, fetchAgendaToday, AgendaItem } from './lib/agenda'
+import { playMeetingPing } from './lib/sfx'
 import {
   useTeamStore,
   avatarColorsFor,
@@ -231,6 +237,8 @@ export default function TeamOfficePage() {
   const rooms = useTeamStore((s) => s.rooms)
   const [authError, setAuthError] = useState(false)
   const personalRoomChecked = useRef(false)
+  const [agendaToday, setAgendaToday] = useState<AgendaItem[]>([])
+  const notifiedMeetings = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     let cancelled = false
@@ -288,6 +296,43 @@ export default function TeamOfficePage() {
     })
   }, [me, managers, rooms])
 
+  // Agenda do time: status "Em reunião" (view de quem tem reunião AGORA) +
+  // agenda de hoje (placa da sala) + cutucada quando a MINHA reunião começa
+  useEffect(() => {
+    if (!me) return
+    let cancelled = false
+    const poll = async () => {
+      const [inMeeting, agenda] = await Promise.all([fetchInMeetingNow(), fetchAgendaToday()])
+      if (cancelled) return
+      const st = useTeamStore.getState()
+      st.setInMeetingIds(inMeeting)
+      setAgendaToday(agenda)
+
+      // Reunião MINHA começando agora (janela de ±90s) → ping + toast
+      const now = Date.now()
+      for (const m of agenda) {
+        if (m.owner_user_id !== me.id || notifiedMeetings.current.has(m.id)) continue
+        const start = new Date(m.meeting_date).getTime()
+        if (now >= start - 30_000 && now <= start + 90_000) {
+          notifiedMeetings.current.add(m.id)
+          playMeetingPing()
+          st.addToast(`📅 Sua reunião "${m.meeting_title ?? 'Reunião'}" está começando`, 'in')
+          try {
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification('📅 Reunião começando', { body: m.meeting_title ?? 'Sua reunião está começando agora.' })
+            }
+          } catch { /* sem notificação de sistema */ }
+        }
+      }
+    }
+    void poll()
+    const interval = setInterval(poll, 60_000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [me])
+
   if (authError) {
     return <LoadingScreen label="Faça login no Nexus para entrar no escritório." />
   }
@@ -318,6 +363,8 @@ export default function TeamOfficePage() {
           <LocalPlayer realtime={managers.realtime} />
           <RemotePlayers />
           <MarceloNpc />
+          <AgentNpcs />
+          <DataTvs agendaToday={agendaToday} />
         </Canvas>
       </Suspense>
 
@@ -328,6 +375,8 @@ export default function TeamOfficePage() {
       <CallDock callManager={managers.callManager} realtime={managers.realtime} />
       <AvatarEditor realtime={managers.realtime} />
       <MarceloChatPanel />
+      <AgentChatPanel />
+      <SaleCelebration />
       <OfficeToasts />
       <DeskNotes realtime={managers.realtime} />
     </div>

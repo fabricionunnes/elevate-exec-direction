@@ -1,15 +1,29 @@
-// Corpo de robô — exclusivo do NPC Marcelo (agente IA).
-// Metálico com detalhes navy UNV e luzes ciano pulsantes.
+// Corpo de robô — NPCs do escritório (Marcelo e os agentes IA).
+// Metálico com detalhes coloridos por agente e luzes pulsantes.
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
 const METAL = '#9aa3ad'
 const METAL_DARK = '#6b737d'
-const NAVY = '#0D2B5E'
-const GLOW = '#7fd4ff'
+const DEFAULT_BODY = '#0D2B5E'
+const DEFAULT_GLOW = '#7fd4ff'
 
-export default function RobotBody({ isWalking = false, isSitting = false }: { isWalking?: boolean; isSitting?: boolean }) {
+export default function RobotBody({
+  isWalking = false,
+  isSitting = false,
+  body = DEFAULT_BODY,
+  accent = DEFAULT_GLOW,
+}: {
+  isWalking?: boolean
+  isSitting?: boolean
+  /** cor do tronco/orelhas (identidade do agente) */
+  body?: string
+  /** cor das luzes (núcleo, olhos, antena) */
+  accent?: string
+}) {
+  const NAVY = body
+  const GLOW = accent
   const bodyRef = useRef<THREE.Group>(null!)
   const coreRef = useRef<THREE.MeshStandardMaterial>(null!)
   const eyeLRef = useRef<THREE.MeshStandardMaterial>(null!)

@@ -19,6 +19,30 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
   const chatOpen = useTeamStore((s) => s.chatOpen)
   const unreadCount = useTeamStore((s) => s.unreadCount)
   const [directory, setDirectory] = useState<TeamMember[]>([])
+  const inMeetingIds = useTeamStore((s) => s.inMeetingIds)
+  const inMeeting = new Set(inMeetingIds)
+
+  // Status pela AGENDA: reunião agendada acontecendo agora = "Em reunião"
+  const StatusBadge = ({ userId }: { userId: string }) => {
+    const busy = inMeeting.has(userId)
+    return (
+      <span
+        style={{
+          fontSize: '9px',
+          fontWeight: 700,
+          padding: '1px 6px',
+          borderRadius: '999px',
+          background: busy ? 'rgba(255,167,38,0.18)' : 'rgba(76,175,80,0.15)',
+          color: busy ? '#FFA726' : '#4CAF50',
+          border: `1px solid ${busy ? 'rgba(255,167,38,0.45)' : 'rgba(76,175,80,0.35)'}`,
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
+        }}
+      >
+        {busy ? '📅 Em reunião' : 'Disponível'}
+      </span>
+    )
+  }
 
   // Diretório do time (staff ativo) — pra mostrar também quem está offline
   useEffect(() => {
@@ -119,8 +143,11 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4CAF50', boxShadow: '0 0 5px #4CAF50', flexShrink: 0 }} />
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: '12px', color: '#FFD700', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {me.name} (você)
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ fontSize: '12px', color: '#FFD700', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {me.name} (você)
+                  </div>
+                  <StatusBadge userId={me.id} />
                 </div>
                 {me.role && <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>{me.role}</div>}
               </div>
@@ -130,8 +157,11 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
             <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4CAF50', boxShadow: '0 0 5px #4CAF50', flexShrink: 0 }} />
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: '12px', color: '#eee', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {p.name}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ fontSize: '12px', color: '#eee', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {p.name}
+                  </div>
+                  <StatusBadge userId={p.id} />
                 </div>
                 {p.role && <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>{p.role}</div>}
               </div>

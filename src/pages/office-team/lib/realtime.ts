@@ -212,6 +212,18 @@ export class TeamRealtime {
         if (!r || r.byId === this.me.id) return
         useTeamStore.getState().setRecording({ on: r.on, byId: r.on ? r.byId : null, byName: r.on ? r.byName : null })
       })
+      .on('broadcast', { event: 'sale' }, ({ payload }) => {
+        // Disparado pelo TRIGGER do Postgres (realtime.send) quando um lead
+        // vira GANHO no CRM — sino + confete pra todo mundo no escritório
+        const s = payload as { lead?: string; value?: number; by?: string }
+        if (!s) return
+        useTeamStore.getState().setSaleEvent({
+          lead: s.lead ?? 'Novo cliente',
+          value: Number(s.value ?? 0),
+          by: s.by ?? '',
+          ts: Date.now(),
+        })
+      })
       .on('broadcast', { event: 'ring' }, ({ payload }) => {
         const r = payload as { to: string; fromId: string; fromName: string; x?: number; z?: number }
         if (!r || r.to !== this.me.id) return

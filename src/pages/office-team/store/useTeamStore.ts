@@ -139,6 +139,13 @@ interface TeamState {
   /** voz automática falhou (permissão negada) — mostra fallback manual */
   voiceBlocked: boolean
 
+  /** venda ganha no CRM (sino + confete pra todo o escritório) */
+  saleEvent: { lead: string; value: number; by: string; ts: number } | null
+  /** user_ids com reunião agendada acontecendo agora (status "Em reunião") */
+  inMeetingIds: string[]
+  /** agente IA com painel de chat aberto (key: ceo, financeiro, crm...) */
+  agentChatFor: string | null
+
   call: CallState
 
   // Actions
@@ -173,6 +180,9 @@ interface TeamState {
   addCutscene: (c: Cutscene) => void
   removeCutscene: (id: string) => void
   setVoiceBlocked: (blocked: boolean) => void
+  setSaleEvent: (s: { lead: string; value: number; by: string; ts: number } | null) => void
+  setInMeetingIds: (ids: string[]) => void
+  setAgentChatFor: (key: string | null) => void
 
   setCall: (patch: Partial<CallState>) => void
   setRemoteStream: (id: string, stream: MediaStream | null) => void
@@ -204,6 +214,9 @@ export const useTeamStore = create<TeamState>((set) => ({
   notesPanelOpen: false,
   cutscenes: [],
   voiceBlocked: false,
+  saleEvent: null,
+  inMeetingIds: [],
+  agentChatFor: null,
 
   call: {
     joined: false,
@@ -308,6 +321,9 @@ export const useTeamStore = create<TeamState>((set) => ({
   removeCutscene: (id) =>
     set((prev) => ({ cutscenes: prev.cutscenes.filter((c) => c.id !== id) })),
   setVoiceBlocked: (blocked) => set({ voiceBlocked: blocked }),
+  setSaleEvent: (s) => set({ saleEvent: s }),
+  setInMeetingIds: (ids) => set({ inMeetingIds: ids }),
+  setAgentChatFor: (key) => set({ agentChatFor: key }),
 
   setCall: (patch) => set((prev) => ({ call: { ...prev.call, ...patch } })),
 
