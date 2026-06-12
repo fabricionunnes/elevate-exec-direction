@@ -483,7 +483,11 @@ export default function TeamOfficePage() {
   }, [me])
 
   if (authError) {
-    const inviteToken = new URLSearchParams(window.location.search).get('invite')
+    // HashRouter: a query do convite vive DENTRO do hash (#/rota?invite=x);
+    // cobre também o formato de path normal por garantia
+    const hashSearch = window.location.hash.split('?')[1] ?? ''
+    const inviteToken =
+      new URLSearchParams(hashSearch).get('invite') ?? new URLSearchParams(window.location.search).get('invite')
     if (inviteToken) return <GuestEntry token={inviteToken} />
     return <LoadingScreen label="Faça login no Nexus para entrar no escritório." />
   }

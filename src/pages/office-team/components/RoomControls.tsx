@@ -58,7 +58,8 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
       st.addToast('Não consegui gerar o convite. Tenta de novo.', 'out')
       return
     }
-    const link = `${window.location.origin}/onboarding-tasks/unv-office?invite=${token}`
+    // O app usa HashRouter: a rota vive depois do # (sem ele cai na home)
+    const link = `${window.location.origin}/#/onboarding-tasks/unv-office?invite=${token}`
     try {
       await navigator.clipboard.writeText(link)
       st.addToast('✉️ Link de visitante copiado (vale 24h) — manda pro convidado', 'in')
