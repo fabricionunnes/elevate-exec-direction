@@ -12,11 +12,14 @@ import { useTeamStore } from '../store/useTeamStore'
 import { personalOwnerSeat } from '../lib/rooms'
 import { findPath } from '../lib/pathfinding'
 import { npcObstacles, personAvoidance } from '../lib/npcNav'
+import { agentPosState } from './AgentNpc'
+import { CoffeeSip } from './CoffeeChat'
 import type { OfficeRoom } from '../lib/rooms'
 
 const INTERACT_RADIUS = 3
 const WALK_SPEED = 2.2
 const CYCLE = 360 // segundos por ciclo de rotina
+const SUMMON_TTL = 150_000 // tempo que o Marcelo fica atendendo um aceno
 
 /** Posição/estado atual do NPC (pra colisão e cadeira ocupada). */
 export const marceloState = { x: 0, z: 0, sitting: false, active: false }
@@ -44,6 +47,7 @@ export default function MarceloNpc() {
   const rotRef = useRef(Math.PI)
   const [pose, setPose] = useState<Pose>('sit')
   const poseRef = useRef<Pose>('sit')
+  const summon = useTeamStore((s) => s.agentSummon)
 
   const room = findMarceloRoom(rooms)
   const seat = room ? personalOwnerSeat(room) : null
@@ -91,6 +95,74 @@ export default function MarceloNpc() {
   useFrame((_, delta) => {
     if (!room || !seat || !groupRef.current) return
     const g = groupRef.current
+
+    const walkStep = (tx: number, tz: number, key: string) => {
+      if (key !== phaseRef.current) {
+        phaseRef.current = key
+        const walls = npcObstacles(g.position.x, g.position.z)
+        const pts = findPath(g.position.x, g.position.z, tx, tz, walls)
+        pathRef.current = pts ? { pts, i: 0 } : null
+      }
+      const path = pathRef.current
+      if (!path) return false
+      const [wx, wz] = path.pts[path.i]
+      const dx = wx - g.position.x
+      const dz = wz - g.position.z
+      const d = Math.hypot(dx, dz)
+      const isLast = path.i === path.pts.length - 1
+      if (d < (isLast ? 0.5 : 0.15)) {
+        path.i++
+        if (path.i >= path.pts.length) pathRef.current = null
+      } else {
+        const step = Math.min(d, WALK_SPEED * delta)
+        const [avx, avz] = personAvoidance(g.position.x, g.position.z)
+        g.position.x += (dx / d) * step + avx * delta
+        g.position.z += (dz / d) * step + avz * delta
+        const a = Math.atan2(dx, dz)
+        let diff = a - rotRef.current
+        while (diff > Math.PI) diff -= Math.PI * 2
+        while (diff < -Math.PI) diff += Math.PI * 2
+        rotRef.current += diff * 0.18
+        g.rotation.y = rotRef.current
+      }
+      setPoseIfChanged('walk')
+      return true
+    }
+
+    const expose = () => {
+      marceloState.x = g.position.x
+      marceloState.z = g.position.z
+      marceloState.sitting = poseRef.current === 'sit'
+      marceloState.active = true
+      agentPosState['marcelo'] = { x: g.position.x, z: g.position.z }
+      if (hintRef.current) {
+        const [px, , pz] = useTeamStore.getState().playerPosition
+        hintRef.current.visible = Math.hypot(px - g.position.x, pz - g.position.z) < INTERACT_RADIUS
+      }
+    }
+
+    // ── Aceno: alguém chamou o Marcelo (mesmo sistema dos outros agentes) ──
+    const summon = useTeamStore.getState().agentSummon
+    if (summon && summon.agentKey === 'marcelo' && Date.now() - summon.ts < SUMMON_TTL) {
+      const target = summon.seat ?? { x: summon.x + 0.9, z: summon.z + 0.4 }
+      if (!walkStep(target.x, target.z, `summon:${summon.ts}`)) {
+        if (Math.hypot(g.position.x - target.x, g.position.z - target.z) > 0.6) {
+          g.position.set(target.x, 0, target.z)
+        }
+        if (summon.seat) {
+          g.position.set(summon.seat.x, 0, summon.seat.z)
+          rotRef.current = summon.seat.rot ?? Math.atan2(summon.seat.tableX - summon.seat.x, summon.seat.tableZ - summon.seat.z)
+          g.rotation.y = rotRef.current
+          setPoseIfChanged('sit')
+        } else {
+          rotRef.current = Math.atan2(summon.x - g.position.x, summon.z - g.position.z)
+          g.rotation.y = rotRef.current
+          setPoseIfChanged('stand')
+        }
+      }
+      expose()
+      return
+    }
 
     // Rotina determinística pelo relógio: todos os clientes veem igual
     const nowS = Date.now() / 1000
@@ -175,11 +247,31 @@ export default function MarceloNpc() {
     marceloState.z = g.position.z
     marceloState.sitting = poseRef.current === 'sit'
     marceloState.active = true
+    agentPosState['marcelo'] = { x: g.position.x, z: g.position.z }
   })
 
   if (!room || !seat) return null
 
+  // Caneca quando o Marcelo é chamado pro café (o balão da fala é desenhado
+  // pelo SummonTalk genérico, que usa agentPosState['marcelo'])
+  const showCoffee =
+    summon?.agentKey === 'marcelo' && summon.context === 'cafe' && !!summon.seat && pose === 'sit'
+
   return (
+    <>
+    {showCoffee && summon?.seat && (
+      <CoffeeSip
+        sitter={{
+          id: 'agent-marcelo',
+          name: 'Marcelo',
+          x: summon.seat.x,
+          z: summon.seat.z,
+          tableKey: summon.seat.tableKey,
+          tableX: summon.seat.tableX,
+          tableZ: summon.seat.tableZ,
+        }}
+      />
+    )}
     <group
       ref={groupRef}
       position={[seat.x, 0, seat.z]}
@@ -241,5 +333,6 @@ export default function MarceloNpc() {
         <meshBasicMaterial color="#7fd4ff" transparent opacity={0.65} />
       </mesh>
     </group>
+    </>
   )
 }

@@ -536,7 +536,7 @@ export default function TeamOfficePage() {
       {!me.isGuest && <TeamChatPanel realtime={managers.realtime} />}
       <CallDock callManager={managers.callManager} realtime={managers.realtime} />
       <AvatarEditor realtime={managers.realtime} />
-      {!me.isGuest && <MarceloChatPanel />}
+      {!me.isGuest && <MarceloChatPanel realtime={managers.realtime} />}
       {!me.isGuest && <AgentChatPanel realtime={managers.realtime} />}
       {!me.isGuest && <SaleCelebration />}
       <MusicPlayer realtime={managers.realtime} />

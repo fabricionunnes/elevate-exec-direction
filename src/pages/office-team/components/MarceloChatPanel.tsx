@@ -5,6 +5,9 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { supabase } from '@/integrations/supabase/client'
 import { useTeamStore } from '../store/useTeamStore'
+import { bistroTablesFor, bistroSeatsFor } from './CoffeeChat'
+import { personalVisitorSeat, roomAt } from '../lib/rooms'
+import type { TeamRealtime } from '../lib/realtime'
 
 const MARCELO_URL = 'https://kktocqnwlmmxjzgmnxgs.supabase.co/functions/v1/marcelo-webhook?webchat=1'
 const ACCENT = '#7fd4ff'
@@ -16,10 +19,63 @@ interface NpcMessage {
   timestamp: number
 }
 
-export default function MarceloChatPanel() {
+export default function MarceloChatPanel({ realtime }: { realtime: TeamRealtime }) {
   const open = useTeamStore((s) => s.npcChatOpen)
   const setOpen = useTeamStore((s) => s.setNpcChatOpen)
   const me = useTeamStore((s) => s.me)
+
+  // Aceno: chama o Marcelo até mim (café no lounge, negócios na minha sala)
+  const summonMarcelo = () => {
+    if (!me) return
+    const st = useTeamStore.getState()
+    const [px, , pz] = st.playerPosition
+    let seat: NonNullable<typeof st.agentSummon>['seat'] = null
+    let context: 'cafe' | 'office' = 'office'
+    const myRoom = st.rooms.find((r) => r.roomType === 'personal' && r.ownerUserId === me.id)
+    const inMyRoom = myRoom && roomAt(px, pz, st.rooms)?.id === myRoom.id
+    if (st.seated) {
+      const table = bistroTablesFor(st.rooms).find((t) => Math.hypot(px - t.x, pz - t.z) < 1.35)
+      if (table) {
+        const taken = (sx: number, sz: number) => {
+          if (Math.hypot(px - sx, pz - sz) < 0.5) return true
+          for (const p of Object.values(st.remotePlayers)) {
+            if (p.sitting && Math.hypot(p.position[0] - sx, p.position[2] - sz) < 0.5) return true
+          }
+          return false
+        }
+        const free = bistroSeatsFor(st.rooms).find((s) => s.tableKey === table.key && !taken(s.x, s.z))
+        if (free) {
+          seat = { x: free.x, z: free.z, tableX: free.tableX, tableZ: free.tableZ, tableKey: free.tableKey }
+          context = 'cafe'
+        }
+      }
+    }
+    if (!seat && inMyRoom && myRoom) {
+      const v = personalVisitorSeat(myRoom)
+      seat = { x: v.x, z: v.z, rot: v.rot, tableX: myRoom.x, tableZ: v.z + 1, tableKey: `room:${myRoom.id}` }
+      context = 'office'
+    }
+    realtime.sendAgentSummon({
+      agentKey: 'marcelo',
+      x: Number(px.toFixed(2)),
+      z: Number(pz.toFixed(2)),
+      seat,
+      byId: me.id,
+      byName: me.name,
+      allowed: true, // Marcelo é o consultor sempre disponível
+      context,
+      ts: Date.now(),
+    })
+    st.addToast(
+      context === 'cafe'
+        ? '👋 Marcelo está indo tomar um café com você'
+        : seat
+          ? '👋 Marcelo está vindo conversar na sua sala'
+          : '👋 Marcelo está indo até você',
+      'in'
+    )
+    setOpen(false)
+  }
   const [messages, setMessages] = useState<NpcMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -257,6 +313,23 @@ export default function MarceloChatPanel() {
             <span style={{ color: '#4CAF50', fontSize: '11px' }}>Sempre disponível</span>
           </div>
         </div>
+        <button
+          onClick={summonMarcelo}
+          title="O Marcelo vem até você — sentado no café, ele senta junto; na sua sala, pra conversar"
+          style={{
+            background: 'rgba(255,215,0,0.12)',
+            border: '1px solid rgba(255,215,0,0.4)',
+            color: '#fff',
+            padding: '6px 10px',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '11px',
+            fontWeight: 700,
+            flexShrink: 0,
+          }}
+        >
+          👋 Chamar
+        </button>
         <button
           onClick={() => setOpen(false)}
           style={{
