@@ -157,12 +157,14 @@ interface TeamState {
     agentKey: string
     x: number
     z: number
-    /** banqueta livre da mesa (se o chamador estava sentado no bistrô) */
-    seat: { x: number; z: number; tableX: number; tableZ: number; tableKey: string } | null
+    /** assento livre (banqueta do café OU cadeira de visita da sala) */
+    seat: { x: number; z: number; rot?: number; tableX: number; tableZ: number; tableKey: string } | null
     byId: string
     byName: string
     /** chamador tem permissão de falar com o agente (libera dados na prosa) */
     allowed: boolean
+    /** 'cafe' = papo informal no lounge · 'office' = negócios na sala privada */
+    context: 'cafe' | 'office'
     ts: number
   } | null
   /** venda ganha no CRM (sino + confete pra todo o escritório) */

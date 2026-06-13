@@ -155,6 +155,8 @@ function AgentFigure({
       ? { ...summon.seat, tableKey: summon.seat.tableKey }
       : null
   const sitSeat = cafeSeat ?? summonSeat
+  // Caneca só no café — na sala privada é conversa de negócios, sem café
+  const showCoffee = !!cafeSeat || (!!summonSeat && summon?.context === 'cafe')
 
   useFrame((_, delta) => {
     if (!groupRef.current || dests.length === 0) return
@@ -229,9 +231,10 @@ function AgentFigure({
           g.position.set(target.x, 0, target.z) // path falhou: garante presença
         }
         if (summon.seat) {
-          // Senta na banqueta livre olhando pra mesa, caneca na mão
+          // Senta no assento (banqueta do café OU cadeira de visita da sala)
           g.position.set(summon.seat.x, 0, summon.seat.z)
-          rotRef.current = Math.atan2(summon.seat.tableX - summon.seat.x, summon.seat.tableZ - summon.seat.z)
+          rotRef.current =
+            summon.seat.rot ?? Math.atan2(summon.seat.tableX - summon.seat.x, summon.seat.tableZ - summon.seat.z)
           g.rotation.y = rotRef.current
           setPoseIfChanged('sit')
         } else {
@@ -349,7 +352,7 @@ function AgentFigure({
         )}
       </group>
       {/* Caneca de café enquanto está sentado na banqueta (rotina ou aceno) */}
-      {pose === 'sit' && sitSeat && (
+      {pose === 'sit' && sitSeat && showCoffee && (
         <CoffeeSip
           sitter={{
             id: `agent-${agent.key}`,
@@ -373,15 +376,11 @@ function AgentFigure({
 function SummonTalk() {
   const summon = useTeamStore((s) => s.agentSummon)
   const [, setTick] = useState(0)
-  const [names, setNames] = useState<{ staff: string[]; clients: string[] }>({ staff: [], clients: [] })
   const [facts, setFacts] = useState<CafeFact[]>([])
 
   useEffect(() => {
     if (!summon) return
     let cancelled = false
-    void getCafeNames().then((n) => {
-      if (!cancelled) setNames(n)
-    })
     if (summon.allowed) {
       void getCafeFacts().then((f) => {
         if (!cancelled) setFacts(f)
@@ -411,7 +410,7 @@ function SummonTalk() {
   // Balão fica visível 4,5s de cada janela de 6s (respiro entre falas)
   if (elapsed % 6000 > 4500) return null
 
-  const text = summonLine(summon.ts, turn, summon.allowed, names, facts)
+  const text = summonLine(summon.ts, turn, summon.allowed, facts, summon.context)
   return <SpeechBubble x={pos.x} z={pos.z} y={summon.seat ? 1.75 : 2.3} text={text} isDots={false} />
 }
 

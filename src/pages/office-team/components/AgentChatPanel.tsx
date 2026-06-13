@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { useTeamStore } from '../store/useTeamStore'
 import { agentByKey, fetchAgentPermissions, fetchMyAgentKeys, grantAgentPermission, revokeAgentPermission } from '../lib/agents'
 import { bistroTablesFor, bistroSeatsFor } from './CoffeeChat'
+import { personalVisitorSeat, roomAt } from '../lib/rooms'
 import type { TeamRealtime } from '../lib/realtime'
 
 const AGENT_URL = 'https://xrncvhzxjmddqluxoosu.supabase.co/functions/v1/agente-unv'
@@ -101,13 +102,21 @@ export default function AgentChatPanel({ realtime }: { realtime: TeamRealtime })
   const agent = agentByKey(agentKey)
   const isMaster = !!me && MASTER_IDS.includes(me.id)
 
-  // Aceno: chama o agente até mim — se eu estiver numa mesinha do café,
-  // ele senta numa banqueta livre da mesma mesa (sincronizado pra todos)
+  // Aceno: chama o agente até mim.
+  //  · No café (banqueta do lounge): senta na mesa → papo informal.
+  //  · Na MINHA sala privada: senta na cadeira de visita à frente da mesa →
+  //    conversa de negócios / dia a dia.
   const summonAgent = async () => {
     if (!me || !agent) return
     const st = useTeamStore.getState()
     const [px, , pz] = st.playerPosition
     let seat: NonNullable<typeof st.agentSummon>['seat'] = null
+    let context: 'cafe' | 'office' = 'office'
+
+    // Minha sala pessoal? (dono e estou dentro dela)
+    const myRoom = st.rooms.find((r) => r.roomType === 'personal' && r.ownerUserId === me.id)
+    const inMyRoom = myRoom && roomAt(px, pz, st.rooms)?.id === myRoom.id
+
     if (st.seated) {
       const table = bistroTablesFor(st.rooms).find((t) => Math.hypot(px - t.x, pz - t.z) < 1.35)
       if (table) {
@@ -119,9 +128,19 @@ export default function AgentChatPanel({ realtime }: { realtime: TeamRealtime })
           return false
         }
         const free = bistroSeatsFor(st.rooms).find((s) => s.tableKey === table.key && !taken(s.x, s.z))
-        if (free) seat = { x: free.x, z: free.z, tableX: free.tableX, tableZ: free.tableZ, tableKey: free.tableKey }
+        if (free) {
+          seat = { x: free.x, z: free.z, tableX: free.tableX, tableZ: free.tableZ, tableKey: free.tableKey }
+          context = 'cafe'
+        }
       }
     }
+    // Na minha sala: cadeira de visita de frente pra mesa (negócios)
+    if (!seat && inMyRoom && myRoom) {
+      const v = personalVisitorSeat(myRoom)
+      seat = { x: v.x, z: v.z, rot: v.rot, tableX: myRoom.x, tableZ: v.z + 1, tableKey: `room:${myRoom.id}` }
+      context = 'office'
+    }
+
     // Sem autorização = papo informal apenas (a prosa filtra os assuntos)
     let allowed = isMaster
     if (!allowed) {
@@ -136,9 +155,16 @@ export default function AgentChatPanel({ realtime }: { realtime: TeamRealtime })
       byId: me.id,
       byName: me.name,
       allowed,
+      context,
       ts: Date.now(),
     })
-    st.addToast(seat ? `👋 ${agent.name} está indo tomar um café com você` : `👋 ${agent.name} está indo até você`, 'in')
+    const msg =
+      context === 'cafe'
+        ? `👋 ${agent.name} está indo tomar um café com você`
+        : seat
+          ? `👋 ${agent.name} está vindo conversar na sua sala`
+          : `👋 ${agent.name} está indo até você`
+    st.addToast(msg, 'in')
     setAgentChatFor(null)
   }
 

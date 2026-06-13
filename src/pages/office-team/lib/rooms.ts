@@ -314,6 +314,13 @@ export function personalOwnerSeat(room: OfficeRoom): { x: number; z: number; rot
   return { x: room.x, z: deskZ + 0.7, rot: Math.PI }
 }
 
+/** Cadeira de visita na sala pessoal: à frente da mesa, de frente pro dono.
+ * (mesma posição das cadeiras de visita no PersonalFurniture) */
+export function personalVisitorSeat(room: OfficeRoom): { x: number; z: number; rot: number } {
+  const deskZ = room.z + room.depth / 2 - 1.3
+  return { x: room.x - 0.55, z: deskZ - 1.4, rot: 0 }
+}
+
 /** Garante a sala pessoal do usuário (cria na ala privada se não existir). */
 export async function ensurePersonalRoom(
   userId: string,

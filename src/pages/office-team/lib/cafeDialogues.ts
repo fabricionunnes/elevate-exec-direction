@@ -131,7 +131,7 @@ const TASK_SCRIPTS: DialogueTurn[][] = [
   ],
 ]
 
-/** Falas do agente convocado por aceno, com autorização (sem números). */
+/** Aceno no CAFÉ (autorizado): papo leve de pausa. */
 const SOLO_ALLOWED = [
   'E aí! Bom te ver fora da tela.',
   'Esse café tá no ponto. Prova aí.',
@@ -141,6 +141,20 @@ const SOLO_ALLOWED = [
   'Dia puxado? Café resolve metade. A outra metade é foco.',
   'Qualquer coisa que travar, me chama que a gente destrava junto.',
   'Time em movimento — é disso que eu gosto.',
+]
+
+/** Aceno na SALA PRIVADA (autorizado): conversa de negócios / dia a dia. */
+const SOLO_OFFICE = [
+  'Sentou? Então me conta como tá o dia.',
+  'Bora alinhar. O que tá tirando seu sono essa semana?',
+  'Que prioridade você quer destravar hoje?',
+  'Manda o que precisa que eu organizo com você.',
+  'Vamos olhar o que importa: onde você quer foco agora?',
+  'Tô aqui pra ajudar a decidir. Qual o ponto?',
+  'Se quiser, a gente revisa as metas e os próximos passos.',
+  'Me diz onde tá o gargalo que a gente ataca junto.',
+  'Pronto pra trabalhar. Por onde começamos?',
+  'Reunião rápida e prática — do jeito que a casa gosta.',
 ]
 
 /** Templates de fato pro aceno autorizado (preenchidos com registro real). */
@@ -260,13 +274,14 @@ export function cafeDialogueLine(
   return { who: line.who, text: fillSocial(line.text, slot * 101 + chunk, names.staff) }
 }
 
-/** Fala do agente convocado por aceno (fatos reais quando autorizado). */
+/** Fala do agente convocado por aceno (fatos reais quando autorizado).
+ * context 'office' = conversa de negócios na sala; 'cafe' = papo de pausa. */
 export function summonLine(
   ts: number,
   turn: number,
   allowed: boolean,
-  names: { staff: string[]; clients: string[] },
-  facts: CafeFact[]
+  facts: CafeFact[],
+  context: 'cafe' | 'office'
 ): string {
   if (!allowed) {
     const idx = (hash(Math.floor(ts / 1000) * 97) + turn * 5) % SOLO_SMALL_TALK.length
@@ -278,6 +293,7 @@ export function summonLine(
     const templates = fact.kind === 'meeting' ? SOLO_FACT_MEETING : SOLO_FACT_TASK
     return fillFact(templates[hash(ts + turn) % templates.length], fact)
   }
-  const idx = (hash(Math.floor(ts / 1000) * 97) + turn * 5) % SOLO_ALLOWED.length
-  return SOLO_ALLOWED[idx]
+  const pool = context === 'office' ? SOLO_OFFICE : SOLO_ALLOWED
+  const idx = (hash(Math.floor(ts / 1000) * 97) + turn * 5) % pool.length
+  return pool[idx]
 }
