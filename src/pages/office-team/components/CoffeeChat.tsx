@@ -203,14 +203,22 @@ function TableChat({ sitters }: { sitters: Sitter[] }) {
 /** Caixinha de diálogo estilo quadrinho (reusada pelos agentes no café).
  * Tamanho generoso: precisa ser legível com a câmera no zoom normal. */
 export function SpeechBubble({ x, z, y = 2.05, text: raw, isDots }: { x: number; z: number; y?: number; text: string; isDots: boolean }) {
-  let text = raw
-  if (text.length > 84) text = `${text.slice(0, 82)}…`
-  const twoLines = text.length > 36
-  const bubbleH = isDots ? 0.4 : twoLines ? 0.78 : 0.52
-  const bubbleW = isDots ? 0.56 : Math.min(3.1, Math.max(1.1, 0.5 + (twoLines ? text.length / 2 : text.length) * 0.082))
+  // Cap alto e generoso: a caixa cresce em altura pra caber tudo, em vez de
+  // cortar a frase (nomes de cliente longos estouravam o limite antigo)
+  const text = raw.length > 150 ? `${raw.slice(0, 148)}…` : raw
+
+  const FONT = isDots ? 0.22 : 0.15
+  const TEXT_W = 2.7 // largura útil do texto (wrap)
+  // Estima nº de linhas pela contagem de caracteres por linha (~0.084u/char)
+  const charsPerLine = Math.floor(TEXT_W / (FONT * 0.56))
+  const lines = isDots ? 1 : Math.max(1, Math.ceil(text.length / charsPerLine))
+  const lineH = FONT * 1.32
+  const padY = 0.2
+  const bubbleH = isDots ? 0.4 : lines * lineH + padY
+  const bubbleW = isDots ? 0.56 : Math.min(TEXT_W + 0.3, Math.max(1.1, text.length * 0.092 + 0.4))
 
   return (
-    <Billboard position={[x, y + (twoLines ? 0.14 : 0), z]} follow>
+    <Billboard position={[x, y + (bubbleH - 0.52) / 2, z]} follow>
       {/* Caixinha */}
       <mesh>
         <planeGeometry args={[bubbleW, bubbleH]} />
@@ -228,13 +236,13 @@ export function SpeechBubble({ x, z, y = 2.05, text: raw, isDots }: { x: number;
       </mesh>
       <Text
         position={[0, 0, 0.001]}
-        fontSize={isDots ? 0.22 : 0.155}
+        fontSize={FONT}
         color="#1a1d24"
         anchorX="center"
         anchorY="middle"
-        maxWidth={bubbleW - 0.18}
+        maxWidth={Math.min(TEXT_W, bubbleW - 0.2)}
         textAlign="center"
-        lineHeight={1.25}
+        lineHeight={1.3}
       >
         {text}
       </Text>
