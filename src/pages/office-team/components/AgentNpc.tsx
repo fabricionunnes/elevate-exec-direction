@@ -397,6 +397,9 @@ function SummonTalk() {
   }, [])
 
   if (!summon) return null
+  // Na sala privada a conversa é no CHAT real (backend, com permissão) —
+  // sem balão de papo aleatório. Balão só no café.
+  if (summon.context !== 'cafe') return null
   const pos = agentPosState[summon.agentKey]
   if (!pos) return null
 

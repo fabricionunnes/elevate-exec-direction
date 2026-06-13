@@ -162,10 +162,12 @@ export default function AgentChatPanel({ realtime }: { realtime: TeamRealtime })
       context === 'cafe'
         ? `👋 ${agent.name} está indo tomar um café com você`
         : seat
-          ? `👋 ${agent.name} está vindo conversar na sua sala`
+          ? `👋 ${agent.name} está vindo conversar na sua sala — manda sua pergunta aqui`
           : `👋 ${agent.name} está indo até você`
     st.addToast(msg, 'in')
-    setAgentChatFor(null)
+    // No café: fecha o painel (a conversa é por balão). Na sala (negócios) ou
+    // em pé: mantém o chat aberto pra você conversar de verdade com o agente.
+    if (context === 'cafe') setAgentChatFor(null)
   }
 
   const [byAgent, setByAgent] = useState<Record<string, AgentMessage[]>>({})

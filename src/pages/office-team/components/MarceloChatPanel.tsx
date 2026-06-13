@@ -70,11 +70,12 @@ export default function MarceloChatPanel({ realtime }: { realtime: TeamRealtime 
       context === 'cafe'
         ? '👋 Marcelo está indo tomar um café com você'
         : seat
-          ? '👋 Marcelo está vindo conversar na sua sala'
+          ? '👋 Marcelo está vindo conversar na sua sala — manda sua pergunta aqui'
           : '👋 Marcelo está indo até você',
       'in'
     )
-    setOpen(false)
+    // Café: fecha (papo por balão). Sala/negócios: mantém o chat aberto.
+    if (context === 'cafe') setOpen(false)
   }
   const [messages, setMessages] = useState<NpcMessage[]>([])
   const [input, setInput] = useState('')
