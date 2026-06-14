@@ -26,12 +26,14 @@ import {
   DollarSign,
   Calendar,
   HeartPulse,
-  SmilePlus
+  SmilePlus,
+  ClipboardCheck
 } from "lucide-react";
 import { format, isBefore, startOfDay, isWithinInterval, eachDayOfInterval, parseISO, eachMonthOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
+import CadastroHealthPanel from "@/components/onboarding-tasks/CadastroHealthPanel";
 import { toast } from "sonner";
 import { Copy, ExternalLink } from "lucide-react";
 import { 
@@ -1317,11 +1319,12 @@ const DashboardMetrics = ({
           setCsatDetailType(null);
         }
       }}>
-        <TabsList className="w-full grid grid-cols-6 h-8 sm:h-9">
+        <TabsList className="w-full grid grid-cols-7 h-8 sm:h-9">
           <TabsTrigger value="empresas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Building2 className="h-3 w-3" /><span className="hidden sm:inline">Empresas</span><span className="sm:hidden">Emp</span></TabsTrigger>
           <TabsTrigger value="agenda" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Calendar className="h-3 w-3" /><span className="hidden sm:inline">Agenda</span><span className="sm:hidden">Ag</span></TabsTrigger>
           <TabsTrigger value="tarefas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><ListTodo className="h-3 w-3" /><span className="hidden sm:inline">Tarefas</span><span className="sm:hidden">Tar</span></TabsTrigger>
           <TabsTrigger value="metas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Target className="h-3 w-3" />Metas</TabsTrigger>
+          <TabsTrigger value="cadastro" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><ClipboardCheck className="h-3 w-3" /><span className="hidden sm:inline">Cadastro</span><span className="sm:hidden">Cad</span></TabsTrigger>
           <TabsTrigger value="nps" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Star className="h-3 w-3" />NPS</TabsTrigger>
           <TabsTrigger value="csat" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><SmilePlus className="h-3 w-3" />CSAT</TabsTrigger>
         </TabsList>
@@ -1734,6 +1737,10 @@ const DashboardMetrics = ({
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="cadastro" className="mt-2 sm:mt-3">
+          <CadastroHealthPanel />
         </TabsContent>
 
         <TabsContent value="nps" className="mt-2 sm:mt-3 space-y-3">
