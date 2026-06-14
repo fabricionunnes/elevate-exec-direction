@@ -50,6 +50,7 @@ export const CopilotPanel = () => {
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [filterStaff, setFilterStaff] = useState<string>("all");
   const [filterDate, setFilterDate] = useState<string>("");
+  const [filterCompany, setFilterCompany] = useState<string>("all");
 
   const isSupervisor = isMaster || currentStaff?.role === "admin";
 
@@ -127,13 +128,20 @@ export const CopilotPanel = () => {
     return ids.map((id) => ({ id, name: staffNames[id] || "—" })).sort((a, b) => a.name.localeCompare(b.name));
   }, [suggestions, staffNames]);
 
+  const companyOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    suggestions.forEach((s) => { if (s.company_id) map.set(s.company_id, s.onboarding_companies?.name || "Cliente"); });
+    return [...map.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [suggestions]);
+
   const filtered = useMemo(() => {
     return suggestions.filter((s) => {
       if (filterStaff !== "all" && s.assigned_staff_id !== filterStaff) return false;
       if (filterDate && s.suggestion_date !== filterDate) return false;
+      if (filterCompany !== "all" && s.company_id !== filterCompany) return false;
       return true;
     });
-  }, [suggestions, filterStaff, filterDate]);
+  }, [suggestions, filterStaff, filterDate, filterCompany]);
 
   const grouped = useMemo(() => {
     const order = { alta: 0, media: 1, baixa: 2 } as Record<string, number>;
@@ -201,6 +209,21 @@ export const CopilotPanel = () => {
             >
               <option value="all">Todos</option>
               {staffOptions.map((o) => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {companyOptions.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground">Empresa:</span>
+            <select
+              value={filterCompany}
+              onChange={(e) => setFilterCompany(e.target.value)}
+              className="h-8 rounded-md border bg-background px-2 text-xs max-w-[200px]"
+            >
+              <option value="all">Todas</option>
+              {companyOptions.map((o) => (
                 <option key={o.id} value={o.id}>{o.name}</option>
               ))}
             </select>
