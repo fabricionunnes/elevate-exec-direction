@@ -4,8 +4,10 @@ import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Sparkles, CheckCircle2, X, ListPlus, CalendarClock, MessageSquare, ClipboardList, GraduationCap, Package, Target } from "lucide-react";
+import { Loader2, Sparkles, CheckCircle2, ListPlus, CalendarClock, MessageSquare, ClipboardList, GraduationCap, Package, Target } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Suggestion {
@@ -22,6 +24,7 @@ interface Suggestion {
   source_signals: any;
   status: string;
   task_id: string | null;
+  generates_result?: boolean | null;
   onboarding_companies?: { name: string } | null;
 }
 
@@ -51,6 +54,11 @@ export const CopilotPanel = () => {
   const [filterStaff, setFilterStaff] = useState<string>("all");
   const [filterDate, setFilterDate] = useState<string>("");
   const [filterCompany, setFilterCompany] = useState<string>("all");
+  // Dialog de conclusão
+  const [concludeSug, setConcludeSug] = useState<Suggestion | null>(null);
+  const [concludeNote, setConcludeNote] = useState("");
+  const [concludeResult, setConcludeResult] = useState("");
+  const [concludeSaving, setConcludeSaving] = useState(false);
 
   const isSupervisor = isMaster || currentStaff?.role === "admin";
 
@@ -82,13 +90,26 @@ export const CopilotPanel = () => {
     fetchSuggestions();
   }, []);
 
-  const setStatus = async (s: Suggestion, status: string) => {
-    setBusy((b) => ({ ...b, [s.id]: true }));
-    const { error } = await supabase.from("cs_action_suggestions").update({ status, updated_at: new Date().toISOString() }).eq("id", s.id);
-    setBusy((b) => ({ ...b, [s.id]: false }));
-    if (error) { toast.error("Não foi possível atualizar."); return; }
-    setSuggestions((prev) => (status === "dismissed" ? prev.filter((x) => x.id !== s.id) : prev.map((x) => (x.id === s.id ? { ...x, status } : x))));
-    toast.success(status === "done" ? "Marcada como concluída." : "Atualizada.");
+  const openConclude = (s: Suggestion) => {
+    setConcludeSug(s);
+    setConcludeNote("");
+    setConcludeResult("");
+  };
+
+  const submitConclude = async () => {
+    if (!concludeSug) return;
+    if (!concludeNote.trim()) { toast.error("Diga o que foi feito."); return; }
+    if (concludeSug.generates_result && !concludeResult.trim()) { toast.error("Essa ação gera resultado — informe o resultado."); return; }
+    setConcludeSaving(true);
+    const { error } = await supabase
+      .from("cs_action_suggestions")
+      .update({ status: "done", completion_note: concludeNote, completion_result: concludeResult || null, completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq("id", concludeSug.id);
+    setConcludeSaving(false);
+    if (error) { toast.error("Não foi possível concluir."); return; }
+    setSuggestions((prev) => prev.map((x) => (x.id === concludeSug.id ? { ...x, status: "done" } : x)));
+    toast.success("Ação concluída.");
+    setConcludeSug(null);
   };
 
   const createTask = async (s: Suggestion) => {
@@ -273,11 +294,8 @@ export const CopilotPanel = () => {
                                 <ListPlus className="h-3 w-3" /> Criar tarefa
                               </Button>
                             )}
-                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" disabled={busy[s.id]} onClick={() => setStatus(s, "done")}>
+                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" disabled={busy[s.id]} onClick={() => openConclude(s)}>
                               <CheckCircle2 className="h-3 w-3" /> Concluir
-                            </Button>
-                            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-muted-foreground" disabled={busy[s.id]} onClick={() => setStatus(s, "dismissed")}>
-                              <X className="h-3 w-3" /> Dispensar
                             </Button>
                           </div>
                         )}
@@ -290,6 +308,41 @@ export const CopilotPanel = () => {
           })}
         </div>
       ))}
+
+      <Dialog open={!!concludeSug} onOpenChange={(o) => !o && setConcludeSug(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Concluir ação
+            </DialogTitle>
+          </DialogHeader>
+          {concludeSug && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">{concludeSug.title}</p>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">O que foi feito? <span className="text-red-500">*</span></label>
+                <Textarea value={concludeNote} onChange={(e) => setConcludeNote(e.target.value)} rows={3} placeholder="Descreva o que você fez nessa ação" className="text-sm" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">
+                  Resultado {concludeSug.generates_result ? <span className="text-red-500">*</span> : <span className="text-muted-foreground">(se houver)</span>}
+                </label>
+                <Textarea value={concludeResult} onChange={(e) => setConcludeResult(e.target.value)} rows={3} placeholder={concludeSug.generates_result ? "Ex: 2 fechamentos, R$ 4.000 recuperados, reunião agendada para 18/06" : "Resultado obtido, se houver"} className="text-sm" />
+                {concludeSug.generates_result && (
+                  <p className="text-[10px] text-amber-600">Essa ação gera resultado de negócio — informe o que saiu dela.</p>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConcludeSug(null)} disabled={concludeSaving}>Cancelar</Button>
+            <Button onClick={submitConclude} disabled={concludeSaving} className="gap-1">
+              {concludeSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              Concluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
