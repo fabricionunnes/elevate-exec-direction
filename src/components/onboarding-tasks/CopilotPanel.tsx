@@ -48,13 +48,15 @@ export const CopilotPanel = () => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [staffNames, setStaffNames] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [filterStaff, setFilterStaff] = useState<string>("all");
+  const [filterDate, setFilterDate] = useState<string>("");
 
   const isSupervisor = isMaster || currentStaff?.role === "admin";
 
   const fetchSuggestions = async () => {
     setLoading(true);
     try {
-      const since = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
+      const since = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
       const { data } = await supabase
         .from("cs_action_suggestions")
         .select("*, onboarding_companies(name)")
@@ -93,6 +95,8 @@ export const CopilotPanel = () => {
     setBusy((b) => ({ ...b, [s.id]: true }));
     try {
       const description = [s.rationale, s.next_step].filter(Boolean).join("\n\n");
+      // Prazo padrão: 3 dias. tags[0]=nome da fase na jornada, tags[1]=ordem, tags[2]=marcador
+      const due = new Date(); due.setDate(due.getDate() + 3);
       const { data: task, error } = await supabase
         .from("onboarding_tasks")
         .insert({
@@ -102,7 +106,8 @@ export const CopilotPanel = () => {
           status: "pending",
           priority: priorityToTask(s.priority),
           responsible_staff_id: s.assigned_staff_id,
-          tags: ["copiloto"],
+          due_date: due.toISOString().split("T")[0],
+          tags: ["Ações do Copiloto", "999", "copiloto"],
         })
         .select("id")
         .single();
@@ -117,10 +122,23 @@ export const CopilotPanel = () => {
     }
   };
 
+  const staffOptions = useMemo(() => {
+    const ids = [...new Set(suggestions.map((s) => s.assigned_staff_id).filter(Boolean) as string[])];
+    return ids.map((id) => ({ id, name: staffNames[id] || "—" })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [suggestions, staffNames]);
+
+  const filtered = useMemo(() => {
+    return suggestions.filter((s) => {
+      if (filterStaff !== "all" && s.assigned_staff_id !== filterStaff) return false;
+      if (filterDate && s.suggestion_date !== filterDate) return false;
+      return true;
+    });
+  }, [suggestions, filterStaff, filterDate]);
+
   const grouped = useMemo(() => {
     const order = { alta: 0, media: 1, baixa: 2 } as Record<string, number>;
     const byCompany = new Map<string, Suggestion[]>();
-    suggestions.forEach((s) => {
+    filtered.forEach((s) => {
       const name = s.onboarding_companies?.name || "Cliente";
       const a = byCompany.get(name) || [];
       a.push(s);
@@ -130,9 +148,9 @@ export const CopilotPanel = () => {
       name,
       items: items.sort((a, b) => (order[a.priority] ?? 1) - (order[b.priority] ?? 1)),
     }));
-  }, [suggestions]);
+  }, [filtered]);
 
-  const pendingCount = suggestions.filter((s) => s.status === "pending").length;
+  const pendingCount = filtered.filter((s) => s.status === "pending").length;
 
   if (loading) {
     return <Card><CardContent className="flex items-center justify-center h-[200px]"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></CardContent></Card>;
@@ -158,6 +176,37 @@ export const CopilotPanel = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Filtros */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground">Data:</span>
+          <input
+            type="date"
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+            className="h-8 rounded-md border bg-background px-2 text-xs"
+          />
+          {filterDate && (
+            <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setFilterDate("")}>Limpar</Button>
+          )}
+        </div>
+        {isSupervisor && staffOptions.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground">Consultor:</span>
+            <select
+              value={filterStaff}
+              onChange={(e) => setFilterStaff(e.target.value)}
+              className="h-8 rounded-md border bg-background px-2 text-xs"
+            >
+              <option value="all">Todos</option>
+              {staffOptions.map((o) => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
 
       {grouped.length === 0 && (
         <p className="text-center text-sm text-muted-foreground py-8">Nenhuma ação sugerida no momento.</p>
