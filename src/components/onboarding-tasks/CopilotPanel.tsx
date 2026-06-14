@@ -4,8 +4,10 @@ import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Sparkles, CheckCircle2, X, ListPlus, CalendarClock, MessageSquare, ClipboardList, GraduationCap, Package, Target } from "lucide-react";
+import { Loader2, Sparkles, CheckCircle2, X, ListPlus, CalendarClock, MessageSquare, ClipboardList, GraduationCap, Package, Target, Send } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Suggestion {
@@ -48,6 +50,13 @@ export const CopilotPanel = () => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [staffNames, setStaffNames] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<Record<string, boolean>>({});
+  // Dialog "Enviar no grupo"
+  const [groupOpen, setGroupOpen] = useState(false);
+  const [groupLoading, setGroupLoading] = useState(false);
+  const [groupSending, setGroupSending] = useState(false);
+  const [groupDraft, setGroupDraft] = useState("");
+  const [groupTarget, setGroupTarget] = useState<string | null>(null);
+  const [groupSug, setGroupSug] = useState<Suggestion | null>(null);
 
   const isSupervisor = isMaster || currentStaff?.role === "admin";
 
@@ -114,6 +123,42 @@ export const CopilotPanel = () => {
       toast.error("Falha ao criar tarefa: " + (e?.message || ""));
     } finally {
       setBusy((b) => ({ ...b, [s.id]: false }));
+    }
+  };
+
+  const openGroupDialog = async (s: Suggestion) => {
+    setGroupSug(s);
+    setGroupOpen(true);
+    setGroupLoading(true);
+    setGroupDraft("");
+    setGroupTarget(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("copilot-execute", { body: { suggestion_id: s.id } });
+      if (error) throw error;
+      if (!data?.has_group) { toast.error("Esse cliente não tem grupo de WhatsApp vinculado."); setGroupOpen(false); return; }
+      setGroupDraft(data.draft || "");
+      setGroupTarget(data.group_name || null);
+    } catch (e: any) {
+      toast.error("Não foi possível gerar a mensagem.");
+      setGroupOpen(false);
+    } finally {
+      setGroupLoading(false);
+    }
+  };
+
+  const sendGroup = async () => {
+    if (!groupSug || !groupDraft.trim()) return;
+    setGroupSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("copilot-execute", { body: { suggestion_id: groupSug.id, text: groupDraft, confirm: true } });
+      if (error || data?.error) throw new Error(data?.error || "erro");
+      setSuggestions((prev) => prev.map((x) => (x.id === groupSug.id ? { ...x, status: "done" } : x)));
+      toast.success(`Mensagem enviada no grupo ${data.group_name || ""}.`);
+      setGroupOpen(false);
+    } catch (e: any) {
+      toast.error("Falha ao enviar: " + (e?.message || ""));
+    } finally {
+      setGroupSending(false);
     }
   };
 
@@ -201,6 +246,9 @@ export const CopilotPanel = () => {
                                 <ListPlus className="h-3 w-3" /> Criar tarefa
                               </Button>
                             )}
+                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" disabled={busy[s.id]} onClick={() => openGroupDialog(s)}>
+                              <Send className="h-3 w-3" /> Enviar no grupo
+                            </Button>
                             <Button size="sm" variant="outline" className="h-7 text-xs gap-1" disabled={busy[s.id]} onClick={() => setStatus(s, "done")}>
                               <CheckCircle2 className="h-3 w-3" /> Concluir
                             </Button>
@@ -218,6 +266,37 @@ export const CopilotPanel = () => {
           })}
         </div>
       ))}
+
+      <Dialog open={groupOpen} onOpenChange={setGroupOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Send className="h-4 w-4 text-primary" /> Enviar no grupo via Marcelo
+            </DialogTitle>
+          </DialogHeader>
+          {groupLoading ? (
+            <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" /> Gerando a mensagem...
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {groupTarget && (
+                <p className="text-xs text-muted-foreground">
+                  Será postada no grupo <span className="font-semibold text-foreground">{groupTarget}</span> pelo Marcelo. Revise e edite antes de enviar.
+                </p>
+              )}
+              <Textarea value={groupDraft} onChange={(e) => setGroupDraft(e.target.value)} rows={10} className="text-sm" />
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setGroupOpen(false)} disabled={groupSending}>Cancelar</Button>
+            <Button onClick={sendGroup} disabled={groupLoading || groupSending || !groupDraft.trim()} className="gap-1">
+              {groupSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Enviar no grupo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
