@@ -4,7 +4,17 @@
 // MENOR cria a offer. Transceivers de áudio+vídeo são criados na primeira
 // negociação; ligar/desligar câmera usa replaceTrack (sem renegociar).
 import { useTeamStore } from '../store/useTeamStore'
+import { CameraFx, CameraBg } from './cameraFx'
 import type { TeamRealtime, RtcSignal } from './realtime'
+
+const BG_KEY = 'office-camera-bg'
+function loadBg(): CameraBg {
+  try {
+    const v = localStorage.getItem(BG_KEY)
+    if (v) return JSON.parse(v) as CameraBg
+  } catch { /* ignore */ }
+  return { kind: 'none' }
+}
 
 const ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -24,7 +34,10 @@ export class CallManager {
   private realtime: TeamRealtime
   private peers = new Map<string, PeerEntry>()
   private localStream: MediaStream | null = null
-  private camTrack: MediaStreamTrack | null = null
+  private camTrack: MediaStreamTrack | null = null // o que é transmitido (cru OU processado)
+  private rawCamTrack: MediaStreamTrack | null = null // câmera crua (antes do fundo)
+  private camFx: CameraFx | null = null
+  private bgMode: CameraBg = loadBg()
   private screenTrack: MediaStreamTrack | null = null
   private unsubscribe: (() => void) | null = null
   /** watchdog: reconecta pares que ficaram presos (offer/ICE perdidos) */
@@ -323,12 +336,16 @@ export class CallManager {
     if (call.screenOn) return // pare o compartilhamento de tela primeiro
 
     if (call.camOn && this.camTrack) {
-      this.camTrack.stop()
+      if (this.camTrack !== this.rawCamTrack) this.camTrack.stop()
       this.localStream.removeTrack(this.camTrack)
       for (const { pc } of this.peers.values()) {
         const sender = pc.getSenders().find((s) => s.track === this.camTrack)
         if (sender) await sender.replaceTrack(null)
       }
+      this.camFx?.stop()
+      this.camFx = null
+      this.rawCamTrack?.stop()
+      this.rawCamTrack = null
       this.camTrack = null
       useTeamStore.getState().setCall({ camOn: false })
       await this.realtime.updateCallState({ camOn: false })
@@ -338,7 +355,9 @@ export class CallManager {
     const camStream = await navigator.mediaDevices.getUserMedia({
       video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } },
     })
-    this.camTrack = camStream.getVideoTracks()[0]
+    this.rawCamTrack = camStream.getVideoTracks()[0]
+    // Aplica o fundo escolhido (blur/imagem); 'none' = câmera crua
+    this.camTrack = await this.buildCamTrack()
     this.localStream.addTrack(this.camTrack)
     for (const { pc } of this.peers.values()) {
       const videoTx = pc.getTransceivers().find(
@@ -348,6 +367,49 @@ export class CallManager {
     }
     useTeamStore.getState().setCall({ camOn: true })
     await this.realtime.updateCallState({ camOn: true })
+  }
+
+  /** Monta a track da câmera com (ou sem) o fundo configurado. */
+  private async buildCamTrack(): Promise<MediaStreamTrack> {
+    if (!this.rawCamTrack) throw new Error('sem câmera')
+    this.camFx?.stop()
+    this.camFx = null
+    if (this.bgMode.kind === 'none') return this.rawCamTrack
+    this.camFx = new CameraFx(this.rawCamTrack, this.bgMode)
+    return await this.camFx.start()
+  }
+
+  /** Troca o fundo da câmera (blur / imagem / nenhum). Aplica ao vivo. */
+  async setCameraBackground(mode: CameraBg) {
+    this.bgMode = mode
+    try {
+      localStorage.setItem(BG_KEY, JSON.stringify(mode))
+    } catch { /* ignore */ }
+    const { call } = useTeamStore.getState()
+    if (!call.camOn || !this.localStream || !this.rawCamTrack) return // aplica quando ligar a câmera
+
+    // Caso simples: já tem FX rodando e só mudou o modo (sem trocar a track)
+    if (this.camFx && mode.kind !== 'none') {
+      this.camFx.setMode(mode)
+      return
+    }
+
+    // Remonta a track (none↔fx) e substitui no preview e nos peers
+    const old = this.camTrack
+    const next = await this.buildCamTrack()
+    if (old && old !== this.rawCamTrack) old.stop()
+    if (old) this.localStream.removeTrack(old)
+    this.camTrack = next
+    this.localStream.addTrack(next)
+    for (const { pc } of this.peers.values()) {
+      const sender = pc.getSenders().find((s) => s.track?.kind === 'video')
+      if (sender) await sender.replaceTrack(next)
+    }
+    useTeamStore.getState().setCall({ localStream: this.localStream })
+  }
+
+  getCameraBackground(): CameraBg {
+    return this.bgMode
   }
 
   async leaveCall() {
@@ -373,6 +435,12 @@ export class CallManager {
     if (this.mixCtx) {
       void this.mixCtx.close().catch(() => undefined)
       this.mixCtx = null
+    }
+    this.camFx?.stop()
+    this.camFx = null
+    if (this.rawCamTrack) {
+      this.rawCamTrack.stop()
+      this.rawCamTrack = null
     }
     if (this.camTrack) {
       this.camTrack.stop()

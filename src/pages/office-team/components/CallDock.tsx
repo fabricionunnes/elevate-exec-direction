@@ -5,8 +5,112 @@ import { useEffect, useRef, useState } from 'react'
 import { useTeamStore, RemotePlayerState } from '../store/useTeamStore'
 import { roomAt, OfficeRoom } from '../lib/rooms'
 import { MeetingRecorder, saveRecording } from '../lib/recording'
+import { preloadCameraFx } from '../lib/cameraFx'
+import type { CameraBg } from '../lib/cameraFx'
 import type { CallManager } from '../lib/webrtc'
 import type { TeamRealtime } from '../lib/realtime'
+
+// Fundos prontos gerados localmente (gradientes — sem asset externo)
+function gradientDataUrl(stops: [number, string][]): string {
+  const c = document.createElement('canvas')
+  c.width = 640
+  c.height = 480
+  const g = c.getContext('2d')!
+  const grad = g.createLinearGradient(0, 0, 640, 480)
+  for (const [o, col] of stops) grad.addColorStop(o, col)
+  g.fillStyle = grad
+  g.fillRect(0, 0, 640, 480)
+  return c.toDataURL('image/png')
+}
+
+/** Painel de escolha de fundo da câmera (nenhum / desfoque / imagem / upload). */
+function BackgroundPicker({
+  current,
+  onPick,
+  onClose,
+}: {
+  current: CameraBg['kind']
+  onPick: (mode: CameraBg) => void
+  onClose: () => void
+}) {
+  const presets = useRef<{ label: string; url: string }[]>([])
+  if (presets.current.length === 0) {
+    presets.current = [
+      { label: 'UNV Navy', url: gradientDataUrl([[0, '#0D2B5E'], [1, '#13294a']]) },
+      { label: 'Grafite', url: gradientDataUrl([[0, '#2a2d33'], [1, '#0c0d10']]) },
+      { label: 'Quente', url: gradientDataUrl([[0, '#3a2a1a'], [1, '#7a5c3e']]) },
+    ]
+  }
+  const fileRef = useRef<HTMLInputElement>(null!)
+  const onFile = (f: File | undefined) => {
+    if (!f) return
+    onPick({ kind: 'image', url: URL.createObjectURL(f) })
+  }
+  const opt: React.CSSProperties = {
+    borderRadius: '10px',
+    border: '1px solid rgba(255,255,255,0.2)',
+    cursor: 'pointer',
+    fontSize: '12px',
+    color: '#fff',
+    padding: '8px 10px',
+    background: 'rgba(255,255,255,0.08)',
+  }
+  return (
+    <div
+      style={{
+        background: 'rgba(10,10,20,0.95)',
+        backdropFilter: 'blur(14px)',
+        border: '1px solid rgba(255,255,255,0.16)',
+        borderRadius: '14px',
+        padding: '12px',
+        marginBottom: '4px',
+        width: '300px',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <span style={{ fontSize: '12px', fontWeight: 700, color: '#fff' }}>🪄 Fundo da câmera</span>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '14px' }}>✕</button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+        <button onClick={() => onPick({ kind: 'none' })} style={{ ...opt, outline: current === 'none' ? '2px solid #FFD700' : 'none' }}>
+          Nenhum
+        </button>
+        <button onClick={() => onPick({ kind: 'blur' })} style={{ ...opt, outline: current === 'blur' ? '2px solid #FFD700' : 'none' }}>
+          🌫 Desfoque
+        </button>
+        {presets.current.map((p) => (
+          <button
+            key={p.label}
+            onClick={() => onPick({ kind: 'image', url: p.url })}
+            style={{
+              ...opt,
+              backgroundImage: `url(${p.url})`,
+              backgroundSize: 'cover',
+              textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+              height: '44px',
+            }}
+          >
+            {p.label}
+          </button>
+        ))}
+        <button onClick={() => fileRef.current?.click()} style={opt}>
+          🖼 Enviar imagem
+        </button>
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={(e) => onFile(e.target.files?.[0])}
+      />
+      <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>
+        Primeira aplicação pode levar uns segundos (carrega o modelo).
+      </div>
+    </div>
+  )
+}
 
 const HEAR_NEAR = 2.5 // até aqui, volume 1 em área aberta
 const HEAR_FAR = 11 // a partir daqui, silêncio em área aberta
@@ -345,11 +449,18 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
   const [volumes, setVolumes] = useState<Record<string, number>>({})
   const [expanded, setExpanded] = useState(false)
   const [focusedId, setFocusedId] = useState<string | null>(null)
+  const [bgPanelOpen, setBgPanelOpen] = useState(false)
+  const [bgKind, setBgKind] = useState(() => callManager.getCameraBackground().kind)
 
   // Fechou o modo reunião → limpa o destaque
   useEffect(() => {
     if (!expanded && focusedId) setFocusedId(null)
   }, [expanded, focusedId])
+
+  // Pré-carrega o modelo de segmentação quando a câmera liga (1ª troca de fundo rápida)
+  useEffect(() => {
+    if (call.camOn) preloadCameraFx()
+  }, [call.camOn])
 
   // Deep-link de sala de reunião: ao conectar a voz, abre o modo reunião
   const meetingViewRequested = useTeamStore((s) => s.meetingViewRequested)
@@ -710,6 +821,18 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
         </div>
       )}
 
+      {/* Painel de fundo da câmera */}
+      {bgPanelOpen && call.camOn && (
+        <BackgroundPicker
+          current={bgKind}
+          onPick={(mode) => {
+            setBgKind(mode.kind)
+            void callManager.setCameraBackground(mode)
+          }}
+          onClose={() => setBgPanelOpen(false)}
+        />
+      )}
+
       {/* Dock — base central */}
       <div
         style={{
@@ -835,6 +958,15 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
                   )}
                 </span>
               </DockButton>
+              {call.camOn && !call.screenOn && (
+                <DockButton
+                  onClick={() => setBgPanelOpen((v) => !v)}
+                  active={bgPanelOpen}
+                  title="Fundo da câmera — desfocar ou trocar por uma imagem"
+                >
+                  🪄
+                </DockButton>
+              )}
               <DockButton
                 onClick={() => run(() => callManager.toggleScreenShare())}
                 active={call.screenOn}
