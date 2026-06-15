@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Sparkles, CheckCircle2, ListPlus, CalendarClock, MessageSquare, ClipboardList, GraduationCap, Package, Target } from "lucide-react";
+import { Loader2, Sparkles, CheckCircle2, X, ListPlus, CalendarClock, MessageSquare, ClipboardList, GraduationCap, Package, Target } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Suggestion {
@@ -89,6 +89,15 @@ export const CopilotPanel = () => {
   useEffect(() => {
     fetchSuggestions();
   }, []);
+
+  const dismiss = async (s: Suggestion) => {
+    setBusy((b) => ({ ...b, [s.id]: true }));
+    const { error } = await supabase.from("cs_action_suggestions").update({ status: "dismissed", updated_at: new Date().toISOString() }).eq("id", s.id);
+    setBusy((b) => ({ ...b, [s.id]: false }));
+    if (error) { toast.error("Não foi possível descartar."); return; }
+    setSuggestions((prev) => prev.filter((x) => x.id !== s.id));
+    toast.success("Ação descartada.");
+  };
 
   const openConclude = (s: Suggestion) => {
     setConcludeSug(s);
@@ -297,6 +306,11 @@ export const CopilotPanel = () => {
                             <Button size="sm" variant="outline" className="h-7 text-xs gap-1" disabled={busy[s.id]} onClick={() => openConclude(s)}>
                               <CheckCircle2 className="h-3 w-3" /> Concluir
                             </Button>
+                            {isSupervisor && (
+                              <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-muted-foreground" disabled={busy[s.id]} onClick={() => dismiss(s)}>
+                                <X className="h-3 w-3" /> Descartar
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>
