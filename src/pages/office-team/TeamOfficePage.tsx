@@ -28,6 +28,7 @@ import MusicPlayer from './components/MusicPlayer'
 import CoffeeChat from './components/CoffeeChat'
 import ScreenShareTvs from './components/ScreenShareTv'
 import TourGuide from './components/TourGuide'
+import CleaningLady from './components/CleaningLady'
 import { fetchInMeetingNow, fetchAgendaToday, AgendaItem } from './lib/agenda'
 import { playMeetingPing } from './lib/sfx'
 import {
@@ -570,6 +571,7 @@ export default function TeamOfficePage() {
           <RemotePlayers />
           <MarceloNpc />
           <AgentNpcs />
+          <CleaningLady />
           <DataTvs agendaToday={agendaToday} />
           <ScreenShareTvs />
           <CoffeeChat />

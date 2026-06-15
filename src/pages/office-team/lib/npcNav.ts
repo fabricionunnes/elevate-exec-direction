@@ -27,6 +27,22 @@ export function npcObstacles(fromX: number, fromZ: number): Wall[] {
   return walls.concat(furniture, people)
 }
 
+/** Obstáculos da faxineira: igual aos demais NPCs, MAS com cada sala
+ * (reunião/setor/pessoal) tampada por inteiro — ela só anda no corredor/área
+ * aberta e nunca entra numa sala (não atrapalha reunião nem sala privada). */
+export function cleaningObstacles(fromX: number, fromZ: number): Wall[] {
+  const state = useTeamStore.getState()
+  const base = npcObstacles(fromX, fromZ)
+  const roomBoxes: Wall[] = []
+  for (const r of state.rooms) {
+    if (r.roomType === 'lounge') continue // lounge é aberto, ela pode passar
+    const hw = r.width / 2 + 0.2
+    const hd = r.depth / 2 + 0.2
+    roomBoxes.push({ minX: r.x - hw, maxX: r.x + hw, minZ: r.z - hd, maxZ: r.z + hd })
+  }
+  return base.concat(roomBoxes)
+}
+
 /** Repulsão suave de pessoas próximas (aplicada ao passo do NPC andando). */
 export function personAvoidance(x: number, z: number): [number, number] {
   const state = useTeamStore.getState()
