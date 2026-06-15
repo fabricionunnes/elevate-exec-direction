@@ -39,7 +39,7 @@ import {
 } from './store/useTeamStore'
 import { TeamRealtime } from './lib/realtime'
 import { CallManager } from './lib/webrtc'
-import { ensurePersonalRoom, personalOwnerSeat, roomAt, isEffectivelyLocked } from './lib/rooms'
+import { ensurePersonalRoom, personalOwnerSeat, roomAt, isEffectivelyLocked, setRoomLock } from './lib/rooms'
 
 function SceneLights() {
   return (
@@ -443,6 +443,26 @@ export default function TeamOfficePage() {
     st.setPendingTeleport([room.x, room.z]) // centro da sala de reunião
     st.setMeetingViewRequested(true) // CallDock abre o modo reunião ao conectar
   }, [me, rooms])
+
+  // Auto-cura de trava presa: se EU sou quem trancou uma sala mas não estou
+  // mais dentro dela (saí, ou a auto-destrava falhou num fechamento de aba),
+  // destranco. Só o dono da trava age → sem corrida entre clientes.
+  useEffect(() => {
+    if (!me || !managers) return
+    const iv = setInterval(() => {
+      const st = useTeamStore.getState()
+      const [px, , pz] = st.playerPosition
+      const myRoom = roomAt(px, pz, st.rooms)
+      for (const r of st.rooms) {
+        if (r.isLocked && r.lockedBy === me.id && myRoom?.id !== r.id) {
+          void setRoomLock(r.id, false, me.id).then((ok) => {
+            if (ok) managers.realtime.announceRoomsChanged()
+          })
+        }
+      }
+    }, 4000)
+    return () => clearInterval(iv)
+  }, [me, managers])
 
   // Garante a sala pessoal do usuário e já o coloca SENTADO na cadeira dele
   // (uma vez, depois que as salas carregam) — pulado se veio por deep-link de sala
