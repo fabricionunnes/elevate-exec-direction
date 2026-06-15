@@ -351,6 +351,16 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
     if (!expanded && focusedId) setFocusedId(null)
   }, [expanded, focusedId])
 
+  // Deep-link de sala de reunião: ao conectar a voz, abre o modo reunião
+  const meetingViewRequested = useTeamStore((s) => s.meetingViewRequested)
+  const setMeetingViewRequested = useTeamStore((s) => s.setMeetingViewRequested)
+  useEffect(() => {
+    if (meetingViewRequested && call.joined) {
+      setExpanded(true)
+      setMeetingViewRequested(false)
+    }
+  }, [meetingViewRequested, call.joined, setMeetingViewRequested])
+
   // Destrava o áudio do sino e pede permissão de notificação de sistema
   // no primeiro gesto do usuário (autoplay/notification policies)
   useEffect(() => {
@@ -623,15 +633,24 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
             if (focused) {
               const others = participants.filter((p) => p.id !== focused.id)
               return (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0 }}>
-                  {/* Destaque: clique pra voltar ao grid */}
-                  <div style={{ flex: 1, minHeight: 0 }}>
+                // Destaque ocupa o máximo; miniaturas na coluna lateral direita
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '12px', minHeight: 0 }}>
+                  <div style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
                     <GridTile {...focused} muted fill fit="contain" onClick={() => setFocusedId(null)} />
                   </div>
                   {others.length > 0 && (
-                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexShrink: 0 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                        flexShrink: 0,
+                        width: '210px',
+                        overflowY: 'auto',
+                      }}
+                    >
                       {others.map((p) => (
-                        <div key={p.id} style={{ width: '176px' }}>
+                        <div key={p.id} style={{ flexShrink: 0 }}>
                           <GridTile {...p} muted onClick={() => setFocusedId(p.id)} />
                         </div>
                       ))}

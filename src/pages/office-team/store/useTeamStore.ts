@@ -150,6 +150,8 @@ interface TeamState {
 
   /** modo foco local (F): silencia cutucadas com auto-resposta */
   focused: boolean
+  /** deep-link de sala de reunião pediu pra abrir o modo reunião ao chegar */
+  meetingViewRequested: boolean
   /** tour de boas-vindas: destino atual do MAX + fala do balão */
   tour: { x: number; z: number; text: string } | null
   /** aceno: agente chamado até alguém (sincronizado por broadcast pra todos) */
@@ -209,6 +211,7 @@ interface TeamState {
   removeCutscene: (id: string) => void
   setVoiceBlocked: (blocked: boolean) => void
   setFocused: (on: boolean) => void
+  setMeetingViewRequested: (on: boolean) => void
   setTour: (t: { x: number; z: number; text: string } | null) => void
   setAgentSummon: (s: TeamState['agentSummon']) => void
   setSaleEvent: (s: { lead: string; value: number; by: string; ts: number } | null) => void
@@ -246,6 +249,7 @@ export const useTeamStore = create<TeamState>((set) => ({
   cutscenes: [],
   voiceBlocked: false,
   focused: false,
+  meetingViewRequested: false,
   tour: null,
   agentSummon: null,
   saleEvent: null,
@@ -358,6 +362,7 @@ export const useTeamStore = create<TeamState>((set) => ({
     set((prev) => ({ cutscenes: prev.cutscenes.filter((c) => c.id !== id) })),
   setVoiceBlocked: (blocked) => set({ voiceBlocked: blocked }),
   setFocused: (on) => set({ focused: on }),
+  setMeetingViewRequested: (on) => set({ meetingViewRequested: on }),
   setTour: (t) => set({ tour: t }),
   setAgentSummon: (s) => set({ agentSummon: s }),
   setSaleEvent: (s) => set({ saleEvent: s }),

@@ -42,6 +42,18 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
   const { isMaster } = useStaffPermissions()
   const [inviteBusy, setInviteBusy] = useState(false)
 
+  // Link público da sala de reunião atual (cola no Google Agenda → cai dentro)
+  const copyMeetingLink = async () => {
+    if (!currentRoom) return
+    const link = `${window.location.origin}/#/onboarding-tasks/unv-office?room=${currentRoom.id}`
+    try {
+      await navigator.clipboard.writeText(link)
+      useTeamStore.getState().addToast('🔗 Link da reunião copiado — cole no Google Agenda', 'in')
+    } catch {
+      window.prompt('Copie o link da reunião:', link)
+    }
+  }
+
   // Convite de visitante: gera token de 24h e copia o link
   const inviteGuest = async () => {
     if (!me || inviteBusy) return
@@ -196,6 +208,15 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
         {isMaster && (
           <button onClick={() => setRecordingsOpen(true)} style={btnStyle}>
             🎞️ Gravações
+          </button>
+        )}
+        {currentRoom?.roomType === 'meeting' && (
+          <button
+            onClick={() => void copyMeetingLink()}
+            style={btnStyle}
+            title="Copia o link desta sala — cole no Google Agenda; ao clicar, o convidado entra direto aqui"
+          >
+            🔗 Copiar link da reunião
           </button>
         )}
         {isMaster && (

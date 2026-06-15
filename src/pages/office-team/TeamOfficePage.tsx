@@ -426,12 +426,38 @@ export default function TeamOfficePage() {
     }
   }, [managers])
 
+  // Deep-link de sala de reunião (?room=ID): entra DIRETO na sala e abre o
+  // modo reunião — pro link colado no Google Agenda cair dentro da sala.
+  const roomDeepLinkDone = useRef(false)
+  useEffect(() => {
+    if (!me || rooms.length === 0 || roomDeepLinkDone.current) return
+    const hashSearch = window.location.hash.split('?')[1] ?? ''
+    const roomId =
+      new URLSearchParams(hashSearch).get('room') ?? new URLSearchParams(window.location.search).get('room')
+    if (!roomId) return
+    const room = rooms.find((r) => r.id === roomId)
+    if (!room) return
+    roomDeepLinkDone.current = true
+    const st = useTeamStore.getState()
+    st.setPendingSeat(null)
+    st.setPendingTeleport([room.x, room.z]) // centro da sala de reunião
+    st.setMeetingViewRequested(true) // CallDock abre o modo reunião ao conectar
+  }, [me, rooms])
+
   // Garante a sala pessoal do usuário e já o coloca SENTADO na cadeira dele
-  // (uma vez, depois que as salas carregam)
+  // (uma vez, depois que as salas carregam) — pulado se veio por deep-link de sala
   useEffect(() => {
     if (!me || !managers || rooms.length === 0 || personalRoomChecked.current) return
     personalRoomChecked.current = true
     if (!me.canHavePersonalRoom) return
+    // Veio por link de reunião? Não sobrescreve o spawn dentro da sala.
+    const hashSearch = window.location.hash.split('?')[1] ?? ''
+    if (new URLSearchParams(hashSearch).get('room')) {
+      void ensurePersonalRoom(me.id, me.name, me.color, rooms).then((room) => {
+        if (room && !rooms.some((r) => r.id === room.id)) managers.realtime.announceRoomsChanged()
+      })
+      return
+    }
     void ensurePersonalRoom(me.id, me.name, me.color, rooms).then((room) => {
       if (!room) return
       if (!rooms.some((r) => r.id === room.id)) {
