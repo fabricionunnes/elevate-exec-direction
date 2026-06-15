@@ -385,8 +385,10 @@ export class CallManager {
     try {
       localStorage.setItem(BG_KEY, JSON.stringify(mode))
     } catch { /* ignore */ }
-    const { call } = useTeamStore.getState()
-    if (!call.camOn || !this.localStream || !this.rawCamTrack) return // aplica quando ligar a câmera
+    const st = useTeamStore.getState()
+    if (!st.call.camOn || !this.localStream || !this.rawCamTrack) return // aplica quando ligar a câmera
+
+    if (mode.kind !== 'none') st.addToast('🪄 Aplicando fundo...', 'in')
 
     // Caso simples: já tem FX rodando e só mudou o modo (sem trocar a track)
     if (this.camFx && mode.kind !== 'none') {
@@ -406,6 +408,17 @@ export class CallManager {
       if (sender) await sender.replaceTrack(next)
     }
     useTeamStore.getState().setCall({ localStream: this.localStream })
+
+    // Feedback: o modelo carregou e o efeito está de fato no ar?
+    if (mode.kind !== 'none') {
+      if (this.camFx?.usingModel) {
+        useTeamStore.getState().addToast('🪄 Fundo aplicado', 'in')
+      } else {
+        useTeamStore
+          .getState()
+          .addToast('Não consegui carregar o fundo virtual neste navegador/rede — segue sem efeito', 'out')
+      }
+    }
   }
 
   getCameraBackground(): CameraBg {

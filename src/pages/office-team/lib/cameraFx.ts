@@ -28,14 +28,23 @@ async function getSegmenter(): Promise<Segmenter | null> {
       try {
         const vision = await import(/* @vite-ignore */ `${VISION_CDN}/vision_bundle.mjs`)
         const fileset = await vision.FilesetResolver.forVisionTasks(`${VISION_CDN}/wasm`)
-        return (await vision.ImageSegmenter.createFromOptions(fileset, {
-          baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
-          runningMode: 'VIDEO',
-          outputConfidenceMasks: true,
-          outputCategoryMask: false,
-        })) as Segmenter
+        const make = (delegate: 'GPU' | 'CPU') =>
+          vision.ImageSegmenter.createFromOptions(fileset, {
+            baseOptions: { modelAssetPath: MODEL_URL, delegate },
+            runningMode: 'VIDEO',
+            outputConfidenceMasks: true,
+            outputCategoryMask: false,
+          })
+        // GPU é mais rápido, mas falha em alguns navegadores → cai pra CPU
+        try {
+          return (await make('GPU')) as Segmenter
+        } catch (gpuErr) {
+          console.warn('[cameraFx] GPU indisponível, tentando CPU:', gpuErr)
+          return (await make('CPU')) as Segmenter
+        }
       } catch (e) {
         console.warn('[cameraFx] segmentação indisponível:', e)
+        segmenterPromise = null // permite tentar de novo numa próxima
         return null
       }
     })()
@@ -63,6 +72,8 @@ export class CameraFx {
   private raf = 0
   private running = false
   private outStream: MediaStream | null = null
+  /** true se o modelo carregou e o efeito está de fato sendo aplicado */
+  usingModel = false
 
   constructor(raw: MediaStreamTrack, mode: CameraBg) {
     this.raw = raw
@@ -102,9 +113,13 @@ export class CameraFx {
 
     if (this.mode.kind === 'image') this.loadImg(this.mode.url)
     this.segmenter = await getSegmenter()
-    if (!this.segmenter) return this.raw // sem modelo: vídeo cru
+    if (!this.segmenter) {
+      this.usingModel = false
+      return this.raw // sem modelo: vídeo cru
+    }
 
     this.outStream = this.out.captureStream(24)
+    this.usingModel = true
     this.running = true
     this.loop()
     return this.outStream.getVideoTracks()[0] ?? this.raw
