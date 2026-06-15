@@ -227,6 +227,10 @@ export class TeamRealtime {
         if (!r || r.byId === this.me.id) return
         useTeamStore.getState().setRecording({ on: r.on, byId: r.on ? r.byId : null, byName: r.on ? r.byName : null })
       })
+      .on('broadcast', { event: 'rec-stop' }, () => {
+        // Master mandou parar a gravação — quem está gravando reage (CallDock)
+        useTeamStore.getState().bumpRecStop()
+      })
       .on('broadcast', { event: 'sale' }, ({ payload }) => {
         // Disparado pelo TRIGGER do Postgres (realtime.send) quando um lead
         // vira GANHO no CRM — sino + confete pra todo mundo no escritório
@@ -342,6 +346,11 @@ export class TeamRealtime {
       event: 'rec',
       payload: { on, byId: this.me.id, byName: this.me.name },
     })
+  }
+
+  /** Master pede pra parar a gravação ativa (quem grava recebe e para). */
+  sendStopRecording() {
+    void this.channel?.send({ type: 'broadcast', event: 'rec-stop', payload: { by: this.me.id } })
   }
 
   /** Toca a campainha/cutuca outro usuário online (leva minha posição

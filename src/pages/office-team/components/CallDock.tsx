@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTeamStore, RemotePlayerState } from '../store/useTeamStore'
 import { roomAt, OfficeRoom } from '../lib/rooms'
 import { MeetingRecorder, saveRecording } from '../lib/recording'
+import { useStaffPermissions } from '@/hooks/useStaffPermissions'
 import { preloadCameraFx } from '../lib/cameraFx'
 import type { CameraBg } from '../lib/cameraFx'
 import type { CallManager } from '../lib/webrtc'
@@ -442,8 +443,14 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
   const setIncomingRing = useTeamStore((s) => s.setIncomingRing)
   const voiceBlocked = useTeamStore((s) => s.voiceBlocked)
   const recording = useTeamStore((s) => s.recording)
+  const recStopNonce = useTeamStore((s) => s.recStopNonce)
+  const { isMaster } = useStaffPermissions()
   const recorderRef = useRef<MeetingRecorder | null>(null)
   if (!recorderRef.current) recorderRef.current = new MeetingRecorder()
+  // Auto-gravação: sala onde EU estou gravando automaticamente + salas suprimidas
+  const autoRecRoomRef = useRef<string | null>(null)
+  const autoRecSuppressRef = useRef<Set<string>>(new Set())
+  const autoStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [volumes, setVolumes] = useState<Record<string, number>>({})
@@ -560,15 +567,10 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
     }
   }
 
-  const toggleRecording = () => {
+  // Inicia a gravação neste cliente (manual ou automática)
+  const startRecording = () => {
     const rec = recorderRef.current
-    if (!rec || !me) return
-    if (rec.active) {
-      void stopAndSaveRecording()
-      return
-    }
-    if (recording.on) return // outra pessoa já está gravando
-    // Participantes pro vídeo composto (sempre o estado atual)
+    if (!rec || !me || rec.active) return
     const getParticipants = () => {
       const st = useTeamStore.getState()
       const meNow = st.me
@@ -598,6 +600,25 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
     realtime.sendRecording(true)
   }
 
+  const toggleRecording = () => {
+    const rec = recorderRef.current
+    if (!rec || !me) return
+    if (rec.active) {
+      // Quem está gravando para e salva (+ suprime auto-gravação nesta sala)
+      const r = roomAt(useTeamStore.getState().playerPosition[0], useTeamStore.getState().playerPosition[2], rooms)
+      if (r) autoRecSuppressRef.current.add(r.id)
+      autoRecRoomRef.current = null
+      void stopAndSaveRecording()
+      return
+    }
+    if (recording.on) {
+      // Outra pessoa grava: master pode mandar parar
+      if (isMaster) realtime.sendStopRecording()
+      return
+    }
+    startRecording()
+  }
+
   // Saiu da chamada/escritório gravando → para e salva
   useEffect(() => {
     if (!call.joined && recorderRef.current?.active) {
@@ -605,6 +626,101 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [call.joined])
+
+  // Master mandou parar (broadcast rec-stop) → quem grava para e salva
+  useEffect(() => {
+    if (recStopNonce > 0 && recorderRef.current?.active) {
+      const st = useTeamStore.getState()
+      const r = roomAt(st.playerPosition[0], st.playerPosition[2], st.rooms)
+      if (r) autoRecSuppressRef.current.add(r.id) // não re-grava sozinho até esvaziar
+      autoRecRoomRef.current = null
+      void stopAndSaveRecording()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recStopNonce])
+
+  // ── GRAVAÇÃO AUTOMÁTICA ──────────────────────────────────────────────
+  // Sala de reunião/setor com 2+ pessoas na call → grava sozinho. Um único
+  // gravador por sala (menor user_id de staff presente). Para quando cai pra
+  // <2 ou quando o master manda parar.
+  useEffect(() => {
+    if (!call.joined || !me || me.isGuest) return
+    const tick = () => {
+      const st = useTeamStore.getState()
+      const meNow = st.me
+      if (!meNow) return
+      const [px, , pz] = st.playerPosition
+      const myRoom = roomAt(px, pz, st.rooms)
+      const auto = !!myRoom && (myRoom.roomType === 'meeting' || myRoom.roomType === 'sector')
+
+      // Quem está na MINHA sala, na call
+      let present = 0
+      const staff: string[] = []
+      if (auto) {
+        present++ // eu
+        if (!meNow.isGuest) staff.push(meNow.id)
+        for (const p of Object.values(st.remotePlayers)) {
+          if (!p.inCall) continue
+          const pr = roomAt(p.position[0], p.position[2], st.rooms)
+          if (pr?.id === myRoom!.id) {
+            present++
+            if (p.role !== 'Visitante') staff.push(p.id)
+          }
+        }
+      }
+
+      // Esvaziou → libera a supressão (próxima reunião pode auto-gravar)
+      if (myRoom && present < 2) autoRecSuppressRef.current.delete(myRoom.id)
+
+      const rec = recorderRef.current
+
+      // Auto-parada: eu estava auto-gravando e a sala caiu pra <2 (ou saí dela)
+      if (rec?.active && autoRecRoomRef.current && (!auto || myRoom!.id !== autoRecRoomRef.current || present < 2)) {
+        autoRecRoomRef.current = null
+        if (autoStartTimerRef.current) {
+          clearTimeout(autoStartTimerRef.current)
+          autoStartTimerRef.current = null
+        }
+        void stopAndSaveRecording()
+        return
+      }
+
+      // Eleição: menor id de staff presente é o gravador
+      const recorder = staff.length ? [...staff].sort()[0] : null
+      const shouldStart =
+        auto &&
+        present >= 2 &&
+        recorder === meNow.id &&
+        !st.recording.on &&
+        !rec?.active &&
+        !autoRecSuppressRef.current.has(myRoom!.id)
+
+      if (shouldStart && !autoStartTimerRef.current) {
+        // estabiliza 6s (evita gravar quem só passou pela sala)
+        autoStartTimerRef.current = setTimeout(() => {
+          autoStartTimerRef.current = null
+          const s2 = useTeamStore.getState()
+          if (s2.recording.on || recorderRef.current?.active) return
+          autoRecRoomRef.current = myRoom!.id
+          startRecording()
+          s2.addToast('🔴 Gravação automática iniciada', 'in')
+        }, 6000)
+      } else if (!shouldStart && autoStartTimerRef.current) {
+        clearTimeout(autoStartTimerRef.current)
+        autoStartTimerRef.current = null
+      }
+    }
+    const iv = setInterval(tick, 2500)
+    tick()
+    return () => {
+      clearInterval(iv)
+      if (autoStartTimerRef.current) {
+        clearTimeout(autoStartTimerRef.current)
+        autoStartTimerRef.current = null
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [call.joined, me])
 
   // Aceitar o chamado: anda automaticamente até quem chamou
   const goToCaller = () => {
@@ -1019,13 +1135,15 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
               </DockButton>
               <DockButton
                 onClick={toggleRecording}
-                danger={recording.on && recording.byId === me?.id}
+                danger={recording.on}
                 title={
                   recording.on
                     ? recording.byId === me?.id
-                      ? 'Gravar reunião — clique para parar'
-                      : `Gravação em andamento por ${recording.byName}`
-                    : 'Gravar reunião — vídeo + transcrição e ata (30 dias, acesso admin)'
+                      ? 'Gravando — clique para parar'
+                      : isMaster
+                        ? `Gravando (${recording.byName}) — clique para parar`
+                        : `Gravação em andamento por ${recording.byName}`
+                    : 'Gravar reunião — vídeo + transcrição e ata (30 dias). Reuniões com 2+ gravam sozinhas'
                 }
               >
                 ⏺

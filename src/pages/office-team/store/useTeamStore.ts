@@ -137,6 +137,8 @@ interface TeamState {
   toasts: { id: string; text: string; kind: 'in' | 'out' }[]
   /** gravação de reunião em andamento (visível pra todos) */
   recording: { on: boolean; byId: string | null; byName: string | null }
+  /** nonce incrementado quando o master manda parar a gravação (broadcast) */
+  recStopNonce: number
 
   /** recados na mesa */
   composeNoteFor: { userId: string; name: string } | null
@@ -204,6 +206,7 @@ interface TeamState {
   addToast: (text: string, kind: 'in' | 'out') => void
   removeToast: (id: string) => void
   setRecording: (rec: { on: boolean; byId: string | null; byName: string | null }) => void
+  bumpRecStop: () => void
   setComposeNoteFor: (target: { userId: string; name: string } | null) => void
   setUnreadNotes: (notes: DeskNote[]) => void
   setNotesPanelOpen: (open: boolean) => void
@@ -243,6 +246,7 @@ export const useTeamStore = create<TeamState>((set) => ({
   incomingRing: null,
   toasts: [],
   recording: { on: false, byId: null, byName: null },
+  recStopNonce: 0,
   composeNoteFor: null,
   unreadNotes: [],
   notesPanelOpen: false,
@@ -350,6 +354,7 @@ export const useTeamStore = create<TeamState>((set) => ({
   removeToast: (id) =>
     set((prev) => ({ toasts: prev.toasts.filter((t) => t.id !== id) })),
   setRecording: (rec) => set({ recording: rec }),
+  bumpRecStop: () => set((prev) => ({ recStopNonce: prev.recStopNonce + 1 })),
   setComposeNoteFor: (target) => set({ composeNoteFor: target }),
   setUnreadNotes: (notes) => set({ unreadNotes: notes }),
   setNotesPanelOpen: (open) => set({ notesPanelOpen: open }),
