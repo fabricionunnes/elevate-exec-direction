@@ -210,13 +210,13 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
             🎞️ Gravações
           </button>
         )}
-        {currentRoom?.roomType === 'meeting' && (
+        {(currentRoom?.roomType === 'meeting' || currentRoom?.roomType === 'sector') && (
           <button
             onClick={() => void copyMeetingLink()}
             style={btnStyle}
-            title="Copia o link desta sala — cole no Google Agenda; ao clicar, o convidado entra direto aqui"
+            title="Copia o link desta sala — cole no Google Agenda; ao clicar, a pessoa entra direto aqui"
           >
-            🔗 Copiar link da reunião
+            🔗 Copiar link da sala
           </button>
         )}
         {isMaster && (

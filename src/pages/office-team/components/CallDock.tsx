@@ -451,6 +451,14 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const [bgPanelOpen, setBgPanelOpen] = useState(false)
   const [bgKind, setBgKind] = useState(() => callManager.getCameraBackground().kind)
+  // Área útil do palco do modo reunião (descontando header + dock + margens)
+  const [stageSize, setStageSize] = useState({ w: 1200, h: 600 })
+  useEffect(() => {
+    const upd = () => setStageSize({ w: window.innerWidth - 48, h: window.innerHeight - 200 })
+    upd()
+    window.addEventListener('resize', upd)
+    return () => window.removeEventListener('resize', upd)
+  }, [])
 
   // Fechou o modo reunião → limpa o destaque
   useEffect(() => {
@@ -771,19 +779,44 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
               )
             }
 
+            // Galeria estilo Meet: calcula colunas/linhas que MAXIMIZAM o
+            // tamanho de cada tile no espaço disponível (4 = 2x2, 6 = 3x2...)
+            const GAP = 14
+            const n = participants.length
+            const availW = stageSize.w - 4
+            const availH = stageSize.h - 4
+            let bestCols = 1
+            let bestTileW = 0
+            for (let cols = 1; cols <= n; cols++) {
+              const rows = Math.ceil(n / cols)
+              const tw = Math.min(
+                (availW - GAP * (cols - 1)) / cols,
+                ((availH - GAP * (rows - 1)) / rows) * (16 / 9)
+              )
+              if (tw > bestTileW) {
+                bestTileW = tw
+                bestCols = cols
+              }
+            }
+            const tileW = Math.max(160, Math.floor(bestTileW))
+            void bestCols
             return (
               <div
                 style={{
                   flex: 1,
-                  display: 'grid',
-                  gridTemplateColumns: `repeat(auto-fit, minmax(${meetingPeers.length >= 3 ? 320 : 420}px, 1fr))`,
-                  gap: '14px',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: `${GAP}px`,
                   alignContent: 'center',
-                  overflowY: 'auto',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  minHeight: 0,
                 }}
               >
                 {participants.map((p) => (
-                  <GridTile key={p.id} {...p} muted onClick={() => setFocusedId(p.id)} />
+                  <div key={p.id} style={{ width: tileW, flexShrink: 0 }}>
+                    <GridTile {...p} muted onClick={() => setFocusedId(p.id)} />
+                  </div>
                 ))}
               </div>
             )
