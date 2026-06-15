@@ -854,16 +854,26 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
         </div>
       )}
 
-      {/* Painel de fundo da câmera */}
+      {/* Painel de fundo da câmera — ancorado acima do dock */}
       {bgPanelOpen && call.camOn && (
-        <BackgroundPicker
-          current={bgKind}
-          onPick={(mode) => {
-            setBgKind(mode.kind)
-            void callManager.setCameraBackground(mode)
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '92px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 112,
           }}
-          onClose={() => setBgPanelOpen(false)}
-        />
+        >
+          <BackgroundPicker
+            current={bgKind}
+            onPick={(mode) => {
+              setBgKind(mode.kind)
+              void callManager.setCameraBackground(mode)
+            }}
+            onClose={() => setBgPanelOpen(false)}
+          />
+        </div>
       )}
 
       {/* Dock — base central */}
