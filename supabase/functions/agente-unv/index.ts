@@ -956,8 +956,37 @@ async function getChatId(agentType: AgentType): Promise<number | null> {
 // ============ MEMÓRIA — HISTÓRICO DE CONVERSA ============
 const MEMORY_LIMIT = 20; // últimas 20 mensagens (10 trocas) por agente+chat
 
+// Vínculo Telegram ↔ usuário do escritório: se o chat do Telegram está
+// linkado a um user_id de staff (telegram_links), a memória passa a ser a
+// MESMA do escritório 3D (office_agent_chats) — conversa contínua nos 2 canais.
+const _linkCache = new Map<number, string | null>();
+async function getLinkedUserId(chatId: number): Promise<string | null> {
+  if (_linkCache.has(chatId)) return _linkCache.get(chatId)!;
+  let userId: string | null = null;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/telegram_links?telegram_chat_id=eq.${chatId}&select=user_id&limit=1`,
+      { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+    );
+    const data = await res.json() as Array<{ user_id: string }>;
+    userId = data?.[0]?.user_id ?? null;
+  } catch { /* silent */ }
+  _linkCache.set(chatId, userId);
+  return userId;
+}
+
 async function saveMessage(agentType: AgentType, chatId: number, role: "user" | "assistant", content: string): Promise<void> {
   try {
+    const userId = await getLinkedUserId(chatId);
+    if (userId) {
+      // Store compartilhado com o escritório 3D
+      await fetch(`${SUPABASE_URL}/rest/v1/office_agent_chats`, {
+        method: "POST",
+        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, agent: agentType, role, content }),
+      });
+      return;
+    }
     await fetch(`${SUPABASE_URL}/rest/v1/agent_messages`, {
       method: "POST",
       headers: {
@@ -972,13 +1001,17 @@ async function saveMessage(agentType: AgentType, chatId: number, role: "user" | 
 
 async function loadHistory(agentType: AgentType, chatId: number): Promise<Anthropic.MessageParam[]> {
   try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/agent_messages?agent=eq.${agentType}&chat_id=eq.${chatId}&order=created_at.desc&limit=${MEMORY_LIMIT}&select=role,content`,
-      { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
-    );
+    const userId = await getLinkedUserId(chatId);
+    const url = userId
+      ? `${SUPABASE_URL}/rest/v1/office_agent_chats?user_id=eq.${userId}&agent=eq.${agentType}&order=created_at.desc&limit=${MEMORY_LIMIT}&select=role,content`
+      : `${SUPABASE_URL}/rest/v1/agent_messages?agent=eq.${agentType}&chat_id=eq.${chatId}&order=created_at.desc&limit=${MEMORY_LIMIT}&select=role,content`;
+    const res = await fetch(url, { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } });
     const data = await res.json() as Array<{ role: string; content: string }>;
-    // Retorna em ordem cronológica (invertendo o DESC)
-    return data.reverse().map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+    // Retorna em ordem cronológica (invertendo o DESC); ignora marcadores internos
+    return data
+      .reverse()
+      .filter((m) => (m.role === "user" || m.role === "assistant") && m.content && !m.content.startsWith("__"))
+      .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
   } catch { return []; }
 }
 
@@ -1608,7 +1641,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, version: "3.3-agent-permissions" }), { status: 200, headers: { "Content-Type": "application/json", ...CORS_HEADERS } });
+    return new Response(JSON.stringify({ ok: true, version: "3.4-cross-channel-memory" }), { status: 200, headers: { "Content-Type": "application/json", ...CORS_HEADERS } });
   }
 
   if (req.method !== "POST") return new Response("OK", { status: 200 });
@@ -1746,21 +1779,94 @@ Deno.serve(async (req) => {
       const VALID_AGENTS: AgentType[] = ["financeiro", "crm", "projetos", "ceo", "marketing", "gerente"];
       const agentParam = (url.searchParams.get("agent") ?? body.agent) as AgentType | null;
 
-      // Mika (social) ainda não tem tools — persona de conversa pura
+      // Mika (social): MESMA memória do Telegram. Se o usuário está linkado
+      // (telegram_links), lê o histórico real dela (unv_mika_chat_history) e
+      // os posts/copies criados (unv_instagram_posts) — assim ela "sabe da
+      // copy do dia" que pediram no Telegram, e vice-versa. Escreve de volta
+      // no mesmo lugar pra continuidade nos dois canais.
       if ((agentParam as string) === "social") {
         try {
-          const mikaHistory = await loadWebHistory("social");
+          // user_id → telegram_chat_id (reverse do vínculo)
+          let mikaChatId: number | null = null;
+          try {
+            const lr = await fetch(
+              `${SUPABASE_URL}/rest/v1/telegram_links?user_id=eq.${webUserId}&select=telegram_chat_id&limit=1`,
+              { headers: serviceHeaders }
+            );
+            const ld = await lr.json() as Array<{ telegram_chat_id: number }>;
+            mikaChatId = ld?.[0]?.telegram_chat_id ?? null;
+          } catch { /* sem vínculo */ }
+
+          // Histórico compartilhado com o Telegram (ou fallback web)
+          let mikaHistory: Anthropic.MessageParam[] = [];
+          let sharedMsgs: Array<{ role: string; content: unknown }> = [];
+          if (mikaChatId) {
+            try {
+              const hr = await fetch(
+                `${SUPABASE_URL}/rest/v1/unv_mika_chat_history?chat_id=eq.${mikaChatId}&select=messages`,
+                { headers: serviceHeaders }
+              );
+              const hd = await hr.json() as Array<{ messages: Array<{ role: string; content: unknown }> }>;
+              sharedMsgs = hd?.[0]?.messages ?? [];
+            } catch { /* vazio */ }
+            // Achata pra texto puro (descarta blocos de tool, que quebrariam a call sem tools)
+            const toText = (c: unknown): string =>
+              typeof c === "string"
+                ? c
+                : Array.isArray(c)
+                  ? c.map((b) => (b && typeof b === "object" && "text" in b ? String((b as { text: string }).text) : "")).join(" ").trim()
+                  : "";
+            mikaHistory = sharedMsgs
+              .map((m) => ({ role: m.role === "assistant" ? "assistant" as const : "user" as const, content: toText(m.content) }))
+              .filter((m) => m.content)
+              .slice(-16);
+          } else {
+            mikaHistory = await loadWebHistory("social");
+          }
+
+          // Posts/copies recentes (pra ela repetir "a copy de hoje" quando pedirem)
+          let postsNote = "";
+          if (mikaChatId) {
+            try {
+              const pr = await fetch(
+                `${SUPABASE_URL}/rest/v1/unv_instagram_posts?chat_id=eq.${mikaChatId}&order=created_at.desc&limit=5&select=caption,status,post_type,created_at`,
+                { headers: serviceHeaders }
+              );
+              const pd = await pr.json() as Array<{ caption: string; status: string; post_type: string; created_at: string }>;
+              if (Array.isArray(pd) && pd.length) {
+                postsNote =
+                  "\n\nPOSTS/COPIES QUE VOCÊ JÁ CRIOU (mais recentes primeiro) — quando o usuário pedir 'a copy de hoje', 'aquele post', etc., recupere e repita/ajuste o texto correspondente em vez de dizer que não sabe:\n" +
+                  pd
+                    .map((p) => `- [${new Date(p.created_at).toLocaleDateString("pt-BR")} · ${p.post_type ?? "post"} · ${p.status}] ${(p.caption ?? "").slice(0, 400)}`)
+                    .join("\n");
+              }
+            } catch { /* sem posts */ }
+          }
+
           const mikaReply = await anthropic.messages.create({
             model: "claude-sonnet-4-6",
             max_tokens: 1024,
             system: `Você é Mika, agente de social media da UNV Holdings.
-Você ajuda com calendário de conteúdo, roteiros, legendas e estratégia de redes sociais.
+Você ajuda com calendário de conteúdo, roteiros, legendas e estratégia de redes sociais, e tem memória contínua: o que você conversa no Telegram e aqui no escritório é o MESMO histórico.
 Estilo da casa: direto, sem "Perfeito!", sem emojis excessivos, sem formalidade. Conteúdo lo-fi, sem firula.
-Data de hoje: ${new Date().toLocaleDateString("pt-BR")}`,
+Data de hoje: ${new Date().toLocaleDateString("pt-BR")}${postsNote}`,
             messages: [...mikaHistory, { role: "user", content: webText }],
           });
           const mikaText = mikaReply.content.find((c) => c.type === "text")?.text ?? "Pronto.";
-          saveWebExchange("social", mikaText);
+
+          // Escreve de volta no MESMO lugar (Telegram vê o que foi dito aqui)
+          if (mikaChatId) {
+            const next = [...sharedMsgs, { role: "user", content: webText }, { role: "assistant", content: mikaText }].slice(-30);
+            EdgeRuntime.waitUntil(
+              fetch(`${SUPABASE_URL}/rest/v1/unv_mika_chat_history?on_conflict=chat_id`, {
+                method: "POST",
+                headers: { ...serviceHeaders, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates" },
+                body: JSON.stringify({ chat_id: mikaChatId, messages: next, updated_at: new Date().toISOString() }),
+              }).catch(() => {})
+            );
+          } else {
+            saveWebExchange("social", mikaText);
+          }
           return webJson({ ok: true, agent: "social", reply: mikaText });
         } catch (_err) {
           return webJson({ ok: false, reply: "Tive um problema técnico aqui. Tenta mandar de novo em instantes." }, 200);
