@@ -12,7 +12,7 @@ type Tab = "live" | "queue" | "dashboard";
 interface CampaignOpt { id: string; name: string; status: string }
 
 export default function CRMDialerPage() {
-  const { staffId } = useCRMContext();
+  const { staffId, isAdmin } = useCRMContext();
   const [tab, setTab] = useState<Tab>("live");
   const [campaigns, setCampaigns] = useState<CampaignOpt[]>([]);
 
@@ -51,7 +51,7 @@ export default function CRMDialerPage() {
       <div className="flex-1 overflow-hidden">
         {tab === "live" && <DialerLivePanel campaigns={campaigns} staffId={staffId} />}
         {tab === "queue" && <div className="h-full overflow-auto"><DialerQueuePanel onChanged={loadCampaigns} /></div>}
-        {tab === "dashboard" && <div className="h-full overflow-auto"><DialerDashboard /></div>}
+        {tab === "dashboard" && <div className="h-full overflow-auto"><DialerDashboard isAdmin={isAdmin} /></div>}
       </div>
     </div>
   );
