@@ -10,7 +10,7 @@ import * as THREE from 'three'
 import HumanBody from './HumanBody'
 import { SpeechBubble } from './CoffeeChat'
 import { useTeamStore, AvatarConfig } from '../store/useTeamStore'
-import { roomAt } from '../lib/rooms'
+import { roomAt, BUILDING } from '../lib/rooms'
 import { findPath } from '../lib/pathfinding'
 import { cleaningObstacles, personAvoidance } from '../lib/npcNav'
 import { gossipLine, farewellLine, speakGossip } from '../lib/gossip'
@@ -63,19 +63,17 @@ export default function CleaningLady() {
   mutedRef.current = muted
   const toggleMute = (e: { stopPropagation: () => void }) => {
     e.stopPropagation()
-    setMuted((m) => {
-      const next = !m
-      try {
-        localStorage.setItem('tia-cleide-muted', next ? '1' : '0')
-      } catch {
-        /* ignore */
-      }
-      if (next && 'speechSynthesis' in window) speechSynthesis.cancel()
-      useTeamStore
-        .getState()
-        .addToast(next ? '🔇 Tia Cleide no mudo (pra você)' : '🔊 Tia Cleide voltou a falar', next ? 'out' : 'in')
-      return next
-    })
+    const next = !mutedRef.current
+    setMuted(next) // sem efeitos colaterais dentro do updater
+    try {
+      localStorage.setItem('tia-cleide-muted', next ? '1' : '0')
+    } catch {
+      /* ignore */
+    }
+    if (next && 'speechSynthesis' in window) speechSynthesis.cancel()
+    useTeamStore
+      .getState()
+      .addToast(next ? '🔇 Tia Cleide no mudo (pra você)' : '🔊 Tia Cleide voltou a falar', next ? 'out' : 'in')
   }
 
   // Café: visita curta → despedida → cooldown
@@ -124,6 +122,7 @@ export default function CleaningLady() {
     const st = useTeamStore.getState()
     if (st.rooms.length === 0) return
 
+    try {
     // Vassoura SEMPRE varrendo (vai-e-vem), trabalhe parada ou andando
     if (broomRef.current) {
       broomRef.current.rotation.z = -0.12 + Math.sin(clock.getElapsedTime() * 4.5) * 0.28
@@ -223,6 +222,17 @@ export default function CleaningLady() {
       setWalking(moving)
     }
 
+    // Rede de segurança: nunca deixa a posição virar NaN ou sair do prédio
+    // (senão ela "some" — fica fora da câmera ou some por transform inválido)
+    if (!Number.isFinite(g.position.x) || !Number.isFinite(g.position.z)) {
+      g.position.set(0, 0, 0.5)
+      pathRef.current = null
+      destRef.current = null
+    } else {
+      g.position.x = Math.min(BUILDING.maxX - 1, Math.max(BUILDING.minX + 1, g.position.x))
+      g.position.z = Math.min(BUILDING.maxZ - 1, Math.max(BUILDING.minZ + 1, g.position.z))
+    }
+
     // Despedida em andamento tem prioridade na fala; senão a fala normal
     const parting = partingRef.current && now < partingRef.current.until ? partingRef.current : null
     const cur = gossipLine(staffRef.current)
@@ -253,6 +263,9 @@ export default function CleaningLady() {
       // ~1 em cada 3 falas usa o vocativo, e nunca quando a fala já tem nome
       const hasName = /[A-ZÀ-Ý][a-zà-ÿ]+/.test(cur.text) && staffRef.current.some((n) => cur.text.includes(n))
       speakGossip(withName(cur.text, cur.idx % 3 === 0 && !hasName))
+    }
+    } catch {
+      /* nunca deixa um erro de frame derrubar a Tia da cena */
     }
   })
 
