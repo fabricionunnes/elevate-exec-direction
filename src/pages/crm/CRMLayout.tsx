@@ -72,6 +72,7 @@ const baseNavTabs = [
   { title: "Negócios", href: "/crm/pipeline", icon: Kanban },
   { title: "Contatos", href: "/crm/leads", icon: Users },
   { title: "Atividades", href: "/crm/activities", icon: ListTodo },
+  { title: "Discador", href: "/crm/dialer", icon: Phone },
   { title: "Atendimento", href: "/crm/inbox", icon: MessageSquare, badge: true },
   { title: "Transcrições", href: "/crm/transcriptions", icon: FileText },
   { title: "Contratos", href: "/contratos", icon: ClipboardList },
@@ -101,6 +102,7 @@ const MAIN_TAB_HREFS = [
   "/crm/pipeline",
   "/crm/leads",
   "/crm/activities",
+  "/crm/dialer",
   "/crm/inbox",
 ];
 
