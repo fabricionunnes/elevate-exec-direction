@@ -108,12 +108,16 @@ function resolveVoice(): SpeechSynthesisVoice | null {
   if (!('speechSynthesis' in window)) return null
   const vs = speechSynthesis.getVoices()
   if (!vs.length) return cachedVoice
+  const pt = vs.filter((v) => /pt[-_]?BR/i.test(v.lang)) // todas pt-BR
+  const ptAny = pt.length ? pt : vs.filter((v) => /^pt/i.test(v.lang))
   cachedVoice =
-    vs.find((v) => /pt[-_]?BR/i.test(v.lang) && /google/i.test(v.name)) ?? // Google = bem natural
-    vs.find((v) => /pt[-_]?BR/i.test(v.lang) && /(natural|online|enhanced|premium|siri|luciana)/i.test(v.name)) ??
-    vs.find((v) => /pt[-_]?BR/i.test(v.lang) && !/compact|eloquence|espeak/i.test(v.name)) ??
-    vs.find((v) => /pt[-_]?BR/i.test(v.lang)) ??
-    vs.find((v) => /^pt/i.test(v.lang)) ??
+    // Vozes de REDE (localService=false) são as naturais (Google etc.) —
+    // as locais "compact" do sistema é que soam robóticas.
+    ptAny.find((v) => v.localService === false && /google/i.test(v.name)) ??
+    ptAny.find((v) => v.localService === false) ??
+    ptAny.find((v) => /google|natural|online|enhanced|premium|siri/i.test(v.name)) ??
+    ptAny.find((v) => !/compact|eloquence|espeak/i.test(v.name)) ??
+    ptAny[0] ??
     null
   return cachedVoice
 }
@@ -129,10 +133,10 @@ export function speakGossip(text: string) {
     const v = cachedVoice ?? resolveVoice()
     if (v) u.voice = v
     u.lang = v?.lang ?? 'pt-BR'
-    // Tom natural: voz feminina sem exagero (pitch alto = robótico/cartoon)
-    u.rate = 0.98
-    u.pitch = 1.08
-    u.volume = 0.95
+    // Tom NATURAL: sem mexer no pitch (alterar pitch é o que robotiza)
+    u.rate = 1.0
+    u.pitch = 1.0
+    u.volume = 1.0
     speechSynthesis.cancel() // não acumula falas
     speechSynthesis.speak(u)
   } catch {

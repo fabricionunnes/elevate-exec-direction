@@ -209,15 +209,19 @@ export default function CleaningLady() {
     const meInOpen = !meRoom || meRoom.roomType === 'lounge'
     const distToMe = Math.hypot(mx - g.position.x, mz - g.position.z)
     const meFirst = (st.me?.name ?? '').split(' ')[0]
-    const sayClose = (text: string) =>
-      meFirst ? `${meFirst}, ${text.charAt(0).toLowerCase()}${text.slice(1)}` : text
+    // Chama pelo nome só de vez em quando (não em toda frase); pula se a
+    // própria frase já cita alguém (evita "Fabrício, Eva e Natallia...").
+    const withName = (text: string, withVocative: boolean) =>
+      withVocative && meFirst ? `${meFirst}, ${text.charAt(0).toLowerCase()}${text.slice(1)}` : text
 
     if (parting && !partingSpokeRef.current && meInOpen && distToMe < NEAR_VOICE && !st.me?.isGuest) {
       partingSpokeRef.current = true
-      speakGossip(sayClose(parting.text))
+      speakGossip(withName(parting.text, false))
     } else if (!parting && cur.idx !== lastSpokeIdx.current && meInOpen && distToMe < NEAR_VOICE && !st.me?.isGuest) {
       lastSpokeIdx.current = cur.idx
-      speakGossip(sayClose(cur.text)) // chama você pelo nome (vocativo)
+      // ~1 em cada 3 falas usa o vocativo, e nunca quando a fala já tem nome
+      const hasName = /[A-ZÀ-Ý][a-zà-ÿ]+/.test(cur.text) && staffRef.current.some((n) => cur.text.includes(n))
+      speakGossip(withName(cur.text, cur.idx % 3 === 0 && !hasName))
     }
   })
 
