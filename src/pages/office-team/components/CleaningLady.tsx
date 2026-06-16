@@ -13,13 +13,15 @@ import { useTeamStore, AvatarConfig } from '../store/useTeamStore'
 import { roomAt } from '../lib/rooms'
 import { findPath } from '../lib/pathfinding'
 import { cleaningObstacles, personAvoidance } from '../lib/npcNav'
-import { gossipLine, speakGossip } from '../lib/gossip'
+import { gossipLine, farewellLine, speakGossip } from '../lib/gossip'
 import { getCafeNames } from '../lib/cafeDialogues'
 
 const WALK_SPEED = 1.1 // devagar, varrendo
 const WP_SECONDS = 13 // tempo em cada ponto de varrição
 const NEAR_BUBBLE = 4.2 // mostra balão se alguém está a essa distância
 const NEAR_VOICE = 4.5 // fala em voz alta pro jogador local a essa distância
+const VISIT_MS = 26_000 // tempo CURTO que ela fica fofocando no café
+const COOLDOWN_MS = 95_000 // depois disso volta a trabalhar e só retorna depois
 
 // Aparência da Tia Cleide: cabelo preso (coque), avental, pele morena
 const CLEIDE: AvatarConfig = {
@@ -49,6 +51,11 @@ export default function CleaningLady() {
   const [walking, setWalking] = useState(false)
   const walkingRef = useRef(false)
   const lastSpokeIdx = useRef(-1)
+  // Café: visita curta → despedida → cooldown
+  const cafePhaseRef = useRef<'sweep' | 'cafe' | 'cooldown'>('sweep')
+  const phaseUntilRef = useRef(0)
+  const partingRef = useRef<{ text: string; until: number } | null>(null)
+  const partingSpokeRef = useRef(true)
 
   // Nomes reais do time, pra ela tirar sarro de quem ela conhece
   const staffRef = useRef<string[]>([])
@@ -95,29 +102,47 @@ export default function CleaningLady() {
       broomRef.current.rotation.z = -0.12 + Math.sin(clock.getElapsedTime() * 4.5) * 0.28
     }
 
-    // Tem gente no café/lounge? Ela larga a varrição e vai fofocar lá.
+    // Tem gente no café/lounge?
     const lounge = st.rooms.find((r) => r.roomType === 'lounge')
     let cafeTarget: [number, number] | null = null
+    let cafePeople = 0
     if (lounge) {
       let sx = 0
       let sz = 0
-      let cnt = 0
       const consider = (px: number, pz: number) => {
         if (roomAt(px, pz, st.rooms)?.id === lounge.id) {
           sx += px
           sz += pz
-          cnt++
+          cafePeople++
         }
       }
       const [mx0, , mz0] = st.playerPosition
       consider(mx0, mz0)
       for (const p of Object.values(st.remotePlayers)) consider(p.position[0], p.position[2])
-      if (cnt > 0) cafeTarget = [sx / cnt, sz / cnt]
+      if (cafePeople > 0) cafeTarget = [sx / cafePeople, sz / cafePeople]
     }
 
-    // Define o destino: café (se tem gente lá) ou o ponto de varrição do relógio
+    // Máquina de estados do café: visita CURTA, despede com piada, cooldown.
+    const now = Date.now()
+    if (cafePhaseRef.current === 'cooldown' && now > phaseUntilRef.current) {
+      cafePhaseRef.current = 'sweep'
+    }
+    if (cafePhaseRef.current === 'sweep' && cafeTarget) {
+      cafePhaseRef.current = 'cafe'
+      phaseUntilRef.current = now + VISIT_MS // fica pouco tempo
+    }
+    if (cafePhaseRef.current === 'cafe' && (!cafeTarget || now > phaseUntilRef.current)) {
+      // Sai jogando a piadinha e entra em cooldown (não volta tão cedo)
+      partingRef.current = { text: farewellLine(staffRef.current), until: now + 6000 }
+      partingSpokeRef.current = false
+      cafePhaseRef.current = 'cooldown'
+      phaseUntilRef.current = now + COOLDOWN_MS
+      wpRef.current = -1
+    }
+
+    // Define o destino: café (durante a visita) ou ponto de varrição
     let dest: [number, number]
-    if (cafeTarget) {
+    if (cafePhaseRef.current === 'cafe' && cafeTarget) {
       // para um pouquinho antes pra não ficar em cima das pessoas
       const dx = g.position.x - cafeTarget[0]
       const dz = g.position.z - cafeTarget[1]
@@ -171,9 +196,11 @@ export default function CleaningLady() {
       setWalking(moving)
     }
 
-    // Atualiza a fala (muda a cada ~9s) + voz pro jogador local que estiver perto
+    // Despedida em andamento tem prioridade na fala; senão a fala normal
+    const parting = partingRef.current && now < partingRef.current.until ? partingRef.current : null
     const cur = gossipLine(staffRef.current)
-    if (cur.idx !== lineRef.current.idx) setLine(cur)
+    if (!parting && cur.idx !== lineRef.current.idx) setLine(cur)
+    if (parting && lineRef.current.text !== parting.text) setLine({ idx: -now, text: parting.text })
 
     // Voz alta SÓ pro jogador local quando ele está na ÁREA ABERTA e perto
     // (se ele está numa sala/reunião, a Tia não incomoda)
@@ -181,18 +208,23 @@ export default function CleaningLady() {
     const meRoom = roomAt(mx, mz, st.rooms)
     const meInOpen = !meRoom || meRoom.roomType === 'lounge'
     const distToMe = Math.hypot(mx - g.position.x, mz - g.position.z)
-    if (cur.idx !== lastSpokeIdx.current && meInOpen && distToMe < NEAR_VOICE && !st.me?.isGuest) {
+    const meFirst = (st.me?.name ?? '').split(' ')[0]
+    const sayClose = (text: string) =>
+      meFirst ? `${meFirst}, ${text.charAt(0).toLowerCase()}${text.slice(1)}` : text
+
+    if (parting && !partingSpokeRef.current && meInOpen && distToMe < NEAR_VOICE && !st.me?.isGuest) {
+      partingSpokeRef.current = true
+      speakGossip(sayClose(parting.text))
+    } else if (!parting && cur.idx !== lastSpokeIdx.current && meInOpen && distToMe < NEAR_VOICE && !st.me?.isGuest) {
       lastSpokeIdx.current = cur.idx
-      // Quando fala em voz alta, ela CHAMA você pelo nome (vocativo)
-      const meFirst = (st.me?.name ?? '').split(' ')[0]
-      const spoken = meFirst ? `${meFirst}, ${cur.text.charAt(0).toLowerCase()}${cur.text.slice(1)}` : cur.text
-      speakGossip(spoken)
+      speakGossip(sayClose(cur.text)) // chama você pelo nome (vocativo)
     }
   })
 
-  // Balão só quando tem gente por perto (senão ela varre caladinha)
+  // Balão: na despedida sempre mostra; senão só quando tem gente por perto
+  const partingActive = !!partingRef.current && Date.now() < partingRef.current.until
   const nearDist = groupRef.current ? someoneNear(groupRef.current.position.x, groupRef.current.position.z) : Infinity
-  const showBubble = nearDist < NEAR_BUBBLE
+  const showBubble = partingActive || nearDist < NEAR_BUBBLE
 
   return (
     <>

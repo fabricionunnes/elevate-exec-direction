@@ -297,7 +297,7 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
           fontFamily: font,
         }}
       >
-        WASD / duplo clique = andar · Arrastar = olhar · X = minha sala · Z = trancar · F = foco · Scroll = zoom
+        WASD / duplo clique = andar · Arrastar = olhar · X = minha sala · C = café · Z = trancar · F = foco · Scroll = zoom
       </div>
     </>
   )

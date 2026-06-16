@@ -51,6 +51,27 @@ const PERSON = [
   'Se trabalho rendesse fofoca, {user} já era milionário com o que eu sei.',
 ]
 
+// Piadinhas de despedida — quando ela cansa de prosa e volta a trabalhar
+const FAREWELL = [
+  'Ai, vocês tão com a vida ganha, hein! Deixa eu trabalhar, vai.',
+  'Tá bom, tá bom, chega de prosa. Esse chão não se varre sozinho.',
+  'Fofoca boa, mas o serviço chama. Já volto pra próxima fofoca!',
+  'Olha, adoro vocês, mas a vassoura tá com ciúme. Tchau, tchau!',
+  'Enquanto vocês relaxam, a tia aqui é que segura o escritório, viu.',
+  'Vou indo que se o chefe me vê parada, corta meu cafezinho.',
+  'Bom, prosa é bom mas não paga as contas. Deixa eu ir, meu povo.',
+]
+
+export function farewellLine(staff: string[] = []): string {
+  const h = hashTime()
+  const t = FAREWELL[h % FAREWELL.length]
+  return fill(t, h, staff)
+}
+
+function hashTime(): number {
+  return hash(Math.floor(Date.now() / 1000))
+}
+
 function hash(n: number): number {
   let h = n >>> 0
   h = (h ^ (h >> 16)) * 0x45d9f3b

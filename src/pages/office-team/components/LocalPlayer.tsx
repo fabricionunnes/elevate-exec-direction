@@ -123,6 +123,22 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  // Tecla C → andar até o Café & Lounge
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'KeyC' || isTypingInField()) return
+      const state = useTeamStore.getState()
+      const lounge = state.rooms.find((r) => r.roomType === 'lounge')
+      if (lounge) {
+        state.setPendingSeat(null)
+        // Vai pra parte aberta do lounge (perto das mesinhas), não pra parede
+        state.setPendingWalkTo({ x: lounge.x - 1, z: lounge.z + 1, teleportFallback: true })
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   // Tecla Z → tranca/destranca a sala em que estou
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
