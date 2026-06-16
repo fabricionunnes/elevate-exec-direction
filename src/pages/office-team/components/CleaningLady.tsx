@@ -3,7 +3,7 @@
 // e conversa por balão + voz do navegador (Web Speech API, zero token) com
 // quem passa perto. Não atrapalha reunião nem sala privada porque ela fica
 // fisicamente fora das salas e a voz só toca pra quem está na área aberta.
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
@@ -14,6 +14,7 @@ import { roomAt } from '../lib/rooms'
 import { findPath } from '../lib/pathfinding'
 import { cleaningObstacles, personAvoidance } from '../lib/npcNav'
 import { gossipLine, speakGossip } from '../lib/gossip'
+import { getCafeNames } from '../lib/cafeDialogues'
 
 const WALK_SPEED = 1.1 // devagar, varrendo
 const WP_SECONDS = 13 // tempo em cada ponto de varrição
@@ -46,6 +47,19 @@ export default function CleaningLady() {
   const [walking, setWalking] = useState(false)
   const walkingRef = useRef(false)
   const lastSpokeIdx = useRef(-1)
+
+  // Nomes reais do time, pra ela tirar sarro de quem ela conhece
+  const staffRef = useRef<string[]>([])
+  useEffect(() => {
+    let cancelled = false
+    const load = () => void getCafeNames().then((n) => !cancelled && (staffRef.current = n.staff))
+    load()
+    const iv = setInterval(load, 600_000)
+    return () => {
+      cancelled = true
+      clearInterval(iv)
+    }
+  }, [])
 
   // Fala atual (muda a cada ~9s; mesma pra todos)
   const [line, setLine] = useState(() => gossipLine())
@@ -117,7 +131,7 @@ export default function CleaningLady() {
     }
 
     // Atualiza a fala (muda a cada ~9s) + voz pro jogador local que estiver perto
-    const cur = gossipLine()
+    const cur = gossipLine(staffRef.current)
     if (cur.idx !== lineRef.current.idx) setLine(cur)
 
     // Voz alta SÓ pro jogador local quando ele está na ÁREA ABERTA e perto

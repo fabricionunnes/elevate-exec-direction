@@ -3,49 +3,48 @@
 // LEVE e inofensiva do escritório (sem inventar nada negativo de ninguém).
 // Fala por voz via Web Speech API do navegador (grátis, sem custo).
 
-const LINES = [
-  'Ai, esse chão hoje tava um brinco antes de vocês chegarem.',
-  'Sabe o que eu ouvi no corredor? Nada não, esquece. Mas ouvi.',
-  'Café passado na hora é outra coisa, viu, meu bem.',
-  'Tô varrendo desde cedo e a fofoca tá fraca hoje, hein.',
+// Falas SEM nome — tiazinha clássica, pra quando não tem o time carregado.
+const PLAIN = [
+  'Ai, esse chão tava um brinco antes de vocês pisarem nele, viu.',
+  'Eu não sou de fofoca não... senta aqui que eu te conto rapidinho.',
+  'Café passado na hora é outra história, meu bem.',
   'Cê viu a novela ontem? Aquele final, misericórdia!',
-  'Trabalhar é bom, mas um cafezinho com prosa é melhor ainda.',
-  'Olha, eu não sou de fofoca, mas senta aqui que eu te conto.',
-  'Esse pessoal do comercial vive correndo, parece formiguinha.',
-  'Tá um calor hoje, ou é só eu que tô a todo vapor varrendo?',
-  'Deixa eu te falar: quem deixou a caneca suja na pia foi... ah, deixa pra lá.',
-  'No meu tempo era tudo no papel, hoje é tudo nessas telinha.',
-  'Já jogou na loteria essa semana? Tô com um palpite bão.',
-  'Reunião, reunião, reunião... e o cafezinho, fica pra quando?',
-  'Eu vi, viu! Mas não vou contar pra ninguém. Só pra você.',
-  'Esse escritório novo ficou chique demais, até medo de sujar.',
-  'A planta ali do canto tá precisando de água, ninguém rega não?',
-  'Fofoca boa é igual pó: aparece quando menos espera.',
-  'Cê tá com uma cara boa hoje, andou dormindo bem, né?',
-  'Diz que vem chuva mais tarde. Eu sinto no joelho, nunca falha.',
-  'Trabalha bonito, viu. Eu fico de olho em quem se esforça.',
-  'Ô meu povo, recolhe esse copo do chão que eu acabei de varrer!',
-  'Já te falei que eu conheço a tia de um conhecido do dono? Pois é.',
-  'Esse silêncio aqui tá suspeito, alguém aprontou alguma.',
-  'Eu adoro um corredor movimentado, dá assunto pro dia todo.',
-  'Tá vendo aquela mesa ali? Tem história, mas é segredo.',
-  'Bom dia de trabalho é com chão limpo e prosa boa.',
-  'Vou te contar baixinho: o café da máquina nova tá melhor, viu.',
-  'Cês trabalham muito, hein. No meu tempo tinha mais hora do lanche.',
-  'Quem chegou cedo hoje ganhou meu respeito, eu vi tudo.',
-  'A vida é uma novela, e eu tô sempre no capítulo bom.',
-  'Esse piso encera fácil, mas pra brilhar mesmo é com carinho.',
-  'Soube que tem reunião importante hoje. Não vou perguntar de quê... mas é o quê?',
-  'Cê viu o preço das coisas? Tá tudo pela hora da morte, viu.',
-  'Eu varro, escuto, e guardo tudo aqui na cabecinha.',
-  'Pausa pro café faz bem pra alma e pra fofoca.',
-  'Olha a postura, meu filho! Endireita essa coluna que eu tô vendo.',
-  'Dizem que vai ter novidade por aqui. Eu não disse nada, tá?',
-  'Esse cantinho aqui é onde rola as melhores conversas, anota aí.',
-  'Tô de olho em quem não lava a própria caneca, viu, espertinho.',
-  'A semana tá voando, né? Daqui a pouco é sexta, graças a Deus.',
-  'Adoro esse povo, mas que vocês falam alto, falam.',
-  'Já rega essa plantinha, recolhe o copo, e me dá um tchau bonito.',
+  'Quem foi o anjo que deixou a caneca suja na pia? Tô investigando.',
+  'Já jogou na loteria? Tô com um palpite que não erra, anota: 7, 13, 42.',
+  'Reunião, reunião, reunião... e o cafezinho fica pra quando, hein?',
+  'No meu tempo era tudo no papel. Hoje é tudo nessa telinha brilhando.',
+  'Diz que vem chuva. Eu sinto no joelho, é melhor que previsão do tempo.',
+  'Ô meu povo, recolhe esse copo do chão que eu ACABEI de varrer!',
+  'Segredo comigo morre na hora. Mentira, já contei pra três pessoas.',
+  'A vida é uma novela e eu tô sempre no capítulo bom, graças a Deus.',
+  'Endireita essa coluna, meu filho! De tanto curvar na cadeira vira camarão.',
+  'Esse silêncio tá suspeito demais... alguém aqui aprontou, eu sinto.',
+  'Sexta chegando! Já tô ouvindo o churrasco me chamar de longe.',
+  'Eu varro, escuto, e guardo tudo aqui na cabecinha. Arquivo vivo, viu.',
+]
+
+// Falas COM nome — tiração de sarro AFETUOSA (nunca ofende). {user}/{user2}
+const PERSON = [
+  'Olha quem apareceu! {user}, pensei que tinha mudado de endereço.',
+  'O {user} de novo no cafezinho? Produtividade lá em cima, hein, meu amor.',
+  '{user} e {user2} cochichando ali no canto. Eu QUERO saber, viu.',
+  'Falei pro {user} que segredo comigo é sagrado. Ele acreditou, coitado.',
+  'O {user} trabalha tanto que um dia desses eu varro ele junto sem ver.',
+  'Vi o {user} chegar cedo hoje. Anotei na minha listinha dos abençoados.',
+  'Cadê o {user}? Sumiu igual meu pano de chão na segunda-feira.',
+  'Esse {user} tem cara de quem já tá pensando no almoço. Eu também, confesso.',
+  'O {user} entrou em reunião e não saiu mais. Mandei café por debaixo da porta.',
+  '{user}, capricha nessa câmera que hoje tá um arraso, viu, criatura.',
+  'A {user2} riu da piada do {user}. Casamento de comédia esse aí.',
+  'O {user} prometeu que ia lavar a caneca. Tô esperando sentada... literalmente.',
+  'Toda vez que eu passo, o {user} tá numa call. Será que dorme falando também?',
+  'O {user} é tão focado que nem me cumprimenta. Tudo bem, eu falo sozinha mesmo.',
+  '{user} chegou estiloso hoje. Reunião importante ou é só pra me impressionar?',
+  'O {user} bebe mais café que eu passo pano. E olha que eu passo MUITO pano.',
+  'Vi o {user} no corredor de cabeça baixa, todo pensativo. Tá apaixonado, só pode.',
+  'O {user2} ainda nem chegou e o {user} já fez o trabalho dos dois. Que dupla, hein.',
+  'O {user} falou que ia "rapidinho" no café faz uma hora. Rapidinho dele é outro fuso.',
+  'Tô de olho no {user}. Não fez nada, mas eu fico de olho por precaução.',
 ]
 
 function hash(n: number): number {
@@ -55,13 +54,24 @@ function hash(n: number): number {
   return (h ^ (h >> 16)) >>> 0
 }
 
+function fill(text: string, seed: number, staff: string[]): string {
+  if (!text.includes('{user')) return text
+  const pool = staff.length ? staff : ['o pessoal']
+  const a = pool[hash(seed * 31 + 7) % pool.length]
+  const b = pool[(hash(seed * 31 + 7) + 1 + (hash(seed * 53) % Math.max(1, pool.length - 1))) % pool.length]
+  return text.replace(/\{user2\}/g, b).replace(/\{user\}/g, a)
+}
+
 /** Fala atual da Tia Cleide — muda a cada ~9s, sem repetir a anterior.
- * Derivada do relógio: todos os clientes veem a mesma. */
-export function gossipLine(): { idx: number; text: string } {
+ * Intercala piada com nome real do time e tiazinha clássica. Determinística
+ * pelo relógio (todos veem a mesma) e SEM token. */
+export function gossipLine(staff: string[] = []): { idx: number; text: string } {
   const slot = Math.floor(Date.now() / 9000)
-  // passo coprimo com o tamanho da lista evita repetição imediata
-  const idx = (hash(slot) % LINES.length)
-  return { idx: slot, text: LINES[idx] }
+  const h = hash(slot)
+  // 2 em cada 3 falas mencionam alguém do time (quando há nomes carregados)
+  const usePerson = staff.length > 0 && h % 3 !== 0
+  const text = usePerson ? fill(PERSON[h % PERSON.length], slot * 101 + 5, staff) : PLAIN[h % PLAIN.length]
+  return { idx: slot, text }
 }
 
 // ── Voz do navegador (grátis, sem token) ──
