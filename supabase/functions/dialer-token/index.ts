@@ -46,8 +46,7 @@ Deno.serve(async (req) => {
       jti: `${apiKey}-${now}`,
       iss: apiKey,
       sub: accountSid,
-      iat: now,
-      nbf: now,
+      iat: now - 5, // pequena folga de relógio
       exp: now + 3600,
       grants: {
         identity,
