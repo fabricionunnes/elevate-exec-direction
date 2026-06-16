@@ -30,6 +30,30 @@ Deno.serve(async (req) => {
     const BASE = `${supabaseUrl}/functions/v1`;
 
     const body = await req.json().catch(() => ({}));
+
+    // Modo verificação: confere Auth Token + número (caller id) sem ligar pra ninguém
+    if (body.verify) {
+      const basic = "Basic " + btoa(`${accountSid}:${authToken}`);
+      const accResp = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}.json`, { headers: { Authorization: basic } });
+      const accData = await accResp.json().catch(() => ({}));
+      let callerIdOwned = false;
+      if (accResp.ok && defaultCallerId) {
+        const numResp = await fetch(
+          `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/IncomingPhoneNumbers.json?PhoneNumber=${encodeURIComponent(defaultCallerId)}`,
+          { headers: { Authorization: basic } },
+        );
+        const numData = await numResp.json().catch(() => ({}));
+        callerIdOwned = ((numData?.incoming_phone_numbers as any[]) || []).length > 0;
+      }
+      return json({
+        verify: true,
+        auth_token_ok: accResp.ok,
+        account_status: accData?.status || null,
+        caller_id: defaultCallerId || null,
+        caller_id_owned: callerIdOwned,
+      });
+    }
+
     const campaignId: string | undefined = body.campaignId;
     let leadId: string | undefined = body.leadId;
     let queueId: string | undefined;
