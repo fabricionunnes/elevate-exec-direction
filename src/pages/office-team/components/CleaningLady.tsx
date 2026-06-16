@@ -41,9 +41,11 @@ const SWEEP_POINTS: [number, number][] = [
 
 export default function CleaningLady() {
   const groupRef = useRef<THREE.Group>(null!)
+  const broomRef = useRef<THREE.Group>(null!)
   const pathRef = useRef<{ pts: [number, number][]; i: number } | null>(null)
   const rotRef = useRef(0)
   const wpRef = useRef(-1)
+  const destRef = useRef<[number, number] | null>(null) // destino atual (sweep ou café)
   const [walking, setWalking] = useState(false)
   const walkingRef = useRef(false)
   const lastSpokeIdx = useRef(-1)
@@ -82,20 +84,59 @@ export default function CleaningLady() {
     return best
   }
 
-  useFrame((_, delta) => {
+  useFrame(({ clock }, delta) => {
     const g = groupRef.current
     if (!g) return
     const st = useTeamStore.getState()
     if (st.rooms.length === 0) return
 
-    // Ponto de varrição atual (determinístico pelo relógio)
-    const slot = Math.floor(Date.now() / 1000 / WP_SECONDS)
-    const wpIdx = slot % SWEEP_POINTS.length
-    if (wpIdx !== wpRef.current) {
-      wpRef.current = wpIdx
-      const [tx, tz] = SWEEP_POINTS[wpIdx]
+    // Vassoura SEMPRE varrendo (vai-e-vem), trabalhe parada ou andando
+    if (broomRef.current) {
+      broomRef.current.rotation.z = -0.12 + Math.sin(clock.getElapsedTime() * 4.5) * 0.28
+    }
+
+    // Tem gente no café/lounge? Ela larga a varrição e vai fofocar lá.
+    const lounge = st.rooms.find((r) => r.roomType === 'lounge')
+    let cafeTarget: [number, number] | null = null
+    if (lounge) {
+      let sx = 0
+      let sz = 0
+      let cnt = 0
+      const consider = (px: number, pz: number) => {
+        if (roomAt(px, pz, st.rooms)?.id === lounge.id) {
+          sx += px
+          sz += pz
+          cnt++
+        }
+      }
+      const [mx0, , mz0] = st.playerPosition
+      consider(mx0, mz0)
+      for (const p of Object.values(st.remotePlayers)) consider(p.position[0], p.position[2])
+      if (cnt > 0) cafeTarget = [sx / cnt, sz / cnt]
+    }
+
+    // Define o destino: café (se tem gente lá) ou o ponto de varrição do relógio
+    let dest: [number, number]
+    if (cafeTarget) {
+      // para um pouquinho antes pra não ficar em cima das pessoas
+      const dx = g.position.x - cafeTarget[0]
+      const dz = g.position.z - cafeTarget[1]
+      const d = Math.hypot(dx, dz) || 1
+      dest = [cafeTarget[0] + (dx / d) * 1.3, cafeTarget[1] + (dz / d) * 1.3]
+      wpRef.current = -1 // ao voltar, recalcula a varrição
+    } else {
+      const slot = Math.floor(Date.now() / 1000 / WP_SECONDS)
+      const wpIdx = slot % SWEEP_POINTS.length
+      if (wpIdx !== wpRef.current) wpRef.current = wpIdx
+      dest = SWEEP_POINTS[wpIdx]
+    }
+
+    // (Re)calcula a rota quando o destino muda de forma relevante
+    const prev = destRef.current
+    if (!prev || Math.hypot(prev[0] - dest[0], prev[1] - dest[1]) > 1) {
+      destRef.current = dest
       const walls = cleaningObstacles(g.position.x, g.position.z)
-      const pts = findPath(g.position.x, g.position.z, tx, tz, walls)
+      const pts = findPath(g.position.x, g.position.z, dest[0], dest[1], walls)
       pathRef.current = pts ? { pts, i: 0 } : null
     }
 
@@ -154,8 +195,8 @@ export default function CleaningLady() {
     <>
       <group ref={groupRef} position={[0, 0, 0.5]}>
         <HumanBody avatar={CLEIDE} isWalking={walking} />
-        {/* Vassoura na mão direita */}
-        <group position={[0.34, 0, 0.18]} rotation={[0.32, 0, -0.12]}>
+        {/* Vassoura na mão direita — sempre varrendo (rotation.z animada) */}
+        <group ref={broomRef} position={[0.34, 0, 0.18]} rotation={[0.32, 0, -0.12]}>
           <mesh position={[0, 0.62, 0]}>
             <cylinderGeometry args={[0.018, 0.018, 1.35, 8]} />
             <primitive object={broomMat} attach="material" />

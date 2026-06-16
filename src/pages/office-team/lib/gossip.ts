@@ -23,28 +23,32 @@ const PLAIN = [
   'Eu varro, escuto, e guardo tudo aqui na cabecinha. Arquivo vivo, viu.',
 ]
 
-// Falas COM nome — tiração de sarro AFETUOSA (nunca ofende). {user}/{user2}
+// Falas COM nome — tiração de sarro AFETUOSA (nunca ofende). Linguagem
+// NEUTRA de gênero (sem "o/a", uso de "pra" e "esse povo") pra não errar
+// com nome de homem ou mulher. {user}/{user2}
 const PERSON = [
   'Olha quem apareceu! {user}, pensei que tinha mudado de endereço.',
-  'O {user} de novo no cafezinho? Produtividade lá em cima, hein, meu amor.',
+  '{user} de novo no cafezinho? Produtividade lá em cima, hein, meu amor.',
   '{user} e {user2} cochichando ali no canto. Eu QUERO saber, viu.',
-  'Falei pro {user} que segredo comigo é sagrado. Ele acreditou, coitado.',
-  'O {user} trabalha tanto que um dia desses eu varro ele junto sem ver.',
-  'Vi o {user} chegar cedo hoje. Anotei na minha listinha dos abençoados.',
-  'Cadê o {user}? Sumiu igual meu pano de chão na segunda-feira.',
-  'Esse {user} tem cara de quem já tá pensando no almoço. Eu também, confesso.',
-  'O {user} entrou em reunião e não saiu mais. Mandei café por debaixo da porta.',
-  '{user}, capricha nessa câmera que hoje tá um arraso, viu, criatura.',
-  'A {user2} riu da piada do {user}. Casamento de comédia esse aí.',
-  'O {user} prometeu que ia lavar a caneca. Tô esperando sentada... literalmente.',
-  'Toda vez que eu passo, o {user} tá numa call. Será que dorme falando também?',
-  'O {user} é tão focado que nem me cumprimenta. Tudo bem, eu falo sozinha mesmo.',
+  'Falei pra {user} que segredo comigo é sagrado. E olha, acreditou.',
+  '{user} trabalha tanto que um dia desses eu varro junto sem perceber.',
+  'Vi {user} chegar cedo hoje. Anotei na minha listinha dos abençoados.',
+  'Cadê {user}? Sumiu igual meu pano de chão na segunda-feira.',
+  '{user} tá com cara de quem já tá pensando no almoço. Eu também, confesso.',
+  '{user} entrou em reunião e não saiu mais. Mandei café por debaixo da porta.',
+  '{user}, capricha nessa câmera que hoje o arraso tá demais, viu, criatura.',
+  '{user2} riu da piada de {user}. Dupla de comédia esses dois.',
+  '{user} prometeu que ia lavar a caneca. Tô esperando sentada... literalmente.',
+  'Toda vez que eu passo, {user} tá numa call. Será que dorme falando também?',
+  '{user} é tão concentrado que nem me cumprimenta. Tudo bem, falo sozinha mesmo.',
   '{user} chegou estiloso hoje. Reunião importante ou é só pra me impressionar?',
-  'O {user} bebe mais café que eu passo pano. E olha que eu passo MUITO pano.',
-  'Vi o {user} no corredor de cabeça baixa, todo pensativo. Tá apaixonado, só pode.',
-  'O {user2} ainda nem chegou e o {user} já fez o trabalho dos dois. Que dupla, hein.',
-  'O {user} falou que ia "rapidinho" no café faz uma hora. Rapidinho dele é outro fuso.',
-  'Tô de olho no {user}. Não fez nada, mas eu fico de olho por precaução.',
+  '{user} bebe mais café do que eu passo pano. E olha que eu passo MUITO pano.',
+  'Vi {user} no corredor, todo pensativo. Tá tramando alguma, eu sinto.',
+  '{user2} ainda nem chegou e {user} já fez o trabalho dos dois. Que dupla, hein.',
+  '{user} falou que ia "rapidinho" no café faz uma hora. Rapidinho é outro fuso.',
+  'Tô de olho em {user}. Não fez nada, mas eu fico de olho por precaução.',
+  '{user}, larga esse teclado e vem tomar um café com a tia, vai.',
+  'Se trabalho rendesse fofoca, {user} já era milionário com o que eu sei.',
 ]
 
 function hash(n: number): number {
