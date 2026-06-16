@@ -125,21 +125,16 @@ export const KanbanStageColumn = ({
     return () => observer.disconnect();
   }, [hasMore, isLoadingMore, leads.length]);
 
-  // Generate a softer background tint from stage color
-  const headerBg = `${stage.color}12`;
   const dotColor = stage.color;
 
   return (
     <div
-      className="w-[270px] sm:w-[290px] h-full flex-shrink-0 flex flex-col rounded-xl border border-border/60 bg-card overflow-hidden shadow-sm"
+      className="w-[270px] sm:w-[290px] h-full flex-shrink-0 flex flex-col rounded-xl border border-border/70 bg-[hsl(var(--crm-column))] overflow-hidden"
       onDragOver={onDragOver}
       onDrop={(e) => onDrop(e, stage.id)}
     >
       {/* Stage Header */}
-      <div 
-        className="px-3 py-2.5 flex items-center gap-2"
-        style={{ backgroundColor: headerBg }}
-      >
+      <div className="px-3 py-2.5 flex items-center gap-2 bg-[hsl(var(--crm-column-header))] border-b border-border/50">
         {isMaster && leads.length > 0 && (
           <Checkbox
             checked={allStageSelected}
@@ -155,16 +150,11 @@ export const KanbanStageColumn = ({
           style={{ backgroundColor: dotColor }}
         />
         
-        <span className="font-semibold text-sm flex-1 truncate text-foreground">{stage.name}</span>
-        
-        <Badge 
-          variant="secondary" 
-          className="text-[10px] h-5 min-w-[24px] justify-center font-bold tabular-nums"
-          style={{ 
-            backgroundColor: `${stage.color}20`,
-            color: stage.color,
-            borderColor: `${stage.color}30`,
-          }}
+        <span className="font-semibold text-[13px] flex-1 truncate text-foreground">{stage.name}</span>
+
+        <Badge
+          variant="secondary"
+          className="text-[10px] h-5 min-w-[22px] justify-center font-semibold tabular-nums rounded-full bg-muted text-muted-foreground border-0 px-2"
         >
           {leads.length}
         </Badge>

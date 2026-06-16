@@ -113,11 +113,11 @@ export const KanbanLeadCard = ({
   const CardContent = (
     <div
       className={cn(
-        "bg-card rounded-xl p-3 transition-all duration-200 border select-none",
+        "bg-card rounded-xl p-3 transition-all duration-150 border select-none",
         isDragging && "opacity-40 scale-95",
-        isSelected 
-          ? "border-primary ring-2 ring-primary/20 shadow-md" 
-          : "border-border/60 hover:border-primary/40 hover:shadow-md shadow-sm"
+        isSelected
+          ? "border-primary ring-2 ring-primary/20"
+          : "border-border/70 hover:border-primary/40 hover:shadow-md"
       )}
     >
       {/* Origin Badge */}
@@ -128,11 +128,11 @@ export const KanbanLeadCard = ({
               <Checkbox checked={isSelected} className="cursor-pointer" />
             </div>
           )}
-          <Badge 
-            variant="secondary" 
-            className="text-[10px] px-2 py-0.5 bg-primary/8 text-primary border-0 font-medium"
+          <Badge
+            variant="secondary"
+            className="text-[10px] px-2 py-0.5 bg-muted text-muted-foreground border-0 font-medium"
           >
-            novo contato via {lead.origin.name}
+            via {lead.origin.name}
           </Badge>
         </div>
       )}
@@ -146,7 +146,7 @@ export const KanbanLeadCard = ({
         )}
         
         <div className={cn(
-          "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold",
+          "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-[10px] font-semibold",
           avatarColor.bg,
           avatarColor.text
         )}>
@@ -203,10 +203,10 @@ export const KanbanLeadCard = ({
 
       {/* Origem do anúncio (Meta Ads) */}
       {(lead.utm_content || lead.utm_campaign || lead.utm_term) && (
-        <div className="mt-2 px-2 py-1.5 rounded-md bg-gradient-to-r from-blue-500/10 to-violet-500/10 border border-blue-500/20 space-y-0.5">
-          <div className="flex items-center gap-1 text-blue-700 dark:text-blue-300">
+        <div className="mt-2 px-2 py-1.5 rounded-md bg-muted/50 border border-border/60 space-y-0.5">
+          <div className="flex items-center gap-1 text-muted-foreground">
             <Megaphone className="h-3 w-3 shrink-0" />
-            <span className="text-[9px] font-bold uppercase tracking-wider">Origem do Anúncio</span>
+            <span className="text-[9px] font-semibold uppercase tracking-wider">Origem do Anúncio</span>
           </div>
           {lead.utm_campaign && (
             <div className="flex items-baseline gap-1 text-[10px]">
@@ -241,11 +241,11 @@ export const KanbanLeadCard = ({
         />
         
         {lead.opportunity_value ? (
-          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+          <span className="text-xs font-semibold text-[hsl(var(--crm-positive))] tabular-nums">
             {formatCurrency(lead.opportunity_value)}
           </span>
         ) : (
-          <span className="text-[10px] text-muted-foreground/50 tabular-nums">0</span>
+          <span className="text-[10px] text-muted-foreground/50 tabular-nums">—</span>
         )}
       </div>
 

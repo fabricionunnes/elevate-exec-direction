@@ -230,7 +230,7 @@ export const CRMLayout = () => {
     }}>
       <div
         className={cn(
-          "bg-background flex flex-col",
+          "crm-app bg-background flex flex-col",
           lockViewportHeight ? "h-dvh overflow-hidden" : "min-h-screen",
         )}
       >
