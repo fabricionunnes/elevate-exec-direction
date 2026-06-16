@@ -28,6 +28,16 @@ Deno.serve(async (req) => {
     const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
 
     const body = await req.json().catch(() => ({}));
+
+    // Modo verificação: confere se a OPENAI_API_KEY está válida (sem precisar de gravação)
+    if (body.verify) {
+      if (!OPENAI_API_KEY) return new Response(JSON.stringify({ verify: true, openai_key_set: false }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const r = await fetch("https://api.openai.com/v1/models", { headers: { Authorization: `Bearer ${OPENAI_API_KEY}` } });
+      return new Response(JSON.stringify({ verify: true, openai_key_set: true, openai_ok: r.ok, openai_status: r.status }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const callId: string | undefined = body.callId;
     if (!callId) throw new Error("callId é obrigatório");
 
