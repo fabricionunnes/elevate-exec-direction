@@ -202,22 +202,26 @@ export default function CleaningLady() {
     if (!parting && cur.idx !== lineRef.current.idx) setLine(cur)
     if (parting && lineRef.current.text !== parting.text) setLine({ idx: -now, text: parting.text })
 
-    // Voz alta SÓ pro jogador local quando ele está na ÁREA ABERTA e perto
-    // (se ele está numa sala/reunião, a Tia não incomoda)
+    // Voz: TODO MUNDO que está por perto ouve (cada navegador toca o seu).
+    // Vale se o jogador local está na MESMA sala aberta que a Tia (ex.: café)
+    // OU perto dela no corredor. Quem está em sala/reunião fechada não ouve.
     const [mx, , mz] = st.playerPosition
     const meRoom = roomAt(mx, mz, st.rooms)
+    const herRoom = roomAt(g.position.x, g.position.z, st.rooms)
     const meInOpen = !meRoom || meRoom.roomType === 'lounge'
     const distToMe = Math.hypot(mx - g.position.x, mz - g.position.z)
+    const sameOpenRoom = !!herRoom && herRoom.roomType === 'lounge' && meRoom?.id === herRoom.id
+    const canHear = meInOpen && !st.me?.isGuest && (sameOpenRoom || distToMe < NEAR_VOICE)
     const meFirst = (st.me?.name ?? '').split(' ')[0]
     // Chama pelo nome só de vez em quando (não em toda frase); pula se a
     // própria frase já cita alguém (evita "Fabrício, Eva e Natallia...").
     const withName = (text: string, withVocative: boolean) =>
       withVocative && meFirst ? `${meFirst}, ${text.charAt(0).toLowerCase()}${text.slice(1)}` : text
 
-    if (parting && !partingSpokeRef.current && meInOpen && distToMe < NEAR_VOICE && !st.me?.isGuest) {
+    if (parting && !partingSpokeRef.current && canHear) {
       partingSpokeRef.current = true
       speakGossip(withName(parting.text, false))
-    } else if (!parting && cur.idx !== lastSpokeIdx.current && meInOpen && distToMe < NEAR_VOICE && !st.me?.isGuest) {
+    } else if (!parting && cur.idx !== lastSpokeIdx.current && canHear) {
       lastSpokeIdx.current = cur.idx
       // ~1 em cada 3 falas usa o vocativo, e nunca quando a fala já tem nome
       const hasName = /[A-ZÀ-Ý][a-zà-ÿ]+/.test(cur.text) && staffRef.current.some((n) => cur.text.includes(n))
