@@ -183,7 +183,10 @@ export default function CleaningLady() {
     const distToMe = Math.hypot(mx - g.position.x, mz - g.position.z)
     if (cur.idx !== lastSpokeIdx.current && meInOpen && distToMe < NEAR_VOICE && !st.me?.isGuest) {
       lastSpokeIdx.current = cur.idx
-      speakGossip(cur.text)
+      // Quando fala em voz alta, ela CHAMA você pelo nome (vocativo)
+      const meFirst = (st.me?.name ?? '').split(' ')[0]
+      const spoken = meFirst ? `${meFirst}, ${cur.text.charAt(0).toLowerCase()}${cur.text.slice(1)}` : cur.text
+      speakGossip(spoken)
     }
   })
 

@@ -79,31 +79,39 @@ export function gossipLine(staff: string[] = []): { idx: number; text: string } 
 }
 
 // ── Voz do navegador (grátis, sem token) ──
-let voicesReady = false
-function pickVoice(): SpeechSynthesisVoice | null {
+// Prioriza vozes NATURAIS (Google pt-BR / online / enhanced) — as locais
+// "compact" soam robóticas. As vozes carregam de forma assíncrona, então
+// resolvemos no evento voiceschanged.
+let cachedVoice: SpeechSynthesisVoice | null = null
+function resolveVoice(): SpeechSynthesisVoice | null {
+  if (!('speechSynthesis' in window)) return null
   const vs = speechSynthesis.getVoices()
-  return (
-    vs.find((v) => /pt-BR/i.test(v.lang) && /luciana|maria|francisca|fem/i.test(v.name)) ??
-    vs.find((v) => /pt-BR/i.test(v.lang)) ??
-    vs.find((v) => /pt/i.test(v.lang)) ??
+  if (!vs.length) return cachedVoice
+  cachedVoice =
+    vs.find((v) => /pt[-_]?BR/i.test(v.lang) && /google/i.test(v.name)) ?? // Google = bem natural
+    vs.find((v) => /pt[-_]?BR/i.test(v.lang) && /(natural|online|enhanced|premium|siri|luciana)/i.test(v.name)) ??
+    vs.find((v) => /pt[-_]?BR/i.test(v.lang) && !/compact|eloquence|espeak/i.test(v.name)) ??
+    vs.find((v) => /pt[-_]?BR/i.test(v.lang)) ??
+    vs.find((v) => /^pt/i.test(v.lang)) ??
     null
-  )
+  return cachedVoice
+}
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  resolveVoice()
+  speechSynthesis.onvoiceschanged = () => resolveVoice()
 }
 
 export function speakGossip(text: string) {
   try {
     if (!('speechSynthesis' in window)) return
-    if (!voicesReady) {
-      speechSynthesis.getVoices()
-      voicesReady = true
-    }
     const u = new SpeechSynthesisUtterance(text)
-    u.lang = 'pt-BR'
-    u.rate = 1.03
-    u.pitch = 1.35 // voz mais aguda, jeitão de tiazinha
-    u.volume = 0.9
-    const v = pickVoice()
+    const v = cachedVoice ?? resolveVoice()
     if (v) u.voice = v
+    u.lang = v?.lang ?? 'pt-BR'
+    // Tom natural: voz feminina sem exagero (pitch alto = robótico/cartoon)
+    u.rate = 0.98
+    u.pitch = 1.08
+    u.volume = 0.95
     speechSynthesis.cancel() // não acumula falas
     speechSynthesis.speak(u)
   } catch {
