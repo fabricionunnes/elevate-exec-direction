@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import { useTwilioDevice } from "@/hooks/useTwilioDevice";
 import { startRingback, stopRingback } from "@/lib/dialer/ringback";
 import { LeadBriefingPanel } from "./LeadBriefingPanel";
-import { Phone, PhoneOff, PhoneForwarded, Power, Loader2, SkipForward, AlertTriangle } from "lucide-react";
+import { ScheduleLeadMeetingDialog } from "@/components/crm/lead-detail/ScheduleLeadMeetingDialog";
+import { Phone, PhoneOff, PhoneForwarded, Power, Loader2, SkipForward, AlertTriangle, CalendarPlus } from "lucide-react";
 
 interface CampaignOpt { id: string; name: string; status: string }
 interface CurrentCall { callId: string; queueId: string | null; lead: { id: string; name: string; phone: string } }
@@ -38,6 +39,7 @@ export function DialerLivePanel({ campaigns, staffId }: { campaigns: CampaignOpt
   const [note, setNote] = useState("");
   const [autoDial, setAutoDial] = useState(false);
   const [balance, setBalance] = useState<{ balance: number; currency: string; low: boolean; critical: boolean } | null>(null);
+  const [showSchedule, setShowSchedule] = useState(false);
   const sessionIdRef = useRef<string | null>(null);
   const currentRef = useRef<CurrentCall | null>(null);
   const autoDialRef = useRef(autoDial);
@@ -52,6 +54,17 @@ export function DialerLivePanel({ campaigns, staffId }: { campaigns: CampaignOpt
     if (data && typeof data.balance === "number") setBalance(data);
   };
   useEffect(() => { void refreshBalance(); }, []);
+
+  // Heartbeat: mantém last_seen_at atualizado pra medir o tempo no discador com precisão.
+  useEffect(() => {
+    if (status === "offline") return;
+    const t = setInterval(() => {
+      if (sessionIdRef.current) {
+        void supabase.from("crm_dialer_sessions").update({ last_seen_at: new Date().toISOString() }).eq("id", sessionIdRef.current);
+      }
+    }, 30000);
+    return () => clearInterval(t);
+  }, [status]);
 
   useEffect(() => {
     if (!campaignId && active.length) setCampaignId(active[0].id);
@@ -77,8 +90,11 @@ export function DialerLivePanel({ campaigns, staffId }: { campaigns: CampaignOpt
 
   const openSession = async () => {
     if (!staffId) return;
+    const nowIso = new Date().toISOString();
+    // fecha qualquer sessão minha que tenha ficado aberta (evita sobreposição e inflar o tempo)
+    await supabase.from("crm_dialer_sessions").update({ ended_at: nowIso }).eq("agent_staff_id", staffId).is("ended_at", null);
     const { data } = await supabase.from("crm_dialer_sessions")
-      .insert({ agent_staff_id: staffId, campaign_id: campaignId || null }).select("id").maybeSingle();
+      .insert({ agent_staff_id: staffId, campaign_id: campaignId || null, last_seen_at: nowIso }).select("id").maybeSingle();
     sessionIdRef.current = data?.id || null;
   };
   const closeSession = async () => {
@@ -236,6 +252,9 @@ export function DialerLivePanel({ campaigns, staffId }: { campaigns: CampaignOpt
                 </Button>
               ))}
             </div>
+            <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => setShowSchedule(true)}>
+              <CalendarPlus className="h-4 w-4" /> Agendar reunião
+            </Button>
             <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => disposition("nao_atendeu", "Não atendeu")}>
               <PhoneOff className="h-4 w-4" /> Encerrar / Não atendeu
             </Button>
@@ -252,6 +271,22 @@ export function DialerLivePanel({ campaigns, staffId }: { campaigns: CampaignOpt
       <div className="min-h-[400px]">
         <LeadBriefingPanel leadId={current?.lead.id || null} />
       </div>
+
+      {current && (
+        <ScheduleLeadMeetingDialog
+          open={showSchedule}
+          onOpenChange={setShowSchedule}
+          leadId={current.lead.id}
+          leadName={current.lead.name}
+          onSuccess={async () => {
+            setShowSchedule(false);
+            if (current?.queueId) {
+              await supabase.from("crm_dialer_queue").update({ disposition: "agendou_reuniao" }).eq("id", current.queueId);
+            }
+            toast.success("Reunião agendada");
+          }}
+        />
+      )}
     </div>
   );
 }

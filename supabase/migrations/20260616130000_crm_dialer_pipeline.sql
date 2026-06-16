@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.crm_dialer_sessions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_crm_dialer_sessions_agent ON public.crm_dialer_sessions(agent_staff_id);
+ALTER TABLE public.crm_dialer_sessions ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
 
 ALTER TABLE public.crm_dialer_sessions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "CRM users manage dialer sessions" ON public.crm_dialer_sessions;
