@@ -26,7 +26,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
+import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
 import {
   Search,
   Calendar as CalendarIcon,
@@ -79,6 +87,9 @@ export const CRMActivitiesPage = () => {
   const [filterOwner, setFilterOwner] = useState("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
+  // Fluxo pós-conclusão: criar próxima atividade ou finalizar atendimento
+  const [postCompleteLead, setPostCompleteLead] = useState<{ id: string; name: string } | null>(null);
+  const [addActivityLeadId, setAddActivityLeadId] = useState<string | null>(null);
 
   // Filter options
   const [origins, setOrigins] = useState<{ id: string; name: string }[]>([]);
@@ -146,7 +157,7 @@ export const CRMActivitiesPage = () => {
     loadFilterOptions();
   }, [filterStatus, filterType]);
 
-  const handleComplete = async (activityId: string) => {
+  const handleComplete = async (activity: Activity) => {
     try {
       const { error } = await supabase
         .from("crm_activities")
@@ -154,11 +165,13 @@ export const CRMActivitiesPage = () => {
           status: "completed",
           completed_at: new Date().toISOString(),
         })
-        .eq("id", activityId);
+        .eq("id", activity.id);
 
       if (error) throw error;
       toast.success("Atividade concluída");
       loadActivities();
+      // Abre o fluxo: criar próxima atividade para o mesmo lead ou finalizar atendimento
+      setPostCompleteLead({ id: activity.lead_id, name: activity.lead?.name || "este lead" });
     } catch (error) {
       console.error("Error completing activity:", error);
       toast.error("Erro ao concluir atividade");
@@ -460,7 +473,7 @@ export const CRMActivitiesPage = () => {
                   <TableCell>
                     <Checkbox
                       checked={activity.status === "completed"}
-                      onCheckedChange={() => handleComplete(activity.id)}
+                      onCheckedChange={() => handleComplete(activity)}
                       disabled={activity.status === "completed"}
                     />
                   </TableCell>
@@ -567,7 +580,7 @@ export const CRMActivitiesPage = () => {
             >
               <Checkbox
                 checked={activity.status === "completed"}
-                onCheckedChange={() => handleComplete(activity.id)}
+                onCheckedChange={() => handleComplete(activity)}
                 disabled={activity.status === "completed"}
                 className="mt-1"
               />
@@ -606,6 +619,53 @@ export const CRMActivitiesPage = () => {
           )}
         </div>
       </div>
+
+      {/* Pós-conclusão: criar próxima atividade ou finalizar atendimento */}
+      <Dialog open={!!postCompleteLead} onOpenChange={(o) => !o && setPostCompleteLead(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Atividade concluída</DialogTitle>
+            <DialogDescription>
+              O que você quer fazer com {postCompleteLead?.name} agora?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 pt-1">
+            <Button
+              className="w-full justify-start gap-2"
+              onClick={() => {
+                if (postCompleteLead) setAddActivityLeadId(postCompleteLead.id);
+                setPostCompleteLead(null);
+              }}
+            >
+              <Plus className="h-4 w-4" /> Criar próxima atividade
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={() => setPostCompleteLead(null)}
+            >
+              <CheckCircle className="h-4 w-4" /> Finalizar atendimento
+            </Button>
+            <p className="text-xs text-muted-foreground pt-1">
+              Ao finalizar, o lead fica sem atividade pendente até você criar uma nova
+              manualmente dentro do lead.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Criação da próxima atividade para o lead recém-concluído */}
+      {addActivityLeadId && (
+        <AddActivityDialog
+          open={!!addActivityLeadId}
+          onOpenChange={(o) => !o && setAddActivityLeadId(null)}
+          leadId={addActivityLeadId}
+          onSuccess={() => {
+            setAddActivityLeadId(null);
+            loadActivities();
+          }}
+        />
+      )}
     </div>
   );
 };
