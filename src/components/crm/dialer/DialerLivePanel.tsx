@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { useTwilioDevice } from "@/hooks/useTwilioDevice";
 import { startRingback, stopRingback } from "@/lib/dialer/ringback";
 import { LeadBriefingPanel } from "./LeadBriefingPanel";
-import { Phone, PhoneOff, PhoneForwarded, Power, Loader2, SkipForward } from "lucide-react";
+import { Phone, PhoneOff, PhoneForwarded, Power, Loader2, SkipForward, AlertTriangle } from "lucide-react";
 
 interface CampaignOpt { id: string; name: string; status: string }
 interface CurrentCall { callId: string; queueId: string | null; lead: { id: string; name: string; phone: string } }
@@ -37,7 +37,21 @@ export function DialerLivePanel({ campaigns, staffId }: { campaigns: CampaignOpt
   const [dialing, setDialing] = useState(false);
   const [note, setNote] = useState("");
   const [autoDial, setAutoDial] = useState(false);
+  const [balance, setBalance] = useState<{ balance: number; currency: string; low: boolean; critical: boolean } | null>(null);
   const sessionIdRef = useRef<string | null>(null);
+  const currentRef = useRef<CurrentCall | null>(null);
+  const autoDialRef = useRef(autoDial);
+  const handledRef = useRef<string | null>(null);
+  const prevStatusRef = useRef(status);
+
+  useEffect(() => { currentRef.current = current; }, [current]);
+  useEffect(() => { autoDialRef.current = autoDial; }, [autoDial]);
+
+  const refreshBalance = async () => {
+    const { data } = await supabase.functions.invoke("dialer-balance");
+    if (data && typeof data.balance === "number") setBalance(data);
+  };
+  useEffect(() => { void refreshBalance(); }, []);
 
   useEffect(() => {
     if (!campaignId && active.length) setCampaignId(active[0].id);
@@ -110,6 +124,7 @@ export function DialerLivePanel({ campaigns, staffId }: { campaigns: CampaignOpt
 
   const disposition = async (key: string, label: string) => {
     if (!current) return;
+    handledRef.current = current.callId; // evita que o detector de fim de ligação trate de novo
     hangup();
     // disposição manual vai pra fila; a IA preenche ai_disposition depois via dialer-qualify
     await supabase.from("crm_calls").update({ notes: note || null }).eq("id", current.callId);
@@ -117,14 +132,56 @@ export function DialerLivePanel({ campaigns, staffId }: { campaigns: CampaignOpt
       await supabase.from("crm_dialer_queue").update({ disposition: key, status: "completed" }).eq("id", current.queueId);
     }
     toast.success(`Marcado: ${label}`);
-    const prev = current;
     setCurrent(null);
     setNote("");
+    stopRingback();
+    void refreshBalance();
     if (autoDial && status !== "offline") {
       setTimeout(() => { void dialNext(); }, 800);
     }
-    void prev;
   };
+
+  // Encerramento automático (cliente desligou, não atendeu, caixa postal): registra e vai pro próximo.
+  const onCallEnded = async (reason: string) => {
+    const c = currentRef.current;
+    if (!c || handledRef.current === c.callId) return;
+    handledRef.current = c.callId;
+    stopRingback();
+    if (c.queueId) {
+      await supabase.from("crm_dialer_queue").update({ status: "completed", disposition: reason }).eq("id", c.queueId);
+    }
+    setCurrent(null);
+    setNote("");
+    void refreshBalance();
+    if (autoDialRef.current && status !== "offline") {
+      setTimeout(() => { void dialNext(); }, 1000);
+    }
+  };
+
+  // Detecção imediata: agente estava em ligação e voltou pra "pronta" => o outro lado desligou.
+  useEffect(() => {
+    const was = prevStatusRef.current;
+    prevStatusRef.current = status;
+    if ((was === "oncall" || was === "incoming") && status === "ready" && currentRef.current) {
+      void onCallEnded("atendida");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  // Poll de segurança: cobre não-atendeu/ocupado/caixa postal (onde o agente nunca foi conectado).
+  useEffect(() => {
+    if (!current) return;
+    const id = current.callId;
+    const t = setInterval(async () => {
+      const { data } = await supabase.from("crm_calls").select("status, answered_at").eq("id", id).maybeSingle();
+      if (!data) return;
+      if (["completed", "no-answer", "busy", "failed", "canceled", "voicemail"].includes(data.status)) {
+        void onCallEnded(data.answered_at ? "atendida" : data.status === "voicemail" ? "voicemail" : "nao_atendeu");
+      }
+    }, 4000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.callId]);
 
   return (
     <div className="grid lg:grid-cols-[360px_1fr] h-full">
@@ -138,6 +195,15 @@ export function DialerLivePanel({ campaigns, staffId }: { campaigns: CampaignOpt
         </div>
 
         {error && <p className="text-xs text-red-500">{error}</p>}
+
+        {balance && (balance.low || balance.critical) && (
+          <div className={`rounded-md border p-2 text-xs flex items-start gap-2 ${balance.critical ? "border-red-500/40 bg-red-500/10 text-red-500" : "border-amber-500/40 bg-amber-500/10 text-amber-600"}`}>
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>
+              {balance.critical ? "Saldo Twilio crítico" : "Saldo Twilio acabando"}: {balance.currency} {balance.balance.toFixed(2)}. Recarregue para não parar as ligações.
+            </span>
+          </div>
+        )}
 
         <div>
           <label className="text-xs text-muted-foreground">Campanha ativa</label>

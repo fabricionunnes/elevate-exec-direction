@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Phone, PhoneCall, Voicemail, Clock, Timer, Loader2 } from "lucide-react";
+import { Phone, PhoneCall, Voicemail, Clock, Timer, Loader2, Wallet, AlertTriangle } from "lucide-react";
 
 type Range = "today" | "7d" | "30d";
 
@@ -36,6 +36,13 @@ export function DialerDashboard() {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [staff, setStaff] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [balance, setBalance] = useState<{ balance: number; currency: string; low: boolean; critical: boolean } | null>(null);
+
+  useEffect(() => {
+    supabase.functions.invoke("dialer-balance").then(({ data }) => {
+      if (data && typeof data.balance === "number") setBalance(data);
+    });
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -88,12 +95,18 @@ export function DialerDashboard() {
 
   return (
     <div className="p-4 space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         {(["today", "7d", "30d"] as Range[]).map((r) => (
           <Button key={r} size="sm" variant={range === r ? "default" : "outline"} onClick={() => setRange(r)}>
             {r === "today" ? "Hoje" : r === "7d" ? "7 dias" : "30 dias"}
           </Button>
         ))}
+        {balance && (
+          <div className={`ml-auto flex items-center gap-1.5 text-sm rounded-md border px-2.5 py-1 ${balance.critical ? "border-red-500/40 bg-red-500/10 text-red-500" : balance.low ? "border-amber-500/40 bg-amber-500/10 text-amber-600" : "border-border text-muted-foreground"}`}>
+            {balance.low || balance.critical ? <AlertTriangle className="h-3.5 w-3.5" /> : <Wallet className="h-3.5 w-3.5" />}
+            Saldo Twilio: {balance.currency} {balance.balance.toFixed(2)}
+          </div>
+        )}
       </div>
 
       {loading ? (
