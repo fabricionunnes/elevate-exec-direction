@@ -18,6 +18,7 @@ CREATE INDEX IF NOT EXISTS idx_crm_dialer_sessions_agent ON public.crm_dialer_se
 ALTER TABLE public.crm_dialer_sessions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "CRM users manage dialer sessions" ON public.crm_dialer_sessions;
 CREATE POLICY "CRM users manage dialer sessions" ON public.crm_dialer_sessions FOR ALL USING (public.has_crm_access()) WITH CHECK (public.has_crm_access());
+GRANT ALL ON public.crm_dialer_sessions TO anon, authenticated, service_role;
 
 -- funil "Discador" + etapas (idempotente)
 DO $$

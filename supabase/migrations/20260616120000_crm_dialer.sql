@@ -88,3 +88,8 @@ DROP POLICY IF EXISTS "CRM users manage dialer queue" ON public.crm_dialer_queue
 CREATE POLICY "CRM users manage dialer queue" ON public.crm_dialer_queue FOR ALL USING (public.has_crm_access()) WITH CHECK (public.has_crm_access());
 DROP POLICY IF EXISTS "CRM users manage calls" ON public.crm_calls;
 CREATE POLICY "CRM users manage calls" ON public.crm_calls FOR ALL USING (public.has_crm_access()) WITH CHECK (public.has_crm_access());
+
+-- GRANTs de tabela (a RLS acima filtra as linhas; sem o grant o role authenticated leva "permission denied")
+GRANT ALL ON public.crm_dialer_campaigns TO anon, authenticated, service_role;
+GRANT ALL ON public.crm_dialer_queue TO anon, authenticated, service_role;
+GRANT ALL ON public.crm_calls TO anon, authenticated, service_role;

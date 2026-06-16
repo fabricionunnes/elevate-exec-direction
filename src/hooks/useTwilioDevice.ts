@@ -28,6 +28,15 @@ export function useTwilioDevice(staffId: string | null) {
     setError(null);
     setStatus("connecting");
     try {
+      // 1) Permissão de microfone primeiro (sem isso o Device falha em silêncio)
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((t) => t.stop());
+      } catch (micErr: any) {
+        throw new Error("Permita o acesso ao microfone para usar o discador.");
+      }
+
+      // 2) Token
       const { data, error: fnErr } = await supabase.functions.invoke("dialer-token", {
         body: { staffId },
       });
@@ -42,7 +51,11 @@ export function useTwilioDevice(staffId: string | null) {
 
       device.on("registered", () => setStatus("ready"));
       device.on("unregistered", () => setStatus("offline"));
-      device.on("error", (e: any) => setError(e?.message || "Erro no dispositivo de voz"));
+      device.on("error", (e: any) => {
+        console.error("[dialer] device error:", e);
+        const code = e?.code ? ` (código ${e.code})` : "";
+        setError((e?.message || e?.description || "Erro no dispositivo de voz") + code);
+      });
       device.on("incoming", (call: Call) => {
         callRef.current = call;
         setCallInfo({
@@ -73,7 +86,9 @@ export function useTwilioDevice(staffId: string | null) {
       await device.register();
       deviceRef.current = device;
     } catch (e: any) {
-      setError(e?.message || String(e));
+      console.error("[dialer] goReady error:", e);
+      const msg = e?.message || e?.description || (e?.code ? `código ${e.code}` : "") || "Falha ao conectar o discador";
+      setError(msg);
       setStatus("offline");
     }
   }, [staffId]);
