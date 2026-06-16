@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useTwilioDevice } from "@/hooks/useTwilioDevice";
+import { startRingback, stopRingback } from "@/lib/dialer/ringback";
 import { LeadBriefingPanel } from "./LeadBriefingPanel";
 import { Phone, PhoneOff, PhoneForwarded, Power, Loader2, SkipForward } from "lucide-react";
 
@@ -45,9 +46,20 @@ export function DialerLivePanel({ campaigns, staffId }: { campaigns: CampaignOpt
 
   // encerra sessão ao desmontar
   useEffect(() => {
-    return () => { void closeSession(); };
+    return () => { void closeSession(); stopRingback(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Tom de chamada no navegador enquanto o cliente ainda não atendeu.
+  // Toca quando há ligação em curso e o agente ainda não foi conectado; para ao atender.
+  useEffect(() => {
+    if (current && (status === "ready" || status === "connecting")) {
+      startRingback();
+    } else {
+      stopRingback();
+    }
+    return () => stopRingback();
+  }, [current, status]);
 
   const openSession = async () => {
     if (!staffId) return;
