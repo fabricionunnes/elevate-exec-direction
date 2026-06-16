@@ -30,6 +30,16 @@ function buildEvolutionHeaders(apiKey: string) {
   };
 }
 
+// Formata telefone BR com DDD: (31) 98493-5274
+function formatBrPhone(raw: string | null | undefined): string {
+  let d = (raw || "").replace(/\D/g, "");
+  if (!d) return "";
+  if (d.startsWith("55") && d.length >= 12) d = d.slice(2);
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return raw || "";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -47,7 +57,7 @@ Deno.serve(async (req) => {
       .from("crm_activities")
       .select(`
         id, title, type, scheduled_at, lead_id, responsible_staff_id,
-        lead:crm_leads!crm_activities_lead_id_fkey(name)
+        lead:crm_leads!crm_activities_lead_id_fkey(name, phone)
       `)
       .eq("status", "pending")
       .is("notified_at", null)
@@ -148,12 +158,16 @@ Deno.serve(async (req) => {
               scheduledText = `\n*Agendado para:* ${date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" })}`;
             }
 
+            const leadPhoneFmt = formatBrPhone((activity.lead as any)?.phone);
+            const phoneText = leadPhoneFmt ? `\n*Telefone:* ${leadPhoneFmt}` : "";
+
             const leadUrl = `https://unvholdings.com.br/#/crm/leads/${activity.lead_id}`;
             const message =
               `📋 *Atividade do CRM pendente!*\n\n` +
               `*Tipo:* ${label}\n` +
               `*Título:* ${activity.title}\n` +
               `*Lead:* ${leadName}` +
+              phoneText +
               scheduledText +
               `\n\n🔗 Acesse o lead: ${leadUrl}`;
 
