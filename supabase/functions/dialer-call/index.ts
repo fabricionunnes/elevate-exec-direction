@@ -71,7 +71,8 @@ Deno.serve(async (req) => {
       if (!campaign) throw new Error("Campanha não encontrada");
       if (campaign.status !== "active") return json({ done: true, reason: "campaign_not_active" });
 
-      agentStaffId = campaign.agent_staff_id || agentStaffId;
+      // prioriza o agente logado que está discando (passado pelo frontend); cai pro da campanha
+      agentStaffId = body.agentStaffId || campaign.agent_staff_id || agentStaffId;
       callerId = campaign.caller_id || defaultCallerId;
       consentMessage = campaign.consent_message;
 

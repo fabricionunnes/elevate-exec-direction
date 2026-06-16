@@ -78,7 +78,7 @@ export function DialerLivePanel({ campaigns, staffId }: { campaigns: CampaignOpt
     setDialing(true);
     setNote("");
     try {
-      const { data, error: fnErr } = await supabase.functions.invoke("dialer-call", { body: { campaignId } });
+      const { data, error: fnErr } = await supabase.functions.invoke("dialer-call", { body: { campaignId, agentStaffId: staffId } });
       if (fnErr) throw new Error(fnErr.message);
       if (data?.error) throw new Error(data.error);
       if (data?.done) {
