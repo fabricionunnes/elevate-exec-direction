@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Play, Pause, RefreshCw, Loader2, Phone, Users } from "lucide-react";
+import { Plus, Play, Pause, RefreshCw, Loader2, Phone, Users, Trash2 } from "lucide-react";
 
 const DEFAULT_CONSENT =
   "Olá! Esta ligação será gravada para fins de qualidade e treinamento. Aguarde um instante que já vou transferir para um de nossos atendentes.";
@@ -130,6 +130,17 @@ export function DialerQueuePanel({ onChanged }: { onChanged?: () => void }) {
     onChanged?.();
   };
 
+  const deleteCampaign = async (c: Campaign) => {
+    if (!window.confirm(`Excluir a campanha "${c.name}"? A fila dela é removida. As ligações já feitas ficam guardadas no histórico dos leads.`)) return;
+    setBusyId(c.id);
+    const { error } = await supabase.from("crm_dialer_campaigns").delete().eq("id", c.id);
+    setBusyId(null);
+    if (error) return toast.error(error.message);
+    toast.success("Campanha excluída");
+    load();
+    onChanged?.();
+  };
+
   if (loading) {
     return <div className="flex items-center gap-2 text-muted-foreground p-6 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Carregando campanhas…</div>;
   }
@@ -177,6 +188,9 @@ export function DialerQueuePanel({ onChanged }: { onChanged?: () => void }) {
                 </Button>
                 <Button size="sm" variant={c.status === "active" ? "secondary" : "default"} className="gap-1" onClick={() => toggleStatus(c)}>
                   {c.status === "active" ? <><Pause className="h-3.5 w-3.5" /> Pausar</> : <><Play className="h-3.5 w-3.5" /> Iniciar</>}
+                </Button>
+                <Button size="sm" variant="ghost" className="gap-1 text-red-500 hover:text-red-600 ml-auto" disabled={busyId === c.id} onClick={() => deleteCampaign(c)}>
+                  <Trash2 className="h-3.5 w-3.5" /> Excluir
                 </Button>
               </div>
             </CardContent>
