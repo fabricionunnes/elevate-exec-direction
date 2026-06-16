@@ -86,9 +86,13 @@ export function useTwilioDevice(staffId: string | null) {
       await device.register();
       deviceRef.current = device;
     } catch (e: any) {
-      console.error("[dialer] goReady error:", e);
-      const msg = e?.message || e?.description || (e?.code ? `código ${e.code}` : "") || "Falha ao conectar o discador";
-      setError(msg);
+      console.error("[dialer] goReady error:", e, JSON.stringify(e, Object.getOwnPropertyNames(e || {})));
+      let detail = e?.message || e?.description || (e?.code != null ? `código ${e.code}` : "");
+      if (!detail) {
+        try { detail = JSON.stringify(e, Object.getOwnPropertyNames(e || {})); } catch { detail = String(e); }
+      }
+      if (!detail || detail === "{}") detail = e?.name || e?.constructor?.name || "erro desconhecido";
+      setError(`Falha ao conectar: ${detail}`);
       setStatus("offline");
     }
   }, [staffId]);
