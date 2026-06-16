@@ -51,6 +51,33 @@ export default function CleaningLady() {
   const [walking, setWalking] = useState(false)
   const walkingRef = useRef(false)
   const lastSpokeIdx = useRef(-1)
+  // Mudo da Tia (individual, salvo no navegador) — clica nela pra alternar
+  const [muted, setMuted] = useState(() => {
+    try {
+      return localStorage.getItem('tia-cleide-muted') === '1'
+    } catch {
+      return false
+    }
+  })
+  const mutedRef = useRef(muted)
+  mutedRef.current = muted
+  const toggleMute = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation()
+    setMuted((m) => {
+      const next = !m
+      try {
+        localStorage.setItem('tia-cleide-muted', next ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+      if (next && 'speechSynthesis' in window) speechSynthesis.cancel()
+      useTeamStore
+        .getState()
+        .addToast(next ? '🔇 Tia Cleide no mudo (pra você)' : '🔊 Tia Cleide voltou a falar', next ? 'out' : 'in')
+      return next
+    })
+  }
+
   // Café: visita curta → despedida → cooldown
   const cafePhaseRef = useRef<'sweep' | 'cafe' | 'cooldown'>('sweep')
   const phaseUntilRef = useRef(0)
@@ -211,7 +238,7 @@ export default function CleaningLady() {
     const meInOpen = !meRoom || meRoom.roomType === 'lounge'
     const distToMe = Math.hypot(mx - g.position.x, mz - g.position.z)
     const sameOpenRoom = !!herRoom && herRoom.roomType === 'lounge' && meRoom?.id === herRoom.id
-    const canHear = meInOpen && !st.me?.isGuest && (sameOpenRoom || distToMe < NEAR_VOICE)
+    const canHear = !mutedRef.current && meInOpen && !st.me?.isGuest && (sameOpenRoom || distToMe < NEAR_VOICE)
     const meFirst = (st.me?.name ?? '').split(' ')[0]
     // Chama pelo nome só de vez em quando (não em toda frase); pula se a
     // própria frase já cita alguém (evita "Fabrício, Eva e Natallia...").
@@ -236,8 +263,23 @@ export default function CleaningLady() {
 
   return (
     <>
-      <group ref={groupRef} position={[0, 0, 0.5]}>
+      <group
+        ref={groupRef}
+        position={[0, 0, 0.5]}
+        onClick={(e) => {
+          e.stopPropagation()
+          if (e.delta > 6) return // arrasto de câmera, não clique
+          toggleMute(e)
+        }}
+        onPointerOver={() => (document.body.style.cursor = 'pointer')}
+        onPointerOut={() => (document.body.style.cursor = 'default')}
+      >
         <HumanBody avatar={CLEIDE} isWalking={walking} />
+        {/* hitbox generosa pro clique de mutar */}
+        <mesh position={[0, 0.95, 0]} visible={false}>
+          <boxGeometry args={[0.9, 1.9, 0.9]} />
+          <meshBasicMaterial transparent opacity={0} />
+        </mesh>
         {/* Vassoura na mão direita — sempre varrendo (rotation.z animada) */}
         <group ref={broomRef} position={[0.34, 0, 0.18]} rotation={[0.32, 0, -0.12]}>
           <mesh position={[0, 0.62, 0]}>
@@ -251,12 +293,12 @@ export default function CleaningLady() {
         </group>
         <Billboard position={[0, 2.18, 0]} follow>
           <Text fontSize={0.16} color="#ffffff" outlineWidth={0.014} outlineColor="#000000" anchorX="center">
-            🧹 Tia Cleide
+            🧹 Tia Cleide {muted ? '🔇' : ''}
           </Text>
         </Billboard>
         <Billboard position={[0, 1.98, 0]} follow>
           <Text fontSize={0.105} color="#9fe0c0" outlineWidth={0.011} outlineColor="#000000" anchorX="center">
-            Faxineira · fofoca em dia
+            {muted ? 'clique pra ativar a voz' : 'Faxineira · clique pra mutar'}
           </Text>
         </Billboard>
       </group>
