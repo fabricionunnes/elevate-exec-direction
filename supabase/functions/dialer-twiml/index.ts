@@ -63,13 +63,13 @@ Deno.serve(async (req) => {
 
     const recCb = `${BASE}/dialer-recording?callId=${callId}`;
     return twiml(
-      `<Say voice="Polly.Camila-Neural" language="pt-BR">${xmlEscape(consent)}</Say>` +
+      `<Say voice="Polly.Camila" language="pt-BR">${xmlEscape(consent)}</Say>` +
       `<Dial answerOnBridge="true" record="record-from-answer-dual" recordingStatusCallback="${xmlEscape(recCb)}" recordingStatusCallbackEvent="completed" recordingStatusCallbackMethod="POST" timeout="30">` +
       `<Client>${xmlEscape(agent)}</Client>` +
       `</Dial>`,
     );
   } catch (_e) {
     // Em erro, evita deixar o cliente no limbo
-    return twiml(`<Say voice="Polly.Camila-Neural" language="pt-BR">Desculpe, tivemos um problema técnico. Retornaremos em instantes.</Say><Hangup/>`);
+    return twiml(`<Say voice="Polly.Camila" language="pt-BR">Desculpe, tivemos um problema técnico. Retornaremos em instantes.</Say><Hangup/>`);
   }
 });

@@ -3,6 +3,7 @@
 -- vínculo da campanha com um funil e a etapa-gatilho (1ª etapa)
 ALTER TABLE public.crm_dialer_campaigns ADD COLUMN IF NOT EXISTS pipeline_id UUID REFERENCES public.crm_pipelines(id);
 ALTER TABLE public.crm_dialer_campaigns ADD COLUMN IF NOT EXISTS trigger_stage_id UUID REFERENCES public.crm_stages(id);
+ALTER TABLE public.crm_dialer_campaigns ADD COLUMN IF NOT EXISTS use_amd BOOLEAN NOT NULL DEFAULT true;
 
 -- sessões do agente no discador (pra medir tempo logado / "tempo no discador")
 CREATE TABLE IF NOT EXISTS public.crm_dialer_sessions (
