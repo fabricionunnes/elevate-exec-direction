@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Play, Pause, RefreshCw, Loader2, Phone, Users, Trash2 } from "lucide-react";
+import { Plus, Play, Pause, RefreshCw, Loader2, Phone, Users, Trash2, Upload } from "lucide-react";
+import { DialerImportDialog } from "./DialerImportDialog";
 
 // Vazio por padrão: o cliente atende e fala direto com a atendente, sem mensagem automática.
 const DEFAULT_CONSENT = "";
@@ -33,6 +34,7 @@ export function DialerQueuePanel({ onChanged, tenantId = null }: { onChanged?: (
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
@@ -152,9 +154,14 @@ export function DialerQueuePanel({ onChanged, tenantId = null }: { onChanged?: (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">Campanhas de discagem</h2>
-        <Button size="sm" className="gap-2" onClick={() => setCreating(true)}>
-          <Plus className="h-4 w-4" /> Nova campanha
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4" /> Importar leads
+          </Button>
+          <Button size="sm" className="gap-2" onClick={() => setCreating(true)}>
+            <Plus className="h-4 w-4" /> Nova campanha
+          </Button>
+        </div>
       </div>
 
       {campaigns.length === 0 && (
@@ -246,6 +253,8 @@ export function DialerQueuePanel({ onChanged, tenantId = null }: { onChanged?: (
           </div>
         </DialogContent>
       </Dialog>
+
+      <DialerImportDialog open={importOpen} onOpenChange={setImportOpen} onDone={() => { load(); onChanged?.(); }} />
     </div>
   );
 }

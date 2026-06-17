@@ -134,20 +134,15 @@ export const CRMLayout = () => {
           return;
         }
 
-        // Tenant do usuário (cliente do discador). NULL = staff UNV/owner.
-        const { data: tu } = await supabase
-          .from("whitelabel_tenant_users")
-          .select("tenant_id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        setTenantId(tu?.tenant_id ?? null);
-
         const { data: staff, error: staffError } = await supabase
           .from("onboarding_staff")
-          .select("id, role, name, avatar_url")
+          .select("id, role, name, avatar_url, tenant_id")
           .eq("user_id", user.id)
           .eq("is_active", true)
           .maybeSingle();
+
+        // Tenant do usuário (cliente do discador). NULL = staff UNV/owner.
+        setTenantId(staff?.tenant_id ?? null);
 
         if (!staff) {
           navigate("/onboarding-tasks");
