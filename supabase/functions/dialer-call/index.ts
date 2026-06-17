@@ -125,9 +125,15 @@ Deno.serve(async (req) => {
     // Bloqueio por saldo — só para clientes (tenant). UNV/owner (tenant null) não debita.
     if (tenantId) {
       const { data: wallet } = await supabase.from("dialer_wallets").select("balance").eq("tenant_id", tenantId).maybeSingle();
-      if (!wallet || Number(wallet.balance) <= 0) {
+      const { data: pricing } = await supabase.from("dialer_pricing")
+        .select("min_balance_to_dial")
+        .or(`tenant_id.eq.${tenantId},tenant_id.is.null`)
+        .order("tenant_id", { ascending: false, nullsFirst: false })
+        .limit(1).maybeSingle();
+      const minBalance = Number(pricing?.min_balance_to_dial ?? 2);
+      if (!wallet || Number(wallet.balance) < minBalance) {
         if (queueId) await supabase.from("crm_dialer_queue").update({ status: "queued" }).eq("id", queueId);
-        return json({ done: false, reason: "no_balance", error: "Sem saldo na carteira. Recarregue para continuar discando." });
+        return json({ done: false, reason: "no_balance", error: "Saldo insuficiente na carteira. Recarregue para continuar discando." });
       }
     }
 
