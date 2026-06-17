@@ -7,6 +7,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Horário permitido de telemarketing (Brasília): Seg-Sex 8-20, Sáb 9-15.
+function callingAllowed(): { allowed: boolean; message: string } {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", weekday: "short", hour: "2-digit", hour12: false }).formatToParts(new Date());
+  const wd = parts.find((p) => p.type === "weekday")?.value || "";
+  const hour = parseInt(parts.find((p) => p.type === "hour")?.value || "0", 10);
+  if (["Mon", "Tue", "Wed", "Thu", "Fri"].includes(wd) && hour >= 8 && hour < 20) return { allowed: true, message: "" };
+  if (wd === "Sat" && hour >= 9 && hour < 15) return { allowed: true, message: "" };
+  return { allowed: false, message: "Fora do horário permitido para telemarketing. Pela legislação brasileira, ligações só podem ser feitas de segunda a sexta das 8h às 20h e aos sábados das 9h às 15h (horário de Brasília)." };
+}
+
 function toE164BR(raw: string): string {
   let d = (raw || "").replace(/\D/g, "");
   if (!d) return "";
@@ -53,6 +63,10 @@ Deno.serve(async (req) => {
         caller_id_owned: callerIdOwned,
       });
     }
+
+    // Trava de horário (legislação) — vale pra todos.
+    const ch = callingAllowed();
+    if (!ch.allowed) return json({ done: false, reason: "outside_hours", error: ch.message });
 
     const campaignId: string | undefined = body.campaignId;
     let leadId: string | undefined = body.leadId;
