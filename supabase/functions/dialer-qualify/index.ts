@@ -54,9 +54,9 @@ Deno.serve(async (req) => {
       .eq("id", call.lead_id)
       .maybeSingle();
 
-    // 1) Transcrição (Whisper) se houver gravação + chave OpenAI
+    // 1) Transcrição (Whisper) só pra ligação com mais de 40s de conversa (curtas não transcrevem)
     let transcription = call.transcription || "";
-    if (!transcription && call.recording_url && OPENAI_API_KEY && accountSid && authToken) {
+    if (!transcription && call.recording_url && (call.duration_seconds || 0) >= 40 && OPENAI_API_KEY && accountSid && authToken) {
       try {
         const audioResp = await fetch(call.recording_url, {
           headers: { Authorization: "Basic " + btoa(`${accountSid}:${authToken}`) },
