@@ -88,6 +88,9 @@ export function LeadDialerCallsSection({ leadId }: { leadId: string }) {
                       <source src={dialerAudioSrc(c.id)} type="audio/mpeg" />
                     </audio>
                   )}
+                  {!c.recording_url && (c.transcription || c.ai_summary) && (
+                    <p className="text-[11px] text-muted-foreground italic">Gravação removida pela política de retenção (30 dias). Transcrição mantida.</p>
+                  )}
                   {c.ai_summary && (
                     <div>
                       <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-1">Resumo da IA</p>

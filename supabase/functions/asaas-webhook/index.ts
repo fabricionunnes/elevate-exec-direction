@@ -104,6 +104,17 @@ Deno.serve(async (req) => {
       });
     }
 
+    // === Cobrança por usuário ativo do discador ===
+    if (extRef && extRef.startsWith("dialer_billing:")) {
+      const billingId = extRef.split(":")[1];
+      if (newStatus === "paid" && billingId) {
+        await supabase.from("dialer_billing").update({ status: "paid", paid_at: new Date().toISOString(), asaas_payment_id: paymentId }).eq("id", billingId).neq("status", "paid");
+      }
+      return new Response(JSON.stringify({ received: true, dialer_billing: billingId }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Idempotency: if payment is already confirmed and bank was credited, skip
     if (newStatus === "paid") {
       // Check 1: invoice matched by stored Asaas payment id.

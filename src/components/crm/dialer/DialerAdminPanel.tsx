@@ -28,6 +28,8 @@ export function DialerAdminPanel() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [range, setRange] = useState<number>(30);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [billingRun, setBillingRun] = useState(false);
+  const [billingResult, setBillingResult] = useState<any[] | null>(null);
 
   const loadPricing = async () => {
     const { data } = await supabase.from("dialer_pricing").select("*").is("tenant_id", null).maybeSingle();
@@ -57,6 +59,17 @@ export function DialerAdminPanel() {
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Preços atualizados");
+  };
+
+  const runBilling = async () => {
+    if (!confirm("Rodar a cobrança do mês para todos os clientes ativos? Gera a fatura no Asaas e credita a franquia na carteira de cada um.")) return;
+    setBillingRun(true);
+    const { data, error } = await supabase.functions.invoke("dialer-billing-run", { body: {} });
+    setBillingRun(false);
+    if (error || data?.error) return toast.error(data?.error || error?.message);
+    setBillingResult(data?.results || []);
+    const charged = (data?.results || []).filter((r: any) => r.amount).length;
+    toast.success(`Cobrança rodada. ${charged} cliente(s) faturado(s).`);
   };
 
   const field = (k: keyof Pricing, label: string, step = "0.01") => (
@@ -104,6 +117,24 @@ export function DialerAdminPanel() {
           <p className="text-[11px] text-muted-foreground">Custo Twilio é o total da conta no período (câmbio USD→BRL configurável via secret USD_BRL). Cobrado = soma dos minutos debitados das carteiras dos clientes.</p>
         </>
       ) : <p className="text-sm text-muted-foreground">Sem dados de margem ainda.</p>}
+
+      {/* Cobrança por usuário ativo */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Cobrança por usuário ativo</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-xs text-muted-foreground">Fatura cada cliente por nº de usuários ativos no mês (× assinatura), gera a cobrança no Asaas e credita a franquia de minutos na carteira. Roda automático todo dia 1; aqui dá pra rodar na mão.</p>
+          <Button className="gap-2" variant="outline" onClick={runBilling} disabled={billingRun}>
+            {billingRun ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />} Rodar cobrança do mês
+          </Button>
+          {billingResult && (
+            <div className="text-xs text-muted-foreground space-y-0.5 pt-1">
+              {billingResult.map((r, i) => (
+                <div key={i}>{r.amount ? `${r.activeUsers} usuário(s) → ${brl(r.amount)}${r.invoiceUrl ? "" : " (sem cobrança Asaas — cadastrar cliente)"}` : `pulado: ${r.skipped || "—"}`}</div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Preços (configurável) */}
       <Card>
