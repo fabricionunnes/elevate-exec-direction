@@ -18,7 +18,7 @@ interface CampaignOpt { id: string; name: string; status: string }
 
 export default function CRMDialerPage() {
   const { staffId, staffName, isAdmin, tenantId } = useCRMContext();
-  const [tab, setTab] = useState<Tab>("live");
+  const [tab, setTab] = useState<Tab>("dashboard");
   const [campaigns, setCampaigns] = useState<CampaignOpt[]>([]);
 
   const loadCampaigns = async () => {
@@ -29,12 +29,12 @@ export default function CRMDialerPage() {
 
   const isUnvAdmin = isAdmin && !tenantId; // staff UNV (não cliente)
   const tabs: { key: Tab; label: string; icon: any }[] = [
+    { key: "dashboard", label: "Dashboard", icon: BarChart3 },
     { key: "live", label: "Discador", icon: PhoneCall },
     ...(isAdmin ? [{ key: "team" as Tab, label: "Ao vivo", icon: Radio }] : []),
     { key: "queue", label: "Fila & Campanhas", icon: ListChecks },
     { key: "calls", label: "Ligações", icon: Mic },
     { key: "wallet", label: "Carteira", icon: Wallet },
-    { key: "dashboard", label: "Dashboard", icon: BarChart3 },
     ...(isUnvAdmin ? [
       { key: "clients" as Tab, label: "Clientes", icon: Users },
       { key: "admin" as Tab, label: "Admin", icon: Settings2 },
