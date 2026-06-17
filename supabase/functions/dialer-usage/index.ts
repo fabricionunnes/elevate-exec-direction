@@ -14,6 +14,19 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const days = Math.min(Math.max(Number(body.days) || 14, 1), 90);
     const start = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
+    const basic = "Basic " + btoa(`${accountSid}:${authToken}`);
+
+    // Detalhamento por categoria (pra entender onde o dinheiro vai)
+    if (body.breakdown) {
+      const bResp = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Usage/Records.json?StartDate=${start}&PageSize=200`, { headers: { Authorization: basic } });
+      const bData = await bResp.json();
+      if (!bResp.ok) throw new Error(bData?.message || `Twilio ${bResp.status}`);
+      const cats = (bData.usage_records || [])
+        .map((r: any) => ({ category: r.category, description: r.description, count: Number(r.count), usage: Number(r.usage), usage_unit: r.usage_unit, price: Math.abs(parseFloat(r.price) || 0), price_unit: r.price_unit }))
+        .filter((r: any) => r.price > 0 || r.count > 0)
+        .sort((a: any, b: any) => b.price - a.price);
+      return new Response(JSON.stringify({ days, categories: cats }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Usage/Records/Daily.json?Category=totalprice&StartDate=${start}&PageSize=100`;
     const resp = await fetch(url, { headers: { Authorization: "Basic " + btoa(`${accountSid}:${authToken}`) } });

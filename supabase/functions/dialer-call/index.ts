@@ -60,6 +60,7 @@ Deno.serve(async (req) => {
     let agentStaffId: string | undefined = body.agentStaffId;
     let callerId = defaultCallerId;
     let consentMessage: string | undefined;
+    let useAmd = false; // detecção de secretária eletrônica (custa ~US$0,0075/ligação)
 
     // Modo campanha: pega o próximo da fila
     if (campaignId && !leadId) {
@@ -75,6 +76,7 @@ Deno.serve(async (req) => {
       agentStaffId = body.agentStaffId || campaign.agent_staff_id || agentStaffId;
       callerId = campaign.caller_id || defaultCallerId;
       consentMessage = campaign.consent_message;
+      useAmd = campaign.use_amd !== false;
 
       const { data: nextRow } = await supabase
         .from("crm_dialer_queue")
@@ -145,9 +147,11 @@ Deno.serve(async (req) => {
       Method: "POST",
       StatusCallback: `${BASE}/dialer-status?callId=${callId}`,
       StatusCallbackMethod: "POST",
-      MachineDetection: "Enable",
-      MachineDetectionTimeout: "15",
     });
+    if (useAmd) {
+      params.append("MachineDetection", "Enable");
+      params.append("MachineDetectionTimeout", "15");
+    }
     params.append("StatusCallbackEvent", "initiated");
     params.append("StatusCallbackEvent", "ringing");
     params.append("StatusCallbackEvent", "answered");

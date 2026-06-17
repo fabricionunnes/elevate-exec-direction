@@ -40,6 +40,7 @@ export function DialerQueuePanel({ onChanged }: { onChanged?: () => void }) {
     agent_staff_id: "",
     pipeline_id: "",
     consent_message: DEFAULT_CONSENT,
+    use_amd: true,
   });
 
   const load = async () => {
@@ -89,6 +90,7 @@ export function DialerQueuePanel({ onChanged }: { onChanged?: () => void }) {
       pipeline_id: form.pipeline_id,
       trigger_stage_id: stage?.id || null,
       consent_message: form.consent_message,
+      use_amd: form.use_amd,
       status: "paused",
     });
     if (error) return toast.error(error.message);
@@ -228,6 +230,13 @@ export function DialerQueuePanel({ onChanged }: { onChanged?: () => void }) {
               <Label>Mensagem de consentimento de gravação</Label>
               <Textarea rows={3} value={form.consent_message} onChange={(e) => setForm((f) => ({ ...f, consent_message: e.target.value }))} />
             </div>
+            <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <input type="checkbox" className="mt-1" checked={form.use_amd} onChange={(e) => setForm((f) => ({ ...f, use_amd: e.target.checked }))} />
+              <span>
+                Detectar secretária eletrônica (pula caixa postal automaticamente)
+                <span className="block text-xs text-muted-foreground">Recomendado. Custa ~US$0,0075/ligação. Desligue para economizar — aí a atendente desliga as caixas postais na mão.</span>
+              </span>
+            </label>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setCreating(false)}>Cancelar</Button>
               <Button onClick={createCampaign}>Criar</Button>

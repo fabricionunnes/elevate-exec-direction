@@ -4,10 +4,11 @@ import { useCRMContext } from "./CRMLayout";
 import { DialerLivePanel } from "@/components/crm/dialer/DialerLivePanel";
 import { DialerQueuePanel } from "@/components/crm/dialer/DialerQueuePanel";
 import { DialerDashboard } from "@/components/crm/dialer/DialerDashboard";
-import { PhoneCall, ListChecks, BarChart3 } from "lucide-react";
+import { DialerCallsHistory } from "@/components/crm/dialer/DialerCallsHistory";
+import { PhoneCall, ListChecks, BarChart3, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Tab = "live" | "queue" | "dashboard";
+type Tab = "live" | "queue" | "calls" | "dashboard";
 
 interface CampaignOpt { id: string; name: string; status: string }
 
@@ -25,6 +26,7 @@ export default function CRMDialerPage() {
   const tabs: { key: Tab; label: string; icon: any }[] = [
     { key: "live", label: "Discador", icon: PhoneCall },
     { key: "queue", label: "Fila & Campanhas", icon: ListChecks },
+    { key: "calls", label: "Ligações", icon: Mic },
     { key: "dashboard", label: "Dashboard", icon: BarChart3 },
   ];
 
@@ -51,6 +53,7 @@ export default function CRMDialerPage() {
       <div className="flex-1 overflow-hidden">
         {tab === "live" && <DialerLivePanel campaigns={campaigns} staffId={staffId} />}
         {tab === "queue" && <div className="h-full overflow-auto"><DialerQueuePanel onChanged={loadCampaigns} /></div>}
+        {tab === "calls" && <div className="h-full overflow-auto"><DialerCallsHistory /></div>}
         {tab === "dashboard" && <div className="h-full overflow-auto"><DialerDashboard isAdmin={isAdmin} /></div>}
       </div>
     </div>
