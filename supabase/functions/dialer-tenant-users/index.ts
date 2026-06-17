@@ -46,6 +46,39 @@ Deno.serve(async (req) => {
       return json({ ok: true, max_users: body.maxUsers ?? null });
     }
 
+    if (action === "remove") {
+      const userId = body.userId;
+      if (!userId) throw new Error("userId é obrigatório");
+      if (body.kind === "portal") {
+        await supabase.from("onboarding_users").update({ dialer_enabled: false }).eq("id", userId);
+      } else {
+        await supabase.from("onboarding_staff").update({ is_active: false }).eq("id", userId);
+      }
+      return json({ ok: true, removed: true });
+    }
+
+    if (action === "reset_password") {
+      const userId = body.userId; // onboarding_staff id
+      const { data: st } = await supabase.from("onboarding_staff").select("user_id").eq("id", userId).maybeSingle();
+      if (!st?.user_id) throw new Error("Usuário sem login (não é um login de discador)");
+      const tempPassword = "Disc-" + crypto.randomUUID().slice(0, 8) + "!";
+      const r = await fetch(`${supabaseUrl}/auth/v1/admin/users/${st.user_id}`, {
+        method: "PUT", headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ password: tempPassword }),
+      });
+      if (!r.ok) throw new Error("Falha ao redefinir a senha");
+      return json({ ok: true, tempPassword });
+    }
+
+    if (action === "rename") {
+      const userId = body.userId;
+      const name = (body.name || "").trim();
+      if (!userId || !name) throw new Error("userId e name são obrigatórios");
+      if (body.kind === "portal") await supabase.from("onboarding_users").update({ name }).eq("id", userId);
+      else await supabase.from("onboarding_staff").update({ name }).eq("id", userId);
+      return json({ ok: true });
+    }
+
     if (action === "add") {
       const name = (body.name || "").trim();
       const email = (body.email || "").trim().toLowerCase();

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Users, DollarSign, CalendarCheck, Wallet, Target, Loader2, UserPlus, Copy, Pencil, Trash2 } from "lucide-react";
+import { Users, DollarSign, CalendarCheck, Wallet, Target, Loader2, UserPlus, Copy, Pencil, Trash2, KeyRound, X } from "lucide-react";
 
 const brl = (v: number | string) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -62,6 +62,25 @@ export function DialerClientsAdmin() {
     if (!usersClient) return;
     await supabase.functions.invoke("dialer-tenant-users", { body: { action: "set_limit", tenantId: usersClient.tenant_id, maxUsers: max === "" ? null : Number(max) } });
     openUsers(usersClient);
+  };
+  const removeUser = async (us: any) => {
+    if (!confirm(`Remover o acesso de "${us.name}"?`)) return;
+    const { data, error } = await supabase.functions.invoke("dialer-tenant-users", { body: { action: "remove", tenantId: usersClient.tenant_id, userId: us.id, kind: us.kind } });
+    if (error || data?.error) return toast.error(data?.error || error?.message);
+    toast.success("Usuário removido"); openUsers(usersClient);
+  };
+  const resetPassword = async (us: any) => {
+    const { data, error } = await supabase.functions.invoke("dialer-tenant-users", { body: { action: "reset_password", tenantId: usersClient.tenant_id, userId: us.id } });
+    if (error || data?.error) return toast.error(data?.error || error?.message);
+    toast.success(`Nova senha: ${data.tempPassword}`);
+    navigator.clipboard.writeText(data.tempPassword);
+  };
+  const renameUser = async (us: any) => {
+    const name = prompt("Novo nome do usuário:", us.name);
+    if (!name) return;
+    const { data, error } = await supabase.functions.invoke("dialer-tenant-users", { body: { action: "rename", tenantId: usersClient.tenant_id, userId: us.id, kind: us.kind, name } });
+    if (error || data?.error) return toast.error(data?.error || error?.message);
+    toast.success("Renomeado"); openUsers(usersClient);
   };
 
   const load = async () => {
@@ -271,9 +290,12 @@ export function DialerClientsAdmin() {
               </div>
               <div className="space-y-1 max-h-48 overflow-auto">
                 {(usersData.users || []).map((us: any) => (
-                  <div key={us.id} className="flex items-center justify-between rounded border border-border px-2 py-1.5 text-xs">
-                    <span className="truncate">{us.name} <span className="text-muted-foreground">· {us.email}</span></span>
-                    <Badge variant="secondary" className="text-[9px]">{us.kind === "portal" ? "portal" : "login"}</Badge>
+                  <div key={us.id} className="flex items-center justify-between gap-1 rounded border border-border px-2 py-1.5 text-xs">
+                    <span className="truncate flex-1">{us.name} <span className="text-muted-foreground">· {us.email}</span></span>
+                    <Badge variant="secondary" className="text-[9px] shrink-0">{us.kind === "portal" ? "portal" : "login"}</Badge>
+                    <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" title="Renomear" onClick={() => renameUser(us)}><Pencil className="h-3 w-3" /></Button>
+                    {us.kind !== "portal" && <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" title="Resetar senha" onClick={() => resetPassword(us)}><KeyRound className="h-3 w-3" /></Button>}
+                    <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0 text-red-500" title="Remover" onClick={() => removeUser(us)}><X className="h-3 w-3" /></Button>
                   </div>
                 ))}
                 {usersData.users?.length === 0 && <p className="text-xs text-muted-foreground">Sem usuários ainda.</p>}
