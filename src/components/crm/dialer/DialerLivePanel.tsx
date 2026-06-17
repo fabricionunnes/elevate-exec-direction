@@ -62,16 +62,17 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
   };
   useEffect(() => { void refreshBalance(); }, []);
 
-  // Heartbeat: mantém last_seen_at atualizado pra medir o tempo no discador com precisão.
+  // Heartbeat: intervalo fixo (NÃO depende de status — senão cada mudança de status reinicia o
+  // timer de 30s e durante a discagem ele nunca chega a disparar, deixando o agente "offline").
+  // Atualiza last_seen_at enquanto houver sessão aberta; para sozinho quando a sessão fecha (ref null).
   useEffect(() => {
-    if (status === "offline") return;
     const t = setInterval(() => {
       if (sessionIdRef.current) {
         void supabase.from("crm_dialer_sessions").update({ last_seen_at: new Date().toISOString() }).eq("id", sessionIdRef.current);
       }
-    }, 30000);
+    }, 25000);
     return () => clearInterval(t);
-  }, [status]);
+  }, []);
 
   useEffect(() => {
     if (!campaignId && active.length) setCampaignId(active[0].id);
