@@ -18,9 +18,35 @@ export function DialerClientsAdmin() {
   const [range, setRange] = useState(30);
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"new" | "existing_portal">("new");
-  const [form, setForm] = useState({ name: "", email: "", planPricePerUser: "997", initialCredit: "0" });
+  const [form, setForm] = useState({ name: "", email: "", planPricePerUser: "997", initialCredit: "0", maxUsers: "" });
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<any>(null);
+  // gestão de usuários por cliente
+  const [usersClient, setUsersClient] = useState<any>(null);
+  const [usersData, setUsersData] = useState<any>(null);
+  const [newUser, setNewUser] = useState({ name: "", email: "" });
+  const [userBusy, setUserBusy] = useState(false);
+
+  const openUsers = async (c: any) => {
+    setUsersClient(c); setUsersData(null); setNewUser({ name: "", email: "" });
+    const { data } = await supabase.functions.invoke("dialer-tenant-users", { body: { action: "list", tenantId: c.tenant_id } });
+    setUsersData(data);
+  };
+  const addUser = async () => {
+    if (!usersClient) return;
+    setUserBusy(true);
+    const { data, error } = await supabase.functions.invoke("dialer-tenant-users", { body: { action: "add", tenantId: usersClient.tenant_id, name: newUser.name, email: newUser.email } });
+    setUserBusy(false);
+    if (error || data?.error) return toast.error(data?.error || error?.message);
+    toast.success(`Usuário criado. Senha: ${data.tempPassword}`);
+    setNewUser({ name: "", email: "" });
+    openUsers(usersClient);
+  };
+  const setLimit = async (max: string) => {
+    if (!usersClient) return;
+    await supabase.functions.invoke("dialer-tenant-users", { body: { action: "set_limit", tenantId: usersClient.tenant_id, maxUsers: max === "" ? null : Number(max) } });
+    openUsers(usersClient);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -39,6 +65,7 @@ export function DialerClientsAdmin() {
       email: form.email || undefined,
       planPricePerUser: form.planPricePerUser ? Number(form.planPricePerUser) : undefined,
       initialCredit: form.initialCredit ? Number(form.initialCredit) : undefined,
+      maxUsers: form.maxUsers ? Number(form.maxUsers) : undefined,
     };
     const { data: r, error } = await supabase.functions.invoke("dialer-provision-client", { body });
     setSaving(false);
@@ -86,6 +113,7 @@ export function DialerClientsAdmin() {
                     <TableHead className="text-right">Minutos</TableHead>
                     <TableHead className="text-right">Agendou</TableHead>
                     <TableHead className="text-right">Qualif.</TableHead>
+                    <TableHead className="text-right">Usuários</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -99,9 +127,10 @@ export function DialerClientsAdmin() {
                       <TableCell className="text-right">{c.minutes}</TableCell>
                       <TableCell className="text-right text-blue-500">{c.agendamentos}</TableCell>
                       <TableCell className="text-right text-emerald-500">{c.qualificados}</TableCell>
+                      <TableCell className="text-right"><Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => openUsers(c)}><Users className="h-3.5 w-3.5" /> Gerenciar</Button></TableCell>
                     </TableRow>
                   ))}
-                  {(!data?.clients || data.clients.length === 0) && <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum cliente do discador ainda</TableCell></TableRow>}
+                  {(!data?.clients || data.clients.length === 0) && <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhum cliente do discador ainda</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </CardContent>
@@ -126,9 +155,10 @@ export function DialerClientsAdmin() {
               ) : (
                 <div><Label>E-mail do cliente já existente no portal</Label><Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="ele acessa o discador no mesmo login" /></div>
               )}
-              <div className="grid grid-cols-2 gap-2">
-                <div><Label>Plano (R$/usuário/mês)</Label><Input type="number" value={form.planPricePerUser} onChange={(e) => setForm((f) => ({ ...f, planPricePerUser: e.target.value }))} /></div>
-                <div><Label>Crédito inicial (R$)</Label><Input type="number" value={form.initialCredit} onChange={(e) => setForm((f) => ({ ...f, initialCredit: e.target.value }))} /></div>
+              <div className="grid grid-cols-3 gap-2">
+                <div><Label>Plano (R$/usuário)</Label><Input type="number" value={form.planPricePerUser} onChange={(e) => setForm((f) => ({ ...f, planPricePerUser: e.target.value }))} /></div>
+                <div><Label>Crédito inicial</Label><Input type="number" value={form.initialCredit} onChange={(e) => setForm((f) => ({ ...f, initialCredit: e.target.value }))} /></div>
+                <div><Label>Máx. usuários</Label><Input type="number" placeholder="ilimitado" value={form.maxUsers} onChange={(e) => setForm((f) => ({ ...f, maxUsers: e.target.value }))} /></div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
@@ -143,6 +173,42 @@ export function DialerClientsAdmin() {
               {result.apiKey && <Row label="API key (import de leads)" value={result.apiKey} copy />}
               {result.message && <p className="text-muted-foreground">{result.message}</p>}
               <div className="flex justify-end pt-2"><Button onClick={() => setOpen(false)}>Fechar</Button></div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!usersClient} onOpenChange={(o) => !o && setUsersClient(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Usuários — {usersClient?.name}</DialogTitle></DialogHeader>
+          {!usersData ? (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm py-4"><Loader2 className="h-4 w-4 animate-spin" /> Carregando…</div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2 text-sm">
+                <span>{usersData.count} usuário(s){usersData.max_users != null ? ` de ${usersData.max_users}` : " (ilimitado)"}</span>
+                <div className="flex items-center gap-1">
+                  <Label className="text-xs">Limite:</Label>
+                  <Input className="w-20 h-8" type="number" placeholder="∞" defaultValue={usersData.max_users ?? ""} onBlur={(e) => setLimit(e.target.value)} />
+                </div>
+              </div>
+              <div className="space-y-1 max-h-48 overflow-auto">
+                {(usersData.users || []).map((us: any) => (
+                  <div key={us.id} className="flex items-center justify-between rounded border border-border px-2 py-1.5 text-xs">
+                    <span className="truncate">{us.name} <span className="text-muted-foreground">· {us.email}</span></span>
+                    <Badge variant="secondary" className="text-[9px]">{us.kind === "portal" ? "portal" : "login"}</Badge>
+                  </div>
+                ))}
+                {usersData.users?.length === 0 && <p className="text-xs text-muted-foreground">Sem usuários ainda.</p>}
+              </div>
+              <div className="border-t border-border pt-3 space-y-2">
+                <p className="text-xs font-medium">Adicionar usuário (cria um login de discador)</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input placeholder="Nome" value={newUser.name} onChange={(e) => setNewUser((n) => ({ ...n, name: e.target.value }))} />
+                  <Input placeholder="E-mail" type="email" value={newUser.email} onChange={(e) => setNewUser((n) => ({ ...n, email: e.target.value }))} />
+                </div>
+                <Button size="sm" className="gap-2" disabled={userBusy} onClick={addUser}>{userBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />} Adicionar</Button>
+              </div>
             </div>
           )}
         </DialogContent>
