@@ -27,7 +27,7 @@ interface Campaign {
   counts?: { queued: number; total: number };
 }
 
-export function DialerQueuePanel({ onChanged }: { onChanged?: () => void }) {
+export function DialerQueuePanel({ onChanged, tenantId = null }: { onChanged?: () => void; tenantId?: string | null }) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [staff, setStaff] = useState<{ id: string; name: string }[]>([]);
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
@@ -91,6 +91,7 @@ export function DialerQueuePanel({ onChanged }: { onChanged?: () => void }) {
       trigger_stage_id: stage?.id || null,
       consent_message: form.consent_message,
       use_amd: form.use_amd,
+      tenant_id: tenantId,
       status: "paused",
     });
     if (error) return toast.error(error.message);
@@ -107,7 +108,7 @@ export function DialerQueuePanel({ onChanged }: { onChanged?: () => void }) {
     try {
       const { data: leads } = await supabase
         .from("crm_leads").select("id").eq("stage_id", c.trigger_stage_id).limit(5000);
-      const rows = (leads || []).map((l: any) => ({ campaign_id: c.id, lead_id: l.id, status: "queued" }));
+      const rows = (leads || []).map((l: any) => ({ campaign_id: c.id, lead_id: l.id, status: "queued", tenant_id: tenantId }));
       if (!rows.length) { toast.info("Nenhum lead na etapa 'Para ligar'"); return; }
       let added = 0;
       for (let i = 0; i < rows.length; i += 500) {

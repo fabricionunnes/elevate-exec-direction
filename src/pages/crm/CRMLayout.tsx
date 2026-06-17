@@ -51,6 +51,7 @@ interface CRMContextType {
   staffRole: string | null;
   staffName: string | null;
   staffId: string | null;
+  tenantId: string | null;
   isAdmin: boolean;
   isMaster: boolean;
   selectedOrigin: string | null;
@@ -112,6 +113,7 @@ export const CRMLayout = () => {
   const [staffRole, setStaffRole] = useState<string | null>(null);
   const [staffName, setStaffName] = useState<string | null>(null);
   const [staffId, setStaffId] = useState<string | null>(null);
+  const [tenantId, setTenantId] = useState<string | null>(null);
   const [staffAvatarUrl, setStaffAvatarUrl] = useState<string | null>(null);
   const [selectedOrigin, setSelectedOrigin] = useState<string | null>(null);
   const [selectedPipeline, setSelectedPipeline] = useState<string | null>(null);
@@ -131,6 +133,14 @@ export const CRMLayout = () => {
           navigate("/onboarding-tasks/login");
           return;
         }
+
+        // Tenant do usuário (cliente do discador). NULL = staff UNV/owner.
+        const { data: tu } = await supabase
+          .from("whitelabel_tenant_users")
+          .select("tenant_id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        setTenantId(tu?.tenant_id ?? null);
 
         const { data: staff, error: staffError } = await supabase
           .from("onboarding_staff")
@@ -223,6 +233,7 @@ export const CRMLayout = () => {
       staffRole,
       staffName,
       staffId,
+      tenantId,
       isAdmin,
       isMaster,
       selectedOrigin,
