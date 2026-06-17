@@ -31,36 +31,80 @@ async function resolveAsaasKey(supabase: any): Promise<string> {
   return apiKey;
 }
 
-// Gera a cobrança da assinatura (Asaas PIX) + a conta a receber. O webhook libera e dá baixa ao pagar.
-async function createPlanCharge(supabase: any, apiKey: string, opts: { tenantId: string; tenantName: string; amount: number; email?: string; cpfCnpj?: string }) {
-  // cliente Asaas
-  const { data: tenant } = await supabase.from("whitelabel_tenants").select("asaas_customer_id").eq("id", opts.tenantId).maybeSingle();
-  let customerId: string | null = tenant?.asaas_customer_id || null;
-  if (!customerId) {
-    const doc = (opts.cpfCnpj || "").replace(/\D/g, "");
-    if (!doc) throw new Error("Informe o CPF/CNPJ do cliente para gerar a cobrança.");
-    const found = await asaasReq(`/customers?cpfCnpj=${doc}`, "GET", apiKey);
-    customerId = found?.data?.length ? found.data[0].id : (await asaasReq("/customers", "POST", apiKey, { name: opts.tenantName, cpfCnpj: doc, email: opts.email || undefined })).id;
-    await supabase.from("whitelabel_tenants").update({ asaas_customer_id: customerId }).eq("id", opts.tenantId);
-  }
-  const due = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+async function ensureCustomer(supabase: any, apiKey: string, tenantId: string, name: string, cpfCnpj?: string, email?: string): Promise<string> {
+  const { data: tenant } = await supabase.from("whitelabel_tenants").select("asaas_customer_id").eq("id", tenantId).maybeSingle();
+  if (tenant?.asaas_customer_id) return tenant.asaas_customer_id;
+  const doc = (cpfCnpj || "").replace(/\D/g, "");
+  if (!doc) throw new Error("Informe o CPF/CNPJ do cliente para gerar a cobrança.");
+  const found = await asaasReq(`/customers?cpfCnpj=${doc}`, "GET", apiKey);
+  const customerId = found?.data?.length ? found.data[0].id : (await asaasReq("/customers", "POST", apiKey, { name, cpfCnpj: doc, email: email || undefined })).id;
+  await supabase.from("whitelabel_tenants").update({ asaas_customer_id: customerId }).eq("id", tenantId);
+  return customerId;
+}
+
+async function makeReceivable(supabase: any, tenantId: string, description: string, amount: number, dueDate: string, paymentId: string, invoiceUrl: string | null) {
+  await supabase.from("financial_receivables").insert({
+    description, amount, due_date: dueDate, status: "pending",
+    payment_method: "pix", payment_link: invoiceUrl, asaas_payment_id: paymentId, tenant_id: tenantId,
+  });
+}
+
+// Cobrança única (ex: setup/implementação). Vence em N dias. Ativa ao pagar.
+async function createOneTime(supabase: any, apiKey: string, customerId: string, tenantId: string, name: string, value: number, dueDays: number, label: string) {
+  const due = new Date(Date.now() + dueDays * 86400000).toISOString().slice(0, 10);
   const pay = await asaasReq("/payments", "POST", apiKey, {
-    customer: customerId, billingType: "PIX", value: opts.amount, dueDate: due,
-    description: `Discador — assinatura — ${opts.tenantName}`,
-    externalReference: `dialer_activation:${opts.tenantId}`,
+    customer: customerId, billingType: "PIX", value, dueDate: due,
+    description: `Discador — ${label} — ${name}`, externalReference: `dialer_activation:${tenantId}`,
   });
   let pixPayload: string | null = null;
   try { const pix = await asaasReq(`/payments/${pay.id}/pixQrCode`, "GET", apiKey); pixPayload = pix.payload || null; } catch (_e) { /* ok */ }
   const invoiceUrl = pay.invoiceUrl || (pay.id ? `https://www.asaas.com/i/${pay.id}` : null);
+  await makeReceivable(supabase, tenantId, `Discador — ${label} — ${name}`, value, due, pay.id, invoiceUrl);
+  return { invoiceUrl, pixPayload, paymentId: pay.id };
+}
 
-  // conta a receber (menu financeiro) — baixa automática pelo webhook via asaas_payment_id
-  await supabase.from("financial_receivables").insert({
-    description: `Discador — assinatura — ${opts.tenantName}`,
-    amount: opts.amount, due_date: due, status: "pending",
-    payment_method: "pix", payment_link: invoiceUrl, asaas_payment_id: pay.id, tenant_id: opts.tenantId,
+// Mensalidade recorrente (Asaas subscription) — 1ª parcela vence em 30 dias, e repete todo mês.
+async function createSubscription(supabase: any, apiKey: string, customerId: string, tenantId: string, name: string, value: number) {
+  const next = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+  const sub = await asaasReq("/subscriptions", "POST", apiKey, {
+    customer: customerId, billingType: "PIX", value, nextDueDate: next, cycle: "MONTHLY",
+    description: `Discador — mensalidade — ${name}`, externalReference: `dialer_activation:${tenantId}`,
   });
+  await supabase.from("whitelabel_tenants").update({ asaas_subscription_id: sub.id }).eq("id", tenantId);
+  let invoiceUrl: string | null = null, pixPayload: string | null = null, firstId: string | null = null;
+  try {
+    const pays = await asaasReq(`/subscriptions/${sub.id}/payments`, "GET", apiKey);
+    const first = pays?.data?.[0];
+    if (first) {
+      firstId = first.id; invoiceUrl = first.invoiceUrl || `https://www.asaas.com/i/${first.id}`;
+      try { const pix = await asaasReq(`/payments/${first.id}/pixQrCode`, "GET", apiKey); pixPayload = pix.payload || null; } catch (_e) { /* ok */ }
+      await makeReceivable(supabase, tenantId, `Discador — mensalidade — ${name}`, value, next, first.id, invoiceUrl);
+    }
+  } catch (_e) { /* ok */ }
+  return { subscriptionId: sub.id, invoiceUrl, pixPayload, paymentId: firstId };
+}
 
-  return { invoiceUrl, pixPayload, asaasPaymentId: pay.id };
+// Aplica a cobrança: liberar grátis (ativa direto) OU gerar setup + mensalidade (cliente pendente).
+async function applyBilling(supabase: any, opts: { tenantId: string; name: string; email?: string; cpfCnpj?: string; planPrice?: number | null; maxUsers?: number | null; setupFee?: number | null; freeRelease?: boolean }) {
+  const qty = opts.maxUsers && opts.maxUsers > 0 ? opts.maxUsers : 1;
+  const monthly = (opts.planPrice ?? 997) * qty;
+  const setupFee = opts.setupFee != null ? Number(opts.setupFee) : 0;
+  if (opts.freeRelease) {
+    await supabase.from("whitelabel_tenants").update({ status: "active" }).eq("id", opts.tenantId);
+    return { freeRelease: true, monthlyAmount: monthly };
+  }
+  if (monthly <= 0 && setupFee <= 0) return { monthlyAmount: 0 };
+  const apiKey = await resolveAsaasKey(supabase);
+  const customerId = await ensureCustomer(supabase, apiKey, opts.tenantId, opts.name, opts.cpfCnpj, opts.email);
+  let setupCharge: any = null, subCharge: any = null;
+  if (setupFee > 0) setupCharge = await createOneTime(supabase, apiKey, customerId, opts.tenantId, opts.name, setupFee, 5, "implementação");
+  if (monthly > 0) subCharge = await createSubscription(supabase, apiKey, customerId, opts.tenantId, opts.name, monthly);
+  await supabase.from("whitelabel_tenants").update({ status: "pending" }).eq("id", opts.tenantId);
+  return {
+    monthlyAmount: monthly, setupAmount: setupFee,
+    setupLink: setupCharge?.invoiceUrl, setupPix: setupCharge?.pixPayload,
+    invoiceUrl: subCharge?.invoiceUrl, pixPayload: subCharge?.pixPayload,
+  };
 }
 
 async function createDialerPipeline(supabase: any, tenantId: string): Promise<string | null> {
@@ -112,15 +156,8 @@ Deno.serve(async (req) => {
       const { data: key } = await supabase.rpc("dialer_generate_api_key", { p_tenant: pu.tenant_id, p_label: pu.name || "Cliente" });
       if (initialCredit > 0) await supabase.rpc("dialer_credit_wallet", { p_tenant: pu.tenant_id, p_amount: initialCredit, p_operation: "adjustment", p_desc: "Crédito inicial", p_ref: null });
       if (planPrice != null) await upsertPricing(supabase, pu.tenant_id, planPrice);
-
-      let charge: any = null;
-      const planAmount = (planPrice ?? 997) * 1;
-      if (planAmount > 0 && body.generateCharge !== false) {
-        const apiKey = await resolveAsaasKey(supabase);
-        charge = await createPlanCharge(supabase, apiKey, { tenantId: pu.tenant_id, tenantName: pu.name || "Cliente", amount: planAmount, email: body.email, cpfCnpj: body.cpfCnpj });
-        await supabase.from("whitelabel_tenants").update({ status: "pending" }).eq("id", pu.tenant_id);
-      }
-      return json({ ok: true, mode, tenantId: pu.tenant_id, apiKey: key, amount: planAmount, invoiceUrl: charge?.invoiceUrl, pixPayload: charge?.pixPayload, message: "Discador habilitado. Pague a assinatura para liberar." });
+      const billing = await applyBilling(supabase, { tenantId: pu.tenant_id, name: pu.name || "Cliente", email: body.email, cpfCnpj: body.cpfCnpj, planPrice, maxUsers: body.maxUsers, setupFee: body.setupFee, freeRelease: body.freeRelease === true });
+      return json({ ok: true, mode, tenantId: pu.tenant_id, apiKey: key, ...billing, message: billing.freeRelease ? "Discador habilitado (grátis)." : "Discador habilitado. Pague para liberar." });
     }
 
     // mode 'new'
@@ -158,18 +195,9 @@ Deno.serve(async (req) => {
     if (initialCredit > 0) await supabase.rpc("dialer_credit_wallet", { p_tenant: tenantId, p_amount: initialCredit, p_operation: "adjustment", p_desc: "Crédito inicial", p_ref: null });
     const { data: key } = await supabase.rpc("dialer_generate_api_key", { p_tenant: tenantId, p_label: name });
     if (planPrice != null) await upsertPricing(supabase, tenantId, planPrice);
+    const billing = await applyBilling(supabase, { tenantId, name, email, cpfCnpj: body.cpfCnpj, planPrice, maxUsers, setupFee: body.setupFee, freeRelease: body.freeRelease === true });
 
-    // Cobrança da assinatura + conta a receber. Cliente fica "pendente" até pagar.
-    let charge: any = null;
-    const qty = maxUsers && maxUsers > 0 ? maxUsers : 1;
-    const planAmount = (planPrice ?? 997) * qty;
-    if (planAmount > 0 && body.generateCharge !== false) {
-      const apiKey = await resolveAsaasKey(supabase);
-      charge = await createPlanCharge(supabase, apiKey, { tenantId, tenantName: name, amount: planAmount, email, cpfCnpj: body.cpfCnpj });
-      await supabase.from("whitelabel_tenants").update({ status: "pending" }).eq("id", tenantId);
-    }
-
-    return json({ ok: true, mode, tenantId, login: email, tempPassword, apiKey: key, amount: planAmount, invoiceUrl: charge?.invoiceUrl, pixPayload: charge?.pixPayload });
+    return json({ ok: true, mode, tenantId, login: email, tempPassword, apiKey: key, ...billing });
   } catch (error: any) {
     return json({ error: error?.message || String(error) }, 500);
   }

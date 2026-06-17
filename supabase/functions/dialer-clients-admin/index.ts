@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
         agendamentos: a.agendamentos,
         qualificados: a.qualificados,
       };
-    }).sort((x, y) => y.mrr - x.mrr);
+    }).filter((c) => c.status !== "cancelled").sort((x, y) => y.mrr - x.mrr);
 
     const totals = clients.reduce((t, c) => ({
       clients: t.clients + 1,

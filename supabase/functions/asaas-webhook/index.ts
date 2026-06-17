@@ -115,6 +115,11 @@ Deno.serve(async (req) => {
           status: "paid", paid_date: new Date().toISOString().slice(0, 10), paid_amount: paymentValue, asaas_payment_id: paymentId,
         }).eq("asaas_payment_id", paymentId).neq("status", "paid");
         console.log(`[Asaas Webhook] Discador ativado + baixa: tenant ${tId}`);
+      } else if (newStatus === "overdue" && tId) {
+        // corte automático no dia seguinte ao vencimento (Asaas envia OVERDUE)
+        await supabase.from("whitelabel_tenants").update({ status: "suspended" }).eq("id", tId);
+        await supabase.from("financial_receivables").update({ status: "overdue" }).eq("asaas_payment_id", paymentId).neq("status", "paid");
+        console.log(`[Asaas Webhook] Discador suspenso por atraso: tenant ${tId}`);
       }
       return new Response(JSON.stringify({ received: true, dialer_activation: tId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
