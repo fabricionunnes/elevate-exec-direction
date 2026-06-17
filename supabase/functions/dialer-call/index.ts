@@ -186,11 +186,12 @@ Deno.serve(async (req) => {
       StatusCallbackMethod: "POST",
     });
     if (useAmd) {
-      params.append("MachineDetection", "DetectMessageEnd");
-      params.append("MachineDetectionTimeout", "30");
-      params.append("MachineDetectionSpeechThreshold", "2400");
-      params.append("MachineDetectionSpeechEndThreshold", "1200");
-      params.append("MachineDetectionSilenceTimeout", "5000");
+      // "Enable" decide humano vs. máquina logo no começo (~3-5s) e só então executa o TwiML.
+      // Em caixa postal, o TwiML recebe AnsweredBy=machine_start e desliga na hora (não espera o recado).
+      // (DetectMessageEnd esperaria a mensagem inteira terminar = ligação rodando até o timeout, gastando crédito.)
+      params.append("MachineDetection", "Enable");
+      params.append("MachineDetectionTimeout", "15");
+      params.append("MachineDetectionSpeechThreshold", "2000");
     }
     params.append("StatusCallbackEvent", "initiated");
     params.append("StatusCallbackEvent", "ringing");
