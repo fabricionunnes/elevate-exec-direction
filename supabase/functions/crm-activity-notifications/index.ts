@@ -185,12 +185,27 @@ Deno.serve(async (req) => {
               body: JSON.stringify({ number: phone, text: message }),
             });
 
+            const respText = await resp.text();
+
+            // Hardening: só considerar enviado se o servidor confirmar. HTTP 200 com
+            // corpo de erro (falha "soft") NÃO marca como notificado -> o cron tenta
+            // de novo na próxima rodada (5 min), em vez de perder a notificação.
+            let sendFailed = !resp.ok;
             if (resp.ok) {
-              await resp.text();
+              try {
+                const j = JSON.parse(respText);
+                if (j && (j.error || j.status === "error" || j.success === false || j.message === "error")) {
+                  sendFailed = true;
+                }
+              } catch {
+                // corpo não-JSON: confia no HTTP ok
+              }
+            }
+
+            if (!sendFailed) {
               console.log(`[crm-activity-notifications] WhatsApp sent to ${phone} (v2=${isV2}) for activity ${activity.id}`);
             } else {
-              const errText = await resp.text();
-              console.error(`[crm-activity-notifications] WhatsApp send failed (${resp.status}) url=${sendUrl}: ${errText}`);
+              console.error(`[crm-activity-notifications] WhatsApp send failed (${resp.status}) url=${sendUrl}: ${respText.slice(0, 300)}`);
               shouldMarkAsNotified = false;
             }
           } else {
