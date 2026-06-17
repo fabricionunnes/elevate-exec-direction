@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
       const companyId: string = body.companyId;
       const userIds: string[] = Array.isArray(body.userIds) ? body.userIds : [];
       if (!companyId) throw new Error("companyId é obrigatório");
-      const { data: company } = await supabase.from("onboarding_companies").select("id, name, tenant_id").eq("id", companyId).maybeSingle();
+      const { data: company } = await supabase.from("onboarding_companies").select("id, name, tenant_id, cnpj").eq("id", companyId).maybeSingle();
       if (!company) throw new Error("Empresa não encontrada");
 
       // garante um tenant do discador pra empresa (sem mexer no acesso atual dela)
@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
       const { data: key } = await supabase.rpc("dialer_generate_api_key", { p_tenant: tenantId, p_label: company.name });
       if (initialCredit > 0) await supabase.rpc("dialer_credit_wallet", { p_tenant: tenantId, p_amount: initialCredit, p_operation: "adjustment", p_desc: "Crédito inicial", p_ref: null });
       if (planPrice != null) await upsertPricing(supabase, tenantId, planPrice);
-      const billing = await applyBilling(supabase, { tenantId, name: company.name, email: body.email, cpfCnpj: body.cpfCnpj, planPrice, maxUsers: body.maxUsers, setupFee: body.setupFee, freeRelease: body.freeRelease === true });
+      const billing = await applyBilling(supabase, { tenantId, name: company.name, email: body.email, cpfCnpj: body.cpfCnpj || company.cnpj, planPrice, maxUsers: body.maxUsers, setupFee: body.setupFee, freeRelease: body.freeRelease === true });
       return json({ ok: true, mode, tenantId, apiKey: key, usersEnabled: userIds.length, ...billing, message: billing.freeRelease ? `Discador liberado para ${userIds.length} usuário(s) (grátis).` : `Discador liberado para ${userIds.length} usuário(s). Pague para ativar.` });
     }
 
