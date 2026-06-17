@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { useTwilioDevice } from "@/hooks/useTwilioDevice";
 import { startRingback, stopRingback } from "@/lib/dialer/ringback";
+import { callingHoursStatus } from "@/lib/dialer/callingHours";
 import { LeadBriefingPanel } from "./LeadBriefingPanel";
 import { ScheduleLeadMeetingDialog } from "@/components/crm/lead-detail/ScheduleLeadMeetingDialog";
 import { Phone, PhoneOff, PhoneForwarded, Power, Loader2, SkipForward, AlertTriangle, CalendarPlus } from "lucide-react";
@@ -40,7 +41,13 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
   const [autoDial, setAutoDial] = useState(false);
   const [balance, setBalance] = useState<{ balance: number; currency: string; low: boolean; critical: boolean } | null>(null);
   const [showSchedule, setShowSchedule] = useState(false);
+  const [hours, setHours] = useState(() => callingHoursStatus());
   const sessionIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const t = setInterval(() => setHours(callingHoursStatus()), 60000);
+    return () => clearInterval(t);
+  }, []);
   const currentRef = useRef<CurrentCall | null>(null);
   const autoDialRef = useRef(autoDial);
   const handledRef = useRef<string | null>(null);
@@ -124,7 +131,8 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
       if (fnErr) throw new Error(fnErr.message);
       if (data?.error) throw new Error(data.error);
       if (data?.done) {
-        toast.info(data.reason === "queue_empty" ? "Fila vazia — sincronize mais leads" : "Campanha não está ativa");
+        if (data.error) toast.warning(data.error);
+        else toast.info(data.reason === "queue_empty" ? "Fila vazia — sincronize mais leads" : "Campanha não está ativa");
         setCurrent(null);
         return;
       }
@@ -212,6 +220,13 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
 
         {error && <p className="text-xs text-red-500">{error}</p>}
 
+        {!hours.allowed && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 p-2 text-xs flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>{hours.message}</span>
+          </div>
+        )}
+
         {balance && (balance.low || balance.critical) && (
           <div className={`rounded-md border p-2 text-xs flex items-start gap-2 ${balance.critical ? "border-red-500/40 bg-red-500/10 text-red-500" : "border-amber-500/40 bg-amber-500/10 text-amber-600"}`}>
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -232,7 +247,7 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
         </div>
 
         {!current ? (
-          <Button className="w-full gap-2" disabled={dialing || status !== "ready" || !campaignId} onClick={dialNext}>
+          <Button className="w-full gap-2" disabled={dialing || status !== "ready" || !campaignId || !hours.allowed} onClick={dialNext}>
             {dialing ? <Loader2 className="h-4 w-4 animate-spin" /> : <PhoneForwarded className="h-4 w-4" />}
             Discar próximo
           </Button>
