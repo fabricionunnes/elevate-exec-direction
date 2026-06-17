@@ -84,6 +84,26 @@ Deno.serve(async (req) => {
 
     console.log(`[Asaas Webhook] Event: ${event}, Payment: ${paymentId}, Status: ${paymentStatus} -> ${newStatus}, Subscription: ${subscriptionId}, DueDate: ${dueDate}, Value: ${paymentValue}, Discount: ${paymentDiscount}`);
 
+    // === Recarga da carteira do discador — tratamento isolado (early return) ===
+    const extRef: string | undefined = payment.externalReference;
+    if (extRef && extRef.startsWith("dialer_recharge:")) {
+      const rechargeId = extRef.split(":")[1];
+      if (newStatus === "paid" && rechargeId) {
+        const { data: rc } = await supabase.from("dialer_recharges").select("id, tenant_id, amount, status").eq("id", rechargeId).maybeSingle();
+        if (rc && rc.status !== "paid") {
+          await supabase.rpc("dialer_credit_wallet", {
+            p_tenant: rc.tenant_id, p_amount: Number(rc.amount), p_operation: "recharge",
+            p_desc: `Recarga via Asaas (${paymentId})`, p_ref: null,
+          });
+          await supabase.from("dialer_recharges").update({ status: "paid", paid_at: new Date().toISOString(), asaas_payment_id: paymentId }).eq("id", rechargeId);
+          console.log(`[Asaas Webhook] Recarga discador creditada: ${rechargeId} tenant ${rc.tenant_id} R$${rc.amount}`);
+        }
+      }
+      return new Response(JSON.stringify({ received: true, dialer_recharge: rechargeId }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Idempotency: if payment is already confirmed and bank was credited, skip
     if (newStatus === "paid") {
       // Check 1: invoice matched by stored Asaas payment id.

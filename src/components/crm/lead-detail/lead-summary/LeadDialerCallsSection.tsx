@@ -6,6 +6,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { PhoneCall, FileText, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { dialerAudioSrc } from "@/lib/dialer/audio";
 
 interface Call {
   id: string;
@@ -84,7 +85,7 @@ export function LeadDialerCallsSection({ leadId }: { leadId: string }) {
                 <div className="space-y-3 pl-1">
                   {c.recording_url && (
                     <audio controls preload="none" className="w-full h-9">
-                      <source src={c.recording_url} type="audio/mpeg" />
+                      <source src={dialerAudioSrc(c.id)} type="audio/mpeg" />
                     </audio>
                   )}
                   {c.ai_summary && (

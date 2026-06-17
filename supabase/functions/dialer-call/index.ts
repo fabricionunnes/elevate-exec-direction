@@ -61,6 +61,7 @@ Deno.serve(async (req) => {
     let callerId = defaultCallerId;
     let consentMessage: string | undefined;
     let useAmd = false; // detecção de secretária eletrônica (custa ~US$0,0075/ligação)
+    let tenantId: string | null = body.tenantId || null; // null = UNV/owner (não debita carteira)
 
     // Modo campanha: pega o próximo da fila
     if (campaignId && !leadId) {
@@ -77,6 +78,7 @@ Deno.serve(async (req) => {
       callerId = campaign.caller_id || defaultCallerId;
       consentMessage = campaign.consent_message;
       useAmd = campaign.use_amd !== false;
+      tenantId = campaign.tenant_id || null;
 
       const { data: nextRow } = await supabase
         .from("crm_dialer_queue")
@@ -120,6 +122,15 @@ Deno.serve(async (req) => {
     if (!toNumber) throw new Error(`Lead "${lead.name}" sem telefone válido`);
     if (!callerId) throw new Error("Sem número de origem (TWILIO_CALLER_ID ou caller_id da campanha)");
 
+    // Bloqueio por saldo — só para clientes (tenant). UNV/owner (tenant null) não debita.
+    if (tenantId) {
+      const { data: wallet } = await supabase.from("dialer_wallets").select("balance").eq("tenant_id", tenantId).maybeSingle();
+      if (!wallet || Number(wallet.balance) <= 0) {
+        if (queueId) await supabase.from("crm_dialer_queue").update({ status: "queued" }).eq("id", queueId);
+        return json({ done: false, reason: "no_balance", error: "Sem saldo na carteira. Recarregue para continuar discando." });
+      }
+    }
+
     // cria o registro da ligação
     const { data: call, error: callErr } = await supabase
       .from("crm_calls")
@@ -128,6 +139,7 @@ Deno.serve(async (req) => {
         campaign_id: campaignId || null,
         queue_id: queueId || null,
         agent_staff_id: agentStaffId,
+        tenant_id: tenantId,
         direction: "outbound",
         from_number: callerId,
         to_number: toNumber,
