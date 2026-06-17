@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
 
     const { data: call } = await supabase
       .from("crm_calls")
-      .select("id, lead_id, agent_staff_id, activity_id, duration_seconds")
+      .select("id, lead_id, agent_staff_id, activity_id, duration_seconds, tenant_id")
       .eq("id", callId)
       .maybeSingle();
     if (!call) return new Response("ok");
@@ -31,6 +31,29 @@ Deno.serve(async (req) => {
       .from("crm_calls")
       .update({ recording_url: mp3, recording_sid: recordingSid, duration_seconds: dur || call.duration_seconds })
       .eq("id", callId);
+
+    // Cobrança: debita a carteira do cliente por minuto gravado/transcrito (UNV/owner = sem débito).
+    if (call.tenant_id && dur && dur > 0) {
+      try {
+        const minutes = Math.max(1, Math.ceil(dur / 60));
+        const { data: pricing } = await supabase
+          .from("dialer_pricing")
+          .select("price_per_minute")
+          .or(`tenant_id.eq.${call.tenant_id},tenant_id.is.null`)
+          .order("tenant_id", { ascending: false, nullsFirst: false })
+          .limit(1)
+          .maybeSingle();
+        const rate = Number(pricing?.price_per_minute) || 1.2;
+        const cost = Number((minutes * rate).toFixed(2));
+        await supabase.rpc("dialer_debit_wallet", {
+          p_tenant: call.tenant_id,
+          p_amount: cost,
+          p_minutes: minutes,
+          p_ref: callId,
+          p_desc: `${minutes} min × ${rate.toFixed(2)}`,
+        });
+      } catch (_e) { /* não trava o callback de gravação */ }
+    }
 
     // Cria atividade type 'call' no lead (aparece na timeline) se ainda não houver
     if (!call.activity_id) {
