@@ -22,6 +22,7 @@ interface Call {
   notes: string | null;
   lead_id: string;
   agent_staff_id: string | null;
+  campaign_id: string | null;
   lead?: { name: string; company: string | null } | null;
 }
 
@@ -42,15 +43,18 @@ export function DialerCallsHistory() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [onlyRecorded, setOnlyRecorded] = useState(false);
+  const [source, setSource] = useState<"all" | "campaign" | "avulsa">("all");
 
   const load = async () => {
     setLoading(true);
     let q = supabase
       .from("crm_calls")
-      .select("id, created_at, answered_at, duration_seconds, ai_summary, ai_disposition, transcription, recording_url, notes, lead_id, agent_staff_id, lead:crm_leads(name, company)")
+      .select("id, created_at, answered_at, duration_seconds, ai_summary, ai_disposition, transcription, recording_url, notes, lead_id, agent_staff_id, campaign_id, lead:crm_leads(name, company)")
       .order("created_at", { ascending: false })
       .limit(100);
     if (onlyRecorded) q = q.not("recording_url", "is", null);
+    if (source === "campaign") q = q.not("campaign_id", "is", null);
+    if (source === "avulsa") q = q.is("campaign_id", null);
     const [{ data }, { data: staffData }] = await Promise.all([
       q,
       supabase.from("onboarding_staff").select("id, name"),
@@ -62,7 +66,7 @@ export function DialerCallsHistory() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [onlyRecorded]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [onlyRecorded, source]);
 
   const filtered = calls.filter((c) => {
     if (!search) return true;
@@ -80,6 +84,11 @@ export function DialerCallsHistory() {
         <Button size="sm" variant={onlyRecorded ? "default" : "outline"} className="gap-1.5" onClick={() => setOnlyRecorded((v) => !v)}>
           <Mic className="h-4 w-4" /> Só com gravação
         </Button>
+        <div className="inline-flex rounded-md border border-border p-0.5">
+          {([["all", "Todas"], ["campaign", "Campanha"], ["avulsa", "Avulsas"]] as const).map(([k, lbl]) => (
+            <button key={k} onClick={() => setSource(k)} className={`px-2.5 py-1 text-xs rounded ${source === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{lbl}</button>
+          ))}
+        </div>
         <span className="text-sm text-muted-foreground ml-auto">{filtered.length} ligações</span>
       </div>
 

@@ -43,6 +43,7 @@ import {
 import logoUnv from "@/assets/logo-unv-nexus.png";
 import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
 import { CRMNotificationsBell } from "@/components/crm/CRMNotificationsBell";
+import { CallDockProvider } from "@/components/crm/call/CallDockProvider";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const CRM_ROLES = ["master", "admin", "head_comercial", "closer", "sdr", "social_setter", "bdr"];
@@ -522,7 +523,9 @@ export const CRMLayout = () => {
             "flex-1 min-h-0",
              lockViewportHeight ? "overflow-hidden" : "overflow-auto"
           )}>
-            <Outlet context={{ staffRole, isAdmin, staffId }} />
+            <CallDockProvider staffId={staffId} tenantId={tenantId}>
+              <Outlet context={{ staffRole, isAdmin, staffId }} />
+            </CallDockProvider>
           </main>
         </div>
       </div>

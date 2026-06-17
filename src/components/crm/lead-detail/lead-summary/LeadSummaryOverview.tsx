@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
-  Building2, Globe, Phone, MapPin, User, Briefcase, Instagram,
+  Building2, Globe, Phone, PhoneCall, MapPin, User, Briefcase, Instagram,
   RefreshCw, Thermometer, Target, AlertTriangle, TrendingUp,
   Calendar, Clock, CheckCircle, XCircle, Tag, StickyNote,
 } from "lucide-react";
@@ -12,6 +12,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import type { LeadSummaryData } from "./useLeadSummary";
+import { useCallDock } from "@/components/crm/call/CallDockProvider";
 
 interface Props {
   data: LeadSummaryData | null;
@@ -29,6 +30,7 @@ export const LeadSummaryOverview = ({ data, loading, onRegenerate }: Props) => {
   );
 
   const { ai, lead, journey, meetings, activities } = data;
+  const { startCall } = useCallDock();
   const tempIcon = ai?.temperature === "hot" ? "🔥" : ai?.temperature === "warm" ? "🌤️" : "❄️";
   const tempLabel = ai?.temperature === "hot" ? "Quente" : ai?.temperature === "warm" ? "Morno" : "Frio";
   const tempColor = ai?.temperature === "hot"
@@ -98,7 +100,7 @@ export const LeadSummaryOverview = ({ data, loading, onRegenerate }: Props) => {
             <InfoCard icon={Briefcase} label="Segmento" value={lead.segment} />
             {lead.trade_name && <InfoCard icon={Instagram} label="Instagram" value={`@${lead.trade_name.replace('@', '')}`} link={`https://instagram.com/${lead.trade_name.replace('@', '')}`} />}
             <InfoCard icon={Globe} label="Website" value={lead.email} />
-            <InfoCard icon={Phone} label="Telefone" value={lead.phone} link={lead.phone ? `tel:${lead.phone}` : undefined} />
+            <InfoCard icon={Phone} label="Telefone" value={lead.phone} onCall={lead.phone ? () => startCall({ id: lead.id, name: lead.company || lead.name, phone: lead.phone }) : undefined} />
             <InfoCard icon={MapPin} label="Localização" value={[lead.city, lead.state].filter(Boolean).join("/")} />
             <InfoCard icon={Briefcase} label="Porte" value={lead.employee_count} />
             <InfoCard icon={User} label="Responsável" value={lead.name} />
@@ -329,7 +331,7 @@ export const LeadSummaryOverview = ({ data, loading, onRegenerate }: Props) => {
   );
 };
 
-function InfoCard({ icon: Icon, label, value, link }: { icon: any; label: string; value: string | null | undefined; link?: string }) {
+function InfoCard({ icon: Icon, label, value, link, onCall }: { icon: any; label: string; value: string | null | undefined; link?: string; onCall?: () => void }) {
   if (!value) return (
     <div className="rounded-lg border p-2.5 bg-muted/20">
       <p className="text-[10px] text-muted-foreground">{label}</p>
@@ -341,7 +343,14 @@ function InfoCard({ icon: Icon, label, value, link }: { icon: any; label: string
       <p className="text-[10px] text-muted-foreground flex items-center gap-1">
         <Icon className="h-3 w-3" /> {label}
       </p>
-      {link ? (
+      {onCall ? (
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="text-xs font-medium truncate flex-1">{value}</span>
+          <button onClick={onCall} title="Ligar agora" className="shrink-0 inline-flex items-center gap-1 rounded-md bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25 px-1.5 py-0.5 text-[11px] font-medium">
+            <PhoneCall className="h-3 w-3" /> Ligar
+          </button>
+        </div>
+      ) : link ? (
         <a href={link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-0.5 block truncate">
           {value}
         </a>
