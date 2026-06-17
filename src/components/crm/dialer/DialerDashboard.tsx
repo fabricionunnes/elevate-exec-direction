@@ -11,7 +11,8 @@ import {
 
 type Range = "today" | "7d" | "30d";
 
-interface CallRow { agent_staff_id: string | null; campaign_id: string | null; status: string; answered_at: string | null; duration_seconds: number | null; created_at: string }
+interface CallRow { agent_staff_id: string | null; campaign_id: string | null; status: string; answered_at: string | null; answered_by: string | null; duration_seconds: number | null; created_at: string }
+const isHuman = (c: CallRow) => c.answered_by === "human";
 interface SessionRow { agent_staff_id: string | null; started_at: string; ended_at: string | null; last_seen_at: string | null }
 interface QueueRow { campaign_id: string | null; disposition: string | null }
 
@@ -83,7 +84,7 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
       setLoading(true);
       const since = rangeStart(range);
       const [callsRes, sessRes, queueRes, staffRes, campRes] = await Promise.all([
-        supabase.from("crm_calls").select("agent_staff_id, campaign_id, status, answered_at, duration_seconds, created_at").gte("created_at", since),
+        supabase.from("crm_calls").select("agent_staff_id, campaign_id, status, answered_at, answered_by, duration_seconds, created_at").gte("created_at", since),
         supabase.from("crm_dialer_sessions").select("agent_staff_id, started_at, ended_at, last_seen_at").gte("started_at", since),
         supabase.from("crm_dialer_queue").select("campaign_id, disposition").not("disposition", "is", null).gte("updated_at", since),
         supabase.from("onboarding_staff").select("id, name"),
@@ -109,7 +110,7 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
     for (const c of calls) {
       const h = new Date(c.created_at).getHours();
       byHourCalls[h]++;
-      if (c.answered_at) { answered++; talk += c.duration_seconds || 0; byHourAnswered[h]++; }
+      if (isHuman(c)) { answered++; talk += c.duration_seconds || 0; byHourAnswered[h]++; }
       else if (c.status === "voicemail") voicemail++;
     }
 
@@ -141,8 +142,8 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
     const agentIds = new Set<string>([...calls.map((c) => c.agent_staff_id || "—"), ...Object.keys(dialerByAgent)]);
     const perAgent = Array.from(agentIds).map((id) => {
       const cs = calls.filter((c) => (c.agent_staff_id || "—") === id);
-      const ans = cs.filter((c) => c.answered_at).length;
-      const talkS = cs.filter((c) => c.answered_at).reduce((s, c) => s + (c.duration_seconds || 0), 0);
+      const ans = cs.filter(isHuman).length;
+      const talkS = cs.filter(isHuman).reduce((s, c) => s + (c.duration_seconds || 0), 0);
       return {
         id, name: staff[id] || "—", calls: cs.length, answered: ans,
         voicemail: cs.filter((c) => c.status === "voicemail").length,

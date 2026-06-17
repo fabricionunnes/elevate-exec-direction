@@ -197,10 +197,10 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
     if (!current) return;
     const id = current.callId;
     const t = setInterval(async () => {
-      const { data } = await supabase.from("crm_calls").select("status, answered_at").eq("id", id).maybeSingle();
+      const { data } = await supabase.from("crm_calls").select("status, answered_at, answered_by").eq("id", id).maybeSingle();
       if (!data) return;
       if (["completed", "no-answer", "busy", "failed", "canceled", "voicemail"].includes(data.status)) {
-        void onCallEnded(data.answered_at ? "atendida" : data.status === "voicemail" ? "voicemail" : "nao_atendeu");
+        void onCallEnded(data.answered_by === "human" ? "atendida" : data.status === "voicemail" ? "voicemail" : "nao_atendeu");
       }
     }, 4000);
     return () => clearInterval(t);

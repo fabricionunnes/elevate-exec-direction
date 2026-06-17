@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
       if ((call as any)?.campaign?.consent_message) consent = (call as any).campaign.consent_message;
       await supabase
         .from("crm_calls")
-        .update({ status: "in-progress", answered_by: answeredBy || "human", answered_at: new Date().toISOString() })
+        .update({ status: "in-progress", answered_by: answeredBy || "unknown", answered_at: new Date().toISOString() })
         .eq("id", callId);
       if (call?.queue_id) await supabase.from("crm_dialer_queue").update({ status: "in_call" }).eq("id", call.queue_id);
     }
