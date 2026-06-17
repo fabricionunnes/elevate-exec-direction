@@ -8,8 +8,59 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const ASAAS_BASE = "https://api.asaas.com/v3";
+
 function slugify(s: string): string {
   return (s || "cliente").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 40);
+}
+
+async function asaasReq(path: string, method: string, key: string, body?: unknown) {
+  const r = await fetch(`${ASAAS_BASE}${path}`, {
+    method, headers: { "Content-Type": "application/json", access_token: key },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d?.errors?.[0]?.description || `Asaas ${r.status}`);
+  return d;
+}
+
+async function resolveAsaasKey(supabase: any): Promise<string> {
+  let apiKey = Deno.env.get("ASAAS_API_KEY") || "";
+  const { data: acc } = await supabase.from("asaas_accounts").select("api_key_secret_name").eq("is_default", true).eq("is_active", true).maybeSingle();
+  if (acc?.api_key_secret_name) { const s = Deno.env.get(acc.api_key_secret_name); if (s) apiKey = s; }
+  return apiKey;
+}
+
+// Gera a cobrança da assinatura (Asaas PIX) + a conta a receber. O webhook libera e dá baixa ao pagar.
+async function createPlanCharge(supabase: any, apiKey: string, opts: { tenantId: string; tenantName: string; amount: number; email?: string; cpfCnpj?: string }) {
+  // cliente Asaas
+  const { data: tenant } = await supabase.from("whitelabel_tenants").select("asaas_customer_id").eq("id", opts.tenantId).maybeSingle();
+  let customerId: string | null = tenant?.asaas_customer_id || null;
+  if (!customerId) {
+    const doc = (opts.cpfCnpj || "").replace(/\D/g, "");
+    if (!doc) throw new Error("Informe o CPF/CNPJ do cliente para gerar a cobrança.");
+    const found = await asaasReq(`/customers?cpfCnpj=${doc}`, "GET", apiKey);
+    customerId = found?.data?.length ? found.data[0].id : (await asaasReq("/customers", "POST", apiKey, { name: opts.tenantName, cpfCnpj: doc, email: opts.email || undefined })).id;
+    await supabase.from("whitelabel_tenants").update({ asaas_customer_id: customerId }).eq("id", opts.tenantId);
+  }
+  const due = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+  const pay = await asaasReq("/payments", "POST", apiKey, {
+    customer: customerId, billingType: "PIX", value: opts.amount, dueDate: due,
+    description: `Discador — assinatura — ${opts.tenantName}`,
+    externalReference: `dialer_activation:${opts.tenantId}`,
+  });
+  let pixPayload: string | null = null;
+  try { const pix = await asaasReq(`/payments/${pay.id}/pixQrCode`, "GET", apiKey); pixPayload = pix.payload || null; } catch (_e) { /* ok */ }
+  const invoiceUrl = pay.invoiceUrl || (pay.id ? `https://www.asaas.com/i/${pay.id}` : null);
+
+  // conta a receber (menu financeiro) — baixa automática pelo webhook via asaas_payment_id
+  await supabase.from("financial_receivables").insert({
+    description: `Discador — assinatura — ${opts.tenantName}`,
+    amount: opts.amount, due_date: due, status: "pending",
+    payment_method: "pix", payment_link: invoiceUrl, asaas_payment_id: pay.id, tenant_id: opts.tenantId,
+  });
+
+  return { invoiceUrl, pixPayload, asaasPaymentId: pay.id };
 }
 
 async function createDialerPipeline(supabase: any, tenantId: string): Promise<string | null> {
@@ -61,7 +112,15 @@ Deno.serve(async (req) => {
       const { data: key } = await supabase.rpc("dialer_generate_api_key", { p_tenant: pu.tenant_id, p_label: pu.name || "Cliente" });
       if (initialCredit > 0) await supabase.rpc("dialer_credit_wallet", { p_tenant: pu.tenant_id, p_amount: initialCredit, p_operation: "adjustment", p_desc: "Crédito inicial", p_ref: null });
       if (planPrice != null) await upsertPricing(supabase, pu.tenant_id, planPrice);
-      return json({ ok: true, mode, tenantId: pu.tenant_id, apiKey: key, message: "Discador habilitado no portal do cliente." });
+
+      let charge: any = null;
+      const planAmount = (planPrice ?? 997) * 1;
+      if (planAmount > 0 && body.generateCharge !== false) {
+        const apiKey = await resolveAsaasKey(supabase);
+        charge = await createPlanCharge(supabase, apiKey, { tenantId: pu.tenant_id, tenantName: pu.name || "Cliente", amount: planAmount, email: body.email, cpfCnpj: body.cpfCnpj });
+        await supabase.from("whitelabel_tenants").update({ status: "pending" }).eq("id", pu.tenant_id);
+      }
+      return json({ ok: true, mode, tenantId: pu.tenant_id, apiKey: key, amount: planAmount, invoiceUrl: charge?.invoiceUrl, pixPayload: charge?.pixPayload, message: "Discador habilitado. Pague a assinatura para liberar." });
     }
 
     // mode 'new'
@@ -100,7 +159,17 @@ Deno.serve(async (req) => {
     const { data: key } = await supabase.rpc("dialer_generate_api_key", { p_tenant: tenantId, p_label: name });
     if (planPrice != null) await upsertPricing(supabase, tenantId, planPrice);
 
-    return json({ ok: true, mode, tenantId, login: email, tempPassword, apiKey: key });
+    // Cobrança da assinatura + conta a receber. Cliente fica "pendente" até pagar.
+    let charge: any = null;
+    const qty = maxUsers && maxUsers > 0 ? maxUsers : 1;
+    const planAmount = (planPrice ?? 997) * qty;
+    if (planAmount > 0 && body.generateCharge !== false) {
+      const apiKey = await resolveAsaasKey(supabase);
+      charge = await createPlanCharge(supabase, apiKey, { tenantId, tenantName: name, amount: planAmount, email, cpfCnpj: body.cpfCnpj });
+      await supabase.from("whitelabel_tenants").update({ status: "pending" }).eq("id", tenantId);
+    }
+
+    return json({ ok: true, mode, tenantId, login: email, tempPassword, apiKey: key, amount: planAmount, invoiceUrl: charge?.invoiceUrl, pixPayload: charge?.pixPayload });
   } catch (error: any) {
     return json({ error: error?.message || String(error) }, 500);
   }
