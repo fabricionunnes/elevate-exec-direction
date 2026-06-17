@@ -49,9 +49,17 @@ export function DialerQueuePanel({ onChanged, tenantId = null, currentAgentId = 
     setLoading(true);
     const { data } = await supabase
       .from("crm_dialer_campaigns")
-      .select("*, agent:onboarding_staff!crm_dialer_campaigns_agent_staff_id_fkey(name), pipeline:crm_pipelines(name)")
+      .select("*, pipeline:crm_pipelines(name)")
       .order("created_at", { ascending: false });
     const list = (data || []) as any as Campaign[];
+    // nome da atendente resolvido à parte (a FK agent_staff_id foi removida p/ permitir agente cliente)
+    const agentIds = [...new Set(list.map((c: any) => c.agent_staff_id).filter(Boolean))];
+    if (agentIds.length) {
+      const { data: agents } = await supabase.from("onboarding_staff").select("id, name").in("id", agentIds);
+      const nameMap: Record<string, string> = {};
+      (agents || []).forEach((a: any) => { nameMap[a.id] = a.name; });
+      list.forEach((c: any) => { c.agent = { name: c.agent_staff_id ? (nameMap[c.agent_staff_id] || "—") : "—" }; });
+    }
     // counts por campanha
     for (const c of list) {
       const [{ count: queued }, { count: total }] = await Promise.all([
