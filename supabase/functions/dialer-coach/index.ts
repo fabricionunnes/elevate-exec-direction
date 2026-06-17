@@ -19,8 +19,12 @@ async function coachCall(supabase: any, anthropicKey: string, callId: string): P
     .eq("id", callId)
     .maybeSingle();
   if (!call) return { ok: false, reason: "call_not_found" };
-  if (call.answered_by !== "human" || !call.transcription || call.transcription.trim().length < 40) {
-    return { ok: false, reason: "sem_conversa" }; // só avalia conversa real com transcrição
+  // Só avalia conversa de verdade: transcrição com corpo. answered_by costuma vir 'unknown' mesmo
+  // quando a pessoa atendeu e conversou (a AMD não crava), então o sinal confiável é a transcrição.
+  if (!call.transcription || call.transcription.trim().length < 80) {
+    // marca como tentada (qa_at) pra não ficar reprocessando as curtas/caixa postal no backfill
+    await supabase.from("crm_calls").update({ qa_at: new Date().toISOString() }).eq("id", callId);
+    return { ok: false, reason: "sem_conversa" };
   }
 
   const ctx = {
@@ -53,7 +57,7 @@ Regras: avalie só pelo que aparece na transcrição, não invente. Seja especí
     headers: { "x-api-key": anthropicKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
     body: JSON.stringify({ model: MODEL, max_tokens: 1200, messages: [{ role: "user", content: prompt }] }),
   });
-  if (!aiResp.ok) return { ok: false, reason: `anthropic_${aiResp.status}` };
+  if (!aiResp.ok) return { ok: false, reason: `anthropic_${aiResp.status}: ${truncate(await aiResp.text(), 400)}` };
   const aiData = await aiResp.json();
   let rawTxt = (aiData?.content?.[0]?.text || "{}").trim().replace(/^```(json)?/i, "").replace(/```$/i, "").trim();
   let q: any;
@@ -102,9 +106,8 @@ Deno.serve(async (req) => {
     const limit = Math.min(Math.max(Number(body.limit) || 8, 1), 20);
     let q = supabase.from("crm_calls")
       .select("id")
-      .eq("answered_by", "human")
       .not("transcription", "is", null)
-      .is("qa_score", null)
+      .is("qa_at", null)
       .order("created_at", { ascending: false })
       .limit(limit);
     if (scopeTenant) q = q.eq("tenant_id", scopeTenant);

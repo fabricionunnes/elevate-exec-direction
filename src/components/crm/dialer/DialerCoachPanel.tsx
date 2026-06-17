@@ -50,7 +50,7 @@ export function DialerCoachPanel() {
   const analyze = async () => {
     setScoring(true);
     // processa em lotes até esvaziar a fila de não-analisadas (limite por chamada)
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 20; i++) {
       const { data } = await supabase.functions.invoke("dialer-coach", { body: { batch: true, limit: 8 } });
       if (!data || data.error || !data.processed) break;
       await loadCalls();
