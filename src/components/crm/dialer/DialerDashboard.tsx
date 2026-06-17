@@ -3,10 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Phone, PhoneCall, Voicemail, Clock, Timer, Loader2, Wallet, AlertTriangle, CalendarCheck, Target, TrendingUp } from "lucide-react";
+import {
+  Phone, PhoneCall, Voicemail, Clock, Timer, Loader2, Wallet, AlertTriangle, CalendarCheck,
+  Target, TrendingUp, Gauge, MessageSquareText, DollarSign, Filter, Trophy, Activity,
+} from "lucide-react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
-  LineChart, Line, PieChart, Pie, Cell,
+  AreaChart, Area, PieChart, Pie, Cell,
 } from "recharts";
 
 type Range = "today" | "7d" | "30d";
@@ -26,20 +29,30 @@ const DISPOS = [
   { key: "voicemail", label: "Caixa postal", color: "#a855f7" },
   { key: "atendida", label: "Atendida (s/ tag)", color: "#14b8a6" },
 ];
-const dispoLabel = (k: string) => DISPOS.find((d) => d.key === k)?.label || k;
-const dispoColor = (k: string) => DISPOS.find((d) => d.key === k)?.color || "#94a3b8";
+
+const tooltipStyle = {
+  background: "hsl(var(--popover))",
+  border: "1px solid hsl(var(--border))",
+  borderRadius: 10,
+  fontSize: 12,
+  boxShadow: "0 8px 30px -10px rgba(0,0,0,.5)",
+  color: "hsl(var(--popover-foreground))",
+};
 
 function fmtDuration(sec: number): string {
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   return h > 0 ? `${h}h${m.toString().padStart(2, "0")}` : `${m}min`;
 }
+function fmtMMSS(sec: number): string {
+  const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
 function rangeStart(r: Range): string {
   const now = new Date();
   if (r === "today") { now.setHours(0, 0, 0, 0); return now.toISOString(); }
   return new Date(Date.now() - (r === "7d" ? 7 : 30) * 86400000).toISOString();
 }
-// Soma intervalos de sessão sem dupla contagem (fim = ended_at ?? last_seen_at ?? started_at)
 function mergedSeconds(items: { start: number; end: number }[]): number {
   const iv = items.map((s) => ({ start: s.start, end: Math.max(s.start, s.end) })).filter((s) => s.end > s.start).sort((a, b) => a.start - b.start);
   let total = 0, cs: number | null = null, ce: number | null = null;
@@ -64,7 +77,7 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
   const [usage, setUsage] = useState<{ currency: string; total: number; records: { date: string; spend: number }[] } | null>(null);
 
   useEffect(() => {
-    if (!isAdmin) return; // saldo/gasto da conta Twilio é só da UNV, nunca do cliente
+    if (!isAdmin) return;
     supabase.functions.invoke("dialer-balance").then(({ data }) => {
       if (data && typeof data.balance === "number") setBalance(data);
     });
@@ -103,7 +116,6 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
   }, [range]);
 
   const m = useMemo(() => {
-    // Totais
     let answered = 0, voicemail = 0, talk = 0;
     const byHourCalls = Array(24).fill(0);
     const byHourAnswered = Array(24).fill(0);
@@ -114,7 +126,6 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
       else if (c.status === "voicemail") voicemail++;
     }
 
-    // Dispositions (da fila) — geral e por campanha
     const dispoCount: Record<string, number> = {};
     const perCampaign: Record<string, Record<string, number>> = {};
     for (const q of queue) {
@@ -126,7 +137,6 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
     const qualificados = dispoCount["qualificado"] || 0;
     const agendamentos = dispoCount["agendou_reuniao"] || 0;
 
-    // Tempo no discador por agente (merge de intervalos)
     const sessByAgent: Record<string, { start: number; end: number }[]> = {};
     for (const s of sessions) {
       const id = s.agent_staff_id || "—";
@@ -138,7 +148,6 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
     let dialerTotal = 0;
     for (const [id, iv] of Object.entries(sessByAgent)) { const sec = mergedSeconds(iv); dialerByAgent[id] = sec; dialerTotal += sec; }
 
-    // Por colaborador
     const agentIds = new Set<string>([...calls.map((c) => c.agent_staff_id || "—"), ...Object.keys(dialerByAgent)]);
     const perAgent = Array.from(agentIds).map((id) => {
       const cs = calls.filter((c) => (c.agent_staff_id || "—") === id);
@@ -149,9 +158,8 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
         voicemail: cs.filter((c) => c.status === "voicemail").length,
         talkSeconds: talkS, dialerSeconds: dialerByAgent[id] || 0,
       };
-    }).filter((a) => a.calls > 0 || a.dialerSeconds > 0).sort((a, b) => b.calls - a.calls);
+    }).filter((a) => a.calls > 0 || a.dialerSeconds > 0).sort((a, b) => b.answered - a.answered || b.calls - a.calls);
 
-    // Por campanha (tabela detalhada)
     const campaigns = Object.entries(perCampaign).map(([cid, dc]) => ({
       id: cid, name: campaignNames[cid] || (cid === "—" ? "Sem campanha" : "—"),
       total: Object.values(dc).reduce((a, b) => a + b, 0), dispo: dc,
@@ -164,11 +172,17 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
 
     const dispoData = DISPOS.map((d) => ({ name: d.label, value: dispoCount[d.key] || 0, color: d.color })).filter((d) => d.value > 0);
 
+    const total = calls.length;
+    const dialerHours = dialerTotal / 3600;
     return {
-      total: calls.length, answered, voicemail, talk, dialerTotal,
+      total, answered, voicemail, talk, dialerTotal,
       qualificados, agendamentos,
-      answerRate: calls.length ? Math.round((answered / calls.length) * 100) : 0,
+      answerRate: total ? Math.round((answered / total) * 100) : 0,
+      vmRate: total ? Math.round((voicemail / total) * 100) : 0,
       convRate: answered ? Math.round((qualificados / answered) * 100) : 0,
+      schedRate: qualificados ? Math.round((agendamentos / qualificados) * 100) : 0,
+      avgTalk: answered ? talk / answered : 0,
+      callsPerHour: dialerHours > 0.02 ? total / dialerHours : 0,
       perAgent, campaigns, hourData, dispoData,
     };
   }, [calls, sessions, queue, staff, campaignNames]);
@@ -179,18 +193,30 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
     return withCalls.reduce((best, h) => (h.taxa > best.taxa ? h : best));
   }, [m.hourData]);
 
+  const cur = usage?.currency || "USD";
+  const costPerCall = usage && m.total ? usage.total / m.total : 0;
+  const costPerAnswered = usage && m.answered ? usage.total / m.answered : 0;
+  const costPerQualified = usage && m.qualificados ? usage.total / m.qualificados : 0;
+  const maxAgentCalls = Math.max(1, ...m.perAgent.map((a) => a.calls));
+
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-5">
       <div className="flex items-center gap-2 flex-wrap">
-        {(["today", "7d", "30d"] as Range[]).map((r) => (
-          <Button key={r} size="sm" variant={range === r ? "default" : "outline"} onClick={() => setRange(r)}>
-            {r === "today" ? "Hoje" : r === "7d" ? "7 dias" : "30 dias"}
-          </Button>
-        ))}
+        <div className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5">
+          {(["today", "7d", "30d"] as Range[]).map((r) => (
+            <button
+              key={r}
+              onClick={() => setRange(r)}
+              className={`px-3 py-1 text-sm rounded-md transition-colors ${range === r ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {r === "today" ? "Hoje" : r === "7d" ? "7 dias" : "30 dias"}
+            </button>
+          ))}
+        </div>
         {isAdmin && balance && (
-          <div className={`ml-auto flex items-center gap-1.5 text-sm rounded-md border px-2.5 py-1 ${balance.critical ? "border-red-500/40 bg-red-500/10 text-red-500" : balance.low ? "border-amber-500/40 bg-amber-500/10 text-amber-600" : "border-border text-muted-foreground"}`}>
+          <div className={`ml-auto flex items-center gap-1.5 text-sm rounded-lg border px-3 py-1.5 ${balance.critical ? "border-red-500/40 bg-red-500/10 text-red-500" : balance.low ? "border-amber-500/40 bg-amber-500/10 text-amber-600" : "border-border text-muted-foreground"}`}>
             {balance.low || balance.critical ? <AlertTriangle className="h-3.5 w-3.5" /> : <Wallet className="h-3.5 w-3.5" />}
-            Saldo Twilio: {balance.currency} {balance.balance.toFixed(2)}
+            Saldo Twilio: <span className="font-semibold">{balance.currency} {balance.balance.toFixed(2)}</span>
           </div>
         )}
       </div>
@@ -200,20 +226,50 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
       ) : (
         <>
           {/* KPIs */}
-          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
-            <Kpi icon={Phone} label="Ligações" value={m.total} />
-            <Kpi icon={PhoneCall} label="Atendidas" value={m.answered} sub={`${m.answerRate}% atend.`} />
-            <Kpi icon={Voicemail} label="Caixa postal" value={m.voicemail} />
-            <Kpi icon={Clock} label="Min. falados" value={Math.round(m.talk / 60)} sub="sem caixa postal" />
-            <Kpi icon={Target} label="Qualificados" value={m.qualificados} sub={`${m.convRate}% das atend.`} />
-            <Kpi icon={CalendarCheck} label="Agendamentos" value={m.agendamentos} />
-            <Kpi icon={Timer} label="Tempo no discador" value={fmtDuration(m.dialerTotal)} />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <Kpi icon={Phone} label="Ligações" value={m.total} accent="#3b82f6" sub="no período" />
+            <Kpi icon={PhoneCall} label="Atendidas" value={m.answered} accent="#10b981" sub={`${m.answerRate}% de atendimento`} pct={m.answerRate} />
+            <Kpi icon={MessageSquareText} label="Tempo médio de conversa" value={fmtMMSS(m.avgTalk)} accent="#14b8a6" sub={`${Math.round(m.talk / 60)} min falados`} />
+            <Kpi icon={Voicemail} label="Caixa postal" value={m.voicemail} accent="#a855f7" sub={`${m.vmRate}% das ligações`} />
+            <Kpi icon={Target} label="Qualificados" value={m.qualificados} accent="#6366f1" sub={`${m.convRate}% das atendidas`} pct={m.convRate} />
+            <Kpi icon={CalendarCheck} label="Agendamentos" value={m.agendamentos} accent="#f59e0b" sub={`${m.schedRate}% dos qualificados`} pct={m.schedRate} />
+            <Kpi icon={Gauge} label="Ligações por hora" value={m.callsPerHour ? m.callsPerHour.toFixed(1) : "—"} accent="#ec4899" sub="ritmo no discador" />
+            <Kpi icon={Timer} label="Tempo no discador" value={fmtDuration(m.dialerTotal)} accent="#f43f5e" sub="equipe somada" />
           </div>
 
-          {bestHour && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground rounded-md border border-border bg-muted/30 px-3 py-2">
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
-              Melhor horário pra falar com lead: <span className="font-semibold text-foreground">{bestHour.hora}</span> ({bestHour.taxa}% de atendimento)
+          {/* Funil + insight de horário */}
+          <div className="grid lg:grid-cols-3 gap-4">
+            <Card className="lg:col-span-2 overflow-hidden">
+              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Filter className="h-4 w-4 text-primary" /> Funil de conversão</CardTitle></CardHeader>
+              <CardContent className="space-y-2.5">
+                <FunnelStep label="Ligações" value={m.total} base={m.total} prev={null} color="#3b82f6" />
+                <FunnelStep label="Atendidas" value={m.answered} base={m.total} prev={m.total} color="#10b981" />
+                <FunnelStep label="Qualificados" value={m.qualificados} base={m.total} prev={m.answered} color="#6366f1" />
+                <FunnelStep label="Agendamentos" value={m.agendamentos} base={m.total} prev={m.qualificados} color="#f59e0b" />
+              </CardContent>
+            </Card>
+            <Card className="overflow-hidden">
+              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Activity className="h-4 w-4 text-emerald-500" /> Destaques</CardTitle></CardHeader>
+              <CardContent className="space-y-2.5 text-sm">
+                {bestHour ? (
+                  <Insight icon={TrendingUp} color="#10b981" title={`Melhor horário: ${bestHour.hora}`} desc={`${bestHour.taxa}% de atendimento`} />
+                ) : <Insight icon={TrendingUp} color="#64748b" title="Sem horário destaque" desc="poucos dados ainda" />}
+                <Insight icon={Target} color="#6366f1" title={`${m.convRate}% viram qualificado`} desc="das ligações atendidas" />
+                {m.perAgent[0] && <Insight icon={Trophy} color="#f59e0b" title={m.perAgent[0].name} desc={`top em atendimento (${m.perAgent[0].answered})`} />}
+                {isAdmin && usage && m.qualificados > 0 && (
+                  <Insight icon={DollarSign} color="#ef4444" title={`${cur} ${costPerQualified.toFixed(2)} / qualificado`} desc="custo Twilio por lead qualificado" />
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Custo (admin) */}
+          {isAdmin && usage && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <Kpi icon={DollarSign} label="Gasto Twilio" value={`${cur} ${usage.total.toFixed(2)}`} accent="#ef4444" sub="no período (conta UNV)" />
+              <Kpi icon={DollarSign} label="Custo por ligação" value={`${cur} ${costPerCall.toFixed(3)}`} accent="#fb7185" sub="média geral" />
+              <Kpi icon={DollarSign} label="Custo por atendimento" value={`${cur} ${costPerAnswered.toFixed(3)}`} accent="#f97316" sub="só quem atendeu" />
+              <Kpi icon={DollarSign} label="Custo por qualificado" value={m.qualificados ? `${cur} ${costPerQualified.toFixed(2)}` : "—"} accent="#f59e0b" sub="CAC do discador" />
             </div>
           )}
 
@@ -222,14 +278,22 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Ligações por horário</CardTitle></CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={m.hourData}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                    <XAxis dataKey="hora" fontSize={11} />
-                    <YAxis fontSize={11} allowDecimals={false} />
-                    <Tooltip />
-                    <Bar dataKey="ligacoes" name="Ligações" fill="#3b82f6" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="atendidas" name="Atendidas" fill="#10b981" radius={[3, 3, 0, 0]} />
+                <ResponsiveContainer width="100%" height={230}>
+                  <BarChart data={m.hourData} barGap={2}>
+                    <defs>
+                      <linearGradient id="gradBlue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#60a5fa" /><stop offset="100%" stopColor="#1d4ed8" />
+                      </linearGradient>
+                      <linearGradient id="gradGreen" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#34d399" /><stop offset="100%" stopColor="#059669" />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} vertical={false} />
+                    <XAxis dataKey="hora" fontSize={11} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                    <YAxis fontSize={11} allowDecimals={false} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                    <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
+                    <Bar dataKey="ligacoes" name="Ligações" fill="url(#gradBlue)" radius={[5, 5, 0, 0]} maxBarSize={34} />
+                    <Bar dataKey="atendidas" name="Atendidas" fill="url(#gradGreen)" radius={[5, 5, 0, 0]} maxBarSize={34} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -237,33 +301,56 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Taxa de atendimento por horário (%)</CardTitle></CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={m.hourData}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                    <XAxis dataKey="hora" fontSize={11} />
-                    <YAxis fontSize={11} domain={[0, 100]} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="taxa" name="% atendimento" stroke="#f59e0b" strokeWidth={2} dot={false} />
-                  </LineChart>
+                <ResponsiveContainer width="100%" height={230}>
+                  <AreaChart data={m.hourData}>
+                    <defs>
+                      <linearGradient id="gradAmber" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.5} />
+                        <stop offset="100%" stopColor="#f59e0b" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} vertical={false} />
+                    <XAxis dataKey="hora" fontSize={11} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                    <YAxis fontSize={11} domain={[0, 100]} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v}%`, "Atendimento"]} />
+                    <Area type="monotone" dataKey="taxa" name="% atendimento" stroke="#f59e0b" strokeWidth={2.5} fill="url(#gradAmber)" dot={{ r: 3, fill: "#f59e0b", strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                  </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
           </div>
 
-          {/* Dispositions + Gasto */}
+          {/* Dispositions (donut) + Gasto */}
           <div className="grid lg:grid-cols-2 gap-4">
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Resultado das ligações</CardTitle></CardHeader>
               <CardContent>
                 {m.dispoData.length ? (
-                  <ResponsiveContainer width="100%" height={240}>
-                    <PieChart>
-                      <Pie data={m.dispoData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={(e: any) => `${e.name}: ${e.value}`}>
-                        {m.dispoData.map((d, i) => <Cell key={i} fill={d.color} />)}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="relative" style={{ width: 220, height: 220 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={m.dispoData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={62} outerRadius={95} paddingAngle={2} stroke="hsl(var(--background))" strokeWidth={2}>
+                            {m.dispoData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                          </Pie>
+                          <Tooltip contentStyle={tooltipStyle} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span className="text-3xl font-bold">{m.dispoData.reduce((a, b) => a + b.value, 0)}</span>
+                        <span className="text-xs text-muted-foreground">resultados</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-1.5 flex-1 w-full">
+                      {m.dispoData.map((d) => (
+                        <div key={d.name} className="flex items-center gap-2 text-sm">
+                          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: d.color }} />
+                          <span className="text-muted-foreground flex-1 truncate">{d.name}</span>
+                          <span className="font-semibold tabular-nums">{d.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ) : <p className="text-sm text-muted-foreground py-8 text-center">Sem dispositions no período</p>}
               </CardContent>
             </Card>
@@ -280,11 +367,16 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
                   {usage?.records?.length ? (
                     <ResponsiveContainer width="100%" height={240}>
                       <BarChart data={[...usage.records].reverse().map((r) => ({ dia: r.date.slice(5), gasto: Number(r.spend.toFixed(2)) }))}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                        <XAxis dataKey="dia" fontSize={11} />
-                        <YAxis fontSize={11} />
-                        <Tooltip formatter={(v: any) => `${usage.currency} ${v}`} />
-                        <Bar dataKey="gasto" name="Gasto" fill="#ef4444" radius={[3, 3, 0, 0]} />
+                        <defs>
+                          <linearGradient id="gradRed" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#f87171" /><stop offset="100%" stopColor="#dc2626" />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} vertical={false} />
+                        <XAxis dataKey="dia" fontSize={11} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                        <YAxis fontSize={11} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                        <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} formatter={(v: any) => [`${usage.currency} ${v}`, "Gasto"]} />
+                        <Bar dataKey="gasto" name="Gasto" fill="url(#gradRed)" radius={[5, 5, 0, 0]} maxBarSize={40} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : <p className="text-sm text-muted-foreground py-8 text-center">Carregando gasto…</p>}
@@ -293,7 +385,49 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
             )}
           </div>
 
-          {/* Métricas por campanha */}
+          {/* Ranking por colaborador */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Trophy className="h-4 w-4 text-amber-500" /> Ranking por colaborador</CardTitle></CardHeader>
+            <CardContent className="p-0 overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8">#</TableHead>
+                    <TableHead>Colaborador</TableHead>
+                    <TableHead>Volume</TableHead>
+                    <TableHead className="text-right">Ligações</TableHead>
+                    <TableHead className="text-right">Atendidas</TableHead>
+                    <TableHead className="text-right">Caixa postal</TableHead>
+                    <TableHead className="text-right">Min. falados</TableHead>
+                    <TableHead className="text-right">Tempo no discador</TableHead>
+                    <TableHead className="text-right">Atendimento</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {m.perAgent.map((a, i) => (
+                    <TableRow key={a.id}>
+                      <TableCell className="text-muted-foreground">{i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</TableCell>
+                      <TableCell className="font-medium">{a.name}</TableCell>
+                      <TableCell className="min-w-[120px]">
+                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-emerald-500" style={{ width: `${(a.calls / maxAgentCalls) * 100}%` }} />
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{a.calls}</TableCell>
+                      <TableCell className="text-right tabular-nums text-emerald-500 font-medium">{a.answered}</TableCell>
+                      <TableCell className="text-right tabular-nums">{a.voicemail}</TableCell>
+                      <TableCell className="text-right tabular-nums">{Math.round(a.talkSeconds / 60)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{fmtDuration(a.dialerSeconds)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{a.calls ? `${Math.round((a.answered / a.calls) * 100)}%` : "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                  {m.perAgent.length === 0 && <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Sem ligações no período</TableCell></TableRow>}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* Resultado por campanha */}
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Resultado por campanha</CardTitle></CardHeader>
             <CardContent className="p-0 overflow-x-auto">
@@ -309,49 +443,15 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
                   {m.campaigns.map((c) => (
                     <TableRow key={c.id}>
                       <TableCell className="font-medium">{c.name}</TableCell>
-                      <TableCell className="text-right">{c.total}</TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums">{c.total}</TableCell>
                       {DISPOS.map((d) => (
-                        <TableCell key={d.key} className="text-right">
-                          {c.dispo[d.key] ? <span style={{ color: d.color }}>{c.dispo[d.key]}</span> : <span className="text-muted-foreground">—</span>}
+                        <TableCell key={d.key} className="text-right tabular-nums">
+                          {c.dispo[d.key] ? <span style={{ color: d.color }} className="font-medium">{c.dispo[d.key]}</span> : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                       ))}
                     </TableRow>
                   ))}
                   {m.campaigns.length === 0 && <TableRow><TableCell colSpan={2 + DISPOS.length} className="text-center py-8 text-muted-foreground">Sem resultados no período</TableCell></TableRow>}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          {/* Por colaborador */}
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Por colaborador</CardTitle></CardHeader>
-            <CardContent className="p-0 overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Colaborador</TableHead>
-                    <TableHead className="text-right">Ligações</TableHead>
-                    <TableHead className="text-right">Atendidas</TableHead>
-                    <TableHead className="text-right">Caixa postal</TableHead>
-                    <TableHead className="text-right">Min. falados</TableHead>
-                    <TableHead className="text-right">Tempo no discador</TableHead>
-                    <TableHead className="text-right">Atendimento</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {m.perAgent.map((a) => (
-                    <TableRow key={a.id}>
-                      <TableCell className="font-medium">{a.name}</TableCell>
-                      <TableCell className="text-right">{a.calls}</TableCell>
-                      <TableCell className="text-right">{a.answered}</TableCell>
-                      <TableCell className="text-right">{a.voicemail}</TableCell>
-                      <TableCell className="text-right">{Math.round(a.talkSeconds / 60)}</TableCell>
-                      <TableCell className="text-right">{fmtDuration(a.dialerSeconds)}</TableCell>
-                      <TableCell className="text-right">{a.calls ? `${Math.round((a.answered / a.calls) * 100)}%` : "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                  {m.perAgent.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Sem ligações no período</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </CardContent>
@@ -362,14 +462,65 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
   );
 }
 
-function Kpi({ icon: Icon, label, value, sub }: { icon: any; label: string; value: number | string; sub?: string }) {
+function Kpi({ icon: Icon, label, value, sub, accent = "#3b82f6", pct }: { icon: any; label: string; value: number | string; sub?: string; accent?: string; pct?: number }) {
   return (
-    <Card>
-      <CardContent className="p-3">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Icon className="h-3.5 w-3.5" /> {label}</div>
-        <p className="text-2xl font-bold mt-1">{value}</p>
-        {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
-      </CardContent>
-    </Card>
+    <div
+      className="relative overflow-hidden rounded-xl border p-4"
+      style={{
+        borderColor: `${accent}33`,
+        background: `linear-gradient(135deg, ${accent}1f 0%, hsl(var(--card)) 55%)`,
+        boxShadow: `0 6px 22px -14px ${accent}cc`,
+      }}
+    >
+      <Icon className="absolute -right-3 -bottom-3 h-20 w-20 opacity-[0.07]" style={{ color: accent }} />
+      <div className="flex items-center gap-2">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: `${accent}26`, color: accent }}>
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="text-xs text-muted-foreground leading-tight">{label}</span>
+      </div>
+      <p className="text-2xl font-bold mt-2 tracking-tight">{value}</p>
+      {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}
+      {typeof pct === "number" && (
+        <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+          <div className="h-full rounded-full" style={{ width: `${Math.min(100, pct)}%`, background: accent }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FunnelStep({ label, value, base, prev, color }: { label: string; value: number; base: number; prev: number | null; color: string }) {
+  const widthPct = base ? Math.max(4, (value / base) * 100) : 4;
+  const convPct = prev != null && prev > 0 ? Math.round((value / prev) * 100) : null;
+  return (
+    <div>
+      <div className="flex items-center justify-between text-xs mb-1">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="tabular-nums"><span className="font-semibold text-foreground">{value}</span>{convPct != null && <span className="text-muted-foreground"> · {convPct}% da etapa anterior</span>}</span>
+      </div>
+      <div className="h-7 rounded-lg bg-muted/50 overflow-hidden">
+        <div
+          className="h-full rounded-lg flex items-center px-2 text-[11px] font-medium text-white transition-all"
+          style={{ width: `${widthPct}%`, background: `linear-gradient(90deg, ${color}, ${color}cc)`, boxShadow: `0 2px 10px -4px ${color}` }}
+        >
+          {base ? `${Math.round((value / base) * 100)}%` : ""}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Insight({ icon: Icon, color, title, desc }: { icon: any; color: string; title: string; desc: string }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg shrink-0" style={{ background: `${color}22`, color }}>
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0">
+        <p className="font-medium leading-tight truncate">{title}</p>
+        <p className="text-xs text-muted-foreground truncate">{desc}</p>
+      </div>
+    </div>
   );
 }
