@@ -186,8 +186,11 @@ Deno.serve(async (req) => {
       StatusCallbackMethod: "POST",
     });
     if (useAmd) {
-      params.append("MachineDetection", "Enable");
-      params.append("MachineDetectionTimeout", "15");
+      params.append("MachineDetection", "DetectMessageEnd");
+      params.append("MachineDetectionTimeout", "30");
+      params.append("MachineDetectionSpeechThreshold", "2400");
+      params.append("MachineDetectionSpeechEndThreshold", "1200");
+      params.append("MachineDetectionSilenceTimeout", "5000");
     }
     params.append("StatusCallbackEvent", "initiated");
     params.append("StatusCallbackEvent", "ringing");
