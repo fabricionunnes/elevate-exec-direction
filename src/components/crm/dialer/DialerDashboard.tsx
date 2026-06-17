@@ -236,7 +236,7 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
         {isAdmin && balance && (
           <div className={`ml-auto flex items-center gap-1.5 text-sm rounded-lg border px-3 py-1.5 ${balance.critical ? "border-red-500/40 bg-red-500/10 text-red-500" : balance.low ? "border-amber-500/40 bg-amber-500/10 text-amber-600" : "border-border text-muted-foreground"}`}>
             {balance.low || balance.critical ? <AlertTriangle className="h-3.5 w-3.5" /> : <Wallet className="h-3.5 w-3.5" />}
-            Saldo Twilio: <span className="font-semibold">{balance.currency} {balance.balance.toFixed(2)}</span>
+            Saldo Twilio: <span className="font-semibold">{rate ? `R$ ${(balance.balance * rate).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `${balance.currency} ${balance.balance.toFixed(2)}`}</span>
           </div>
         )}
       </div>
