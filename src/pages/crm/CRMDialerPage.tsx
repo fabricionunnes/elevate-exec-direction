@@ -9,10 +9,11 @@ import { DialerWalletPanel } from "@/components/crm/dialer/DialerWalletPanel";
 import { DialerAdminPanel } from "@/components/crm/dialer/DialerAdminPanel";
 import { DialerClientsAdmin } from "@/components/crm/dialer/DialerClientsAdmin";
 import { DialerLiveAgentsPanel } from "@/components/crm/dialer/DialerLiveAgentsPanel";
-import { PhoneCall, ListChecks, BarChart3, Mic, Wallet, Settings2, Users, Radio } from "lucide-react";
+import { DialerCoachPanel } from "@/components/crm/dialer/DialerCoachPanel";
+import { PhoneCall, ListChecks, BarChart3, Mic, Wallet, Settings2, Users, Radio, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Tab = "live" | "team" | "queue" | "calls" | "dashboard" | "wallet" | "admin" | "clients";
+type Tab = "live" | "team" | "queue" | "calls" | "coach" | "dashboard" | "wallet" | "admin" | "clients";
 
 interface CampaignOpt { id: string; name: string; status: string }
 
@@ -34,6 +35,7 @@ export default function CRMDialerPage() {
     ...(isAdmin ? [{ key: "team" as Tab, label: "Ao vivo", icon: Radio }] : []),
     { key: "queue", label: "Fila & Campanhas", icon: ListChecks },
     { key: "calls", label: "Ligações", icon: Mic },
+    ...(isAdmin ? [{ key: "coach" as Tab, label: "Coach", icon: GraduationCap }] : []),
     { key: "wallet", label: "Carteira", icon: Wallet },
     ...(isUnvAdmin ? [
       { key: "clients" as Tab, label: "Clientes", icon: Users },
@@ -66,6 +68,7 @@ export default function CRMDialerPage() {
         {tab === "team" && isAdmin && <div className="h-full overflow-auto"><DialerLiveAgentsPanel /></div>}
         {tab === "queue" && <div className="h-full overflow-auto"><DialerQueuePanel onChanged={loadCampaigns} tenantId={tenantId} currentAgentId={staffId} currentAgentName={staffName} /></div>}
         {tab === "calls" && <div className="h-full overflow-auto"><DialerCallsHistory /></div>}
+        {tab === "coach" && isAdmin && <div className="h-full overflow-auto"><DialerCoachPanel /></div>}
         {tab === "wallet" && <div className="h-full overflow-auto"><DialerWalletPanel tenantId={tenantId} /></div>}
         {tab === "clients" && isUnvAdmin && <div className="h-full overflow-auto"><DialerClientsAdmin /></div>}
         {tab === "admin" && isUnvAdmin && <div className="h-full overflow-auto"><DialerAdminPanel /></div>}

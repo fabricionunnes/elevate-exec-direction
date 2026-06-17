@@ -161,6 +161,15 @@ Regras: não invente dados que não aparecem. Português do Brasil.`;
       }).eq("id", call.activity_id);
     }
 
+    // 6) Coaching do atendimento (nota + dicas pro SDR) — sem bloquear
+    if (transcription) {
+      fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/dialer-coach`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+        body: JSON.stringify({ callId }),
+      }).catch(() => {});
+    }
+
     return new Response(JSON.stringify({ ok: true, callId, disposition: q.disposicao, transcribed: !!transcription }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
