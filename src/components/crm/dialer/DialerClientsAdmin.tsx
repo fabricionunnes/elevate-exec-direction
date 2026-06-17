@@ -17,7 +17,22 @@ export function DialerClientsAdmin() {
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState(30);
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<"new" | "existing_portal">("new");
+  const [mode, setMode] = useState<"new" | "existing_company">("new");
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [companySearch, setCompanySearch] = useState("");
+  const [selectedCompany, setSelectedCompany] = useState<any>(null);
+  const [companyUsers, setCompanyUsers] = useState<any[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+
+  const loadCompanies = async (search: string) => {
+    const { data } = await supabase.functions.invoke("dialer-companies", { body: { action: "list", search } });
+    if (data?.companies) setCompanies(data.companies);
+  };
+  const pickCompany = async (c: any) => {
+    setSelectedCompany(c); setCompanyUsers([]); setSelectedUserIds([]);
+    const { data } = await supabase.functions.invoke("dialer-companies", { body: { action: "users", companyId: c.id } });
+    if (data?.users) setCompanyUsers(data.users);
+  };
   const [form, setForm] = useState({ name: "", email: "", cpfCnpj: "", planPricePerUser: "997", setupFee: "0", initialCredit: "0", maxUsers: "", freeRelease: false });
   const [editClient, setEditClient] = useState<any>(null);
   const [saving, setSaving] = useState(false);
@@ -70,7 +85,10 @@ export function DialerClientsAdmin() {
       cpfCnpj: form.cpfCnpj || undefined,
       setupFee: form.setupFee ? Number(form.setupFee) : undefined,
       freeRelease: form.freeRelease,
+      companyId: mode === "existing_company" ? selectedCompany?.id : undefined,
+      userIds: mode === "existing_company" ? selectedUserIds : undefined,
     };
+    if (mode === "existing_company" && !selectedCompany) { setSaving(false); return toast.error("Selecione a empresa"); }
     const { data: r, error } = await supabase.functions.invoke("dialer-provision-client", { body });
     setSaving(false);
     if (error || r?.error) return toast.error(r?.error || error?.message);
@@ -165,7 +183,7 @@ export function DialerClientsAdmin() {
             <div className="space-y-3">
               <div className="flex gap-2">
                 <Button size="sm" variant={mode === "new" ? "default" : "outline"} onClick={() => setMode("new")}>Cliente novo</Button>
-                <Button size="sm" variant={mode === "existing_portal" ? "default" : "outline"} onClick={() => setMode("existing_portal")}>Cliente existente (portal)</Button>
+                <Button size="sm" variant={mode === "existing_company" ? "default" : "outline"} onClick={() => { setMode("existing_company"); loadCompanies(""); }}>Empresa do sistema</Button>
               </div>
               {mode === "new" ? (
                 <>
@@ -173,7 +191,36 @@ export function DialerClientsAdmin() {
                   <div><Label>E-mail de login</Label><Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} /></div>
                 </>
               ) : (
-                <div><Label>E-mail do cliente já existente no portal</Label><Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="ele acessa o discador no mesmo login" /></div>
+                <div className="space-y-2">
+                  {!selectedCompany ? (
+                    <>
+                      <Label>Buscar empresa</Label>
+                      <Input value={companySearch} onChange={(e) => { setCompanySearch(e.target.value); loadCompanies(e.target.value); }} placeholder="nome da empresa" />
+                      <div className="max-h-40 overflow-auto space-y-1">
+                        {companies.map((co) => (
+                          <button key={co.id} type="button" className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-muted" onClick={() => pickCompany(co)}>
+                            {co.name} {co.cnpj && <span className="text-xs text-muted-foreground">· {co.cnpj}</span>}
+                          </button>
+                        ))}
+                        {companies.length === 0 && <p className="text-xs text-muted-foreground px-2">Digite para buscar.</p>}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between"><span className="text-sm font-medium">{selectedCompany.name}</span><Button size="sm" variant="ghost" onClick={() => { setSelectedCompany(null); setCompanyUsers([]); setSelectedUserIds([]); }}>Trocar</Button></div>
+                      <Label className="text-xs">Usuários a liberar o discador</Label>
+                      <div className="max-h-40 overflow-auto space-y-1">
+                        {companyUsers.map((us) => (
+                          <label key={us.id} className="flex items-center gap-2 text-sm px-1 py-0.5 cursor-pointer">
+                            <input type="checkbox" checked={selectedUserIds.includes(us.id)} onChange={(e) => setSelectedUserIds((ids) => e.target.checked ? [...ids, us.id] : ids.filter((x) => x !== us.id))} />
+                            {us.name} <span className="text-xs text-muted-foreground">· {us.email}</span> {us.dialer_enabled && <span className="text-[9px] text-emerald-500">já liberado</span>}
+                          </label>
+                        ))}
+                        {companyUsers.length === 0 && <p className="text-xs text-muted-foreground">Nenhum usuário vinculado encontrado. Você pode liberar a empresa e adicionar logins depois em "Gerenciar".</p>}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
               <div className="grid grid-cols-2 gap-2">
                 <div><Label>Mensalidade (R$/usuário)</Label><Input type="number" value={form.planPricePerUser} onChange={(e) => setForm((f) => ({ ...f, planPricePerUser: e.target.value }))} /></div>
