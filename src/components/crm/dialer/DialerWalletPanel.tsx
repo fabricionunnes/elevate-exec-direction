@@ -12,12 +12,15 @@ import { Wallet, Plus, Loader2, Copy, ExternalLink, ArrowDownCircle, ArrowUpCirc
 
 const brl = (v: number | string) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-interface Ledger { id: string; amount: number; balance_after: number | null; minutes: number | null; operation: string; description: string | null; created_at: string }
+interface Ledger { id: string; amount: number; balance_after: number | null; minutes: number | null; operation: string; description: string | null; created_at: string; reference_id: string | null }
+interface UnvCall { id: string; created_at: string; duration_seconds: number | null; answered: boolean; cost: number | null; cost_currency: string; lead: string | null; company: string | null }
 
 export function DialerWalletPanel({ tenantId }: { tenantId: string | null }) {
   const [wallet, setWallet] = useState<{ balance: number; total_spent: number; total_deposited: number } | null>(null);
   const [pricing, setPricing] = useState<{ price_per_minute: number; min_balance_to_dial: number } | null>(null);
   const [ledger, setLedger] = useState<Ledger[]>([]);
+  const [callLeads, setCallLeads] = useState<Record<string, string>>({});
+  const [unv, setUnv] = useState<{ totalUsd: number; totalBrl: number | null; brlRate: number; pendingCount: number; calls: UnvCall[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [rechargeOpen, setRechargeOpen] = useState(false);
   const [amount, setAmount] = useState("100");
@@ -27,6 +30,13 @@ export function DialerWalletPanel({ tenantId }: { tenantId: string | null }) {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = async () => {
+    // UNV (uso próprio): sem carteira — extrato de custo Twilio por ligação
+    if (!tenantId) {
+      const { data } = await supabase.functions.invoke("dialer-twilio-costs", { body: { limit: 150 } });
+      if (data && !data.error) setUnv(data);
+      setLoading(false);
+      return;
+    }
     const [{ data: w }, { data: p }, { data: l }] = await Promise.all([
       supabase.from("dialer_wallets").select("balance, total_spent, total_deposited").maybeSingle(),
       supabase.from("dialer_pricing").select("price_per_minute, min_balance_to_dial").or(`tenant_id.eq.${tenantId},tenant_id.is.null`).order("tenant_id", { ascending: false, nullsFirst: false }).limit(1).maybeSingle(),
@@ -34,7 +44,16 @@ export function DialerWalletPanel({ tenantId }: { tenantId: string | null }) {
     ]);
     setWallet(w as any);
     setPricing(p as any);
-    setLedger((l || []) as any);
+    const led = (l || []) as Ledger[];
+    setLedger(led);
+    // nome do lead pra cada ligação do extrato
+    const callIds = [...new Set(led.filter((e) => e.operation === "debit_call" && e.reference_id).map((e) => e.reference_id as string))];
+    if (callIds.length) {
+      const { data: cs } = await supabase.from("crm_calls").select("id, lead:crm_leads(name, company)").in("id", callIds);
+      const map: Record<string, string> = {};
+      (cs || []).forEach((c: any) => { map[c.id] = c.lead?.name || c.lead?.company || ""; });
+      setCallLeads(map);
+    }
     setLoading(false);
   };
 
@@ -70,11 +89,39 @@ export function DialerWalletPanel({ tenantId }: { tenantId: string | null }) {
 
   if (loading) return <div className="flex items-center gap-2 text-muted-foreground p-6 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Carregando carteira…</div>;
 
+  // UNV (uso próprio): extrato de custo Twilio por ligação (sem carteira/recarga)
   if (!tenantId) {
+    const fmtUsd = (v: number) => `US$ ${v.toFixed(4)}`;
+    const rate = unv?.brlRate || 0;
+    const usdToBrl = (v: number) => rate ? Number(v * rate).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : fmtUsd(v);
     return (
-      <div className="p-6 text-center text-muted-foreground">
-        <Wallet className="h-10 w-10 mx-auto mb-3 opacity-40" />
-        <p className="text-sm">A carteira é por cliente. Como uso interno da UNV, suas ligações não debitam carteira.</p>
+      <div className="p-4 space-y-4">
+        <div className="grid sm:grid-cols-3 gap-3">
+          <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Gasto Twilio (últimas ligações)</div><p className="text-3xl font-bold mt-1">{rate ? usdToBrl(unv?.totalUsd || 0) : fmtUsd(unv?.totalUsd || 0)}</p><p className="text-[11px] text-muted-foreground">{fmtUsd(unv?.totalUsd || 0)}{rate ? ` · dólar R$ ${rate.toFixed(2)}` : ""}</p></CardContent></Card>
+          <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Ligações</div><p className="text-2xl font-bold mt-1">{unv?.calls.length ?? 0}</p><p className="text-[11px] text-muted-foreground">conta própria UNV</p></CardContent></Card>
+          <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Custo médio por ligação</div><p className="text-2xl font-bold mt-1">{unv?.calls.length ? (rate ? usdToBrl((unv.totalUsd) / unv.calls.length) : fmtUsd((unv.totalUsd) / unv.calls.length)) : "—"}</p></CardContent></Card>
+        </div>
+
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center justify-between">Extrato por ligação{unv && unv.pendingCount > 0 && <span className="text-xs font-normal text-muted-foreground">{unv.pendingCount} aguardando preço da Twilio</span>}</CardTitle></CardHeader>
+          <CardContent className="p-0 overflow-x-auto">
+            <Table>
+              <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Lead</TableHead><TableHead className="text-right">Duração</TableHead><TableHead className="text-right">Custo</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {(unv?.calls || []).map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{new Date(c.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</TableCell>
+                    <TableCell className="text-sm truncate max-w-[200px]">{c.lead || "—"}{!c.answered && <span className="text-[11px] text-muted-foreground"> · não atendida</span>}</TableCell>
+                    <TableCell className="text-right text-sm tabular-nums">{c.duration_seconds ? `${Math.floor(c.duration_seconds / 60)}:${String(c.duration_seconds % 60).padStart(2, "0")}` : "—"}</TableCell>
+                    <TableCell className="text-right text-sm tabular-nums">{c.cost != null ? (rate ? usdToBrl(c.cost) : fmtUsd(c.cost)) : <span className="text-muted-foreground">calculando…</span>}</TableCell>
+                  </TableRow>
+                ))}
+                {(!unv || unv.calls.length === 0) && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Sem ligações ainda</TableCell></TableRow>}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+        <p className="text-[11px] text-muted-foreground">Custo real cobrado pela Twilio por ligação (puxado da conta). O total do dia fica no Dashboard do discador.</p>
       </div>
     );
   }
@@ -109,7 +156,11 @@ export function DialerWalletPanel({ tenantId }: { tenantId: string | null }) {
                   <TableCell className="text-sm">
                     <span className="inline-flex items-center gap-1.5">
                       {Number(e.amount) >= 0 ? <ArrowUpCircle className="h-3.5 w-3.5 text-emerald-500" /> : <ArrowDownCircle className="h-3.5 w-3.5 text-muted-foreground" />}
-                      {e.operation === "recharge" ? "Recarga" : e.operation === "debit_call" ? `Ligação${e.minutes ? ` (${e.minutes} min)` : ""}` : e.operation}
+                      {e.operation === "recharge" ? "Recarga"
+                        : e.operation === "debit_call" ? `Ligação${e.reference_id && callLeads[e.reference_id] ? ` — ${callLeads[e.reference_id]}` : ""}${e.minutes ? ` (${e.minutes} min)` : ""}`
+                        : e.operation === "franchise_grant" ? "Franquia mensal"
+                        : e.operation === "adjustment" ? "Ajuste"
+                        : e.operation}
                     </span>
                   </TableCell>
                   <TableCell className={`text-right text-sm ${Number(e.amount) >= 0 ? "text-emerald-500" : ""}`}>{Number(e.amount) >= 0 ? "+" : ""}{brl(e.amount)}</TableCell>
