@@ -30,6 +30,7 @@ export function DialerClientsAdmin() {
   };
   const pickCompany = async (c: any) => {
     setSelectedCompany(c); setCompanyUsers([]); setSelectedUserIds([]);
+    if (c.cnpj) setForm((f) => ({ ...f, cpfCnpj: c.cnpj })); // já vem o CNPJ da empresa
     const { data } = await supabase.functions.invoke("dialer-companies", { body: { action: "users", companyId: c.id } });
     if (data?.users) setCompanyUsers(data.users);
   };
