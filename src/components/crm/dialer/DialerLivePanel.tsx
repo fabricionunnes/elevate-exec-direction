@@ -10,6 +10,7 @@ import { startRingback, stopRingback } from "@/lib/dialer/ringback";
 import { callingHoursStatus } from "@/lib/dialer/callingHours";
 import { LeadBriefingPanel } from "./LeadBriefingPanel";
 import { ScheduleLeadMeetingDialog } from "@/components/crm/lead-detail/ScheduleLeadMeetingDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Phone, PhoneOff, PhoneForwarded, Power, Loader2, SkipForward, AlertTriangle, CalendarPlus } from "lucide-react";
 
 interface CampaignOpt { id: string; name: string; status: string }
@@ -41,6 +42,8 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
   const [autoDial, setAutoDial] = useState(false);
   const [balance, setBalance] = useState<{ balance: number; currency: string; low: boolean; critical: boolean } | null>(null);
   const [showSchedule, setShowSchedule] = useState(false);
+  const [retornarOpen, setRetornarOpen] = useState(false);
+  const [retDate, setRetDate] = useState("");
   const [hours, setHours] = useState(() => callingHoursStatus());
   const sessionIdRef = useRef<string | null>(null);
 
@@ -147,16 +150,23 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
     }
   };
 
-  const disposition = async (key: string, label: string) => {
+  // scheduledAt (ISO): só pra "retornar_depois" — re-enfileira o lead pra ligar de novo nesse horário.
+  const disposition = async (key: string, label: string, scheduledAt?: string | null) => {
     if (!current) return;
     handledRef.current = current.callId; // evita que o detector de fim de ligação trate de novo
     hangup();
-    // disposição manual vai pra fila; a IA preenche ai_disposition depois via dialer-qualify
+    // disposição manual vai pra fila; a IA preenche ai_disposition depois via dialer-qualify.
+    // O trigger no banco move o lead pra etapa correspondente do funil.
     await supabase.from("crm_calls").update({ notes: note || null }).eq("id", current.callId);
     if (current.queueId) {
-      await supabase.from("crm_dialer_queue").update({ disposition: key, status: "completed" }).eq("id", current.queueId);
+      const patch = key === "retornar_depois" && scheduledAt
+        ? { disposition: key, status: "queued", scheduled_at: scheduledAt } // volta pra fila no horário marcado
+        : { disposition: key, status: "completed", scheduled_at: null };
+      await supabase.from("crm_dialer_queue").update(patch).eq("id", current.queueId);
     }
-    toast.success(`Marcado: ${label}`);
+    toast.success(key === "retornar_depois" && scheduledAt
+      ? `Retorno agendado para ${new Date(scheduledAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`
+      : `Marcado: ${label}`);
     setCurrent(null);
     setNote("");
     stopRingback();
@@ -164,6 +174,21 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
     if (autoDial && status !== "offline") {
       setTimeout(() => { void dialNext(); }, 800);
     }
+  };
+
+  // helpers do agendador de "retornar depois"
+  const toLocalInput = (d: Date) => {
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+  const inDays = (days: number) => { const d = new Date(); d.setDate(d.getDate() + days); d.setHours(9, 0, 0, 0); return toLocalInput(d); };
+  const openRetornar = () => { setRetDate(inDays(1)); setRetornarOpen(true); };
+  const confirmRetornar = async () => {
+    if (!retDate) return;
+    const iso = new Date(retDate).toISOString();
+    setRetornarOpen(false);
+    await disposition("retornar_depois", "Retornar depois", iso);
+    setRetDate("");
   };
 
   // Encerramento automático (cliente desligou, não atendeu, caixa postal): registra e vai pro próximo.
@@ -263,7 +288,7 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
             <Textarea rows={3} placeholder="Anotações da ligação…" value={note} onChange={(e) => setNote(e.target.value)} />
             <div className="grid grid-cols-2 gap-2">
               {DISPOSITIONS.map((d) => (
-                <Button key={d.key} size="sm" variant={d.variant} onClick={() => disposition(d.key, d.label)}>
+                <Button key={d.key} size="sm" variant={d.variant} onClick={() => d.key === "retornar_depois" ? openRetornar() : disposition(d.key, d.label)}>
                   {d.label}
                 </Button>
               ))}
@@ -297,12 +322,35 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
           onSuccess={async () => {
             setShowSchedule(false);
             if (current?.queueId) {
-              await supabase.from("crm_dialer_queue").update({ disposition: "agendou_reuniao" }).eq("id", current.queueId);
+              await supabase.from("crm_dialer_queue").update({ disposition: "agendou_reuniao", status: "completed" }).eq("id", current.queueId);
             }
             toast.success("Reunião agendada");
           }}
         />
       )}
+
+      <Dialog open={retornarOpen} onOpenChange={setRetornarOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Retornar depois — quando ligar de novo?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">O lead volta pra fila do discador e é chamado automaticamente nesse horário, quando a fila estiver aberta.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => setRetDate(inDays(1))}>Amanhã 9h</Button>
+            <Button size="sm" variant="outline" onClick={() => setRetDate(inDays(2))}>Em 2 dias</Button>
+            <Button size="sm" variant="outline" onClick={() => setRetDate(inDays(3))}>Em 3 dias</Button>
+            <Button size="sm" variant="outline" onClick={() => setRetDate(inDays(7))}>Em 7 dias</Button>
+          </div>
+          <input
+            type="datetime-local"
+            value={retDate}
+            onChange={(e) => setRetDate(e.target.value)}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRetornarOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmRetornar} disabled={!retDate}>Agendar retorno</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

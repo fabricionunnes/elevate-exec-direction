@@ -94,11 +94,15 @@ Deno.serve(async (req) => {
       useAmd = campaign.use_amd !== false;
       tenantId = campaign.tenant_id || null;
 
+      // Próximo da fila: ignora leads agendados pro futuro; prioriza os agendados que já venceram.
+      const nowIso = new Date().toISOString();
       const { data: nextRow } = await supabase
         .from("crm_dialer_queue")
-        .select("id, lead_id")
+        .select("id, lead_id, attempts")
         .eq("campaign_id", campaignId)
         .eq("status", "queued")
+        .or(`scheduled_at.is.null,scheduled_at.lte.${nowIso}`)
+        .order("scheduled_at", { ascending: true, nullsFirst: false })
         .order("position", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: true })
         .limit(1)
