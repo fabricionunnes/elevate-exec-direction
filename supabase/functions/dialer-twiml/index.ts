@@ -2,8 +2,9 @@
 // Se for secretária eletrônica -> desliga e marca voicemail. Se for humano -> consentimento + conecta na atendente, gravando.
 import { createClient } from "@supabase/supabase-js";
 
-const DEFAULT_CONSENT =
-  "Olá! Esta ligação será gravada para fins de qualidade e treinamento. Aguarde um instante que já vou transferir para um de nossos atendentes.";
+// Vazio por padrão: o cliente atende e cai direto na atendente, sem mensagem automática.
+// Se a campanha definir uma mensagem de consentimento, ela é tocada antes de conectar.
+const DEFAULT_CONSENT = "";
 
 function xmlEscape(s: string): string {
   return (s || "")
@@ -62,8 +63,12 @@ Deno.serve(async (req) => {
     }
 
     const recCb = `${BASE}/dialer-recording?callId=${callId}`;
+    // Só toca a mensagem se a campanha definir uma; senão conecta direto na atendente.
+    const sayBlock = consent && consent.trim()
+      ? `<Say voice="Polly.Camila" language="pt-BR">${xmlEscape(consent)}</Say>`
+      : "";
     return twiml(
-      `<Say voice="Polly.Camila" language="pt-BR">${xmlEscape(consent)}</Say>` +
+      sayBlock +
       `<Dial answerOnBridge="true" record="record-from-answer-dual" recordingStatusCallback="${xmlEscape(recCb)}" recordingStatusCallbackEvent="completed" recordingStatusCallbackMethod="POST" timeout="30">` +
       `<Client>${xmlEscape(agent)}</Client>` +
       `</Dial>`,

@@ -11,8 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { Plus, Play, Pause, RefreshCw, Loader2, Phone, Users, Trash2 } from "lucide-react";
 
-const DEFAULT_CONSENT =
-  "Olá! Esta ligação será gravada para fins de qualidade e treinamento. Aguarde um instante que já vou transferir para um de nossos atendentes.";
+// Vazio por padrão: o cliente atende e fala direto com a atendente, sem mensagem automática.
+const DEFAULT_CONSENT = "";
 
 interface Campaign {
   id: string;
@@ -227,8 +227,9 @@ export function DialerQueuePanel({ onChanged }: { onChanged?: () => void }) {
               </Select>
             </div>
             <div>
-              <Label>Mensagem de consentimento de gravação</Label>
-              <Textarea rows={3} value={form.consent_message} onChange={(e) => setForm((f) => ({ ...f, consent_message: e.target.value }))} />
+              <Label>Mensagem automática antes de conectar (opcional)</Label>
+              <Textarea rows={2} placeholder="Deixe vazio para o cliente cair direto na atendente." value={form.consent_message} onChange={(e) => setForm((f) => ({ ...f, consent_message: e.target.value }))} />
+              <p className="text-xs text-muted-foreground mt-1">Vazio = a atendente fala assim que o cliente atende. Preencha só se quiser tocar um aviso de gravação antes.</p>
             </div>
             <label className="flex items-start gap-2 text-sm cursor-pointer">
               <input type="checkbox" className="mt-1" checked={form.use_amd} onChange={(e) => setForm((f) => ({ ...f, use_amd: e.target.checked }))} />
