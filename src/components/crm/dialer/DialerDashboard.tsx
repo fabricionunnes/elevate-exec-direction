@@ -75,7 +75,7 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
   const [campaignNames, setCampaignNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState<{ balance: number; currency: string; low: boolean; critical: boolean } | null>(null);
-  const [usage, setUsage] = useState<{ currency: string; total: number; records: { date: string; spend: number }[] } | null>(null);
+  const [usage, setUsage] = useState<{ currency: string; total: number; records: { date: string; spend: number }[]; brlRate?: number; brlRateAt?: string } | null>(null);
   const [outcomes, setOutcomes] = useState<{ scheduled: number; realized: number; sales: number; value: number } | null>(null);
 
   useEffect(() => {
@@ -204,6 +204,13 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
   }, [m.hourData]);
 
   const cur = usage?.currency || "USD";
+  const rate = usage?.brlRate || 0;
+  const fmtBRL = (usd: number, dec = 2) => rate
+    ? `R$ ${(usd * rate).toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec })}`
+    : `${cur} ${usd.toFixed(dec)}`;
+  const rateLabel = rate
+    ? `dólar R$ ${rate.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${usage?.brlRateAt ? " em " + new Date(usage.brlRateAt).toLocaleDateString("pt-BR") : ""}`
+    : "";
   const costPerCall = usage && m.total ? usage.total / m.total : 0;
   const costPerAnswered = usage && m.answered ? usage.total / m.answered : 0;
   const costPerQualified = usage && m.qualificados ? usage.total / m.qualificados : 0;
@@ -279,15 +286,15 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
           {/* Custo por etapa do funil (admin UNV) */}
           {isAdmin && usage && (
             <div className="space-y-2">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5"><DollarSign className="h-3.5 w-3.5" /> Custo por etapa do funil <span className="normal-case tracking-normal">(gasto Twilio ÷ resultado)</span></p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5 flex-wrap"><DollarSign className="h-3.5 w-3.5" /> Custo por etapa do funil <span className="normal-case tracking-normal">(gasto Twilio ÷ resultado{rateLabel ? ` · ${rateLabel}` : ""})</span></p>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <Kpi icon={DollarSign} label="Gasto Twilio" value={`${cur} ${usage.total.toFixed(2)}`} accent="#ef4444" sub="no período (conta UNV)" />
-                <Kpi icon={DollarSign} label="Custo por ligação" value={`${cur} ${costPerCall.toFixed(3)}`} accent="#fb7185" sub="média geral" />
-                <Kpi icon={DollarSign} label="Custo por atendimento" value={`${cur} ${costPerAnswered.toFixed(3)}`} accent="#f97316" sub="só quem atendeu" />
-                <Kpi icon={Target} label="Custo por qualificado" value={m.qualificados ? `${cur} ${costPerQualified.toFixed(2)}` : "—"} accent="#f59e0b" sub={`${m.qualificados} qualificados`} />
-                <Kpi icon={CalendarClock} label="Custo por reunião agendada" value={outcomes?.scheduled ? `${cur} ${costPerScheduled.toFixed(2)}` : "—"} accent="#3b82f6" sub={`${outcomes?.scheduled || 0} agendadas`} />
-                <Kpi icon={Handshake} label="Custo por reunião realizada" value={outcomes?.realized ? `${cur} ${costPerRealized.toFixed(2)}` : "—"} accent="#14b8a6" sub={`${outcomes?.realized || 0} realizadas`} />
-                <Kpi icon={Trophy} label="CAC — custo por venda" value={outcomes?.sales ? `${cur} ${cac.toFixed(2)}` : "—"} accent="#22c55e" sub={`${outcomes?.sales || 0} vendas fechadas`} />
+                <Kpi icon={DollarSign} label="Gasto Twilio" value={fmtBRL(usage.total, 2)} accent="#ef4444" sub={`${cur} ${usage.total.toFixed(2)} · conta UNV`} />
+                <Kpi icon={DollarSign} label="Custo por ligação" value={fmtBRL(costPerCall, 3)} accent="#fb7185" sub="média geral" />
+                <Kpi icon={DollarSign} label="Custo por atendimento" value={fmtBRL(costPerAnswered, 3)} accent="#f97316" sub="só quem atendeu" />
+                <Kpi icon={Target} label="Custo por qualificado" value={m.qualificados ? fmtBRL(costPerQualified, 2) : "—"} accent="#f59e0b" sub={`${m.qualificados} qualificados`} />
+                <Kpi icon={CalendarClock} label="Custo por reunião agendada" value={outcomes?.scheduled ? fmtBRL(costPerScheduled, 2) : "—"} accent="#3b82f6" sub={`${outcomes?.scheduled || 0} agendadas`} />
+                <Kpi icon={Handshake} label="Custo por reunião realizada" value={outcomes?.realized ? fmtBRL(costPerRealized, 2) : "—"} accent="#14b8a6" sub={`${outcomes?.realized || 0} realizadas`} />
+                <Kpi icon={Trophy} label="CAC — custo por venda" value={outcomes?.sales ? fmtBRL(cac, 2) : "—"} accent="#22c55e" sub={`${outcomes?.sales || 0} vendas fechadas`} />
                 <Kpi icon={TrendingUp} label="Receita gerada" value={outcomes?.value ? `R$ ${outcomes.value.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : "—"} accent="#10b981" sub="vendas do discador" />
               </div>
             </div>

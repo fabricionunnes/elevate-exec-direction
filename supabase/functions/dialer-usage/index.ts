@@ -1,8 +1,30 @@
 // dialer-usage: gasto diário na Twilio (Usage Records, categoria totalprice). Só pra admin/master no front.
+import { createClient } from "@supabase/supabase-js";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Cotação USD->BRL com cache diário em fx_rates (busca na AwesomeAPI no máx. 1x/dia).
+async function getBrlRate(): Promise<{ rate: number; at: string }> {
+  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const { data: cached } = await supabase.from("fx_rates").select("rate, updated_at").eq("pair", "USD-BRL").maybeSingle();
+  const fresh = cached && (Date.now() - new Date(cached.updated_at).getTime() < 20 * 3600000);
+  if (cached && fresh) return { rate: Number(cached.rate), at: cached.updated_at };
+  try {
+    const r = await fetch("https://economia.awesomeapi.com.br/json/last/USD-BRL");
+    const j = await r.json();
+    const bid = parseFloat(j?.USDBRL?.bid);
+    if (bid > 0) {
+      const now = new Date().toISOString();
+      await supabase.from("fx_rates").upsert({ pair: "USD-BRL", rate: bid, source: "awesomeapi", updated_at: now });
+      return { rate: bid, at: now };
+    }
+  } catch (_e) { /* mantém cache antigo se houver */ }
+  if (cached) return { rate: Number(cached.rate), at: cached.updated_at };
+  return { rate: 0, at: "" };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -40,7 +62,9 @@ Deno.serve(async (req) => {
     const currency = data.usage_records?.[0]?.price_unit?.toUpperCase() || "USD";
     const total = records.reduce((s: number, r: any) => s + r.spend, 0);
 
-    return new Response(JSON.stringify({ days, currency, total, records }), {
+    const fx = await getBrlRate();
+
+    return new Response(JSON.stringify({ days, currency, total, records, brlRate: fx.rate, brlRateAt: fx.at }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
