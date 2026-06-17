@@ -104,6 +104,23 @@ Deno.serve(async (req) => {
       });
     }
 
+    // === Ativação de cliente do discador (assinatura) ===
+    if (extRef && extRef.startsWith("dialer_activation:")) {
+      const tId = extRef.split(":")[1];
+      if (newStatus === "paid" && tId) {
+        // libera o cliente
+        await supabase.from("whitelabel_tenants").update({ status: "active" }).eq("id", tId);
+        // baixa a conta a receber
+        await supabase.from("financial_receivables").update({
+          status: "paid", paid_date: new Date().toISOString().slice(0, 10), paid_amount: paymentValue, asaas_payment_id: paymentId,
+        }).eq("asaas_payment_id", paymentId).neq("status", "paid");
+        console.log(`[Asaas Webhook] Discador ativado + baixa: tenant ${tId}`);
+      }
+      return new Response(JSON.stringify({ received: true, dialer_activation: tId }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // === Cobrança por usuário ativo do discador ===
     if (extRef && extRef.startsWith("dialer_billing:")) {
       const billingId = extRef.split(":")[1];

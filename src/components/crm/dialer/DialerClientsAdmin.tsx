@@ -18,7 +18,7 @@ export function DialerClientsAdmin() {
   const [range, setRange] = useState(30);
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"new" | "existing_portal">("new");
-  const [form, setForm] = useState({ name: "", email: "", planPricePerUser: "997", initialCredit: "0", maxUsers: "" });
+  const [form, setForm] = useState({ name: "", email: "", cpfCnpj: "", planPricePerUser: "997", initialCredit: "0", maxUsers: "" });
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<any>(null);
   // gestão de usuários por cliente
@@ -66,6 +66,7 @@ export function DialerClientsAdmin() {
       planPricePerUser: form.planPricePerUser ? Number(form.planPricePerUser) : undefined,
       initialCredit: form.initialCredit ? Number(form.initialCredit) : undefined,
       maxUsers: form.maxUsers ? Number(form.maxUsers) : undefined,
+      cpfCnpj: form.cpfCnpj || undefined,
     };
     const { data: r, error } = await supabase.functions.invoke("dialer-provision-client", { body });
     setSaving(false);
@@ -160,6 +161,7 @@ export function DialerClientsAdmin() {
                 <div><Label>Crédito inicial</Label><Input type="number" value={form.initialCredit} onChange={(e) => setForm((f) => ({ ...f, initialCredit: e.target.value }))} /></div>
                 <div><Label>Máx. usuários</Label><Input type="number" placeholder="ilimitado" value={form.maxUsers} onChange={(e) => setForm((f) => ({ ...f, maxUsers: e.target.value }))} /></div>
               </div>
+              <div><Label>CPF/CNPJ (para a cobrança)</Label><Input value={form.cpfCnpj} onChange={(e) => setForm((f) => ({ ...f, cpfCnpj: e.target.value }))} placeholder="gera o link de pagamento da assinatura" /></div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
                 <Button onClick={submit} disabled={saving}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Cadastrar</Button>
@@ -168,6 +170,17 @@ export function DialerClientsAdmin() {
           ) : (
             <div className="space-y-2 text-sm">
               <p className="text-emerald-600 font-medium">Cliente cadastrado!</p>
+              {result.invoiceUrl && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+                  <p className="text-xs font-medium">Link de pagamento da assinatura{result.amount ? ` — ${brl(result.amount)}` : ""}</p>
+                  <a href={result.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline break-all block">{result.invoiceUrl}</a>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="gap-1" onClick={() => { navigator.clipboard.writeText(result.invoiceUrl); toast.success("Link copiado"); }}><Copy className="h-3.5 w-3.5" /> Copiar link</Button>
+                    {result.pixPayload && <Button size="sm" variant="outline" className="gap-1" onClick={() => { navigator.clipboard.writeText(result.pixPayload); toast.success("PIX copiado"); }}><Copy className="h-3.5 w-3.5" /> Copiar PIX</Button>}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">Ao pagar, o cliente é liberado e a conta a receber é baixada automaticamente.</p>
+                </div>
+              )}
               {result.login && <Row label="Login" value={result.login} />}
               {result.tempPassword && <Row label="Senha temporária" value={result.tempPassword} copy />}
               {result.apiKey && <Row label="API key (import de leads)" value={result.apiKey} copy />}

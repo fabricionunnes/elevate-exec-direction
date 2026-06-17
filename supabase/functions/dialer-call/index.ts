@@ -122,8 +122,13 @@ Deno.serve(async (req) => {
     if (!toNumber) throw new Error(`Lead "${lead.name}" sem telefone válido`);
     if (!callerId) throw new Error("Sem número de origem (TWILIO_CALLER_ID ou caller_id da campanha)");
 
-    // Bloqueio por saldo — só para clientes (tenant). UNV/owner (tenant null) não debita.
+    // Bloqueio por saldo e por assinatura — só para clientes (tenant). UNV/owner (tenant null) não debita.
     if (tenantId) {
+      const { data: tnt } = await supabase.from("whitelabel_tenants").select("status").eq("id", tenantId).maybeSingle();
+      if (tnt && tnt.status && tnt.status !== "active") {
+        if (queueId) await supabase.from("crm_dialer_queue").update({ status: "queued" }).eq("id", queueId);
+        return json({ done: false, reason: "pending_payment", error: "Assinatura pendente. Finalize o pagamento para liberar o discador." });
+      }
       const { data: wallet } = await supabase.from("dialer_wallets").select("balance").eq("tenant_id", tenantId).maybeSingle();
       const { data: pricing } = await supabase.from("dialer_pricing")
         .select("min_balance_to_dial")
