@@ -137,9 +137,38 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const mode = body.mode === "existing_portal" ? "existing_portal" : "new";
+    const mode = ["existing_portal", "existing_company"].includes(body.mode) ? body.mode : "new";
     const planPrice = body.planPricePerUser != null ? Number(body.planPricePerUser) : null;
     const initialCredit = body.initialCredit != null ? Number(body.initialCredit) : 0;
+
+    if (mode === "existing_company") {
+      const companyId: string = body.companyId;
+      const userIds: string[] = Array.isArray(body.userIds) ? body.userIds : [];
+      if (!companyId) throw new Error("companyId é obrigatório");
+      const { data: company } = await supabase.from("onboarding_companies").select("id, name, tenant_id").eq("id", companyId).maybeSingle();
+      if (!company) throw new Error("Empresa não encontrada");
+
+      // garante um tenant do discador pra empresa (sem mexer no acesso atual dela)
+      let tenantId = company.tenant_id;
+      if (!tenantId) {
+        const slug = `${slugify(company.name)}-${crypto.randomUUID().slice(0, 6)}`;
+        const { data: t } = await supabase.from("whitelabel_tenants").insert({ name: company.name, slug, status: "active" }).select("id").single();
+        tenantId = t.id;
+        await supabase.from("onboarding_companies").update({ tenant_id: tenantId }).eq("id", companyId);
+      }
+      await createDialerPipeline(supabase, tenantId);
+
+      // libera o discador nos usuários escolhidos (dialer_tenant_id separado do tenant do portal)
+      for (const uid2 of userIds) {
+        await supabase.from("onboarding_users").update({ dialer_enabled: true, dialer_tenant_id: tenantId }).eq("id", uid2);
+      }
+
+      const { data: key } = await supabase.rpc("dialer_generate_api_key", { p_tenant: tenantId, p_label: company.name });
+      if (initialCredit > 0) await supabase.rpc("dialer_credit_wallet", { p_tenant: tenantId, p_amount: initialCredit, p_operation: "adjustment", p_desc: "Crédito inicial", p_ref: null });
+      if (planPrice != null) await upsertPricing(supabase, tenantId, planPrice);
+      const billing = await applyBilling(supabase, { tenantId, name: company.name, email: body.email, cpfCnpj: body.cpfCnpj, planPrice, maxUsers: body.maxUsers, setupFee: body.setupFee, freeRelease: body.freeRelease === true });
+      return json({ ok: true, mode, tenantId, apiKey: key, usersEnabled: userIds.length, ...billing, message: billing.freeRelease ? `Discador liberado para ${userIds.length} usuário(s) (grátis).` : `Discador liberado para ${userIds.length} usuário(s). Pague para ativar.` });
+    }
 
     if (mode === "existing_portal") {
       let pu: any = null;

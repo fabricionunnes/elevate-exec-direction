@@ -31,9 +31,9 @@ export default function CRMDialerStandalonePage() {
       } else {
         // 2) cliente do portal com discador habilitado
         const { data: pu } = await supabase
-          .from("onboarding_users").select("id, name, tenant_id, dialer_enabled")
-          .eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
-        if (pu?.dialer_enabled) { agentId = pu.id; tenantId = pu.tenant_id; name = pu.name; role = "client"; }
+          .from("onboarding_users").select("id, name, tenant_id, dialer_tenant_id, dialer_enabled")
+          .eq("user_id", user.id).eq("dialer_enabled", true).order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (pu?.dialer_enabled) { agentId = pu.id; tenantId = pu.dialer_tenant_id || pu.tenant_id; name = pu.name; role = "client"; }
       }
 
       if (!agentId) { setDenied(true); setLoading(false); return; }
