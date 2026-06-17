@@ -1,4 +1,5 @@
 // dialer-live-agents: quem está online no discador agora e o que está fazendo (pronta / chamando / em ligação).
+// Online = heartbeat fresco (sessão aberta, last_seen < 2min) OU ligou nos últimos 3min (robusto a cache do navegador).
 // UNV (staff sem tenant) vê todos os clientes; gestor de cliente vê só a própria equipe.
 import { createClient } from "@supabase/supabase-js";
 
@@ -12,7 +13,6 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // auth: precisa ser staff ativo. UNV (tenant null + role gestor) vê todos; senão filtra pelo próprio tenant.
     const jwt = (req.headers.get("Authorization") || "").replace("Bearer ", "");
     const { data: u } = await supabase.auth.getUser(jwt);
     const uid = u?.user?.id;
@@ -24,41 +24,53 @@ Deno.serve(async (req) => {
     const scopeTenant: string | null = isUnvAdmin ? null : (me.tenant_id || null);
 
     const nowMs = Date.now();
-    const onlineCutoff = new Date(nowMs - 2 * 60000).toISOString(); // visto nos últimos 2 min
-    const dayStart = new Date(nowMs - 12 * 3600000).toISOString();  // janela de "hoje" (12h) p/ contagem
+    const heartbeatCutoff = nowMs - 2 * 60000; // sessão "viva" se deu sinal nos últimos 2min
+    const callCutoff = new Date(nowMs - 3 * 60000).toISOString(); // ou se ligou nos últimos 3min
+    const dayStart = new Date(nowMs - 12 * 3600000).toISOString(); // janela p/ contagem
 
-    // sessões abertas e recentes
+    // ligações recentes (presença por atividade + ligação atual)
+    let cq = supabase
+      .from("crm_calls")
+      .select("agent_staff_id, tenant_id, campaign_id, status, answered_by, created_at, lead:crm_leads(name)")
+      .gte("created_at", callCutoff)
+      .order("created_at", { ascending: false });
+    if (scopeTenant) cq = cq.eq("tenant_id", scopeTenant);
+    const { data: recentCalls } = await cq;
+
+    // sessões abertas (contexto: campanha, início, tenant)
     let sq = supabase
       .from("crm_dialer_sessions")
       .select("id, agent_staff_id, campaign_id, tenant_id, started_at, last_seen_at")
-      .is("ended_at", null)
-      .gte("last_seen_at", onlineCutoff);
+      .is("ended_at", null);
     if (scopeTenant) sq = sq.eq("tenant_id", scopeTenant);
-    const { data: sessions } = await sq;
-    const rows = sessions || [];
-    if (!rows.length) return json({ agents: [], serverTime: new Date(nowMs).toISOString() });
+    const { data: openSessions } = await sq;
 
-    // mantém só a sessão mais recente por agente
-    const bestByAgent = new Map<string, any>();
-    for (const s of rows) {
-      if (!s.agent_staff_id) continue;
-      const prev = bestByAgent.get(s.agent_staff_id);
-      if (!prev || new Date(s.last_seen_at).getTime() > new Date(prev.last_seen_at).getTime()) bestByAgent.set(s.agent_staff_id, s);
+    // agentes online = heartbeat fresco OU ligação recente
+    const onlineSet = new Set<string>();
+    for (const s of openSessions || []) {
+      if (s.agent_staff_id && s.last_seen_at && new Date(s.last_seen_at).getTime() >= heartbeatCutoff) onlineSet.add(s.agent_staff_id);
     }
-    const agentIds = [...bestByAgent.keys()];
-    const tenantIds = [...new Set(rows.map((r) => r.tenant_id).filter(Boolean))] as string[];
-    const campaignIds = [...new Set(rows.map((r) => r.campaign_id).filter(Boolean))] as string[];
+    for (const c of recentCalls || []) { if (c.agent_staff_id) onlineSet.add(c.agent_staff_id); }
+    const agentIds = [...onlineSet];
+    if (!agentIds.length) return json({ agents: [], isUnvAdmin, serverTime: new Date(nowMs).toISOString() });
 
-    const [staffRes, tenantRes, campRes, callsRes] = await Promise.all([
+    // melhor sessão aberta por agente (mais recente), pra contexto/início
+    const bestSession = new Map<string, any>();
+    for (const s of openSessions || []) {
+      if (!s.agent_staff_id || !onlineSet.has(s.agent_staff_id)) continue;
+      const prev = bestSession.get(s.agent_staff_id);
+      const t = new Date(s.last_seen_at || s.started_at).getTime();
+      if (!prev || t > new Date(prev.last_seen_at || prev.started_at).getTime()) bestSession.set(s.agent_staff_id, s);
+    }
+
+    const tenantIds = [...new Set([...(openSessions || []).map((s) => s.tenant_id), ...(recentCalls || []).map((c) => c.tenant_id)].filter(Boolean))] as string[];
+    const campaignIds = [...new Set((openSessions || []).map((s) => s.campaign_id).filter(Boolean))] as string[];
+
+    const [staffRes, tenantRes, campRes, todayCallsRes] = await Promise.all([
       supabase.from("onboarding_staff").select("id, name, avatar_url").in("id", agentIds),
       tenantIds.length ? supabase.from("whitelabel_tenants").select("id, name").in("id", tenantIds) : Promise.resolve({ data: [] }),
       campaignIds.length ? supabase.from("crm_dialer_campaigns").select("id, name").in("id", campaignIds) : Promise.resolve({ data: [] }),
-      supabase
-        .from("crm_calls")
-        .select("agent_staff_id, status, answered_by, created_at, lead:crm_leads(name)")
-        .in("agent_staff_id", agentIds)
-        .gte("created_at", dayStart)
-        .order("created_at", { ascending: false }),
+      supabase.from("crm_calls").select("agent_staff_id, answered_by, created_at").in("agent_staff_id", agentIds).gte("created_at", dayStart),
     ]);
 
     const nameOf: Record<string, string> = {}; const avatarOf: Record<string, string | null> = {};
@@ -66,30 +78,37 @@ Deno.serve(async (req) => {
     const tenantNameOf: Record<string, string> = {}; (tenantRes.data || []).forEach((t: any) => tenantNameOf[t.id] = t.name);
     const campNameOf: Record<string, string> = {}; (campRes.data || []).forEach((c: any) => campNameOf[c.id] = c.name);
 
-    // ligações de cada agente na janela
-    const callsByAgent: Record<string, any[]> = {};
-    for (const c of callsRes.data || []) (callsByAgent[c.agent_staff_id] ||= []).push(c);
+    // ligação atual + contagem do dia, por agente
+    const curByAgent: Record<string, any> = {};
+    for (const c of recentCalls || []) { if (c.agent_staff_id && !curByAgent[c.agent_staff_id]) curByAgent[c.agent_staff_id] = c; } // mais recente (ordenado desc)
+    const todayByAgent: Record<string, { total: number; answered: number }> = {};
+    for (const c of todayCallsRes.data || []) {
+      const a = (todayByAgent[c.agent_staff_id] ||= { total: 0, answered: 0 });
+      a.total++; if (c.answered_by === "human") a.answered++;
+    }
 
     const agents = agentIds.map((id) => {
-      const s = bestByAgent.get(id);
-      const calls = callsByAgent[id] || [];
-      const active = calls.find((c) => c.status === "in-progress");
-      const ringing = calls.find((c) => ["ringing", "queued"].includes(c.status));
-      const cur = active || ringing;
+      const s = bestSession.get(id);
+      const cur = curByAgent[id];
+      const active = cur && cur.status === "in-progress";
+      const ringing = cur && ["ringing", "queued"].includes(cur.status);
       const status = active ? "em_ligacao" : ringing ? "chamando" : "pronta";
+      const tenantId = s?.tenant_id ?? cur?.tenant_id ?? null;
+      const since = s?.started_at || cur?.created_at || new Date(nowMs).toISOString();
+      const today = todayByAgent[id] || { total: 0, answered: 0 };
       return {
         agentId: id,
         name: nameOf[id] || "—",
         avatarUrl: avatarOf[id] || null,
-        tenantId: s.tenant_id || null,
-        tenantName: s.tenant_id ? (tenantNameOf[s.tenant_id] || "Cliente") : "UNV",
-        campaignName: s.campaign_id ? (campNameOf[s.campaign_id] || null) : null,
-        since: s.started_at,
-        lastSeen: s.last_seen_at,
+        tenantId,
+        tenantName: tenantId ? (tenantNameOf[tenantId] || "Cliente") : "UNV",
+        campaignName: s?.campaign_id ? (campNameOf[s.campaign_id] || null) : null,
+        since,
+        lastSeen: s?.last_seen_at || cur?.created_at || null,
         status,
-        currentLead: cur ? ((cur as any).lead?.name || null) : null,
-        callsCount: calls.length,
-        answeredCount: calls.filter((c) => c.answered_by === "human").length,
+        currentLead: active || ringing ? ((cur as any)?.lead?.name || null) : null,
+        callsCount: today.total,
+        answeredCount: today.answered,
       };
     }).sort((a, b) => {
       const order: Record<string, number> = { em_ligacao: 0, chamando: 1, pronta: 2 };

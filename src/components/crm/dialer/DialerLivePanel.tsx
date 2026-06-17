@@ -55,9 +55,11 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
   const autoDialRef = useRef(autoDial);
   const handledRef = useRef<string | null>(null);
   const prevStatusRef = useRef(status);
+  const statusRef = useRef(status);
 
   useEffect(() => { currentRef.current = current; }, [current]);
   useEffect(() => { autoDialRef.current = autoDial; }, [autoDial]);
+  useEffect(() => { statusRef.current = status; }, [status]);
 
   const refreshBalance = async () => {
     const { data } = await supabase.functions.invoke("dialer-balance");
@@ -66,16 +68,19 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
   useEffect(() => { void refreshBalance(); }, []);
 
   // Heartbeat: intervalo fixo (NÃO depende de status — senão cada mudança de status reinicia o
-  // timer de 30s e durante a discagem ele nunca chega a disparar, deixando o agente "offline").
-  // Atualiza last_seen_at enquanto houver sessão aberta; para sozinho quando a sessão fecha (ref null).
+  // timer e durante a discagem ele nunca chega a disparar). Atualiza pela agent_staff_id (não pelo
+  // id retornado no insert, que pode vir nulo) enquanto a pessoa estiver pronta (status != offline).
   useEffect(() => {
+    if (!staffId) return;
     const t = setInterval(() => {
-      if (sessionIdRef.current) {
-        void supabase.from("crm_dialer_sessions").update({ last_seen_at: new Date().toISOString() }).eq("id", sessionIdRef.current);
-      }
+      if (statusRef.current === "offline") return;
+      void supabase.from("crm_dialer_sessions")
+        .update({ last_seen_at: new Date().toISOString() })
+        .eq("agent_staff_id", staffId)
+        .is("ended_at", null);
     }, 25000);
     return () => clearInterval(t);
-  }, []);
+  }, [staffId]);
 
   useEffect(() => {
     if (!campaignId && active.length) setCampaignId(active[0].id);
