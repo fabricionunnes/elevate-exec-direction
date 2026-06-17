@@ -114,6 +114,7 @@ export const CRMLayout = () => {
   const [staffName, setStaffName] = useState<string | null>(null);
   const [staffId, setStaffId] = useState<string | null>(null);
   const [tenantId, setTenantId] = useState<string | null>(null);
+  const [dialerOnly, setDialerOnly] = useState(false);
   const [staffAvatarUrl, setStaffAvatarUrl] = useState<string | null>(null);
   const [selectedOrigin, setSelectedOrigin] = useState<string | null>(null);
   const [selectedPipeline, setSelectedPipeline] = useState<string | null>(null);
@@ -136,13 +137,14 @@ export const CRMLayout = () => {
 
         const { data: staff, error: staffError } = await supabase
           .from("onboarding_staff")
-          .select("id, role, name, avatar_url, tenant_id")
+          .select("id, role, name, avatar_url, tenant_id, dialer_only")
           .eq("user_id", user.id)
           .eq("is_active", true)
           .maybeSingle();
 
         // Tenant do usuário (cliente do discador). NULL = staff UNV/owner.
         setTenantId(staff?.tenant_id ?? null);
+        setDialerOnly(!!(staff as any)?.dialer_only);
 
         if (!staff) {
           navigate("/onboarding-tasks");
@@ -193,6 +195,13 @@ export const CRMLayout = () => {
     checkAccess();
   }, [navigate]);
 
+  // Cliente "só discador": trava em /crm/dialer.
+  useEffect(() => {
+    if (dialerOnly && hasAccess && !location.pathname.startsWith("/crm/dialer")) {
+      navigate("/crm/dialer", { replace: true });
+    }
+  }, [dialerOnly, hasAccess, location.pathname, navigate]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -206,7 +215,10 @@ export const CRMLayout = () => {
   const isAdmin = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
   const isMaster = staffRole === "master";
   const initials = staffName?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "U";
-  const navTabs = getNavTabs(staffRole);
+  // Cliente "só discador": vê apenas a aba Discador.
+  const navTabs = dialerOnly
+    ? [{ title: "Discador", href: "/crm/dialer", icon: Phone }]
+    : getNavTabs(staffRole);
 
   const isTabActive = (href: string) => {
     if (href === "/crm/reports") {

@@ -58,7 +58,7 @@ export const OnboardingStaffLayout = () => {
 
         const { data: staff, error: staffError } = await supabase
           .from("onboarding_staff")
-          .select("id, is_active, role")
+          .select("id, is_active, role, dialer_only")
           .eq("user_id", user.id)
           .eq("is_active", true)
           .maybeSingle();
@@ -67,6 +67,15 @@ export const OnboardingStaffLayout = () => {
 
         if (staffError) {
           console.warn("Error checking staff status:", staffError);
+        }
+
+        // Usuário "só discador" (cliente do discador): trava no discador, sem acesso ao resto.
+        if (staff && (staff as any).dialer_only) {
+          if (!location.pathname.startsWith("/crm/dialer")) {
+            setClientRedirecting(true);
+            navigate("/crm/dialer");
+            return;
+          }
         }
 
         // If user IS staff, set states immediately and skip client redirect logic
