@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   Phone, PhoneCall, Voicemail, Clock, Timer, Loader2, Wallet, AlertTriangle, CalendarCheck,
   Target, TrendingUp, Gauge, MessageSquareText, DollarSign, Filter, Trophy, Activity,
+  CalendarClock, Handshake,
 } from "lucide-react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -75,6 +76,7 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState<{ balance: number; currency: string; low: boolean; critical: boolean } | null>(null);
   const [usage, setUsage] = useState<{ currency: string; total: number; records: { date: string; spend: number }[] } | null>(null);
+  const [outcomes, setOutcomes] = useState<{ scheduled: number; realized: number; sales: number; value: number } | null>(null);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -88,6 +90,14 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
     const days = range === "today" ? 1 : range === "7d" ? 7 : 30;
     supabase.functions.invoke("dialer-usage", { body: { days: Math.max(days, 7) } }).then(({ data }) => {
       if (data?.records) setUsage(data);
+    });
+  }, [range, isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    supabase.rpc("dialer_outcome_metrics", { p_since: rangeStart(range) }).then(({ data }) => {
+      const r: any = Array.isArray(data) ? data[0] : data;
+      if (r) setOutcomes({ scheduled: r.meetings_scheduled || 0, realized: r.meetings_realized || 0, sales: r.sales_won || 0, value: Number(r.sales_value) || 0 });
     });
   }, [range, isAdmin]);
 
@@ -197,6 +207,9 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
   const costPerCall = usage && m.total ? usage.total / m.total : 0;
   const costPerAnswered = usage && m.answered ? usage.total / m.answered : 0;
   const costPerQualified = usage && m.qualificados ? usage.total / m.qualificados : 0;
+  const costPerScheduled = usage && outcomes?.scheduled ? usage.total / outcomes.scheduled : 0;
+  const costPerRealized = usage && outcomes?.realized ? usage.total / outcomes.realized : 0;
+  const cac = usage && outcomes?.sales ? usage.total / outcomes.sales : 0;
   const maxAgentCalls = Math.max(1, ...m.perAgent.map((a) => a.calls));
 
   return (
@@ -263,13 +276,20 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
             </Card>
           </div>
 
-          {/* Custo (admin) */}
+          {/* Custo por etapa do funil (admin UNV) */}
           {isAdmin && usage && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <Kpi icon={DollarSign} label="Gasto Twilio" value={`${cur} ${usage.total.toFixed(2)}`} accent="#ef4444" sub="no período (conta UNV)" />
-              <Kpi icon={DollarSign} label="Custo por ligação" value={`${cur} ${costPerCall.toFixed(3)}`} accent="#fb7185" sub="média geral" />
-              <Kpi icon={DollarSign} label="Custo por atendimento" value={`${cur} ${costPerAnswered.toFixed(3)}`} accent="#f97316" sub="só quem atendeu" />
-              <Kpi icon={DollarSign} label="Custo por qualificado" value={m.qualificados ? `${cur} ${costPerQualified.toFixed(2)}` : "—"} accent="#f59e0b" sub="CAC do discador" />
+            <div className="space-y-2">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5"><DollarSign className="h-3.5 w-3.5" /> Custo por etapa do funil <span className="normal-case tracking-normal">(gasto Twilio ÷ resultado)</span></p>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <Kpi icon={DollarSign} label="Gasto Twilio" value={`${cur} ${usage.total.toFixed(2)}`} accent="#ef4444" sub="no período (conta UNV)" />
+                <Kpi icon={DollarSign} label="Custo por ligação" value={`${cur} ${costPerCall.toFixed(3)}`} accent="#fb7185" sub="média geral" />
+                <Kpi icon={DollarSign} label="Custo por atendimento" value={`${cur} ${costPerAnswered.toFixed(3)}`} accent="#f97316" sub="só quem atendeu" />
+                <Kpi icon={Target} label="Custo por qualificado" value={m.qualificados ? `${cur} ${costPerQualified.toFixed(2)}` : "—"} accent="#f59e0b" sub={`${m.qualificados} qualificados`} />
+                <Kpi icon={CalendarClock} label="Custo por reunião agendada" value={outcomes?.scheduled ? `${cur} ${costPerScheduled.toFixed(2)}` : "—"} accent="#3b82f6" sub={`${outcomes?.scheduled || 0} agendadas`} />
+                <Kpi icon={Handshake} label="Custo por reunião realizada" value={outcomes?.realized ? `${cur} ${costPerRealized.toFixed(2)}` : "—"} accent="#14b8a6" sub={`${outcomes?.realized || 0} realizadas`} />
+                <Kpi icon={Trophy} label="CAC — custo por venda" value={outcomes?.sales ? `${cur} ${cac.toFixed(2)}` : "—"} accent="#22c55e" sub={`${outcomes?.sales || 0} vendas fechadas`} />
+                <Kpi icon={TrendingUp} label="Receita gerada" value={outcomes?.value ? `R$ ${outcomes.value.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : "—"} accent="#10b981" sub="vendas do discador" />
+              </div>
             </div>
           )}
 
