@@ -21,37 +21,43 @@ Deno.serve(async (req) => {
 
     const { data: call } = await supabase
       .from("crm_calls")
-      .select("id, lead_id, agent_staff_id, activity_id, duration_seconds, tenant_id")
+      .select("id, lead_id, agent_staff_id, activity_id, duration_seconds, tenant_id, answered_by")
       .eq("id", callId)
       .maybeSingle();
     if (!call) return new Response("ok");
 
-    const dur = recordingDuration ? parseInt(recordingDuration, 10) : call.duration_seconds;
+    // A gravação é "record-from-answer-dual": começa quando a atendente entra na ponte,
+    // então RecordingDuration = tempo real de conversa (segundos falados), não inclui toque/AMD.
+    const talkSeconds = recordingDuration ? parseInt(recordingDuration, 10) : (call.duration_seconds || 0);
     await supabase
       .from("crm_calls")
-      .update({ recording_url: mp3, recording_sid: recordingSid, duration_seconds: dur || call.duration_seconds })
+      .update({ recording_url: mp3, recording_sid: recordingSid, duration_seconds: talkSeconds || call.duration_seconds })
       .eq("id", callId);
 
-    // Cobrança: debita a carteira do cliente por minuto gravado/transcrito (UNV/owner = sem débito).
-    if (call.tenant_id && dur && dur > 0) {
+    // Cobrança: só debita conversa real (humano atendeu) e por SEGUNDO falado, sem mínimo de 1 minuto.
+    // Caixa postal / não atendeu = sem conversa = sem débito. UNV/owner (tenant null) = sem débito.
+    if (call.tenant_id && call.answered_by === "human" && talkSeconds > 0) {
       try {
-        const minutes = Math.max(1, Math.ceil(dur / 60));
         const { data: pricing } = await supabase
           .from("dialer_pricing")
-          .select("price_per_minute")
+          .select("price_per_minute, price_per_second")
           .or(`tenant_id.eq.${call.tenant_id},tenant_id.is.null`)
           .order("tenant_id", { ascending: false, nullsFirst: false })
           .limit(1)
           .maybeSingle();
-        const rate = Number(pricing?.price_per_minute) || 1.2;
-        const cost = Number((minutes * rate).toFixed(2));
-        await supabase.rpc("dialer_debit_wallet", {
-          p_tenant: call.tenant_id,
-          p_amount: cost,
-          p_minutes: minutes,
-          p_ref: callId,
-          p_desc: `${minutes} min × ${rate.toFixed(2)}`,
-        });
+        const perMinute = Number(pricing?.price_per_minute) || 1.2;
+        const perSecond = pricing?.price_per_second != null ? Number(pricing.price_per_second) : perMinute / 60;
+        const cost = Number((talkSeconds * perSecond).toFixed(2));
+        const minutes = Number((talkSeconds / 60).toFixed(2)); // fracionário, p/ relatório/franquia
+        if (cost > 0) {
+          await supabase.rpc("dialer_debit_wallet", {
+            p_tenant: call.tenant_id,
+            p_amount: cost,
+            p_minutes: minutes,
+            p_ref: callId,
+            p_desc: `${talkSeconds}s × R$${perSecond.toFixed(4)}/s`,
+          });
+        }
       } catch (_e) { /* não trava o callback de gravação */ }
     }
 
