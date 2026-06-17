@@ -30,7 +30,7 @@ const statusColor: Record<string, string> = {
   ready: "bg-emerald-500/15 text-emerald-500", incoming: "bg-blue-500/15 text-blue-500", oncall: "bg-primary/15 text-primary",
 };
 
-export function DialerLivePanel({ campaigns, staffId }: { campaigns: CampaignOpt[]; staffId: string | null }) {
+export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campaigns: CampaignOpt[]; staffId: string | null; tenantId?: string | null }) {
   const active = campaigns.filter((c) => c.status === "active");
   const [campaignId, setCampaignId] = useState<string>("");
   const { status, error, goReady, goOffline, hangup } = useTwilioDevice(staffId);
@@ -94,7 +94,7 @@ export function DialerLivePanel({ campaigns, staffId }: { campaigns: CampaignOpt
     // fecha qualquer sessão minha que tenha ficado aberta (evita sobreposição e inflar o tempo)
     await supabase.from("crm_dialer_sessions").update({ ended_at: nowIso }).eq("agent_staff_id", staffId).is("ended_at", null);
     const { data } = await supabase.from("crm_dialer_sessions")
-      .insert({ agent_staff_id: staffId, campaign_id: campaignId || null, last_seen_at: nowIso }).select("id").maybeSingle();
+      .insert({ agent_staff_id: staffId, campaign_id: campaignId || null, tenant_id: tenantId, last_seen_at: nowIso }).select("id").maybeSingle();
     sessionIdRef.current = data?.id || null;
   };
   const closeSession = async () => {
