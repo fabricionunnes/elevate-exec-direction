@@ -7,10 +7,11 @@ import { DialerDashboard } from "@/components/crm/dialer/DialerDashboard";
 import { DialerCallsHistory } from "@/components/crm/dialer/DialerCallsHistory";
 import { DialerWalletPanel } from "@/components/crm/dialer/DialerWalletPanel";
 import { DialerAdminPanel } from "@/components/crm/dialer/DialerAdminPanel";
-import { PhoneCall, ListChecks, BarChart3, Mic, Wallet, Settings2 } from "lucide-react";
+import { DialerClientsAdmin } from "@/components/crm/dialer/DialerClientsAdmin";
+import { PhoneCall, ListChecks, BarChart3, Mic, Wallet, Settings2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Tab = "live" | "queue" | "calls" | "dashboard" | "wallet" | "admin";
+type Tab = "live" | "queue" | "calls" | "dashboard" | "wallet" | "admin" | "clients";
 
 interface CampaignOpt { id: string; name: string; status: string }
 
@@ -32,7 +33,10 @@ export default function CRMDialerPage() {
     { key: "calls", label: "Ligações", icon: Mic },
     { key: "wallet", label: "Carteira", icon: Wallet },
     { key: "dashboard", label: "Dashboard", icon: BarChart3 },
-    ...(isUnvAdmin ? [{ key: "admin" as Tab, label: "Admin", icon: Settings2 }] : []),
+    ...(isUnvAdmin ? [
+      { key: "clients" as Tab, label: "Clientes", icon: Users },
+      { key: "admin" as Tab, label: "Admin", icon: Settings2 },
+    ] : []),
   ];
 
   return (
@@ -60,6 +64,7 @@ export default function CRMDialerPage() {
         {tab === "queue" && <div className="h-full overflow-auto"><DialerQueuePanel onChanged={loadCampaigns} tenantId={tenantId} currentAgentId={staffId} currentAgentName={staffName} /></div>}
         {tab === "calls" && <div className="h-full overflow-auto"><DialerCallsHistory /></div>}
         {tab === "wallet" && <div className="h-full overflow-auto"><DialerWalletPanel tenantId={tenantId} /></div>}
+        {tab === "clients" && isUnvAdmin && <div className="h-full overflow-auto"><DialerClientsAdmin /></div>}
         {tab === "admin" && isUnvAdmin && <div className="h-full overflow-auto"><DialerAdminPanel /></div>}
         {tab === "dashboard" && <div className="h-full overflow-auto"><DialerDashboard isAdmin={isUnvAdmin} /></div>}
       </div>
