@@ -63,10 +63,11 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
   const [usage, setUsage] = useState<{ currency: string; total: number; records: { date: string; spend: number }[] } | null>(null);
 
   useEffect(() => {
+    if (!isAdmin) return; // saldo/gasto da conta Twilio é só da UNV, nunca do cliente
     supabase.functions.invoke("dialer-balance").then(({ data }) => {
       if (data && typeof data.balance === "number") setBalance(data);
     });
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -185,7 +186,7 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
             {r === "today" ? "Hoje" : r === "7d" ? "7 dias" : "30 dias"}
           </Button>
         ))}
-        {balance && (
+        {isAdmin && balance && (
           <div className={`ml-auto flex items-center gap-1.5 text-sm rounded-md border px-2.5 py-1 ${balance.critical ? "border-red-500/40 bg-red-500/10 text-red-500" : balance.low ? "border-amber-500/40 bg-amber-500/10 text-amber-600" : "border-border text-muted-foreground"}`}>
             {balance.low || balance.critical ? <AlertTriangle className="h-3.5 w-3.5" /> : <Wallet className="h-3.5 w-3.5" />}
             Saldo Twilio: {balance.currency} {balance.balance.toFixed(2)}

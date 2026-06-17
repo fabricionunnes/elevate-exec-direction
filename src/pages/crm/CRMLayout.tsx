@@ -344,7 +344,8 @@ export const CRMLayout = () => {
                 );
               })}
 
-              {/* Mais dropdown */}
+              {/* Mais dropdown — escondido para cliente "só discador" */}
+              {!dialerOnly && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -401,6 +402,7 @@ export const CRMLayout = () => {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
+              )}
             </nav>
 
             {/* Right Actions */}

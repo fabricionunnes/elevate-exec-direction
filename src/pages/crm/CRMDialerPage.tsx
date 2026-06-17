@@ -61,7 +61,7 @@ export default function CRMDialerPage() {
         {tab === "calls" && <div className="h-full overflow-auto"><DialerCallsHistory /></div>}
         {tab === "wallet" && <div className="h-full overflow-auto"><DialerWalletPanel tenantId={tenantId} /></div>}
         {tab === "admin" && isUnvAdmin && <div className="h-full overflow-auto"><DialerAdminPanel /></div>}
-        {tab === "dashboard" && <div className="h-full overflow-auto"><DialerDashboard isAdmin={isAdmin} /></div>}
+        {tab === "dashboard" && <div className="h-full overflow-auto"><DialerDashboard isAdmin={isUnvAdmin} /></div>}
       </div>
     </div>
   );
