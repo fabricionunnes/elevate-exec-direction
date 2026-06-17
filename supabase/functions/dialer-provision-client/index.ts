@@ -82,7 +82,8 @@ Deno.serve(async (req) => {
 
     // 2) tenant
     const slug = `${slugify(name)}-${crypto.randomUUID().slice(0, 6)}`;
-    const { data: tenant } = await supabase.from("whitelabel_tenants").insert({ name, slug, status: "active" }).select("id").single();
+    const maxUsers = body.maxUsers != null ? Number(body.maxUsers) : null;
+    const { data: tenant } = await supabase.from("whitelabel_tenants").insert({ name, slug, status: "active", max_users: maxUsers }).select("id").single();
     const tenantId = tenant.id;
 
     // 3) funil
