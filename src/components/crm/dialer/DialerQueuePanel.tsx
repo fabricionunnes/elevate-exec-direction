@@ -28,7 +28,7 @@ interface Campaign {
   counts?: { queued: number; total: number };
 }
 
-export function DialerQueuePanel({ onChanged, tenantId = null }: { onChanged?: () => void; tenantId?: string | null }) {
+export function DialerQueuePanel({ onChanged, tenantId = null, currentAgentId = null, currentAgentName = null }: { onChanged?: () => void; tenantId?: string | null; currentAgentId?: string | null; currentAgentName?: string | null }) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [staff, setStaff] = useState<{ id: string; name: string }[]>([]);
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
@@ -68,7 +68,13 @@ export function DialerQueuePanel({ onChanged, tenantId = null }: { onChanged?: (
     load();
     supabase.from("onboarding_staff").select("id, name").eq("is_active", true)
       .in("role", ["master", "admin", "head_comercial", "closer", "sdr", "bdr", "social_setter"])
-      .then(({ data }) => setStaff(data || []));
+      .then(({ data }) => {
+        if (data && data.length) { setStaff(data); }
+        else if (currentAgentId) {
+          setStaff([{ id: currentAgentId, name: currentAgentName || "Você" }]);
+          setForm((f) => f.agent_staff_id ? f : { ...f, agent_staff_id: currentAgentId });
+        } else setStaff([]);
+      });
     supabase.from("crm_pipelines").select("id, name").eq("is_active", true)
       .then(({ data }) => {
         setPipelines(data || []);

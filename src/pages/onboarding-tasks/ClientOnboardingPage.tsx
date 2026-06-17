@@ -119,6 +119,7 @@ interface OnboardingTask {
 }
 
 import type { OnboardingUser } from "@/types/onboarding";
+import { DialerPortalBanner } from "@/components/onboarding-tasks/DialerPortalBanner";
 
 interface TaskPhase {
   name: string;
@@ -884,6 +885,8 @@ const ClientOnboardingPage = () => {
           </div>
         </div>
       </header>
+
+      <DialerPortalBanner />
 
       {/* Bottom Navigation - Mobile Only */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t safe-area-bottom lg:hidden">
