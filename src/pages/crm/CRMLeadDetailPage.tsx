@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { syncLeadToClint } from "@/hooks/useClintSync";
+import { useCallDock } from "@/components/crm/call/CallDockProvider";
 import { WhatsAppMessageDialog } from "@/components/onboarding-tasks/WhatsAppMessageDialog";
 import { sendLoggedWhatsAppText } from "@/lib/whatsapp/sendLoggedWhatsAppText";
 import { getDefaultWhatsAppInstance } from "@/utils/whatsapp-defaults";
@@ -166,6 +167,7 @@ export const CRMLeadDetailPage = () => {
   const navigate = useNavigate();
   const { isAdmin, isMaster, staffId } = useCRMContext();
   
+  const { startCall } = useCallDock();
   const [lead, setLead] = useState<Lead | null>(null);
   const [stages, setStages] = useState<Stage[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -932,10 +934,14 @@ export const CRMLeadDetailPage = () => {
           {/* Quick action icons */}
           <div className="flex items-center gap-0.5 shrink-0">
             {lead.phone && (
-              <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="Ligar">
-                <a href={`tel:${lead.phone}`}>
-                  <Phone className="h-4 w-4" />
-                </a>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-emerald-500 hover:text-emerald-400"
+                title="Ligar pelo discador (Twilio)"
+                onClick={() => startCall({ id: lead.id, name: lead.company || lead.name, phone: lead.phone })}
+              >
+                <Phone className="h-4 w-4" />
               </Button>
             )}
             {lead.phone && (
