@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
     const params = new URLSearchParams({
       To: toNumber,
       From: callerId,
-      Url: `${BASE}/dialer-twiml?callId=${callId}&agent=${encodeURIComponent(agentIdentity)}`,
+      Url: `${BASE}/dialer-twiml?callId=${callId}&agent=${encodeURIComponent(agentIdentity)}${useAmd ? "&amd=1" : ""}`,
       Method: "POST",
       StatusCallback: `${BASE}/dialer-status?callId=${callId}`,
       StatusCallbackMethod: "POST",

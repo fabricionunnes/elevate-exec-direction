@@ -22,6 +22,7 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const callId = url.searchParams.get("callId");
     const agent = url.searchParams.get("agent") || "";
+    const amdOn = url.searchParams.get("amd") === "1"; // detecção de secretária ativa nesta ligação
 
     // params do Twilio vêm form-encoded
     let answeredBy = "";
@@ -36,8 +37,22 @@ Deno.serve(async (req) => {
     );
     const BASE = `${Deno.env.get("SUPABASE_URL")}/functions/v1`;
 
-    // Secretária eletrônica / fax -> não fala com ninguém, marca voicemail
-    if (answeredBy && (answeredBy.startsWith("machine") || answeredBy === "fax")) {
+    const ab = answeredBy.toLowerCase();
+    const isMachine = ab.startsWith("machine") || ab === "fax";
+    // Com AMD ligada, só conecta a atendente quando for HUMANO confirmado.
+    // Máquina/fax = caixa postal; "unknown"/vazio = a Twilio não confirmou humano -> NÃO conecta (evita sentar na caixa postal).
+    if (amdOn && ab !== "human") {
+      if (callId) {
+        const callStatus = isMachine ? "voicemail" : "no-answer";
+        const queueStatus = isMachine ? "voicemail" : "no_answer";
+        await supabase.from("crm_calls").update({ status: callStatus, answered_by: answeredBy || "unknown" }).eq("id", callId);
+        const { data: c } = await supabase.from("crm_calls").select("queue_id").eq("id", callId).maybeSingle();
+        if (c?.queue_id) await supabase.from("crm_dialer_queue").update({ status: queueStatus }).eq("id", c.queue_id);
+      }
+      return twiml(`<Hangup/>`);
+    }
+    // Sem AMD: ainda corta máquina/fax detectados (caso a Twilio mande), mas sem AMD isso quase nunca vem.
+    if (!amdOn && isMachine) {
       if (callId) {
         await supabase.from("crm_calls").update({ status: "voicemail", answered_by: answeredBy }).eq("id", callId);
         const { data: c } = await supabase.from("crm_calls").select("queue_id").eq("id", callId).maybeSingle();
