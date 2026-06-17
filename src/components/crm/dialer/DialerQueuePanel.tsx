@@ -122,17 +122,25 @@ export function DialerQueuePanel({ onChanged, tenantId = null, currentAgentId = 
     if (!c.trigger_stage_id) return toast.error("Campanha sem etapa-gatilho");
     setBusyId(c.id);
     try {
-      const { data: leads } = await supabase
-        .from("crm_leads").select("id").eq("stage_id", c.trigger_stage_id).limit(5000);
-      const rows = (leads || []).map((l: any) => ({ campaign_id: c.id, lead_id: l.id, status: "queued", tenant_id: tenantId }));
+      // Pagina TODOS os leads da etapa: o Supabase corta em 1000 por requisição,
+      // então busca de 1000 em 1000 até acabar (sem teto de 1000).
+      const PAGE = 1000;
+      const all: { id: string }[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from("crm_leads").select("id")
+          .eq("stage_id", c.trigger_stage_id)
+          .order("created_at", { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (error) break;
+        all.push(...((data || []) as any));
+        if (!data || data.length < PAGE) break;
+      }
+      const rows = all.map((l) => ({ campaign_id: c.id, lead_id: l.id, status: "queued", tenant_id: tenantId }));
       if (!rows.length) { toast.info("Nenhum lead na etapa 'Para ligar'"); return; }
-      let added = 0;
       for (let i = 0; i < rows.length; i += 500) {
         const chunk = rows.slice(i, i + 500);
-        const { error } = await supabase
-          .from("crm_dialer_queue")
-          .upsert(chunk, { onConflict: "campaign_id,lead_id", ignoreDuplicates: true });
-        if (!error) added += chunk.length;
+        await supabase.from("crm_dialer_queue").upsert(chunk, { onConflict: "campaign_id,lead_id", ignoreDuplicates: true });
       }
       toast.success(`${rows.length} leads sincronizados na fila`);
       load();
