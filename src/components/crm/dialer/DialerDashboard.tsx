@@ -147,11 +147,18 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
     const qualificados = dispoCount["qualificado"] || 0;
     const agendamentos = dispoCount["agendou_reuniao"] || 0;
 
+    // Tempo no discador = tempo realmente logado e ativo. Cada sessão é limitada ao último
+    // heartbeat (+ folga de 1 batida): se a pessoa fecha a aba/sai, não conta o tempo ausente,
+    // mesmo que a sessão só tenha sido fechada depois.
+    const HEARTBEAT_GRACE = 60000; // 1 min (heartbeat roda a cada 25s)
+    const nowMs = Date.now();
     const sessByAgent: Record<string, { start: number; end: number }[]> = {};
     for (const s of sessions) {
       const id = s.agent_staff_id || "—";
       const start = new Date(s.started_at).getTime();
-      const end = new Date(s.ended_at || s.last_seen_at || s.started_at).getTime();
+      const lastSeen = s.last_seen_at ? new Date(s.last_seen_at).getTime() : start;
+      const rawEnd = s.ended_at ? new Date(s.ended_at).getTime() : nowMs;
+      const end = Math.min(rawEnd, lastSeen + HEARTBEAT_GRACE);
       (sessByAgent[id] ||= []).push({ start, end });
     }
     const dialerByAgent: Record<string, number> = {};
