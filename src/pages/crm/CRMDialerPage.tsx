@@ -35,7 +35,7 @@ export default function CRMDialerPage() {
     ...(isAdmin ? [{ key: "team" as Tab, label: "Ao vivo", icon: Radio }] : []),
     { key: "queue", label: "Fila & Campanhas", icon: ListChecks },
     { key: "calls", label: "Ligações", icon: Mic },
-    ...(isAdmin ? [{ key: "coach" as Tab, label: "Coach", icon: GraduationCap }] : []),
+    { key: "coach", label: "Coach", icon: GraduationCap },
     { key: "wallet", label: "Carteira", icon: Wallet },
     ...(isUnvAdmin ? [
       { key: "clients" as Tab, label: "Clientes", icon: Users },
@@ -68,7 +68,7 @@ export default function CRMDialerPage() {
         {tab === "team" && isAdmin && <div className="h-full overflow-auto"><DialerLiveAgentsPanel /></div>}
         {tab === "queue" && <div className="h-full overflow-auto"><DialerQueuePanel onChanged={loadCampaigns} tenantId={tenantId} currentAgentId={staffId} currentAgentName={staffName} /></div>}
         {tab === "calls" && <div className="h-full overflow-auto"><DialerCallsHistory /></div>}
-        {tab === "coach" && isAdmin && <div className="h-full overflow-auto"><DialerCoachPanel /></div>}
+        {tab === "coach" && <div className="h-full overflow-auto"><DialerCoachPanel staffId={staffId} isAdmin={isAdmin} /></div>}
         {tab === "wallet" && <div className="h-full overflow-auto"><DialerWalletPanel tenantId={tenantId} /></div>}
         {tab === "clients" && isUnvAdmin && <div className="h-full overflow-auto"><DialerClientsAdmin /></div>}
         {tab === "admin" && isUnvAdmin && <div className="h-full overflow-auto"><DialerAdminPanel /></div>}

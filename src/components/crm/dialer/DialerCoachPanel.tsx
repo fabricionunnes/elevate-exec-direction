@@ -25,7 +25,7 @@ function rangeStart(r: Range): string {
   return new Date(Date.now() - (r === "7d" ? 7 : 30) * 86400000).toISOString();
 }
 
-export function DialerCoachPanel() {
+export function DialerCoachPanel({ staffId = null, isAdmin = false }: { staffId?: string | null; isAdmin?: boolean }) {
   const [calls, setCalls] = useState<Call[]>([]);
   const [staff, setStaff] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -35,10 +35,13 @@ export function DialerCoachPanel() {
 
   const loadCalls = async () => {
     const since = rangeStart(range);
+    let cq = supabase.from("crm_calls")
+      .select("id, created_at, agent_staff_id, qa_score, qa_feedback, duration_seconds, recording_url, transcription, lead_id, lead:crm_leads(name, company)")
+      .not("qa_score", "is", null).gte("created_at", since).order("qa_at", { ascending: false }).limit(200);
+    // SDR/closer (não-admin) veem só as próprias ligações; head/admin/master veem todas
+    if (!isAdmin && staffId) cq = cq.eq("agent_staff_id", staffId);
     const [{ data }, { data: st }] = await Promise.all([
-      supabase.from("crm_calls")
-        .select("id, created_at, agent_staff_id, qa_score, qa_feedback, duration_seconds, recording_url, transcription, lead_id, lead:crm_leads(name, company)")
-        .not("qa_score", "is", null).gte("created_at", since).order("qa_at", { ascending: false }).limit(200),
+      cq,
       supabase.from("onboarding_staff").select("id, name"),
     ]);
     const sm: Record<string, string> = {}; (st || []).forEach((s: any) => { sm[s.id] = s.name; });

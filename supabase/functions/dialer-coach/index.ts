@@ -99,9 +99,10 @@ Deno.serve(async (req) => {
     const jwt = (req.headers.get("Authorization") || "").replace("Bearer ", "");
     const { data: u } = await supabase.auth.getUser(jwt);
     const uid = u?.user?.id;
-    const { data: me } = uid ? await supabase.from("onboarding_staff").select("role, tenant_id, is_active").eq("user_id", uid).maybeSingle() : { data: null };
+    const { data: me } = uid ? await supabase.from("onboarding_staff").select("id, role, tenant_id, is_active").eq("user_id", uid).maybeSingle() : { data: null };
     if (!me || !me.is_active) return json({ error: "Não autorizado" }, 403);
-    const scopeTenant = (!me.tenant_id && ["master", "admin", "head_comercial"].includes(me.role)) ? null : (me.tenant_id || null);
+    const isAdmin = ["master", "admin", "head_comercial"].includes(me.role);
+    const scopeTenant = (!me.tenant_id && isAdmin) ? null : (me.tenant_id || null);
 
     const limit = Math.min(Math.max(Number(body.limit) || 8, 1), 20);
     let q = supabase.from("crm_calls")
@@ -111,6 +112,8 @@ Deno.serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(limit);
     if (scopeTenant) q = q.eq("tenant_id", scopeTenant);
+    // SDR/closer (não-admin): só processa as próprias ligações
+    if (!isAdmin) q = q.eq("agent_staff_id", me.id);
     const { data: pend } = await q;
     const ids = (pend || []).map((c: any) => c.id);
     let scored = 0;
