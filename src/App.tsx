@@ -300,6 +300,7 @@ const CRMHeadComercialPage = lazy(() => import("./pages/crm").then(m => ({ defau
 const CRMCallSummaryPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMCallSummaryPage })));
 const CRMMeetingsPage = lazy(() => import("./pages/crm/CRMMeetingsPage"));
 const CRMDialerPage = lazy(() => import("./pages/crm/CRMDialerPage"));
+const CRMDialerStandalonePage = lazy(() => import("./pages/crm/CRMDialerStandalonePage"));
 const CRMApiPage = lazy(() => import("./pages/crm/CRMApiPage"));
 const CRMTrafficApiPage = lazy(() => import("./pages/crm/CRMTrafficApiPage"));
 const CRMForecastPage = lazy(() => import("./pages/crm/CRMForecastPage"));
@@ -360,6 +361,7 @@ const AppShell = () => {
               <Suspense fallback={<PageLoader />}>
               <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/discador" element={<CRMDialerStandalonePage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/onboarding-tasks/reset-password" element={<ResetPasswordPage />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />

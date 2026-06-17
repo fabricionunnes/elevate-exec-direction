@@ -15,7 +15,7 @@ type Tab = "live" | "queue" | "calls" | "dashboard" | "wallet" | "admin";
 interface CampaignOpt { id: string; name: string; status: string }
 
 export default function CRMDialerPage() {
-  const { staffId, isAdmin, tenantId } = useCRMContext();
+  const { staffId, staffName, isAdmin, tenantId } = useCRMContext();
   const [tab, setTab] = useState<Tab>("live");
   const [campaigns, setCampaigns] = useState<CampaignOpt[]>([]);
 
@@ -57,7 +57,7 @@ export default function CRMDialerPage() {
 
       <div className="flex-1 overflow-hidden">
         {tab === "live" && <DialerLivePanel campaigns={campaigns} staffId={staffId} tenantId={tenantId} />}
-        {tab === "queue" && <div className="h-full overflow-auto"><DialerQueuePanel onChanged={loadCampaigns} tenantId={tenantId} /></div>}
+        {tab === "queue" && <div className="h-full overflow-auto"><DialerQueuePanel onChanged={loadCampaigns} tenantId={tenantId} currentAgentId={staffId} currentAgentName={staffName} /></div>}
         {tab === "calls" && <div className="h-full overflow-auto"><DialerCallsHistory /></div>}
         {tab === "wallet" && <div className="h-full overflow-auto"><DialerWalletPanel tenantId={tenantId} /></div>}
         {tab === "admin" && isUnvAdmin && <div className="h-full overflow-auto"><DialerAdminPanel /></div>}

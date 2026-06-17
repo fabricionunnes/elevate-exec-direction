@@ -47,7 +47,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 const CRM_ROLES = ["master", "admin", "head_comercial", "closer", "sdr", "social_setter", "bdr"];
 
-interface CRMContextType {
+export interface CRMContextType {
   staffRole: string | null;
   staffName: string | null;
   staffId: string | null;
@@ -60,7 +60,7 @@ interface CRMContextType {
   setSelectedPipeline: (id: string | null) => void;
 }
 
-const CRMContext = createContext<CRMContextType | null>(null);
+export const CRMContext = createContext<CRMContextType | null>(null);
 
 export const useCRMContext = () => {
   const context = useContext(CRMContext);
