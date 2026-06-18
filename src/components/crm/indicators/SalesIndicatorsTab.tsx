@@ -102,6 +102,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const [filterStartDate, setFilterStartDate] = useState<Date>(startOfMonth(new Date()));
   const [filterEndDate, setFilterEndDate] = useState<Date>(endOfMonth(new Date()));
   const [callStats, setCallStats] = useState({ total: 0, discador: 0, avulsa: 0, atendidas: 0 });
+  const [callsByCloser, setCallsByCloser] = useState<Record<string, { total: number; atendidas: number }>>({});
 
   // Get date range based on filter
   const getDateRange = () => {
@@ -137,14 +138,18 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         if (selectedCloser !== "all") q = q.eq("agent_staff_id", selectedCloser);
         return q;
       };
-      const [tot, disc, avul, ans] = await Promise.all([
+      const [tot, disc, avul, ans, byAgent] = await Promise.all([
         base(),
         base().not("campaign_id", "is", null),
         base().is("campaign_id", null),
         base().eq("answered_by", "human"),
+        supabase.rpc("crm_calls_by_agent", { p_start: start.toISOString(), p_end: end.toISOString() }),
       ]);
       if (!active) return;
       setCallStats({ total: tot.count || 0, discador: disc.count || 0, avulsa: avul.count || 0, atendidas: ans.count || 0 });
+      const map: Record<string, { total: number; atendidas: number }> = {};
+      ((byAgent.data as any[]) || []).forEach((r) => { map[r.agent_staff_id] = { total: Number(r.total) || 0, atendidas: Number(r.atendidas) || 0 }; });
+      setCallsByCloser(map);
     })();
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -761,6 +766,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                     <div className="text-right space-y-0.5">
                       <p className="text-[11px] text-muted-foreground">TM: <span className="text-foreground font-semibold">{formatCurrency(closer.ticketMedio)}</span></p>
                       <p className="text-[11px] text-muted-foreground">Conv: <span className="text-foreground font-semibold">{closer.conversion.toFixed(1)}%</span></p>
+                      <p className="text-[11px] text-muted-foreground">Ligações: <span className="text-foreground font-semibold">{callsByCloser[closer.id]?.total || 0}</span></p>
                     </div>
                   </div>
                 </div>
@@ -824,12 +830,13 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           <div className="h-3 w-3 rounded-full bg-gradient-to-r from-red-400 to-rose-400 shadow-lg shadow-red-500/30" />
           Atividade — Ligações
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {[
             { label: "Ligações", value: String(callStats.total), gradient: "from-red-500 to-rose-500", glow: "shadow-red-500/20", textColor: "text-red-400" },
             { label: "Discador", value: String(callStats.discador), gradient: "from-blue-500 to-indigo-500", glow: "shadow-blue-500/20", textColor: "text-blue-400" },
             { label: "Avulsas", value: String(callStats.avulsa), gradient: "from-violet-500 to-purple-500", glow: "shadow-violet-500/20", textColor: "text-violet-400" },
             { label: "Atendidas", value: String(callStats.atendidas), gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/20", textColor: "text-emerald-400" },
+            { label: "% Atendimento", value: `${callStats.total ? Math.round((callStats.atendidas / callStats.total) * 100) : 0}%`, gradient: "from-cyan-500 to-sky-500", glow: "shadow-cyan-500/20", textColor: "text-cyan-400" },
           ].map((item, idx) => (
             <GlowCard key={idx} glowColor={item.glow}>
               <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-[0.06]`} />
