@@ -647,14 +647,23 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     </div>
   );
 
-  // accent = cor sutil só pra leitura semântica (label + ponto), valor sempre em foreground
-  const kpiCards = [
-    { label: "Receita", value: formatCurrency(metrics.receita), icon: DollarSign, accent: "#10b981" },
-    { label: "Meta", value: formatCurrency(metrics.metaReceita), icon: Target, accent: "#64748b" },
-    { label: "Faltam", value: formatCurrency(metrics.faltaReceita), icon: TrendingUp, accent: metrics.faltaReceita > 0 ? "#f59e0b" : "#10b981" },
-    { label: "Forecast", value: formatCurrency(metrics.forecast), icon: Target, accent: "#0ea5e9" },
-    { label: "Em Negociação", value: formatCurrency(metrics.emNegociacao), icon: Users, accent: "#8b5cf6" },
-  ];
+  // Cor por grupo (categoria) — separa/une os cards e dá leitura semântica
+  const TONE = { green: "#34d399", blue: "#60a5fa", violet: "#a78bfa", amber: "#fbbf24" };
+  const Section = ({ tone, label, children, cols }: { tone: string; label: string; children: React.ReactNode; cols?: string }) => (
+    <div className="rounded-xl border p-4" style={{ borderColor: `${tone}2e`, background: `${tone}0d` }}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="h-2 w-2 rounded-full" style={{ background: tone }} />
+        <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: tone }}>{label}</span>
+      </div>
+      <div className={cn("grid gap-3", cols || "grid-cols-2 sm:grid-cols-3")}>{children}</div>
+    </div>
+  );
+  const Metric = ({ tone, label, value, color }: { tone: string; label: string; value: string | number; color?: string }) => (
+    <div className="rounded-lg border bg-card p-4" style={{ borderColor: `${tone}26` }}>
+      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
+      <p className="text-lg font-semibold mt-1.5 tabular-nums" style={color ? { color } : undefined}>{value}</p>
+    </div>
+  );
 
   return (
     <>
@@ -738,11 +747,11 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       {closers.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {closers.slice(0, 3).map((closer, index) => (
-            <div key={closer.id} className={cn("rounded-lg border bg-card p-4", index === 0 ? "border-primary/40" : "border-border/60")}>
+            <div key={closer.id} className="rounded-lg border bg-card p-4" style={index === 0 ? { borderColor: "#f5b50a55", borderLeft: "3px solid #f5b50a", background: "#f5b50a0d" } : { borderColor: "hsl(var(--border))" }}>
               <div className="flex items-center gap-2 mb-3">
-                <span className={cn("flex h-6 w-6 items-center justify-center rounded-md text-xs font-semibold shrink-0", index === 0 ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground")}>{index + 1}</span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-md text-xs font-semibold shrink-0" style={index === 0 ? { background: "#f5b50a22", color: "#f5b50a" } : { background: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))" }}>{index + 1}</span>
                 <p className="text-sm font-medium truncate">{closer.name}</p>
-                {index === 0 && <Trophy className="h-3.5 w-3.5 text-amber-500 ml-auto shrink-0" />}
+                {index === 0 && <Trophy className="h-3.5 w-3.5 ml-auto shrink-0" style={{ color: "#f5b50a" }} />}
               </div>
               <p className="text-2xl font-semibold tracking-tight tabular-nums">{formatCurrency(closer.revenue)}</p>
               <div className="flex items-center gap-4 mt-2 text-[11px] text-muted-foreground">
@@ -755,60 +764,42 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         </div>
       )}
 
-      {/* ── Resultados ── */}
-      <div className="space-y-2.5">
-        <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Resultados</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {kpiCards.map((item, idx) => (
-            <div key={idx} className="rounded-lg border border-border/60 bg-card p-4">
-              <div className="flex items-center justify-between">
-                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">{item.label}</p>
-                <item.icon className="h-3.5 w-3.5" style={{ color: item.accent }} />
-              </div>
-              <p className="text-xl font-semibold text-foreground mt-2 tracking-tight tabular-nums">{item.value}</p>
-            </div>
-          ))}
+      {/* ── Resultados (verde) ── */}
+      <Section tone={TONE.green} label="Resultados" cols="grid-cols-1 sm:grid-cols-3">
+        <div className="rounded-lg border bg-card p-4" style={{ borderColor: `${TONE.green}33` }}>
+          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Receita</p>
+          <p className="text-2xl font-semibold mt-1 tabular-nums" style={{ color: TONE.green }}>{formatCurrency(metrics.receita)}</p>
+          <div className="h-1.5 bg-muted rounded-full mt-2.5 overflow-hidden"><div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, metaPercent)}%`, background: TONE.green }} /></div>
+          <p className="text-[10px] text-muted-foreground mt-1">{metaPercent.toFixed(0)}% da meta</p>
         </div>
-      </div>
+        <Metric tone={TONE.green} label="Meta do mês" value={formatCurrency(metrics.metaReceita)} />
+        <Metric tone={TONE.green} label="Faltam" value={formatCurrency(metrics.faltaReceita)} color={metrics.faltaReceita > 0 ? "#fbbf24" : TONE.green} />
+      </Section>
 
-      {/* ── Performance ── */}
-      <div className="space-y-3">
-        <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Performance</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            { label: "% Meta", value: `${metaPercent.toFixed(1)}%`, gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/20", textColor: metaPercent >= 100 ? "text-emerald-400" : metaPercent >= 70 ? "text-amber-400" : "text-rose-400" },
-            { label: "Conversão", value: `${metrics.conversao.toFixed(1)}%`, gradient: "from-cyan-500 to-blue-500", glow: "shadow-cyan-500/20", textColor: "text-cyan-400" },
-            { label: "Qtd Vendas", value: String(metrics.vendas), gradient: "from-violet-500 to-purple-500", glow: "shadow-violet-500/20", textColor: "text-violet-400" },
-            { label: "Ticket Médio", value: formatCurrency(metrics.ticketMedio), gradient: "from-amber-500 to-orange-500", glow: "shadow-amber-500/20", textColor: "text-amber-400" },
-            { label: "Projeção", value: formatCurrency(metrics.projecaoReceita), gradient: "from-sky-500 to-blue-500", glow: "shadow-sky-500/20", textColor: "text-sky-400" },
-            { label: "% Projetado", value: `${metrics.projecaoPercent.toFixed(0)}%`, gradient: "from-indigo-500 to-blue-500", glow: "shadow-indigo-500/20", textColor: "text-indigo-400" },
-          ].map((item, idx) => (
-            <div key={idx} className="rounded-lg border border-border/60 bg-card p-4">
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">{item.label}</p>
-              <p className="text-lg font-semibold text-foreground tabular-nums">{item.value}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* ── Pipeline futuro (azul) ── */}
+      <Section tone={TONE.blue} label="Pipeline futuro" cols="grid-cols-2">
+        <Metric tone={TONE.blue} label="Forecast" value={formatCurrency(metrics.forecast)} color={TONE.blue} />
+        <Metric tone={TONE.blue} label="Em negociação" value={formatCurrency(metrics.emNegociacao)} color={TONE.blue} />
+      </Section>
 
-      {/* ── Atividade (Ligações) ── */}
-      <div className="space-y-3">
-        <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Atividade — Ligações</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {[
-            { label: "Ligações", value: String(callStats.total), gradient: "from-red-500 to-rose-500", glow: "shadow-red-500/20", textColor: "text-red-400" },
-            { label: "Discador", value: String(callStats.discador), gradient: "from-blue-500 to-indigo-500", glow: "shadow-blue-500/20", textColor: "text-blue-400" },
-            { label: "Avulsas", value: String(callStats.avulsa), gradient: "from-violet-500 to-purple-500", glow: "shadow-violet-500/20", textColor: "text-violet-400" },
-            { label: "Atendidas", value: String(callStats.atendidas), gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/20", textColor: "text-emerald-400" },
-            { label: "% Atendimento", value: `${callStats.total ? Math.round((callStats.atendidas / callStats.total) * 100) : 0}%`, gradient: "from-cyan-500 to-sky-500", glow: "shadow-cyan-500/20", textColor: "text-cyan-400" },
-          ].map((item, idx) => (
-            <div key={idx} className="rounded-lg border border-border/60 bg-card p-4">
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">{item.label}</p>
-              <p className="text-lg font-semibold text-foreground tabular-nums">{item.value}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* ── Performance (roxo) ── */}
+      <Section tone={TONE.violet} label="Performance" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+        <Metric tone={TONE.violet} label="% Meta" value={`${metaPercent.toFixed(1)}%`} color={metaPercent >= 100 ? "#34d399" : metaPercent >= 70 ? "#fbbf24" : "#f87171"} />
+        <Metric tone={TONE.violet} label="Conversão" value={`${metrics.conversao.toFixed(1)}%`} />
+        <Metric tone={TONE.violet} label="Qtd Vendas" value={metrics.vendas} />
+        <Metric tone={TONE.violet} label="Ticket Médio" value={formatCurrency(metrics.ticketMedio)} />
+        <Metric tone={TONE.violet} label="Projeção" value={formatCurrency(metrics.projecaoReceita)} />
+        <Metric tone={TONE.violet} label="% Projetado" value={`${metrics.projecaoPercent.toFixed(0)}%`} />
+      </Section>
+
+      {/* ── Atividade / Ligações (âmbar) ── */}
+      <Section tone={TONE.amber} label="Atividade — Ligações" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+        <Metric tone={TONE.amber} label="Ligações" value={callStats.total} color={TONE.amber} />
+        <Metric tone={TONE.amber} label="Discador" value={callStats.discador} />
+        <Metric tone={TONE.amber} label="Avulsas" value={callStats.avulsa} />
+        <Metric tone={TONE.amber} label="Atendidas" value={callStats.atendidas} color="#34d399" />
+        <Metric tone={TONE.amber} label="% Atendimento" value={`${callStats.total ? Math.round((callStats.atendidas / callStats.total) * 100) : 0}%`} />
+      </Section>
 
       {/* ── Metas (Meta / Super / Hiper) ── */}
       <GlowCard glowColor="shadow-primary/10">
@@ -874,22 +865,12 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         </div>
       </div>
 
-      {/* ── Reuniões ── */}
-      <div className="space-y-2.5">
-        <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Reuniões</h3>
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: "Agendadas", value: callsMetrics.agendadas },
-            { label: "Realizadas", value: callsMetrics.realizadas },
-            { label: "No Show", value: `${callsMetrics.noShowPercent.toFixed(0)}%` },
-          ].map((item, idx) => (
-            <div key={idx} className="rounded-lg border border-border/60 bg-card p-5 text-center">
-              <p className="text-[11px] text-muted-foreground mb-2 uppercase tracking-wide">{item.label}</p>
-              <p className="text-2xl font-semibold text-foreground tabular-nums">{item.value}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* ── Reuniões (azul) ── */}
+      <Section tone={TONE.blue} label="Reuniões" cols="grid-cols-3">
+        <Metric tone={TONE.blue} label="Agendadas" value={callsMetrics.agendadas} color={TONE.blue} />
+        <Metric tone={TONE.blue} label="Realizadas" value={callsMetrics.realizadas} color="#34d399" />
+        <Metric tone={TONE.blue} label="No Show" value={`${callsMetrics.noShowPercent.toFixed(0)}%`} color={callsMetrics.noShowPercent > 30 ? "#f87171" : undefined} />
+      </Section>
 
       {/* ── Term Vision Chart ── */}
       <TermVisionChart />
