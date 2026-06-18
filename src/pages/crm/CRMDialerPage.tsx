@@ -23,10 +23,12 @@ export default function CRMDialerPage() {
   const [campaigns, setCampaigns] = useState<CampaignOpt[]>([]);
 
   const loadCampaigns = async () => {
-    const { data } = await supabase.from("crm_dialer_campaigns").select("id, name, status").order("created_at", { ascending: false });
+    let q = supabase.from("crm_dialer_campaigns").select("id, name, status").order("created_at", { ascending: false });
+    q = tenantId ? q.eq("tenant_id", tenantId) : q.is("tenant_id", null); // isolamento: cliente só vê as dele
+    const { data } = await q;
     setCampaigns((data || []) as any);
   };
-  useEffect(() => { loadCampaigns(); }, []);
+  useEffect(() => { loadCampaigns(); /* eslint-disable-next-line */ }, [tenantId]);
 
   const isUnvAdmin = isAdmin && !tenantId; // staff UNV (não cliente)
   const tabs: { key: Tab; label: string; icon: any }[] = [

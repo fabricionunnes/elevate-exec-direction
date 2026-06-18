@@ -47,15 +47,19 @@ export function DialerQueuePanel({ onChanged, tenantId = null, currentAgentId = 
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
+    // isolamento por tenant: cliente só vê as DELE; UNV (tenant null) vê as suas.
+    let cq = supabase
       .from("crm_dialer_campaigns")
       .select("*, pipeline:crm_pipelines(name)")
       .order("created_at", { ascending: false });
+    cq = tenantId ? cq.eq("tenant_id", tenantId) : cq.is("tenant_id", null);
+    const { data } = await cq;
     const list = (data || []) as any as Campaign[];
-    // nome da atendente resolvido à parte (a FK agent_staff_id foi removida p/ permitir agente cliente)
+    // nome da atendente: cliente = onboarding_users; UNV = onboarding_staff
     const agentIds = [...new Set(list.map((c: any) => c.agent_staff_id).filter(Boolean))];
     if (agentIds.length) {
-      const { data: agents } = await supabase.from("onboarding_staff").select("id, name").in("id", agentIds);
+      const tbl = tenantId ? "onboarding_users" : "onboarding_staff";
+      const { data: agents } = await supabase.from(tbl).select("id, name").in("id", agentIds);
       const nameMap: Record<string, string> = {};
       (agents || []).forEach((a: any) => { nameMap[a.id] = a.name; });
       list.forEach((c: any) => { c.agent = { name: c.agent_staff_id ? (nameMap[c.agent_staff_id] || "—") : "—" }; });
@@ -74,21 +78,26 @@ export function DialerQueuePanel({ onChanged, tenantId = null, currentAgentId = 
 
   useEffect(() => {
     load();
-    supabase.from("onboarding_staff").select("id, name").eq("is_active", true)
-      .in("role", ["master", "admin", "head_comercial", "closer", "sdr", "bdr", "social_setter"])
-      .then(({ data }) => {
-        if (data && data.length) { setStaff(data); }
-        else if (currentAgentId) {
-          setStaff([{ id: currentAgentId, name: currentAgentName || "Você" }]);
-          setForm((f) => f.agent_staff_id ? f : { ...f, agent_staff_id: currentAgentId });
-        } else setStaff([]);
-      });
-    supabase.from("crm_pipelines").select("id, name").eq("is_active", true)
-      .then(({ data }) => {
-        setPipelines(data || []);
-        const discador = (data || []).find((p: any) => p.name === "Discador");
-        if (discador) setForm((f) => ({ ...f, pipeline_id: discador.id }));
-      });
+    // Atendentes: cliente (tenant) = só os usuários DELE habilitados; UNV = staff interno.
+    const staffQuery = tenantId
+      ? supabase.from("onboarding_users").select("id, name").eq("dialer_tenant_id", tenantId).eq("dialer_enabled", true)
+      : supabase.from("onboarding_staff").select("id, name").eq("is_active", true)
+          .in("role", ["master", "admin", "head_comercial", "closer", "sdr", "bdr", "social_setter"]);
+    staffQuery.then(({ data }) => {
+      if (data && data.length) { setStaff(data); }
+      else if (currentAgentId) {
+        setStaff([{ id: currentAgentId, name: currentAgentName || "Você" }]);
+        setForm((f) => f.agent_staff_id ? f : { ...f, agent_staff_id: currentAgentId });
+      } else setStaff([]);
+    });
+    // Funis: só os do tenant (cliente vê os dele; UNV vê os tenant null).
+    let pq = supabase.from("crm_pipelines").select("id, name").eq("is_active", true);
+    pq = tenantId ? pq.eq("tenant_id", tenantId) : pq.is("tenant_id", null);
+    pq.then(({ data }) => {
+      setPipelines(data || []);
+      const discador = (data || []).find((p: any) => p.name === "Discador");
+      if (discador) setForm((f) => ({ ...f, pipeline_id: discador.id }));
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
