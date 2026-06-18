@@ -124,6 +124,7 @@ const OnboardingTasksPage = () => {
   const [filterConsultant, setFilterConsultant] = useState<string>("all");
   const [filterService, setFilterService] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [ragFilter, setRagFilter] = useState<"all" | "green" | "yellow" | "red">("all"); // semáforo de saúde do cliente
   const [consultants, setConsultants] = useState<Staff[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   
@@ -1328,6 +1329,43 @@ const OnboardingTasksPage = () => {
     return map;
   }, [companies, companyKpis, kpiEntries, monthlyTargetsForProjection, companyDailyGoalSettings]);
 
+  // Semáforo de saúde por cliente: combina Resultado (health score) + Ações (tarefas em atraso).
+  // (WhatsApp dos grupos entra depois — sistema do Marcelo.) null = sem dados.
+  const companyRag = useMemo(() => {
+    const projToCompany = new Map<string, string>();
+    companies.forEach(c => (c.projects || []).forEach(p => projToCompany.set(p.id, c.id)));
+    const todayStart = startOfDay(new Date());
+    const overdueByCompany = new Map<string, number>();
+    allTasks.forEach((t: any) => {
+      if (!t.due_date || t.status === "completed") return;
+      if (!isBefore(normalizeDueDate(t.due_date), todayStart)) return;
+      const cid = projToCompany.get(t.project_id);
+      if (cid) overdueByCompany.set(cid, (overdueByCompany.get(cid) || 0) + 1);
+    });
+    const m = new Map<string, "green" | "yellow" | "red" | null>();
+    companies.forEach(c => {
+      const scores = (c.projects || []).map(p => healthScoresByProject.get(p.id)).filter(Boolean) as { total_score: number; risk_level: string }[];
+      const overdue = overdueByCompany.get(c.id) || 0;
+      let rag: "green" | "yellow" | "red" | null = null;
+      if (scores.length) {
+        const avg = scores.reduce((s, x) => s + x.total_score, 0) / scores.length;
+        const critical = scores.some(s => s.risk_level === "critical" || s.risk_level === "at_risk");
+        const attention = scores.some(s => s.risk_level === "attention");
+        rag = critical || avg < 50 ? "red" : (attention || avg < 70) ? "yellow" : "green";
+      }
+      if (overdue >= 5) rag = "red";
+      else if (overdue >= 1) rag = rag === "red" ? "red" : "yellow";
+      m.set(c.id, (scores.length || overdue) ? rag : null);
+    });
+    return m;
+  }, [companies, healthScoresByProject, allTasks]);
+
+  const ragCounts = useMemo(() => {
+    const counts = { green: 0, yellow: 0, red: 0 };
+    companies.forEach(c => { const r = companyRag.get(c.id); if (r) counts[r]++; });
+    return counts;
+  }, [companies, companyRag]);
+
   const filteredCompanies = useMemo(() => {
     const filtered = companies.filter((company) => {
       // Hide inactive and closed companies entirely from dashboard
@@ -1535,9 +1573,10 @@ const OnboardingTasksPage = () => {
         }
       }
       
-      return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter;
+      const matchesRag = ragFilter === "all" || companyRag.get(company.id) === ragFilter;
+      return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter && matchesRag;
     });
-    
+
     // Sort rule (business): companies that entered now (<= 30 days) must appear first.
     // Fallback for integrations that may not set contract_start_date: use created_at.
     const now = new Date();
@@ -1557,7 +1596,7 @@ const OnboardingTasksPage = () => {
 
       return bStart.getTime() - aStart.getTime();
     });
-  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, companiesGoalRanges, currentUserRole, currentStaffId, allTasks, contractRenewals]);
+  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, ragFilter, companyRag, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, companiesGoalRanges, currentUserRole, currentStaffId, allTasks, contractRenewals]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -2798,8 +2837,25 @@ const OnboardingTasksPage = () => {
                 </Select>
               </div>
 
-              {hasActiveFilters && (
-                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 sm:h-10 px-2 shrink-0">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] sm:text-xs text-muted-foreground font-medium">Saúde do cliente</span>
+                <div className="flex items-center gap-1">
+                  {([["all", "Todos", ""], ["green", "Verde", "#22c55e"], ["yellow", "Amarelo", "#eab308"], ["red", "Vermelho", "#ef4444"]] as const).map(([k, lbl, color]) => (
+                    <button
+                      key={k}
+                      onClick={() => setRagFilter(k as any)}
+                      title={lbl}
+                      className={`flex items-center gap-1 px-2 h-8 sm:h-10 rounded-md border text-xs transition-colors ${ragFilter === k ? "border-foreground/40 bg-muted font-medium" : "border-border text-muted-foreground hover:bg-muted/50"}`}
+                    >
+                      {color ? <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: color }} /> : null}
+                      {k === "all" ? "Todos" : <span className="tabular-nums">{ragCounts[k as "green" | "yellow" | "red"]}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(hasActiveFilters || ragFilter !== "all") && (
+                <Button variant="ghost" size="sm" onClick={() => { clearFilters(); setRagFilter("all"); }} className="h-8 sm:h-10 px-2 shrink-0">
                   <X className="h-4 w-4" />
                 </Button>
               )}
@@ -2921,6 +2977,12 @@ const OnboardingTasksPage = () => {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                            {(() => {
+                              const r = companyRag.get(company.id);
+                              const c = r === "green" ? "#22c55e" : r === "yellow" ? "#eab308" : r === "red" ? "#ef4444" : "#6b7280";
+                              const t = r === "green" ? "Saúde: verde (ok)" : r === "yellow" ? "Saúde: amarelo (atenção)" : r === "red" ? "Saúde: vermelho (em risco)" : "Sem dados de saúde";
+                              return <span className="h-3 w-3 rounded-full shrink-0 ring-2 ring-background" style={{ background: c }} title={t} />;
+                            })()}
                             <h3 className="text-sm sm:text-base md:text-lg font-bold text-foreground uppercase tracking-wide break-words max-w-full">{company.name}</h3>
                             <div className="flex flex-wrap items-center gap-1">
                               {getStatusBadge(company.status, (company.projects as any[])?.find((p: any) => p.status === "notice_period")?.notice_end_date)}
