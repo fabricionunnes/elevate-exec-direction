@@ -389,9 +389,12 @@ export default function ContractGeneratorPage() {
     setEditableClauses((prev) =>
       prev.map((c) => {
         if (c.id !== "investimento") return c;
+        // auto-gerada = começa com o padrão de valor; re-sincroniza mesmo após snapshot/edição,
+        // pra nunca ficar travada num valor antigo (ex.: R$ 0,00).
         const untouched =
           c.content === lastGenInvestimentoRef.current ||
-          c.content.includes("conforme especificado nas condições comerciais");
+          c.content.includes("conforme especificado nas condições comerciais") ||
+          /O valor (total )?do presente contrato será de/i.test(c.content);
         return untouched ? { ...c, content: generated } : c;
       })
     );
@@ -587,10 +590,16 @@ export default function ContractGeneratorPage() {
   };
 
   const handleGenerate = async () => {
+    // Trava contra contrato com valor zerado (evita PDF saindo "R$ 0,00")
+    if (!formData.contractValue || formData.contractValue <= 0) {
+      toast.error("Defina o valor total do contrato (maior que zero) antes de gerar.");
+      return;
+    }
+
     setIsGenerating(true);
     setZapSignSent(false);
     setLastSavedContractId(null);
-    
+
     // Track if this is an edit (before saveContract clears the state)
     const isEditMode = !!editingContractId;
     setWasEditMode(isEditMode);

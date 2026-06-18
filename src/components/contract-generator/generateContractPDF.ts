@@ -295,9 +295,13 @@ export async function generateContractPDF({ formData, customClauses }: GenerateP
       });
       y += 3;
     } else if (clause.id === "investimento") {
-      // CLÁUSULA 5 totalmente editável: usa o conteúdo (que o consultor pode ter editado).
-      // Se ainda estiver com o texto padrão (placeholder), gera a partir dos dados do formulário.
-      const isDefault = clause.content.includes("conforme especificado nas condições comerciais");
+      // CLÁUSULA 5: o VALOR sempre tem que refletir o formulário, nunca o texto congelado.
+      // Reconstrói a partir dos dados do formulário quando a cláusula ainda é o placeholder
+      // OU quando é uma versão auto-gerada (começa com "O valor ... do presente contrato será de").
+      // Só preserva o texto cru se for uma reescrita realmente manual (fora desse padrão).
+      const isPlaceholder = clause.content.includes("conforme especificado nas condições comerciais");
+      const isAutoGerada = /O valor (total )?do presente contrato será de/i.test(clause.content);
+      const isDefault = isPlaceholder || isAutoGerada;
       const investimentoContent = isDefault
         ? buildInvestimentoContent({
             paymentMethod: formData.paymentMethod,
