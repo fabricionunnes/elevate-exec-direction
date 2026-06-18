@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { PhoneCall, FileText, Clock, Search, ExternalLink, Loader2, Mic } from "lucide-react";
+import { PhoneCall, FileText, Clock, Search, ExternalLink, Loader2, Mic, ArrowUp, ArrowDown, ArrowDownUp } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { dialerAudioSrc } from "@/lib/dialer/audio";
@@ -44,17 +44,22 @@ export function DialerCallsHistory() {
   const [search, setSearch] = useState("");
   const [onlyRecorded, setOnlyRecorded] = useState(false);
   const [source, setSource] = useState<"all" | "campaign" | "avulsa">("all");
+  const [minDur, setMinDur] = useState(30); // esconde ligações com menos de 30s por padrão
+  const [sortDur, setSortDur] = useState<"none" | "asc" | "desc">("none"); // ordenar pela duração
 
   const load = async () => {
     setLoading(true);
     let q = supabase
       .from("crm_calls")
       .select("id, created_at, answered_at, duration_seconds, ai_summary, ai_disposition, transcription, recording_url, notes, lead_id, agent_staff_id, campaign_id, lead:crm_leads(name, company)")
-      .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(200);
+    q = sortDur === "asc" ? q.order("duration_seconds", { ascending: true, nullsFirst: false })
+      : sortDur === "desc" ? q.order("duration_seconds", { ascending: false, nullsFirst: false })
+      : q.order("created_at", { ascending: false });
     if (onlyRecorded) q = q.not("recording_url", "is", null);
     if (source === "campaign") q = q.not("campaign_id", "is", null);
     if (source === "avulsa") q = q.is("campaign_id", null);
+    if (minDur > 0) q = q.gte("duration_seconds", minDur);
     const [{ data }, { data: staffData }] = await Promise.all([
       q,
       supabase.from("onboarding_staff").select("id, name"),
@@ -66,7 +71,7 @@ export function DialerCallsHistory() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [onlyRecorded, source]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [onlyRecorded, source, minDur, sortDur]);
 
   const filtered = calls.filter((c) => {
     if (!search) return true;
@@ -89,8 +94,30 @@ export function DialerCallsHistory() {
             <button key={k} onClick={() => setSource(k)} className={`px-2.5 py-1 text-xs rounded ${source === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{lbl}</button>
           ))}
         </div>
+        <div className="inline-flex items-center rounded-md border border-border p-0.5">
+          <Clock className="h-3.5 w-3.5 text-muted-foreground mx-1" />
+          {([[0, "Todas"], [30, "≥30s"], [60, "≥1min"], [120, "≥2min"]] as const).map(([k, lbl]) => (
+            <button key={k} onClick={() => setMinDur(k)} className={`px-2.5 py-1 text-xs rounded ${minDur === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{lbl}</button>
+          ))}
+        </div>
         <span className="text-sm text-muted-foreground ml-auto">{filtered.length} ligações</span>
       </div>
+
+      {/* Cabeçalho com coluna de duração clicável pra ordenar */}
+      {!loading && filtered.length > 0 && (
+        <div className="flex items-center gap-2 px-3 text-[11px] uppercase tracking-wide text-muted-foreground">
+          <span className="flex-1">Ligação</span>
+          <button
+            onClick={() => setSortDur((s) => s === "desc" ? "asc" : s === "asc" ? "none" : "desc")}
+            className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+            title="Ordenar por duração"
+          >
+            Duração
+            {sortDur === "desc" ? <ArrowDown className="h-3 w-3" /> : sortDur === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDownUp className="h-3 w-3 opacity-50" />}
+          </button>
+          <span className="w-24 text-right hidden sm:inline">Atendente</span>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground p-6 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Carregando…</div>
