@@ -109,7 +109,7 @@ export function DialerWalletPanel({ tenantId }: { tenantId: string | null }) {
                 <p className={`text-3xl font-bold mt-1 ${twilioBal.critical ? "text-red-500" : twilioBal.low ? "text-amber-500" : ""}`}>{twilioBal.currency} {twilioBal.balance.toFixed(2)}</p>
                 {(twilioBal.low || twilioBal.critical) && <Badge variant="outline" className="mt-1 border-amber-500/40 text-amber-500">Saldo baixo — adicione créditos</Badge>}
               </div>
-              <Button className="gap-2" onClick={() => window.open("https://console.twilio.com/us1/billing/manage-billing/billing-overview", "_blank", "noopener")}>
+              <Button className="gap-2" onClick={() => window.open("https://console.twilio.com/us1/billing/manage-billing/add-funds", "_blank", "noopener")}>
                 <Plus className="h-4 w-4" /> Adicionar créditos na Twilio <ExternalLink className="h-3.5 w-3.5" />
               </Button>
             </CardContent>
