@@ -48,7 +48,7 @@ import {
   Plus,
   RefreshCw,
 } from "lucide-react";
-import { format, isToday, isTomorrow, isPast, addDays } from "date-fns";
+import { format, isToday, isTomorrow, isPast, addDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -64,9 +64,12 @@ interface Activity {
   completed_at: string | null;
   status: string;
   lead_id: string;
-  lead?: { 
-    name: string; 
+  responsible_staff_id: string | null;
+  lead?: {
+    name: string;
     company: string | null;
+    origin_id?: string | null;
+    stage_id?: string | null;
     origin?: { name: string } | null;
     stage?: { name: string } | null;
     tags?: { tag: { id: string; name: string; color: string } }[];
@@ -104,8 +107,10 @@ export const CRMActivitiesPage = () => {
         .select(`
           *,
           lead:crm_leads(
-            name, 
+            name,
             company,
+            origin_id,
+            stage_id,
             origin:crm_origins(name),
             stage:crm_stages(name),
             tags:crm_lead_tags(tag:crm_tags(id, name, color))
@@ -231,16 +236,31 @@ export const CRMActivitiesPage = () => {
         }
       }
 
-      // Date filter
-      if (dateRange?.from && activity.scheduled_at) {
+      // Date filter — um único dia (sem 'to') vira o dia inteiro; range usa início e fim inclusivos
+      if (dateRange?.from) {
+        if (!activity.scheduled_at) return false;
         const activityDate = new Date(activity.scheduled_at);
-        if (activityDate < dateRange.from) return false;
-        if (dateRange.to && activityDate > dateRange.to) return false;
+        const from = startOfDay(dateRange.from);
+        const to = endOfDay(dateRange.to || dateRange.from);
+        if (activityDate < from || activityDate > to) return false;
+      }
+
+      // Dono do negócio (responsável da atividade)
+      if (filterOwner !== "all" && activity.responsible_staff_id !== filterOwner) {
+        return false;
+      }
+
+      // Origem e Etapa (do lead)
+      if (filterOrigin !== "all" && activity.lead?.origin_id !== filterOrigin) {
+        return false;
+      }
+      if (filterStage !== "all" && activity.lead?.stage_id !== filterStage) {
+        return false;
       }
 
       return true;
     });
-  }, [activities, searchTerm, dateRange]);
+  }, [activities, searchTerm, dateRange, filterOwner, filterOrigin, filterStage]);
 
   const toggleSelectAll = () => {
     if (selectedActivities.length === filteredActivities.length) {
