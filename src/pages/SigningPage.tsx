@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, AlertCircle, RotateCcw, FileText, Shield } from "lucide-react";
 import type { SigningPageData, SignerStatus } from "@/types/signatures";
+import { PdfDocumentViewer } from "@/components/signatures/PdfDocumentViewer";
 
 const SIGNER_STATUS_LABELS: Record<SignerStatus, string> = {
   pending: "Pendente",
@@ -210,12 +211,7 @@ export default function SigningPage() {
             <CardTitle className="text-sm">Documento para Assinatura</CardTitle>
           </CardHeader>
           <CardContent>
-            <iframe
-              src={pdf_url}
-              className="w-full rounded border"
-              style={{ height: "60vh", minHeight: 400 }}
-              title="Documento PDF"
-            />
+            <PdfDocumentViewer url={pdf_url} />
           </CardContent>
         </Card>
 
