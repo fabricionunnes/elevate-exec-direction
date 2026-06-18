@@ -145,16 +145,18 @@ Deno.serve(async (req) => {
       const companyId: string = body.companyId;
       const userIds: string[] = Array.isArray(body.userIds) ? body.userIds : [];
       if (!companyId) throw new Error("companyId é obrigatório");
-      const { data: company } = await supabase.from("onboarding_companies").select("id, name, tenant_id, cnpj").eq("id", companyId).maybeSingle();
+      const { data: company } = await supabase.from("onboarding_companies").select("id, name, tenant_id, dialer_tenant_id, cnpj").eq("id", companyId).maybeSingle();
       if (!company) throw new Error("Empresa não encontrada");
 
-      // garante um tenant do discador pra empresa (sem mexer no acesso atual dela)
-      let tenantId = company.tenant_id;
+      // garante um tenant do DISCADOR pra empresa em campo PRÓPRIO (dialer_tenant_id).
+      // NUNCA usar onboarding_companies.tenant_id: ele controla a visibilidade do portal e,
+      // se setado, esconde a empresa+projeto da UNV (incidente 3D Cure 2026-06-18).
+      let tenantId = company.dialer_tenant_id;
       if (!tenantId) {
         const slug = `${slugify(company.name)}-${crypto.randomUUID().slice(0, 6)}`;
         const { data: t } = await supabase.from("whitelabel_tenants").insert({ name: company.name, slug, status: "active" }).select("id").single();
         tenantId = t.id;
-        await supabase.from("onboarding_companies").update({ tenant_id: tenantId }).eq("id", companyId);
+        await supabase.from("onboarding_companies").update({ dialer_tenant_id: tenantId }).eq("id", companyId);
       }
       await createDialerPipeline(supabase, tenantId);
 
