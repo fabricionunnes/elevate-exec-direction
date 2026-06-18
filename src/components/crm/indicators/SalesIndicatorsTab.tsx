@@ -101,6 +101,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const [totalGoals, setTotalGoals] = useState({ meta: 0, super: 0, hiper: 0 });
   const [filterStartDate, setFilterStartDate] = useState<Date>(startOfMonth(new Date()));
   const [filterEndDate, setFilterEndDate] = useState<Date>(endOfMonth(new Date()));
+  const [callStats, setCallStats] = useState({ total: 0, discador: 0, avulsa: 0, atendidas: 0 });
 
   // Get date range based on filter
   const getDateRange = () => {
@@ -123,6 +124,31 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         return { start: startOfMonth(now), end: endOfMonth(now) };
     }
   };
+
+  // Ligações (discador + avulsa) no período/closer selecionado
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { start, end } = getDateRange();
+      const base = () => {
+        let q = supabase.from("crm_calls").select("*", { count: "exact", head: true })
+          .is("tenant_id", null) // só ligações da UNV, não dos clientes
+          .gte("created_at", start.toISOString()).lte("created_at", end.toISOString());
+        if (selectedCloser !== "all") q = q.eq("agent_staff_id", selectedCloser);
+        return q;
+      };
+      const [tot, disc, avul, ans] = await Promise.all([
+        base(),
+        base().not("campaign_id", "is", null),
+        base().is("campaign_id", null),
+        base().eq("answered_by", "human"),
+      ]);
+      if (!active) return;
+      setCallStats({ total: tot.count || 0, discador: disc.count || 0, avulsa: avul.count || 0, atendidas: ans.count || 0 });
+    })();
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFilter, customDateFrom, customDateTo, selectedCloser]);
 
   useEffect(() => {
     loadData();
@@ -780,6 +806,30 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
             { label: "Ticket Médio", value: formatCurrency(metrics.ticketMedio), gradient: "from-amber-500 to-orange-500", glow: "shadow-amber-500/20", textColor: "text-amber-400" },
             { label: "Projeção", value: formatCurrency(metrics.projecaoReceita), gradient: "from-sky-500 to-blue-500", glow: "shadow-sky-500/20", textColor: "text-sky-400" },
             { label: "% Projetado", value: `${metrics.projecaoPercent.toFixed(0)}%`, gradient: "from-indigo-500 to-blue-500", glow: "shadow-indigo-500/20", textColor: "text-indigo-400" },
+          ].map((item, idx) => (
+            <GlowCard key={idx} glowColor={item.glow}>
+              <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-[0.06]`} />
+              <div className="relative p-4">
+                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-1">{item.label}</p>
+                <p className={cn("text-lg font-black", item.textColor)}>{item.value}</p>
+              </div>
+            </GlowCard>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Atividade (Ligações) ── */}
+      <div className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+          <div className="h-3 w-3 rounded-full bg-gradient-to-r from-red-400 to-rose-400 shadow-lg shadow-red-500/30" />
+          Atividade — Ligações
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "Ligações", value: String(callStats.total), gradient: "from-red-500 to-rose-500", glow: "shadow-red-500/20", textColor: "text-red-400" },
+            { label: "Discador", value: String(callStats.discador), gradient: "from-blue-500 to-indigo-500", glow: "shadow-blue-500/20", textColor: "text-blue-400" },
+            { label: "Avulsas", value: String(callStats.avulsa), gradient: "from-violet-500 to-purple-500", glow: "shadow-violet-500/20", textColor: "text-violet-400" },
+            { label: "Atendidas", value: String(callStats.atendidas), gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/20", textColor: "text-emerald-400" },
           ].map((item, idx) => (
             <GlowCard key={idx} glowColor={item.glow}>
               <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-[0.06]`} />
