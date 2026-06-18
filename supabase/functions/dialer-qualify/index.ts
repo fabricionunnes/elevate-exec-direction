@@ -81,6 +81,28 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Sem transcrição = ligação sem conversa real (caixa postal / não atendeu).
+    // NÃO chamar a IA (ela inventa análise pelo nome da empresa). Registra só "Caixa postal".
+    if (!transcription) {
+      await supabase.from("crm_calls").update({
+        ai_summary: "Caixa postal",
+        ai_disposition: "nao_atendeu",
+      }).eq("id", callId);
+      if (lead) {
+        const stamp = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+        const block = `— Ligação (discador) ${stamp}\nCaixa postal`;
+        await supabase.from("crm_leads").update({
+          notes: (lead.notes ? lead.notes + "\n\n" : "") + block,
+        }).eq("id", lead.id);
+      }
+      if (call.activity_id) {
+        await supabase.from("crm_activities").update({ notes: "Caixa postal" }).eq("id", call.activity_id);
+      }
+      return new Response(JSON.stringify({ ok: true, callId, disposition: "nao_atendeu", transcribed: false, voicemail: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // 2) Qualificação com Claude
     if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY não configurada");
 
