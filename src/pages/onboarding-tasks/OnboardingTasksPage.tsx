@@ -144,6 +144,7 @@ const OnboardingTasksPage = () => {
   const [kpiEntries, setKpiEntries] = useState<{ company_id: string; kpi_id: string; value: number; entry_date: string }[]>([]);
   const [contractRenewals, setContractRenewals] = useState<{ company_id: string; renewal_date: string }[]>([]);
   const [healthScoresByProject, setHealthScoresByProject] = useState<Map<string, { total_score: number; risk_level: string }>>(new Map());
+  const [whatsappSignals, setWhatsappSignals] = useState<Map<string, { rag: string | null; msgs_7d: number }>>(new Map());
   // Health scores array for DashboardMetrics (eliminates duplicate query)
   const [healthScoresArray, setHealthScoresArray] = useState<{ project_id: string; total_score: number; risk_level: string | null }[]>([]);
   const [companyDailyGoalSettings, setCompanyDailyGoalSettings] = useState<Record<string, { includeSaturday: boolean; includeSunday: boolean; includeHolidays: boolean }>>({});
@@ -1329,8 +1330,19 @@ const OnboardingTasksPage = () => {
     return map;
   }, [companies, companyKpis, kpiEntries, monthlyTargetsForProjection, companyDailyGoalSettings]);
 
-  // Semáforo de saúde por cliente: combina Resultado (health score) + Ações (tarefas em atraso).
-  // (WhatsApp dos grupos entra depois — sistema do Marcelo.) null = sem dados.
+  // Sinal de WhatsApp dos grupos (cacheado em client_whatsapp_signals, alimentado pelo sistema do Marcelo)
+  useEffect(() => {
+    let active = true;
+    supabase.from("client_whatsapp_signals").select("company_id, rag, msgs_7d").then(({ data }) => {
+      if (!active) return;
+      const m = new Map<string, { rag: string | null; msgs_7d: number }>();
+      (data || []).forEach((r: any) => m.set(r.company_id, { rag: r.rag, msgs_7d: r.msgs_7d || 0 }));
+      setWhatsappSignals(m);
+    });
+    return () => { active = false; };
+  }, []);
+
+  // Semáforo de saúde por cliente: combina WhatsApp (grupos) + Ações (tarefas) + Resultado (health score).
   const companyRag = useMemo(() => {
     const projToCompany = new Map<string, string>();
     companies.forEach(c => (c.projects || []).forEach(p => projToCompany.set(p.id, c.id)));
@@ -1342,27 +1354,41 @@ const OnboardingTasksPage = () => {
       const cid = projToCompany.get(t.project_id);
       if (cid) overdueByCompany.set(cid, (overdueByCompany.get(cid) || 0) + 1);
     });
-    const m = new Map<string, "green" | "yellow" | "red" | null>();
+    type RagColor = "green" | "yellow" | "red" | null;
+    const worst = (...vals: RagColor[]): RagColor => {
+      const present = vals.filter(Boolean) as ("green" | "yellow" | "red")[];
+      if (!present.length) return null;
+      if (present.includes("red")) return "red";
+      if (present.includes("yellow")) return "yellow";
+      return "green";
+    };
+    const m = new Map<string, { rag: RagColor; resultado: RagColor; acoes: RagColor; whatsapp: RagColor; overdue: number; score: number | null; wppMsgs: number | null }>();
     companies.forEach(c => {
       const scores = (c.projects || []).map(p => healthScoresByProject.get(p.id)).filter(Boolean) as { total_score: number; risk_level: string }[];
       const overdue = overdueByCompany.get(c.id) || 0;
-      let rag: "green" | "yellow" | "red" | null = null;
+      // Resultado (health score)
+      let resultado: RagColor = null;
+      let avgScore: number | null = null;
       if (scores.length) {
-        const avg = scores.reduce((s, x) => s + x.total_score, 0) / scores.length;
+        avgScore = Math.round(scores.reduce((s, x) => s + x.total_score, 0) / scores.length);
         const critical = scores.some(s => s.risk_level === "critical" || s.risk_level === "at_risk");
         const attention = scores.some(s => s.risk_level === "attention");
-        rag = critical || avg < 50 ? "red" : (attention || avg < 70) ? "yellow" : "green";
+        resultado = critical || avgScore < 50 ? "red" : (attention || avgScore < 70) ? "yellow" : "green";
       }
-      if (overdue >= 5) rag = "red";
-      else if (overdue >= 1) rag = rag === "red" ? "red" : "yellow";
-      m.set(c.id, (scores.length || overdue) ? rag : null);
+      // Ações (tarefas em atraso)
+      const acoes: RagColor = overdue >= 5 ? "red" : overdue >= 1 ? "yellow" : (scores.length || c.total_tasks ? "green" : null);
+      // WhatsApp dos grupos (atividade no grupo do cliente, via sistema do Marcelo)
+      const ws = whatsappSignals.get(c.id);
+      const whatsapp: RagColor = (ws?.rag as RagColor) ?? null;
+      const rag = worst(resultado, acoes, whatsapp);
+      m.set(c.id, { rag, resultado, acoes, whatsapp, overdue, score: avgScore, wppMsgs: ws?.msgs_7d ?? null });
     });
     return m;
-  }, [companies, healthScoresByProject, allTasks]);
+  }, [companies, healthScoresByProject, allTasks, whatsappSignals]);
 
   const ragCounts = useMemo(() => {
     const counts = { green: 0, yellow: 0, red: 0 };
-    companies.forEach(c => { const r = companyRag.get(c.id); if (r) counts[r]++; });
+    companies.forEach(c => { const r = companyRag.get(c.id)?.rag; if (r) counts[r]++; });
     return counts;
   }, [companies, companyRag]);
 
@@ -1573,7 +1599,7 @@ const OnboardingTasksPage = () => {
         }
       }
       
-      const matchesRag = ragFilter === "all" || companyRag.get(company.id) === ragFilter;
+      const matchesRag = ragFilter === "all" || companyRag.get(company.id)?.rag === ragFilter;
       return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter && matchesRag;
     });
 
@@ -2978,10 +3004,26 @@ const OnboardingTasksPage = () => {
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                             {(() => {
-                              const r = companyRag.get(company.id);
-                              const c = r === "green" ? "#22c55e" : r === "yellow" ? "#eab308" : r === "red" ? "#ef4444" : "#6b7280";
-                              const t = r === "green" ? "Saúde: verde (ok)" : r === "yellow" ? "Saúde: amarelo (atenção)" : r === "red" ? "Saúde: vermelho (em risco)" : "Sem dados de saúde";
-                              return <span className="h-3 w-3 rounded-full shrink-0 ring-2 ring-background" style={{ background: c }} title={t} />;
+                              const sig = companyRag.get(company.id);
+                              const colorOf = (r?: string | null) => r === "green" ? "#22c55e" : r === "yellow" ? "#eab308" : r === "red" ? "#ef4444" : "#6b7280";
+                              const Row = ({ name, r, extra }: { name: string; r?: string | null; extra: string }) => (
+                                <span className="flex items-center gap-1.5">
+                                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: colorOf(r) }} />
+                                  <span className="text-muted-foreground">{name}</span>
+                                  <span className="ml-auto text-foreground">{extra}</span>
+                                </span>
+                              );
+                              return (
+                                <span className="relative group/rag inline-flex" onClick={(e) => e.stopPropagation()}>
+                                  <span className="h-3 w-3 rounded-full shrink-0 ring-2 ring-background cursor-default" style={{ background: colorOf(sig?.rag) }} />
+                                  <span className="invisible opacity-0 group-hover/rag:visible group-hover/rag:opacity-100 transition-opacity absolute left-0 top-5 z-50 w-48 rounded-md border border-border bg-popover p-2 text-[11px] shadow-lg flex flex-col gap-1">
+                                    <span className="font-semibold text-foreground">Saúde do cliente</span>
+                                    <Row name="Resultado" r={sig?.resultado} extra={sig?.score != null ? `${sig.score}/100` : "sem dados"} />
+                                    <Row name="Ações" r={sig?.acoes} extra={sig?.overdue ? `${sig.overdue} em atraso` : "em dia"} />
+                                    <Row name="WhatsApp" r={sig?.whatsapp} extra={sig?.whatsapp ? (sig?.wppMsgs ? `${sig.wppMsgs} msgs/7d` : "sem msgs 7d") : "sem grupo"} />
+                                  </span>
+                                </span>
+                              );
                             })()}
                             <h3 className="text-sm sm:text-base md:text-lg font-bold text-foreground uppercase tracking-wide break-words max-w-full">{company.name}</h3>
                             <div className="flex flex-wrap items-center gap-1">
