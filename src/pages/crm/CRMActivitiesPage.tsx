@@ -372,17 +372,19 @@ export const CRMActivitiesPage = () => {
         <div className="hidden md:flex items-center gap-2">
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 gap-2">
-              Origem
+            <Button variant="outline" size="sm" className={`h-9 gap-2 ${filterOrigin !== "all" ? "border-primary text-primary" : ""}`}>
+              {filterOrigin === "all" ? "Origem" : (origins.find((o) => o.id === filterOrigin)?.name || "Origem")}
               <ChevronDown className="h-3 w-3" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-48" align="start">
             <div className="space-y-1 max-h-[200px] overflow-auto">
+              <button onClick={() => setFilterOrigin("all")} className={`w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded ${filterOrigin === "all" ? "bg-muted font-medium" : ""}`}>Todas as origens</button>
               {origins.map((origin) => (
                 <button
                   key={origin.id}
-                  className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded"
+                  onClick={() => setFilterOrigin(origin.id)}
+                  className={`w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded ${filterOrigin === origin.id ? "bg-muted font-medium" : ""}`}
                 >
                   {origin.name}
                 </button>
@@ -394,17 +396,19 @@ export const CRMActivitiesPage = () => {
         {/* Stage Filter */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 gap-2">
-              Etapa
+            <Button variant="outline" size="sm" className={`h-9 gap-2 ${filterStage !== "all" ? "border-primary text-primary" : ""}`}>
+              {filterStage === "all" ? "Etapa" : (stages.find((s) => s.id === filterStage)?.name || "Etapa")}
               <ChevronDown className="h-3 w-3" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-48" align="start">
             <div className="space-y-1 max-h-[200px] overflow-auto">
+              <button onClick={() => setFilterStage("all")} className={`w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded ${filterStage === "all" ? "bg-muted font-medium" : ""}`}>Todas as etapas</button>
               {stages.map((stage) => (
                 <button
                   key={stage.id}
-                  className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded"
+                  onClick={() => setFilterStage(stage.id)}
+                  className={`w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded ${filterStage === stage.id ? "bg-muted font-medium" : ""}`}
                 >
                   {stage.name}
                 </button>
@@ -429,17 +433,19 @@ export const CRMActivitiesPage = () => {
         {/* Owner Filter */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 gap-2">
-              Dono do negócio
+            <Button variant="outline" size="sm" className={`h-9 gap-2 ${filterOwner !== "all" ? "border-primary text-primary" : ""}`}>
+              {filterOwner === "all" ? "Dono do negócio" : (owners.find((o) => o.id === filterOwner)?.name || "Dono do negócio")}
               <ChevronDown className="h-3 w-3" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-48" align="start">
             <div className="space-y-1 max-h-[200px] overflow-auto">
+              <button onClick={() => setFilterOwner("all")} className={`w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded ${filterOwner === "all" ? "bg-muted font-medium" : ""}`}>Todos</button>
               {owners.map((owner) => (
                 <button
                   key={owner.id}
-                  className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded"
+                  onClick={() => setFilterOwner(owner.id)}
+                  className={`w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded ${filterOwner === owner.id ? "bg-muted font-medium" : ""}`}
                 >
                   {owner.name}
                 </button>
