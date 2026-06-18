@@ -21,6 +21,7 @@ export function DialerWalletPanel({ tenantId }: { tenantId: string | null }) {
   const [ledger, setLedger] = useState<Ledger[]>([]);
   const [callLeads, setCallLeads] = useState<Record<string, string>>({});
   const [unv, setUnv] = useState<{ totalUsd: number; totalBrl: number | null; brlRate: number; pendingCount: number; calls: UnvCall[] } | null>(null);
+  const [twilioBal, setTwilioBal] = useState<{ balance: number; currency: string; low: boolean; critical: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [rechargeOpen, setRechargeOpen] = useState(false);
   const [amount, setAmount] = useState("100");
@@ -32,8 +33,12 @@ export function DialerWalletPanel({ tenantId }: { tenantId: string | null }) {
   const load = async () => {
     // UNV (uso próprio): sem carteira — extrato de custo Twilio por ligação
     if (!tenantId) {
-      const { data } = await supabase.functions.invoke("dialer-twilio-costs", { body: { limit: 150 } });
+      const [{ data }, { data: bal }] = await Promise.all([
+        supabase.functions.invoke("dialer-twilio-costs", { body: { limit: 150 } }),
+        supabase.functions.invoke("dialer-balance"),
+      ]);
       if (data && !data.error) setUnv(data);
+      if (bal && typeof bal.balance === "number") setTwilioBal(bal);
       setLoading(false);
       return;
     }
@@ -96,6 +101,20 @@ export function DialerWalletPanel({ tenantId }: { tenantId: string | null }) {
     const usdToBrl = (v: number) => rate ? Number(v * rate).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : fmtUsd(v);
     return (
       <div className="p-4 space-y-4">
+        {twilioBal && (
+          <Card className={twilioBal.critical ? "border-red-500/40" : twilioBal.low ? "border-amber-500/40" : ""}>
+            <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Wallet className="h-3.5 w-3.5" /> Saldo Twilio (sua conta)</div>
+                <p className={`text-3xl font-bold mt-1 ${twilioBal.critical ? "text-red-500" : twilioBal.low ? "text-amber-500" : ""}`}>{twilioBal.currency} {twilioBal.balance.toFixed(2)}</p>
+                {(twilioBal.low || twilioBal.critical) && <Badge variant="outline" className="mt-1 border-amber-500/40 text-amber-500">Saldo baixo — adicione créditos</Badge>}
+              </div>
+              <Button className="gap-2" onClick={() => window.open("https://console.twilio.com/us1/billing/manage-billing/billing-overview", "_blank", "noopener")}>
+                <Plus className="h-4 w-4" /> Adicionar créditos na Twilio <ExternalLink className="h-3.5 w-3.5" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
         <div className="grid sm:grid-cols-3 gap-3">
           <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Gasto Twilio (últimas ligações)</div><p className="text-3xl font-bold mt-1">{rate ? usdToBrl(unv?.totalUsd || 0) : fmtUsd(unv?.totalUsd || 0)}</p><p className="text-[11px] text-muted-foreground">{fmtUsd(unv?.totalUsd || 0)}{rate ? ` · dólar R$ ${rate.toFixed(2)}` : ""}</p></CardContent></Card>
           <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Ligações</div><p className="text-2xl font-bold mt-1">{unv?.calls.length ?? 0}</p><p className="text-[11px] text-muted-foreground">conta própria UNV</p></CardContent></Card>
@@ -121,7 +140,7 @@ export function DialerWalletPanel({ tenantId }: { tenantId: string | null }) {
             </Table>
           </CardContent>
         </Card>
-        <p className="text-[11px] text-muted-foreground">Custo real cobrado pela Twilio por ligação (puxado da conta). O total do dia fica no Dashboard do discador.</p>
+        <p className="text-[11px] text-muted-foreground">Custo real cobrado pela Twilio por ligação (puxado da conta). O total do dia fica no Dashboard do discador. A compra de créditos é feita na própria Twilio (com seu cartão) — dica: ative a auto-recarga lá pra nunca ficar sem saldo. Isso vale só pra sua conta; os clientes recarregam pelo PIX da carteira.</p>
       </div>
     );
   }
