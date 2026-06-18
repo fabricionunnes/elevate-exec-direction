@@ -18,6 +18,15 @@ export function PdfDocumentViewer({ url }: { url: string }) {
     (async () => {
       try {
         setStatus("loading");
+        // Polyfill p/ iOS/Safari < 17.4 — o pdf.js v4 usa Promise.withResolvers,
+        // que não existe em iPhones mais antigos (sem isso, cai no fallback).
+        if (typeof (Promise as any).withResolvers !== "function") {
+          (Promise as any).withResolvers = function () {
+            let resolve!: (v: any) => void, reject!: (e: any) => void;
+            const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+            return { promise, resolve, reject };
+          };
+        }
         const pdfjs = await import("pdfjs-dist");
         pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
         // disableRange/Stream = baixa o arquivo inteiro de uma vez (mais robusto
