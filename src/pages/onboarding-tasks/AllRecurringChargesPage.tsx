@@ -62,6 +62,7 @@ import CFOCashProjectionTab from "./financial/CFOCashProjectionTab";
 import CFODelinquencyTab from "./financial/CFODelinquencyTab";
 import { CFOAIPanel } from "@/components/financial/CFOAIPanel";
 import FinancialOverdueTab from "./financial/FinancialOverdueTab";
+import { FinancialPlanningPanel } from "@/components/financial/FinancialPlanningPanel";
 import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
 import { FinancialImportDialog } from "@/components/financial/FinancialImportDialog";
@@ -169,6 +170,7 @@ const NAV_ITEMS = [
   { key: "dfc", label: "DFC", icon: ArrowRightLeft, permKey: FINANCIAL_PERMISSION_KEYS.fin_dfc },
   { key: "balanco", label: "Balanço Patrimonial", icon: Scale, permKey: FINANCIAL_PERMISSION_KEYS.fin_balanco },
   { key: "relatorio-executivo", label: "Relatório Executivo", icon: FileCheck, permKey: FINANCIAL_PERMISSION_KEYS.fin_relatorio_executivo },
+  { key: "planejamento", label: "Planejamento", icon: Target, permKey: FINANCIAL_PERMISSION_KEYS.fin_dre },
   { key: "negativacao", label: "Régua Negativação", icon: ShieldAlert, permKey: FINANCIAL_PERMISSION_KEYS.fin_overdue },
   { key: "banks", label: "Bancos", icon: Landmark, permKey: FINANCIAL_PERMISSION_KEYS.fin_banks },
   { key: "separator-cfo-ai", label: "── CFO IA ──", icon: Brain, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_ai, isSeparator: true },
@@ -2373,6 +2375,11 @@ export default function AllRecurringChargesPage() {
 
           {activeTab === "negativacao" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_overdue) && (
             <FinancialNegativacaoTab invoices={invoices} payables={payables} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
+          )}
+
+          {/* Planejamento Orçamentário */}
+          {activeTab === "planejamento" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_dre) && (
+            <FinancialPlanningPanel invoices={invoices} payables={payables} categories={staffCategories} />
           )}
 
           {/* Bancos */}

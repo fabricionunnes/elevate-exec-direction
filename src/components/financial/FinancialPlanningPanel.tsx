@@ -20,9 +20,16 @@ interface Category {
   id: string;
   name: string;
   type: string; // "receita" | "despesa"
-  group_name: string | null;
-  sort_order: number | null;
-  is_active: boolean;
+  sort_order?: number | null;
+}
+
+interface PlanningProps {
+  /** company_invoices + financial_receivables já carregados na página (amount_cents) */
+  invoices?: any[];
+  /** financial_payables já carregados (amount em reais) */
+  payables?: any[];
+  /** staff_financial_categories ativas */
+  categories?: Category[];
 }
 
 const brl = (n: number) =>
@@ -51,18 +58,22 @@ function monthLabel(ym: string): string {
   return `${MES[m - 1]} ${y}`;
 }
 
-export function FinancialPlanningPanel() {
+export function FinancialPlanningPanel({ invoices, payables, categories: catsProp }: PlanningProps = {}) {
+  const inMemory = Array.isArray(invoices) && Array.isArray(payables);
+
   const [month, setMonth] = useState<string>(currentMonth());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [catsState, setCatsState] = useState<Category[]>([]);
+  const categories = catsProp && catsProp.length ? catsProp : catsState;
+
   // planejado salvo por category_id
   const [planned, setPlanned] = useState<Record<string, number>>({});
   // rascunho editável da aba Orçamento
   const [draft, setDraft] = useState<Record<string, number>>({});
-  // realizado por category_id + sem categoria por tipo
-  const [actual, setActual] = useState<Record<string, number>>({});
-  const [actualUncat, setActualUncat] = useState<{ receita: number; despesa: number }>({
+  // realizado via RPC (modo sem props)
+  const [rpcActual, setRpcActual] = useState<Record<string, number>>({});
+  const [rpcUncat, setRpcUncat] = useState<{ receita: number; despesa: number }>({
     receita: 0,
     despesa: 0,
   });
@@ -70,21 +81,43 @@ export function FinancialPlanningPanel() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [catRes, budRes, actRes] = await Promise.all([
-        supabase
-          .from("staff_financial_categories")
-          .select("id,name,type,group_name,sort_order,is_active")
-          .eq("is_active", true)
-          .order("sort_order", { ascending: true }),
+      const tasks: Promise<any>[] = [
         supabase
           .from("financial_budgets")
           .select("category_id,planned_amount")
           .eq("reference_month", month),
-        (supabase as any).rpc("financial_actuals_by_category", { p_month: month }),
-      ]);
+      ];
+      if (!catsProp || !catsProp.length) {
+        tasks.push(
+          supabase
+            .from("staff_financial_categories")
+            .select("id,name,type,sort_order")
+            .eq("is_active", true)
+            .order("sort_order", { ascending: true }),
+        );
+      }
+      if (!inMemory) {
+        tasks.push((supabase as any).rpc("financial_actuals_by_category", { p_month: month }));
+      }
+      const results = await Promise.all(tasks);
 
-      const cats = (catRes.data || []) as Category[];
-      setCategories(cats);
+      const budRes = results[0];
+      let idx = 1;
+      if (!catsProp || !catsProp.length) {
+        setCatsState((results[idx]?.data || []) as Category[]);
+        idx++;
+      }
+      if (!inMemory) {
+        const a: Record<string, number> = {};
+        const unc = { receita: 0, despesa: 0 };
+        (results[idx]?.data || []).forEach((r: any) => {
+          const val = Number(r.realizado) || 0;
+          if (r.category_id) a[r.category_id] = (a[r.category_id] || 0) + val;
+          else unc[r.type === "receita" ? "receita" : "despesa"] += val;
+        });
+        setRpcActual(a);
+        setRpcUncat(unc);
+      }
 
       const p: Record<string, number> = {};
       (budRes.data || []).forEach((b: any) => {
@@ -92,23 +125,13 @@ export function FinancialPlanningPanel() {
       });
       setPlanned(p);
       setDraft(p);
-
-      const a: Record<string, number> = {};
-      const unc = { receita: 0, despesa: 0 };
-      (actRes.data || []).forEach((r: any) => {
-        const val = Number(r.realizado) || 0;
-        if (r.category_id) a[r.category_id] = (a[r.category_id] || 0) + val;
-        else unc[r.type === "receita" ? "receita" : "despesa"] += val;
-      });
-      setActual(a);
-      setActualUncat(unc);
     } catch (e) {
       console.error(e);
       toast.error("Erro ao carregar planejamento");
     } finally {
       setLoading(false);
     }
-  }, [month]);
+  }, [month, inMemory, catsProp]);
 
   useEffect(() => {
     load();
@@ -122,6 +145,45 @@ export function FinancialPlanningPanel() {
     () => categories.filter((c) => c.type === "despesa"),
     [categories],
   );
+
+  // categoria "Mensalidade" recebe a receita recorrente das faturas dos clientes
+  const mensalidadeId = useMemo(
+    () => receitas.find((c) => /mensalidade/i.test(c.name))?.id || receitas[0]?.id || null,
+    [receitas],
+  );
+
+  // realizado in-memory a partir de invoices/payables
+  const memoActual = useMemo(() => {
+    const a: Record<string, number> = {};
+    const unc = { receita: 0, despesa: 0 };
+    if (!inMemory) return { a, unc };
+    const catIds = new Set(categories.map((c) => c.id));
+
+    (payables || []).forEach((p: any) => {
+      if ((p.status || "") === "cancelled") return;
+      const m = (p.reference_month && /^\d{4}-\d{2}/.test(p.reference_month))
+        ? p.reference_month.slice(0, 7)
+        : (p.due_date || "").slice(0, 7);
+      if (m !== month) return;
+      const val = Number(p.amount) || 0;
+      if (p.category_id && catIds.has(p.category_id)) a[p.category_id] = (a[p.category_id] || 0) + val;
+      else unc.despesa += val;
+    });
+
+    (invoices || []).forEach((inv: any) => {
+      if ((inv.status || "") === "cancelled") return;
+      if ((inv.due_date || "").slice(0, 7) !== month) return;
+      const val = (Number(inv.amount_cents) || 0) / 100;
+      const cat = inv.category_id && catIds.has(inv.category_id) ? inv.category_id : mensalidadeId;
+      if (cat) a[cat] = (a[cat] || 0) + val;
+      else unc.receita += val;
+    });
+
+    return { a, unc };
+  }, [inMemory, invoices, payables, categories, month, mensalidadeId]);
+
+  const actual = inMemory ? memoActual.a : rpcActual;
+  const actualUncat = inMemory ? memoActual.unc : rpcUncat;
 
   const sum = (cats: Category[], src: Record<string, number>) =>
     cats.reduce((acc, c) => acc + (src[c.id] || 0), 0);
