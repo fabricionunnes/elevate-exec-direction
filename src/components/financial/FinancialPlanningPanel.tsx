@@ -58,6 +58,15 @@ function monthLabel(ym: string): string {
   return `${MES[m - 1]} ${y}`;
 }
 
+// Linhas virtuais de receita: novas vendas por forma de pagamento.
+// Realizado vem dos contratos gerados (generated_contracts) por payment_method.
+const VENDA_CARTAO_ID = "00000000-0000-4000-8000-000000000a01";
+const VENDA_PIX_ID = "00000000-0000-4000-8000-000000000a02";
+const VIRTUAL_RECEITAS: Category[] = [
+  { id: VENDA_CARTAO_ID, name: "Novas Vendas Cartão", type: "receita", sort_order: 9001 },
+  { id: VENDA_PIX_ID, name: "Novas Vendas Pix", type: "receita", sort_order: 9002 },
+];
+
 export function FinancialPlanningPanel({ invoices, payables, categories: catsProp }: PlanningProps = {}) {
   const inMemory = Array.isArray(invoices) && Array.isArray(payables);
 
@@ -77,6 +86,8 @@ export function FinancialPlanningPanel({ invoices, payables, categories: catsPro
     receita: 0,
     despesa: 0,
   });
+  // contratos gerados (novas vendas por forma de pagamento)
+  const [contracts, setContracts] = useState<any[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -99,7 +110,14 @@ export function FinancialPlanningPanel({ invoices, payables, categories: catsPro
       if (!inMemory) {
         tasks.push((supabase as any).rpc("financial_actuals_by_category", { p_month: month }));
       }
+      const contractsIdx = tasks.length;
+      tasks.push(
+        supabase
+          .from("generated_contracts")
+          .select("contract_value,payment_method,created_at"),
+      );
       const results = await Promise.all(tasks);
+      setContracts((results[contractsIdx]?.data || []) as any[]);
 
       const budRes = results[0];
       let idx = 1;
@@ -124,7 +142,7 @@ export function FinancialPlanningPanel({ invoices, payables, categories: catsPro
         if (b.category_id) p[b.category_id] = Number(b.planned_amount) || 0;
       });
       setPlanned(p);
-      setDraft(p);
+      setDraft({}); // sem overrides: editor pré-preenche com plano salvo OU realizado
     } catch (e) {
       console.error(e);
       toast.error("Erro ao carregar planejamento");
@@ -137,13 +155,15 @@ export function FinancialPlanningPanel({ invoices, payables, categories: catsPro
     load();
   }, [load]);
 
+  // inclui as linhas virtuais de novas vendas nas receitas
+  const allCategories = useMemo(() => [...categories, ...VIRTUAL_RECEITAS], [categories]);
   const receitas = useMemo(
-    () => categories.filter((c) => c.type === "receita"),
-    [categories],
+    () => allCategories.filter((c) => c.type === "receita"),
+    [allCategories],
   );
   const despesas = useMemo(
-    () => categories.filter((c) => c.type === "despesa"),
-    [categories],
+    () => allCategories.filter((c) => c.type === "despesa"),
+    [allCategories],
   );
 
   // categoria "Mensalidade" recebe a receita recorrente das faturas dos clientes
@@ -182,8 +202,37 @@ export function FinancialPlanningPanel({ invoices, payables, categories: catsPro
     return { a, unc };
   }, [inMemory, invoices, payables, categories, month, mensalidadeId]);
 
-  const actual = inMemory ? memoActual.a : rpcActual;
+  // realizado das novas vendas por forma de pagamento (contratos gerados no mês)
+  const vendasActual = useMemo(() => {
+    const v: Record<string, number> = { [VENDA_CARTAO_ID]: 0, [VENDA_PIX_ID]: 0 };
+    (contracts || []).forEach((ct: any) => {
+      if ((ct.created_at || "").slice(0, 7) !== month) return;
+      const val = Number(ct.contract_value) || 0;
+      if (ct.payment_method === "card") v[VENDA_CARTAO_ID] += val;
+      else if (ct.payment_method === "pix") v[VENDA_PIX_ID] += val;
+    });
+    return v;
+  }, [contracts, month]);
+
+  const actual = useMemo(
+    () => ({ ...(inMemory ? memoActual.a : rpcActual), ...vendasActual }),
+    [inMemory, memoActual, rpcActual, vendasActual],
+  );
   const actualUncat = inMemory ? memoActual.unc : rpcUncat;
+
+  // valor exibido/editado: override do usuário > plano salvo > realizado (pré-preenchimento)
+  const effective = useMemo(() => {
+    const e: Record<string, number> = {};
+    [...receitas, ...despesas].forEach((c) => {
+      e[c.id] =
+        draft[c.id] !== undefined
+          ? draft[c.id]
+          : planned[c.id] !== undefined
+          ? planned[c.id]
+          : actual[c.id] || 0;
+    });
+    return e;
+  }, [receitas, despesas, draft, planned, actual]);
 
   const sum = (cats: Category[], src: Record<string, number>) =>
     cats.reduce((acc, c) => acc + (src[c.id] || 0), 0);
@@ -205,27 +254,28 @@ export function FinancialPlanningPanel({ invoices, payables, categories: catsPro
 
   const draftTotals = useMemo(
     () => ({
-      receita: sum(receitas, draft),
-      despesa: sum(despesas, draft),
+      receita: sum(receitas, effective),
+      despesa: sum(despesas, effective),
     }),
-    [receitas, despesas, draft],
+    [receitas, despesas, effective],
   );
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const rows = categories.map((c) => ({
+      const rows = [...receitas, ...despesas].map((c) => ({
         reference_month: month,
         category_id: c.id,
         category_name: c.name,
         type: c.type,
-        planned_amount: draft[c.id] || 0,
+        planned_amount: effective[c.id] || 0,
       }));
       const { error } = await supabase
         .from("financial_budgets")
         .upsert(rows, { onConflict: "reference_month,category_id" });
       if (error) throw error;
-      setPlanned({ ...draft });
+      setPlanned({ ...effective });
+      setDraft({});
       toast.success(`Orçamento de ${monthLabel(month)} salvo`);
     } catch (e) {
       console.error(e);
@@ -259,8 +309,8 @@ export function FinancialPlanningPanel({ invoices, payables, categories: catsPro
   };
 
   const dirty = useMemo(
-    () => JSON.stringify(draft) !== JSON.stringify(planned),
-    [draft, planned],
+    () => [...receitas, ...despesas].some((c) => (effective[c.id] || 0) !== (planned[c.id] || 0)),
+    [receitas, despesas, effective, planned],
   );
 
   return (
@@ -371,7 +421,7 @@ export function FinancialPlanningPanel({ invoices, payables, categories: catsPro
                 title="Receitas"
                 subtotal={draftTotals.receita}
                 cats={receitas}
-                draft={draft}
+                draft={effective}
                 onChange={(id, v) => setDraft((d) => ({ ...d, [id]: v }))}
                 tone="#34d399"
               />
@@ -379,7 +429,7 @@ export function FinancialPlanningPanel({ invoices, payables, categories: catsPro
                 title="Despesas"
                 subtotal={draftTotals.despesa}
                 cats={despesas}
-                draft={draft}
+                draft={effective}
                 onChange={(id, v) => setDraft((d) => ({ ...d, [id]: v }))}
                 tone="#fbbf24"
               />
