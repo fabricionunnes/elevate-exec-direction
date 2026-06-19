@@ -75,7 +75,9 @@ const fmtBRL = (cents: number) =>
   (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const CONFIG_ID = "00000000-0000-0000-0000-000000000001";
-const OVERDUE_THRESHOLD_DAYS = 15;
+// Cliente devedor só entra no Jurídico automaticamente com mais de 30 dias de atraso.
+// Abaixo disso, só vai pro Jurídico manualmente (toggle/adicionar).
+const OVERDUE_THRESHOLD_DAYS = 30;
 
 const STATUS_CONFIG: Record<JuridicoStatus, { label: string; className: string }> = {
   sem_resposta:           { label: "Sem resposta",           className: "border-slate-400 text-slate-600 bg-slate-100 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-300" },
@@ -151,7 +153,7 @@ export default function JuridicoPage() {
         .order("added_at", { ascending: false });
       if (manualErr) throw manualErr;
 
-      // 2. Overdue invoices (15+ days)
+      // 2. Overdue invoices (30+ days)
       const thresholdDate = new Date();
       thresholdDate.setDate(thresholdDate.getDate() - OVERDUE_THRESHOLD_DAYS);
       const thresholdStr = thresholdDate.toISOString().slice(0, 10);
