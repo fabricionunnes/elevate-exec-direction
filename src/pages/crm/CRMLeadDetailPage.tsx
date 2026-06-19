@@ -81,6 +81,7 @@ import {
   LeadTranscriptionTab,
 } from "@/components/crm/lead-detail";
 import { LeadContractDataTab } from "@/components/crm/lead-detail/LeadContractDataTab";
+import { LeadProposalTab } from "@/components/crm/lead-detail/LeadProposalTab";
 import { LeadConversationsTab } from "@/components/crm/lead-detail/LeadConversationsTab";
 import { LeadFormAnswersTab } from "@/components/crm/lead-detail/LeadFormAnswersTab";
 import { LeadScannerTab } from "@/components/crm/lead-detail/LeadScannerTab";
@@ -1276,6 +1277,7 @@ export const CRMLeadDetailPage = () => {
               { value: "company", label: "Empresa", icon: Building2, color: "text-emerald-500" },
               { value: "deal", label: "Negócio", icon: Briefcase, color: "text-amber-500" },
               { value: "transcription", label: "Transcrição", icon: FileAudio, color: "text-pink-500" },
+              { value: "proposal", label: "Proposta", icon: FileSignature, color: "text-blue-500" },
               { value: "form_answers", label: "Respostas", icon: ClipboardList, color: "text-cyan-500" },
               { value: "scanner", label: "Scanner UNV", icon: ScanLine, color: "text-fuchsia-500" },
               { value: "meetings", label: "Reuniões", icon: Video, color: "text-indigo-500" },
@@ -1377,6 +1379,10 @@ export const CRMLeadDetailPage = () => {
             companyName={lead.company}
             onBriefingGenerated={loadLead}
           />
+        </TabsContent>
+
+        <TabsContent value="proposal" className="flex-1 mt-0 overflow-hidden">
+          <LeadProposalTab leadId={lead.id} leadName={lead.name} companyName={lead.company} />
         </TabsContent>
 
         <TabsContent value="history" className="flex-1 mt-0 overflow-hidden">
