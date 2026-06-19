@@ -64,7 +64,7 @@ const VENDA_CARTAO_ID = "00000000-0000-4000-8000-000000000a01";
 const VENDA_PIX_ID = "00000000-0000-4000-8000-000000000a02";
 const VIRTUAL_RECEITAS: Category[] = [
   { id: VENDA_CARTAO_ID, name: "Novas Vendas Cartão", type: "receita", sort_order: 9001 },
-  { id: VENDA_PIX_ID, name: "Novas Vendas Pix", type: "receita", sort_order: 9002 },
+  { id: VENDA_PIX_ID, name: "Novas Vendas Pix/Boleto", type: "receita", sort_order: 9002 },
 ];
 
 export function FinancialPlanningPanel({ invoices, payables, categories: catsProp }: PlanningProps = {}) {
@@ -209,7 +209,7 @@ export function FinancialPlanningPanel({ invoices, payables, categories: catsPro
       if ((ct.created_at || "").slice(0, 7) !== month) return;
       const val = Number(ct.contract_value) || 0;
       if (ct.payment_method === "card") v[VENDA_CARTAO_ID] += val;
-      else if (ct.payment_method === "pix") v[VENDA_PIX_ID] += val;
+      else if (ct.payment_method === "pix" || ct.payment_method === "boleto") v[VENDA_PIX_ID] += val;
     });
     return v;
   }, [contracts, month]);
