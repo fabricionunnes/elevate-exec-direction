@@ -13,6 +13,7 @@ import { RealtimeTranscription } from "@/components/crm/transcriptions/RealtimeT
 import { useCRMContext } from "@/pages/crm/CRMLayout";
 import ReactMarkdown from "react-markdown";
 import { buildAndStoreProposal } from "./proposal/buildProposal";
+import { autofillLeadFromTranscription } from "./proposal/autofillLead";
 
 interface LeadTranscriptionTabProps {
   leadId: string;
@@ -100,7 +101,19 @@ export const LeadTranscriptionTab = ({
         throw new Error("Briefing não retornado");
       }
 
-      // 4. Gera a proposta personalizada (PDF) a partir da transcrição + serviço do Negócio.
+      // 4. Preenche os campos do CRM (produto, valor, forma de pagamento, segmento, dor...) com o que
+      // foi dito na reunião — só os campos VAZIOS, sem sobrescrever o que já estava preenchido.
+      try {
+        const filled = await autofillLeadFromTranscription({ leadId, leadName, companyName, transcription: transcription.trim() });
+        if (filled.length) {
+          onBriefingGenerated(); // recarrega o lead pra refletir no Negócio
+          toast.success(`Negócio preenchido: ${filled.join(", ")}`);
+        }
+      } catch (afErr) {
+        console.error("Erro no autopreenchimento:", afErr);
+      }
+
+      // 5. Gera a proposta personalizada (PDF) a partir da transcrição + serviço do Negócio.
       // Best-effort: se falhar, não quebra o fluxo do briefing.
       try {
         toast.loading("Gerando proposta...", { id: "proposal-gen" });
