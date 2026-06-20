@@ -23,8 +23,21 @@ interface Call {
   lead_id: string;
   agent_staff_id: string | null;
   campaign_id: string | null;
+  queue_id: string | null;
   lead?: { name: string; company: string | null } | null;
+  queue?: { disposition: string | null } | null; // disposição marcada pela SDR no discador
 }
+
+// status que a SDR marca no discador (+ caixa postal automática)
+const STATUS_OPTIONS: { key: string; label: string }[] = [
+  { key: "all", label: "Todos os status" },
+  { key: "agendou_reuniao", label: "Agendado" },
+  { key: "sem_interesse", label: "Sem interesse" },
+  { key: "retornar_depois", label: "Retornar" },
+  { key: "nao_qualificado", label: "Não qualificado" },
+  { key: "nao_atendeu", label: "Não atendeu" },
+  { key: "voicemail", label: "Caixa postal" },
+];
 
 const dispLabel: Record<string, string> = {
   qualificado: "Qualificado", agendou_reuniao: "Agendou reunião", retornar_depois: "Retornar",
@@ -46,12 +59,15 @@ export function DialerCallsHistory() {
   const [source, setSource] = useState<"all" | "campaign" | "avulsa">("all");
   const [minDur, setMinDur] = useState(30); // esconde ligações com menos de 30s por padrão
   const [sortDur, setSortDur] = useState<"none" | "asc" | "desc">("none"); // ordenar pela duração
+  const [statusFilter, setStatusFilter] = useState("all"); // disposição marcada pela SDR
 
   const load = async () => {
     setLoading(true);
+    // disposição da SDR vive em crm_dialer_queue; embed pra mostrar e filtrar.
+    const embed = statusFilter !== "all" ? "queue:crm_dialer_queue!inner(disposition)" : "queue:crm_dialer_queue(disposition)";
     let q = supabase
       .from("crm_calls")
-      .select("id, created_at, answered_at, duration_seconds, ai_summary, ai_disposition, transcription, recording_url, notes, lead_id, agent_staff_id, campaign_id, lead:crm_leads(name, company)")
+      .select(`id, created_at, answered_at, duration_seconds, ai_summary, ai_disposition, transcription, recording_url, notes, lead_id, agent_staff_id, campaign_id, queue_id, lead:crm_leads(name, company), ${embed}`)
       .limit(200);
     q = sortDur === "asc" ? q.order("duration_seconds", { ascending: true, nullsFirst: false })
       : sortDur === "desc" ? q.order("duration_seconds", { ascending: false, nullsFirst: false })
@@ -60,6 +76,7 @@ export function DialerCallsHistory() {
     if (source === "campaign") q = q.not("campaign_id", "is", null);
     if (source === "avulsa") q = q.is("campaign_id", null);
     if (minDur > 0) q = q.gte("duration_seconds", minDur);
+    if (statusFilter !== "all") q = q.eq("queue.disposition", statusFilter);
     const [{ data }, { data: staffData }] = await Promise.all([
       q,
       supabase.from("onboarding_staff").select("id, name"),
@@ -71,7 +88,10 @@ export function DialerCallsHistory() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [onlyRecorded, source, minDur, sortDur]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [onlyRecorded, source, minDur, sortDur, statusFilter]);
+
+  // status efetivo = o que a SDR marcou (fila); cai pra IA quando não há marcação
+  const effDisp = (c: Call) => c.queue?.disposition || c.ai_disposition;
 
   const filtered = calls.filter((c) => {
     if (!search) return true;
@@ -100,6 +120,14 @@ export function DialerCallsHistory() {
             <button key={k} onClick={() => setMinDur(k)} className={`px-2.5 py-1 text-xs rounded ${minDur === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{lbl}</button>
           ))}
         </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className={`h-9 rounded-md border px-2 text-sm ${statusFilter !== "all" ? "border-primary text-foreground" : "border-border text-muted-foreground"} bg-background`}
+          title="Filtrar pelo status marcado pela SDR"
+        >
+          {STATUS_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+        </select>
         <span className="text-sm text-muted-foreground ml-auto">{filtered.length} ligações</span>
       </div>
 
@@ -137,7 +165,7 @@ export function DialerCallsHistory() {
                   </span>
                   <span className="font-medium text-sm truncate flex-1">{c.lead?.company || c.lead?.name || "Lead"}</span>
                   {c.recording_url && <Mic className="h-3.5 w-3.5 text-emerald-500 shrink-0" />}
-                  {c.ai_disposition && <Badge variant="outline" className="text-[9px] h-5 shrink-0">{dispLabel[c.ai_disposition] || c.ai_disposition}</Badge>}
+                  {effDisp(c) && <Badge variant="outline" className="text-[9px] h-5 shrink-0">{dispLabel[effDisp(c)!] || effDisp(c)}</Badge>}
                   <span className="flex items-center gap-1 text-muted-foreground text-[11px] shrink-0"><Clock className="h-3 w-3" /> {fmtDur(c.duration_seconds)}</span>
                   <span className="text-[11px] text-muted-foreground shrink-0 hidden sm:inline">{c.agent_staff_id ? staff[c.agent_staff_id] : ""}</span>
                 </div>
