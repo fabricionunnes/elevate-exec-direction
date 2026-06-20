@@ -13,7 +13,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell,
 } from "recharts";
 
-type Range = "today" | "7d" | "30d";
+type Range = "today" | "7d" | "30d" | "custom";
 
 interface CallRow { agent_staff_id: string | null; campaign_id: string | null; status: string; answered_at: string | null; answered_by: string | null; duration_seconds: number | null; created_at: string }
 const isHuman = (c: CallRow) => c.answered_by === "human";
@@ -65,6 +65,19 @@ function mergedSeconds(items: { start: number; end: number }[]): number {
   if (ce !== null) total += ce - (cs as number);
   return total / 1000;
 }
+// Pagina em blocos de 1000 pra furar o cap padrão do PostgREST (senão grandes
+// volumes ficam travados em 1000 linhas e os números saem subestimados).
+async function paginate<T>(build: (from: number, to: number) => PromiseLike<{ data: T[] | null }>): Promise<T[]> {
+  const all: T[] = []; const size = 1000; let from = 0;
+  for (;;) {
+    const { data } = await build(from, from + size - 1);
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < size) break;
+    from += size;
+  }
+  return all;
+}
 
 export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
   const [range, setRange] = useState<Range>("7d");
@@ -77,6 +90,18 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
   const [balance, setBalance] = useState<{ balance: number; currency: string; low: boolean; critical: boolean } | null>(null);
   const [usage, setUsage] = useState<{ currency: string; total: number; records: { date: string; spend: number }[]; brlRate?: number; brlRateAt?: string } | null>(null);
   const [outcomes, setOutcomes] = useState<{ scheduled: number; realized: number; sales: number; value: number } | null>(null);
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  // janela de datas efetiva (custom usa from/to; presets usam rangeStart)
+  const period = useMemo(() => {
+    if (range === "custom" && customFrom && customTo) {
+      return {
+        since: new Date(customFrom + "T00:00:00").toISOString(),
+        until: new Date(customTo + "T23:59:59.999").toISOString(),
+      };
+    }
+    return { since: rangeStart(range === "custom" ? "7d" : range), until: null as string | null };
+  }, [range, customFrom, customTo]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -87,56 +112,57 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
 
   useEffect(() => {
     if (!isAdmin) return;
-    const days = range === "today" ? 1 : range === "7d" ? 7 : 30;
-    supabase.functions.invoke("dialer-usage", { body: { days: Math.max(days, 7) } }).then(({ data }) => {
+    const spanDays = Math.ceil((Date.now() - new Date(period.since).getTime()) / 86400000) + 1;
+    const days = Math.min(92, Math.max(7, spanDays));
+    supabase.functions.invoke("dialer-usage", { body: { days } }).then(({ data }) => {
       if (data?.records) setUsage(data);
     });
-  }, [range, isAdmin]);
+  }, [period.since, isAdmin]);
 
   useEffect(() => {
     if (!isAdmin) return;
-    supabase.rpc("dialer_outcome_metrics", { p_since: rangeStart(range) }).then(({ data }) => {
+    (supabase as any).rpc("dialer_outcome_metrics", { p_since: period.since, p_until: period.until ?? undefined }).then(({ data }: any) => {
       const r: any = Array.isArray(data) ? data[0] : data;
       if (r) setOutcomes({ scheduled: r.meetings_scheduled || 0, realized: r.meetings_realized || 0, sales: r.sales_won || 0, value: Number(r.sales_value) || 0 });
     });
-  }, [range, isAdmin]);
+  }, [period.since, period.until, isAdmin]);
 
   // resultados por campanha (agendou/realizada/venda) — pra custos por campanha
   const [campOutcomes, setCampOutcomes] = useState<Record<string, { realized: number; sales: number }>>({});
   useEffect(() => {
     if (!isAdmin) return;
-    (supabase as any).rpc("dialer_outcome_metrics_by_campaign", { p_since: rangeStart(range) }).then(({ data }: any) => {
+    (supabase as any).rpc("dialer_outcome_metrics_by_campaign", { p_since: period.since, p_until: period.until ?? undefined }).then(({ data }: any) => {
       const map: Record<string, { realized: number; sales: number }> = {};
       (data || []).forEach((r: any) => {
         if (r.campaign_id) map[r.campaign_id] = { realized: r.meetings_realized || 0, sales: r.sales_won || 0 };
       });
       setCampOutcomes(map);
     });
-  }, [range, isAdmin]);
+  }, [period.since, period.until, isAdmin]);
 
   useEffect(() => {
     let active = true;
     (async () => {
       setLoading(true);
-      const since = rangeStart(range);
-      const [callsRes, sessRes, queueRes, staffRes, campRes] = await Promise.all([
-        supabase.from("crm_calls").select("agent_staff_id, campaign_id, status, answered_at, answered_by, duration_seconds, created_at").gte("created_at", since),
-        supabase.from("crm_dialer_sessions").select("agent_staff_id, started_at, ended_at, last_seen_at").gte("started_at", since),
-        supabase.from("crm_dialer_queue").select("campaign_id, disposition").not("disposition", "is", null).gte("updated_at", since),
+      const { since, until } = period;
+      const [callsData, sessData, queueData, staffRes, campRes] = await Promise.all([
+        paginate<any>((f, t) => { let q = supabase.from("crm_calls").select("agent_staff_id, campaign_id, status, answered_at, answered_by, duration_seconds, created_at").gte("created_at", since).order("created_at", { ascending: true }).range(f, t); if (until) q = q.lte("created_at", until); return q as any; }),
+        paginate<any>((f, t) => { let q = supabase.from("crm_dialer_sessions").select("agent_staff_id, started_at, ended_at, last_seen_at").gte("started_at", since).order("started_at", { ascending: true }).range(f, t); if (until) q = q.lte("started_at", until); return q as any; }),
+        paginate<any>((f, t) => { let q = supabase.from("crm_dialer_queue").select("campaign_id, disposition").not("disposition", "is", null).gte("updated_at", since).order("updated_at", { ascending: true }).range(f, t); if (until) q = q.lte("updated_at", until); return q as any; }),
         supabase.from("onboarding_staff").select("id, name"),
         supabase.from("crm_dialer_campaigns").select("id, name"),
       ]);
       if (!active) return;
-      setCalls((callsRes.data || []) as any);
-      setSessions((sessRes.data || []) as any);
-      setQueue((queueRes.data || []) as any);
+      setCalls(callsData as any);
+      setSessions(sessData as any);
+      setQueue(queueData as any);
       const sm: Record<string, string> = {}; (staffRes.data || []).forEach((s: any) => { sm[s.id] = s.name; });
       const cm: Record<string, string> = {}; (campRes.data || []).forEach((c: any) => { cm[c.id] = c.name; });
       setStaff(sm); setCampaignNames(cm);
       setLoading(false);
     })();
     return () => { active = false; };
-  }, [range]);
+  }, [period.since, period.until]);
 
   const m = useMemo(() => {
     let answered = 0, voicemail = 0, talk = 0;
@@ -235,28 +261,49 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
   const rateLabel = rate
     ? `dólar R$ ${rate.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${usage?.brlRateAt ? " em " + new Date(usage.brlRateAt).toLocaleDateString("pt-BR") : ""}`
     : "";
-  const costPerCall = usage && m.total ? usage.total / m.total : 0;
-  const costPerAnswered = usage && m.answered ? usage.total / m.answered : 0;
-  const costPerQualified = usage && m.qualificados ? usage.total / m.qualificados : 0;
-  const costPerScheduled = usage && outcomes?.scheduled ? usage.total / outcomes.scheduled : 0;
-  const costPerRealized = usage && outcomes?.realized ? usage.total / outcomes.realized : 0;
-  const cac = usage && outcomes?.sales ? usage.total / outcomes.sales : 0;
+  // gasto Twilio DENTRO da janela selecionada (soma os dias do período), pra custo bater com o filtro
+  const spend = usage
+    ? (usage.records?.length
+        ? usage.records.filter((r) => r.date >= period.since.slice(0, 10) && r.date <= (period.until || new Date().toISOString()).slice(0, 10)).reduce((a, r) => a + (r.spend || 0), 0)
+        : usage.total)
+    : 0;
+  const costPerCall = usage && m.total ? spend / m.total : 0;
+  const costPerAnswered = usage && m.answered ? spend / m.answered : 0;
+  const costPerQualified = usage && m.qualificados ? spend / m.qualificados : 0;
+  const costPerScheduled = usage && outcomes?.scheduled ? spend / outcomes.scheduled : 0;
+  const costPerRealized = usage && outcomes?.realized ? spend / outcomes.realized : 0;
+  const cac = usage && outcomes?.sales ? spend / outcomes.sales : 0;
   const maxAgentCalls = Math.max(1, ...m.perAgent.map((a) => a.calls));
 
   return (
     <div className="p-4 space-y-5">
       <div className="flex items-center gap-2 flex-wrap">
         <div className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5">
-          {(["today", "7d", "30d"] as Range[]).map((r) => (
+          {(["today", "7d", "30d", "custom"] as Range[]).map((r) => (
             <button
               key={r}
-              onClick={() => setRange(r)}
+              onClick={() => {
+                if (r === "custom" && (!customFrom || !customTo)) {
+                  setCustomTo(new Date().toISOString().slice(0, 10));
+                  setCustomFrom(new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10));
+                }
+                setRange(r);
+              }}
               className={`px-3 py-1 text-sm rounded-md transition-colors ${range === r ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
             >
-              {r === "today" ? "Hoje" : r === "7d" ? "7 dias" : "30 dias"}
+              {r === "today" ? "Hoje" : r === "7d" ? "7 dias" : r === "30d" ? "30 dias" : "Personalizado"}
             </button>
           ))}
         </div>
+        {range === "custom" && (
+          <div className="flex items-center gap-1.5 text-sm">
+            <input type="date" value={customFrom} max={customTo || undefined} onChange={(e) => setCustomFrom(e.target.value)}
+              className="rounded-md border border-border bg-muted/40 px-2 py-1 text-sm [color-scheme:dark]" />
+            <span className="text-muted-foreground">até</span>
+            <input type="date" value={customTo} min={customFrom || undefined} onChange={(e) => setCustomTo(e.target.value)}
+              className="rounded-md border border-border bg-muted/40 px-2 py-1 text-sm [color-scheme:dark]" />
+          </div>
+        )}
         {isAdmin && balance && (
           <div className={`ml-auto flex items-center gap-1.5 text-sm rounded-lg border px-3 py-1.5 ${balance.critical ? "border-red-500/40 bg-red-500/10 text-red-500" : balance.low ? "border-amber-500/40 bg-amber-500/10 text-amber-600" : "border-border text-muted-foreground"}`}>
             {balance.low || balance.critical ? <AlertTriangle className="h-3.5 w-3.5" /> : <Wallet className="h-3.5 w-3.5" />}
@@ -312,7 +359,7 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
             <div className="space-y-2">
               <p className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5 flex-wrap"><DollarSign className="h-3.5 w-3.5" /> Custo por etapa do funil <span className="normal-case tracking-normal">(gasto Twilio ÷ resultado{rateLabel ? ` · ${rateLabel}` : ""})</span></p>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <Kpi icon={DollarSign} label="Gasto Twilio" value={fmtBRL(usage.total, 2)} accent="#ef4444" sub={`${cur} ${usage.total.toFixed(2)} · conta UNV`} />
+                <Kpi icon={DollarSign} label="Gasto Twilio" value={fmtBRL(spend, 2)} accent="#ef4444" sub={`${cur} ${spend.toFixed(2)} · conta UNV`} />
                 <Kpi icon={DollarSign} label="Custo por ligação" value={fmtBRL(costPerCall, 3)} accent="#fb7185" sub="média geral" />
                 <Kpi icon={DollarSign} label="Custo por atendimento" value={fmtBRL(costPerAnswered, 3)} accent="#f97316" sub="só quem atendeu" />
                 <Kpi icon={Target} label="Custo por qualificado" value={m.qualificados ? fmtBRL(costPerQualified, 2) : "—"} accent="#f59e0b" sub={`${m.qualificados} qualificados`} />
@@ -411,7 +458,7 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center justify-between">
                     Gasto Twilio por dia
-                    {usage && <span className="text-xs font-normal text-muted-foreground">Total: {usage.currency} {usage.total.toFixed(2)}</span>}
+                    {usage && <span className="text-xs font-normal text-muted-foreground">Total: {usage.currency} {spend.toFixed(2)}</span>}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -506,14 +553,14 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
                         </TableCell>
                       ))}
                       {isAdmin && usage && (() => {
-                        const spend = m.total ? usage.total * (c.calls / m.total) : 0;
+                        const campSpend = m.total ? spend * (c.calls / m.total) : 0;
                         const agend = c.dispo["agendou_reuniao"] || 0;
                         const o = campOutcomes[c.id] || { realized: 0, sales: 0 };
                         const dash = <span className="text-muted-foreground">—</span>;
                         return <>
-                          <TableCell className="text-right tabular-nums">{agend ? fmtBRL(spend / agend) : dash}</TableCell>
-                          <TableCell className="text-right tabular-nums">{o.realized ? fmtBRL(spend / o.realized) : dash}</TableCell>
-                          <TableCell className="text-right tabular-nums">{o.sales ? fmtBRL(spend / o.sales) : dash}</TableCell>
+                          <TableCell className="text-right tabular-nums">{agend ? fmtBRL(campSpend / agend) : dash}</TableCell>
+                          <TableCell className="text-right tabular-nums">{o.realized ? fmtBRL(campSpend / o.realized) : dash}</TableCell>
+                          <TableCell className="text-right tabular-nums">{o.sales ? fmtBRL(campSpend / o.sales) : dash}</TableCell>
                         </>;
                       })()}
                     </TableRow>
