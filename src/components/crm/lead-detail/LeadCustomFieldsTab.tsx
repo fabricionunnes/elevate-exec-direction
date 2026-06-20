@@ -20,10 +20,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, Settings, EyeOff, Flag, Instagram, ExternalLink, Pencil } from "lucide-react";
+import { ChevronDown, Settings, EyeOff, Flag, Instagram, ExternalLink, Pencil, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ManageCustomFieldsDialog } from "./ManageCustomFieldsDialog";
+import { autofillLeadFromTranscription } from "./proposal/autofillLead";
 
 interface CustomField {
   id: string;
@@ -420,6 +421,42 @@ export const LeadCustomFieldsTab = ({
   const [banks, setBanks] = useState<{ id: string; name: string }[]>([]);
   const [isMaster, setIsMaster] = useState(false);
   const [showManageFields, setShowManageFields] = useState(false);
+  const [autofilling, setAutofilling] = useState(false);
+
+  // Preenche os campos vazios do Negócio com base na transcrição mais recente do lead
+  const handleAutofill = async () => {
+    setAutofilling(true);
+    try {
+      const { data: t } = await supabase
+        .from("crm_transcriptions")
+        .select("transcription_text")
+        .eq("lead_id", leadId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!t?.transcription_text) {
+        toast.error("Nenhuma transcrição encontrada. Adicione uma na aba Transcrição.");
+        return;
+      }
+      const filled = await autofillLeadFromTranscription({
+        leadId,
+        leadName: leadData?.name || "",
+        companyName: leadData?.company || null,
+        transcription: t.transcription_text,
+      });
+      if (filled.length) {
+        onUpdate();
+        toast.success(`Preenchido pela reunião: ${filled.join(", ")}`);
+      } else {
+        toast.info("Nada novo pra preencher — os campos já estão preenchidos.");
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Erro ao preencher pela transcrição");
+    } finally {
+      setAutofilling(false);
+    }
+  };
 
   useEffect(() => {
     loadFields();
@@ -927,6 +964,17 @@ export const LeadCustomFieldsTab = ({
       <div className="flex items-center justify-between px-6 py-4 border-b border-border">
         <h3 className="font-medium">{contextLabels[context]}</h3>
         <div className="flex items-center gap-3">
+          {context === "deal" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAutofill}
+              disabled={autofilling}
+            >
+              {autofilling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+              Preencher pela transcrição
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
