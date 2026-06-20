@@ -2,17 +2,26 @@ import jsPDF from "jspdf";
 
 // Conteúdo da proposta vindo da IA (edge function generate-proposal)
 export interface ProposalContent {
-  titulo?: string;
-  contexto?: string;
-  diagnostico?: string[];
-  objetivo?: string;
+  headline_l1?: string;
+  headline_l2?: string;
+  subtitulo?: string;
+  quote?: string;
+  preparado_para_detalhe?: string;
+  diagnostico_titulo?: string;
+  diagnostico?: { titulo: string; descricao: string }[];
+  virada_frase?: string;
+  antes_depois?: { hoje: string; meta: string }[];
+  solucao_intro?: string;
   servico?: string;
-  descricao_servico?: string;
   entregas?: string[];
   investimento?: string;
   forma_pagamento?: string;
   prazo?: string;
-  proximos_passos?: string[];
+  proximos_passos?: { titulo: string; descricao: string }[];
+  cta?: string;
+  // compat com versão antiga
+  contexto?: string;
+  objetivo?: string;
 }
 
 interface Options {
@@ -22,215 +31,370 @@ interface Options {
   serviceName?: string;
 }
 
-const NAVY: [number, number, number] = [13, 43, 94]; // #0D2B5E
-const RED: [number, number, number] = [204, 27, 27]; // #CC1B1B
-const INK: [number, number, number] = [30, 41, 59];
-const MUTED: [number, number, number] = [100, 116, 139];
+const NAVY: [number, number, number] = [13, 43, 94];
+const NAVY_DK: [number, number, number] = [9, 28, 64];
+const RED: [number, number, number] = [204, 27, 27];
+const INK: [number, number, number] = [33, 43, 60];
+const MUTED: [number, number, number] = [110, 122, 140];
+const CARD: [number, number, number] = [246, 247, 249];
+const CARDLINE: [number, number, number] = [225, 230, 238];
+const LIGHT: [number, number, number] = [203, 214, 232];
 
-type LoadedImage = { dataUrl: string; width: number; height: number };
+type Img = { dataUrl: string; width: number; height: number };
 
-async function loadImage(src: string): Promise<LoadedImage> {
+async function loadImage(src: string): Promise<Img> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
+      const c = document.createElement("canvas");
+      c.width = img.width; c.height = img.height;
+      const ctx = c.getContext("2d");
       if (!ctx) return reject(new Error("no ctx"));
       ctx.drawImage(img, 0, 0);
-      resolve({ dataUrl: canvas.toDataURL("image/png"), width: img.width, height: img.height });
+      resolve({ dataUrl: c.toDataURL("image/png"), width: img.width, height: img.height });
     };
     img.onerror = reject;
     img.src = src;
   });
 }
-
-// Tenta a logo da UNV Holdings; cai pra logo do contrato; se nada, segue sem imagem.
-async function loadLogo(): Promise<LoadedImage | null> {
-  for (const src of ["/images/unv-holdings-logo.png", "/images/unv-logo-contract.png"]) {
-    try { return await loadImage(src); } catch { /* tenta a próxima */ }
+async function loadLogo(): Promise<Img | null> {
+  for (const s of ["/images/unv-holdings-logo.png", "/images/unv-logo-contract.png"]) {
+    try { return await loadImage(s); } catch { /* próximo */ }
   }
   return null;
 }
-
-function fit(w: number, h: number, maxW: number, maxH: number) {
-  const r = w / h;
-  let width = maxW, height = maxW / r;
-  if (height > maxH) { height = maxH; width = maxH * r; }
-  return { width, height };
+function fit(w: number, h: number, mw: number, mh: number) {
+  const r = w / h; let W = mw, H = mw / r;
+  if (H > mh) { H = mh; W = mh * r; }
+  return { width: W, height: H };
 }
+
+const CRESCER = [
+  ["Cenário", "Diagnóstico do comercial, dos funis e dos números mês a mês."],
+  ["Resultado Ideal", "Meta clara e previsível — o que precisa ser batido todo mês."],
+  ["Estrutura", "Pré-venda, supervisão do CRM, playbook e rotina de cobrança."],
+  ["Captação", "Sistema de geração de oportunidades qualificadas e constantes."],
+  ["Conversão", "Time treinado e cobrado: lead vira reunião, reunião vira venda."],
+  ["Escala", "Padrão replicável e dono fora da operação comercial."],
+  ["Revisão", "Gestão contínua: medir, corrigir e manter a previsibilidade."],
+];
+const RITMO = [
+  ["Diário", "Cobrança da execução e dos números do time."],
+  ["Semanal", "Treino do time e ajuste de rota da semana."],
+  ["Quinzenal", "Reunião estratégica de resultado com a direção."],
+  ["Sob demanda", "Apoio em negociações e correções de rota."],
+];
 
 export async function generateProposalPDF({ proposal, leadName, companyName, serviceName }: Options): Promise<Blob> {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const margin = 18;
-  const contentW = pageW - margin * 2;
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const M = 18;
+  const CW = W - M * 2;
+  const logo = await loadLogo();
+  const cliente = companyName || leadName || "Cliente";
+  const servico = proposal.servico || serviceName || "Direção Comercial Terceirizada";
+
+  let page = 0;
   let y = 0;
 
-  const logo = await loadLogo();
+  const setColor = (c: [number, number, number]) => doc.setTextColor(c[0], c[1], c[2]);
+  const setFill = (c: [number, number, number]) => doc.setFillColor(c[0], c[1], c[2]);
+  const setStroke = (c: [number, number, number]) => doc.setDrawColor(c[0], c[1], c[2]);
 
-  const ensure = (need: number) => {
-    if (y + need > pageH - 22) { footer(); doc.addPage(); y = margin; }
+  const kicker = (txt: string, x: number, yy: number, color = MUTED) => {
+    setColor(color); doc.setFont("helvetica", "bold"); doc.setFontSize(8.2);
+    doc.text(txt.toUpperCase(), x, yy, { charSpace: 1.1 });
   };
 
   const footer = () => {
-    doc.setDrawColor(...NAVY);
-    doc.setLineWidth(0.3);
-    doc.line(margin, pageH - 14, pageW - margin, pageH - 14);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(...MUTED);
-    doc.text("UNV Holdings — Universidade Nacional de Vendas", margin, pageH - 9);
-    doc.text("unvholdings.com.br", pageW - margin, pageH - 9, { align: "right" });
+    setStroke(CARDLINE); doc.setLineWidth(0.3);
+    doc.line(M, H - 13, W - M, H - 13);
+    setColor(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
+    doc.text(`UNV HOLDINGS · PROPOSTA COMERCIAL — ${cliente.toUpperCase()}`, M, H - 8.5, { charSpace: 0.5 });
+    setColor(RED);
+    doc.text(`— ${String(page).padStart(2, "0")} —`, W - M, H - 8.5, { align: "right" });
   };
 
-  // ── Cabeçalho ──────────────────────────────────────────────────────────────
-  doc.setFillColor(...NAVY);
-  doc.rect(0, 0, pageW, 42, "F");
-  doc.setFillColor(...RED);
-  doc.rect(0, 42, pageW, 1.6, "F");
+  const ensure = (need: number) => {
+    if (y + need > H - 20) { footer(); doc.addPage(); page++; y = M + 4; }
+  };
 
+  // Inicia uma página de seção (fundo branco) com kicker + título
+  const startSection = (num: string, label: string, title: string, intro?: string) => {
+    doc.addPage(); page++; y = M + 6;
+    kicker(`${num} — ${label}`, M, y);
+    y += 9;
+    setColor(NAVY); doc.setFont("helvetica", "bold"); doc.setFontSize(23);
+    doc.splitTextToSize(title, CW).forEach((ln: string) => { doc.text(ln, M, y); y += 10; });
+    y += 1;
+    if (intro) {
+      setColor(INK); doc.setFont("helvetica", "normal"); doc.setFontSize(10.5);
+      doc.splitTextToSize(intro, CW).forEach((ln: string) => { ensure(6); doc.text(ln, M, y); y += 5.4; });
+      y += 4;
+    }
+  };
+
+  const paragraph = (t: string, color = INK, size = 10.5) => {
+    if (!t) return;
+    setColor(color); doc.setFont("helvetica", "normal"); doc.setFontSize(size);
+    doc.splitTextToSize(t, CW).forEach((ln: string) => { ensure(6); doc.text(ln, M, y); y += size * 0.5 + 0.4; });
+    y += 3;
+  };
+
+  // ───────────────────────── CAPA ─────────────────────────
+  page = 1;
+  setFill(NAVY); doc.rect(0, 0, W, H, "F");
+  setFill(RED); doc.rect(0, 0, W, 6, "F");
+
+  // card branco com a logo
+  const cardW = 52, cardH = 34, cardX = M, cardY = 26;
+  setFill([255, 255, 255]); doc.roundedRect(cardX, cardY, cardW, cardH, 3, 3, "F");
   if (logo) {
-    const { width, height } = fit(logo.width, logo.height, 34, 26);
-    try { doc.addImage(logo.dataUrl, "PNG", margin, (42 - height) / 2, width, height); } catch { /* ignore */ }
+    const { width, height } = fit(logo.width, logo.height, cardW - 12, cardH - 12);
+    try { doc.addImage(logo.dataUrl, "PNG", cardX + (cardW - width) / 2, cardY + (cardH - height) / 2, width, height); } catch { /* */ }
   }
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text("PROPOSTA COMERCIAL", pageW - margin, 20, { align: "right" });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(210, 220, 235);
-  doc.text("UNV Holdings · Direção Comercial Terceirizada", pageW - margin, 28, { align: "right" });
-  y = 54;
+  y = cardY + cardH + 18;
 
-  // ── Cliente ────────────────────────────────────────────────────────────────
-  doc.setTextColor(...INK);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(15);
-  const cliente = companyName || leadName || "Cliente";
-  doc.text(cliente, margin, y);
-  y += 6;
-  if (companyName && leadName && companyName !== leadName) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(...MUTED);
-    doc.text(`A/C ${leadName}`, margin, y);
-    y += 5;
+  kicker("— Proposta Comercial", M, y, RED); y += 11;
+  setColor([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(33);
+  doc.text(proposal.headline_l1 || "Direção Comercial", M, y); y += 13;
+  setColor(RED); doc.text(proposal.headline_l2 || "Terceirizada", M, y); y += 15;
+
+  if (proposal.subtitulo) {
+    setColor(LIGHT); doc.setFont("helvetica", "normal"); doc.setFontSize(11.5);
+    doc.splitTextToSize(proposal.subtitulo, CW - 8).forEach((ln: string) => { doc.text(ln, M, y); y += 6.2; });
+    y += 4;
   }
+
+  if (proposal.quote) {
+    setFill(RED); doc.rect(M, y - 1, 1.4, 16, "F");
+    setColor([235, 240, 248]); doc.setFont("helvetica", "italic"); doc.setFontSize(11);
+    doc.splitTextToSize(`“${proposal.quote}”`, CW - 12).forEach((ln: string) => { doc.text(ln, M + 6, y + 4); y += 6; });
+    y += 8;
+  }
+
+  // grid de meta (2 col x 2 linhas)
   const hoje = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(...MUTED);
-  doc.text(hoje, margin, y);
-  y += 8;
-
-  // ── Helpers de seção ────────────────────────────────────────────────────────
-  const sectionTitle = (label: string) => {
-    ensure(14);
-    doc.setFillColor(...NAVY);
-    doc.rect(margin, y - 3.4, 3, 5, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11.5);
-    doc.setTextColor(...NAVY);
-    doc.text(label.toUpperCase(), margin + 5, y);
-    y += 7;
+  const metaY = H - 60;
+  const col2 = W / 2;
+  const metaItem = (lbl: string, val: string, x: number, yy: number) => {
+    kicker(lbl, x, yy, RED);
+    setColor([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(10.5);
+    doc.splitTextToSize(val, col2 - M - 6).forEach((ln: string, i: number) => doc.text(ln, x, yy + 6 + i * 5));
   };
+  const detalhe = (proposal.preparado_para_detalhe || "").trim().slice(0, 44);
+  setStroke([60, 80, 120]); doc.setLineWidth(0.2); doc.line(M, metaY - 8, W - M, metaY - 8);
+  metaItem("Preparado para", `${cliente}${detalhe ? "\n" + detalhe : ""}`, M, metaY);
+  metaItem("Apresentado por", "Fabrício Nunes\nUNV Holdings", col2, metaY);
+  metaItem("Data", hoje, M, metaY + 26);
+  metaItem("Validade da proposta", "15 dias", col2, metaY + 26);
 
-  const paragraph = (text: string) => {
-    if (!text) return;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10.5);
-    doc.setTextColor(...INK);
-    const lines = doc.splitTextToSize(text, contentW);
-    for (const ln of lines) { ensure(6); doc.text(ln, margin, y); y += 5.4; }
-    y += 2;
-  };
+  setColor([120, 140, 170]); doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
+  doc.text("NOVA LIMA · MG — ESTRUTURAÇÃO COMERCIAL PARA PMES", W / 2, H - 12, { align: "center", charSpace: 1 });
 
-  const bullets = (items: string[]) => {
-    doc.setFontSize(10.5);
-    for (const it of items || []) {
-      if (!it) continue;
-      const lines = doc.splitTextToSize(String(it), contentW - 6);
-      ensure(lines.length * 5.4 + 1);
-      doc.setFillColor(...RED);
-      doc.circle(margin + 1.4, y - 1.4, 1, "F");
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...INK);
-      lines.forEach((ln: string, i: number) => {
-        doc.text(ln, margin + 6, y);
-        y += 5.4;
-        if (i < lines.length - 1) { /* continua */ }
-      });
-      y += 1;
-    }
-    y += 2;
-  };
-
-  // ── Conteúdo ────────────────────────────────────────────────────────────────
-  if (proposal.contexto) { sectionTitle("Contexto"); paragraph(proposal.contexto); }
-
-  if (proposal.diagnostico?.length) { sectionTitle("Diagnóstico"); bullets(proposal.diagnostico); }
-
-  if (proposal.objetivo) { sectionTitle("Objetivo"); paragraph(proposal.objetivo); }
-
-  const servico = proposal.servico || serviceName;
-  if (servico || proposal.entregas?.length) {
-    sectionTitle(`Solução${servico ? ` — ${servico}` : ""}`);
-    if (proposal.descricao_servico) paragraph(proposal.descricao_servico);
-    if (proposal.entregas?.length) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(...NAVY);
-      ensure(7);
-      doc.text("Entregas:", margin, y); y += 6;
-      bullets(proposal.entregas);
-    }
+  // ───────────────────────── DIAGNÓSTICO ─────────────────────────
+  const diag = (proposal.diagnostico || []).filter((d) => d && (d.titulo || d.descricao));
+  if (diag.length) {
+    startSection("01", "Diagnóstico", proposal.diagnostico_titulo || "O cenário que ouvimos");
+    twoColNumberedCards(diag);
   }
 
-  // ── Investimento (valor + forma de pagamento, extraídos da reunião) ──────────
-  const investimento = proposal.investimento || "A combinar";
-  const formaPg = proposal.forma_pagamento || "A combinar";
+  // ───────────────────────── A VIRADA ─────────────────────────
+  const ad = (proposal.antes_depois || []).filter((x) => x && (x.hoje || x.meta));
+  if (ad.length || proposal.virada_frase) {
+    startSection("02", "A Virada", "Onde você está e onde vai chegar");
+    if (proposal.virada_frase) {
+      doc.setFont("helvetica", "bold"); doc.setFontSize(13);
+      const lines = doc.splitTextToSize(proposal.virada_frase, CW - 16);
+      const bh = lines.length * 6.4 + 12;
+      ensure(bh + 4);
+      setFill(NAVY); doc.roundedRect(M, y, CW, bh, 2.5, 2.5, "F");
+      setColor([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(13);
+      lines.forEach((ln: string, i: number) => doc.text(ln, M + 8, y + 9 + i * 6.4));
+      y += bh + 8;
+    }
+    for (const item of ad) { hojeMetaRow(item.hoje || "", item.meta || ""); }
+  }
+
+  // ───────────────────────── A SOLUÇÃO ─────────────────────────
+  const entregas = (proposal.entregas || []).filter(Boolean);
+  startSection("03", "A Solução", `A UNV entrega: ${servico}`, proposal.solucao_intro || proposal.objetivo);
+  if (entregas.length) {
+    for (const e of entregas) { checkItem(String(e)); }
+    y += 4;
+  }
+  // ritmo
   ensure(34);
-  sectionTitle("Investimento");
-  doc.setFillColor(245, 247, 250);
-  doc.setDrawColor(...NAVY);
-  doc.setLineWidth(0.3);
-  const boxY = y - 2;
-  const boxH = 22 + (proposal.prazo ? 6 : 0);
-  doc.roundedRect(margin, boxY, contentW, boxH, 2, 2, "FD");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(...MUTED);
-  doc.text("VALOR", margin + 5, boxY + 7);
-  doc.text("FORMA DE PAGAMENTO", margin + contentW / 2, boxY + 7);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.setTextColor(...NAVY);
-  doc.text(doc.splitTextToSize(investimento, contentW / 2 - 8), margin + 5, boxY + 14);
-  doc.setFontSize(11);
-  doc.setTextColor(...INK);
-  doc.text(doc.splitTextToSize(formaPg, contentW / 2 - 8), margin + contentW / 2, boxY + 14);
-  if (proposal.prazo) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(...MUTED);
-    doc.text(`Prazo / vigência: ${proposal.prazo}`, margin + 5, boxY + boxH - 4);
+  kicker("O Ritmo de Acompanhamento", M, y, RED); y += 7;
+  fourNavyCards(RITMO);
+
+  // ───────────────────────── MÉTODO CRESCER ─────────────────────────
+  startSection("04", "Metodologia", "O Método CRESCER", "As 7 fases que levam a academia do improviso ao sistema. Cada decisão passa por um filtro: o que escala, o que gera previsibilidade, o que aumenta margem e o que reduz a dependência do dono.");
+  CRESCER.forEach((p, i) => numberedRow(i + 1, p[0], p[1], i % 2 === 0 ? NAVY : RED));
+  y += 4;
+  ensure(26);
+  const fdLines = ["O que escala?", "O que gera previsibilidade?", "O que aumenta margem?", "O que reduz a dependência do dono?"];
+  const fdH = 10 + Math.ceil(fdLines.length / 2) * 7;
+  setFill(CARD); setStroke(CARDLINE); doc.setLineWidth(0.3);
+  doc.roundedRect(M, y, CW, fdH, 2.5, 2.5, "FD");
+  kicker("Filtro de decisão — toda ação passa por aqui", M + 6, y + 7, RED);
+  setColor(INK); doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+  fdLines.forEach((q, i) => {
+    const cx = M + 6 + (i % 2) * (CW / 2);
+    const cy = y + 14 + Math.floor(i / 2) * 7;
+    setColor(RED); doc.text("›", cx, cy); setColor(INK); doc.text(q, cx + 4, cy);
+  });
+  y += fdH + 6;
+
+  // ───────────────────────── INVESTIMENTO ─────────────────────────
+  startSection("05", "Investimento", "O investimento");
+  const inv = proposal.investimento || "A combinar";
+  const fpg = proposal.forma_pagamento || "A combinar";
+  ensure(40);
+  const boxH = 34;
+  setFill(NAVY); doc.roundedRect(M, y, CW, boxH, 3, 3, "F");
+  setFill(RED); doc.rect(M, y, 2.2, boxH, "F");
+  kicker(servico, M + 8, y + 9, [150, 170, 200]);
+  setColor([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(22);
+  doc.text(inv, M + 8, y + 21);
+  setColor([170, 188, 214]); doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+  doc.text("FORMA DE PAGAMENTO", W - M - 8, y + 9, { align: "right" });
+  setColor([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+  doc.splitTextToSize(fpg, CW / 2 - 6).forEach((ln: string, i: number) => doc.text(ln, W - M - 8, y + 18 + i * 5.5, { align: "right" }));
+  if (proposal.prazo) { setColor([150, 170, 200]); doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.text(`Vigência: ${proposal.prazo}`, M + 8, y + boxH - 4); }
+  y += boxH + 9;
+  if (entregas.length) {
+    kicker("O que está incluído", M, y, RED); y += 7;
+    entregas.slice(0, 10).forEach((e) => checkItem(String(e)));
   }
-  y = boxY + boxH + 8;
 
-  if (proposal.proximos_passos?.length) { sectionTitle("Próximos passos"); bullets(proposal.proximos_passos); }
-
-  // ── Briefing institucional ──────────────────────────────────────────────────
-  ensure(30);
-  sectionTitle("Sobre a UNV Holdings");
-  paragraph(
-    "A UNV Holdings é a sua direção comercial terceirizada: estruturamos o time de vendas, implantamos processo e gestão e fazemos a empresa bater meta com previsibilidade — sem depender do dono na operação. Não vendemos marketing; entregamos resultado comercial estruturado, acompanhado por métricas (ticket médio, conversão, CAC, LTV, NPS) e por uma rotina de gestão contínua.",
-  );
+  // ───────────────────────── PRÓXIMOS PASSOS ─────────────────────────
+  const passos = (proposal.proximos_passos || []).filter((p) => p && (p.titulo || p.descricao));
+  startSection("06", "Próximos Passos", "Como a gente avança");
+  passos.forEach((p, i) => numberedRow(i + 1, p.titulo || "", p.descricao || "", NAVY));
+  y += 4;
+  const cta = proposal.cta || "Quando quiser bater meta todo mês com previsibilidade — é só chamar.";
+  doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+  const ctaLines = doc.splitTextToSize(cta, CW - 16);
+  const ctaH = ctaLines.length * 7 + 14;
+  ensure(ctaH + 30);
+  setFill(NAVY); doc.roundedRect(M, y, CW, ctaH, 3, 3, "F");
+  setColor([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+  ctaLines.forEach((ln: string, i: number) => doc.text(ln, M + 8, y + 10 + i * 7));
+  y += ctaH + 14;
+  // assinatura
+  setColor(NAVY); doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+  doc.text("Fabrício Nunes", M, y);
+  setColor(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+  doc.text("CEO & Fundador — UNV Holdings", M, y + 5);
+  doc.text("Universidade Nacional de Vendas · Nova Lima/MG", M, y + 10);
+  if (logo) {
+    const { width, height } = fit(logo.width, logo.height, 34, 20);
+    try { doc.addImage(logo.dataUrl, "PNG", W - M - width, y - 2, width, height); } catch { /* */ }
+  }
 
   footer();
   return doc.output("blob");
+
+  // ───────────────────────── helpers de layout ─────────────────────────
+  function twoColNumberedCards(items: { titulo: string; descricao: string }[]) {
+    const gap = 6;
+    const cw = (CW - gap) / 2;
+    const inner = cw - 12;
+    let i = 0;
+    while (i < items.length) {
+      const left = items[i];
+      const right = items[i + 1];
+      const lh = cardHeight(left, inner);
+      const rh = right ? cardHeight(right, inner) : 0;
+      const rowH = Math.max(lh, rh);
+      ensure(rowH + 5);
+      drawCard(left, i + 1, M, y, cw, rowH, inner);
+      if (right) drawCard(right, i + 2, M + cw + gap, y, cw, rowH, inner);
+      y += rowH + 5;
+      i += 2;
+    }
+    y += 2;
+  }
+  function cardHeight(item: { titulo: string; descricao: string }, inner: number) {
+    doc.setFontSize(10.5); const tl = doc.splitTextToSize(item.titulo || "", inner).length;
+    doc.setFontSize(9); const dl = doc.splitTextToSize(item.descricao || "", inner).length;
+    return 8 + tl * 5 + 2 + dl * 4.4 + 6;
+  }
+  function drawCard(item: { titulo: string; descricao: string }, num: number, x: number, yy: number, w: number, h: number, inner: number) {
+    setFill(CARD); setStroke(CARDLINE); doc.setLineWidth(0.3);
+    doc.roundedRect(x, yy, w, h, 2, 2, "FD");
+    setFill(RED); doc.rect(x, yy, 1.6, h, "F");
+    let cy = yy + 8;
+    setColor(RED); doc.setFont("helvetica", "bold"); doc.setFontSize(10.5);
+    const numTxt = String(num).padStart(2, "0");
+    doc.text(numTxt, x + 7, cy);
+    setColor(NAVY);
+    const tLines = doc.splitTextToSize(item.titulo || "", inner - 8);
+    tLines.forEach((ln: string, k: number) => doc.text(ln, x + 7 + 8, cy + k * 5));
+    cy += Math.max(tLines.length * 5, 5) + 2;
+    setColor(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+    doc.splitTextToSize(item.descricao || "", inner).forEach((ln: string) => { doc.text(ln, x + 7, cy); cy += 4.4; });
+  }
+  function hojeMetaRow(hojeT: string, metaT: string) {
+    const gap = 6; const cw = (CW - gap) / 2; const inner = cw - 12;
+    doc.setFontSize(9.5);
+    const hL = doc.splitTextToSize(hojeT, inner); const mL = doc.splitTextToSize(metaT, inner);
+    const h = 9 + Math.max(hL.length, mL.length) * 4.6 + 6;
+    ensure(h + 5);
+    // HOJE (cinza)
+    setFill(CARD); setStroke(CARDLINE); doc.setLineWidth(0.3);
+    doc.roundedRect(M, y, cw, h, 2, 2, "FD");
+    kicker("Hoje", M + 6, y + 7, MUTED);
+    setColor(INK); doc.setFont("helvetica", "normal"); doc.setFontSize(9.5);
+    hL.forEach((ln: string, k: number) => doc.text(ln, M + 6, y + 13 + k * 4.6));
+    // META (borda vermelha)
+    setFill([255, 255, 255]); setStroke(RED); doc.setLineWidth(0.5);
+    doc.roundedRect(M + cw + gap, y, cw, h, 2, 2, "FD");
+    kicker("Meta", M + cw + gap + 6, y + 7, RED);
+    setColor(INK); doc.setFont("helvetica", "normal"); doc.setFontSize(9.5);
+    mL.forEach((ln: string, k: number) => doc.text(ln, M + cw + gap + 6, y + 13 + k * 4.6));
+    y += h + 5;
+  }
+  function checkItem(text: string) {
+    doc.setFontSize(10);
+    const lines = doc.splitTextToSize(text, CW - 9);
+    ensure(lines.length * 5 + 2);
+    setFill(NAVY); doc.circle(M + 2.2, y - 1.4, 2.2, "F");
+    setColor([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(7);
+    doc.text("✓", M + 2.2, y - 0.4, { align: "center" });
+    setColor(INK); doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+    lines.forEach((ln: string, k: number) => doc.text(ln, M + 7, y + k * 5));
+    y += lines.length * 5 + 2.5;
+  }
+  function numberedRow(num: number, title: string, desc: string, color: [number, number, number]) {
+    doc.setFontSize(9.5);
+    const dLines = doc.splitTextToSize(desc, CW - 16);
+    const h = Math.max(11, 6 + dLines.length * 4.6);
+    ensure(h + 2);
+    setFill(color); doc.circle(M + 4, y + 1.5, 4, "F");
+    setColor([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(9.5);
+    doc.text(String(num), M + 4, y + 3, { align: "center" });
+    setColor(NAVY); doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+    doc.text(title, M + 11, y + 2);
+    setColor(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(9.5);
+    dLines.forEach((ln: string, k: number) => doc.text(ln, M + 11, y + 8 + k * 4.6));
+    y += h + 3;
+  }
+  function fourNavyCards(items: string[][]) {
+    const gap = 4; const cw = (CW - gap * 3) / 4;
+    const h = 26;
+    ensure(h + 3);
+    items.forEach((it, i) => {
+      const x = M + i * (cw + gap);
+      setFill(NAVY); doc.roundedRect(x, y, cw, h, 2, 2, "F");
+      setColor([150, 170, 200]); doc.setFont("helvetica", "bold"); doc.setFontSize(8);
+      doc.text(it[0].toUpperCase(), x + 4, y + 7, { charSpace: 0.4 });
+      setColor([235, 240, 248]); doc.setFont("helvetica", "normal"); doc.setFontSize(7.6);
+      doc.splitTextToSize(it[1], cw - 8).forEach((ln: string, k: number) => doc.text(ln, x + 4, y + 13 + k * 3.8));
+    });
+    y += h + 4;
+  }
 }
