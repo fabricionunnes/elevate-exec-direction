@@ -15,6 +15,16 @@ function truncate(s: string | null | undefined, n: number): string {
   return t.length > n ? t.slice(0, n) + "…" : t;
 }
 
+// Mantém INÍCIO + FIM da transcrição. O valor/forma de pagamento quase sempre é
+// combinado no final da reunião — cortar só o começo perdia o preço.
+function headTail(s: string | null | undefined, n: number): string {
+  const t = String(s || "").trim();
+  if (t.length <= n) return t;
+  const head = Math.floor(n * 0.55);
+  const tail = n - head;
+  return t.slice(0, head) + "\n\n[…trecho do meio omitido…]\n\n" + t.slice(t.length - tail);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -36,7 +46,7 @@ Deno.serve(async (req) => {
       empresa: companyName,
       servico_selecionado: serviceName || "(não definido)",
       entregas_do_servico: deliverables,
-      transcricao: truncate(transcription, 18000),
+      transcricao: headTail(transcription, 48000),
     };
 
     const prompt = `Você é o diretor comercial da UNV Holdings escrevendo uma PROPOSTA COMERCIAL premium e personalizada, a partir da transcrição de uma reunião de vendas. A UNV Holdings é direção comercial terceirizada para PMEs (estrutura time, processo e gestão e faz a empresa bater meta com previsibilidade).
@@ -47,7 +57,7 @@ Dados (JSON):
 ${JSON.stringify(ctx, null, 2)}
 
 REGRAS:
-- VALOR e FORMA DE PAGAMENTO: extraia EXATAMENTE o que foi combinado na reunião (ex.: "R$ 7.000/mês", "12x no cartão", "à vista no pix"). Se não houver na transcrição, use "A combinar". NUNCA invente preço.
+- VALOR e FORMA DE PAGAMENTO: o valor quase SEMPRE é combinado no FINAL da reunião — procure com atenção no trecho final. Reconheça formas como "fica em R$X", "R$X por ano", "X por mês", "em 12x de R$Y", "dividido em N vezes", "à vista", "no cartão", "no pix", "contrato mínimo de N meses", "setup de R$Z". Extraia EXATAMENTE o que foi dito. Se a pessoa falou valor anual E o mensal (ex.: "24.000 por ano, dividido em 12x de 2.000 por mês"), coloque o valor de forma clara (ex.: investimento "R$ 2.000/mês (R$ 24.000/ano)") e a forma ("12x"). Só use "A combinar" se REALMENTE não houver nenhum valor dito. NUNCA invente preço.
 - "entregas": baseie-se nas entregas_do_servico (pode reescrever cada uma mais clara e aderente ao caso). Se o serviço não foi definido, descreva entregas coerentes com a UNV.
 - headline_l1/headline_l2: título de capa em DUAS partes (a 2ª sai em vermelho). Pode ser o nome do serviço quebrado em 2, ou um título forte do que será entregue (ex.: "Diretor Comercial" / "Terceirizado").
 - diagnostico: 4 a 6 itens (cada um = uma dor/gargalo dito na reunião).

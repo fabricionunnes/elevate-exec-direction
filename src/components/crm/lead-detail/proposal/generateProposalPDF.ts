@@ -158,9 +158,18 @@ export async function generateProposalPDF({ proposal, leadName, companyName, ser
   y = cardY + cardH + 18;
 
   kicker("— Proposta Comercial", M, y, RED); y += 11;
-  setColor([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(33);
-  doc.text(proposal.headline_l1 || "Direção Comercial", M, y); y += 13;
-  setColor(RED); doc.text(proposal.headline_l2 || "Terceirizada", M, y); y += 15;
+  const h1 = proposal.headline_l1 || "Direção Comercial";
+  const h2 = proposal.headline_l2 || "Terceirizada";
+  doc.setFont("helvetica", "bold");
+  // auto-ajusta o tamanho da fonte pra a maior linha caber na largura (evita corte)
+  let hSize = 33; doc.setFontSize(hSize);
+  while (hSize > 16 && (doc.getTextWidth(h1) > CW || doc.getTextWidth(h2) > CW)) { hSize -= 1; doc.setFontSize(hSize); }
+  const lineH = hSize * 0.41;
+  setColor([255, 255, 255]);
+  doc.splitTextToSize(h1, CW).forEach((ln: string) => { doc.text(ln, M, y); y += lineH; });
+  setColor(RED);
+  doc.splitTextToSize(h2, CW).forEach((ln: string) => { doc.text(ln, M, y); y += lineH; });
+  y += 4;
 
   if (proposal.subtitulo) {
     setColor(LIGHT); doc.setFont("helvetica", "normal"); doc.setFontSize(11.5);
@@ -252,18 +261,22 @@ export async function generateProposalPDF({ proposal, leadName, companyName, ser
   startSection("05", "Investimento", "O investimento");
   const inv = proposal.investimento || "A combinar";
   const fpg = proposal.forma_pagamento || "A combinar";
-  ensure(40);
-  const boxH = 34;
+  ensure(46);
+  const boxH = 38;
+  const leftW = CW * 0.56;
   setFill(NAVY); doc.roundedRect(M, y, CW, boxH, 3, 3, "F");
   setFill(RED); doc.rect(M, y, 2.2, boxH, "F");
   kicker(servico, M + 8, y + 9, [150, 170, 200]);
-  setColor([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(22);
-  doc.text(inv, M + 8, y + 21);
-  setColor([170, 188, 214]); doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+  // valor: auto-ajusta a fonte pra caber na coluna esquerda (não invadir a forma de pagamento)
+  doc.setFont("helvetica", "bold");
+  let vSize = 21; doc.setFontSize(vSize);
+  while (vSize > 12 && doc.getTextWidth(inv) > leftW - 8) { vSize -= 1; doc.setFontSize(vSize); }
+  setColor([255, 255, 255]); doc.text(inv, M + 8, y + 21);
+  setColor([170, 188, 214]); doc.setFont("helvetica", "normal"); doc.setFontSize(8.5);
   doc.text("FORMA DE PAGAMENTO", W - M - 8, y + 9, { align: "right" });
-  setColor([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(12);
-  doc.splitTextToSize(fpg, CW / 2 - 6).forEach((ln: string, i: number) => doc.text(ln, W - M - 8, y + 18 + i * 5.5, { align: "right" }));
-  if (proposal.prazo) { setColor([150, 170, 200]); doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.text(`Vigência: ${proposal.prazo}`, M + 8, y + boxH - 4); }
+  setColor([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(10.5);
+  doc.splitTextToSize(fpg, CW - leftW - 12).forEach((ln: string, i: number) => doc.text(ln, W - M - 8, y + 17 + i * 5, { align: "right" }));
+  if (proposal.prazo) { setColor([150, 170, 200]); doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.text(`Vigência: ${proposal.prazo}`, M + 8, y + boxH - 4); }
   y += boxH + 9;
   if (entregas.length) {
     kicker("O que está incluído", M, y, RED); y += 7;
