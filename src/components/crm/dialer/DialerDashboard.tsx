@@ -101,6 +101,19 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
     });
   }, [range, isAdmin]);
 
+  // resultados por campanha (agendou/realizada/venda) — pra custos por campanha
+  const [campOutcomes, setCampOutcomes] = useState<Record<string, { realized: number; sales: number }>>({});
+  useEffect(() => {
+    if (!isAdmin) return;
+    (supabase as any).rpc("dialer_outcome_metrics_by_campaign", { p_since: rangeStart(range) }).then(({ data }: any) => {
+      const map: Record<string, { realized: number; sales: number }> = {};
+      (data || []).forEach((r: any) => {
+        if (r.campaign_id) map[r.campaign_id] = { realized: r.meetings_realized || 0, sales: r.sales_won || 0 };
+      });
+      setCampOutcomes(map);
+    });
+  }, [range, isAdmin]);
+
   useEffect(() => {
     let active = true;
     (async () => {
@@ -129,9 +142,12 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
     let answered = 0, voicemail = 0, talk = 0;
     const byHourCalls = Array(24).fill(0);
     const byHourAnswered = Array(24).fill(0);
+    const callsByCampaign: Record<string, number> = {};
     for (const c of calls) {
       const h = new Date(c.created_at).getHours();
       byHourCalls[h]++;
+      const cc = c.campaign_id || "—";
+      callsByCampaign[cc] = (callsByCampaign[cc] || 0) + 1;
       if (isHuman(c)) { answered++; talk += c.duration_seconds || 0; byHourAnswered[h]++; }
       else if (c.status === "voicemail") voicemail++;
     }
@@ -180,6 +196,7 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
     const campaigns = Object.entries(perCampaign).map(([cid, dc]) => ({
       id: cid, name: campaignNames[cid] || (cid === "—" ? "Sem campanha" : "—"),
       total: Object.values(dc).reduce((a, b) => a + b, 0), dispo: dc,
+      calls: callsByCampaign[cid] || 0,
     })).sort((a, b) => b.total - a.total);
 
     const hourData = byHourCalls.map((cnt, h) => ({
@@ -471,6 +488,11 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
                     <TableHead>Campanha</TableHead>
                     <TableHead className="text-right">Trabalhados</TableHead>
                     {DISPOS.map((d) => <TableHead key={d.key} className="text-right whitespace-nowrap">{d.label}</TableHead>)}
+                    {isAdmin && usage && <>
+                      <TableHead className="text-right whitespace-nowrap">Custo/agend.</TableHead>
+                      <TableHead className="text-right whitespace-nowrap">Custo/reunião</TableHead>
+                      <TableHead className="text-right whitespace-nowrap">CAC</TableHead>
+                    </>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -483,9 +505,20 @@ export function DialerDashboard({ isAdmin = false }: { isAdmin?: boolean }) {
                           {c.dispo[d.key] ? <span style={{ color: d.color }} className="font-medium">{c.dispo[d.key]}</span> : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                       ))}
+                      {isAdmin && usage && (() => {
+                        const spend = m.total ? usage.total * (c.calls / m.total) : 0;
+                        const agend = c.dispo["agendou_reuniao"] || 0;
+                        const o = campOutcomes[c.id] || { realized: 0, sales: 0 };
+                        const dash = <span className="text-muted-foreground">—</span>;
+                        return <>
+                          <TableCell className="text-right tabular-nums">{agend ? fmtBRL(spend / agend) : dash}</TableCell>
+                          <TableCell className="text-right tabular-nums">{o.realized ? fmtBRL(spend / o.realized) : dash}</TableCell>
+                          <TableCell className="text-right tabular-nums">{o.sales ? fmtBRL(spend / o.sales) : dash}</TableCell>
+                        </>;
+                      })()}
                     </TableRow>
                   ))}
-                  {m.campaigns.length === 0 && <TableRow><TableCell colSpan={2 + DISPOS.length} className="text-center py-8 text-muted-foreground">Sem resultados no período</TableCell></TableRow>}
+                  {m.campaigns.length === 0 && <TableRow><TableCell colSpan={2 + DISPOS.length + (isAdmin && usage ? 3 : 0)} className="text-center py-8 text-muted-foreground">Sem resultados no período</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </CardContent>
