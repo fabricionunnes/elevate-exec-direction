@@ -1144,13 +1144,11 @@ export const KPIDashboardTab = ({
     });
 
     const sortedDates = Object.keys(groupedByDate).sort();
-    if (sortedDates.length === 0) return { data: [], targetLevels: [], kpiType: "monetary" };
 
-    let targetLevelsMap: Record<string, number> = {};
-    
+    // Total mensal por nível de meta (Meta, Super Meta, etc.)
+    const targetLevelsMap: Record<string, number> = {};
     targetKpis.forEach(kpi => {
       const filteredTargets = getFilteredTargetsForKpi(kpi.id);
-      
       if (Object.keys(filteredTargets).length > 0) {
         Object.entries(filteredTargets).forEach(([levelName, value]) => {
           targetLevelsMap[levelName] = (targetLevelsMap[levelName] || 0) + value;
@@ -1166,25 +1164,36 @@ export const KPIDashboardTab = ({
     });
 
     const targetLevelNames = Object.keys(targetLevelsMap);
-    const totalDays = sortedDates.length;
     const kpiType = targetKpis[0]?.kpi_type ?? (mainGoalKpis[0]?.kpi_type ?? "monetary");
 
-    let cumulativeValue = 0;
-    const chartData = sortedDates.map((date, index) => {
-      cumulativeValue += groupedByDate[date];
-      const dayProgress = (index + 1) / totalDays;
+    if (targetLevelNames.length === 0 && sortedDates.length === 0) {
+      return { data: [], targetLevels: [], kpiType };
+    }
 
+    // Mês INTEIRO no eixo X (dia 1 até o último dia). A META é projeção linear acumulada
+    // (target * dia / diasDoMês). O REALIZADO é acumulado só ATÉ HOJE — depois de hoje fica
+    // vazio, pra dar pra comparar se o realizado (verde) está acima da meta (azul) no período.
+    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    const now = new Date();
+    const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
+    const isPastMonth = selectedYear < now.getFullYear() || (selectedYear === now.getFullYear() && selectedMonth < now.getMonth());
+    const todayDay = isCurrentMonth ? now.getDate() : (isPastMonth ? daysInMonth : 0);
+    const pad = (n: number) => String(n).padStart(2, "0");
+
+    let cumulative = 0;
+    const chartData: Record<string, any>[] = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${selectedYear}-${pad(selectedMonth + 1)}-${pad(day)}`;
+      cumulative += groupedByDate[dateStr] || 0;
       const dataPoint: Record<string, any> = {
-        date: format(new Date(date), "dd/MM", { locale: ptBR }),
-        realizado: cumulativeValue,
+        date: `${pad(day)}/${pad(selectedMonth + 1)}`,
+        realizado: day <= todayDay ? cumulative : null,
       };
-
       targetLevelNames.forEach(levelName => {
-        dataPoint[levelName] = targetLevelsMap[levelName] * dayProgress;
+        dataPoint[levelName] = (targetLevelsMap[levelName] * day) / daysInMonth;
       });
-
-      return dataPoint;
-    });
+      chartData.push(dataPoint);
+    }
 
     return { data: chartData, targetLevels: targetLevelNames, kpiType };
   };
@@ -2860,9 +2869,9 @@ export const KPIDashboardTab = ({
                         <YAxis tickFormatter={(value) => kpiTvR.kpiType === "monetary" ? new Intl.NumberFormat("pt-BR", { notation: "compact", compactDisplay: "short" }).format(value) : value.toLocaleString("pt-BR")} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
                         <Tooltip formatter={(value: number, name: string) => [formatValue(value, kpiTvR.kpiType || "monetary"), name === "realizado" ? "Realizado" : name]} />
                         <Legend />
-                        <Line type="monotone" dataKey="realizado" name="Realizado" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ fill: "hsl(var(--primary))", r: 3, stroke: "#fff", strokeWidth: 2 }} />
+                        <Line type="monotone" dataKey="realizado" name="Realizado" stroke="#22c55e" strokeWidth={3} connectNulls={false} dot={{ fill: "#22c55e", r: 3, stroke: "#fff", strokeWidth: 2 }} />
                         {kpiTvR.targetLevels.map((levelName, index) => (
-                          <Line key={levelName} type="monotone" dataKey={levelName} name={levelName} stroke={targetLevelColors[index % targetLevelColors.length]} strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                          <Line key={levelName} type="monotone" dataKey={levelName} name={levelName} stroke={["#3b82f6", "#60a5fa", "#1d4ed8"][index % 3]} strokeWidth={2} strokeDasharray="5 5" dot={false} />
                         ))}
                       </LineChart>
                     </ResponsiveContainer>
@@ -2925,14 +2934,14 @@ export const KPIDashboardTab = ({
                     ]}
                   />
                   <Legend />
-                  <Line type="monotone" dataKey="realizado" name="Realizado" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ fill: "hsl(var(--primary))", r: 3, stroke: "#fff", strokeWidth: 2 }} />
+                  <Line type="monotone" dataKey="realizado" name="Realizado" stroke="#22c55e" strokeWidth={3} connectNulls={false} dot={{ fill: "#22c55e", r: 3, stroke: "#fff", strokeWidth: 2 }} />
                   {targetVsRealized.targetLevels.map((levelName, index) => (
                     <Line 
                       key={levelName}
                       type="monotone" 
                       dataKey={levelName} 
                       name={levelName}
-                      stroke={targetLevelColors[index % targetLevelColors.length]} 
+                      stroke={["#3b82f6", "#60a5fa", "#1d4ed8"][index % 3]} 
                       strokeWidth={2}
                       strokeDasharray="5 5"
                       dot={false}

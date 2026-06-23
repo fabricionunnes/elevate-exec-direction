@@ -1420,7 +1420,13 @@ const OnboardingTasksPage = () => {
       if (!company.projects || company.projects.length === 0) {
         return false;
       }
-      
+
+      // Saúde do cliente: por padrão, só empresas com projeto ATIVO.
+      // (ao filtrar por um status específico no dropdown ou por uma métrica, respeita esse filtro.)
+      if (filterStatus === "all" && !activeMetricFilter && !company.projects.some((p) => p.status === "active")) {
+        return false;
+      }
+
       // For consultants: only show companies where they have non-closed projects as consultant or CS
       if (currentUserRole === "consultant" && currentStaffId) {
         const isMyCompany = company.consultant_id === currentStaffId || company.cs_id === currentStaffId;
