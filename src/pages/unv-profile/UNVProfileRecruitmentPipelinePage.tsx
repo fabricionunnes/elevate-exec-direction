@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink } from "lucide-react";
+import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink, Target, Loader2, ThumbsUp, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { PROFILE_PIPELINE_STAGES } from "./types";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
@@ -21,6 +21,8 @@ export default function UNVProfileRecruitmentPipelinePage() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [discByCand, setDiscByCand] = useState<Record<string, any>>({});
   const [selected, setSelected] = useState<any>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [freshAnalysis, setFreshAnalysis] = useState<any>(null);
 
   const load = async () => {
     if (!jobId) return;
@@ -83,7 +85,31 @@ export default function UNVProfileRecruitmentPipelinePage() {
       .catch(() => toast.error("Não consegui copiar o link"));
   };
 
+  const analyze = async (cand: any) => {
+    setAnalyzing(true);
+    setFreshAnalysis(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("profile-candidate-analyze", { body: { candidateId: cand.id } });
+      if (error) throw error;
+      const a = (data as any)?.analysis;
+      if (!a) throw new Error("Sem retorno da análise");
+      setFreshAnalysis(a);
+      const patch = { ai_score: a.score, ai_summary: a.veredito, ai_strengths: a.pontos_fortes, ai_concerns: a.pontos_atencao };
+      setSelected((prev: any) => prev && prev.id === cand.id ? { ...prev, ...patch } : prev);
+      setCands(prev => prev.map(c => c.id === cand.id ? { ...c, ...patch } : c));
+      toast.success("Análise concluída");
+    } catch (e: any) {
+      toast.error("Erro ao analisar: " + (e?.message || e));
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const openCand = (c: any) => { setFreshAnalysis(null); setSelected(c); };
+
   const disc = selected ? discByCand[selected.id] : null;
+  const recColors: Record<string, string> = { avancar: "bg-emerald-500", avaliar: "bg-amber-500", descartar: "bg-rose-500" };
+  const recLabels: Record<string, string> = { avancar: "Avançar", avaliar: "Avaliar", descartar: "Descartar" };
 
   return (
     <div className="p-6 md:p-8 space-y-4">
@@ -119,7 +145,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
                     key={c.id}
                     draggable
                     onDragStart={() => setDragId(c.id)}
-                    onClick={() => setSelected(c)}
+                    onClick={() => openCand(c)}
                     className="cursor-pointer hover:shadow-md transition"
                   >
                     <CardContent className="p-3 space-y-2">
@@ -228,6 +254,48 @@ export default function UNVProfileRecruitmentPipelinePage() {
                         <Copy className="w-4 h-4" />Copiar link do teste DISC
                       </Button>
                     </div>
+                  )}
+                </div>
+
+                <div className="rounded-lg border p-3 space-y-2 bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold flex items-center gap-2"><Target className="w-4 h-4 text-primary" />Aderência à vaga</p>
+                    <Button variant="outline" size="sm" className="gap-2" disabled={analyzing} onClick={() => analyze(selected)}>
+                      {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                      {selected.ai_score != null ? "Reanalisar" : "Analisar com IA"}
+                    </Button>
+                  </div>
+
+                  {selected.ai_score != null ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                          <div className={`h-full ${selected.ai_score >= 70 ? "bg-emerald-500" : selected.ai_score >= 45 ? "bg-amber-500" : "bg-rose-500"}`} style={{ width: `${selected.ai_score}%` }} />
+                        </div>
+                        <span className="text-sm font-bold">{selected.ai_score}%</span>
+                        {freshAnalysis?.recomendacao && recLabels[freshAnalysis.recomendacao] && (
+                          <Badge className={`${recColors[freshAnalysis.recomendacao]} text-white`}>{recLabels[freshAnalysis.recomendacao]}</Badge>
+                        )}
+                      </div>
+                      {selected.ai_summary && <p className="text-xs text-muted-foreground">{selected.ai_summary}</p>}
+                      {freshAnalysis?.fit_comportamental && (
+                        <p className="text-xs flex items-start gap-1"><Brain className="w-3 h-3 mt-0.5 text-primary shrink-0" />{freshAnalysis.fit_comportamental}</p>
+                      )}
+                      {Array.isArray(selected.ai_strengths) && selected.ai_strengths.length > 0 && (
+                        <div>
+                          <p className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1 mb-0.5"><ThumbsUp className="w-3 h-3" />Pontos fortes</p>
+                          <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-0.5">{selected.ai_strengths.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
+                        </div>
+                      )}
+                      {Array.isArray(selected.ai_concerns) && selected.ai_concerns.length > 0 && (
+                        <div>
+                          <p className="text-[11px] font-semibold text-amber-600 flex items-center gap-1 mb-0.5"><AlertTriangle className="w-3 h-3" />Pontos de atenção</p>
+                          <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-0.5">{selected.ai_concerns.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Rode a análise pra ver se o candidato bate com os requisitos da vaga (cruza requisitos + DISC + dados). O currículo em arquivo não é lido pela IA — abra acima pra conferir.</p>
                   )}
                 </div>
 
