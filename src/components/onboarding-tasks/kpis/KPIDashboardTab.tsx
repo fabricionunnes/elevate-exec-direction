@@ -1173,20 +1173,23 @@ export const KPIDashboardTab = ({
     // Mês INTEIRO no eixo X (dia 1 até o último dia). A META é projeção linear acumulada
     // (target * dia / diasDoMês). O REALIZADO é acumulado só ATÉ HOJE — depois de hoje fica
     // vazio, pra dar pra comparar se o realizado (verde) está acima da meta (azul) no período.
-    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
     const now = new Date();
-    const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
-    const isPastMonth = selectedYear < now.getFullYear() || (selectedYear === now.getFullYear() && selectedMonth < now.getMonth());
+    const selStart = parseDateLocal(dateRange.start);
+    const selMonth = selStart.getMonth();
+    const selYear = selStart.getFullYear();
+    const daysInMonth = new Date(selYear, selMonth + 1, 0).getDate();
+    const isCurrentMonth = selYear === now.getFullYear() && selMonth === now.getMonth();
+    const isPastMonth = selYear < now.getFullYear() || (selYear === now.getFullYear() && selMonth < now.getMonth());
     const todayDay = isCurrentMonth ? now.getDate() : (isPastMonth ? daysInMonth : 0);
     const pad = (n: number) => String(n).padStart(2, "0");
 
     let cumulative = 0;
     const chartData: Record<string, any>[] = [];
     for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = `${selectedYear}-${pad(selectedMonth + 1)}-${pad(day)}`;
+      const dateStr = `${selYear}-${pad(selMonth + 1)}-${pad(day)}`;
       cumulative += groupedByDate[dateStr] || 0;
       const dataPoint: Record<string, any> = {
-        date: `${pad(day)}/${pad(selectedMonth + 1)}`,
+        date: `${pad(day)}/${pad(selMonth + 1)}`,
         realizado: day <= todayDay ? cumulative : null,
       };
       targetLevelNames.forEach(levelName => {
