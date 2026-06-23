@@ -13,6 +13,7 @@ const corsHeaders = {
 
 interface Payload {
   tenantId?: string | null;
+  candidateId?: string | null;
   name: string;
   email?: string | null;
   phone?: string | null;
@@ -81,6 +82,7 @@ Deno.serve(async (req) => {
     const { error: discErr } = await supabase.from("profile_disc_results").insert({
       tenant_id: tenantId,
       employee_id: employeeId,
+      candidate_id: body.candidateId ?? null,
       d_score: body.scores.D,
       i_score: body.scores.I,
       s_score: body.scores.S,

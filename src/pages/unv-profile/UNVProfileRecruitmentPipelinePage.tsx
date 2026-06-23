@@ -5,15 +5,22 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ArrowLeft, Star, Sparkles } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { PROFILE_PIPELINE_STAGES } from "./types";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
+
+const DISC_LABELS: Record<string, string> = { D: "Dominância", I: "Influência", S: "Estabilidade", C: "Conformidade" };
+const DISC_COLORS: Record<string, string> = { D: "bg-rose-500", I: "bg-amber-500", S: "bg-emerald-500", C: "bg-blue-500" };
 
 export default function UNVProfileRecruitmentPipelinePage() {
   const { jobId } = useParams();
   const [job, setJob] = useState<any>(null);
   const [cands, setCands] = useState<any[]>([]);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [discByCand, setDiscByCand] = useState<Record<string, any>>({});
+  const [selected, setSelected] = useState<any>(null);
 
   const load = async () => {
     if (!jobId) return;
@@ -22,7 +29,20 @@ export default function UNVProfileRecruitmentPipelinePage() {
       supabase.from("profile_candidates").select("*").eq("job_id", jobId).order("created_at", { ascending: false }),
     ]);
     setJob(j.data);
-    setCands(c.data || []);
+    const list = c.data || [];
+    setCands(list);
+    const ids = list.map((x: any) => x.id);
+    if (ids.length) {
+      const { data: disc } = await supabase
+        .from("profile_disc_results")
+        .select("candidate_id,d_score,i_score,s_score,c_score,dominant,taken_at")
+        .in("candidate_id", ids);
+      const map: Record<string, any> = {};
+      (disc || []).forEach((d: any) => { if (d.candidate_id) map[d.candidate_id] = d; });
+      setDiscByCand(map);
+    } else {
+      setDiscByCand({});
+    }
   };
 
   useEffect(() => { load(); }, [jobId]);
@@ -37,7 +57,33 @@ export default function UNVProfileRecruitmentPipelinePage() {
     const next = !cand.is_favorite;
     await supabase.from("profile_candidates").update({ is_favorite: next }).eq("id", cand.id);
     setCands(prev => prev.map(c => c.id === cand.id ? { ...c, is_favorite: next } : c));
+    setSelected(prev => prev && prev.id === cand.id ? { ...prev, is_favorite: next } : prev);
   };
+
+  const removeCand = async (cand: any) => {
+    if (!confirm(`Excluir o candidato "${cand.full_name}"? Essa ação não pode ser desfeita.`)) return;
+    const { error } = await supabase.from("profile_candidates").delete().eq("id", cand.id);
+    if (error) return toast.error(error.message);
+    toast.success("Candidato excluído");
+    setSelected(null);
+    load();
+  };
+
+  const discLink = (cand: any) => {
+    const tenant = cand?.tenant_id || job?.tenant_id || "";
+    const params = new URLSearchParams();
+    if (tenant) params.set("tenant", tenant);
+    params.set("candidate", cand.id);
+    return `${getPublicBaseUrl()}/#/disc-publico?${params.toString()}`;
+  };
+
+  const copyDiscLink = (cand: any) => {
+    navigator.clipboard.writeText(discLink(cand))
+      .then(() => toast.success("Link do teste DISC copiado. Envie pro candidato."))
+      .catch(() => toast.error("Não consegui copiar o link"));
+  };
+
+  const disc = selected ? discByCand[selected.id] : null;
 
   return (
     <div className="p-6 md:p-8 space-y-4">
@@ -47,7 +93,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-2xl font-bold">{job?.title || "Pipeline"}</h1>
-          <p className="text-sm text-muted-foreground">{cands.length} candidatos • Arraste entre colunas</p>
+          <p className="text-sm text-muted-foreground">{cands.length} candidatos • Clique para ver detalhes • Arraste entre colunas</p>
         </div>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-4">
@@ -73,7 +119,8 @@ export default function UNVProfileRecruitmentPipelinePage() {
                     key={c.id}
                     draggable
                     onDragStart={() => setDragId(c.id)}
-                    className="cursor-move hover:shadow-md transition"
+                    onClick={() => setSelected(c)}
+                    className="cursor-pointer hover:shadow-md transition"
                   >
                     <CardContent className="p-3 space-y-2">
                       <div className="flex items-start gap-2">
@@ -82,16 +129,23 @@ export default function UNVProfileRecruitmentPipelinePage() {
                           <p className="text-sm font-medium truncate">{c.full_name}</p>
                           <p className="text-[10px] text-muted-foreground truncate">{c.email}</p>
                         </div>
-                        <button onClick={() => toggleFav(c)}>
+                        <button onClick={(e) => { e.stopPropagation(); toggleFav(c); }}>
                           <Star className={`w-4 h-4 ${c.is_favorite ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`} />
                         </button>
                       </div>
-                      {c.ai_score != null && (
-                        <div className="flex items-center gap-1 text-[10px]">
-                          <Sparkles className="w-3 h-3 text-primary" />
-                          <span className="font-semibold">{c.ai_score}%</span> aderência IA
-                        </div>
-                      )}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        {c.ai_score != null && (
+                          <div className="flex items-center gap-1 text-[10px]">
+                            <Sparkles className="w-3 h-3 text-primary" />
+                            <span className="font-semibold">{c.ai_score}%</span> aderência IA
+                          </div>
+                        )}
+                        {discByCand[c.id] && (
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <Brain className="w-3 h-3 text-primary" /> DISC: <span className="font-semibold">{discByCand[c.id].dominant}</span>
+                          </div>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -101,6 +155,96 @@ export default function UNVProfileRecruitmentPipelinePage() {
           );
         })}
       </div>
+
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <DialogContent className="max-w-lg">
+          {selected && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10"><AvatarFallback>{selected.full_name?.[0]}</AvatarFallback></Avatar>
+                  <div>
+                    <div>{selected.full_name}</div>
+                    <div className="text-xs font-normal text-muted-foreground">
+                      Inscrito em {selected.created_at ? new Date(selected.created_at).toLocaleDateString("pt-BR") : "—"}
+                      {selected.source ? ` • origem: ${selected.source}` : ""}
+                    </div>
+                  </div>
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4 text-sm">
+                <div className="space-y-1.5">
+                  {selected.email && <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-muted-foreground" />{selected.email}</p>}
+                  {selected.phone && <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-muted-foreground" />{selected.phone}</p>}
+                  {(selected.city || selected.state) && <p className="flex items-center gap-2"><MapPin className="w-4 h-4 text-muted-foreground" />{[selected.city, selected.state].filter(Boolean).join("/")}</p>}
+                  {selected.linkedin_url && (
+                    <p className="flex items-center gap-2">
+                      <Linkedin className="w-4 h-4 text-muted-foreground" />
+                      <a href={selected.linkedin_url} target="_blank" rel="noopener" className="text-primary underline truncate">{selected.linkedin_url}</a>
+                    </p>
+                  )}
+                </div>
+
+                {selected.cover_letter && (
+                  <div>
+                    <p className="font-semibold mb-1">Mensagem do candidato</p>
+                    <p className="text-muted-foreground whitespace-pre-wrap">{selected.cover_letter}</p>
+                  </div>
+                )}
+
+                <div>
+                  <p className="font-semibold mb-1">Currículo</p>
+                  {selected.resume_url ? (
+                    <Button asChild variant="outline" size="sm" className="gap-2">
+                      <a href={selected.resume_url} target="_blank" rel="noopener"><FileText className="w-4 h-4" />Abrir currículo <ExternalLink className="w-3 h-3" /></a>
+                    </Button>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Nenhum currículo enviado.</p>
+                  )}
+                </div>
+
+                <div>
+                  <p className="font-semibold mb-1 flex items-center gap-2"><Brain className="w-4 h-4 text-primary" />Perfil DISC</p>
+                  {disc ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-xs">
+                        Dominante: <Badge className={`${DISC_COLORS[disc.dominant]} text-white`}>{disc.dominant} — {DISC_LABELS[disc.dominant]}</Badge>
+                      </div>
+                      {(["D", "I", "S", "C"] as const).map(k => (
+                        <div key={k} className="flex items-center gap-2 text-xs">
+                          <span className="w-24 text-muted-foreground">{DISC_LABELS[k]}</span>
+                          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                            <div className={`h-full ${DISC_COLORS[k]}`} style={{ width: `${disc[`${k.toLowerCase()}_score`] || 0}%` }} />
+                          </div>
+                          <span className="w-8 text-right font-medium">{disc[`${k.toLowerCase()}_score`] ?? 0}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <p className="text-xs text-muted-foreground">Candidato ainda não fez o teste DISC.</p>
+                      <Button variant="outline" size="sm" className="gap-2 w-fit" onClick={() => copyDiscLink(selected)}>
+                        <Copy className="w-4 h-4" />Copiar link do teste DISC
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <Button variant="ghost" size="sm" className="text-rose-500 gap-2" onClick={() => removeCand(selected)}>
+                    <Trash2 className="w-4 h-4" />Excluir candidato
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => toggleFav(selected)} className="gap-2">
+                    <Star className={`w-4 h-4 ${selected.is_favorite ? "fill-amber-400 text-amber-400" : ""}`} />
+                    {selected.is_favorite ? "Favorito" : "Favoritar"}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

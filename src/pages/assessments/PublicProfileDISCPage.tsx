@@ -20,6 +20,7 @@ interface Answer {
 export default function PublicProfileDISCPage() {
   const [searchParams] = useSearchParams();
   const tenantId = searchParams.get("tenant");
+  const candidateId = searchParams.get("candidate");
 
   const [step, setStep] = useState<"form" | "test" | "done">("form");
   const [name, setName] = useState("");
@@ -89,6 +90,7 @@ export default function PublicProfileDISCPage() {
       const { error } = await supabase.functions.invoke("profile-disc-public-submit", {
         body: {
           tenantId,
+          candidateId,
           name: name.trim(),
           email: email.trim() || null,
           phone: phone.trim() || null,
