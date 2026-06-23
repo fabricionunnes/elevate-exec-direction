@@ -503,16 +503,19 @@ export const CRMLeadDetailPage = () => {
     }
 
     try {
-      // Definir o closer como o usuário logado que está dando ganho
-      // (sobrescreve qualquer closer anterior — quem clica em "Ganho" é o vendedor responsável)
-      const effectiveCloserId = staffId || lead.closer_staff_id || lead.owner_staff_id || null;
+      // A venda é do VENDEDOR RESPONSÁVEL pelo lead, não de quem clica em "Ganho".
+      // (um master/admin pode dar ganho num lead de outra pessoa — ex.: Fabrício fecha
+      //  um lead da Yasmim; a venda tem que contar pra Yasmim.)
+      // Prioridade: closer já vinculado → dono do lead → quem clicou (só se o lead não tiver ninguém).
+      const effectiveCloserId = lead.closer_staff_id || lead.owner_staff_id || staffId || null;
 
       const updatePayload: Record<string, any> = {
         stage_id: wonStage.id,
         closed_at: new Date().toISOString(),
       };
-      if (staffId) {
-        updatePayload.closer_staff_id = staffId;
+      // só define o closer se o lead ainda não tiver um — nunca sobrescreve o responsável
+      if (!lead.closer_staff_id && effectiveCloserId) {
+        updatePayload.closer_staff_id = effectiveCloserId;
       }
 
       const { error } = await supabase
