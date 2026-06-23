@@ -498,7 +498,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
                       )}
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground">Rode a análise pra ver se o candidato bate com os requisitos da vaga (cruza requisitos + DISC + dados). O currículo em arquivo não é lido pela IA — abra acima pra conferir.</p>
+                    <p className="text-xs text-muted-foreground">Rode a análise pra ver se o candidato bate com a vaga. A IA lê o currículo em PDF/imagem, cruza com os requisitos da vaga e com o DISC.</p>
                   )}
                 </div>
 

@@ -37,11 +37,42 @@ Deno.serve(async (req) => {
 
     const { data: cand, error: cErr } = await supabase
       .from("profile_candidates")
-      .select("id,job_id,full_name,email,phone,city,state,linkedin_url,cover_letter")
+      .select("id,job_id,full_name,email,phone,city,state,linkedin_url,cover_letter,resume_url")
       .eq("id", candidateId)
       .maybeSingle();
     if (cErr) throw cErr;
     if (!cand) throw new Error("Candidato não encontrado");
+
+    // Lê o arquivo do currículo (PDF/imagem) pra mandar pra IA como anexo.
+    // Claude lê PDF (document block) e imagem (image block) nativamente.
+    let resumeBlock: any = null;
+    let resumeNote = "O candidato NÃO anexou currículo.";
+    if (cand.resume_url) {
+      try {
+        const fileResp = await fetch(cand.resume_url);
+        if (!fileResp.ok) throw new Error(`HTTP ${fileResp.status}`);
+        const buf = new Uint8Array(await fileResp.arrayBuffer());
+        if (buf.length > 20 * 1024 * 1024) throw new Error("arquivo > 20MB");
+        let binary = "";
+        const chunk = 0x8000;
+        for (let i = 0; i < buf.length; i += chunk) binary += String.fromCharCode(...buf.subarray(i, i + chunk));
+        const b64 = btoa(binary);
+        const url = cand.resume_url.toLowerCase();
+        const ct = (fileResp.headers.get("content-type") || "").toLowerCase();
+        if (url.endsWith(".pdf") || ct.includes("pdf")) {
+          resumeBlock = { type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 } };
+          resumeNote = "O currículo do candidato está ANEXADO (PDF). Leia-o e baseie a análise principalmente nele.";
+        } else if (url.match(/\.(png|jpe?g)$/) || ct.includes("image/")) {
+          const media = ct.includes("png") || url.endsWith(".png") ? "image/png" : "image/jpeg";
+          resumeBlock = { type: "image", source: { type: "base64", media_type: media, data: b64 } };
+          resumeNote = "O currículo do candidato está ANEXADO (imagem). Leia-o e baseie a análise principalmente nele.";
+        } else {
+          resumeNote = "O candidato anexou um currículo, mas em formato não legível automaticamente (ex.: Word) — não foi possível ler o conteúdo.";
+        }
+      } catch (e: any) {
+        resumeNote = `Não foi possível ler o currículo anexado (${e?.message || e}).`;
+      }
+    }
 
     const { data: job } = cand.job_id
       ? await supabase.from("profile_jobs").select("title,area,seniority,contract_model,description,requirements").eq("id", cand.job_id).maybeSingle()
@@ -76,7 +107,8 @@ CANDIDATO:
 - Carta/mensagem: ${truncate(cand.cover_letter, 2000) || "—"}
 - ${discTxt}
 
-Considere que o currículo em arquivo NÃO foi lido — baseie-se nos dados acima. Se faltar informação relevante (ex.: experiência específica), aponte como ponto de atenção, não invente.
+CURRÍCULO: ${resumeNote}
+Se houver currículo anexado, LEIA o anexo e baseie a análise na experiência real (cargos, tempo, resultados, ferramentas, segmento). Cruze isso com os requisitos da vaga. Só aponte uma lacuna como ponto de atenção se ela realmente não aparecer no currículo — NÃO escreva "currículo não foi lido". Não invente experiência que não está escrita.
 
 Responda APENAS com um JSON válido, em português, neste formato:
 {
@@ -95,7 +127,11 @@ Responda APENAS com um JSON válido, em português, neste formato:
         "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model: MODEL, max_tokens: 1500, messages: [{ role: "user", content: prompt }] }),
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 1500,
+        messages: [{ role: "user", content: resumeBlock ? [resumeBlock, { type: "text", text: prompt }] : prompt }],
+      }),
     });
     if (!aiResp.ok) throw new Error(`Anthropic ${aiResp.status}: ${truncate(await aiResp.text(), 300)}`);
     const aiData = await aiResp.json();
