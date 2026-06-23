@@ -25,6 +25,7 @@ export default function UNVProfileRecruitmentPage() {
     title: "", area: "", seniority: "", contract_model: "CLT",
     salary_min: "", salary_max: "", description: "", requirements: "",
     city: "", state: "", is_remote: false, status: "open",
+    target_d: "", target_i: "", target_s: "", target_c: "",
   };
   const [form, setForm] = useState<any>(emptyForm);
 
@@ -49,16 +50,22 @@ export default function UNVProfileRecruitmentPage() {
       description: job.description || "", requirements: job.requirements || "",
       city: job.city || "", state: job.state || "", is_remote: !!job.is_remote,
       status: job.status || "open",
+      target_d: job.target_disc?.D ?? "", target_i: job.target_disc?.I ?? "",
+      target_s: job.target_disc?.S ?? "", target_c: job.target_disc?.C ?? "",
     });
     setOpen(true);
   };
 
   const save = async () => {
     if (!form.title) return toast.error("Informe o título da vaga");
-    const payload = {
-      ...form,
+    const { target_d, target_i, target_s, target_c, ...rest } = form;
+    const hasTarget = [target_d, target_i, target_s, target_c].some((v) => v !== "" && v != null);
+    const clamp = (v: any) => Math.max(0, Math.min(100, Number(v) || 0));
+    const payload: any = {
+      ...rest,
       salary_min: form.salary_min ? Number(form.salary_min) : null,
       salary_max: form.salary_max ? Number(form.salary_max) : null,
+      target_disc: hasTarget ? { D: clamp(target_d), I: clamp(target_i), S: clamp(target_s), C: clamp(target_c) } : null,
     };
     if (editingId) {
       const { error } = await supabase.from("profile_jobs").update(payload).eq("id", editingId);
@@ -142,6 +149,15 @@ export default function UNVProfileRecruitmentPage() {
                 <input type="checkbox" checked={form.is_remote} onChange={e => setForm({ ...form, is_remote: e.target.checked })} />
                 Vaga remota
               </label>
+              <div className="col-span-2 border-t pt-3 mt-1">
+                <p className="text-sm font-medium">Perfil DISC ideal da vaga <span className="text-xs font-normal text-muted-foreground">(0–100, opcional — usado pra comparar com o DISC dos candidatos)</span></p>
+                <div className="grid grid-cols-4 gap-2 mt-2">
+                  <Input type="number" min={0} max={100} placeholder="D (Dominância)" value={form.target_d} onChange={e => setForm({ ...form, target_d: e.target.value })} />
+                  <Input type="number" min={0} max={100} placeholder="I (Influência)" value={form.target_i} onChange={e => setForm({ ...form, target_i: e.target.value })} />
+                  <Input type="number" min={0} max={100} placeholder="S (Estabilidade)" value={form.target_s} onChange={e => setForm({ ...form, target_s: e.target.value })} />
+                  <Input type="number" min={0} max={100} placeholder="C (Conformidade)" value={form.target_c} onChange={e => setForm({ ...form, target_c: e.target.value })} />
+                </div>
+              </div>
             </div>
             <DialogFooter><Button onClick={save}>{editingId ? "Salvar alterações" : "Criar vaga"}</Button></DialogFooter>
           </DialogContent>

@@ -11,8 +11,13 @@ import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, 
 import { toast } from "sonner";
 import { PROFILE_PIPELINE_STAGES } from "./types";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
+import {
+  BarChart, Bar, XAxis, YAxis, Cell, ResponsiveContainer, Tooltip as RTooltip,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend,
+} from "recharts";
 
 const DISC_LABELS: Record<string, string> = { D: "Dominância", I: "Influência", S: "Estabilidade", C: "Conformidade" };
+const scoreColor = (n: number) => (n >= 70 ? "#10b981" : n >= 45 ? "#f59e0b" : "#f43f5e");
 const DISC_COLORS: Record<string, string> = { D: "bg-rose-500", I: "bg-amber-500", S: "bg-emerald-500", C: "bg-blue-500" };
 
 export default function UNVProfileRecruitmentPipelinePage() {
@@ -27,6 +32,9 @@ export default function UNVProfileRecruitmentPipelinePage() {
   const [instances, setInstances] = useState<any[]>([]);
   const [instanceId, setInstanceId] = useState<string>("");
   const [sending, setSending] = useState(false);
+  const [view, setView] = useState<"pipeline" | "ranking">("pipeline");
+  const [analyzingAll, setAnalyzingAll] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -144,7 +152,55 @@ export default function UNVProfileRecruitmentPipelinePage() {
 
   const openCand = (c: any) => { setFreshAnalysis(null); setSelected(c); };
 
+  // perfil DISC ideal da vaga (0-100) e quanto o candidato bate com ele
+  const target = job?.target_disc && typeof job.target_disc === "object" ? job.target_disc : null;
+  const discMatch = (candId: string): number | null => {
+    const d = discByCand[candId];
+    if (!d || !target) return null;
+    const diff = Math.abs((d.d_score || 0) - (target.D || 0)) + Math.abs((d.i_score || 0) - (target.I || 0)) +
+      Math.abs((d.s_score || 0) - (target.S || 0)) + Math.abs((d.c_score || 0) - (target.C || 0));
+    return Math.max(0, Math.min(100, Math.round(100 - diff / 4)));
+  };
+  const overall = (cand: any): number | null => {
+    const ai = cand.ai_score != null ? Number(cand.ai_score) : null;
+    const dm = discMatch(cand.id);
+    if (ai != null && dm != null) return Math.round(ai * 0.6 + dm * 0.4);
+    if (ai != null) return ai;
+    if (dm != null) return dm;
+    return null;
+  };
+
+  const ranking = cands
+    .map((c) => ({ cand: c, ai: c.ai_score != null ? Number(c.ai_score) : null, dm: discMatch(c.id), overall: overall(c) }))
+    .filter((r) => r.overall != null)
+    .sort((a, b) => (b.overall as number) - (a.overall as number));
+
+  const analyzeAll = async () => {
+    if (!cands.length) return;
+    setAnalyzingAll(true);
+    setProgress({ done: 0, total: cands.length });
+    try {
+      for (let i = 0; i < cands.length; i++) {
+        try {
+          await supabase.functions.invoke("profile-candidate-analyze", { body: { candidateId: cands[i].id } });
+        } catch { /* segue */ }
+        setProgress({ done: i + 1, total: cands.length });
+      }
+      toast.success("Análise concluída para todos os candidatos");
+      await load();
+    } finally {
+      setAnalyzingAll(false);
+      setProgress(null);
+    }
+  };
+
   const disc = selected ? discByCand[selected.id] : null;
+  const selMatch = selected ? discMatch(selected.id) : null;
+  const radarData = (selected && disc && target)
+    ? (["D", "I", "S", "C"] as const).map((k) => ({
+        eixo: k, Candidato: disc[`${k.toLowerCase()}_score`] || 0, Vaga: target[k] || 0,
+      }))
+    : [];
   const recColors: Record<string, string> = { avancar: "bg-emerald-500", avaliar: "bg-amber-500", descartar: "bg-rose-500" };
   const recLabels: Record<string, string> = { avancar: "Avançar", avaliar: "Avaliar", descartar: "Descartar" };
 
@@ -153,12 +209,77 @@ export default function UNVProfileRecruitmentPipelinePage() {
       <Link to="/unv-profile/recruitment" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
         <ArrowLeft className="w-3 h-3" /> Vagas
       </Link>
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-start gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold">{job?.title || "Pipeline"}</h1>
           <p className="text-sm text-muted-foreground">{cands.length} candidatos • Clique para ver detalhes • Arraste entre colunas</p>
         </div>
+        <div className="inline-flex rounded-lg border p-0.5 bg-muted/30">
+          <Button variant={view === "pipeline" ? "default" : "ghost"} size="sm" onClick={() => setView("pipeline")}>Pipeline</Button>
+          <Button variant={view === "ranking" ? "default" : "ghost"} size="sm" className="gap-1" onClick={() => setView("ranking")}>
+            <Target className="w-4 h-4" />Ranking
+          </Button>
+        </div>
       </div>
+      {view === "ranking" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <p className="text-sm text-muted-foreground">
+              Nota geral = 60% aderência IA + 40% match do DISC com a vaga. {!target && "Defina o DISC ideal na vaga pra ativar o match."}
+            </p>
+            <Button size="sm" className="gap-2" disabled={analyzingAll || !cands.length} onClick={analyzeAll}>
+              {analyzingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              {analyzingAll && progress ? `Analisando ${progress.done}/${progress.total}` : "Analisar todos com IA"}
+            </Button>
+          </div>
+
+          {ranking.length === 0 ? (
+            <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">
+              Nenhum candidato com nota ainda. Clique em "Analisar todos com IA" (e/ou colete o DISC) pra montar o ranking.
+            </CardContent></Card>
+          ) : (
+            <>
+              <Card>
+                <CardContent className="p-4">
+                  <ResponsiveContainer width="100%" height={Math.max(160, ranking.length * 46)}>
+                    <BarChart data={ranking.map(r => ({ nome: r.cand.full_name, nota: r.overall }))} layout="vertical" margin={{ left: 8, right: 24 }}>
+                      <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} />
+                      <YAxis type="category" dataKey="nome" width={120} tick={{ fontSize: 11 }} />
+                      <RTooltip formatter={(v: any) => [`${v}`, "Nota geral"]} />
+                      <Bar dataKey="nota" radius={[0, 4, 4, 0]} label={{ position: "right", fontSize: 11 }}>
+                        {ranking.map((r, i) => <Cell key={i} fill={scoreColor(r.overall as number)} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <div className="space-y-2">
+                {ranking.map((r, i) => (
+                  <Card key={r.cand.id} className="cursor-pointer hover:shadow-md transition" onClick={() => openCand(r.cand)}>
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <span className="w-6 text-center font-bold text-muted-foreground">{i + 1}</span>
+                      <Avatar className="h-8 w-8"><AvatarFallback className="text-xs">{r.cand.full_name?.[0]}</AvatarFallback></Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{r.cand.full_name}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          IA: {r.ai != null ? `${r.ai}%` : "—"} • DISC match: {r.dm != null ? `${r.dm}%` : "—"}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold" style={{ color: scoreColor(r.overall as number) }}>{r.overall}</div>
+                        <div className="text-[10px] text-muted-foreground">nota geral</div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {view === "pipeline" && (
       <div className="flex gap-3 overflow-x-auto pb-4">
         {PROFILE_PIPELINE_STAGES.map(stage => {
           const list = cands.filter(c => c.stage === stage.key);
@@ -218,6 +339,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
           );
         })}
       </div>
+      )}
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
         <DialogContent className="max-w-lg">
@@ -283,6 +405,30 @@ export default function UNVProfileRecruitmentPipelinePage() {
                           <span className="w-8 text-right font-medium">{disc[`${k.toLowerCase()}_score`] ?? 0}</span>
                         </div>
                       ))}
+
+                      {target ? (
+                        <div className="mt-2 pt-2 border-t">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-xs font-semibold">Candidato x perfil da vaga</p>
+                            {selMatch != null && (
+                              <Badge style={{ backgroundColor: scoreColor(selMatch), color: "#fff" }}>{selMatch}% de match</Badge>
+                            )}
+                          </div>
+                          <ResponsiveContainer width="100%" height={200}>
+                            <RadarChart data={radarData} outerRadius={70}>
+                              <PolarGrid />
+                              <PolarAngleAxis dataKey="eixo" tick={{ fontSize: 11 }} />
+                              <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 9 }} />
+                              <Radar name="Vaga (ideal)" dataKey="Vaga" stroke="#6366f1" fill="#6366f1" fillOpacity={0.25} />
+                              <Radar name="Candidato" dataKey="Candidato" stroke="#10b981" fill="#10b981" fillOpacity={0.35} />
+                              <Legend wrapperStyle={{ fontSize: 11 }} />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                          <p className="text-[11px] text-muted-foreground">Quanto mais as áreas se sobrepõem, mais o perfil dele bate com o que a vaga pede.</p>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground mt-1">Defina o DISC ideal na vaga (editar vaga) pra ver o match.</p>
+                      )}
                     </div>
                   ) : (
                     <div className="flex flex-col gap-2">
