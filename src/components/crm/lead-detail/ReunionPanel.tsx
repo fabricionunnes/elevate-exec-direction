@@ -232,8 +232,32 @@ export function ReunionPanel({
       const leadCardUrl = `${baseUrl}/#/crm/leads/${leadId}`;
       const eventDescription = `📋 Link do lead no CRM: ${leadCardUrl}`;
 
+      // Cria um evento no Google e devolve {id, link} (lendo os campos certos do retorno: data.event.*)
+      const createGoogleEvent = async (targetUserId: string | null) => {
+        try {
+          const { data } = await supabase.functions.invoke("google-calendar?action=create-event", {
+            body: {
+              title: meeting.title,
+              startDateTime: newStart,
+              endDateTime: newEnd,
+              target_user_id: targetUserId,
+              attendees: leadEmail ? [leadEmail] : [],
+              createMeetLink: true,
+              description: eventDescription,
+            },
+          });
+          if (data?.success && data.event?.id) {
+            return { id: data.event.id as string, link: (data.event.meetingLink as string) || null };
+          }
+        } catch (err) { console.error(err); }
+        return null;
+      };
+
+      let calendarEventChanged = false;
+      let calendarOk = false;
+
       if (closerChanged) {
-        // Delete from old calendar
+        // remove do calendário antigo
         if (meeting.google_calendar_event_id) {
           try {
             await supabase.functions.invoke("google-calendar?action=delete-event", {
@@ -241,28 +265,26 @@ export function ReunionPanel({
             });
           } catch (err) { console.error(err); }
         }
-        // Create on new calendar
-        try {
-          const { data: createData } = await supabase.functions.invoke("google-calendar?action=create-event", {
-            body: {
-              title: meeting.title,
-              startDateTime: newStart,
-              endDateTime: newEnd,
-              target_user_id: newUserId,
-              attendees: leadEmail ? [leadEmail] : [],
-              createMeetLink: true,
-              description: eventDescription,
-            },
-          });
-          if (createData?.eventId) newEventId = createData.eventId;
-          if (createData?.meetLink) newMeetLink = createData.meetLink;
-        } catch (err) { console.error(err); }
-      } else if (meeting.google_calendar_event_id) {
-        try {
-          await supabase.functions.invoke("google-calendar?action=update-event", {
-            body: { eventId: meeting.google_calendar_event_id, title: meeting.title, startDateTime: newStart, endDateTime: newEnd, target_user_id: oldUserId, description: eventDescription },
-          });
-        } catch (err) { console.error(err); }
+        // cria no calendário do novo responsável
+        const created = await createGoogleEvent(newUserId);
+        if (created) { newEventId = created.id; newMeetLink = created.link || newMeetLink; calendarEventChanged = true; calendarOk = true; }
+      } else {
+        // mesmo responsável: tenta MOVER o evento; se falhar (ex.: evento apagado no Google), RECRIA
+        let updated = false;
+        if (meeting.google_calendar_event_id) {
+          try {
+            const { data: upd } = await supabase.functions.invoke("google-calendar?action=update-event", {
+              body: { eventId: meeting.google_calendar_event_id, title: meeting.title, startDateTime: newStart, endDateTime: newEnd, target_user_id: oldUserId, description: eventDescription },
+            });
+            updated = !!upd?.success;
+          } catch (err) { console.error(err); }
+        }
+        if (updated) {
+          calendarOk = true;
+        } else {
+          const created = await createGoogleEvent(oldUserId);
+          if (created) { newEventId = created.id; newMeetLink = created.link || newMeetLink; calendarEventChanged = true; calendarOk = true; }
+        }
       }
 
       const newStaff = connectedStaff.find((s) => s.user_id === newUserId);
@@ -270,9 +292,11 @@ export function ReunionPanel({
 
       const updatePayload: Record<string, any> = { scheduled_at: newStart, status: "pending" };
       if (closerChanged) {
-        updatePayload.google_calendar_event_id = newEventId;
         updatePayload.google_calendar_user_id = newUserId;
         updatePayload.responsible_staff_id = newResponsibleId;
+      }
+      if (calendarEventChanged) {
+        updatePayload.google_calendar_event_id = newEventId;
         if (newMeetLink) updatePayload.meeting_link = newMeetLink;
       }
 
@@ -296,7 +320,11 @@ export function ReunionPanel({
         notes: closerChanged ? `Reagendada e closer alterado para ${newStaff?.name}` : "Reunião reagendada",
       } as any);
 
-      toast.success("Reunião reagendada com sucesso!");
+      if (calendarOk) {
+        toast.success("Reunião reagendada com sucesso!");
+      } else {
+        toast.warning("Reagendado no CRM, mas não consegui atualizar a agenda do Google. Reconecte a conta Google do responsável e tente de novo.");
+      }
       setEditMode(null);
       setSelectedDate(undefined);
       setSelectedSlot(null);
