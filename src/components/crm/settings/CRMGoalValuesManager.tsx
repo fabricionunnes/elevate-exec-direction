@@ -178,8 +178,13 @@ export const CRMGoalValuesManager = () => {
       if (typesError) throw typesError;
       setGoalTypes(typesData || []);
 
-      const closerOte = (typesData || []).find(t => t.category === "closer" && t.has_ote);
-      const sdrOte = (typesData || []).find(t => t.category === "sdr" && t.has_ote);
+      // Métrica principal de cada papel: prefere o tipo com OTE; se NENHUM tiver OTE,
+      // cai pro 1º tipo de meta do papel — senão a linha do colaborador não renderiza
+      // e não dá pra definir meta nenhuma.
+      const closerOte = (typesData || []).find(t => t.category === "closer" && t.has_ote)
+        || (typesData || []).find(t => t.category === "closer");
+      const sdrOte = (typesData || []).find(t => t.category === "sdr" && t.has_ote)
+        || (typesData || []).find(t => t.category === "sdr");
       setCloserOteGoalType(closerOte || null);
       setSdrOteGoalType(sdrOte || null);
 
