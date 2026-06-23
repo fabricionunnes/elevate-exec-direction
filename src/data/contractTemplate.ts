@@ -60,6 +60,7 @@ export function buildInvestimentoContent(fd: InvestimentoFormData): string {
   if (fd.isRecurring) {
     parts.push(`I. O valor do presente contrato será de ${fmtBRL(fd.contractValue)} mensais, com cobrança recorrente.`);
     parts.push(`II. O pagamento será realizado mensalmente via ${label}, de forma recorrente.`);
+    parts.push(`Parágrafo único — Desconto por pagamento antecipado: a CONTRATANTE terá 5% (cinco por cento) de desconto sobre o valor da parcela mensal caso efetue o pagamento até 1 (um) dia antes da data de vencimento. Caso a data de vencimento recaia em sábado, domingo ou feriado, o prazo para pagamento com desconto permanece sendo o dia imediatamente anterior à data de vencimento original, NÃO havendo prorrogação para data posterior. O desconto não se aplica a pagamentos realizados na data do vencimento ou após.`);
   } else {
     parts.push(`I. O valor total do presente contrato será de ${fmtBRL(fd.contractValue)}.`);
     if (fd.installments > 1) {

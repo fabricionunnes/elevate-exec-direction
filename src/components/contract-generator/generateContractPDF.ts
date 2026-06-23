@@ -248,11 +248,15 @@ export async function generateContractPDF({ formData, customClauses }: GenerateP
   // ============ CONTRACT CLAUSES ============
   // Build clause list: inject rescisão clause (6ª) for PIX or Boleto (parcelado or recorrente)
   // and renumber subsequent clauses accordingly
+  let baseClauseList = customClauses || contractClauses;
+
+  // A página (applyRescisaoClause) já pode ter injetado a cláusula de rescisão no editor.
+  // Se ela já está na lista, NÃO injeta de novo aqui (senão a CLÁUSULA 6 sai duplicada).
+  const alreadyHasRescisao = baseClauseList.some((c) => c.id === "rescisao");
   const needsRescisaoClause =
+    !alreadyHasRescisao &&
     (formData.paymentMethod === "pix" || formData.paymentMethod === "boleto") &&
     (formData.isRecurring || formData.installments > 1);
-
-  let baseClauseList = customClauses || contractClauses;
 
   let clausesToRender: typeof baseClauseList;
   if (needsRescisaoClause) {
