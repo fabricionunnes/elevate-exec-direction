@@ -141,11 +141,9 @@ export default function UNVProfileRecruitmentPage() {
                 <Button asChild size="sm" variant="outline" className="flex-1">
                   <Link to={`/unv-profile/recruitment/${job.id}`}>Pipeline</Link>
                 </Button>
-                {job.public_token && (
-                  <Button asChild size="sm" variant="ghost">
-                    <a href={`#/vagas/${job.public_token}`} target="_blank" rel="noopener"><ExternalLink className="w-3 h-3" /></a>
-                  </Button>
-                )}
+                <Button asChild size="sm" variant="ghost" title="Abrir página pública de candidatura">
+                  <a href={`#/job-application?job=${job.id}`} target="_blank" rel="noopener"><ExternalLink className="w-3 h-3" /></a>
+                </Button>
               </div>
             </CardContent>
           </Card>
