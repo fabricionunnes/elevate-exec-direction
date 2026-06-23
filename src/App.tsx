@@ -208,6 +208,7 @@ const UnifiedAssessmentPage = lazy(() => import("./pages/assessments/UnifiedAsse
 // HR
 const HrCandidateDiscPage = lazy(() => import("./pages/hr-recruitment/HrCandidateDiscPage"));
 const PublicJobApplicationPage = lazy(() => import("./pages/hr-recruitment/PublicJobApplicationPage"));
+const ProfileJobApplicationPage = lazy(() => import("./pages/unv-profile/ProfileJobApplicationPage"));
 const PublicTalentPoolPage = lazy(() => import("./pages/hr-recruitment/PublicTalentPoolPage"));
 const CultureFormPage = lazy(() => import("./pages/hr-recruitment/CultureFormPage"));
 const PublicCareerPlanFormPage = lazy(() => import("./pages/hr-recruitment/PublicCareerPlanFormPage"));
@@ -554,6 +555,7 @@ const AppShell = () => {
             <Route path="/avaliacao" element={<UnifiedAssessmentPage />} />
             <Route path="/hr-disc/:token" element={<HrCandidateDiscPage />} />
             <Route path="/job-application" element={<PublicJobApplicationPage />} />
+            <Route path="/vagas/:token" element={<ProfileJobApplicationPage />} />
             <Route path="/banco-talentos" element={<PublicTalentPoolPage />} />
             <Route path="/social-briefing/:token" element={<SocialBriefingPublicPage />} />
             <Route path="/traffic-analysis/:token" element={<TrafficAnalysisPublicPage />} />
