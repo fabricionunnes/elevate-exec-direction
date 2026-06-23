@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink, Target, Loader2, ThumbsUp, AlertTriangle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink, Target, Loader2, ThumbsUp, AlertTriangle, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { PROFILE_PIPELINE_STAGES } from "./types";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
@@ -23,6 +24,23 @@ export default function UNVProfileRecruitmentPipelinePage() {
   const [selected, setSelected] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [freshAnalysis, setFreshAnalysis] = useState<any>(null);
+  const [instances, setInstances] = useState<any[]>([]);
+  const [instanceId, setInstanceId] = useState<string>("");
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("whatsapp_instances")
+        .select("id, display_name, instance_name, phone_number, status, is_default")
+        .eq("status", "connected")
+        .order("is_default", { ascending: false });
+      const list = data || [];
+      setInstances(list);
+      const def = list.find((i: any) => i.is_default) || list[0];
+      if (def) setInstanceId(def.id);
+    })();
+  }, []);
 
   const load = async () => {
     if (!jobId) return;
@@ -102,6 +120,25 @@ export default function UNVProfileRecruitmentPipelinePage() {
       toast.error("Erro ao analisar: " + (e?.message || e));
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  const sendDiscWhatsapp = async (cand: any) => {
+    if (!instanceId) return toast.error("Selecione uma instância conectada");
+    if (!cand.phone) return toast.error("Candidato sem telefone cadastrado");
+    setSending(true);
+    try {
+      const firstName = (cand.full_name || "").trim().split(" ")[0] || "";
+      const msg = `Olá ${firstName}! Tudo bem? Você está no processo seletivo da vaga ${job?.title || ""} na UNV. Pra avançarmos, faça seu teste de perfil comportamental DISC (leva ~7 min): ${discLink(cand)}`;
+      const { data, error } = await supabase.functions.invoke("profile-send-whatsapp", {
+        body: { instanceId, phone: cand.phone, message: msg },
+      });
+      if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message);
+      toast.success("Link do DISC enviado no WhatsApp");
+    } catch (e: any) {
+      toast.error("Erro ao enviar: " + (e?.message || e));
+    } finally {
+      setSending(false);
     }
   };
 
@@ -249,10 +286,30 @@ export default function UNVProfileRecruitmentPipelinePage() {
                     </div>
                   ) : (
                     <div className="flex flex-col gap-2">
-                      <p className="text-xs text-muted-foreground">Candidato ainda não fez o teste DISC.</p>
-                      <Button variant="outline" size="sm" className="gap-2 w-fit" onClick={() => copyDiscLink(selected)}>
-                        <Copy className="w-4 h-4" />Copiar link do teste DISC
-                      </Button>
+                      <p className="text-xs text-muted-foreground">Candidato ainda não fez o teste DISC. Envie o link:</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {instances.length > 0 && (
+                          <Select value={instanceId} onValueChange={setInstanceId}>
+                            <SelectTrigger className="h-8 w-[180px] text-xs"><SelectValue placeholder="Instância" /></SelectTrigger>
+                            <SelectContent>
+                              {instances.map((i) => (
+                                <SelectItem key={i.id} value={i.id} className="text-xs">
+                                  {i.display_name || i.instance_name}{i.is_default ? " (padrão)" : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        <Button variant="default" size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700" disabled={sending || !selected.phone || !instanceId} onClick={() => sendDiscWhatsapp(selected)}>
+                          {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
+                          Enviar no WhatsApp
+                        </Button>
+                        <Button variant="outline" size="sm" className="gap-2" onClick={() => copyDiscLink(selected)}>
+                          <Copy className="w-4 h-4" />Copiar link
+                        </Button>
+                      </div>
+                      {!selected.phone && <p className="text-[11px] text-amber-600">Candidato sem telefone — só dá pra copiar o link.</p>}
+                      {instances.length === 0 && <p className="text-[11px] text-muted-foreground">Nenhuma instância de WhatsApp conectada.</p>}
                     </div>
                   )}
                 </div>
