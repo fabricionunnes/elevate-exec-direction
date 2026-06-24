@@ -349,9 +349,13 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
               hiper: g.hiper_meta_value || 0,
             });
           });
-          totalMeta = goalValues.reduce((sum, g) => sum + (g.meta_value || 0), 0);
-          totalSuper = goalValues.reduce((sum, g) => sum + (g.super_meta_value || 0), 0);
-          totalHiper = goalValues.reduce((sum, g) => sum + (g.hiper_meta_value || 0), 0);
+          // Head Comercial NÃO entra na meta do time (a meta dela JÁ é a soma dos closers,
+          // então somar de novo era double-count).
+          const headIds = new Set((allActiveStaff || []).filter((s: any) => String(s.role ?? "").toLowerCase() === "head_comercial").map((s: any) => s.id));
+          const teamGoals = goalValues.filter((g) => !headIds.has(g.staff_id));
+          totalMeta = teamGoals.reduce((sum, g) => sum + (g.meta_value || 0), 0);
+          totalSuper = teamGoals.reduce((sum, g) => sum + (g.super_meta_value || 0), 0);
+          totalHiper = teamGoals.reduce((sum, g) => sum + (g.hiper_meta_value || 0), 0);
         }
       }
       setStaffGoalsMap(goalsMap);

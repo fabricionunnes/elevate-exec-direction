@@ -528,7 +528,7 @@ export const CRMLayout = () => {
              lockViewportHeight ? "overflow-hidden" : "overflow-auto"
           )}>
             <CallDockProvider staffId={staffId} tenantId={tenantId}>
-              <Outlet context={{ staffRole, isAdmin, staffId }} />
+              <Outlet context={{ staffRole, isAdmin, canSettings, staffId }} />
             </CallDockProvider>
           </main>
         </div>

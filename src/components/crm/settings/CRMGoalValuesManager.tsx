@@ -496,6 +496,11 @@ export const CRMGoalValuesManager = () => {
 
   const closers = staffMembers.filter(s => s.is_crm_closer || CLOSER_ROLES.includes(s.role));
   const sdrs = staffMembers.filter(s => SDR_ROLES.includes(s.role));
+  // Meta da Head Comercial = soma das metas dos closers (exclui ela mesma). Read-only.
+  const realClosers = closers.filter(s => s.role !== "head_comercial");
+  const closersMetaSum = realClosers.reduce((s, c) => s + (goalValues.get(c.id)?.meta_value || 0), 0);
+  const closersSuperSum = realClosers.reduce((s, c) => s + (goalValues.get(c.id)?.super_meta_value || 0), 0);
+  const closersHiperSum = realClosers.reduce((s, c) => s + (goalValues.get(c.id)?.hiper_meta_value || 0), 0);
 
   if (loading) {
     return (
@@ -541,51 +546,72 @@ export const CRMGoalValuesManager = () => {
           </Badge>
         </TableCell>
         <TableCell>
-          <div className="flex items-center justify-end gap-1">
-            {prefix && (
-              <span className="text-muted-foreground text-sm">{prefix}</span>
-            )}
-            <Input
-              type="number"
-              value={value?.meta_value || 0}
-              onChange={(e) =>
-                updateValue(staff.id, "meta_value", parseFloat(e.target.value) || 0)
-              }
-              className="w-24 text-right"
-            />
-          </div>
+          {staff.role === "head_comercial" ? (
+            <div className="flex items-center justify-end gap-1 text-right" title="Soma das metas dos closers (automático)">
+              {prefix && <span className="text-muted-foreground text-sm">{prefix}</span>}
+              <span className="w-24 text-right font-semibold tabular-nums">{closersMetaSum.toLocaleString("pt-BR")}</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-end gap-1">
+              {prefix && (
+                <span className="text-muted-foreground text-sm">{prefix}</span>
+              )}
+              <Input
+                type="number"
+                value={value?.meta_value || 0}
+                onChange={(e) =>
+                  updateValue(staff.id, "meta_value", parseFloat(e.target.value) || 0)
+                }
+                className="w-24 text-right"
+              />
+            </div>
+          )}
         </TableCell>
         <TableCell>
-          <div className="flex items-center justify-end gap-1">
-            {prefix && (
-              <span className="text-muted-foreground text-sm">{prefix}</span>
-            )}
-            <Input
-              type="number"
-              value={value?.super_meta_value || ""}
-              placeholder="—"
-              onChange={(e) =>
-                updateValue(staff.id, "super_meta_value", e.target.value ? parseFloat(e.target.value) : null)
-              }
-              className="w-24 text-right"
-            />
-          </div>
+          {staff.role === "head_comercial" ? (
+            <div className="flex items-center justify-end gap-1 text-right" title="Soma das super metas dos closers (automático)">
+              {prefix && <span className="text-muted-foreground text-sm">{prefix}</span>}
+              <span className="w-24 text-right font-semibold tabular-nums">{closersSuperSum ? closersSuperSum.toLocaleString("pt-BR") : "—"}</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-end gap-1">
+              {prefix && (
+                <span className="text-muted-foreground text-sm">{prefix}</span>
+              )}
+              <Input
+                type="number"
+                value={value?.super_meta_value || ""}
+                placeholder="—"
+                onChange={(e) =>
+                  updateValue(staff.id, "super_meta_value", e.target.value ? parseFloat(e.target.value) : null)
+                }
+                className="w-24 text-right"
+              />
+            </div>
+          )}
         </TableCell>
         <TableCell>
-          <div className="flex items-center justify-end gap-1">
-            {prefix && (
-              <span className="text-muted-foreground text-sm">{prefix}</span>
-            )}
-            <Input
-              type="number"
-              value={value?.hiper_meta_value || ""}
-              placeholder="—"
-              onChange={(e) =>
-                updateValue(staff.id, "hiper_meta_value", e.target.value ? parseFloat(e.target.value) : null)
-              }
-              className="w-24 text-right"
-            />
-          </div>
+          {staff.role === "head_comercial" ? (
+            <div className="flex items-center justify-end gap-1 text-right" title="Soma das hiper metas dos closers (automático)">
+              {prefix && <span className="text-muted-foreground text-sm">{prefix}</span>}
+              <span className="w-24 text-right font-semibold tabular-nums">{closersHiperSum ? closersHiperSum.toLocaleString("pt-BR") : "—"}</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-end gap-1">
+              {prefix && (
+                <span className="text-muted-foreground text-sm">{prefix}</span>
+              )}
+              <Input
+                type="number"
+                value={value?.hiper_meta_value || ""}
+                placeholder="—"
+                onChange={(e) =>
+                  updateValue(staff.id, "hiper_meta_value", e.target.value ? parseFloat(e.target.value) : null)
+                }
+                className="w-24 text-right"
+              />
+            </div>
+          )}
         </TableCell>
         <TableCell>
           <div className="flex items-center justify-end gap-1">
