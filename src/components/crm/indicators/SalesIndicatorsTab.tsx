@@ -192,9 +192,12 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         .select("id, name, role, is_crm_closer")
         .eq("is_active", true);
 
-      const allowedCloserRoles = new Set(["closer", "head_comercial"]);
+      // head_comercial NÃO entra na base do ranking (não é closer individual). Só aparece
+      // se tiver venda/reunião no período, via a expansão abaixo.
+      const allowedCloserRoles = new Set(["closer"]);
       const filteredCloserStaff = (allActiveStaff || []).filter(staff => {
         const role = String((staff as any).role ?? "").toLowerCase();
+        if (role === "head_comercial") return false;
         // Flag manual "closer no CRM" entra direto; senão precisa do role + acesso ao CRM.
         return (staff as any).is_crm_closer || (crmStaffIds.has(staff.id) && allowedCloserRoles.has(role));
       });
