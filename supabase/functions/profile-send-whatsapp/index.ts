@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
 
     const { data: inst, error: iErr } = await supabase
       .from("whatsapp_instances")
-      .select("instance_name, api_url, api_key, status")
+      .select("instance_name, api_url, api_key, status, provider_type")
       .eq("id", instanceId)
       .maybeSingle();
     if (iErr) throw iErr;
@@ -42,15 +42,32 @@ Deno.serve(async (req) => {
     if (inst.status && inst.status !== "connected") throw new Error("Instância não está conectada");
 
     const number = formatPhoneNumber(phone);
-    const resp = await fetch(`${inst.api_url}/message/sendText/${inst.instance_name}`, {
+
+    // Stevo / Manager V2 usa POST /send/text {number,text}; Evolution clássico usa /message/sendText/{instance}.
+    let host = "";
+    try { host = new URL(inst.api_url).hostname.toLowerCase(); } catch { /* noop */ }
+    const isManagerV2 = inst.provider_type === "manager_v2" || host.endsWith(".stevo.chat");
+
+    let url: string;
+    let payload: Record<string, unknown>;
+    if (isManagerV2) {
+      const base = inst.api_url.replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
+      url = `${base}/send/text`;
+      payload = { number, text: message };
+    } else {
+      url = `${inst.api_url.replace(/\/+$/g, "")}/message/sendText/${inst.instance_name}`;
+      payload = { number, text: message };
+    }
+
+    const resp = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: inst.api_key },
-      body: JSON.stringify({ number, text: message }),
+      body: JSON.stringify(payload),
     });
     const respData = await resp.json().catch(() => ({}));
     if (!resp.ok) {
       const m = respData?.response?.message;
-      const errMsg = Array.isArray(m) ? m[0] : (m || respData?.message || `HTTP ${resp.status}`);
+      const errMsg = Array.isArray(m) ? m[0] : (m || respData?.message || respData?.error || `HTTP ${resp.status}`);
       throw new Error(String(errMsg));
     }
 

@@ -147,7 +147,12 @@ export default function UNVProfileRecruitmentPipelinePage() {
       const { data, error } = await supabase.functions.invoke("profile-send-whatsapp", {
         body: { instanceId, phone: cand.phone, message: msg },
       });
-      if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message);
+      if (error) {
+        let detail = error.message;
+        try { const body = await (error as any).context?.json?.(); if (body?.error) detail = body.error; } catch { /* noop */ }
+        throw new Error(detail);
+      }
+      if ((data as any)?.error) throw new Error((data as any).error);
       toast.success("Link do DISC enviado no WhatsApp");
     } catch (e: any) {
       toast.error("Erro ao enviar: " + (e?.message || e));
