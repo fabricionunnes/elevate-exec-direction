@@ -124,41 +124,32 @@ export default function UNVProfileRecruitmentPipelinePage() {
     load();
   };
 
-  const discLink = (cand: any) => {
+  // Link ÚNICO de avaliação: DISC + Fit Cultural em sequência (/avaliacao)
+  const assessmentLink = (cand: any) => {
     const tenant = cand?.tenant_id || job?.tenant_id || "";
     const params = new URLSearchParams();
     if (tenant) params.set("tenant", tenant);
     params.set("candidate", cand.id);
-    return `${getPublicBaseUrl()}/#/disc-publico?${params.toString()}`;
+    return `${getPublicBaseUrl()}/#/avaliacao?${params.toString()}`;
   };
+  // aliases mantidos (DISC e Cultura usam o mesmo link combinado)
+  const discLink = assessmentLink;
+  const cultureLink = assessmentLink;
 
-  const copyDiscLink = (cand: any) => {
-    navigator.clipboard.writeText(discLink(cand))
-      .then(() => toast.success("Link do teste DISC copiado. Envie pro candidato."))
+  const copyAssessmentLink = (cand: any) => {
+    navigator.clipboard.writeText(assessmentLink(cand))
+      .then(() => toast.success("Link da avaliação (DISC + cultural) copiado."))
       .catch(() => toast.error("Não consegui copiar o link"));
   };
+  const copyDiscLink = copyAssessmentLink;
+  const copyCultureLink = copyAssessmentLink;
 
-  const buildDiscMessage = (cand: any) => {
+  const buildAssessmentMessage = (cand: any) => {
     const firstName = (cand.full_name || "").trim().split(" ")[0] || "";
-    return `Olá ${firstName}! Aqui é da equipe do Fabrício Nunnes, da Universidade Nacional de Vendas. Recebemos sua candidatura para a vaga de ${job?.title || ""}. Para avançar no processo seletivo, faça seu teste de perfil comportamental DISC (leva ~7 min): ${discLink(cand)}`;
+    return `Olá ${firstName}! Aqui é da equipe do Fabrício Nunnes, da Universidade Nacional de Vendas. Recebemos sua candidatura para a vaga de ${job?.title || ""}. Para avançar no processo, faça nossa avaliação — perfil comportamental (DISC) + fit cultural, num link só (leva ~12 min): ${assessmentLink(cand)}`;
   };
-
-  const cultureLink = (cand: any) => {
-    const tenant = cand?.tenant_id || job?.tenant_id || "";
-    const params = new URLSearchParams();
-    if (tenant) params.set("tenant", tenant);
-    params.set("candidate", cand.id);
-    return `${getPublicBaseUrl()}/#/cultura-publica?${params.toString()}`;
-  };
-  const copyCultureLink = (cand: any) => {
-    navigator.clipboard.writeText(cultureLink(cand))
-      .then(() => toast.success("Link do teste cultural copiado."))
-      .catch(() => toast.error("Não consegui copiar o link"));
-  };
-  const buildCultureMessage = (cand: any) => {
-    const firstName = (cand.full_name || "").trim().split(" ")[0] || "";
-    return `Olá ${firstName}! Aqui é da equipe do Fabrício Nunnes, da Universidade Nacional de Vendas. Para avançar no processo da vaga de ${job?.title || ""}, faça nosso teste de fit cultural (leva ~5 min): ${cultureLink(cand)}`;
-  };
+  const buildDiscMessage = buildAssessmentMessage;
+  const buildCultureMessage = buildAssessmentMessage;
 
   const analyze = async (cand: any) => {
     setAnalyzing(true);
@@ -211,9 +202,23 @@ export default function UNVProfileRecruitmentPipelinePage() {
   const discMatch = (candId: string): number | null => {
     const d = discByCand[candId];
     if (!d || !target) return null;
-    const diff = Math.abs((d.d_score || 0) - (target.D || 0)) + Math.abs((d.i_score || 0) - (target.I || 0)) +
-      Math.abs((d.s_score || 0) - (target.S || 0)) + Math.abs((d.c_score || 0) - (target.C || 0));
-    return Math.max(0, Math.min(100, Math.round(100 - diff / 4)));
+    // Match afiado: erro ponderado por quanto a vaga valoriza cada eixo (quanto mais
+    // longe de 50 o ideal, mais peso) + penalização maior pra erros grandes (RMSE).
+    const axes = [
+      { c: d.d_score || 0, t: target.D || 0 },
+      { c: d.i_score || 0, t: target.I || 0 },
+      { c: d.s_score || 0, t: target.S || 0 },
+      { c: d.c_score || 0, t: target.C || 0 },
+    ];
+    let wSum = 0, wErr = 0;
+    for (const a of axes) {
+      const w = 1 + Math.abs(a.t - 50) / 50; // 1..2
+      const diff = a.c - a.t;
+      wErr += w * diff * diff;
+      wSum += w;
+    }
+    const rmse = Math.sqrt(wErr / wSum); // 0..100
+    return Math.max(0, Math.min(100, Math.round(100 - rmse)));
   };
   // fit cultural: combina o quiz (fit_score) com a IA da resposta aberta (ai_score)
   const cultureFit = (candId: string): number | null => {
@@ -588,7 +593,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
                     </div>
                   ) : (
                     <div className="flex flex-col gap-2">
-                      <p className="text-xs text-muted-foreground">Candidato ainda não fez o teste DISC. Edite a mensagem se quiser e envie:</p>
+                      <p className="text-xs text-muted-foreground">Candidato ainda não fez a avaliação. O link envia <strong>DISC + fit cultural juntos</strong>. Edite a mensagem se quiser e envie:</p>
                       <Textarea value={waMessage} onChange={(e) => setWaMessage(e.target.value)} rows={4} className="text-xs" placeholder="Mensagem a enviar" />
                       <div className="flex items-center gap-2 flex-wrap">
                         {instances.length > 0 && (
@@ -644,7 +649,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
                     </div>
                   ) : (
                     <div className="flex flex-col gap-2">
-                      <p className="text-xs text-muted-foreground">Candidato ainda não fez o teste de fit cultural. Edite a mensagem se quiser e envie:</p>
+                      <p className="text-xs text-muted-foreground">Candidato ainda não fez a avaliação. O link envia <strong>DISC + fit cultural juntos</strong>. Edite a mensagem se quiser e envie:</p>
                       <Textarea value={waCultureMessage} onChange={(e) => setWaCultureMessage(e.target.value)} rows={4} className="text-xs" placeholder="Mensagem a enviar" />
                       <div className="flex items-center gap-2 flex-wrap">
                         {instances.length > 0 && (
