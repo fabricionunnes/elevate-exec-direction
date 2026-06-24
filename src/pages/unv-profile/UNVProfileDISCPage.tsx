@@ -52,9 +52,15 @@ export default function UNVProfileDISCPage() {
         .eq("status", "active")
         .neq("employee_type", "external")
         .order("created_at", { ascending: false });
-      // dedup por staff_id
+      // dedup por staff_id + tira terceirizados (não fazem parte do time interno)
       const seen = new Set<string>();
-      const deduped = (emps || []).filter((e: any) => { const k = e.staff_id || e.id; if (seen.has(k)) return false; seen.add(k); return true; });
+      const deduped = (emps || []).filter((e: any) => {
+        if (e.contract_type === "terceirizado") return false;
+        const k = e.staff_id || e.id;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
       const ids = deduped.map((e: any) => e.id);
       const emails = deduped.map((e: any) => (e.email || "").toLowerCase()).filter(Boolean);
 
