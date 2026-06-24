@@ -25,6 +25,17 @@ const MEDALS: Record<number, { ring: string; label: string }> = {
   1: { ring: "from-slate-200 to-slate-400", label: "🥈" },
   2: { ring: "from-orange-300 to-amber-600", label: "🥉" },
 };
+const STAGE_STYLE: Record<string, { dot: string; head: string; text: string; bar: string }> = {
+  applied: { dot: "bg-blue-500", head: "from-blue-500/15 to-transparent", text: "text-blue-400", bar: "bg-blue-500" },
+  screening: { dot: "bg-indigo-500", head: "from-indigo-500/15 to-transparent", text: "text-indigo-400", bar: "bg-indigo-500" },
+  test: { dot: "bg-violet-500", head: "from-violet-500/15 to-transparent", text: "text-violet-400", bar: "bg-violet-500" },
+  hr_interview: { dot: "bg-purple-500", head: "from-purple-500/15 to-transparent", text: "text-purple-400", bar: "bg-purple-500" },
+  manager_interview: { dot: "bg-fuchsia-500", head: "from-fuchsia-500/15 to-transparent", text: "text-fuchsia-400", bar: "bg-fuchsia-500" },
+  offer: { dot: "bg-pink-500", head: "from-pink-500/15 to-transparent", text: "text-pink-400", bar: "bg-pink-500" },
+  hired: { dot: "bg-emerald-500", head: "from-emerald-500/15 to-transparent", text: "text-emerald-400", bar: "bg-emerald-500" },
+  rejected: { dot: "bg-rose-500", head: "from-rose-500/15 to-transparent", text: "text-rose-400", bar: "bg-rose-500" },
+  talent_pool: { dot: "bg-amber-500", head: "from-amber-500/15 to-transparent", text: "text-amber-400", bar: "bg-amber-500" },
+};
 const DISC_COLORS: Record<string, string> = { D: "bg-rose-500", I: "bg-amber-500", S: "bg-emerald-500", C: "bg-blue-500" };
 
 export default function UNVProfileRecruitmentPipelinePage() {
@@ -350,57 +361,64 @@ export default function UNVProfileRecruitmentPipelinePage() {
       <div className="flex gap-3 overflow-x-auto pb-4">
         {PROFILE_PIPELINE_STAGES.map(stage => {
           const list = cands.filter(c => c.stage === stage.key);
+          const st = STAGE_STYLE[stage.key] || { dot: "bg-slate-500", head: "from-slate-500/15 to-transparent", text: "text-slate-400", bar: "bg-slate-500" };
+          const isDrop = dragId != null;
           return (
             <div
               key={stage.key}
-              className="min-w-[280px] w-[280px]"
+              className="min-w-[290px] w-[290px]"
               onDragOver={e => e.preventDefault()}
               onDrop={() => { if (dragId) moveTo(dragId, stage.key); setDragId(null); }}
             >
-              <div className="flex items-center justify-between mb-2 px-1">
+              <div className={`flex items-center justify-between mb-2 px-3 py-2 rounded-lg bg-gradient-to-r ${st.head} border-l-[3px]`} style={{ borderColor: "transparent" }}>
                 <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${stage.color}`} />
-                  <p className="text-xs font-semibold uppercase tracking-wider">{stage.label}</p>
+                  <span className={`w-2.5 h-2.5 rounded-full ${st.dot} shadow`} />
+                  <p className={`text-xs font-bold uppercase tracking-wider ${st.text}`}>{stage.label}</p>
                 </div>
-                <Badge variant="secondary" className="text-[10px]">{list.length}</Badge>
+                <span className={`flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-bold text-white ${st.bar}`}>{list.length}</span>
               </div>
-              <div className="space-y-2 min-h-[120px] bg-muted/30 rounded-lg p-2">
-                {list.map(c => (
-                  <Card
-                    key={c.id}
-                    draggable
-                    onDragStart={() => setDragId(c.id)}
-                    onClick={() => openCand(c)}
-                    className="cursor-pointer hover:shadow-md transition"
-                  >
-                    <CardContent className="p-3 space-y-2">
-                      <div className="flex items-start gap-2">
-                        <Avatar className="h-8 w-8"><AvatarFallback className="text-xs">{c.full_name?.[0]}</AvatarFallback></Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{c.full_name}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">{c.email}</p>
+              <div className={`space-y-2 min-h-[120px] rounded-xl p-2 transition-colors ${isDrop ? "bg-primary/5 ring-1 ring-dashed ring-primary/30" : "bg-muted/30"}`}>
+                {list.map(c => {
+                  const ov = overall(c);
+                  return (
+                    <div
+                      key={c.id}
+                      draggable
+                      onDragStart={() => setDragId(c.id)}
+                      onDragEnd={() => setDragId(null)}
+                      onClick={() => openCand(c)}
+                      className="group relative cursor-pointer rounded-xl border bg-card/70 hover:bg-card hover:shadow-lg hover:-translate-y-0.5 transition-all overflow-hidden"
+                    >
+                      {ov != null && <span className="absolute left-0 top-0 h-full w-1" style={{ background: scoreColor(ov) }} />}
+                      <div className="p-3 pl-4 space-y-2">
+                        <div className="flex items-start gap-2">
+                          <Avatar className="h-8 w-8 ring-2 ring-background"><AvatarFallback className="text-xs">{c.full_name?.[0]}</AvatarFallback></Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold truncate">{c.full_name}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{c.email}</p>
+                          </div>
+                          {ov != null && (
+                            <div className="flex flex-col items-center justify-center h-9 w-9 rounded-lg shrink-0 text-white font-bold text-sm shadow" style={{ background: scoreColor(ov) }}>
+                              {ov}
+                            </div>
+                          )}
+                          <button className="self-start" onClick={(e) => { e.stopPropagation(); toggleFav(c); }}>
+                            <Star className={`w-4 h-4 ${c.is_favorite ? "fill-amber-400 text-amber-400" : "text-muted-foreground/50 hover:text-amber-400"}`} />
+                          </button>
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); toggleFav(c); }}>
-                          <Star className={`w-4 h-4 ${c.is_favorite ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`} />
-                        </button>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {c.ai_score != null && (
+                            <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-indigo-500/10 text-indigo-400 px-2 py-0.5"><Sparkles className="w-3 h-3" />IA {c.ai_score}%</span>
+                          )}
+                          {discByCand[c.id] && (
+                            <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-fuchsia-500/10 text-fuchsia-400 px-2 py-0.5"><Brain className="w-3 h-3" />{discByCand[c.id].dominant}</span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 flex-wrap">
-                        {c.ai_score != null && (
-                          <div className="flex items-center gap-1 text-[10px]">
-                            <Sparkles className="w-3 h-3 text-primary" />
-                            <span className="font-semibold">{c.ai_score}%</span> aderência IA
-                          </div>
-                        )}
-                        {discByCand[c.id] && (
-                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                            <Brain className="w-3 h-3 text-primary" /> DISC: <span className="font-semibold">{discByCand[c.id].dominant}</span>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                {list.length === 0 && <p className="text-[10px] text-center text-muted-foreground py-4">Vazio</p>}
+                    </div>
+                  );
+                })}
+                {list.length === 0 && <p className="text-[10px] text-center text-muted-foreground/60 py-6">Arraste candidatos aqui</p>}
               </div>
             </div>
           );
@@ -412,16 +430,22 @@ export default function UNVProfileRecruitmentPipelinePage() {
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           {selected && (
             <>
-              <DialogHeader>
+              <DialogHeader className="-mx-6 -mt-6 px-6 pt-6 pb-4 bg-gradient-to-br from-indigo-500/15 via-fuchsia-500/10 to-transparent border-b">
                 <DialogTitle className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10"><AvatarFallback>{selected.full_name?.[0]}</AvatarFallback></Avatar>
-                  <div>
-                    <div>{selected.full_name}</div>
+                  <Avatar className="h-12 w-12 ring-2 ring-background shadow"><AvatarFallback className="bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white">{selected.full_name?.[0]}</AvatarFallback></Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="truncate">{selected.full_name}</div>
                     <div className="text-xs font-normal text-muted-foreground">
                       Inscrito em {selected.created_at ? new Date(selected.created_at).toLocaleDateString("pt-BR") : "—"}
                       {selected.source ? ` • origem: ${selected.source}` : ""}
                     </div>
                   </div>
+                  {overall(selected) != null && (
+                    <div className="flex flex-col items-center justify-center h-12 w-12 rounded-xl shrink-0 text-white shadow-lg" style={{ background: scoreColor(overall(selected) as number) }}>
+                      <span className="text-base font-extrabold leading-none">{overall(selected)}</span>
+                      <span className="text-[8px] uppercase opacity-90">nota</span>
+                    </div>
+                  )}
                 </DialogTitle>
               </DialogHeader>
 
