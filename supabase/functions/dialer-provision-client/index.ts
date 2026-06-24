@@ -160,16 +160,28 @@ Deno.serve(async (req) => {
       }
       await createDialerPipeline(supabase, tenantId);
 
-      // libera o discador nos usuários escolhidos (dialer_tenant_id separado do tenant do portal)
-      for (const uid2 of userIds) {
+      // Habilita usuários: os escolhidos OU, se nenhum, TODOS os usuários do portal
+      // daquela empresa (clientes) — pra nunca liberar o discador sem ninguém ver o banner.
+      let targetUserIds = userIds;
+      if (targetUserIds.length === 0) {
+        const { data: projs } = await supabase.from("onboarding_projects").select("id").eq("onboarding_company_id", companyId);
+        const projIds = (projs || []).map((p: any) => p.id);
+        if (projIds.length) {
+          const { data: portalUsers } = await supabase.from("onboarding_users").select("id").in("project_id", projIds);
+          targetUserIds = (portalUsers || []).map((u: any) => u.id);
+        }
+      }
+      for (const uid2 of targetUserIds) {
         await supabase.from("onboarding_users").update({ dialer_enabled: true, dialer_tenant_id: tenantId }).eq("id", uid2);
       }
+      const enabledCount = targetUserIds.length;
 
       const { data: key } = await supabase.rpc("dialer_generate_api_key", { p_tenant: tenantId, p_label: company.name });
       if (initialCredit > 0) await supabase.rpc("dialer_credit_wallet", { p_tenant: tenantId, p_amount: initialCredit, p_operation: "adjustment", p_desc: "Crédito inicial", p_ref: null });
       if (planPrice != null) await upsertPricing(supabase, tenantId, planPrice);
       const billing = await applyBilling(supabase, { tenantId, name: company.name, email: body.email, cpfCnpj: body.cpfCnpj || company.cnpj, planPrice, maxUsers: body.maxUsers, setupFee: body.setupFee, freeRelease: body.freeRelease === true });
-      return json({ ok: true, mode, tenantId, apiKey: key, usersEnabled: userIds.length, ...billing, message: billing.freeRelease ? `Discador liberado para ${userIds.length} usuário(s) (grátis).` : `Discador liberado para ${userIds.length} usuário(s). Pague para ativar.` });
+      const warn = enabledCount === 0 ? " ATENÇÃO: 0 usuários habilitados — a empresa não tem usuário de portal, ninguém vai ver o discador." : "";
+      return json({ ok: true, mode, tenantId, apiKey: key, usersEnabled: enabledCount, ...billing, message: (billing.freeRelease ? `Discador liberado para ${enabledCount} usuário(s) (grátis).` : `Discador liberado para ${enabledCount} usuário(s). Pague para ativar.`) + warn });
     }
 
     if (mode === "existing_portal") {
