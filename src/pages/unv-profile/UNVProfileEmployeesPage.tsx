@@ -64,6 +64,7 @@ export default function UNVProfileEmployeesPage() {
           .select(
             "id,full_name,email,phone,avatar_url,status,employee_type,contract_type,hire_date,position_id,staff_id,profile_positions(id,title)",
           )
+          .neq("employee_type", "external")
           .order("created_at", { ascending: false }),
         supabase.from("profile_positions").select("id,title").order("title"),
       ]);

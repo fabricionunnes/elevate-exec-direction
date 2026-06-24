@@ -47,36 +47,40 @@ Deno.serve(async (req) => {
     );
 
     const tenantId = body.tenantId ?? null;
+    const candidateId = body.candidateId ?? null;
 
-    // Try to find an existing employee by email within the same tenant scope.
+    // Se o teste é de um CANDIDATO (link da vaga), NÃO cria profile_employees —
+    // candidato só vira colaborador quando contratado. Só cria employee no uso
+    // genérico do link público de DISC (sem candidateId).
     let employeeId: string | null = null;
-    if (body.email) {
-      const { data: existing } = await supabase
-        .from("profile_employees")
-        .select("id")
-        .eq("email", body.email)
-        .is("tenant_id", tenantId as any)
-        .maybeSingle();
-      if (existing) employeeId = existing.id;
-    }
-
-    if (!employeeId) {
-      const { data: created, error: insertErr } = await supabase
-        .from("profile_employees")
-        .insert({
-          tenant_id: tenantId,
-          full_name: body.name.trim(),
-          email: body.email || null,
-          phone: body.phone || null,
-          status: "active",
-          employee_type: "external",
-          is_employee: false,
-          metadata: { source: "public_disc_link" },
-        })
-        .select("id")
-        .single();
-      if (insertErr) throw insertErr;
-      employeeId = created.id;
+    if (!candidateId) {
+      if (body.email) {
+        const { data: existing } = await supabase
+          .from("profile_employees")
+          .select("id")
+          .eq("email", body.email)
+          .is("tenant_id", tenantId as any)
+          .maybeSingle();
+        if (existing) employeeId = existing.id;
+      }
+      if (!employeeId) {
+        const { data: created, error: insertErr } = await supabase
+          .from("profile_employees")
+          .insert({
+            tenant_id: tenantId,
+            full_name: body.name.trim(),
+            email: body.email || null,
+            phone: body.phone || null,
+            status: "active",
+            employee_type: "external",
+            is_employee: false,
+            metadata: { source: "public_disc_link" },
+          })
+          .select("id")
+          .single();
+        if (insertErr) throw insertErr;
+        employeeId = created.id;
+      }
     }
 
     const { error: discErr } = await supabase.from("profile_disc_results").insert({
