@@ -559,7 +559,7 @@ const AppShell = () => {
             <Route path="/job-application" element={<PublicJobApplicationPage />} />
             <Route path="/vagas/:token" element={<ProfileJobApplicationPage />} />
             <Route path="/cultura-publica" element={<ProfileCulturePublicPage />} />
-            <Route path="/avaliacao" element={<ProfileAssessmentPage />} />
+            <Route path="/avaliacao-candidato" element={<ProfileAssessmentPage />} />
             <Route path="/banco-talentos" element={<PublicTalentPoolPage />} />
             <Route path="/social-briefing/:token" element={<SocialBriefingPublicPage />} />
             <Route path="/traffic-analysis/:token" element={<TrafficAnalysisPublicPage />} />

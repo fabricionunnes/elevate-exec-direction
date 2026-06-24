@@ -133,7 +133,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
     const params = new URLSearchParams();
     if (tenant) params.set("tenant", tenant);
     params.set("candidate", cand.id);
-    return `${getPublicBaseUrl()}/#/avaliacao?${params.toString()}`;
+    return `${getPublicBaseUrl()}/#/avaliacao-candidato?${params.toString()}`;
   };
   // aliases mantidos (DISC e Cultura usam o mesmo link combinado)
   const discLink = assessmentLink;
@@ -195,8 +195,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
       setSending(false);
     }
   };
-  const sendDiscWhatsapp = (cand: any) => sendWhatsappMsg(cand, (waMessage || "").trim() || buildDiscMessage(cand), "Link do DISC enviado no WhatsApp");
-  const sendCultureWhatsapp = (cand: any) => sendWhatsappMsg(cand, (waCultureMessage || "").trim() || buildCultureMessage(cand), "Link do teste cultural enviado no WhatsApp");
+  const sendAssessmentWhatsapp = (cand: any) => sendWhatsappMsg(cand, (waMessage || "").trim() || buildAssessmentMessage(cand), "Avaliação enviada no WhatsApp");
 
   const openCand = (c: any) => {
     setFreshAnalysis(null);
@@ -571,6 +570,36 @@ export default function UNVProfileRecruitmentPipelinePage() {
                   </Select>
                 </div>
 
+                {(!disc || !kult) && (
+                  <div className="rounded-lg border p-3 space-y-2 bg-gradient-to-br from-emerald-500/10 to-transparent">
+                    <p className="font-semibold flex items-center gap-2"><MessageCircle className="w-4 h-4 text-emerald-500" />Enviar avaliação (DISC + Fit Cultural)</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Um link só, com os dois testes em sequência. {disc && !kult ? "Falta o fit cultural." : !disc && kult ? "Falta o DISC." : "Faltam os dois testes."} Edite a mensagem se quiser.
+                    </p>
+                    <Textarea value={waMessage} onChange={(e) => setWaMessage(e.target.value)} rows={4} className="text-xs" placeholder="Mensagem a enviar" />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {instances.length > 0 && (
+                        <Select value={instanceId} onValueChange={setInstanceId}>
+                          <SelectTrigger className="h-8 w-[180px] text-xs"><SelectValue placeholder="Instância" /></SelectTrigger>
+                          <SelectContent>
+                            {instances.map((i) => (
+                              <SelectItem key={i.id} value={i.id} className="text-xs">{i.display_name || i.instance_name}{i.is_default ? " (padrão)" : ""}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <Button variant="default" size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700" disabled={sending || !selected.phone || !instanceId} onClick={() => sendAssessmentWhatsapp(selected)}>
+                        {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}Enviar no WhatsApp
+                      </Button>
+                      <Button variant="outline" size="sm" className="gap-2" onClick={() => copyAssessmentLink(selected)}>
+                        <Copy className="w-4 h-4" />Copiar link
+                      </Button>
+                    </div>
+                    {!selected.phone && <p className="text-[11px] text-amber-600">Candidato sem telefone — só dá pra copiar o link.</p>}
+                    {instances.length === 0 && <p className="text-[11px] text-muted-foreground">Nenhuma instância de WhatsApp conectada.</p>}
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
                   {selected.email && <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-muted-foreground" />{selected.email}</p>}
                   {selected.phone && <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-muted-foreground" />{selected.phone}</p>}
@@ -678,33 +707,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
                       )}
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-2">
-                      <p className="text-xs text-muted-foreground">Candidato ainda não fez a avaliação. O link envia <strong>DISC + fit cultural juntos</strong>. Edite a mensagem se quiser e envie:</p>
-                      <Textarea value={waMessage} onChange={(e) => setWaMessage(e.target.value)} rows={4} className="text-xs" placeholder="Mensagem a enviar" />
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {instances.length > 0 && (
-                          <Select value={instanceId} onValueChange={setInstanceId}>
-                            <SelectTrigger className="h-8 w-[180px] text-xs"><SelectValue placeholder="Instância" /></SelectTrigger>
-                            <SelectContent>
-                              {instances.map((i) => (
-                                <SelectItem key={i.id} value={i.id} className="text-xs">
-                                  {i.display_name || i.instance_name}{i.is_default ? " (padrão)" : ""}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                        <Button variant="default" size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700" disabled={sending || !selected.phone || !instanceId} onClick={() => sendDiscWhatsapp(selected)}>
-                          {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
-                          Enviar no WhatsApp
-                        </Button>
-                        <Button variant="outline" size="sm" className="gap-2" onClick={() => copyDiscLink(selected)}>
-                          <Copy className="w-4 h-4" />Copiar link
-                        </Button>
-                      </div>
-                      {!selected.phone && <p className="text-[11px] text-amber-600">Candidato sem telefone — só dá pra copiar o link.</p>}
-                      {instances.length === 0 && <p className="text-[11px] text-muted-foreground">Nenhuma instância de WhatsApp conectada.</p>}
-                    </div>
+                    <p className="text-xs text-muted-foreground">Candidato ainda não fez o DISC — envie a avaliação acima.</p>
                   )}
                 </div>
 
@@ -734,30 +737,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
                       )}
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-2">
-                      <p className="text-xs text-muted-foreground">Candidato ainda não fez a avaliação. O link envia <strong>DISC + fit cultural juntos</strong>. Edite a mensagem se quiser e envie:</p>
-                      <Textarea value={waCultureMessage} onChange={(e) => setWaCultureMessage(e.target.value)} rows={4} className="text-xs" placeholder="Mensagem a enviar" />
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {instances.length > 0 && (
-                          <Select value={instanceId} onValueChange={setInstanceId}>
-                            <SelectTrigger className="h-8 w-[180px] text-xs"><SelectValue placeholder="Instância" /></SelectTrigger>
-                            <SelectContent>
-                              {instances.map((i) => (
-                                <SelectItem key={i.id} value={i.id} className="text-xs">{i.display_name || i.instance_name}{i.is_default ? " (padrão)" : ""}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                        <Button variant="default" size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700" disabled={sending || !selected.phone || !instanceId} onClick={() => sendCultureWhatsapp(selected)}>
-                          {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
-                          Enviar no WhatsApp
-                        </Button>
-                        <Button variant="outline" size="sm" className="gap-2" onClick={() => copyCultureLink(selected)}>
-                          <Copy className="w-4 h-4" />Copiar link
-                        </Button>
-                      </div>
-                      {!selected.phone && <p className="text-[11px] text-amber-600">Candidato sem telefone — só dá pra copiar o link.</p>}
-                    </div>
+                    <p className="text-xs text-muted-foreground">Candidato ainda não fez o fit cultural — envie a avaliação acima.</p>
                   )}
                 </div>
 
