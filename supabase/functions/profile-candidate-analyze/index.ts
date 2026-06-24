@@ -138,10 +138,12 @@ CURRÍCULO: ${resumeNote}
 ${resumeText ? `\n--- CONTEÚDO DO CURRÍCULO ---\n${resumeText}\n--- FIM DO CURRÍCULO ---\n` : ""}
 Se houver currículo (anexado como arquivo ou no texto acima), LEIA e baseie a análise na experiência real (cargos, tempo, resultados, ferramentas, segmento). Cruze isso com os requisitos da vaga. Só aponte uma lacuna como ponto de atenção se ela realmente não aparecer no currículo — NÃO escreva "currículo não foi lido". Não invente experiência que não está escrita.
 
-REGRAS DE CONSISTÊNCIA (importante):
-- Seja internamente coerente: NÃO liste como ponto forte algo que você mesmo contradiz nos pontos de atenção. Cada item deve aparecer de um lado só.
-- Distinga "gestão comercial"/título de cargo de LIDERANÇA DE TIME real. Um título (ex: "Gestora Comercial") sem evidência de equipe gerenciada, escopo ou resultados NÃO é ponto forte de liderança — trate como não comprovado.
-- Não transforme um cargo genérico em ponto forte só pelo nome. Ponto forte tem que ser uma vantagem real e verificável pra ESTA vaga.
+REGRAS DE CONSISTÊNCIA E JUSTIÇA (importante):
+- Seja internamente coerente: NÃO liste como ponto forte algo que você mesmo contradiz nos pontos de atenção. Cada item de um lado só.
+- RECONHEÇA os cargos que o candidato realmente teve. Se o currículo mostra um cargo de gestão/liderança (ex: "Gestora Comercial", "Coordenadora", "Gerente") com período (ex: desde 2023), NÃO escreva "zero experiência em liderança/gestão" — isso é factualmente errado e contradiz o currículo. Reconheça que ela ATUA nesse cargo.
+- A crítica certa NÃO é "não tem liderança", e sim a PROFUNDIDADE/ESCOPO: aponte quando o currículo não detalha tamanho do time, orçamento, metas batidas ou resultados — ou seja, "tem o cargo de gestão mas falta evidência do escopo/senioridade que ESTA vaga exige". É uma lacuna de DETALHAMENTO/nível, não de existência.
+- Evite linguagem absoluta ("zero", "nenhuma evidência") quando há indício no currículo. Prefira "não detalhado", "não comprova o nível exigido", "escopo não está claro".
+- Ponto forte tem que ser vantagem real e verificável pra ESTA vaga; mas experiência real no cargo conta como ponto forte (com a ressalva de escopo nos pontos de atenção, sem se contradizer).
 
 Responda APENAS com um JSON válido, em português, neste formato:
 {
