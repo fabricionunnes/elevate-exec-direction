@@ -108,6 +108,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
     const { error } = await supabase.from("profile_candidates").update({ stage }).eq("id", candId);
     if (error) return toast.error(error.message);
     setCands(prev => prev.map(c => c.id === candId ? { ...c, stage } : c));
+    setSelected((prev: any) => prev && prev.id === candId ? { ...prev, stage } : prev);
   };
 
   const toggleFav = async (cand: any) => {
@@ -213,11 +214,15 @@ export default function UNVProfileRecruitmentPipelinePage() {
   const setCadastral = async (status: "approved" | "rejected") => {
     if (!selected) return;
     const next = selected.cadastral_status === status ? null : status;
-    const { error } = await supabase.from("profile_candidates").update({ cadastral_status: next }).eq("id", selected.id);
+    // Aprovar -> avança pra Proposta; Reprovar -> move pra Reprovado.
+    const patch: any = { cadastral_status: next };
+    if (next === "approved") patch.stage = "offer";
+    else if (next === "rejected") patch.stage = "rejected";
+    const { error } = await supabase.from("profile_candidates").update(patch).eq("id", selected.id);
     if (error) return toast.error(error.message);
-    setSelected((prev: any) => prev && prev.id === selected.id ? { ...prev, cadastral_status: next } : prev);
-    setCands(prev => prev.map(c => c.id === selected.id ? { ...c, cadastral_status: next } : c));
-    toast.success(next === "approved" ? "Análise cadastral aprovada" : next === "rejected" ? "Análise cadastral reprovada" : "Status removido");
+    setSelected((prev: any) => prev && prev.id === selected.id ? { ...prev, ...patch } : prev);
+    setCands(prev => prev.map(c => c.id === selected.id ? { ...c, ...patch } : c));
+    toast.success(next === "approved" ? "Aprovado — movido para Proposta" : next === "rejected" ? "Reprovado — movido para Reprovado" : "Status removido");
   };
 
   const saveInterviews = async () => {
@@ -552,6 +557,20 @@ export default function UNVProfileRecruitmentPipelinePage() {
               </DialogHeader>
 
               <div className="space-y-4 text-sm">
+                <div className="flex items-center gap-2 rounded-lg border p-2.5 bg-muted/30">
+                  <span className="text-xs font-medium text-muted-foreground shrink-0">Etapa:</span>
+                  <Select value={selected.stage} onValueChange={(v) => moveTo(selected.id, v)}>
+                    <SelectTrigger className="h-8 flex-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {PROFILE_PIPELINE_STAGES.map((s) => (
+                        <SelectItem key={s.key} value={s.key}>
+                          <span className="flex items-center gap-2"><span className={`w-2 h-2 rounded-full ${s.color}`} />{s.label}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="space-y-1.5">
                   {selected.email && <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-muted-foreground" />{selected.email}</p>}
                   {selected.phone && <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-muted-foreground" />{selected.phone}</p>}
