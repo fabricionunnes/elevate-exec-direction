@@ -17,8 +17,10 @@ interface CampaignOpt { id: string; name: string; status: string }
 interface CurrentCall { callId: string; queueId: string | null; lead: { id: string; name: string; phone: string } }
 
 const DISPOSITIONS = [
+  // "Agendou reunião" foi removido daqui de propósito: marcava agendado SEM agendar de
+  // verdade (e encerrava a ligação). Pra marcar agendado, use "Agendar reunião" (calendário),
+  // que agenda e marca a disposição sem desligar.
   { key: "qualificado", label: "Qualificado", variant: "default" as const },
-  { key: "agendou_reuniao", label: "Agendou reunião", variant: "default" as const },
   { key: "retornar_depois", label: "Retornar depois", variant: "secondary" as const },
   { key: "sem_interesse", label: "Sem interesse", variant: "secondary" as const },
   { key: "nao_qualificado", label: "Não qualificado", variant: "outline" as const },
@@ -298,8 +300,8 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
                 </Button>
               ))}
             </div>
-            <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => setShowSchedule(true)}>
-              <CalendarPlus className="h-4 w-4" /> Agendar reunião
+            <Button size="sm" className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowSchedule(true)}>
+              <CalendarPlus className="h-4 w-4" /> Agendar reunião (marca como agendado)
             </Button>
             <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => disposition("nao_atendeu", "Não atendeu")}>
               <PhoneOff className="h-4 w-4" /> Encerrar / Não atendeu

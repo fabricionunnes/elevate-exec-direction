@@ -360,6 +360,8 @@ const OnboardingStaffPage = () => {
         return <Badge className="bg-gradient-to-r from-amber-500 to-yellow-400 text-white flex items-center gap-1"><Crown className="h-3 w-3" />Master</Badge>;
       case "admin":
         return <Badge className="bg-amber-500">Admin</Badge>;
+      case "head_comercial":
+        return <Badge className="bg-red-500">Head Comercial</Badge>;
       case "cs":
         return <Badge className="bg-blue-500">CS</Badge>;
       case "consultant":
@@ -672,6 +674,7 @@ const OnboardingStaffPage = () => {
                 <SelectContent>
                   <SelectItem value="pending">Pendente (sem acesso)</SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
+                  <SelectItem value="head_comercial">Head Comercial</SelectItem>
                   <SelectItem value="cs">CS (Customer Success)</SelectItem>
                   <SelectItem value="consultant">Consultor</SelectItem>
                   <SelectItem value="closer">Closer</SelectItem>
