@@ -98,6 +98,13 @@ Deno.serve(async (req) => {
     });
     if (discErr) throw discErr;
 
+    // Candidato respondeu o teste -> avança pra Entrevista RH (só se ainda estiver
+    // numa etapa anterior; não move pra trás quem já passou).
+    if (candidateId) {
+      await supabase.from("profile_candidates").update({ stage: "hr_interview" })
+        .eq("id", candidateId).in("stage", ["applied", "screening", "test"]);
+    }
+
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

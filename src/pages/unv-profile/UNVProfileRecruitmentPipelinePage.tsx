@@ -190,13 +190,25 @@ export default function UNVProfileRecruitmentPipelinePage() {
       }
       if ((data as any)?.error) throw new Error((data as any).error);
       toast.success(okMsg);
+      return true;
     } catch (e: any) {
       toast.error("Erro ao enviar: " + (e?.message || e));
+      return false;
     } finally {
       setSending(false);
     }
   };
-  const sendAssessmentWhatsapp = (cand: any) => sendWhatsappMsg(cand, (waMessage || "").trim() || buildAssessmentMessage(cand), "Avaliação enviada no WhatsApp");
+  // Funil principal (off-funnel: rejected, talent_pool). Só avança pra frente.
+  const FUNNEL = ["applied", "screening", "test", "hr_interview", "manager_interview", "juridico", "offer", "hired"];
+  const advanceTo = (cand: any, target: string) => {
+    const cur = FUNNEL.indexOf(cand.stage);
+    const tgt = FUNNEL.indexOf(target);
+    if (cur >= 0 && tgt > cur) moveTo(cand.id, target);
+  };
+  const sendAssessmentWhatsapp = async (cand: any) => {
+    const ok = await sendWhatsappMsg(cand, (waMessage || "").trim() || buildAssessmentMessage(cand), "Avaliação enviada no WhatsApp");
+    if (ok) advanceTo(cand, "test");
+  };
 
   const openCand = (c: any) => {
     setFreshAnalysis(null);

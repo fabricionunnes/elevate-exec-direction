@@ -99,6 +99,12 @@ Responda APENAS um JSON válido em português:
     });
     if (error) throw error;
 
+    // Candidato respondeu -> avança pra Entrevista RH (só se em etapa anterior).
+    if (candidateId) {
+      await supabase.from("profile_candidates").update({ stage: "hr_interview" })
+        .eq("id", candidateId).in("stage", ["applied", "screening", "test"]);
+    }
+
     return new Response(JSON.stringify({ ok: true, fitScore, pillarScores, aiScore }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
