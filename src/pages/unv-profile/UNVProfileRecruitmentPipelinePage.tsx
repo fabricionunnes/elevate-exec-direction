@@ -8,7 +8,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink, Target, Loader2, ThumbsUp, AlertTriangle, MessageCircle, Scale, Search } from "lucide-react";
+import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink, Target, Loader2, ThumbsUp, AlertTriangle, MessageCircle, Scale, Search, Compass } from "lucide-react";
+import { CULTURE_PILLARS } from "@/data/cultureQuestions";
 import { toast } from "sonner";
 import { PROFILE_PIPELINE_STAGES } from "./types";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
@@ -45,6 +46,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
   const [cands, setCands] = useState<any[]>([]);
   const [dragId, setDragId] = useState<string | null>(null);
   const [discByCand, setDiscByCand] = useState<Record<string, any>>({});
+  const [cultureByCand, setCultureByCand] = useState<Record<string, any>>({});
   const [selected, setSelected] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [freshAnalysis, setFreshAnalysis] = useState<any>(null);
@@ -52,6 +54,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
   const [instanceId, setInstanceId] = useState<string>("");
   const [sending, setSending] = useState(false);
   const [waMessage, setWaMessage] = useState("");
+  const [waCultureMessage, setWaCultureMessage] = useState("");
   const [view, setView] = useState<"pipeline" | "ranking">("pipeline");
   const [analyzingAll, setAnalyzingAll] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -81,15 +84,19 @@ export default function UNVProfileRecruitmentPipelinePage() {
     setCands(list);
     const ids = list.map((x: any) => x.id);
     if (ids.length) {
-      const { data: disc } = await supabase
-        .from("profile_disc_results")
-        .select("candidate_id,d_score,i_score,s_score,c_score,dominant,taken_at")
-        .in("candidate_id", ids);
-      const map: Record<string, any> = {};
-      (disc || []).forEach((d: any) => { if (d.candidate_id) map[d.candidate_id] = d; });
-      setDiscByCand(map);
+      const [{ data: disc }, { data: culture }] = await Promise.all([
+        supabase.from("profile_disc_results").select("candidate_id,d_score,i_score,s_score,c_score,dominant,taken_at").in("candidate_id", ids),
+        supabase.from("profile_culture_results").select("candidate_id,pillar_scores,fit_score,ai_score,ai_summary,taken_at").in("candidate_id", ids).order("taken_at", { ascending: false }),
+      ]);
+      const dmap: Record<string, any> = {};
+      (disc || []).forEach((d: any) => { if (d.candidate_id) dmap[d.candidate_id] = d; });
+      setDiscByCand(dmap);
+      const cmap: Record<string, any> = {};
+      (culture || []).forEach((x: any) => { if (x.candidate_id && !cmap[x.candidate_id]) cmap[x.candidate_id] = x; });
+      setCultureByCand(cmap);
     } else {
       setDiscByCand({});
+      setCultureByCand({});
     }
   };
 
@@ -136,6 +143,23 @@ export default function UNVProfileRecruitmentPipelinePage() {
     return `Olá ${firstName}! Aqui é da equipe do Fabrício Nunnes, da Universidade Nacional de Vendas. Recebemos sua candidatura para a vaga de ${job?.title || ""}. Para avançar no processo seletivo, faça seu teste de perfil comportamental DISC (leva ~7 min): ${discLink(cand)}`;
   };
 
+  const cultureLink = (cand: any) => {
+    const tenant = cand?.tenant_id || job?.tenant_id || "";
+    const params = new URLSearchParams();
+    if (tenant) params.set("tenant", tenant);
+    params.set("candidate", cand.id);
+    return `${getPublicBaseUrl()}/#/cultura-publica?${params.toString()}`;
+  };
+  const copyCultureLink = (cand: any) => {
+    navigator.clipboard.writeText(cultureLink(cand))
+      .then(() => toast.success("Link do teste cultural copiado."))
+      .catch(() => toast.error("Não consegui copiar o link"));
+  };
+  const buildCultureMessage = (cand: any) => {
+    const firstName = (cand.full_name || "").trim().split(" ")[0] || "";
+    return `Olá ${firstName}! Aqui é da equipe do Fabrício Nunnes, da Universidade Nacional de Vendas. Para avançar no processo da vaga de ${job?.title || ""}, faça nosso teste de fit cultural (leva ~5 min): ${cultureLink(cand)}`;
+  };
+
   const analyze = async (cand: any) => {
     setAnalyzing(true);
     setFreshAnalysis(null);
@@ -156,14 +180,13 @@ export default function UNVProfileRecruitmentPipelinePage() {
     }
   };
 
-  const sendDiscWhatsapp = async (cand: any) => {
+  const sendWhatsappMsg = async (cand: any, message: string, okMsg: string) => {
     if (!instanceId) return toast.error("Selecione uma instância conectada");
     if (!cand.phone) return toast.error("Candidato sem telefone cadastrado");
     setSending(true);
     try {
-      const msg = (waMessage || "").trim() || buildDiscMessage(cand);
       const { data, error } = await supabase.functions.invoke("profile-send-whatsapp", {
-        body: { instanceId, phone: cand.phone, message: msg },
+        body: { instanceId, phone: cand.phone, message: message.trim() },
       });
       if (error) {
         let detail = error.message;
@@ -171,15 +194,17 @@ export default function UNVProfileRecruitmentPipelinePage() {
         throw new Error(detail);
       }
       if ((data as any)?.error) throw new Error((data as any).error);
-      toast.success("Link do DISC enviado no WhatsApp");
+      toast.success(okMsg);
     } catch (e: any) {
       toast.error("Erro ao enviar: " + (e?.message || e));
     } finally {
       setSending(false);
     }
   };
+  const sendDiscWhatsapp = (cand: any) => sendWhatsappMsg(cand, (waMessage || "").trim() || buildDiscMessage(cand), "Link do DISC enviado no WhatsApp");
+  const sendCultureWhatsapp = (cand: any) => sendWhatsappMsg(cand, (waCultureMessage || "").trim() || buildCultureMessage(cand), "Link do teste cultural enviado no WhatsApp");
 
-  const openCand = (c: any) => { setFreshAnalysis(null); setWaMessage(buildDiscMessage(c)); setSelected(c); };
+  const openCand = (c: any) => { setFreshAnalysis(null); setWaMessage(buildDiscMessage(c)); setWaCultureMessage(buildCultureMessage(c)); setSelected(c); };
 
   // perfil DISC ideal da vaga (0-100) e quanto o candidato bate com ele
   const target = job?.target_disc && typeof job.target_disc === "object" ? job.target_disc : null;
@@ -190,17 +215,28 @@ export default function UNVProfileRecruitmentPipelinePage() {
       Math.abs((d.s_score || 0) - (target.S || 0)) + Math.abs((d.c_score || 0) - (target.C || 0));
     return Math.max(0, Math.min(100, Math.round(100 - diff / 4)));
   };
+  // fit cultural: combina o quiz (fit_score) com a IA da resposta aberta (ai_score)
+  const cultureFit = (candId: string): number | null => {
+    const k = cultureByCand[candId];
+    if (!k) return null;
+    const quiz = k.fit_score != null ? Number(k.fit_score) : null;
+    const ai = k.ai_score != null ? Number(k.ai_score) : null;
+    if (quiz != null && ai != null) return Math.round(quiz * 0.7 + ai * 0.3);
+    return quiz ?? ai ?? null;
+  };
+  // nota geral = média ponderada dos sinais presentes (IA aderência 2, DISC 1, Cultura 1)
   const overall = (cand: any): number | null => {
-    const ai = cand.ai_score != null ? Number(cand.ai_score) : null;
-    const dm = discMatch(cand.id);
-    if (ai != null && dm != null) return Math.round(ai * 0.6 + dm * 0.4);
-    if (ai != null) return ai;
-    if (dm != null) return dm;
-    return null;
+    const parts: { v: number; w: number }[] = [];
+    if (cand.ai_score != null) parts.push({ v: Number(cand.ai_score), w: 2 });
+    const dm = discMatch(cand.id); if (dm != null) parts.push({ v: dm, w: 1 });
+    const cf = cultureFit(cand.id); if (cf != null) parts.push({ v: cf, w: 1 });
+    if (!parts.length) return null;
+    const totW = parts.reduce((s, p) => s + p.w, 0);
+    return Math.round(parts.reduce((s, p) => s + p.v * p.w, 0) / totW);
   };
 
   const ranking = cands
-    .map((c) => ({ cand: c, ai: c.ai_score != null ? Number(c.ai_score) : null, dm: discMatch(c.id), overall: overall(c) }))
+    .map((c) => ({ cand: c, ai: c.ai_score != null ? Number(c.ai_score) : null, dm: discMatch(c.id), cf: cultureFit(c.id), overall: overall(c) }))
     .filter((r) => r.overall != null)
     .sort((a, b) => (b.overall as number) - (a.overall as number));
 
@@ -225,6 +261,8 @@ export default function UNVProfileRecruitmentPipelinePage() {
 
   const disc = selected ? discByCand[selected.id] : null;
   const selMatch = selected ? discMatch(selected.id) : null;
+  const kult = selected ? cultureByCand[selected.id] : null;
+  const selCultureFit = selected ? cultureFit(selected.id) : null;
   const radarData = (selected && disc && target)
     ? (["D", "I", "S", "C"] as const).map((k) => ({
         eixo: k, Candidato: disc[`${k.toLowerCase()}_score`] || 0, Vaga: target[k] || 0,
@@ -254,7 +292,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
         <div className="space-y-5">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <p className="text-sm text-muted-foreground">
-              Nota geral = 60% aderência IA + 40% match do DISC com a vaga. {!target && "Defina o DISC ideal na vaga pra ativar o match."}
+              Nota geral = aderência IA + match do DISC + fit cultural (ponderados; a IA pesa o dobro). Usa os sinais que cada candidato tem. {!target && "Defina o DISC ideal na vaga pra ativar o match."}
             </p>
             <Button size="sm" className="gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-indigo-500/20" disabled={analyzingAll || !cands.length} onClick={analyzeAll}>
               {analyzingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
@@ -335,6 +373,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-indigo-500/10 text-indigo-400 px-2 py-0.5"><Sparkles className="w-3 h-3" />IA {r.ai != null ? `${r.ai}%` : "—"}</span>
                             <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-fuchsia-500/10 text-fuchsia-400 px-2 py-0.5"><Brain className="w-3 h-3" />DISC {r.dm != null ? `${r.dm}%` : "—"}</span>
+                            <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-teal-500/10 text-teal-400 px-2 py-0.5"><Compass className="w-3 h-3" />Cultura {r.cf != null ? `${r.cf}%` : "—"}</span>
                           </div>
                         </div>
                         <div className="relative flex items-center justify-center h-14 w-14 shrink-0">
@@ -413,6 +452,9 @@ export default function UNVProfileRecruitmentPipelinePage() {
                           )}
                           {discByCand[c.id] && (
                             <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-fuchsia-500/10 text-fuchsia-400 px-2 py-0.5"><Brain className="w-3 h-3" />{discByCand[c.id].dominant}</span>
+                          )}
+                          {cultureByCand[c.id] && (
+                            <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-teal-500/10 text-teal-400 px-2 py-0.5"><Compass className="w-3 h-3" />{cultureFit(c.id)}%</span>
                           )}
                         </div>
                       </div>
@@ -571,6 +613,59 @@ export default function UNVProfileRecruitmentPipelinePage() {
                       </div>
                       {!selected.phone && <p className="text-[11px] text-amber-600">Candidato sem telefone — só dá pra copiar o link.</p>}
                       {instances.length === 0 && <p className="text-[11px] text-muted-foreground">Nenhuma instância de WhatsApp conectada.</p>}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-lg border p-3 space-y-2 bg-gradient-to-br from-teal-500/10 to-transparent">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold flex items-center gap-2"><Compass className="w-4 h-4 text-teal-500" />Fit Cultural</p>
+                    {selCultureFit != null && (
+                      <Badge style={{ backgroundColor: scoreColor(selCultureFit), color: "#fff" }}>{selCultureFit}% de fit</Badge>
+                    )}
+                  </div>
+                  {kult ? (
+                    <div className="space-y-2">
+                      {CULTURE_PILLARS.map((p) => {
+                        const v = kult.pillar_scores?.[p.key] ?? 0;
+                        return (
+                          <div key={p.key} className="flex items-center gap-2 text-xs">
+                            <span className="w-36 text-muted-foreground truncate" title={p.desc}>{p.label}</span>
+                            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                              <div className="h-full" style={{ width: `${v}%`, background: scoreColor(v) }} />
+                            </div>
+                            <span className="w-8 text-right font-medium">{v}</span>
+                          </div>
+                        );
+                      })}
+                      {kult.ai_summary && (
+                        <p className="text-[11px] flex items-start gap-1 pt-1"><Sparkles className="w-3 h-3 mt-0.5 text-teal-500 shrink-0" />{kult.ai_summary}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <p className="text-xs text-muted-foreground">Candidato ainda não fez o teste de fit cultural. Edite a mensagem se quiser e envie:</p>
+                      <Textarea value={waCultureMessage} onChange={(e) => setWaCultureMessage(e.target.value)} rows={4} className="text-xs" placeholder="Mensagem a enviar" />
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {instances.length > 0 && (
+                          <Select value={instanceId} onValueChange={setInstanceId}>
+                            <SelectTrigger className="h-8 w-[180px] text-xs"><SelectValue placeholder="Instância" /></SelectTrigger>
+                            <SelectContent>
+                              {instances.map((i) => (
+                                <SelectItem key={i.id} value={i.id} className="text-xs">{i.display_name || i.instance_name}{i.is_default ? " (padrão)" : ""}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        <Button variant="default" size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700" disabled={sending || !selected.phone || !instanceId} onClick={() => sendCultureWhatsapp(selected)}>
+                          {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
+                          Enviar no WhatsApp
+                        </Button>
+                        <Button variant="outline" size="sm" className="gap-2" onClick={() => copyCultureLink(selected)}>
+                          <Copy className="w-4 h-4" />Copiar link
+                        </Button>
+                      </div>
+                      {!selected.phone && <p className="text-[11px] text-amber-600">Candidato sem telefone — só dá pra copiar o link.</p>}
                     </div>
                   )}
                 </div>
