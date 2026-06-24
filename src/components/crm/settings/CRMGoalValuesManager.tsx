@@ -642,7 +642,7 @@ export const CRMGoalValuesManager = () => {
 
     return (
       <Dialog open={bonusDialogOpen} onOpenChange={setBonusDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Gift className="h-5 w-5 text-amber-500" />
@@ -888,7 +888,7 @@ export const CRMGoalValuesManager = () => {
 
       {/* Commission Tiers Dialog */}
       <Dialog open={tiersDialogOpen} onOpenChange={setTiersDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings2 className="h-5 w-5" />
