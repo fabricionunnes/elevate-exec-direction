@@ -1,10 +1,10 @@
 // profile-candidate-analyze: avalia a ADERÊNCIA de um candidato à vaga.
 // Cruza requisitos da vaga (profile_jobs) com os dados do candidato + perfil DISC
-// (profile_disc_results) e devolve nota 0-100, veredito, pontos fortes/atenção e
-// recomendação. Grava em profile_candidates (ai_score/ai_summary/ai_strengths/ai_concerns).
-// Observação: o currículo é um arquivo (PDF/imagem) e NÃO é lido aqui — a análise
-// usa dados estruturados + carta de apresentação + DISC. O recrutador lê o currículo.
+// (profile_disc_results) + CURRÍCULO (PDF/imagem nativos no Claude; .docx extraído
+// aqui) e devolve nota 0-100, veredito, pontos fortes/atenção e recomendação.
+// Grava em profile_candidates (ai_score/ai_summary/ai_strengths/ai_concerns).
 import { createClient } from "@supabase/supabase-js";
+import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,6 +19,24 @@ function truncate(s: string | null | undefined, n: number): string {
 }
 
 const DISC_NAMES: Record<string, string> = { D: "Dominância", I: "Influência", S: "Estabilidade", C: "Conformidade" };
+
+// Extrai o texto de um .docx (que é um zip com word/document.xml).
+async function extractDocxText(bytes: Uint8Array): Promise<string> {
+  const zip = await JSZip.loadAsync(bytes);
+  const file = zip.file("word/document.xml");
+  if (!file) return "";
+  let xml = await file.async("string");
+  xml = xml
+    .replace(/<\/w:p>/g, "\n")
+    .replace(/<w:tab[^>]*\/>/g, "\t")
+    .replace(/<w:br[^>]*\/>/g, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return xml;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -46,6 +64,7 @@ Deno.serve(async (req) => {
     // Lê o arquivo do currículo (PDF/imagem) pra mandar pra IA como anexo.
     // Claude lê PDF (document block) e imagem (image block) nativamente.
     let resumeBlock: any = null;
+    let resumeText = "";
     let resumeNote = "O candidato NÃO anexou currículo.";
     if (cand.resume_url) {
       try {
@@ -66,8 +85,16 @@ Deno.serve(async (req) => {
           const media = ct.includes("png") || url.endsWith(".png") ? "image/png" : "image/jpeg";
           resumeBlock = { type: "image", source: { type: "base64", media_type: media, data: b64 } };
           resumeNote = "O currículo do candidato está ANEXADO (imagem). Leia-o e baseie a análise principalmente nele.";
+        } else if (url.endsWith(".docx") || ct.includes("officedocument.wordprocessingml")) {
+          const txt = await extractDocxText(buf);
+          if (txt && txt.length > 20) {
+            resumeText = truncate(txt, 12000);
+            resumeNote = "O conteúdo do currículo (Word) foi extraído e está no texto abaixo. Baseie a análise principalmente nele.";
+          } else {
+            resumeNote = "O candidato anexou um currículo em Word, mas não foi possível extrair o texto.";
+          }
         } else {
-          resumeNote = "O candidato anexou um currículo, mas em formato não legível automaticamente (ex.: Word) — não foi possível ler o conteúdo.";
+          resumeNote = "O candidato anexou um currículo, mas em formato não legível automaticamente — não foi possível ler o conteúdo.";
         }
       } catch (e: any) {
         resumeNote = `Não foi possível ler o currículo anexado (${e?.message || e}).`;
@@ -108,7 +135,8 @@ CANDIDATO:
 - ${discTxt}
 
 CURRÍCULO: ${resumeNote}
-Se houver currículo anexado, LEIA o anexo e baseie a análise na experiência real (cargos, tempo, resultados, ferramentas, segmento). Cruze isso com os requisitos da vaga. Só aponte uma lacuna como ponto de atenção se ela realmente não aparecer no currículo — NÃO escreva "currículo não foi lido". Não invente experiência que não está escrita.
+${resumeText ? `\n--- CONTEÚDO DO CURRÍCULO ---\n${resumeText}\n--- FIM DO CURRÍCULO ---\n` : ""}
+Se houver currículo (anexado como arquivo ou no texto acima), LEIA e baseie a análise na experiência real (cargos, tempo, resultados, ferramentas, segmento). Cruze isso com os requisitos da vaga. Só aponte uma lacuna como ponto de atenção se ela realmente não aparecer no currículo — NÃO escreva "currículo não foi lido". Não invente experiência que não está escrita.
 
 Responda APENAS com um JSON válido, em português, neste formato:
 {
