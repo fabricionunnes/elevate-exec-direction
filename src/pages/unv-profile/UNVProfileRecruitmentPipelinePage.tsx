@@ -68,6 +68,11 @@ export default function UNVProfileRecruitmentPipelinePage() {
   const [savingData, setSavingData] = useState(false);
   const [waApproval, setWaApproval] = useState("");
   const [view, setView] = useState<"pipeline" | "ranking">("pipeline");
+  const [rkName, setRkName] = useState("");
+  const [rkStage, setRkStage] = useState("all");
+  const [rkDisc, setRkDisc] = useState("all");
+  const [rkFit, setRkFit] = useState("0");
+  const [rkNota, setRkNota] = useState("0");
   const [analyzingAll, setAnalyzingAll] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
@@ -400,6 +405,13 @@ export default function UNVProfileRecruitmentPipelinePage() {
     .map((c) => ({ cand: c, ai: c.ai_score != null ? Number(c.ai_score) : null, dm: discMatch(c.id), cf: cultureFit(c.id), rh: c.interview_rh_score, mgr: c.interview_manager_score, overall: overall(c) }))
     .filter((r) => r.overall != null)
     .sort((a, b) => (b.overall as number) - (a.overall as number));
+  const filteredRanking = ranking.filter((r) =>
+    (!rkName || r.cand.full_name?.toLowerCase().includes(rkName.toLowerCase())) &&
+    (rkStage === "all" || r.cand.stage === rkStage) &&
+    (rkDisc === "all" || discByCand[r.cand.id]?.dominant === rkDisc) &&
+    ((r.overall ?? 0) >= Number(rkNota)) &&
+    (Number(rkFit) === 0 || (r.cf != null && r.cf >= Number(rkFit)))
+  );
 
   const analyzeAll = async () => {
     if (!cands.length) return;
@@ -461,6 +473,52 @@ export default function UNVProfileRecruitmentPipelinePage() {
             </Button>
           </div>
 
+          {ranking.length > 0 && (
+            <div className="flex items-end gap-2 flex-wrap">
+              <div className="relative flex-1 min-w-[180px] max-w-xs">
+                <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input value={rkName} onChange={(e) => setRkName(e.target.value)} placeholder="Buscar por nome" className="h-9 pl-8" />
+              </div>
+              <Select value={rkStage} onValueChange={setRkStage}>
+                <SelectTrigger className="h-9 w-[150px]"><SelectValue placeholder="Etapa" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as etapas</SelectItem>
+                  {PROFILE_PIPELINE_STAGES.map((s) => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={rkDisc} onValueChange={setRkDisc}>
+                <SelectTrigger className="h-9 w-[120px]"><SelectValue placeholder="DISC" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">DISC: todos</SelectItem>
+                  <SelectItem value="D">D — Dominância</SelectItem>
+                  <SelectItem value="I">I — Influência</SelectItem>
+                  <SelectItem value="S">S — Estabilidade</SelectItem>
+                  <SelectItem value="C">C — Conformidade</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={rkFit} onValueChange={setRkFit}>
+                <SelectTrigger className="h-9 w-[120px]"><SelectValue placeholder="Fit" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Fit: todos</SelectItem>
+                  <SelectItem value="70">Fit ≥ 70%</SelectItem>
+                  <SelectItem value="50">Fit ≥ 50%</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={rkNota} onValueChange={setRkNota}>
+                <SelectTrigger className="h-9 w-[130px]"><SelectValue placeholder="Nota" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Nota: todas</SelectItem>
+                  <SelectItem value="70">Nota ≥ 70</SelectItem>
+                  <SelectItem value="50">Nota ≥ 50</SelectItem>
+                  <SelectItem value="40">Nota ≥ 40</SelectItem>
+                </SelectContent>
+              </Select>
+              {(rkName || rkStage !== "all" || rkDisc !== "all" || rkFit !== "0" || rkNota !== "0") && (
+                <Button variant="ghost" size="sm" onClick={() => { setRkName(""); setRkStage("all"); setRkDisc("all"); setRkFit("0"); setRkNota("0"); }}>Limpar</Button>
+              )}
+            </div>
+          )}
+
           {ranking.length === 0 ? (
             <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">
               Nenhum candidato com nota ainda. Clique em "Analisar todos com IA" (e/ou colete o DISC) pra montar o ranking.
@@ -485,9 +543,9 @@ export default function UNVProfileRecruitmentPipelinePage() {
               {/* Gráfico com profundidade */}
               <Card className="overflow-hidden border-0 bg-gradient-to-br from-slate-900/60 to-slate-800/30 shadow-xl">
                 <CardContent className="p-4 md:p-6">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Ranking por nota geral</p>
-                  <ResponsiveContainer width="100%" height={Math.max(180, ranking.length * 52)}>
-                    <BarChart data={ranking.map(r => ({ nome: r.cand.full_name, nota: r.overall }))} layout="vertical" margin={{ left: 8, right: 36 }} barCategoryGap="22%">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Ranking por nota geral {filteredRanking.length !== ranking.length && `(${filteredRanking.length} de ${ranking.length})`}</p>
+                  <ResponsiveContainer width="100%" height={Math.max(120, filteredRanking.length * 52)}>
+                    <BarChart data={filteredRanking.map(r => ({ nome: r.cand.full_name, nota: r.overall }))} layout="vertical" margin={{ left: 8, right: 36 }} barCategoryGap="22%">
                       <defs>
                         <linearGradient id="g-g" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0%" stopColor="#6ee7b7" /><stop offset="45%" stopColor="#10b981" /><stop offset="100%" stopColor="#047857" />
@@ -506,7 +564,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
                       <YAxis type="category" dataKey="nome" width={130} tick={{ fontSize: 11, fill: "#cbd5e1" }} axisLine={false} tickLine={false} />
                       <RTooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} contentStyle={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8, fontSize: 12 }} formatter={(v: any) => [`${v}`, "Nota geral"]} />
                       <Bar dataKey="nota" radius={[6, 10, 10, 6]} barSize={24} style={{ filter: "url(#barShadow)" }} label={{ position: "right", fontSize: 12, fontWeight: 700, fill: "#e2e8f0" }} isAnimationActive>
-                        {ranking.map((r, i) => <Cell key={i} fill={`url(#g-${scoreBand(r.overall as number)})`} />)}
+                        {filteredRanking.map((r, i) => <Cell key={i} fill={`url(#g-${scoreBand(r.overall as number)})`} />)}
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
@@ -515,7 +573,10 @@ export default function UNVProfileRecruitmentPipelinePage() {
 
               {/* Lista premium */}
               <div className="space-y-2.5">
-                {ranking.map((r, i) => {
+                {filteredRanking.length === 0 && (
+                  <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Nenhum candidato com esse filtro.</CardContent></Card>
+                )}
+                {filteredRanking.map((r, i) => {
                   const c = scoreColor(r.overall as number);
                   const medal = MEDALS[i];
                   return (
