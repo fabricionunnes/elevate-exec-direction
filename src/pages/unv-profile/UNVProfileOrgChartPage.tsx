@@ -21,7 +21,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Network, Pencil, Plus, Loader2, Search, UserMinus, X, ZoomIn, ZoomOut, Maximize2, Crown } from "lucide-react";
+import { Network, Pencil, Plus, Loader2, Search, UserMinus, X, ZoomIn, ZoomOut, Maximize2, Crown, Camera, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +31,8 @@ interface Node {
   avatar_url?: string | null;
   manager_id?: string | null;
   position?: string;
+  contract_type?: string | null;
+  outsourced?: boolean;
 }
 
 // Cores por nível da hierarquia (cicla)
@@ -161,9 +163,11 @@ export default function UNVProfileOrgChartPage() {
   const [managerSearch, setManagerSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [orphanSearch, setOrphanSearch] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [zoom, setZoom] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fitToWidth = () => {
     const cont = containerRef.current, inner = contentRef.current;
@@ -179,7 +183,7 @@ export default function UNVProfileOrgChartPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("profile_employees")
-      .select("id, full_name, avatar_url, manager_id, staff_id, profile_positions(title)")
+      .select("id, full_name, avatar_url, manager_id, staff_id, contract_type, profile_positions(title)")
       .eq("status", "active")
       .neq("employee_type", "external")
       .order("created_at", { ascending: false });
@@ -203,6 +207,8 @@ export default function UNVProfileOrgChartPage() {
         avatar_url: d.avatar_url,
         manager_id: d.manager_id,
         position: d.profile_positions?.title,
+        contract_type: d.contract_type,
+        outsourced: d.contract_type === "terceirizado",
       })),
     );
     setLoading(false);
@@ -230,9 +236,15 @@ export default function UNVProfileOrgChartPage() {
       })),
     [nodes, idsSet],
   );
-  const roots = normalizedNodes.filter((n) => !n.manager_id);
-  const orphansWithoutChildrenAndManager = normalizedNodes.filter(
-    (n) => !n.manager_id && !normalizedNodes.some((c) => c.manager_id === n.id),
+  // Terceirizados ficam FORA da árvore (sem líder, desconexos).
+  const outsourcedList = normalizedNodes.filter((n) => n.outsourced);
+  const treeNodes = normalizedNodes.filter((n) => !n.outsourced).map((n) => ({
+    ...n,
+    manager_id: n.manager_id && normalizedNodes.some((m) => m.id === n.manager_id && !m.outsourced) ? n.manager_id : null,
+  }));
+  const roots = treeNodes.filter((n) => !n.manager_id);
+  const orphansWithoutChildrenAndManager = treeNodes.filter(
+    (n) => !n.manager_id && !treeNodes.some((c) => c.manager_id === n.id),
   );
 
   // Detecta ciclo simples (subir até a raiz; se reencontrar, é ciclo)
@@ -275,11 +287,65 @@ export default function UNVProfileOrgChartPage() {
     load();
   };
 
+  const uploadPhoto = async (file: File) => {
+    if (!editing) return;
+    if (!file.type.startsWith("image/")) { toast.error("Envie uma imagem (JPG ou PNG)."); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Imagem muito grande (máx. 5MB)."); return; }
+    setUploading(true);
+    try {
+      // O bucket avatars exige que a 1ª pasta do caminho seja o auth.uid() (RLS).
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth?.user?.id;
+      if (!uid) throw new Error("Sessão expirada — recarregue a página.");
+      const ext = file.name.split(".").pop();
+      const path = `${uid}/employees/${editing.id}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+      const { error } = await supabase.from("profile_employees").update({ avatar_url: urlData.publicUrl }).eq("id", editing.id);
+      if (error) throw error;
+      setEditing((p) => p ? { ...p, avatar_url: urlData.publicUrl } : p);
+      toast.success("Foto atualizada");
+      load();
+    } catch (e: any) {
+      toast.error("Erro ao enviar foto: " + (e?.message || e));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const toggleOutsourced = async () => {
+    if (!editing) return;
+    const next = !editing.outsourced;
+    setSaving(true);
+    // Terceirizado fica sem líder (desconexo da árvore).
+    const patch: any = { contract_type: next ? "terceirizado" : null };
+    if (next) patch.manager_id = null;
+    const { error } = await supabase.from("profile_employees").update(patch).eq("id", editing.id);
+    setSaving(false);
+    if (error) { toast.error("Erro ao salvar: " + error.message); return; }
+    toast.success(next ? "Marcado como terceirizado (fora da hierarquia)" : "Terceirizado removido");
+    setEditing(null);
+    load();
+  };
+
+  const deleteEmployee = async () => {
+    if (!editing) return;
+    if (!confirm(`Excluir o cadastro de "${editing.full_name}"? Use isso pra remover duplicados. Não apaga o usuário do sistema, só o registro do organograma.`)) return;
+    setSaving(true);
+    const { error } = await supabase.from("profile_employees").delete().eq("id", editing.id);
+    setSaving(false);
+    if (error) { toast.error("Erro ao excluir: " + error.message); return; }
+    toast.success("Cadastro excluído");
+    setEditing(null);
+    load();
+  };
+
   const candidateManagers = useMemo(() => {
     if (!editing) return [];
     const q = managerSearch.trim().toLowerCase();
     return nodes
-      .filter((n) => n.id !== editing.id && !wouldCreateCycle(editing.id, n.id))
+      .filter((n) => n.id !== editing.id && !n.outsourced && !wouldCreateCycle(editing.id, n.id))
       .filter((n) => !q || n.full_name.toLowerCase().includes(q))
       .slice(0, 50);
   }, [nodes, editing, managerSearch]);
@@ -299,12 +365,13 @@ export default function UNVProfileOrgChartPage() {
             <Network className="w-6 h-6 text-primary" /> Organograma
           </h1>
           <p className="text-sm text-muted-foreground">
-            Clique em qualquer colaborador para definir o gestor dele e montar a hierarquia.
+            Clique em qualquer colaborador para definir o gestor, enviar foto ou marcar como terceirizado.
           </p>
         </div>
         <div className="flex gap-2 items-center flex-wrap">
           <Badge variant="outline">{nodes.length} colaboradores</Badge>
           <Badge variant="outline">{roots.length} sem gestor</Badge>
+          {outsourcedList.length > 0 && <Badge variant="outline">{outsourcedList.length} terceirizados</Badge>}
           <div className="flex items-center gap-0.5 rounded-lg border p-0.5 bg-muted/30">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={zoomOut} title="Diminuir"><ZoomOut className="w-4 h-4" /></Button>
             <span className="text-xs font-medium w-10 text-center tabular-nums">{Math.round(zoom * 100)}%</span>
@@ -329,9 +396,38 @@ export default function UNVProfileOrgChartPage() {
           {/* Árvore */}
           <div ref={containerRef} className="overflow-auto pb-6 rounded-2xl border bg-gradient-to-b from-muted/20 via-transparent to-transparent">
             <div ref={contentRef} className="inline-block min-w-full p-8" style={{ transform: `scale(${zoom})`, transformOrigin: "top center", transition: "transform 0.15s ease" }}>
-              <Tree nodes={normalizedNodes} parentId={null} onEdit={setEditing} isRoot={true} />
+              <Tree nodes={treeNodes} parentId={null} onEdit={setEditing} isRoot={true} />
             </div>
           </div>
+
+          {/* Terceirizados — fora da hierarquia */}
+          {outsourcedList.length > 0 && (
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <UserMinus className="w-4 h-4 text-amber-500" />Terceirizados
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Colaboradores terceirizados — não fazem parte da hierarquia. Clique pra editar foto ou desmarcar.</p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {outsourcedList.map((n) => (
+                    <button key={n.id} onClick={() => setEditing(n)}
+                      className="flex items-center gap-2 border rounded-xl px-3 py-2 hover:bg-muted transition-colors bg-gradient-to-br from-amber-500/10 to-transparent">
+                      <Avatar className="h-8 w-8 ring-2 ring-amber-500/30">
+                        <AvatarImage src={n.avatar_url || undefined} />
+                        <AvatarFallback className="text-xs bg-gradient-to-br from-amber-400 to-orange-600 text-white">{n.full_name?.[0]}</AvatarFallback>
+                      </Avatar>
+                      <div className="text-left">
+                        <p className="text-xs font-medium">{n.full_name}</p>
+                        <p className="text-[10px] text-amber-500">Terceirizado</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Painel de não-vinculados (sem subordinados e sem gestor) */}
           {orphansWithoutChildrenAndManager.length > 1 && (
@@ -387,30 +483,54 @@ export default function UNVProfileOrgChartPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Network className="w-4 h-4" /> Definir gestor
+              <Network className="w-4 h-4" /> Editar colaborador
             </DialogTitle>
             <DialogDescription>
-              Escolha quem será o gestor direto de <strong>{editing?.full_name}</strong>.
+              Foto, hierarquia e tipo de <strong>{editing?.full_name}</strong>.
             </DialogDescription>
           </DialogHeader>
 
           {editing && (
             <div className="space-y-3">
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.currentTarget.value = ""; }} />
               <div className="flex items-center gap-3 p-2.5 rounded-lg border bg-muted/40">
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src={editing.avatar_url || undefined} />
-                  <AvatarFallback>{editing.full_name?.[0]}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
+                <button className="relative group/av shrink-0" onClick={() => fileInputRef.current?.click()} disabled={uploading} title="Enviar foto">
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={editing.avatar_url || undefined} />
+                    <AvatarFallback>{editing.full_name?.[0]}</AvatarFallback>
+                  </Avatar>
+                  <span className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover/av:opacity-100 transition-opacity">
+                    {uploading ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Camera className="w-4 h-4 text-white" />}
+                  </span>
+                </button>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{editing.full_name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {editing.manager_id
-                      ? `Gestor atual: ${nodes.find((n) => n.id === editing.manager_id)?.full_name || "—"}`
-                      : "Atualmente sem gestor (topo)"}
+                    {editing.outsourced
+                      ? "Terceirizado (fora da hierarquia)"
+                      : editing.manager_id
+                        ? `Gestor atual: ${nodes.find((n) => n.id === editing.manager_id)?.full_name || "—"}`
+                        : "Sem gestor (topo)"}
                   </p>
+                  <button className="text-[11px] text-primary hover:underline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                    {editing.avatar_url ? "Trocar foto" : "Enviar foto"}
+                  </button>
                 </div>
               </div>
 
+              <button
+                onClick={toggleOutsourced}
+                disabled={saving}
+                className={`w-full flex items-center justify-between gap-2 p-2.5 rounded-lg border text-left transition-colors ${editing.outsourced ? "bg-amber-500/15 border-amber-500/40" : "hover:bg-muted/50"}`}
+              >
+                <div>
+                  <p className="text-sm font-medium flex items-center gap-2"><UserMinus className="w-4 h-4 text-amber-500" />Colaborador terceirizado</p>
+                  <p className="text-[11px] text-muted-foreground">Fica fora da hierarquia, sem líder.</p>
+                </div>
+                <span className={`text-xs font-semibold ${editing.outsourced ? "text-amber-500" : "text-muted-foreground"}`}>{editing.outsourced ? "SIM" : "não"}</span>
+              </button>
+
+              {!editing.outsourced && (
               <Command className="border rounded-lg">
                 <CommandInput
                   placeholder="Buscar gestor..."
@@ -444,23 +564,22 @@ export default function UNVProfileOrgChartPage() {
                   </CommandGroup>
                 </CommandList>
               </Command>
+              )}
             </div>
           )}
 
-          <DialogFooter className="gap-2 sm:gap-2 flex-wrap">
-            {editing?.manager_id && (
-              <Button
-                variant="outline"
-                onClick={() => handleSetManager(null)}
-                disabled={saving}
-                className="gap-1.5"
-              >
-                <X className="w-4 h-4" /> Remover gestor (topo)
-              </Button>
-            )}
-            <Button variant="ghost" onClick={() => setEditing(null)} disabled={saving}>
-              Cancelar
+          <DialogFooter className="gap-2 sm:gap-2 flex-wrap sm:justify-between">
+            <Button variant="ghost" size="sm" className="text-rose-500 gap-1.5" onClick={deleteEmployee} disabled={saving}>
+              <Trash2 className="w-4 h-4" /> Excluir cadastro
             </Button>
+            <div className="flex gap-2 flex-wrap">
+              {editing?.manager_id && !editing.outsourced && (
+                <Button variant="outline" onClick={() => handleSetManager(null)} disabled={saving} className="gap-1.5">
+                  <X className="w-4 h-4" /> Remover gestor (topo)
+                </Button>
+              )}
+              <Button variant="ghost" onClick={() => setEditing(null)} disabled={saving}>Fechar</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
