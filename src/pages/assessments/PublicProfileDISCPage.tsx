@@ -21,6 +21,7 @@ export default function PublicProfileDISCPage() {
   const [searchParams] = useSearchParams();
   const tenantId = searchParams.get("tenant");
   const candidateId = searchParams.get("candidate");
+  const employeeId = searchParams.get("employee");
 
   const [step, setStep] = useState<"form" | "test" | "done">("form");
   const [name, setName] = useState("");
@@ -28,13 +29,13 @@ export default function PublicProfileDISCPage() {
   const [phone, setPhone] = useState("");
   const [identityLocked, setIdentityLocked] = useState(false);
 
-  // Quando o link vem de um candidato (?candidate=), pré-preenche os dados dele
-  // para o teste ficar vinculado e ele não precisar redigitar.
+  // Quando o link vem de um candidato (?candidate=) OU colaborador (?employee=),
+  // pré-preenche os dados dele e TRAVA o nome — vincula ao certo, sem preencher por outro.
   useEffect(() => {
-    if (!candidateId) return;
+    if (!candidateId && !employeeId) return;
     (async () => {
       const { data, error } = await supabase.functions.invoke("profile-candidate-public-info", {
-        body: { candidateId },
+        body: candidateId ? { candidateId } : { employeeId },
       });
       const c = (data as any)?.candidate;
       if (!error && c) {
@@ -43,7 +44,7 @@ export default function PublicProfileDISCPage() {
         if (c.phone) setPhone(c.phone);
       }
     })();
-  }, [candidateId]);
+  }, [candidateId, employeeId]);
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
@@ -109,6 +110,7 @@ export default function PublicProfileDISCPage() {
         body: {
           tenantId,
           candidateId,
+          employeeId,
           name: name.trim(),
           email: email.trim() || null,
           phone: phone.trim() || null,

@@ -14,6 +14,7 @@ const corsHeaders = {
 interface Payload {
   tenantId?: string | null;
   candidateId?: string | null;
+  employeeId?: string | null;
   name: string;
   email?: string | null;
   phone?: string | null;
@@ -49,11 +50,12 @@ Deno.serve(async (req) => {
     const tenantId = body.tenantId ?? null;
     const candidateId = body.candidateId ?? null;
 
-    // Se o teste é de um CANDIDATO (link da vaga), NÃO cria profile_employees —
-    // candidato só vira colaborador quando contratado. Só cria employee no uso
-    // genérico do link público de DISC (sem candidateId).
-    let employeeId: string | null = null;
-    if (!candidateId) {
+    // Se veio employeeId (link individual do colaborador), vincula a ELE — sem criar
+    // novo registro e sem risco de preencher por outra pessoa.
+    // Se é um CANDIDATO (link da vaga), NÃO cria employee (vira colaborador só quando
+    // contratado). Só cria employee no uso genérico do link público (sem ids).
+    let employeeId: string | null = body.employeeId ?? null;
+    if (!employeeId && !candidateId) {
       if (body.email) {
         const { data: existing } = await supabase
           .from("profile_employees")

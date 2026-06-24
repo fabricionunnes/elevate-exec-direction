@@ -14,17 +14,16 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const candidateId: string = body.candidateId || "";
-    if (!candidateId) throw new Error("candidateId obrigatório");
+    const employeeId: string = body.employeeId || "";
+    if (!candidateId && !employeeId) throw new Error("candidateId ou employeeId obrigatório");
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-    const { data, error } = await supabase
-      .from("profile_candidates")
-      .select("full_name,email,phone")
-      .eq("id", candidateId)
-      .maybeSingle();
+    const { data, error } = employeeId
+      ? await supabase.from("profile_employees").select("full_name,email,phone").eq("id", employeeId).maybeSingle()
+      : await supabase.from("profile_candidates").select("full_name,email,phone").eq("id", candidateId).maybeSingle();
     if (error) throw error;
 
     return new Response(JSON.stringify({ candidate: data || null }), {
