@@ -102,6 +102,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const [filterStartDate, setFilterStartDate] = useState<Date>(startOfMonth(new Date()));
   const [filterEndDate, setFilterEndDate] = useState<Date>(endOfMonth(new Date()));
   const [callStats, setCallStats] = useState({ total: 0, discador: 0, avulsa: 0, atendidas: 0 });
+  const [dialerCostBrl, setDialerCostBrl] = useState(0);
   const [callsByCloser, setCallsByCloser] = useState<Record<string, { total: number; atendidas: number }>>({});
 
   // Get date range based on filter
@@ -147,6 +148,22 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       ]);
       if (!active) return;
       setCallStats({ total: tot.count || 0, discador: disc.count || 0, avulsa: avul.count || 0, atendidas: ans.count || 0 });
+      // Custo do discador (gasto Twilio) no período, em BRL — pra CAC e custo por reunião
+      try {
+        const days = Math.min(370, Math.max(1, Math.ceil((Date.now() - start.getTime()) / 86400000) + 1));
+        const { data: usage } = await supabase.functions.invoke("dialer-usage", { body: { days } });
+        if (active && usage) {
+          const recs = (usage as any).records || [];
+          const sinceStr = start.toISOString().slice(0, 10);
+          const untilStr = end.toISOString().slice(0, 10);
+          const spend = recs.length
+            ? recs.filter((r: any) => r.date >= sinceStr && r.date <= untilStr).reduce((a: number, r: any) => a + (r.spend || 0), 0)
+            : ((usage as any).total || 0);
+          const rate = (usage as any).brlRate || 0;
+          const brl = (usage as any).currency === "USD" ? spend * rate : spend;
+          setDialerCostBrl(brl);
+        }
+      } catch { /* sem custo */ }
       const map: Record<string, { total: number; atendidas: number }> = {};
       ((byAgent.data as any[]) || []).forEach((r) => { map[r.agent_staff_id] = { total: Number(r.total) || 0, atendidas: Number(r.atendidas) || 0 }; });
       setCallsByCloser(map);
@@ -803,6 +820,10 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         <Metric tone={TONE.amber} label="Avulsas" value={callStats.avulsa} />
         <Metric tone={TONE.amber} label="Atendidas" value={callStats.atendidas} color="#34d399" />
         <Metric tone={TONE.amber} label="% Atendimento" value={`${callStats.total ? Math.round((callStats.atendidas / callStats.total) * 100) : 0}%`} />
+        <Metric tone={TONE.amber} label="Agendamentos" value={callsMetrics.agendadas} color={TONE.blue} />
+        <Metric tone={TONE.amber} label="CAC" value={metrics.vendas > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / metrics.vendas) : "—"} color="#f87171" />
+        <Metric tone={TONE.amber} label="Custo / Reunião Realizada" value={callsMetrics.realizadas > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / callsMetrics.realizadas) : "—"} />
+        <Metric tone={TONE.amber} label="Custo / Reunião Agendada" value={callsMetrics.agendadas > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / callsMetrics.agendadas) : "—"} />
       </Section>
 
       {/* ── Metas (Meta / Super / Hiper) ── */}
