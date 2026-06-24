@@ -31,6 +31,7 @@ const STAGE_STYLE: Record<string, { dot: string; head: string; text: string; bar
   test: { dot: "bg-violet-500", head: "from-violet-500/15 to-transparent", text: "text-violet-400", bar: "bg-violet-500" },
   hr_interview: { dot: "bg-purple-500", head: "from-purple-500/15 to-transparent", text: "text-purple-400", bar: "bg-purple-500" },
   manager_interview: { dot: "bg-fuchsia-500", head: "from-fuchsia-500/15 to-transparent", text: "text-fuchsia-400", bar: "bg-fuchsia-500" },
+  juridico: { dot: "bg-cyan-500", head: "from-cyan-500/15 to-transparent", text: "text-cyan-400", bar: "bg-cyan-500" },
   offer: { dot: "bg-pink-500", head: "from-pink-500/15 to-transparent", text: "text-pink-400", bar: "bg-pink-500" },
   hired: { dot: "bg-emerald-500", head: "from-emerald-500/15 to-transparent", text: "text-emerald-400", bar: "bg-emerald-500" },
   rejected: { dot: "bg-rose-500", head: "from-rose-500/15 to-transparent", text: "text-rose-400", bar: "bg-rose-500" },
