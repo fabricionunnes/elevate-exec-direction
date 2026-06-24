@@ -189,13 +189,14 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
 
       const { data: allActiveStaff } = await supabase
         .from("onboarding_staff")
-        .select("id, name, role")
+        .select("id, name, role, is_crm_closer")
         .eq("is_active", true);
 
       const allowedCloserRoles = new Set(["closer", "head_comercial"]);
       const filteredCloserStaff = (allActiveStaff || []).filter(staff => {
         const role = String((staff as any).role ?? "").toLowerCase();
-        return crmStaffIds.has(staff.id) && allowedCloserRoles.has(role);
+        // Flag manual "closer no CRM" entra direto; senão precisa do role + acesso ao CRM.
+        return (staff as any).is_crm_closer || (crmStaffIds.has(staff.id) && allowedCloserRoles.has(role));
       });
       // Base list (closers/head_comercial). Será expandido abaixo com qualquer staff
       // que tenha tido agendamento/realização de reunião ou venda no período,

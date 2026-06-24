@@ -44,6 +44,7 @@ interface StaffMember {
   id: string;
   name: string;
   role: string;
+  is_crm_closer?: boolean;
 }
 
 interface GoalValue {
@@ -151,7 +152,7 @@ export const CRMGoalValuesManager = () => {
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
   const getGoalTypeForStaff = (staff: StaffMember): GoalType | null => {
-    if (CLOSER_ROLES.includes(staff.role)) return closerOteGoalType;
+    if (staff.is_crm_closer || CLOSER_ROLES.includes(staff.role)) return closerOteGoalType;
     if (SDR_ROLES.includes(staff.role)) return sdrOteGoalType;
     return closerOteGoalType;
   };
@@ -197,7 +198,7 @@ export const CRMGoalValuesManager = () => {
 
       const { data: staffData, error: staffError } = await supabase
         .from("onboarding_staff")
-        .select("id, name, role")
+        .select("id, name, role, is_crm_closer")
         .eq("is_active", true)
         .order("name");
 
@@ -205,8 +206,9 @@ export const CRMGoalValuesManager = () => {
 
       const filteredStaff = (staffData || []).filter(
         (s) =>
-          (s.role === "master" || staffIdsWithCRMAccess.has(s.id)) &&
-          [...CLOSER_ROLES, ...SDR_ROLES].includes(s.role)
+          (s as any).is_crm_closer ||
+          ((s.role === "master" || staffIdsWithCRMAccess.has(s.id)) &&
+            [...CLOSER_ROLES, ...SDR_ROLES].includes(s.role))
       );
       setStaffMembers(filteredStaff);
     } catch (error) {
@@ -492,7 +494,7 @@ export const CRMGoalValuesManager = () => {
     return null;
   };
 
-  const closers = staffMembers.filter(s => CLOSER_ROLES.includes(s.role));
+  const closers = staffMembers.filter(s => s.is_crm_closer || CLOSER_ROLES.includes(s.role));
   const sdrs = staffMembers.filter(s => SDR_ROLES.includes(s.role));
 
   if (loading) {

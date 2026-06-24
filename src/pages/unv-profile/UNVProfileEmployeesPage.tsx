@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Search, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface Employee {
   id: string;
@@ -25,6 +26,7 @@ interface Employee {
   contract_type: string | null;
   hire_date: string | null;
   position_id: string | null;
+  staff_id: string | null;
   profile_positions?: { id: string; title: string } | null;
 }
 
@@ -55,6 +57,7 @@ export default function UNVProfileEmployeesPage() {
   const [status, setStatus] = useState<string>("active");
   const [positionId, setPositionId] = useState<string>("all");
   const [loading, setLoading] = useState(true);
+  const [closerByStaff, setCloserByStaff] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     (async () => {
@@ -78,9 +81,29 @@ export default function UNVProfileEmployeesPage() {
       });
       setList(deduped as any);
       setPositions((pos || []) as any);
+      // Flag "closer no CRM" por staff
+      const staffIds = [...new Set(deduped.map((e: any) => e.staff_id).filter(Boolean))] as string[];
+      if (staffIds.length) {
+        const { data: staff } = await supabase.from("onboarding_staff").select("id, is_crm_closer").in("id", staffIds);
+        const map: Record<string, boolean> = {};
+        (staff || []).forEach((s: any) => { map[s.id] = !!s.is_crm_closer; });
+        setCloserByStaff(map);
+      }
       setLoading(false);
     })();
   }, []);
+
+  const toggleCloser = async (staffId: string) => {
+    const next = !closerByStaff[staffId];
+    setCloserByStaff((p) => ({ ...p, [staffId]: next })); // otimista
+    const { error } = await supabase.from("onboarding_staff").update({ is_crm_closer: next }).eq("id", staffId);
+    if (error) {
+      setCloserByStaff((p) => ({ ...p, [staffId]: !next }));
+      toast.error("Erro ao salvar: " + error.message);
+    } else {
+      toast.success(next ? "Marcado como closer no CRM" : "Removido das metas do CRM");
+    }
+  };
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -201,7 +224,22 @@ export default function UNVProfileEmployeesPage() {
                     <Badge variant="outline" className="text-[10px]">
                       {emp.employee_type === "internal" ? "Interno UNV" : "Cliente"}
                     </Badge>
+                    {emp.staff_id && closerByStaff[emp.staff_id] && (
+                      <Badge className="text-[10px] bg-blue-500 text-white">Closer no CRM</Badge>
+                    )}
                   </div>
+                  {emp.staff_id && (
+                    <button
+                      onClick={() => toggleCloser(emp.staff_id!)}
+                      className="flex items-center gap-1.5 mt-2 text-[11px] text-muted-foreground hover:text-foreground"
+                      title="Aparece nas metas/vendas do CRM Comercial"
+                    >
+                      <span className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${closerByStaff[emp.staff_id] ? "bg-blue-500" : "bg-muted-foreground/30"}`}>
+                        <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${closerByStaff[emp.staff_id] ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                      </span>
+                      Closer no CRM (metas/vendas)
+                    </button>
+                  )}
                 </div>
               </CardContent>
             </Card>
