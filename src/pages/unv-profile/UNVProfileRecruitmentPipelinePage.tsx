@@ -58,6 +58,10 @@ export default function UNVProfileRecruitmentPipelinePage() {
   const [waCultureMessage, setWaCultureMessage] = useState("");
   const [ivForm, setIvForm] = useState<{ rh: string; rhNotes: string; mgr: string; mgrNotes: string }>({ rh: "", rhNotes: "", mgr: "", mgrNotes: "" });
   const [savingIv, setSavingIv] = useState(false);
+  const [blockedByEmail, setBlockedByEmail] = useState<Record<string, string>>({});
+  const [recruiterNotes, setRecruiterNotes] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [blockReason, setBlockReason] = useState("");
   const [view, setView] = useState<"pipeline" | "ranking">("pipeline");
   const [analyzingAll, setAnalyzingAll] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -85,6 +89,16 @@ export default function UNVProfileRecruitmentPipelinePage() {
     setJob(j.data);
     const list = c.data || [];
     setCands(list);
+    // Blocklist (segue a pessoa por email entre vagas)
+    const emails = [...new Set(list.map((x: any) => (x.email || "").toLowerCase()).filter(Boolean))] as string[];
+    if (emails.length) {
+      const { data: bl } = await supabase.from("profile_candidate_blocklist").select("email,reason").in("email", emails);
+      const bmap: Record<string, string> = {};
+      (bl || []).forEach((b: any) => { bmap[(b.email || "").toLowerCase()] = b.reason || ""; });
+      setBlockedByEmail(bmap);
+    } else {
+      setBlockedByEmail({});
+    }
     const ids = list.map((x: any) => x.id);
     if (ids.length) {
       const [{ data: disc }, { data: culture }] = await Promise.all([
@@ -210,8 +224,42 @@ export default function UNVProfileRecruitmentPipelinePage() {
     if (ok) advanceTo(cand, "test");
   };
 
+  const isBlocked = (cand: any) => !!blockedByEmail[(cand?.email || "").toLowerCase()];
+
+  const saveNotes = async () => {
+    if (!selected) return;
+    setSavingNotes(true);
+    const { error } = await supabase.from("profile_candidates").update({ recruiter_notes: recruiterNotes.trim() || null }).eq("id", selected.id);
+    setSavingNotes(false);
+    if (error) return toast.error(error.message);
+    setSelected((prev: any) => prev && prev.id === selected.id ? { ...prev, recruiter_notes: recruiterNotes.trim() || null } : prev);
+    setCands(prev => prev.map(c => c.id === selected.id ? { ...c, recruiter_notes: recruiterNotes.trim() || null } : c));
+    toast.success("Observações salvas");
+  };
+
+  const toggleBlock = async (cand: any) => {
+    const email = (cand?.email || "").toLowerCase();
+    if (!email) return toast.error("Candidato sem e-mail — não dá pra bloquear (a tag segue pelo e-mail).");
+    const currentlyBlocked = isBlocked(cand);
+    if (currentlyBlocked) {
+      const { error } = await supabase.from("profile_candidate_blocklist").delete().eq("email", email);
+      if (error) return toast.error(error.message);
+      setBlockedByEmail(prev => { const n = { ...prev }; delete n[email]; return n; });
+      toast.success("Bloqueio removido");
+    } else {
+      const { error } = await supabase.from("profile_candidate_blocklist").upsert({
+        email, full_name: cand.full_name || null, reason: blockReason.trim() || null, tenant_id: cand.tenant_id || job?.tenant_id || null,
+      }, { onConflict: "email" });
+      if (error) return toast.error(error.message);
+      setBlockedByEmail(prev => ({ ...prev, [email]: blockReason.trim() }));
+      toast.success("Marcado: não participar de mais vagas");
+    }
+  };
+
   const openCand = (c: any) => {
     setFreshAnalysis(null);
+    setRecruiterNotes(c.recruiter_notes || "");
+    setBlockReason(blockedByEmail[(c.email || "").toLowerCase()] || "");
     setWaMessage(buildDiscMessage(c));
     setWaCultureMessage(buildCultureMessage(c));
     setIvForm({
@@ -468,7 +516,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
       )}
 
       {view === "pipeline" && (
-      <div className="flex gap-3 overflow-x-auto pb-4">
+      <div className="flex gap-3 overflow-x-auto overflow-y-hidden pb-2 h-[calc(100vh-220px)] min-h-[420px]">
         {PROFILE_PIPELINE_STAGES.map(stage => {
           const list = cands.filter(c => c.stage === stage.key);
           const st = STAGE_STYLE[stage.key] || { dot: "bg-slate-500", head: "from-slate-500/15 to-transparent", text: "text-slate-400", bar: "bg-slate-500" };
@@ -476,18 +524,18 @@ export default function UNVProfileRecruitmentPipelinePage() {
           return (
             <div
               key={stage.key}
-              className="min-w-[290px] w-[290px]"
+              className="min-w-[290px] w-[290px] flex flex-col h-full"
               onDragOver={e => e.preventDefault()}
               onDrop={() => { if (dragId) moveTo(dragId, stage.key); setDragId(null); }}
             >
-              <div className={`flex items-center justify-between mb-2 px-3 py-2 rounded-lg bg-gradient-to-r ${st.head} border-l-[3px]`} style={{ borderColor: "transparent" }}>
+              <div className={`flex items-center justify-between mb-2 px-3 py-2 rounded-lg bg-gradient-to-r ${st.head} border-l-[3px] shrink-0`} style={{ borderColor: "transparent" }}>
                 <div className="flex items-center gap-2">
                   <span className={`w-2.5 h-2.5 rounded-full ${st.dot} shadow`} />
                   <p className={`text-xs font-bold uppercase tracking-wider ${st.text}`}>{stage.label}</p>
                 </div>
                 <span className={`flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-bold text-white ${st.bar}`}>{list.length}</span>
               </div>
-              <div className={`space-y-2 min-h-[120px] rounded-xl p-2 transition-colors ${isDrop ? "bg-primary/5 ring-1 ring-dashed ring-primary/30" : "bg-muted/30"}`}>
+              <div className={`space-y-2 flex-1 overflow-y-auto rounded-xl p-2 transition-colors ${isDrop ? "bg-primary/5 ring-1 ring-dashed ring-primary/30" : "bg-muted/30"}`}>
                 {list.map(c => {
                   const ov = overall(c);
                   return (
@@ -525,6 +573,9 @@ export default function UNVProfileRecruitmentPipelinePage() {
                           )}
                           {cultureByCand[c.id] && (
                             <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-teal-500/10 text-teal-400 px-2 py-0.5"><Compass className="w-3 h-3" />{cultureFit(c.id)}%</span>
+                          )}
+                          {isBlocked(c) && (
+                            <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-rose-500/15 text-rose-400 px-2 py-0.5"><X className="w-3 h-3" />Não participar</span>
                           )}
                           {c.cadastral_status === "approved" && (
                             <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-emerald-500/15 text-emerald-400 px-2 py-0.5"><CheckCircle2 className="w-3 h-3" />Cadastro OK</span>
@@ -581,6 +632,32 @@ export default function UNVProfileRecruitmentPipelinePage() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* Observações + bloqueio */}
+                <div className={`rounded-lg border p-3 space-y-2 ${isBlocked(selected) ? "border-rose-500/40 bg-rose-500/5" : "bg-muted/20"}`}>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-muted-foreground" />Observações</p>
+                    {isBlocked(selected) && <Badge className="bg-rose-500 text-white gap-1"><X className="w-3 h-3" />Não participar de vagas</Badge>}
+                  </div>
+                  <Textarea value={recruiterNotes} onChange={(e) => setRecruiterNotes(e.target.value)} rows={3} className="text-xs" placeholder="Anotações internas sobre o candidato (visível só pra equipe)" />
+                  <Button size="sm" variant="outline" className="gap-1.5" disabled={savingNotes} onClick={saveNotes}>
+                    {savingNotes ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}Salvar observações
+                  </Button>
+
+                  <div className="pt-2 border-t mt-1 space-y-2">
+                    <p className="text-xs font-medium">Não participar de mais vagas</p>
+                    <p className="text-[11px] text-muted-foreground">A tag segue o candidato pelo e-mail — se ele se inscrever em outra vaga, você é avisado.</p>
+                    {!isBlocked(selected) && (
+                      <Input value={blockReason} onChange={(e) => setBlockReason(e.target.value)} className="h-8 text-xs" placeholder="Motivo (opcional)" />
+                    )}
+                    {isBlocked(selected) && blockedByEmail[(selected.email || "").toLowerCase()] && (
+                      <p className="text-[11px] text-rose-400">Motivo: {blockedByEmail[(selected.email || "").toLowerCase()]}</p>
+                    )}
+                    <Button size="sm" variant={isBlocked(selected) ? "outline" : "default"} className={`gap-1.5 ${isBlocked(selected) ? "" : "bg-rose-600 hover:bg-rose-700"}`} onClick={() => toggleBlock(selected)}>
+                      {isBlocked(selected) ? <><CheckCircle2 className="w-4 h-4" />Liberar candidato</> : <><X className="w-4 h-4" />Bloquear de futuras vagas</>}
+                    </Button>
+                  </div>
                 </div>
 
                 {(!disc || !kult) && (
