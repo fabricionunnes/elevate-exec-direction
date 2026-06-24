@@ -546,7 +546,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
       )}
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden [&_*]:break-words">
           {selected && (
             <>
               <DialogHeader className="-mx-6 -mt-6 px-6 pt-6 pb-4 bg-gradient-to-br from-indigo-500/15 via-fuchsia-500/10 to-transparent border-b">
