@@ -19,6 +19,12 @@ import {
 
 const DISC_LABELS: Record<string, string> = { D: "Dominância", I: "Influência", S: "Estabilidade", C: "Conformidade" };
 const scoreColor = (n: number) => (n >= 70 ? "#10b981" : n >= 45 ? "#f59e0b" : "#f43f5e");
+const scoreBand = (n: number) => (n >= 70 ? "g" : n >= 45 ? "a" : "r");
+const MEDALS: Record<number, { ring: string; label: string }> = {
+  0: { ring: "from-amber-300 to-yellow-500", label: "🥇" },
+  1: { ring: "from-slate-200 to-slate-400", label: "🥈" },
+  2: { ring: "from-orange-300 to-amber-600", label: "🥉" },
+};
 const DISC_COLORS: Record<string, string> = { D: "bg-rose-500", I: "bg-amber-500", S: "bg-emerald-500", C: "bg-blue-500" };
 
 export default function UNVProfileRecruitmentPipelinePage() {
@@ -233,12 +239,12 @@ export default function UNVProfileRecruitmentPipelinePage() {
         </div>
       </div>
       {view === "ranking" && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <p className="text-sm text-muted-foreground">
               Nota geral = 60% aderência IA + 40% match do DISC com a vaga. {!target && "Defina o DISC ideal na vaga pra ativar o match."}
             </p>
-            <Button size="sm" className="gap-2" disabled={analyzingAll || !cands.length} onClick={analyzeAll}>
+            <Button size="sm" className="gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-indigo-500/20" disabled={analyzingAll || !cands.length} onClick={analyzeAll}>
               {analyzingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               {analyzingAll && progress ? `Analisando ${progress.done}/${progress.total}` : "Analisar todos com IA"}
             </Button>
@@ -250,40 +256,90 @@ export default function UNVProfileRecruitmentPipelinePage() {
             </CardContent></Card>
           ) : (
             <>
-              <Card>
-                <CardContent className="p-4">
-                  <ResponsiveContainer width="100%" height={Math.max(160, ranking.length * 46)}>
-                    <BarChart data={ranking.map(r => ({ nome: r.cand.full_name, nota: r.overall }))} layout="vertical" margin={{ left: 8, right: 24 }}>
-                      <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} />
-                      <YAxis type="category" dataKey="nome" width={120} tick={{ fontSize: 11 }} />
-                      <RTooltip formatter={(v: any) => [`${v}`, "Nota geral"]} />
-                      <Bar dataKey="nota" radius={[0, 4, 4, 0]} label={{ position: "right", fontSize: 11 }}>
-                        {ranking.map((r, i) => <Cell key={i} fill={scoreColor(r.overall as number)} />)}
+              {/* KPIs resumo */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { label: "Avaliados", value: `${ranking.length}/${cands.length}`, grad: "from-indigo-500/15 to-indigo-500/5", ring: "text-indigo-400", icon: <Target className="w-4 h-4" /> },
+                  { label: "Melhor nota", value: `${ranking[0].overall}`, grad: "from-emerald-500/15 to-emerald-500/5", ring: "text-emerald-400", icon: <ThumbsUp className="w-4 h-4" /> },
+                  { label: "Nota média", value: `${Math.round(ranking.reduce((s, r) => s + (r.overall as number), 0) / ranking.length)}`, grad: "from-amber-500/15 to-amber-500/5", ring: "text-amber-400", icon: <Sparkles className="w-4 h-4" /> },
+                  { label: "Com DISC", value: `${ranking.filter(r => r.dm != null).length}`, grad: "from-fuchsia-500/15 to-fuchsia-500/5", ring: "text-fuchsia-400", icon: <Brain className="w-4 h-4" /> },
+                ].map((k, i) => (
+                  <div key={i} className={`rounded-xl border bg-gradient-to-br ${k.grad} p-4 backdrop-blur-sm`}>
+                    <div className={`flex items-center gap-1.5 text-[11px] uppercase tracking-wider ${k.ring}`}>{k.icon}{k.label}</div>
+                    <div className="text-2xl font-bold mt-1">{k.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Gráfico com profundidade */}
+              <Card className="overflow-hidden border-0 bg-gradient-to-br from-slate-900/60 to-slate-800/30 shadow-xl">
+                <CardContent className="p-4 md:p-6">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Ranking por nota geral</p>
+                  <ResponsiveContainer width="100%" height={Math.max(180, ranking.length * 52)}>
+                    <BarChart data={ranking.map(r => ({ nome: r.cand.full_name, nota: r.overall }))} layout="vertical" margin={{ left: 8, right: 36 }} barCategoryGap="22%">
+                      <defs>
+                        <linearGradient id="g-g" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#6ee7b7" /><stop offset="45%" stopColor="#10b981" /><stop offset="100%" stopColor="#047857" />
+                        </linearGradient>
+                        <linearGradient id="g-a" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#fcd34d" /><stop offset="45%" stopColor="#f59e0b" /><stop offset="100%" stopColor="#b45309" />
+                        </linearGradient>
+                        <linearGradient id="g-r" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#fda4af" /><stop offset="45%" stopColor="#f43f5e" /><stop offset="100%" stopColor="#be123c" />
+                        </linearGradient>
+                        <filter id="barShadow" x="-10%" y="-20%" width="130%" height="140%">
+                          <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#000" floodOpacity="0.35" />
+                        </filter>
+                      </defs>
+                      <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                      <YAxis type="category" dataKey="nome" width={130} tick={{ fontSize: 11, fill: "#cbd5e1" }} axisLine={false} tickLine={false} />
+                      <RTooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} contentStyle={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8, fontSize: 12 }} formatter={(v: any) => [`${v}`, "Nota geral"]} />
+                      <Bar dataKey="nota" radius={[6, 10, 10, 6]} barSize={24} style={{ filter: "url(#barShadow)" }} label={{ position: "right", fontSize: 12, fontWeight: 700, fill: "#e2e8f0" }} isAnimationActive>
+                        {ranking.map((r, i) => <Cell key={i} fill={`url(#g-${scoreBand(r.overall as number)})`} />)}
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
 
-              <div className="space-y-2">
-                {ranking.map((r, i) => (
-                  <Card key={r.cand.id} className="cursor-pointer hover:shadow-md transition" onClick={() => openCand(r.cand)}>
-                    <CardContent className="p-3 flex items-center gap-3">
-                      <span className="w-6 text-center font-bold text-muted-foreground">{i + 1}</span>
-                      <Avatar className="h-8 w-8"><AvatarFallback className="text-xs">{r.cand.full_name?.[0]}</AvatarFallback></Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{r.cand.full_name}</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          IA: {r.ai != null ? `${r.ai}%` : "—"} • DISC match: {r.dm != null ? `${r.dm}%` : "—"}
-                        </p>
+              {/* Lista premium */}
+              <div className="space-y-2.5">
+                {ranking.map((r, i) => {
+                  const c = scoreColor(r.overall as number);
+                  const medal = MEDALS[i];
+                  return (
+                    <div key={r.cand.id} onClick={() => openCand(r.cand)}
+                      className="group relative cursor-pointer rounded-xl border bg-card/60 hover:bg-card transition-all hover:shadow-lg hover:-translate-y-0.5 overflow-hidden">
+                      <span className="absolute left-0 top-0 h-full w-1.5" style={{ background: c }} />
+                      <div className="flex items-center gap-3 p-3 pl-5">
+                        {medal ? (
+                          <div className={`flex items-center justify-center h-9 w-9 rounded-full bg-gradient-to-br ${medal.ring} text-base shadow`}>{medal.label}</div>
+                        ) : (
+                          <div className="flex items-center justify-center h-9 w-9 rounded-full bg-muted font-bold text-muted-foreground">{i + 1}</div>
+                        )}
+                        <Avatar className="h-9 w-9 ring-2 ring-background"><AvatarFallback className="text-xs">{r.cand.full_name?.[0]}</AvatarFallback></Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate">{r.cand.full_name}</p>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-indigo-500/10 text-indigo-400 px-2 py-0.5"><Sparkles className="w-3 h-3" />IA {r.ai != null ? `${r.ai}%` : "—"}</span>
+                            <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-fuchsia-500/10 text-fuchsia-400 px-2 py-0.5"><Brain className="w-3 h-3" />DISC {r.dm != null ? `${r.dm}%` : "—"}</span>
+                          </div>
+                        </div>
+                        <div className="relative flex items-center justify-center h-14 w-14 shrink-0">
+                          <svg className="absolute inset-0 -rotate-90" viewBox="0 0 36 36">
+                            <circle cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" className="text-border" strokeWidth="3" />
+                            <circle cx="18" cy="18" r="15.5" fill="none" stroke={c} strokeWidth="3" strokeLinecap="round"
+                              strokeDasharray={`${(r.overall as number) / 100 * 97.4} 97.4`} />
+                          </svg>
+                          <div className="text-center leading-none">
+                            <div className="text-lg font-extrabold" style={{ color: c }}>{r.overall}</div>
+                            <div className="text-[8px] text-muted-foreground uppercase">nota</div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold" style={{ color: scoreColor(r.overall as number) }}>{r.overall}</div>
-                        <div className="text-[10px] text-muted-foreground">nota geral</div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}
