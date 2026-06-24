@@ -35,6 +35,7 @@ const STAGE_STYLE: Record<string, { dot: string; head: string; text: string; bar
   manager_interview: { dot: "bg-fuchsia-500", head: "from-fuchsia-500/15 to-transparent", text: "text-fuchsia-400", bar: "bg-fuchsia-500" },
   juridico: { dot: "bg-cyan-500", head: "from-cyan-500/15 to-transparent", text: "text-cyan-400", bar: "bg-cyan-500" },
   offer: { dot: "bg-pink-500", head: "from-pink-500/15 to-transparent", text: "text-pink-400", bar: "bg-pink-500" },
+  approved: { dot: "bg-green-500", head: "from-green-500/15 to-transparent", text: "text-green-400", bar: "bg-green-500" },
   hired: { dot: "bg-emerald-500", head: "from-emerald-500/15 to-transparent", text: "text-emerald-400", bar: "bg-emerald-500" },
   rejected: { dot: "bg-rose-500", head: "from-rose-500/15 to-transparent", text: "text-rose-400", bar: "bg-rose-500" },
   talent_pool: { dot: "bg-amber-500", head: "from-amber-500/15 to-transparent", text: "text-amber-400", bar: "bg-amber-500" },
@@ -62,6 +63,10 @@ export default function UNVProfileRecruitmentPipelinePage() {
   const [recruiterNotes, setRecruiterNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
   const [blockReason, setBlockReason] = useState("");
+  const [editData, setEditData] = useState(false);
+  const [dataForm, setDataForm] = useState<any>({});
+  const [savingData, setSavingData] = useState(false);
+  const [waApproval, setWaApproval] = useState("");
   const [view, setView] = useState<"pipeline" | "ranking">("pipeline");
   const [analyzingAll, setAnalyzingAll] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -169,6 +174,44 @@ export default function UNVProfileRecruitmentPipelinePage() {
   const buildDiscMessage = buildAssessmentMessage;
   const buildCultureMessage = buildAssessmentMessage;
 
+  // Link de cadastro de contratação (candidato preenche dados pra virar colaborador)
+  const registrationLink = (cand: any) => {
+    const tenant = cand?.tenant_id || job?.tenant_id || "";
+    const params = new URLSearchParams();
+    if (tenant) params.set("tenant", tenant);
+    params.set("candidate", cand.id);
+    return `${getPublicBaseUrl()}/#/cadastro-contratacao?${params.toString()}`;
+  };
+  const buildApprovalMessage = (cand: any) => {
+    const firstName = (cand.full_name || "").trim().split(" ")[0] || "";
+    return `*Parabéns, ${firstName}!* 🎉\n\nVocê foi *aprovado(a)* no processo seletivo da vaga de *${job?.title || ""}* na *Universidade Nacional de Vendas*.\n\nPra darmos início à sua contratação, preencha seu cadastro com os dados (CPF, CNPJ, endereço, conta PJ, PIX e foto):\n${registrationLink(cand)}\n\nQualquer dúvida, é só chamar. Seja bem-vindo(a) ao time! 🚀`;
+  };
+  const copyRegistrationLink = (cand: any) => navigator.clipboard.writeText(registrationLink(cand)).then(() => toast.success("Link de cadastro copiado")).catch(() => toast.error("Não consegui copiar"));
+  const sendApprovalWhatsapp = (cand: any) => sendWhatsappMsg(cand, (waApproval || "").trim() || buildApprovalMessage(cand), "Mensagem de aprovação enviada");
+
+  const saveData = async () => {
+    if (!selected) return;
+    setSavingData(true);
+    const patch = {
+      full_name: dataForm.full_name?.trim() || selected.full_name,
+      email: dataForm.email?.trim() || null,
+      phone: dataForm.phone?.trim() || null,
+      cpf: dataForm.cpf?.trim() || null,
+      cnpj: dataForm.cnpj?.trim() || null,
+      address: dataForm.address?.trim() || null,
+      neighborhood: dataForm.neighborhood?.trim() || null,
+      city: dataForm.city?.trim() || null,
+      state: dataForm.state?.trim() || null,
+    };
+    const { error } = await supabase.from("profile_candidates").update(patch).eq("id", selected.id);
+    setSavingData(false);
+    if (error) return toast.error(error.message);
+    setSelected((prev: any) => prev && prev.id === selected.id ? { ...prev, ...patch } : prev);
+    setCands(prev => prev.map(c => c.id === selected.id ? { ...c, ...patch } : c));
+    setEditData(false);
+    toast.success("Dados atualizados");
+  };
+
   const analyze = async (cand: any) => {
     setAnalyzing(true);
     setFreshAnalysis(null);
@@ -213,7 +256,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
     }
   };
   // Funil principal (off-funnel: rejected, talent_pool). Só avança pra frente.
-  const FUNNEL = ["applied", "screening", "test", "hr_interview", "manager_interview", "juridico", "offer", "hired"];
+  const FUNNEL = ["applied", "screening", "test", "hr_interview", "manager_interview", "juridico", "offer", "approved", "hired"];
   const advanceTo = (cand: any, target: string) => {
     const cur = FUNNEL.indexOf(cand.stage);
     const tgt = FUNNEL.indexOf(target);
@@ -258,6 +301,9 @@ export default function UNVProfileRecruitmentPipelinePage() {
 
   const openCand = (c: any) => {
     setFreshAnalysis(null);
+    setEditData(false);
+    setDataForm({ full_name: c.full_name || "", email: c.email || "", phone: c.phone || "", cpf: c.cpf || "", cnpj: c.cnpj || "", address: c.address || "", neighborhood: c.neighborhood || "", city: c.city || "", state: c.state || "" });
+    setWaApproval(buildApprovalMessage(c));
     setRecruiterNotes(c.recruiter_notes || "");
     setBlockReason(blockedByEmail[(c.email || "").toLowerCase()] || "");
     setWaMessage(buildDiscMessage(c));
@@ -690,17 +736,65 @@ export default function UNVProfileRecruitmentPipelinePage() {
                   </div>
                 )}
 
-                <div className="space-y-1.5">
-                  {selected.email && <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-muted-foreground" />{selected.email}</p>}
-                  {selected.phone && <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-muted-foreground" />{selected.phone}</p>}
-                  {(selected.city || selected.state) && <p className="flex items-center gap-2"><MapPin className="w-4 h-4 text-muted-foreground" />{[selected.city, selected.state].filter(Boolean).join("/")}</p>}
-                  {selected.linkedin_url && (
-                    <p className="flex items-center gap-2">
-                      <Linkedin className="w-4 h-4 text-muted-foreground" />
-                      <a href={selected.linkedin_url} target="_blank" rel="noopener" className="text-primary underline truncate">{selected.linkedin_url}</a>
-                    </p>
+                {selected.stage === "approved" && (
+                  <div className="rounded-lg border p-3 space-y-2 bg-gradient-to-br from-green-500/10 to-transparent">
+                    <p className="font-semibold flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-500" />Aprovado — enviar parabéns + cadastro</p>
+                    <p className="text-[11px] text-muted-foreground">Mensagem de parabéns com o link de cadastro de contratação. Ao preencher, o candidato vira <strong>Contratado</strong> e entra como colaborador. (No WhatsApp, *texto entre asteriscos* fica em negrito.)</p>
+                    <Textarea value={waApproval} onChange={(e) => setWaApproval(e.target.value)} rows={7} className="text-xs" placeholder="Mensagem de aprovação" />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {instances.length > 0 && (
+                        <Select value={instanceId} onValueChange={setInstanceId}>
+                          <SelectTrigger className="h-8 w-[180px] text-xs"><SelectValue placeholder="Instância" /></SelectTrigger>
+                          <SelectContent>
+                            {instances.map((i) => (<SelectItem key={i.id} value={i.id} className="text-xs">{i.display_name || i.instance_name}{i.is_default ? " (padrão)" : ""}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <Button variant="default" size="sm" className="gap-2 bg-green-600 hover:bg-green-700" disabled={sending || !selected.phone || !instanceId} onClick={() => sendApprovalWhatsapp(selected)}>
+                        {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}Enviar no WhatsApp
+                      </Button>
+                      <Button variant="outline" size="sm" className="gap-2" onClick={() => copyRegistrationLink(selected)}><Copy className="w-4 h-4" />Copiar link</Button>
+                    </div>
+                    {!selected.phone && <p className="text-[11px] text-amber-600">Candidato sem telefone — só dá pra copiar o link.</p>}
+                  </div>
+                )}
+
+                <div className="rounded-lg border p-3 space-y-2 bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-sm">Dados do candidato</p>
+                    <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setEditData(v => !v)}>
+                      {editData ? "Cancelar" : "Editar"}
+                    </Button>
+                  </div>
+                  {!editData ? (
+                    <div className="space-y-1.5">
+                      {selected.email && <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-muted-foreground" />{selected.email}</p>}
+                      {selected.phone && <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-muted-foreground" />{selected.phone}</p>}
+                      {(selected.city || selected.state || selected.address || selected.neighborhood) && (
+                        <p className="flex items-start gap-2"><MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />{[selected.address, selected.neighborhood, [selected.city, selected.state].filter(Boolean).join("/")].filter(Boolean).join(" · ")}</p>
+                      )}
+                      {selected.cpf && <p className="flex items-center gap-2"><FileText className="w-4 h-4 text-muted-foreground" />CPF: {selected.cpf}</p>}
+                      {selected.cnpj && <p className="flex items-center gap-2"><FileText className="w-4 h-4 text-muted-foreground" />CNPJ: {selected.cnpj}</p>}
+                      {selected.linkedin_url && (
+                        <p className="flex items-center gap-2"><Linkedin className="w-4 h-4 text-muted-foreground" /><a href={selected.linkedin_url} target="_blank" rel="noopener" className="text-primary underline truncate">{selected.linkedin_url}</a></p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input className="h-8 text-xs col-span-2" placeholder="Nome completo" value={dataForm.full_name} onChange={e => setDataForm({ ...dataForm, full_name: e.target.value })} />
+                      <Input className="h-8 text-xs" placeholder="E-mail" value={dataForm.email} onChange={e => setDataForm({ ...dataForm, email: e.target.value })} />
+                      <Input className="h-8 text-xs" placeholder="Telefone" value={dataForm.phone} onChange={e => setDataForm({ ...dataForm, phone: e.target.value })} />
+                      <Input className="h-8 text-xs" placeholder="CPF" value={dataForm.cpf} onChange={e => setDataForm({ ...dataForm, cpf: e.target.value })} />
+                      <Input className="h-8 text-xs" placeholder="CNPJ" value={dataForm.cnpj} onChange={e => setDataForm({ ...dataForm, cnpj: e.target.value })} />
+                      <Input className="h-8 text-xs col-span-2" placeholder="Endereço (rua, nº)" value={dataForm.address} onChange={e => setDataForm({ ...dataForm, address: e.target.value })} />
+                      <Input className="h-8 text-xs" placeholder="Bairro" value={dataForm.neighborhood} onChange={e => setDataForm({ ...dataForm, neighborhood: e.target.value })} />
+                      <Input className="h-8 text-xs" placeholder="Cidade" value={dataForm.city} onChange={e => setDataForm({ ...dataForm, city: e.target.value })} />
+                      <Input className="h-8 text-xs" placeholder="Estado (UF)" value={dataForm.state} onChange={e => setDataForm({ ...dataForm, state: e.target.value })} />
+                      <Button size="sm" className="col-span-2 gap-1.5" disabled={savingData} onClick={saveData}>
+                        {savingData ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}Salvar dados
+                      </Button>
+                    </div>
                   )}
-                  {selected.cpf && <p className="flex items-center gap-2"><FileText className="w-4 h-4 text-muted-foreground" />CPF: {selected.cpf}</p>}
                 </div>
 
                 <div className="rounded-lg border p-3 space-y-2 bg-gradient-to-br from-cyan-500/10 to-transparent">

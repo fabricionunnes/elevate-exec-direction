@@ -211,6 +211,7 @@ const PublicJobApplicationPage = lazy(() => import("./pages/hr-recruitment/Publi
 const ProfileJobApplicationPage = lazy(() => import("./pages/unv-profile/ProfileJobApplicationPage"));
 const ProfileCulturePublicPage = lazy(() => import("./pages/unv-profile/ProfileCulturePublicPage"));
 const ProfileAssessmentPage = lazy(() => import("./pages/unv-profile/ProfileAssessmentPage"));
+const ProfileHireRegistrationPage = lazy(() => import("./pages/unv-profile/ProfileHireRegistrationPage"));
 const PublicTalentPoolPage = lazy(() => import("./pages/hr-recruitment/PublicTalentPoolPage"));
 const CultureFormPage = lazy(() => import("./pages/hr-recruitment/CultureFormPage"));
 const PublicCareerPlanFormPage = lazy(() => import("./pages/hr-recruitment/PublicCareerPlanFormPage"));
@@ -560,6 +561,7 @@ const AppShell = () => {
             <Route path="/vagas/:token" element={<ProfileJobApplicationPage />} />
             <Route path="/cultura-publica" element={<ProfileCulturePublicPage />} />
             <Route path="/avaliacao-candidato" element={<ProfileAssessmentPage />} />
+            <Route path="/cadastro-contratacao" element={<ProfileHireRegistrationPage />} />
             <Route path="/banco-talentos" element={<PublicTalentPoolPage />} />
             <Route path="/social-briefing/:token" element={<SocialBriefingPublicPage />} />
             <Route path="/traffic-analysis/:token" element={<TrafficAnalysisPublicPage />} />
