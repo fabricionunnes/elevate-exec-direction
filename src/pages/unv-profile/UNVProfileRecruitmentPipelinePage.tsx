@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink, Target, Loader2, ThumbsUp, AlertTriangle, MessageCircle, Scale, Search, Compass } from "lucide-react";
+import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink, Target, Loader2, ThumbsUp, AlertTriangle, MessageCircle, Scale, Search, Compass, Users, CheckCircle2 } from "lucide-react";
 import { CULTURE_PILLARS } from "@/data/cultureQuestions";
 import { toast } from "sonner";
 import { PROFILE_PIPELINE_STAGES } from "./types";
@@ -55,6 +55,8 @@ export default function UNVProfileRecruitmentPipelinePage() {
   const [sending, setSending] = useState(false);
   const [waMessage, setWaMessage] = useState("");
   const [waCultureMessage, setWaCultureMessage] = useState("");
+  const [ivForm, setIvForm] = useState<{ rh: string; rhNotes: string; mgr: string; mgrNotes: string }>({ rh: "", rhNotes: "", mgr: "", mgrNotes: "" });
+  const [savingIv, setSavingIv] = useState(false);
   const [view, setView] = useState<"pipeline" | "ranking">("pipeline");
   const [analyzingAll, setAnalyzingAll] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -195,7 +197,36 @@ export default function UNVProfileRecruitmentPipelinePage() {
   const sendDiscWhatsapp = (cand: any) => sendWhatsappMsg(cand, (waMessage || "").trim() || buildDiscMessage(cand), "Link do DISC enviado no WhatsApp");
   const sendCultureWhatsapp = (cand: any) => sendWhatsappMsg(cand, (waCultureMessage || "").trim() || buildCultureMessage(cand), "Link do teste cultural enviado no WhatsApp");
 
-  const openCand = (c: any) => { setFreshAnalysis(null); setWaMessage(buildDiscMessage(c)); setWaCultureMessage(buildCultureMessage(c)); setSelected(c); };
+  const openCand = (c: any) => {
+    setFreshAnalysis(null);
+    setWaMessage(buildDiscMessage(c));
+    setWaCultureMessage(buildCultureMessage(c));
+    setIvForm({
+      rh: c.interview_rh_score != null ? String(c.interview_rh_score) : "",
+      rhNotes: c.interview_rh_notes || "",
+      mgr: c.interview_manager_score != null ? String(c.interview_manager_score) : "",
+      mgrNotes: c.interview_manager_notes || "",
+    });
+    setSelected(c);
+  };
+
+  const saveInterviews = async () => {
+    if (!selected) return;
+    const clamp = (s: string) => { if (s === "") return null; const n = Math.max(0, Math.min(10, Number(s))); return Number.isFinite(n) ? n : null; };
+    const patch = {
+      interview_rh_score: clamp(ivForm.rh),
+      interview_rh_notes: ivForm.rhNotes.trim() || null,
+      interview_manager_score: clamp(ivForm.mgr),
+      interview_manager_notes: ivForm.mgrNotes.trim() || null,
+    };
+    setSavingIv(true);
+    const { error } = await supabase.from("profile_candidates").update(patch).eq("id", selected.id);
+    setSavingIv(false);
+    if (error) return toast.error(error.message);
+    setSelected((prev: any) => prev && prev.id === selected.id ? { ...prev, ...patch } : prev);
+    setCands(prev => prev.map(c => c.id === selected.id ? { ...c, ...patch } : c));
+    toast.success("Notas das entrevistas salvas");
+  };
 
   // perfil DISC ideal da vaga (0-100) e quanto o candidato bate com ele
   const target = job?.target_disc && typeof job.target_disc === "object" ? job.target_disc : null;
@@ -229,19 +260,23 @@ export default function UNVProfileRecruitmentPipelinePage() {
     if (quiz != null && ai != null) return Math.round(quiz * 0.7 + ai * 0.3);
     return quiz ?? ai ?? null;
   };
-  // nota geral = média ponderada dos sinais presentes (IA aderência 2, DISC 1, Cultura 1)
+  // Nota geral = média ponderada dos sinais presentes.
+  // Ordem de impacto: Currículo (IA) > Fit Cultural > DISC > Entrevista Gestor > Entrevista RH.
+  const WEIGHTS = { ai: 4, cultura: 3, disc: 2, gestor: 2, rh: 1.5 };
   const overall = (cand: any): number | null => {
     const parts: { v: number; w: number }[] = [];
-    if (cand.ai_score != null) parts.push({ v: Number(cand.ai_score), w: 2 });
-    const dm = discMatch(cand.id); if (dm != null) parts.push({ v: dm, w: 1 });
-    const cf = cultureFit(cand.id); if (cf != null) parts.push({ v: cf, w: 1 });
+    if (cand.ai_score != null) parts.push({ v: Number(cand.ai_score), w: WEIGHTS.ai });
+    const cf = cultureFit(cand.id); if (cf != null) parts.push({ v: cf, w: WEIGHTS.cultura });
+    const dm = discMatch(cand.id); if (dm != null) parts.push({ v: dm, w: WEIGHTS.disc });
+    if (cand.interview_manager_score != null) parts.push({ v: Number(cand.interview_manager_score) * 10, w: WEIGHTS.gestor });
+    if (cand.interview_rh_score != null) parts.push({ v: Number(cand.interview_rh_score) * 10, w: WEIGHTS.rh });
     if (!parts.length) return null;
     const totW = parts.reduce((s, p) => s + p.w, 0);
     return Math.round(parts.reduce((s, p) => s + p.v * p.w, 0) / totW);
   };
 
   const ranking = cands
-    .map((c) => ({ cand: c, ai: c.ai_score != null ? Number(c.ai_score) : null, dm: discMatch(c.id), cf: cultureFit(c.id), overall: overall(c) }))
+    .map((c) => ({ cand: c, ai: c.ai_score != null ? Number(c.ai_score) : null, dm: discMatch(c.id), cf: cultureFit(c.id), rh: c.interview_rh_score, mgr: c.interview_manager_score, overall: overall(c) }))
     .filter((r) => r.overall != null)
     .sort((a, b) => (b.overall as number) - (a.overall as number));
 
@@ -297,7 +332,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
         <div className="space-y-5">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <p className="text-sm text-muted-foreground">
-              Nota geral = aderência IA + match do DISC + fit cultural (ponderados; a IA pesa o dobro). Usa os sinais que cada candidato tem. {!target && "Defina o DISC ideal na vaga pra ativar o match."}
+              Nota geral = média ponderada por impacto: Currículo (IA) &gt; Fit Cultural &gt; DISC &gt; Entrevista Gestor &gt; Entrevista RH. Usa os sinais que cada candidato tem. {!target && "Defina o DISC ideal na vaga pra ativar o match do DISC."}
             </p>
             <Button size="sm" className="gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-indigo-500/20" disabled={analyzingAll || !cands.length} onClick={analyzeAll}>
               {analyzingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
@@ -379,6 +414,9 @@ export default function UNVProfileRecruitmentPipelinePage() {
                             <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-indigo-500/10 text-indigo-400 px-2 py-0.5"><Sparkles className="w-3 h-3" />IA {r.ai != null ? `${r.ai}%` : "—"}</span>
                             <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-fuchsia-500/10 text-fuchsia-400 px-2 py-0.5"><Brain className="w-3 h-3" />DISC {r.dm != null ? `${r.dm}%` : "—"}</span>
                             <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-teal-500/10 text-teal-400 px-2 py-0.5"><Compass className="w-3 h-3" />Cultura {r.cf != null ? `${r.cf}%` : "—"}</span>
+                            {(r.rh != null || r.mgr != null) && (
+                              <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-purple-500/10 text-purple-400 px-2 py-0.5"><Users className="w-3 h-3" />RH {r.rh != null ? r.rh : "—"} · Gestor {r.mgr != null ? r.mgr : "—"}</span>
+                            )}
                           </div>
                         </div>
                         <div className="relative flex items-center justify-center h-14 w-14 shrink-0">
@@ -715,6 +753,25 @@ export default function UNVProfileRecruitmentPipelinePage() {
                   ) : (
                     <p className="text-xs text-muted-foreground">Rode a análise pra ver se o candidato bate com a vaga. A IA lê o currículo em PDF/imagem, cruza com os requisitos da vaga e com o DISC.</p>
                   )}
+                </div>
+
+                <div className="rounded-lg border p-3 space-y-3 bg-gradient-to-br from-purple-500/10 to-transparent">
+                  <p className="font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-purple-500" />Notas das entrevistas <span className="text-[11px] font-normal text-muted-foreground">(0 a 10)</span></p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Entrevista RH</label>
+                      <Input type="number" min={0} max={10} step={0.5} value={ivForm.rh} onChange={(e) => setIvForm((f) => ({ ...f, rh: e.target.value }))} placeholder="—" className="h-8" />
+                      <Textarea value={ivForm.rhNotes} onChange={(e) => setIvForm((f) => ({ ...f, rhNotes: e.target.value }))} rows={2} className="text-xs" placeholder="Observações do RH (opcional)" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Entrevista Gestor</label>
+                      <Input type="number" min={0} max={10} step={0.5} value={ivForm.mgr} onChange={(e) => setIvForm((f) => ({ ...f, mgr: e.target.value }))} placeholder="—" className="h-8" />
+                      <Textarea value={ivForm.mgrNotes} onChange={(e) => setIvForm((f) => ({ ...f, mgrNotes: e.target.value }))} rows={2} className="text-xs" placeholder="Observações do gestor (opcional)" />
+                    </div>
+                  </div>
+                  <Button size="sm" className="gap-2" disabled={savingIv} onClick={saveInterviews}>
+                    {savingIv ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}Salvar notas
+                  </Button>
                 </div>
 
                 <div className="flex justify-between items-center pt-2 border-t">
