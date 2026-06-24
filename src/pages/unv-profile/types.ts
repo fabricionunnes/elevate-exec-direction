@@ -76,7 +76,7 @@ export const PROFILE_PIPELINE_STAGES = [
   { key: "test", label: "Teste", color: "bg-violet-500" },
   { key: "hr_interview", label: "Entrevista RH", color: "bg-purple-500" },
   { key: "manager_interview", label: "Entrevista Gestor", color: "bg-fuchsia-500" },
-  { key: "juridico", label: "Jurídico", color: "bg-cyan-500" },
+  { key: "juridico", label: "Análise Cadastral", color: "bg-cyan-500" },
   { key: "offer", label: "Proposta", color: "bg-pink-500" },
   { key: "hired", label: "Contratado", color: "bg-emerald-500" },
   { key: "rejected", label: "Reprovado", color: "bg-rose-500" },

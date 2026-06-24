@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink, Target, Loader2, ThumbsUp, AlertTriangle, MessageCircle, Scale, Search, Compass, Users, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink, Target, Loader2, ThumbsUp, AlertTriangle, MessageCircle, Scale, Search, Compass, Users, CheckCircle2, X } from "lucide-react";
 import { CULTURE_PILLARS } from "@/data/cultureQuestions";
 import { toast } from "sonner";
 import { PROFILE_PIPELINE_STAGES } from "./types";
@@ -208,6 +208,16 @@ export default function UNVProfileRecruitmentPipelinePage() {
       mgrNotes: c.interview_manager_notes || "",
     });
     setSelected(c);
+  };
+
+  const setCadastral = async (status: "approved" | "rejected") => {
+    if (!selected) return;
+    const next = selected.cadastral_status === status ? null : status;
+    const { error } = await supabase.from("profile_candidates").update({ cadastral_status: next }).eq("id", selected.id);
+    if (error) return toast.error(error.message);
+    setSelected((prev: any) => prev && prev.id === selected.id ? { ...prev, cadastral_status: next } : prev);
+    setCands(prev => prev.map(c => c.id === selected.id ? { ...c, cadastral_status: next } : c));
+    toast.success(next === "approved" ? "Análise cadastral aprovada" : next === "rejected" ? "Análise cadastral reprovada" : "Status removido");
   };
 
   const saveInterviews = async () => {
@@ -499,6 +509,12 @@ export default function UNVProfileRecruitmentPipelinePage() {
                           {cultureByCand[c.id] && (
                             <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-teal-500/10 text-teal-400 px-2 py-0.5"><Compass className="w-3 h-3" />{cultureFit(c.id)}%</span>
                           )}
+                          {c.cadastral_status === "approved" && (
+                            <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-emerald-500/15 text-emerald-400 px-2 py-0.5"><CheckCircle2 className="w-3 h-3" />Cadastro OK</span>
+                          )}
+                          {c.cadastral_status === "rejected" && (
+                            <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-rose-500/15 text-rose-400 px-2 py-0.5"><X className="w-3 h-3" />Reprovado</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -550,7 +566,11 @@ export default function UNVProfileRecruitmentPipelinePage() {
                 </div>
 
                 <div className="rounded-lg border p-3 space-y-2 bg-gradient-to-br from-cyan-500/10 to-transparent">
-                  <p className="font-semibold flex items-center gap-2"><Scale className="w-4 h-4 text-cyan-500" />Verificação jurídica</p>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="font-semibold flex items-center gap-2"><Scale className="w-4 h-4 text-cyan-500" />Análise Cadastral</p>
+                    {selected.cadastral_status === "approved" && <Badge className="bg-emerald-500 text-white gap-1"><CheckCircle2 className="w-3 h-3" />Aprovado</Badge>}
+                    {selected.cadastral_status === "rejected" && <Badge className="bg-rose-500 text-white gap-1"><X className="w-3 h-3" />Reprovado</Badge>}
+                  </div>
                   <p className="text-[11px] text-muted-foreground">Consulta pública (1 clique) de processos do candidato — confira reclamações trabalhistas em que ele foi reclamante.{selected.cpf ? ` Use o CPF ${selected.cpf} pra confirmar a pessoa certa.` : " Sem CPF cadastrado — confira pelo nome (cuidado com homônimos)."}</p>
                   <div className="flex flex-wrap gap-2">
                     <Button asChild variant="outline" size="sm" className="gap-1.5">
@@ -567,6 +587,15 @@ export default function UNVProfileRecruitmentPipelinePage() {
                         <Copy className="w-3.5 h-3.5" />Copiar CPF
                       </Button>
                     )}
+                  </div>
+                  <div className="flex items-center gap-2 pt-1 border-t mt-1">
+                    <span className="text-[11px] text-muted-foreground">Resultado:</span>
+                    <Button size="sm" variant={selected.cadastral_status === "approved" ? "default" : "outline"} className={`gap-1.5 ${selected.cadastral_status === "approved" ? "bg-emerald-600 hover:bg-emerald-700" : ""}`} onClick={() => setCadastral("approved")}>
+                      <CheckCircle2 className="w-4 h-4" />Aprovar
+                    </Button>
+                    <Button size="sm" variant={selected.cadastral_status === "rejected" ? "default" : "outline"} className={`gap-1.5 ${selected.cadastral_status === "rejected" ? "bg-rose-600 hover:bg-rose-700" : "text-rose-500"}`} onClick={() => setCadastral("rejected")}>
+                      <X className="w-4 h-4" />Reprovar
+                    </Button>
                   </div>
                 </div>
 
