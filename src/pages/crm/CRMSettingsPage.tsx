@@ -119,7 +119,7 @@ interface Origin {
 }
 
 export const CRMSettingsPage = () => {
-  const { isAdmin } = useOutletContext<{ staffRole: string; isAdmin: boolean }>();
+  const { canSettings } = useOutletContext<{ staffRole: string; isAdmin: boolean; canSettings: boolean }>();
   const navigate = useNavigate();
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
@@ -187,12 +187,12 @@ export const CRMSettingsPage = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!isAdmin) {
+    if (!canSettings) {
       navigate("/crm");
       return;
     }
     loadData();
-  }, [isAdmin, navigate]);
+  }, [canSettings, navigate]);
 
   const loadData = async () => {
     setLoading(true);

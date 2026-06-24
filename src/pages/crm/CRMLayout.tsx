@@ -54,6 +54,7 @@ export interface CRMContextType {
   staffId: string | null;
   tenantId: string | null;
   isAdmin: boolean;
+  canSettings: boolean;
   isMaster: boolean;
   selectedOrigin: string | null;
   setSelectedOrigin: (id: string | null) => void;
@@ -214,6 +215,8 @@ export const CRMLayout = () => {
   if (!hasAccess) return null;
 
   const isAdmin = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
+  // Configurações do CRM: só master/admin (head_comercial NÃO acessa).
+  const canSettings = staffRole === "master" || staffRole === "admin";
   const isMaster = staffRole === "master";
   const initials = staffName?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "U";
   // Cliente "só discador": vê apenas a aba Discador.
@@ -243,6 +246,7 @@ export const CRMLayout = () => {
       staffId,
       tenantId,
       isAdmin,
+      canSettings,
       isMaster,
       selectedOrigin,
       setSelectedOrigin,
@@ -296,7 +300,7 @@ export const CRMLayout = () => {
                         </Link>
                       );
                     })}
-                    {isAdmin && (
+                    {canSettings && (
                       <Link
                         to="/crm/settings"
                         onClick={() => setMobileMenuOpen(false)}
@@ -374,7 +378,7 @@ export const CRMLayout = () => {
                       </DropdownMenuItem>
                     );
                   })}
-                  {isAdmin && (
+                  {canSettings && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
@@ -440,7 +444,7 @@ export const CRMLayout = () => {
                       Conta
                     </Link>
                   </DropdownMenuItem>
-                  {isAdmin && (
+                  {canSettings && (
                     <DropdownMenuItem asChild>
                       <Link to="/crm/settings" className="flex items-center gap-2">
                         <Settings className="h-4 w-4" />
