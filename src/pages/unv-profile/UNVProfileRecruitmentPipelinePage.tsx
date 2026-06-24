@@ -115,7 +115,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
 
   const buildDiscMessage = (cand: any) => {
     const firstName = (cand.full_name || "").trim().split(" ")[0] || "";
-    return `Olá ${firstName}! Recebemos sua candidatura para a vaga de ${job?.title || ""}. Para avançar no processo seletivo, faça seu teste de perfil comportamental DISC (leva ~7 min): ${discLink(cand)}`;
+    return `Olá ${firstName}! Aqui é da equipe do Fabrício Nunnes, da Universidade Nacional de Vendas. Recebemos sua candidatura para a vaga de ${job?.title || ""}. Para avançar no processo seletivo, faça seu teste de perfil comportamental DISC (leva ~7 min): ${discLink(cand)}`;
   };
 
   const analyze = async (cand: any) => {
