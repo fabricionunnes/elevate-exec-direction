@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink, Target, Loader2, ThumbsUp, AlertTriangle, MessageCircle } from "lucide-react";
+import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink, Target, Loader2, ThumbsUp, AlertTriangle, MessageCircle, Scale, Search } from "lucide-react";
 import { toast } from "sonner";
 import { PROFILE_PIPELINE_STAGES } from "./types";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
@@ -461,6 +461,28 @@ export default function UNVProfileRecruitmentPipelinePage() {
                       <a href={selected.linkedin_url} target="_blank" rel="noopener" className="text-primary underline truncate">{selected.linkedin_url}</a>
                     </p>
                   )}
+                  {selected.cpf && <p className="flex items-center gap-2"><FileText className="w-4 h-4 text-muted-foreground" />CPF: {selected.cpf}</p>}
+                </div>
+
+                <div className="rounded-lg border p-3 space-y-2 bg-gradient-to-br from-cyan-500/10 to-transparent">
+                  <p className="font-semibold flex items-center gap-2"><Scale className="w-4 h-4 text-cyan-500" />Verificação jurídica</p>
+                  <p className="text-[11px] text-muted-foreground">Consulta pública (1 clique) de processos do candidato — confira reclamações trabalhistas em que ele foi reclamante.{selected.cpf ? ` Use o CPF ${selected.cpf} pra confirmar a pessoa certa.` : " Sem CPF cadastrado — confira pelo nome (cuidado com homônimos)."}</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button asChild variant="outline" size="sm" className="gap-1.5">
+                      <a href={`https://www.jusbrasil.com.br/busca?q=${encodeURIComponent(selected.full_name || "")}`} target="_blank" rel="noopener"><Scale className="w-3.5 h-3.5" />JusBrasil <ExternalLink className="w-3 h-3" /></a>
+                    </Button>
+                    <Button asChild variant="outline" size="sm" className="gap-1.5">
+                      <a href={`https://www.escavador.com/busca?q=${encodeURIComponent(selected.full_name || "")}&qo=t`} target="_blank" rel="noopener"><Scale className="w-3.5 h-3.5" />Escavador <ExternalLink className="w-3 h-3" /></a>
+                    </Button>
+                    <Button asChild variant="outline" size="sm" className="gap-1.5">
+                      <a href={`https://www.google.com/search?q=${encodeURIComponent(`"${selected.full_name || ""}" reclamação trabalhista`)}`} target="_blank" rel="noopener"><Search className="w-3.5 h-3.5" />Google <ExternalLink className="w-3 h-3" /></a>
+                    </Button>
+                    {selected.cpf && (
+                      <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => { navigator.clipboard.writeText(selected.cpf).then(() => toast.success("CPF copiado")); }}>
+                        <Copy className="w-3.5 h-3.5" />Copiar CPF
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {selected.cover_letter && (

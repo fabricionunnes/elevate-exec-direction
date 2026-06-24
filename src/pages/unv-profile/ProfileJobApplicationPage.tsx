@@ -48,6 +48,7 @@ export default function ProfileJobApplicationPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [cpf, setCpf] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [linkedin, setLinkedin] = useState("");
@@ -122,6 +123,7 @@ export default function ProfileJobApplicationPage() {
         full_name: fullName.trim(),
         email: email.toLowerCase().trim(),
         phone: phone.trim(),
+        cpf: cpf.trim() || null,
         city: city.trim() || null,
         state: state.trim() || null,
         linkedin_url: linkedin.trim() || null,
@@ -279,6 +281,10 @@ export default function ProfileJobApplicationPage() {
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cpf">CPF</Label>
+                  <Input id="cpf" value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" inputMode="numeric" />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="city">Cidade</Label>
                   <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Sua cidade" />
