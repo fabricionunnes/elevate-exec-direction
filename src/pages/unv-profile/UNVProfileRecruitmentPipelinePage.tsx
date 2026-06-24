@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink, Target, Loader2, ThumbsUp, AlertTriangle, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { PROFILE_PIPELINE_STAGES } from "./types";
@@ -32,6 +33,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
   const [instances, setInstances] = useState<any[]>([]);
   const [instanceId, setInstanceId] = useState<string>("");
   const [sending, setSending] = useState(false);
+  const [waMessage, setWaMessage] = useState("");
   const [view, setView] = useState<"pipeline" | "ranking">("pipeline");
   const [analyzingAll, setAnalyzingAll] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -111,6 +113,11 @@ export default function UNVProfileRecruitmentPipelinePage() {
       .catch(() => toast.error("Não consegui copiar o link"));
   };
 
+  const buildDiscMessage = (cand: any) => {
+    const firstName = (cand.full_name || "").trim().split(" ")[0] || "";
+    return `Olá ${firstName}! Recebemos sua candidatura para a vaga de ${job?.title || ""}. Para avançar no processo seletivo, faça seu teste de perfil comportamental DISC (leva ~7 min): ${discLink(cand)}`;
+  };
+
   const analyze = async (cand: any) => {
     setAnalyzing(true);
     setFreshAnalysis(null);
@@ -136,8 +143,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
     if (!cand.phone) return toast.error("Candidato sem telefone cadastrado");
     setSending(true);
     try {
-      const firstName = (cand.full_name || "").trim().split(" ")[0] || "";
-      const msg = `Olá ${firstName}! Recebemos sua candidatura para a vaga de ${job?.title || ""}. Para avançar no processo seletivo, faça seu teste de perfil comportamental DISC (leva ~7 min): ${discLink(cand)}`;
+      const msg = (waMessage || "").trim() || buildDiscMessage(cand);
       const { data, error } = await supabase.functions.invoke("profile-send-whatsapp", {
         body: { instanceId, phone: cand.phone, message: msg },
       });
@@ -150,7 +156,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
     }
   };
 
-  const openCand = (c: any) => { setFreshAnalysis(null); setSelected(c); };
+  const openCand = (c: any) => { setFreshAnalysis(null); setWaMessage(buildDiscMessage(c)); setSelected(c); };
 
   // perfil DISC ideal da vaga (0-100) e quanto o candidato bate com ele
   const target = job?.target_disc && typeof job.target_disc === "object" ? job.target_disc : null;
@@ -432,7 +438,8 @@ export default function UNVProfileRecruitmentPipelinePage() {
                     </div>
                   ) : (
                     <div className="flex flex-col gap-2">
-                      <p className="text-xs text-muted-foreground">Candidato ainda não fez o teste DISC. Envie o link:</p>
+                      <p className="text-xs text-muted-foreground">Candidato ainda não fez o teste DISC. Edite a mensagem se quiser e envie:</p>
+                      <Textarea value={waMessage} onChange={(e) => setWaMessage(e.target.value)} rows={4} className="text-xs" placeholder="Mensagem a enviar" />
                       <div className="flex items-center gap-2 flex-wrap">
                         {instances.length > 0 && (
                           <Select value={instanceId} onValueChange={setInstanceId}>
