@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
     }
     if (!staffId) {
       const { data: st, error: stErr } = await supabase.from("onboarding_staff")
-        .insert({ name, email: email || `${candidateId}@sem-email.local`, role: "colaborador", is_active: true, tenant_id: cand.tenant_id })
+        .insert({ name, email: email || `${candidateId}@sem-email.local`, role: "pending", is_active: true, tenant_id: cand.tenant_id })
         .select("id").single();
       if (stErr) throw stErr;
       staffId = st.id;
