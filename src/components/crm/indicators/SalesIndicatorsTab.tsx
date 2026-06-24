@@ -103,6 +103,8 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const [filterEndDate, setFilterEndDate] = useState<Date>(endOfMonth(new Date()));
   const [callStats, setCallStats] = useState({ total: 0, discador: 0, avulsa: 0, atendidas: 0 });
   const [dialerCostBrl, setDialerCostBrl] = useState(0);
+  // Reuniões/vendas atribuídas AO DISCADOR (não o CRM todo) — pra CAC e custos por reunião
+  const [dialerOutcomes, setDialerOutcomes] = useState({ scheduled: 0, realized: 0, sales: 0 });
   const [callsByCloser, setCallsByCloser] = useState<Record<string, { total: number; atendidas: number }>>({});
 
   // Get date range based on filter
@@ -164,6 +166,13 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           setDialerCostBrl(brl);
         }
       } catch { /* sem custo */ }
+      // Reuniões/vendas atribuídas ao discador no período (agendou/realizada/venda das ligações)
+      try {
+        const { data: oc } = await (supabase as any).rpc("dialer_outcome_metrics", { p_since: start.toISOString(), p_until: end.toISOString() });
+        const r: any = Array.isArray(oc) ? oc[0] : oc;
+        if (active && r) setDialerOutcomes({ scheduled: r.meetings_scheduled || 0, realized: r.meetings_realized || 0, sales: r.sales_won || 0 });
+        else if (active) setDialerOutcomes({ scheduled: 0, realized: 0, sales: 0 });
+      } catch { /* sem outcomes */ }
       const map: Record<string, { total: number; atendidas: number }> = {};
       ((byAgent.data as any[]) || []).forEach((r) => { map[r.agent_staff_id] = { total: Number(r.total) || 0, atendidas: Number(r.atendidas) || 0 }; });
       setCallsByCloser(map);
@@ -817,17 +826,13 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         <Metric tone={TONE.violet} label="% Projetado" value={`${metrics.projecaoPercent.toFixed(0)}%`} />
       </Section>
 
-      {/* ── Atividade / Ligações (âmbar) ── */}
-      <Section tone={TONE.amber} label="Atividade — Ligações" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-        <Metric tone={TONE.amber} label="Ligações" value={callStats.total} color={TONE.amber} />
-        <Metric tone={TONE.amber} label="Discador" value={callStats.discador} />
-        <Metric tone={TONE.amber} label="Avulsas" value={callStats.avulsa} />
-        <Metric tone={TONE.amber} label="Atendidas" value={callStats.atendidas} color="#34d399" />
-        <Metric tone={TONE.amber} label="% Atendimento" value={`${callStats.total ? Math.round((callStats.atendidas / callStats.total) * 100) : 0}%`} />
-        <Metric tone={TONE.amber} label="Agendamentos" value={callsMetrics.agendadas} color={TONE.blue} />
-        <Metric tone={TONE.amber} label="CAC" value={metrics.vendas > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / metrics.vendas) : "—"} color="#f87171" />
-        <Metric tone={TONE.amber} label="Custo / Reunião Realizada" value={callsMetrics.realizadas > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / callsMetrics.realizadas) : "—"} />
-        <Metric tone={TONE.amber} label="Custo / Reunião Agendada" value={callsMetrics.agendadas > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / callsMetrics.agendadas) : "—"} />
+      {/* ── Discador — reuniões e custos (âmbar) — só do discador ── */}
+      <Section tone={TONE.amber} label="Discador — Reuniões e Custos" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+        <Metric tone={TONE.amber} label="Reuniões Realizadas" value={dialerOutcomes.realized} color="#34d399" />
+        <Metric tone={TONE.amber} label="Reuniões Agendadas" value={dialerOutcomes.scheduled} color={TONE.blue} />
+        <Metric tone={TONE.amber} label="CAC" value={dialerOutcomes.sales > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / dialerOutcomes.sales) : "—"} color="#f87171" />
+        <Metric tone={TONE.amber} label="Custo / Reunião Realizada" value={dialerOutcomes.realized > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / dialerOutcomes.realized) : "—"} />
+        <Metric tone={TONE.amber} label="Custo / Reunião Agendada" value={dialerOutcomes.scheduled > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / dialerOutcomes.scheduled) : "—"} />
       </Section>
 
       {/* ── Metas (Meta / Super / Hiper) ── */}
