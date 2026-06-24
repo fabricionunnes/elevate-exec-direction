@@ -46,6 +46,17 @@ const LEVELS = [
 ];
 const lvl = (n: number) => LEVELS[n % LEVELS.length];
 
+// Cargo: usa o cargo do RH (profile_positions) se houver; senão cai pro papel do staff.
+const ROLE_LABELS: Record<string, string> = {
+  master: "Diretor", admin: "Administrador", consultant: "Consultor", sdr: "SDR",
+  closer: "Closer", juridico: "Jurídico", rh: "RH", gerente: "Gerente", manager: "Gerente",
+  financeiro: "Financeiro", marketing: "Marketing", trafego: "Gestor de Tráfego", social: "Social Media",
+};
+const roleLabel = (role?: string | null) => {
+  if (!role) return undefined;
+  return ROLE_LABELS[role] || (role.charAt(0).toUpperCase() + role.slice(1));
+};
+
 function NodeCard({
   node,
   onEdit,
@@ -200,13 +211,20 @@ export default function UNVProfileOrgChartPage() {
       seen.add(key);
       return true;
     });
+    // Cargo via papel do staff (position_id costuma estar vazio)
+    const staffIds = [...new Set(deduped.map((d: any) => d.staff_id).filter(Boolean))] as string[];
+    const roleByStaff: Record<string, string> = {};
+    if (staffIds.length) {
+      const { data: staff } = await supabase.from("onboarding_staff").select("id, role").in("id", staffIds);
+      (staff || []).forEach((s: any) => { if (s.id) roleByStaff[s.id] = s.role; });
+    }
     setNodes(
       deduped.map((d: any) => ({
         id: d.id,
         full_name: d.full_name,
         avatar_url: d.avatar_url,
         manager_id: d.manager_id,
-        position: d.profile_positions?.title,
+        position: d.profile_positions?.title || roleLabel(d.staff_id ? roleByStaff[d.staff_id] : null),
         contract_type: d.contract_type,
         outsourced: d.contract_type === "terceirizado",
       })),
