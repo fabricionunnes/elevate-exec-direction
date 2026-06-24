@@ -528,7 +528,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         conversion: closerCompleted > 0 ? (closerSales.length / closerCompleted) * 100 : 0,
         ticketMedio: closerSales.length > 0 ? closerRevenue / closerSales.length : 0,
       };
-    });
+    }).sort((a, b) => b.revenue - a.revenue); // ranking por receita (1º = maior; troféu vai pro topo)
 
     // Sales records (filtered)
     const salesRecords: SaleRecord[] = salesData.map(s => ({
