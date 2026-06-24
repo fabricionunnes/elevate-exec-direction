@@ -137,7 +137,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
     setSending(true);
     try {
       const firstName = (cand.full_name || "").trim().split(" ")[0] || "";
-      const msg = `Olá ${firstName}! Tudo bem? Você está no processo seletivo da vaga ${job?.title || ""} na UNV. Pra avançarmos, faça seu teste de perfil comportamental DISC (leva ~7 min): ${discLink(cand)}`;
+      const msg = `Olá ${firstName}! Recebemos sua candidatura para a vaga de ${job?.title || ""}. Para avançar no processo seletivo, faça seu teste de perfil comportamental DISC (leva ~7 min): ${discLink(cand)}`;
       const { data, error } = await supabase.functions.invoke("profile-send-whatsapp", {
         body: { instanceId, phone: cand.phone, message: msg },
       });
@@ -342,7 +342,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
       )}
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           {selected && (
             <>
               <DialogHeader>
