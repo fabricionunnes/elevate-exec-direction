@@ -138,6 +138,11 @@ CURRÍCULO: ${resumeNote}
 ${resumeText ? `\n--- CONTEÚDO DO CURRÍCULO ---\n${resumeText}\n--- FIM DO CURRÍCULO ---\n` : ""}
 Se houver currículo (anexado como arquivo ou no texto acima), LEIA e baseie a análise na experiência real (cargos, tempo, resultados, ferramentas, segmento). Cruze isso com os requisitos da vaga. Só aponte uma lacuna como ponto de atenção se ela realmente não aparecer no currículo — NÃO escreva "currículo não foi lido". Não invente experiência que não está escrita.
 
+REGRAS DE CONSISTÊNCIA (importante):
+- Seja internamente coerente: NÃO liste como ponto forte algo que você mesmo contradiz nos pontos de atenção. Cada item deve aparecer de um lado só.
+- Distinga "gestão comercial"/título de cargo de LIDERANÇA DE TIME real. Um título (ex: "Gestora Comercial") sem evidência de equipe gerenciada, escopo ou resultados NÃO é ponto forte de liderança — trate como não comprovado.
+- Não transforme um cargo genérico em ponto forte só pelo nome. Ponto forte tem que ser uma vantagem real e verificável pra ESTA vaga.
+
 Responda APENAS com um JSON válido, em português, neste formato:
 {
   "score": <inteiro 0-100 de aderência à vaga>,
