@@ -47,7 +47,8 @@ import {
   ExternalLink,
   CalendarDays,
   Copy,
-  Pencil
+  Pencil,
+  Trash2
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -292,6 +293,31 @@ export function ReceivablesPanel() {
     } catch (error) {
       console.error("Error cancelling receivable:", error);
       toast.error("Erro ao cancelar conta");
+    }
+  };
+
+  const [deletingAdjId, setDeletingAdjId] = useState<string | null>(null);
+
+  const handleDeleteAdjustment = async (receivable: Receivable) => {
+    const ok = window.confirm(
+      `Excluir o ajuste "${receivable.description}"?\n\nIsso vai apagar a conta a receber e DIMINUIR ${formatCurrency(receivable.amount)} do saldo do banco Asaas. Não dá pra desfazer.`
+    );
+    if (!ok) return;
+    setDeletingAdjId(receivable.id);
+    const t = toast.loading("Excluindo ajuste e revertendo saldo...");
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-asaas-adjustment", {
+        body: { kind: "receivable", id: receivable.id },
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.detail || data?.error || "falha");
+      toast.success("Ajuste excluído e saldo revertido", { id: t });
+      loadData();
+    } catch (e) {
+      console.error("Error deleting adjustment:", e);
+      toast.error(`Erro ao excluir ajuste: ${String((e as Error)?.message || e)}`, { id: t });
+    } finally {
+      setDeletingAdjId(null);
     }
   };
 
@@ -929,6 +955,16 @@ export function ReceivablesPanel() {
                             <Copy className="h-4 w-4 mr-2" />
                             Duplicar
                           </DropdownMenuItem>
+                          {receivable.description?.startsWith("Ajuste automático Asaas") && (
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              disabled={deletingAdjId === receivable.id}
+                              onClick={() => handleDeleteAdjustment(receivable)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Excluir ajuste (reverte saldo)
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
