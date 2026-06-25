@@ -1181,25 +1181,26 @@ export const CRMLeadDetailPage = () => {
         </div>
       </div>
 
-      {/* Observações (retrátil — fechada por padrão) */}
-      {lead.notes && (
-        <div className="px-4 sm:px-6 py-2">
-          <div className="rounded-lg border border-amber-200/50 dark:border-amber-800/30 bg-amber-50/50 dark:bg-amber-950/20 p-3">
-            <button
-              type="button"
-              onClick={() => setNotesOpen((v) => !v)}
-              className="w-full flex items-center gap-1 text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400 font-medium"
-            >
-              <StickyNote className="h-3 w-3" />
-              Observações
-              <ChevronRight className={`h-3.5 w-3.5 ml-auto transition-transform ${notesOpen ? "rotate-90" : ""}`} />
-            </button>
-            {notesOpen && (
-              <p className="text-sm text-foreground whitespace-pre-wrap mt-2">{lead.notes}</p>
-            )}
-          </div>
+      {/* Observações (retrátil — fechada por padrão; sempre visível pra ser fácil de achar) */}
+      <div className="px-4 sm:px-6 py-2">
+        <div className="rounded-lg border border-amber-200/50 dark:border-amber-800/30 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+          <button
+            type="button"
+            onClick={() => setNotesOpen((v) => !v)}
+            className="w-full flex items-center gap-1 text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400 font-medium"
+          >
+            <StickyNote className="h-3 w-3" />
+            Observações
+            {!lead.notes && <span className="normal-case tracking-normal text-muted-foreground font-normal">(vazio)</span>}
+            <ChevronRight className={`h-3.5 w-3.5 ml-auto transition-transform ${notesOpen ? "rotate-90" : ""}`} />
+          </button>
+          {notesOpen && (
+            lead.notes
+              ? <p className="text-sm text-foreground whitespace-pre-wrap mt-2">{lead.notes}</p>
+              : <p className="text-sm text-muted-foreground mt-2">Nenhuma observação registrada neste lead.</p>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Rastreamento Meta Ads */}
       {(lead.utm_source || lead.utm_medium || lead.utm_campaign || lead.utm_content || lead.utm_term || lead.fbclid || lead.ad_name || lead.adset_name || lead.campaign_name || lead.meta_ad_id) && (
