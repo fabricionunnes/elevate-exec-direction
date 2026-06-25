@@ -61,15 +61,19 @@ Deno.serve(async (req) => {
       return twiml(`<Hangup/>`);
     }
 
-    // Humano atendeu: busca a mensagem de consentimento da campanha
+    // Humano atendeu: busca a mensagem de consentimento + se a campanha tem monitoria
     let consent = DEFAULT_CONSENT;
+    let enableMonitoring = false;
+    let fromNumber = "";
     if (callId) {
       const { data: call } = await supabase
         .from("crm_calls")
-        .select("queue_id, campaign_id, campaign:crm_dialer_campaigns(consent_message)")
+        .select("queue_id, campaign_id, from_number, campaign:crm_dialer_campaigns(consent_message, enable_monitoring)")
         .eq("id", callId)
         .maybeSingle();
       if ((call as any)?.campaign?.consent_message) consent = (call as any).campaign.consent_message;
+      enableMonitoring = (call as any)?.campaign?.enable_monitoring === true;
+      fromNumber = (call as any)?.from_number || "";
       await supabase
         .from("crm_calls")
         .update({ status: "in-progress", answered_by: answeredBy || "unknown", answered_at: new Date().toISOString() })
@@ -82,6 +86,51 @@ Deno.serve(async (req) => {
     const sayBlock = consent && consent.trim()
       ? `<Say voice="Polly.Camila" language="pt-BR">${xmlEscape(consent)}</Say>`
       : "";
+
+    // ── Fluxo de CONFERÊNCIA (monitoria ligada): lead entra na sala e a SDR é puxada
+    // pra mesma sala. Isso permite o gestor escutar/sussurrar. Só quando enable_monitoring. ──
+    const staffId = agent.replace(/^agent-/, "");
+    if (enableMonitoring && staffId && callId) {
+      const conf = `nexus-${staffId}`;
+      const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+      const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+      let agentCallSid: string | null = null;
+      try {
+        if (accountSid && authToken && fromNumber) {
+          // Origina a perna da atendente (browser client) pra entrar na mesma conferência.
+          const p = new URLSearchParams({
+            To: `client:${agent}`,
+            From: fromNumber,
+            Url: `${BASE}/dialer-agent-twiml?conf=${encodeURIComponent(conf)}`,
+            Method: "POST",
+          });
+          const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`, {
+            method: "POST",
+            headers: { Authorization: "Basic " + btoa(`${accountSid}:${authToken}`), "Content-Type": "application/x-www-form-urlencoded" },
+            body: p.toString(),
+          });
+          const d = await r.json().catch(() => ({}));
+          if (r.ok) agentCallSid = d.sid || null;
+          else console.error("[dialer-twiml] falha ao puxar atendente:", d?.message);
+        }
+      } catch (e) {
+        console.error("[dialer-twiml] erro ao originar perna da atendente:", e);
+      }
+      await supabase.from("crm_calls").update({ conference_name: conf, agent_call_sid: agentCallSid }).eq("id", callId);
+      // Lead entra na conferência (sala grava aqui). endConferenceOnExit: lead desligou -> acaba.
+      return twiml(
+        sayBlock +
+        `<Dial>` +
+          `<Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" ` +
+          `record="record-from-start" recordingStatusCallback="${xmlEscape(recCb)}" ` +
+          `recordingStatusCallbackEvent="completed" recordingStatusCallbackMethod="POST">` +
+          `${xmlEscape(conf)}` +
+          `</Conference>` +
+        `</Dial>`,
+      );
+    }
+
+    // ── Fluxo PADRÃO (sem monitoria): conecta a atendente direto, ponta a ponta. ──
     return twiml(
       sayBlock +
       `<Dial answerOnBridge="true" record="record-from-answer-dual" recordingStatusCallback="${xmlEscape(recCb)}" recordingStatusCallbackEvent="completed" recordingStatusCallbackMethod="POST" timeout="30">` +

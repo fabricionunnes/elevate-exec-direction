@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { PhoneCall, PhoneOutgoing, Radio, Users, Loader2 } from "lucide-react";
+import { PhoneCall, PhoneOutgoing, Radio, Users, Loader2, Headphones, Mic, LogIn, X, Loader } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { useDialerMonitor, type MonitorMode } from "@/hooks/useDialerMonitor";
+import { toast } from "sonner";
 
 interface LiveAgent {
   agentId: string;
@@ -32,12 +35,17 @@ function elapsed(fromIso: string, nowMs: number): string {
   return `${m}:${String(ss).padStart(2, "0")}`;
 }
 
-export function DialerLiveAgentsPanel() {
+export function DialerLiveAgentsPanel({ managerStaffId = null }: { managerStaffId?: string | null }) {
   const [agents, setAgents] = useState<LiveAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUnv, setShowUnv] = useState(false);
   const [now, setNow] = useState(Date.now());
   const mounted = useRef(true);
+  const monitor = useDialerMonitor(managerStaffId);
+
+  useEffect(() => {
+    if (monitor.error) toast.error(monitor.error);
+  }, [monitor.error]);
 
   const load = async () => {
     const { data } = await supabase.functions.invoke("dialer-live-agents", { body: {} });
@@ -119,11 +127,64 @@ export function DialerLiveAgentsPanel() {
                     <span><span className="font-semibold text-foreground">{a.callsCount}</span> <span className="text-muted-foreground">ligações</span></span>
                     <span><span className="font-semibold text-emerald-600">{a.answeredCount}</span> <span className="text-muted-foreground">atendidas</span></span>
                   </div>
+
+                  {a.status === "em_ligacao" && managerStaffId && managerStaffId !== a.agentId && (
+                    <MonitorControls agent={a} monitor={monitor} />
+                  )}
                 </CardContent>
               </Card>
             );
           })}
         </div>
+      )}
+    </div>
+  );
+}
+
+const MODES: { key: MonitorMode; label: string; icon: any; hint: string }[] = [
+  { key: "listen", label: "Escutar", icon: Headphones, hint: "Ouve sem ninguém saber" },
+  { key: "whisper", label: "Sussurrar", icon: Mic, hint: "Fala só pra SDR (cliente não ouve)" },
+  { key: "barge", label: "Entrar", icon: LogIn, hint: "Entra na conversa (cliente ouve)" },
+];
+
+function MonitorControls({ agent, monitor }: { agent: LiveAgent; monitor: ReturnType<typeof useDialerMonitor> }) {
+  const isThis = monitor.agentId === agent.agentId && monitor.status !== "off";
+  const busyOther = monitor.status !== "off" && monitor.agentId !== agent.agentId;
+  const connecting = isThis && monitor.status === "connecting";
+
+  return (
+    <div className="pt-2 border-t border-border">
+      <div className="flex items-center gap-1">
+        {MODES.map((m) => {
+          const active = isThis && monitor.mode === m.key;
+          return (
+            <Button
+              key={m.key}
+              size="sm"
+              variant={active ? "default" : "outline"}
+              className="h-7 px-2 text-[11px] gap-1 flex-1"
+              disabled={busyOther || connecting}
+              title={m.hint}
+              onClick={() => (isThis ? monitor.changeMode(m.key) : monitor.start(agent.agentId, m.key))}
+            >
+              {connecting && active ? <Loader className="h-3 w-3 animate-spin" /> : <m.icon className="h-3 w-3" />}
+              {m.label}
+            </Button>
+          );
+        })}
+        {isThis && (
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-red-500" title="Sair da ligação" onClick={monitor.stop}>
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+      {busyOther && <p className="text-[10px] text-muted-foreground mt-1">Você já está monitorando outra atendente.</p>}
+      {isThis && monitor.status === "active" && (
+        <p className="text-[10px] text-muted-foreground mt-1">
+          {monitor.mode === "listen" && "Escutando — ninguém sabe que você está na linha."}
+          {monitor.mode === "whisper" && "Sussurrando — só a atendente te ouve."}
+          {monitor.mode === "barge" && "Na conversa — o cliente também te ouve."}
+        </p>
       )}
     </div>
   );

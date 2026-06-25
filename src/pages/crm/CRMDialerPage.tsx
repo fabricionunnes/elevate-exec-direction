@@ -67,7 +67,7 @@ export default function CRMDialerPage() {
 
       <div className="flex-1 overflow-hidden">
         {tab === "live" && <DialerLivePanel campaigns={campaigns} staffId={staffId} tenantId={tenantId} />}
-        {tab === "team" && isAdmin && <div className="h-full overflow-auto"><DialerLiveAgentsPanel /></div>}
+        {tab === "team" && isAdmin && <div className="h-full overflow-auto"><DialerLiveAgentsPanel managerStaffId={staffId} /></div>}
         {tab === "queue" && <div className="h-full overflow-auto"><DialerQueuePanel onChanged={loadCampaigns} tenantId={tenantId} currentAgentId={staffId} currentAgentName={staffName} /></div>}
         {tab === "calls" && <div className="h-full overflow-auto"><DialerCallsHistory /></div>}
         {tab === "coach" && <div className="h-full overflow-auto"><DialerCoachPanel staffId={staffId} isAdmin={isAdmin} /></div>}
