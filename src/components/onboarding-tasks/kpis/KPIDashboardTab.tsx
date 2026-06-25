@@ -592,6 +592,29 @@ export const KPIDashboardTab = ({
       }
     }
 
+    // Visão da empresa (sem filtro de vendedor/time/unidade): a meta da empresa é o
+    // ROLLUP = soma das metas por vendedor. Ex: Luana 30k + Victoria 17,5k + Ana 17,5k = 65k.
+    // Tem precedência sobre uma meta-geral antiga de empresa, pra refletir o que está
+    // cadastrado por vendedora. (Não vale pra KPI com escopo de unidade.)
+    if (
+      relevantTargets.length === 0 &&
+      selectedSalesperson === "all" &&
+      selectedTeam === "all" &&
+      selectedUnit === "all" &&
+      !unitScoped
+    ) {
+      const spTargets = allMonthlyTargets.filter(
+        mt => mt.kpi_id === kpiId && mt.salesperson_id !== null
+      );
+      if (spTargets.length > 0) {
+        const sumByLevel: Record<string, number> = {};
+        spTargets.forEach(mt => {
+          sumByLevel[mt.level_name] = (sumByLevel[mt.level_name] || 0) + mt.target_value;
+        });
+        return sumByLevel;
+      }
+    }
+
     if (relevantTargets.length === 0) {
       // Try company-level targets first
       relevantTargets = allMonthlyTargets.filter(
