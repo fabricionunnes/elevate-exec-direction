@@ -5,7 +5,15 @@ import { Button } from "@/components/ui/button";
 import {
   Phone, Building2, Target, DollarSign, Users, AlertTriangle,
   CheckCircle2, HelpCircle, History, Sparkles, Loader2, RefreshCw, ArrowRight,
+  MessageSquareQuote,
 } from "lucide-react";
+
+// Script de abertura padrão UNV — apresenta o valor e abre a conversa de leve.
+// Personaliza só com o primeiro nome do lead.
+function aberturaScript(firstName?: string | null) {
+  const oi = firstName ? `Oi ${firstName}! ` : "";
+  return `${oi}Nós trabalhamos ajudando empresas a estruturar e escalar o comercial — a gente atua como o diretor comercial da sua empresa pra fazer seus vendedores baterem meta todos os meses. Vi que você demonstrou interesse em entender como isso funcionaria pra sua operação. Me conta rapidinho: hoje você tem alguém dedicado a vendas ou tá tudo na sua mão?`;
+}
 
 interface Brief {
   resumo?: string;
@@ -182,6 +190,17 @@ export function LeadBriefingPanel({ leadId }: { leadId: string | null }) {
               </ul>
             </Section>
           )}
+
+          {/* Abordagem de abertura — script padrão UNV pra começar a ligação */}
+          <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide mb-1.5 text-blue-500">
+              <MessageSquareQuote className="h-3.5 w-3.5" /> Abordagem de abertura
+              <span className="ml-auto text-[10px] font-normal text-muted-foreground normal-case">leia no começo da ligação</span>
+            </div>
+            <p className="text-sm leading-relaxed italic">
+              "{aberturaScript((lead?.name || "").trim().split(/\s+/)[0] || null)}"
+            </p>
+          </div>
 
           {/* Perguntas de qualificação */}
           {brief.perguntas_qualificacao && brief.perguntas_qualificacao.length > 0 && (
