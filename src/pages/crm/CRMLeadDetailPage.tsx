@@ -170,6 +170,7 @@ export const CRMLeadDetailPage = () => {
   
   const { startCall } = useCallDock();
   const [lead, setLead] = useState<Lead | null>(null);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [stages, setStages] = useState<Stage[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [lossReasons, setLossReasons] = useState<any[]>([]);
@@ -1180,15 +1181,22 @@ export const CRMLeadDetailPage = () => {
         </div>
       </div>
 
-      {/* Observações */}
+      {/* Observações (retrátil — fechada por padrão) */}
       {lead.notes && (
         <div className="px-4 sm:px-6 py-2">
           <div className="rounded-lg border border-amber-200/50 dark:border-amber-800/30 bg-amber-50/50 dark:bg-amber-950/20 p-3">
-            <p className="text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400 font-medium mb-1 flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setNotesOpen((v) => !v)}
+              className="w-full flex items-center gap-1 text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400 font-medium"
+            >
               <StickyNote className="h-3 w-3" />
               Observações
-            </p>
-            <p className="text-sm text-foreground whitespace-pre-wrap">{lead.notes}</p>
+              <ChevronRight className={`h-3.5 w-3.5 ml-auto transition-transform ${notesOpen ? "rotate-90" : ""}`} />
+            </button>
+            {notesOpen && (
+              <p className="text-sm text-foreground whitespace-pre-wrap mt-2">{lead.notes}</p>
+            )}
           </div>
         </div>
       )}
