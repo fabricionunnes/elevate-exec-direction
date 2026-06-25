@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink, Target, Loader2, ThumbsUp, AlertTriangle, MessageCircle, Scale, Search, Compass, Users, CheckCircle2, X } from "lucide-react";
+import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink, Target, Loader2, ThumbsUp, AlertTriangle, MessageCircle, Scale, Search, Compass, Users, CheckCircle2, X, HelpCircle } from "lucide-react";
 import { CULTURE_PILLARS } from "@/data/cultureQuestions";
 import { toast } from "sonner";
 import { PROFILE_PIPELINE_STAGES } from "./types";
@@ -226,7 +226,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
       const a = (data as any)?.analysis;
       if (!a) throw new Error("Sem retorno da análise");
       setFreshAnalysis(a);
-      const patch = { ai_score: a.score, ai_summary: a.veredito, ai_strengths: a.pontos_fortes, ai_concerns: a.pontos_atencao };
+      const patch = { ai_score: a.score, ai_summary: a.veredito, ai_strengths: a.pontos_fortes, ai_concerns: a.pontos_atencao, ai_interview_questions: a.perguntas_entrevista ?? null };
       setSelected((prev: any) => prev && prev.id === cand.id ? { ...prev, ...patch } : prev);
       setCands(prev => prev.map(c => c.id === cand.id ? { ...c, ...patch } : c));
       toast.success("Análise concluída");
@@ -1020,6 +1020,27 @@ export default function UNVProfileRecruitmentPipelinePage() {
                         <div>
                           <p className="text-[11px] font-semibold text-amber-600 flex items-center gap-1 mb-0.5"><AlertTriangle className="w-3 h-3" />Pontos de atenção</p>
                           <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-0.5">{selected.ai_concerns.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
+                        </div>
+                      )}
+                      {Array.isArray(selected.ai_interview_questions) && selected.ai_interview_questions.length > 0 && (
+                        <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-2.5 mt-1">
+                          <p className="text-[11px] font-semibold text-indigo-500 flex items-center gap-1 mb-1.5"><HelpCircle className="w-3 h-3" />Perguntas pra fazer na entrevista</p>
+                          <ol className="space-y-1.5">
+                            {selected.ai_interview_questions.map((q: any, i: number) => {
+                              const pergunta = typeof q === "string" ? q : q?.pergunta;
+                              const objetivo = typeof q === "string" ? null : q?.objetivo;
+                              if (!pergunta) return null;
+                              return (
+                                <li key={i} className="text-xs flex gap-2">
+                                  <span className="text-indigo-500 font-semibold shrink-0">{i + 1}.</span>
+                                  <span>
+                                    <span className="text-foreground">{pergunta}</span>
+                                    {objetivo && <span className="block text-[10px] text-muted-foreground mt-0.5">↳ {objetivo}</span>}
+                                  </span>
+                                </li>
+                              );
+                            })}
+                          </ol>
                         </div>
                       )}
                     </div>

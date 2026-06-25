@@ -152,8 +152,17 @@ Responda APENAS com um JSON válido, em português, neste formato:
   "pontos_fortes": ["<ponto>", "..."],
   "pontos_atencao": ["<ponto/risco/lacuna>", "..."],
   "fit_comportamental": "<1 frase: o DISC dele combina com o que o cargo exige? Se não houver DISC, diga que falta o teste>",
-  "recomendacao": "<avancar | avaliar | descartar>"
-}`;
+  "recomendacao": "<avancar | avaliar | descartar>",
+  "perguntas_entrevista": [
+    { "pergunta": "<pergunta específica pra fazer AO CANDIDATO na entrevista>", "objetivo": "<o que essa pergunta valida — em poucas palavras>" }
+  ]
+}
+
+Regras das perguntas_entrevista (5 a 8 perguntas):
+- Personalizadas a ESTE candidato e a ESTA vaga — nada genérico de "fale de você".
+- Priorize VALIDAR os pontos de atenção/lacunas (cada risco vira uma pergunta que confirma ou derruba a dúvida) e CONFIRMAR os pontos fortes com evidência (peça números, exemplos, resultados).
+- Se faltar DISC ou algum requisito da vaga não aparecer no currículo, faça pergunta pra sondar isso.
+- Tom de entrevistador real, direto, em português, na 2ª pessoa ("você"). A "pergunta" é o texto que o entrevistador vai falar; o "objetivo" é a nota pro entrevistador (não se lê pro candidato).`;
 
     const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -164,7 +173,7 @@ Responda APENAS com um JSON válido, em português, neste formato:
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 1500,
+        max_tokens: 2200,
         messages: [{ role: "user", content: resumeBlock ? [resumeBlock, { type: "text", text: prompt }] : prompt }],
       }),
     });
@@ -179,12 +188,19 @@ Responda APENAS com um JSON válido, em português, neste formato:
     const strengths = Array.isArray(analysis.pontos_fortes) ? analysis.pontos_fortes : [];
     const concerns = Array.isArray(analysis.pontos_atencao) ? analysis.pontos_atencao : [];
     const summary = String(analysis.veredito || "").trim();
+    // Perguntas de entrevista: normaliza pra [{pergunta, objetivo}]
+    const perguntas = (Array.isArray(analysis.perguntas_entrevista) ? analysis.perguntas_entrevista : [])
+      .map((q: any) => typeof q === "string"
+        ? { pergunta: q.trim(), objetivo: "" }
+        : { pergunta: String(q?.pergunta || "").trim(), objetivo: String(q?.objetivo || "").trim() })
+      .filter((q: any) => q.pergunta);
 
     await supabase.from("profile_candidates").update({
       ai_score: score,
       ai_summary: summary,
       ai_strengths: strengths,
       ai_concerns: concerns,
+      ai_interview_questions: perguntas,
     }).eq("id", candidateId);
 
     return new Response(JSON.stringify({
@@ -193,6 +209,7 @@ Responda APENAS com um JSON válido, em português, neste formato:
         pontos_fortes: strengths, pontos_atencao: concerns,
         fit_comportamental: String(analysis.fit_comportamental || "").trim(),
         recomendacao: String(analysis.recomendacao || "").trim().toLowerCase(),
+        perguntas_entrevista: perguntas,
         tem_disc: !!disc,
       },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
