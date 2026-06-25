@@ -47,6 +47,13 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
   const [retornarOpen, setRetornarOpen] = useState(false);
   const [retDate, setRetDate] = useState("");
   const [hours, setHours] = useState(() => callingHoursStatus());
+  // Fase da ligação atual:
+  //  idle    -> sem ligação
+  //  dialing -> chamando, cliente ainda não atendeu (toca o ringback)
+  //  live    -> cliente atendeu, em conversa
+  //  wrapup  -> cliente atendeu e a ligação terminou; aguardando a atendente marcar o
+  //             resultado (disposição / agendar reunião / retornar). NÃO avança sozinho.
+  const [callPhase, setCallPhase] = useState<"idle" | "dialing" | "live" | "wrapup">("idle");
   const sessionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -58,10 +65,12 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
   const handledRef = useRef<string | null>(null);
   const prevStatusRef = useRef(status);
   const statusRef = useRef(status);
+  const callPhaseRef = useRef(callPhase);
 
   useEffect(() => { currentRef.current = current; }, [current]);
   useEffect(() => { autoDialRef.current = autoDial; }, [autoDial]);
   useEffect(() => { statusRef.current = status; }, [status]);
+  useEffect(() => { callPhaseRef.current = callPhase; }, [callPhase]);
 
   const refreshBalance = async () => {
     const { data } = await supabase.functions.invoke("dialer-balance");
@@ -96,15 +105,23 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
   }, []);
 
   // Tom de chamada no navegador enquanto o cliente ainda não atendeu.
-  // Toca quando há ligação em curso e o agente ainda não foi conectado; para ao atender.
+  // Toca só na fase "dialing" (chamando). Importante: NÃO pode tocar no wrapup
+  // (ligação encerrada e current ainda setado) — senão voltaria a tocar sozinho.
   useEffect(() => {
-    if (current && (status === "ready" || status === "connecting")) {
+    if (current && callPhase === "dialing" && (status === "ready" || status === "connecting")) {
       startRingback();
     } else {
       stopRingback();
     }
     return () => stopRingback();
-  }, [current, status]);
+  }, [current, callPhase, status]);
+
+  // Cliente atendeu: sai de "dialing" pra "live".
+  useEffect(() => {
+    if (status === "oncall" && currentRef.current && callPhaseRef.current === "dialing") {
+      setCallPhase("live");
+    }
+  }, [status]);
 
   const openSession = async () => {
     if (!staffId) return;
@@ -148,7 +165,9 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
         return;
       }
       if (data?.ok) {
+        handledRef.current = null;
         setCurrent({ callId: data.callId, queueId: data.queueId, lead: data.lead });
+        setCallPhase("dialing");
       }
     } catch (e: any) {
       toast.error(e?.message || "Erro ao discar");
@@ -176,9 +195,10 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
       : `Marcado: ${label}`);
     setCurrent(null);
     setNote("");
+    setCallPhase("idle");
     stopRingback();
     void refreshBalance();
-    if (autoDial && status !== "offline") {
+    if (autoDialRef.current && statusRef.current !== "offline") {
       setTimeout(() => { void dialNext(); }, 800);
     }
   };
@@ -198,19 +218,42 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
     setRetDate("");
   };
 
-  // Encerramento automático (cliente desligou, não atendeu, caixa postal): registra e vai pro próximo.
+  // Fim da ligação.
+  //  - Atendida (cliente falou e desligou): NÃO encerra o lead nem pula pro próximo.
+  //    Entra em "wrapup" e mantém o painel (disposições + Agendar reunião + Retornar
+  //    depois) pra atendente marcar o resultado no ritmo dela. O avanço só acontece
+  //    quando ela marca algo. Foi o que faltava: antes o painel sumia e a próxima
+  //    ligação começava sozinha (caso Nilton).
+  //  - Não atendida / ocupado / caixa postal: não há resultado pra marcar — registra e segue.
   const onCallEnded = async (reason: string) => {
     const c = currentRef.current;
     if (!c || handledRef.current === c.callId) return;
-    handledRef.current = c.callId;
     stopRingback();
+
+    if (reason === "atendida") {
+      if (callPhaseRef.current === "wrapup") return; // já em pós-chamada, evita re-disparo
+      setCallPhase("wrapup");
+      // Registra provisoriamente como "atendida" pra não re-discar o lead caso a atendente
+      // feche a aba sem marcar. `.is('disposition', null)` garante que NÃO sobrescreve um
+      // resultado já marcado (evita corrida com um clique rápido na disposição).
+      if (c.queueId) {
+        await supabase.from("crm_dialer_queue")
+          .update({ status: "completed", disposition: "atendida" })
+          .eq("id", c.queueId)
+          .is("disposition", null);
+      }
+      return;
+    }
+
+    handledRef.current = c.callId;
     if (c.queueId) {
       await supabase.from("crm_dialer_queue").update({ status: "completed", disposition: reason }).eq("id", c.queueId);
     }
     setCurrent(null);
     setNote("");
+    setCallPhase("idle");
     void refreshBalance();
-    if (autoDialRef.current && status !== "offline") {
+    if (autoDialRef.current && statusRef.current !== "offline") {
       setTimeout(() => { void dialNext(); }, 1000);
     }
   };
@@ -233,6 +276,7 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
       const { data } = await supabase.from("crm_calls").select("status, answered_at, answered_by").eq("id", id).maybeSingle();
       if (!data) return;
       if (["completed", "no-answer", "busy", "failed", "canceled", "voicemail"].includes(data.status)) {
+        clearInterval(t); // detectou o fim uma vez; não fica re-disparando no wrapup
         void onCallEnded(data.answered_by === "human" ? "atendida" : data.status === "voicemail" ? "voicemail" : "nao_atendeu");
       }
     }, 4000);
@@ -286,12 +330,18 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
           </Button>
         ) : (
           <div className="space-y-3">
-            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+            <div className={`rounded-lg border p-3 ${callPhase === "wrapup" ? "border-amber-500/40 bg-amber-500/5" : "border-primary/30 bg-primary/5"}`}>
               <div className="flex items-center gap-2 text-sm font-medium">
                 <Phone className="h-4 w-4 text-primary" /> {current.lead.name}
               </div>
               <p className="text-xs text-muted-foreground">{current.lead.phone}</p>
             </div>
+            {callPhase === "wrapup" && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-600 p-2 text-xs flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>Ligação encerrada. Marque o resultado (ou agende a reunião) para liberar a próxima ligação.</span>
+              </div>
+            )}
             <Textarea rows={3} placeholder="Anotações da ligação…" value={note} onChange={(e) => setNote(e.target.value)} />
             <div className="grid grid-cols-2 gap-2">
               {DISPOSITIONS.map((d) => (
@@ -303,9 +353,13 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
             <Button size="sm" className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowSchedule(true)}>
               <CalendarPlus className="h-4 w-4" /> Agendar reunião (marca como agendado)
             </Button>
-            <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => disposition("nao_atendeu", "Não atendeu")}>
-              <PhoneOff className="h-4 w-4" /> Encerrar / Não atendeu
-            </Button>
+            {/* "Não atendeu" só faz sentido enquanto está chamando/em ligação. No wrapup a
+                ligação já terminou — aí a atendente escolhe uma disposição de verdade. */}
+            {callPhase !== "wrapup" && (
+              <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => disposition("nao_atendeu", "Não atendeu")}>
+                <PhoneOff className="h-4 w-4" /> Encerrar / Não atendeu
+              </Button>
+            )}
           </div>
         )}
 
@@ -328,10 +382,21 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
           leadName={current.lead.name}
           onSuccess={async () => {
             setShowSchedule(false);
-            if (current?.queueId) {
-              await supabase.from("crm_dialer_queue").update({ disposition: "agendou_reuniao", status: "completed" }).eq("id", current.queueId);
+            const c = currentRef.current;
+            if (c?.queueId) {
+              // disposition agendou_reuniao = é isso que o dashboard conta como agendamento do discador
+              await supabase.from("crm_dialer_queue").update({ disposition: "agendou_reuniao", status: "completed" }).eq("id", c.queueId);
             }
+            if (c) handledRef.current = c.callId; // evita que o fim de ligação re-trate esse lead
+            hangup();
             toast.success("Reunião agendada");
+            setCurrent(null);
+            setNote("");
+            setCallPhase("idle");
+            void refreshBalance();
+            if (autoDialRef.current && statusRef.current !== "offline") {
+              setTimeout(() => { void dialNext(); }, 800);
+            }
           }}
         />
       )}
