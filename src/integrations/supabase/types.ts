@@ -4028,6 +4028,7 @@ export type Database = {
           criado_em: string
           id: number
           numero: string | null
+          observacao: string | null
           project_id: string
           tipo: string | null
           titular: string | null
@@ -4040,6 +4041,7 @@ export type Database = {
           criado_em?: string
           id?: number
           numero?: string | null
+          observacao?: string | null
           project_id: string
           tipo?: string | null
           titular?: string | null
@@ -4052,6 +4054,7 @@ export type Database = {
           criado_em?: string
           id?: number
           numero?: string | null
+          observacao?: string | null
           project_id?: string
           tipo?: string | null
           titular?: string | null
@@ -4119,12 +4122,51 @@ export type Database = {
           },
         ]
       }
+      cfin_dsr_fracoes: {
+        Row: {
+          ano: number
+          criado_em: string
+          fracao: number
+          id: number
+          mes: number
+          observacao: string | null
+          project_id: string
+        }
+        Insert: {
+          ano: number
+          criado_em?: string
+          fracao: number
+          id?: number
+          mes: number
+          observacao?: string | null
+          project_id: string
+        }
+        Update: {
+          ano?: number
+          criado_em?: string
+          fracao?: number
+          id?: number
+          mes?: number
+          observacao?: string | null
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cfin_dsr_fracoes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cfin_empresas: {
         Row: {
           ativo: boolean
           cnpj: string | null
           criado_em: string
           id: number
+          logo_url: string | null
           nome: string
           project_id: string
         }
@@ -4133,6 +4175,7 @@ export type Database = {
           cnpj?: string | null
           criado_em?: string
           id?: number
+          logo_url?: string | null
           nome: string
           project_id: string
         }
@@ -4141,6 +4184,7 @@ export type Database = {
           cnpj?: string | null
           criado_em?: string
           id?: number
+          logo_url?: string | null
           nome?: string
           project_id?: string
         }
@@ -4500,27 +4544,36 @@ export type Database = {
       cfin_lojas: {
         Row: {
           ativo: boolean
+          cnpj: string | null
           codigo: string
           criado_em: string
+          endereco: string | null
           id: number
           nome: string
           project_id: string
+          telefone: string | null
         }
         Insert: {
           ativo?: boolean
+          cnpj?: string | null
           codigo: string
           criado_em?: string
+          endereco?: string | null
           id?: number
           nome: string
           project_id: string
+          telefone?: string | null
         }
         Update: {
           ativo?: boolean
+          cnpj?: string | null
           codigo?: string
           criado_em?: string
+          endereco?: string | null
           id?: number
           nome?: string
           project_id?: string
+          telefone?: string | null
         }
         Relationships: [
           {
@@ -12077,6 +12130,30 @@ export type Database = {
           },
         ]
       }
+      client_whatsapp_signals: {
+        Row: {
+          company_id: string
+          last_message_at: string | null
+          msgs_7d: number | null
+          rag: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          last_message_at?: string | null
+          msgs_7d?: number | null
+          rag?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          last_message_at?: string | null
+          msgs_7d?: number | null
+          rag?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       climate_survey_responses: {
         Row: {
           adequate_recognition: boolean | null
@@ -13974,6 +14051,150 @@ export type Database = {
           },
         ]
       }
+      crm_calls: {
+        Row: {
+          activity_id: string | null
+          agent_staff_id: string | null
+          ai_disposition: string | null
+          ai_qualification: Json | null
+          ai_summary: string | null
+          answered_at: string | null
+          answered_by: string | null
+          campaign_id: string | null
+          conference_sid: string | null
+          cost: number | null
+          cost_currency: string | null
+          created_at: string
+          direction: string
+          duration_seconds: number | null
+          ended_at: string | null
+          from_number: string | null
+          id: string
+          lead_id: string
+          notes: string | null
+          qa_at: string | null
+          qa_feedback: Json | null
+          qa_score: number | null
+          queue_id: string | null
+          recording_deleted_at: string | null
+          recording_sid: string | null
+          recording_url: string | null
+          started_at: string | null
+          status: string
+          tenant_id: string | null
+          to_number: string | null
+          transcription: string | null
+          twilio_call_sid: string | null
+          updated_at: string
+        }
+        Insert: {
+          activity_id?: string | null
+          agent_staff_id?: string | null
+          ai_disposition?: string | null
+          ai_qualification?: Json | null
+          ai_summary?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          campaign_id?: string | null
+          conference_sid?: string | null
+          cost?: number | null
+          cost_currency?: string | null
+          created_at?: string
+          direction?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          from_number?: string | null
+          id?: string
+          lead_id: string
+          notes?: string | null
+          qa_at?: string | null
+          qa_feedback?: Json | null
+          qa_score?: number | null
+          queue_id?: string | null
+          recording_deleted_at?: string | null
+          recording_sid?: string | null
+          recording_url?: string | null
+          started_at?: string | null
+          status?: string
+          tenant_id?: string | null
+          to_number?: string | null
+          transcription?: string | null
+          twilio_call_sid?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activity_id?: string | null
+          agent_staff_id?: string | null
+          ai_disposition?: string | null
+          ai_qualification?: Json | null
+          ai_summary?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          campaign_id?: string | null
+          conference_sid?: string | null
+          cost?: number | null
+          cost_currency?: string | null
+          created_at?: string
+          direction?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          from_number?: string | null
+          id?: string
+          lead_id?: string
+          notes?: string | null
+          qa_at?: string | null
+          qa_feedback?: Json | null
+          qa_score?: number | null
+          queue_id?: string | null
+          recording_deleted_at?: string | null
+          recording_sid?: string | null
+          recording_url?: string | null
+          started_at?: string | null
+          status?: string
+          tenant_id?: string | null
+          to_number?: string | null
+          transcription?: string | null
+          twilio_call_sid?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_calls_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "crm_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_calls_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "crm_dialer_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_calls_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_calls_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "crm_dialer_queue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_calls_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_clint_config: {
         Row: {
           api_token_secret_name: string
@@ -14208,6 +14429,201 @@ export type Database = {
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_dialer_campaigns: {
+        Row: {
+          agent_staff_id: string | null
+          caller_id: string | null
+          consent_message: string
+          created_at: string
+          created_by: string | null
+          id: string
+          max_attempts: number
+          name: string
+          pipeline_id: string | null
+          status: string
+          tenant_id: string | null
+          trigger_stage_id: string | null
+          updated_at: string
+          use_amd: boolean
+        }
+        Insert: {
+          agent_staff_id?: string | null
+          caller_id?: string | null
+          consent_message?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          max_attempts?: number
+          name: string
+          pipeline_id?: string | null
+          status?: string
+          tenant_id?: string | null
+          trigger_stage_id?: string | null
+          updated_at?: string
+          use_amd?: boolean
+        }
+        Update: {
+          agent_staff_id?: string | null
+          caller_id?: string | null
+          consent_message?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          max_attempts?: number
+          name?: string
+          pipeline_id?: string | null
+          status?: string
+          tenant_id?: string | null
+          trigger_stage_id?: string | null
+          updated_at?: string
+          use_amd?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_dialer_campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_dialer_campaigns_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_dialer_campaigns_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_dialer_campaigns_trigger_stage_id_fkey"
+            columns: ["trigger_stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_dialer_queue: {
+        Row: {
+          attempts: number
+          campaign_id: string
+          created_at: string
+          disposition: string | null
+          id: string
+          last_attempt_at: string | null
+          lead_id: string
+          position: number | null
+          scheduled_at: string | null
+          status: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          campaign_id: string
+          created_at?: string
+          disposition?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          lead_id: string
+          position?: number | null
+          scheduled_at?: string | null
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          campaign_id?: string
+          created_at?: string
+          disposition?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          lead_id?: string
+          position?: number | null
+          scheduled_at?: string | null
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_dialer_queue_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "crm_dialer_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_dialer_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_dialer_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_dialer_sessions: {
+        Row: {
+          agent_staff_id: string | null
+          campaign_id: string | null
+          created_at: string
+          ended_at: string | null
+          id: string
+          last_seen_at: string | null
+          started_at: string
+          tenant_id: string | null
+        }
+        Insert: {
+          agent_staff_id?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          started_at?: string
+          tenant_id?: string | null
+        }
+        Update: {
+          agent_staff_id?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          started_at?: string
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_dialer_sessions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "crm_dialer_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_dialer_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -14589,6 +15005,54 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_lead_proposals: {
+        Row: {
+          content: Json | null
+          created_at: string | null
+          file_path: string | null
+          file_url: string | null
+          generated_by: string | null
+          id: string
+          lead_id: string
+          product_id: string | null
+          service_name: string | null
+          status: string | null
+          title: string | null
+          transcription_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          content?: Json | null
+          created_at?: string | null
+          file_path?: string | null
+          file_url?: string | null
+          generated_by?: string | null
+          id?: string
+          lead_id: string
+          product_id?: string | null
+          service_name?: string | null
+          status?: string | null
+          title?: string | null
+          transcription_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          content?: Json | null
+          created_at?: string | null
+          file_path?: string | null
+          file_url?: string | null
+          generated_by?: string | null
+          id?: string
+          lead_id?: string
+          product_id?: string | null
+          service_name?: string | null
+          status?: string | null
+          title?: string | null
+          transcription_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       crm_lead_summaries: {
         Row: {
           created_at: string
@@ -14671,6 +15135,8 @@ export type Database = {
           address_neighborhood: string | null
           address_number: string | null
           adset_name: string | null
+          ai_brief: Json | null
+          ai_brief_at: string | null
           campaign_name: string | null
           city: string | null
           closed_at: string | null
@@ -14741,6 +15207,8 @@ export type Database = {
           address_neighborhood?: string | null
           address_number?: string | null
           adset_name?: string | null
+          ai_brief?: Json | null
+          ai_brief_at?: string | null
           campaign_name?: string | null
           city?: string | null
           closed_at?: string | null
@@ -14811,6 +15279,8 @@ export type Database = {
           address_neighborhood?: string | null
           address_number?: string | null
           adset_name?: string | null
+          ai_brief?: Json | null
+          ai_brief_at?: string | null
           campaign_name?: string | null
           city?: string | null
           closed_at?: string | null
@@ -17083,6 +17553,89 @@ export type Database = {
           },
         ]
       }
+      cs_action_suggestions: {
+        Row: {
+          assigned_role: string | null
+          assigned_staff_id: string | null
+          company_id: string
+          completed_at: string | null
+          completion_note: string | null
+          completion_result: string | null
+          created_at: string
+          escalated_at: string | null
+          generates_result: boolean | null
+          id: string
+          next_step: string | null
+          priority: string
+          project_id: string | null
+          rationale: string | null
+          source_plan_id: string | null
+          source_signals: Json | null
+          status: string
+          suggestion_date: string
+          task_id: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_role?: string | null
+          assigned_staff_id?: string | null
+          company_id: string
+          completed_at?: string | null
+          completion_note?: string | null
+          completion_result?: string | null
+          created_at?: string
+          escalated_at?: string | null
+          generates_result?: boolean | null
+          id?: string
+          next_step?: string | null
+          priority?: string
+          project_id?: string | null
+          rationale?: string | null
+          source_plan_id?: string | null
+          source_signals?: Json | null
+          status?: string
+          suggestion_date?: string
+          task_id?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_role?: string | null
+          assigned_staff_id?: string | null
+          company_id?: string
+          completed_at?: string | null
+          completion_note?: string | null
+          completion_result?: string | null
+          created_at?: string
+          escalated_at?: string | null
+          generates_result?: boolean | null
+          id?: string
+          next_step?: string | null
+          priority?: string
+          project_id?: string | null
+          rationale?: string | null
+          source_plan_id?: string | null
+          source_signals?: Json | null
+          status?: string
+          suggestion_date?: string
+          task_id?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cs_action_suggestions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       csat_configs: {
         Row: {
           created_at: string
@@ -17185,6 +17738,13 @@ export type Database = {
             foreignKeyName: "csat_responses_meeting_id_fkey"
             columns: ["meeting_id"]
             isOneToOne: false
+            referencedRelation: "office_agenda_today"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "csat_responses_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
             referencedRelation: "onboarding_meeting_notes"
             referencedColumns: ["id"]
           },
@@ -17247,6 +17807,13 @@ export type Database = {
             columns: ["hotseat_response_id"]
             isOneToOne: false
             referencedRelation: "hotseat_responses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "csat_surveys_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: true
+            referencedRelation: "office_agenda_today"
             referencedColumns: ["id"]
           },
           {
@@ -18086,6 +18653,288 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      dialer_api_keys: {
+        Row: {
+          api_key: string
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string | null
+          last_used_at: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          api_key: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string | null
+          last_used_at?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          api_key?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string | null
+          last_used_at?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dialer_api_keys_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dialer_billing: {
+        Row: {
+          active_users: number
+          amount: number
+          asaas_payment_id: string | null
+          created_at: string
+          franchise_minutes_granted: number
+          id: string
+          invoice_url: string | null
+          paid_at: string | null
+          period_end: string
+          period_start: string
+          plan_price_per_user: number
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          active_users?: number
+          amount?: number
+          asaas_payment_id?: string | null
+          created_at?: string
+          franchise_minutes_granted?: number
+          id?: string
+          invoice_url?: string | null
+          paid_at?: string | null
+          period_end: string
+          period_start: string
+          plan_price_per_user?: number
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          active_users?: number
+          amount?: number
+          asaas_payment_id?: string | null
+          created_at?: string
+          franchise_minutes_granted?: number
+          id?: string
+          invoice_url?: string | null
+          paid_at?: string | null
+          period_end?: string
+          period_start?: string
+          plan_price_per_user?: number
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dialer_billing_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dialer_ledger: {
+        Row: {
+          amount: number
+          balance_after: number | null
+          created_at: string
+          description: string | null
+          id: string
+          minutes: number | null
+          operation: string
+          reference_id: string | null
+          reference_type: string | null
+          tenant_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          minutes?: number | null
+          operation: string
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          minutes?: number | null
+          operation?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dialer_ledger_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dialer_pricing: {
+        Row: {
+          created_at: string
+          currency: string
+          id: string
+          included_minutes_per_user: number
+          min_balance_to_dial: number
+          overage_per_minute: number
+          plan_price_per_user: number
+          price_per_minute: number
+          price_per_second: number | null
+          setup_fee: number
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          id?: string
+          included_minutes_per_user?: number
+          min_balance_to_dial?: number
+          overage_per_minute?: number
+          plan_price_per_user?: number
+          price_per_minute?: number
+          price_per_second?: number | null
+          setup_fee?: number
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          id?: string
+          included_minutes_per_user?: number
+          min_balance_to_dial?: number
+          overage_per_minute?: number
+          plan_price_per_user?: number
+          price_per_minute?: number
+          price_per_second?: number | null
+          setup_fee?: number
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dialer_pricing_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dialer_recharges: {
+        Row: {
+          amount: number
+          asaas_payment_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_url: string | null
+          paid_at: string | null
+          pix_payload: string | null
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          amount: number
+          asaas_payment_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_url?: string | null
+          paid_at?: string | null
+          pix_payload?: string | null
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          amount?: number
+          asaas_payment_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_url?: string | null
+          paid_at?: string | null
+          pix_payload?: string | null
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dialer_recharges_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dialer_wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          currency: string
+          id: string
+          tenant_id: string
+          total_deposited: number
+          total_spent: number
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          tenant_id: string
+          total_deposited?: number
+          total_spent?: number
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          tenant_id?: string
+          total_deposited?: number
+          total_spent?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dialer_wallets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       disc_responses: {
         Row: {
@@ -19449,15 +20298,7 @@ export type Database = {
           type?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "financial_budgets_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "financial_categories"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       financial_categories: {
         Row: {
@@ -20314,6 +21155,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      fx_rates: {
+        Row: {
+          pair: string
+          rate: number
+          source: string | null
+          updated_at: string
+        }
+        Insert: {
+          pair: string
+          rate: number
+          source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          pair?: string
+          rate?: number
+          source?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       gamification_badges: {
         Row: {
@@ -23166,6 +24028,42 @@ export type Database = {
           },
         ]
       }
+      kpi_nudge_logs: {
+        Row: {
+          company_id: string
+          created_at: string
+          days_gap: number | null
+          error: string | null
+          id: string
+          message: string | null
+          nudge_date: string
+          phone: string | null
+          status: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          days_gap?: number | null
+          error?: string | null
+          id?: string
+          message?: string | null
+          nudge_date: string
+          phone?: string | null
+          status?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          days_gap?: number | null
+          error?: string | null
+          id?: string
+          message?: string | null
+          nudge_date?: string
+          phone?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       kpi_salespeople: {
         Row: {
           created_at: string
@@ -23687,6 +24585,13 @@ export type Database = {
             foreignKeyName: "meeting_briefings_meeting_id_fkey"
             columns: ["meeting_id"]
             isOneToOne: false
+            referencedRelation: "office_agenda_today"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_briefings_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
             referencedRelation: "onboarding_meeting_notes"
             referencedColumns: ["id"]
           },
@@ -23945,6 +24850,13 @@ export type Database = {
             foreignKeyName: "meeting_presentations_meeting_id_fkey"
             columns: ["meeting_id"]
             isOneToOne: false
+            referencedRelation: "office_agenda_today"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_presentations_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
             referencedRelation: "onboarding_meeting_notes"
             referencedColumns: ["id"]
           },
@@ -23998,6 +24910,13 @@ export type Database = {
           summary?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "meeting_sentiment_analysis_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "office_agenda_today"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "meeting_sentiment_analysis_meeting_id_fkey"
             columns: ["meeting_id"]
@@ -24579,6 +25498,27 @@ export type Database = {
         }
         Relationships: []
       }
+      office_agent_permissions: {
+        Row: {
+          agent: string
+          created_at: string
+          tenant_id: string | null
+          user_id: string
+        }
+        Insert: {
+          agent: string
+          created_at?: string
+          tenant_id?: string | null
+          user_id: string
+        }
+        Update: {
+          agent?: string
+          created_at?: string
+          tenant_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       office_chat_messages: {
         Row: {
           created_at: string
@@ -24614,6 +25554,72 @@ export type Database = {
           },
         ]
       }
+      office_desk_notes: {
+        Row: {
+          audio_path: string | null
+          content: string | null
+          created_at: string
+          from_name: string | null
+          from_user: string
+          id: string
+          kind: string
+          read_at: string | null
+          tenant_id: string | null
+          to_user: string
+        }
+        Insert: {
+          audio_path?: string | null
+          content?: string | null
+          created_at?: string
+          from_name?: string | null
+          from_user: string
+          id?: string
+          kind: string
+          read_at?: string | null
+          tenant_id?: string | null
+          to_user: string
+        }
+        Update: {
+          audio_path?: string | null
+          content?: string | null
+          created_at?: string
+          from_name?: string | null
+          from_user?: string
+          id?: string
+          kind?: string
+          read_at?: string | null
+          tenant_id?: string | null
+          to_user?: string
+        }
+        Relationships: []
+      }
+      office_guest_invites: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          guest_label: string | null
+          id: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          guest_label?: string | null
+          id?: string
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          guest_label?: string | null
+          id?: string
+          token?: string
+        }
+        Relationships: []
+      }
       office_meeting_messages: {
         Row: {
           agent: string
@@ -24638,6 +25644,51 @@ export type Database = {
           id?: string
           kind?: string
           meeting_id?: string
+        }
+        Relationships: []
+      }
+      office_meeting_recordings: {
+        Row: {
+          audio_path: string
+          created_at: string
+          duration_s: number | null
+          expires_at: string
+          id: string
+          minutes: Json | null
+          room_name: string | null
+          started_by: string
+          started_by_name: string | null
+          tenant_id: string | null
+          title: string | null
+          transcript: string | null
+        }
+        Insert: {
+          audio_path: string
+          created_at?: string
+          duration_s?: number | null
+          expires_at?: string
+          id?: string
+          minutes?: Json | null
+          room_name?: string | null
+          started_by: string
+          started_by_name?: string | null
+          tenant_id?: string | null
+          title?: string | null
+          transcript?: string | null
+        }
+        Update: {
+          audio_path?: string
+          created_at?: string
+          duration_s?: number | null
+          expires_at?: string
+          id?: string
+          minutes?: Json | null
+          room_name?: string | null
+          started_by?: string
+          started_by_name?: string | null
+          tenant_id?: string | null
+          title?: string | null
+          transcript?: string | null
         }
         Relationships: []
       }
@@ -24843,6 +25894,7 @@ export type Database = {
       }
       office_team_avatars: {
         Row: {
+          facial_hair: string
           hair_color: string
           hair_style: string
           last_rot: number | null
@@ -24852,11 +25904,13 @@ export type Database = {
           personal_room: boolean
           shirt_color: string
           skin_color: string
+          tenant_id: string | null
           title: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          facial_hair?: string
           hair_color?: string
           hair_style?: string
           last_rot?: number | null
@@ -24866,11 +25920,13 @@ export type Database = {
           personal_room?: boolean
           shirt_color?: string
           skin_color?: string
+          tenant_id?: string | null
           title?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          facial_hair?: string
           hair_color?: string
           hair_style?: string
           last_rot?: number | null
@@ -24880,6 +25936,7 @@ export type Database = {
           personal_room?: boolean
           shirt_color?: string
           skin_color?: string
+          tenant_id?: string | null
           title?: string | null
           updated_at?: string
           user_id?: string
@@ -24893,6 +25950,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          tenant_id: string | null
           user_id: string
         }
         Insert: {
@@ -24901,6 +25959,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          tenant_id?: string | null
           user_id: string
         }
         Update: {
@@ -24909,6 +25968,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          tenant_id?: string | null
           user_id?: string
         }
         Relationships: []
@@ -24923,10 +25983,13 @@ export type Database = {
           id: string
           is_locked: boolean
           locked_by: string | null
+          music_on: boolean
+          music_video_id: string
           name: string
           owner_user_id: string | null
           room_type: string
           sector: string | null
+          tenant_id: string | null
           width: number
           x: number
           z: number
@@ -24940,10 +26003,13 @@ export type Database = {
           id?: string
           is_locked?: boolean
           locked_by?: string | null
+          music_on?: boolean
+          music_video_id?: string
           name: string
           owner_user_id?: string | null
           room_type?: string
           sector?: string | null
+          tenant_id?: string | null
           width: number
           x: number
           z: number
@@ -24957,10 +26023,13 @@ export type Database = {
           id?: string
           is_locked?: boolean
           locked_by?: string | null
+          music_on?: boolean
+          music_video_id?: string
           name?: string
           owner_user_id?: string | null
           room_type?: string
           sector?: string | null
+          tenant_id?: string | null
           width?: number
           x?: number
           z?: number
@@ -25235,6 +26304,7 @@ export type Database = {
           crm_usage: string | null
           cs_id: string | null
           dashboard_widget_config: Json | null
+          dialer_tenant_id: string | null
           email: string | null
           expected_timeline: Json | null
           goal_not_required: boolean
@@ -25314,6 +26384,7 @@ export type Database = {
           crm_usage?: string | null
           cs_id?: string | null
           dashboard_widget_config?: Json | null
+          dialer_tenant_id?: string | null
           email?: string | null
           expected_timeline?: Json | null
           goal_not_required?: boolean
@@ -25393,6 +26464,7 @@ export type Database = {
           crm_usage?: string | null
           cs_id?: string | null
           dashboard_widget_config?: Json | null
+          dialer_tenant_id?: string | null
           email?: string | null
           expected_timeline?: Json | null
           goal_not_required?: boolean
@@ -25664,6 +26736,13 @@ export type Database = {
             foreignKeyName: "onboarding_meeting_briefings_meeting_id_fkey"
             columns: ["meeting_id"]
             isOneToOne: true
+            referencedRelation: "office_agenda_today"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_meeting_briefings_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: true
             referencedRelation: "onboarding_meeting_notes"
             referencedColumns: ["id"]
           },
@@ -25698,6 +26777,7 @@ export type Database = {
           staff_id: string | null
           subject: string
           transcript: string | null
+          transcript_job_id: string | null
           updated_at: string
         }
         Insert: {
@@ -25721,6 +26801,7 @@ export type Database = {
           staff_id?: string | null
           subject: string
           transcript?: string | null
+          transcript_job_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -25744,6 +26825,7 @@ export type Database = {
           staff_id?: string | null
           subject?: string
           transcript?: string | null
+          transcript_job_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -26289,9 +27371,11 @@ export type Database = {
           cpf: string | null
           created_at: string
           default_whatsapp_instance_id: string | null
+          dialer_only: boolean
           email: string
           id: string
           is_active: boolean
+          is_crm_closer: boolean
           municipal_registration: string | null
           name: string
           neighborhood: string | null
@@ -26322,9 +27406,11 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           default_whatsapp_instance_id?: string | null
+          dialer_only?: boolean
           email: string
           id?: string
           is_active?: boolean
+          is_crm_closer?: boolean
           municipal_registration?: string | null
           name: string
           neighborhood?: string | null
@@ -26355,9 +27441,11 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           default_whatsapp_instance_id?: string | null
+          dialer_only?: boolean
           email?: string
           id?: string
           is_active?: boolean
+          is_crm_closer?: boolean
           municipal_registration?: string | null
           name?: string
           neighborhood?: string | null
@@ -26799,6 +27887,8 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          dialer_enabled: boolean
+          dialer_tenant_id: string | null
           email: string
           id: string
           name: string
@@ -26814,6 +27904,8 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          dialer_enabled?: boolean
+          dialer_tenant_id?: string | null
           email: string
           id?: string
           name: string
@@ -26829,6 +27921,8 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          dialer_enabled?: boolean
+          dialer_tenant_id?: string | null
           email?: string
           id?: string
           name?: string
@@ -26842,6 +27936,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "onboarding_users_dialer_tenant_id_fkey"
+            columns: ["dialer_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "onboarding_users_project_id_fkey"
             columns: ["project_id"]
@@ -29310,6 +30411,33 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_candidate_blocklist: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string
+          full_name: string | null
+          reason: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email: string
+          full_name?: string | null
+          reason?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          full_name?: string | null
+          reason?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: []
+      }
       profile_candidate_notes: {
         Row: {
           author_id: string | null
@@ -29347,21 +30475,35 @@ export type Database = {
       }
       profile_candidates: {
         Row: {
+          address: string | null
           ai_concerns: Json | null
+          ai_interview_questions: Json | null
           ai_score: number | null
           ai_strengths: Json | null
           ai_summary: string | null
+          bank_info: string | null
+          cadastral_status: string | null
           city: string | null
+          cnpj: string | null
           cover_letter: string | null
+          cpf: string | null
           created_at: string
           custom_answers: Json
           email: string | null
           full_name: string
           id: string
+          interview_manager_notes: string | null
+          interview_manager_score: number | null
+          interview_rh_notes: string | null
+          interview_rh_score: number | null
           is_favorite: boolean
           job_id: string | null
           linkedin_url: string | null
+          neighborhood: string | null
           phone: string | null
+          photo_url: string | null
+          pix_key: string | null
+          recruiter_notes: string | null
           resume_url: string | null
           source: string | null
           stage: string
@@ -29373,21 +30515,35 @@ export type Database = {
           video_url: string | null
         }
         Insert: {
+          address?: string | null
           ai_concerns?: Json | null
+          ai_interview_questions?: Json | null
           ai_score?: number | null
           ai_strengths?: Json | null
           ai_summary?: string | null
+          bank_info?: string | null
+          cadastral_status?: string | null
           city?: string | null
+          cnpj?: string | null
           cover_letter?: string | null
+          cpf?: string | null
           created_at?: string
           custom_answers?: Json
           email?: string | null
           full_name: string
           id?: string
+          interview_manager_notes?: string | null
+          interview_manager_score?: number | null
+          interview_rh_notes?: string | null
+          interview_rh_score?: number | null
           is_favorite?: boolean
           job_id?: string | null
           linkedin_url?: string | null
+          neighborhood?: string | null
           phone?: string | null
+          photo_url?: string | null
+          pix_key?: string | null
+          recruiter_notes?: string | null
           resume_url?: string | null
           source?: string | null
           stage?: string
@@ -29399,21 +30555,35 @@ export type Database = {
           video_url?: string | null
         }
         Update: {
+          address?: string | null
           ai_concerns?: Json | null
+          ai_interview_questions?: Json | null
           ai_score?: number | null
           ai_strengths?: Json | null
           ai_summary?: string | null
+          bank_info?: string | null
+          cadastral_status?: string | null
           city?: string | null
+          cnpj?: string | null
           cover_letter?: string | null
+          cpf?: string | null
           created_at?: string
           custom_answers?: Json
           email?: string | null
           full_name?: string
           id?: string
+          interview_manager_notes?: string | null
+          interview_manager_score?: number | null
+          interview_rh_notes?: string | null
+          interview_rh_score?: number | null
           is_favorite?: boolean
           job_id?: string | null
           linkedin_url?: string | null
+          neighborhood?: string | null
           phone?: string | null
+          photo_url?: string | null
+          pix_key?: string | null
+          recruiter_notes?: string | null
           resume_url?: string | null
           source?: string | null
           stage?: string
@@ -29641,6 +30811,53 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_culture_results: {
+        Row: {
+          ai_score: number | null
+          ai_summary: string | null
+          candidate_id: string | null
+          fit_score: number | null
+          id: string
+          open_answer: string | null
+          pillar_scores: Json
+          raw_responses: Json | null
+          taken_at: string
+          tenant_id: string | null
+        }
+        Insert: {
+          ai_score?: number | null
+          ai_summary?: string | null
+          candidate_id?: string | null
+          fit_score?: number | null
+          id?: string
+          open_answer?: string | null
+          pillar_scores?: Json
+          raw_responses?: Json | null
+          taken_at?: string
+          tenant_id?: string | null
+        }
+        Update: {
+          ai_score?: number | null
+          ai_summary?: string | null
+          candidate_id?: string | null
+          fit_score?: number | null
+          id?: string
+          open_answer?: string | null
+          pillar_scores?: Json
+          raw_responses?: Json | null
+          taken_at?: string
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_culture_results_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "profile_candidates"
             referencedColumns: ["id"]
           },
         ]
@@ -30149,6 +31366,7 @@ export type Database = {
           seniority: string | null
           state: string | null
           status: string
+          target_disc: Json | null
           tenant_id: string | null
           title: string
           updated_at: string
@@ -30176,6 +31394,7 @@ export type Database = {
           seniority?: string | null
           state?: string | null
           status?: string
+          target_disc?: Json | null
           tenant_id?: string | null
           title: string
           updated_at?: string
@@ -30203,6 +31422,7 @@ export type Database = {
           seniority?: string | null
           state?: string | null
           status?: string
+          target_disc?: Json | null
           tenant_id?: string | null
           title?: string
           updated_at?: string
@@ -30827,6 +32047,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      retention_alert_logs: {
+        Row: {
+          alert_date: string
+          created_at: string
+          error: string | null
+          id: string
+          message: string | null
+          projects_count: number
+          recipient_phone: string
+          status: string
+        }
+        Insert: {
+          alert_date: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          message?: string | null
+          projects_count?: number
+          recipient_phone: string
+          status?: string
+        }
+        Update: {
+          alert_date?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          message?: string | null
+          projects_count?: number
+          recipient_phone?: string
+          status?: string
+        }
+        Relationships: []
       }
       retention_attempts: {
         Row: {
@@ -34836,6 +36089,13 @@ export type Database = {
             foreignKeyName: "survey_send_log_meeting_id_fkey"
             columns: ["meeting_id"]
             isOneToOne: false
+            referencedRelation: "office_agenda_today"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_send_log_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
             referencedRelation: "onboarding_meeting_notes"
             referencedColumns: ["id"]
           },
@@ -34934,6 +36194,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      telegram_links: {
+        Row: {
+          created_at: string
+          telegram_chat_id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          telegram_chat_id: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          telegram_chat_id?: number
+          user_id?: string
+        }
+        Relationships: []
       }
       telegram_sessions: {
         Row: {
@@ -36649,11 +37927,64 @@ export type Database = {
         }
         Relationships: []
       }
+      office_agenda_today: {
+        Row: {
+          calendar_owner_name: string | null
+          id: string | null
+          meeting_date: string | null
+          meeting_title: string | null
+          owner_user_id: string | null
+        }
+        Relationships: []
+      }
+      office_cafe_clients: {
+        Row: {
+          name: string | null
+        }
+        Relationships: []
+      }
+      office_cafe_facts: {
+        Row: {
+          client: string | null
+          dt: string | null
+          kind: string | null
+          person: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
+      office_in_meeting_now: {
+        Row: {
+          user_id: string | null
+        }
+        Relationships: []
+      }
       office_team_directory: {
         Row: {
           name: string | null
           title: string | null
           user_id: string | null
+        }
+        Relationships: []
+      }
+      office_tv_comercial: {
+        Row: {
+          deals_abertos: number | null
+          hiper_meta_mes: number | null
+          meta_mes: number | null
+          pipeline_valor: number | null
+          receita_mes: number | null
+          super_meta_mes: number | null
+          vendas_mes: number | null
+        }
+        Relationships: []
+      }
+      office_tv_produto: {
+        Row: {
+          clientes_ativos: number | null
+          em_risco: number | null
+          health_medio: number | null
+          reunioes_mes: number | null
         }
         Relationships: []
       }
@@ -36672,6 +38003,7 @@ export type Database = {
       can_user_advertise: { Args: { p_profile_id: string }; Returns: Json }
       can_user_boost: { Args: { check_profile_id: string }; Returns: Json }
       can_view_all_crm_leads: { Args: never; Returns: boolean }
+      cfin_dashboard: { Args: { p_project: string }; Returns: Json }
       cfin_dre_periodo: {
         Args: {
           p_fim: string
@@ -36729,9 +38061,18 @@ export type Database = {
         }
         Returns: string
       }
+      crm_calls_by_agent: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          agent_staff_id: string
+          atendidas: number
+          total: number
+        }[]
+      }
       current_profile_employee_id: { Args: never; Returns: string }
       current_staff_role: { Args: never; Returns: string }
       current_staff_tenant_id: { Args: never; Returns: string }
+      current_user_dialer_tenant_id: { Args: never; Returns: string }
       current_user_has_crm_permission: {
         Args: { _permission: string }
         Returns: boolean
@@ -36741,6 +38082,49 @@ export type Database = {
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
+      }
+      dialer_credit_wallet: {
+        Args: {
+          p_amount: number
+          p_desc: string
+          p_operation: string
+          p_ref: string
+          p_tenant: string
+        }
+        Returns: number
+      }
+      dialer_debit_wallet: {
+        Args: {
+          p_amount: number
+          p_desc: string
+          p_minutes: number
+          p_ref: string
+          p_tenant: string
+        }
+        Returns: number
+      }
+      dialer_generate_api_key: {
+        Args: { p_label: string; p_tenant: string }
+        Returns: string
+      }
+      dialer_outcome_metrics: {
+        Args: { p_since: string; p_until?: string }
+        Returns: {
+          meetings_realized: number
+          meetings_scheduled: number
+          sales_value: number
+          sales_won: number
+        }[]
+      }
+      dialer_outcome_metrics_by_campaign: {
+        Args: { p_since: string; p_until?: string }
+        Returns: {
+          campaign_id: string
+          meetings_realized: number
+          meetings_scheduled: number
+          sales_value: number
+          sales_won: number
+        }[]
       }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
@@ -36754,6 +38138,14 @@ export type Database = {
         }[]
       }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
+      financial_actuals_by_category: {
+        Args: { p_month: string }
+        Returns: {
+          category_id: string
+          realizado: number
+          type: string
+        }[]
+      }
       find_linked_crm_leads: {
         Args: {
           _document?: string
@@ -36963,6 +38355,7 @@ export type Database = {
         }
         Returns: number
       }
+      office_validate_invite: { Args: { p_token: string }; Returns: boolean }
       pe_current_staff_id: { Args: never; Returns: string }
       pe_is_instructor: { Args: never; Returns: boolean }
       read_email_batch: {

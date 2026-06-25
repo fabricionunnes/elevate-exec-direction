@@ -62,6 +62,13 @@ const ABAS: { key: string; label: string; campos: Campo[]; busca?: string }[] = 
       { campo: "logo_url", label: "Logo (URL p/ holerite)" },
     ],
   },
+  {
+    key: "cfin_dsr_fracoes", label: "Frações DSR (comissão)",
+    campos: [
+      { campo: "ano", label: "Ano", num: true }, { campo: "mes", label: "Mês", num: true },
+      { campo: "fracao", label: "Fração", num: true }, { campo: "observacao", label: "Observação" },
+    ],
+  },
 ];
 
 export function CfinCadastrosPanel({ projectId, canEdit, canDelete = canEdit }: { projectId: string; canEdit: boolean; canDelete?: boolean }) {

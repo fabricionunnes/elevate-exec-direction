@@ -8,10 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Printer, Trash2, ArrowLeft, Pencil } from "lucide-react";
+import { Plus, Printer, Trash2, ArrowLeft, Pencil, Calculator } from "lucide-react";
 import { toast } from "sonner";
 import { fmtMoney, fmtDate, MESES, parseValor } from "./helpers";
 import { CfinVerbaCombobox } from "./CfinVerbaCombobox";
+import { CfinComissaoDialog } from "./CfinComissaoDialog";
 
 interface Func { id: number; codigo: string | null; nome: string; nome_completo: string | null; funcao: string | null; loja_codigo: string | null; ativo: boolean }
 interface FolhaRow {
@@ -38,6 +39,7 @@ export function CfinFolhaPanel({ projectId, canEdit, canDelete = canEdit }: { pr
   const [novoTipo, setNovoTipo] = useState("mensal");
   const [novoItem, setNovoItem] = useState<{ id?: number; verba: string; ref: string; tipo: string; valor: string } | null>(null);
   const [editFolha, setEditFolha] = useState<{ loja_codigo: string; funcao: string; empresa: string; dt_inicio: string; dt_fim: string } | null>(null);
+  const [comissaoOpen, setComissaoOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -193,9 +195,15 @@ ${itens.map(i => `<tr><td>${i.verba}</td><td>${i.ref ?? ""}</td><td class="n">${
             loja_codigo: aberta.loja_codigo ?? "", funcao: aberta.funcao ?? "", empresa: aberta.empresa ?? "",
             dt_inicio: aberta.dt_inicio ?? "", dt_fim: aberta.dt_fim ?? "",
           })}><Pencil className="h-4 w-4 mr-1" /> Editar dados</Button>}
+          {canEdit && <Button variant="outline" size="sm" onClick={() => setComissaoOpen(true)}><Calculator className="h-4 w-4 mr-1" /> Calcular comissão</Button>}
           {canEdit && <Button size="sm" onClick={() => setNovoItem({ verba: "", ref: "", tipo: "credito", valor: "" })}><Plus className="h-4 w-4 mr-1" /> Verba</Button>}
           {canDelete && <Button variant="destructive" size="sm" onClick={excluirFolha}><Trash2 className="h-4 w-4 mr-1" /> Excluir</Button>}
         </div>
+
+        <CfinComissaoDialog open={comissaoOpen} onOpenChange={setComissaoOpen}
+          projectId={projectId} folhaId={aberta.id} mes={aberta.mes} ano={aberta.ano}
+          itensCount={itens.length} onDone={() => abrirFolha(aberta)} />
+        {/* nota: comissão = base (Hora Extra/Bonificação) + Descanso Remunerado (base × fração do mês) */}
 
         <div className="rounded-md border">
           <Table>
