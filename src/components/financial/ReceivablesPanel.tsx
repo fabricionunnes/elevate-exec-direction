@@ -306,12 +306,55 @@ export function ReceivablesPanel() {
     setDeletingAdjId(receivable.id);
     const t = toast.loading("Excluindo ajuste e revertendo saldo...");
     try {
-      const { data, error } = await supabase.functions.invoke("delete-asaas-adjustment", {
-        body: { kind: "receivable", id: receivable.id },
-      });
-      if (error) throw error;
-      if (!data?.ok) throw new Error(data?.detail || data?.error || "falha");
-      toast.success("Ajuste excluído e saldo revertido", { id: t });
+      // 1. Apaga a conta a receber (RLS libera só o admin financeiro)
+      const { data: deleted, error: delErr } = await supabase
+        .from("financial_receivables")
+        .delete()
+        .eq("id", receivable.id)
+        .select("id");
+      if (delErr) throw delErr;
+      if (!deleted?.length) {
+        throw new Error("Sem permissão para excluir (apenas o admin financeiro) ou já foi excluída.");
+      }
+
+      // 2. Reverte o saldo do banco Asaas — o ajuste de crédito tinha SOMADO esse valor
+      const amountCents = Math.round(Number(receivable.amount || 0) * 100);
+      const { data: bank } = await supabase
+        .from("financial_banks")
+        .select("id, current_balance_cents")
+        .eq("name", "Asaas")
+        .eq("is_active", true)
+        .maybeSingle();
+      let balanceReverted = false;
+      if (bank && amountCents !== 0) {
+        for (let i = 0; i < 4 && !balanceReverted; i++) {
+          const { data: cur } = await supabase
+            .from("financial_banks")
+            .select("current_balance_cents")
+            .eq("id", bank.id)
+            .maybeSingle();
+          const stored = Number(cur?.current_balance_cents || 0);
+          const { data: upd } = await supabase
+            .from("financial_banks")
+            .update({ current_balance_cents: stored - amountCents, updated_at: new Date().toISOString() })
+            .eq("id", bank.id)
+            .eq("current_balance_cents", stored) // trava otimista
+            .select("id");
+          if (upd?.length) balanceReverted = true;
+        }
+      }
+
+      // 3. Apaga a transação do extrato que originou o ajuste (mesma descrição + tipo da conciliação)
+      await supabase
+        .from("financial_bank_transactions")
+        .delete()
+        .eq("reference_type", "asaas_balance_reconciliation")
+        .eq("description", receivable.description);
+
+      toast.success(
+        balanceReverted ? "Ajuste excluído e saldo revertido" : "Ajuste excluído (banco Asaas não encontrado para reverter saldo)",
+        { id: t }
+      );
       loadData();
     } catch (e) {
       console.error("Error deleting adjustment:", e);
