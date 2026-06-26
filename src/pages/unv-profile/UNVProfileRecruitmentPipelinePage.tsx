@@ -704,7 +704,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
       )}
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden [&_*]:break-words">
+        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto overflow-x-hidden [&_*]:break-words">
           {selected && (
             <>
               <DialogHeader className="-mx-6 -mt-6 px-6 pt-6 pb-4 bg-gradient-to-br from-indigo-500/15 via-fuchsia-500/10 to-transparent border-b">
@@ -726,7 +726,7 @@ export default function UNVProfileRecruitmentPipelinePage() {
                 </DialogTitle>
               </DialogHeader>
 
-              <div className="space-y-4 text-sm">
+              <div className="text-sm space-y-4 lg:space-y-0 lg:columns-2 lg:gap-5 lg:[&>*]:mb-5 lg:[&>*]:break-inside-avoid">
                 <div className="flex items-center gap-2 rounded-lg border p-2.5 bg-muted/30">
                   <span className="text-xs font-medium text-muted-foreground shrink-0">Etapa:</span>
                   <Select value={selected.stage} onValueChange={(v) => moveTo(selected.id, v)}>
