@@ -230,6 +230,8 @@ async function handleEvolutionResponse(
       }
     } else if (responseData?.message) {
       errorMessage = responseData.message;
+    } else if (responseData?.error) {
+      errorMessage = typeof responseData.error === 'string' ? responseData.error : JSON.stringify(responseData.error);
     }
     
     console.error(`[bulk-send] API error for ${formattedNumber}: ${errorMessage}`);
