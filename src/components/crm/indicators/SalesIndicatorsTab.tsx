@@ -358,10 +358,22 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
               hiper: g.hiper_meta_value || 0,
             });
           });
-          // Head Comercial NÃO entra na meta do time (a meta dela JÁ é a soma dos closers,
-          // então somar de novo era double-count).
-          const headIds = new Set((allActiveStaff || []).filter((s: any) => String(s.role ?? "").toLowerCase() === "head_comercial").map((s: any) => s.id));
-          const teamGoals = goalValues.filter((g) => !headIds.has(g.staff_id));
+          // Head Comercial e staff INATIVO NÃO entram na meta do time:
+          // - head: a meta dela JÁ é a soma dos closers (somar de novo = double-count).
+          // - inativo: quem saiu/foi desativado não conta no total do mês.
+          // Busca o cargo/ativo direto (allActiveStaff não traz inativos, e era por isso
+          // que a head inativa escapava e dobrava a meta).
+          const goalStaffIds = goalValues.map((g) => g.staff_id);
+          const { data: goalStaffRows } = await supabase
+            .from("onboarding_staff")
+            .select("id, role, is_active")
+            .in("id", goalStaffIds);
+          const excludeIds = new Set(
+            (goalStaffRows || [])
+              .filter((s: any) => String(s.role ?? "").toLowerCase() === "head_comercial" || s.is_active === false)
+              .map((s: any) => s.id),
+          );
+          const teamGoals = goalValues.filter((g) => !excludeIds.has(g.staff_id));
           totalMeta = teamGoals.reduce((sum, g) => sum + (g.meta_value || 0), 0);
           totalSuper = teamGoals.reduce((sum, g) => sum + (g.super_meta_value || 0), 0);
           totalHiper = teamGoals.reduce((sum, g) => sum + (g.hiper_meta_value || 0), 0);
