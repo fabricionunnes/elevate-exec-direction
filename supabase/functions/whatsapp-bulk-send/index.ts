@@ -66,6 +66,17 @@ function processMessage(template: string, recipient: Recipient): string {
   return message.trim();
 }
 
+// Stevo Manager V2 (*.stevo.chat) é um backend diferente da Evolution:
+// envia por POST /send/text e /send/media (não /message/sendText/{instance}).
+function isManagerV2Url(input?: string | null): boolean {
+  try {
+    return new URL(String(input || '').replace(/\/+$/g, '')).hostname.toLowerCase().endsWith('.stevo.chat');
+  } catch { return false; }
+}
+function normBaseUrl(input: string): string {
+  return input.replace(/\/manager\/?$/i, '').replace(/\/+$/g, '');
+}
+
 // Send text message via Evolution API using instance-specific credentials
 // Supports both individual contacts and groups (detected by @g.us suffix)
 async function sendTextMessage(
@@ -82,9 +93,20 @@ async function sendTextMessage(
     }
 
     const formattedNumber = formatPhoneNumber(phone, isGroup);
-    console.log(`[bulk-send] Sending TEXT to ${formattedNumber} via ${instanceName}`);
-    
-    const response = await fetch(`${apiUrl}/message/sendText/${instanceName}`, {
+    const base = normBaseUrl(apiUrl);
+    console.log(`[bulk-send] Sending TEXT to ${formattedNumber} via ${instanceName} (${isManagerV2Url(base) ? 'manager_v2' : 'evolution'})`);
+
+    // Manager V2 (stevo.chat): POST /send/text
+    if (isManagerV2Url(base)) {
+      const response = await fetch(`${base}/send/text`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
+        body: JSON.stringify({ number: formattedNumber, text, delay: 0 }),
+      });
+      return handleEvolutionResponse(response, formattedNumber, isGroup);
+    }
+
+    const response = await fetch(`${base}/message/sendText/${instanceName}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -120,10 +142,27 @@ async function sendMediaMessage(
     }
 
     const formattedNumber = formatPhoneNumber(phone, isGroup);
-    console.log(`[bulk-send] Sending ${mediaType.toUpperCase()} to ${formattedNumber} via ${instanceName}`);
-    
+    const base = normBaseUrl(apiUrl);
+    console.log(`[bulk-send] Sending ${mediaType.toUpperCase()} to ${formattedNumber} via ${instanceName} (${isManagerV2Url(base) ? 'manager_v2' : 'evolution'})`);
+
+    // Manager V2 (stevo.chat): POST /send/media (inclusive áudio, via mediatype)
+    if (isManagerV2Url(base)) {
+      const response = await fetch(`${base}/send/media`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
+        body: JSON.stringify({
+          number: formattedNumber,
+          media: mediaUrl,
+          mediatype: mediaType,
+          caption: mediaType === 'audio' ? '' : (caption || ''),
+          fileName: '',
+        }),
+      });
+      return handleEvolutionResponse(response, formattedNumber, isGroup);
+    }
+
     // For audio, use sendWhatsAppAudio endpoint; for document, use sendMedia with document type
-    let endpoint = `${apiUrl}/message/sendMedia/${instanceName}`;
+    let endpoint = `${base}/message/sendMedia/${instanceName}`;
     let body: Record<string, any> = {
       number: formattedNumber,
       mediatype: mediaType,
