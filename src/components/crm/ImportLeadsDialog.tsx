@@ -90,8 +90,14 @@ const CRM_FIELDS = [
   { value: "email", label: "E-mail" },
   { value: "company", label: "Empresa" },
   { value: "role", label: "Cargo" },
+  { value: "document", label: "CNPJ / CPF" },
   { value: "city", label: "Cidade" },
   { value: "state", label: "UF" },
+  { value: "zipcode", label: "CEP" },
+  { value: "address", label: "Endereço (rua)" },
+  { value: "address_number", label: "Número" },
+  { value: "address_neighborhood", label: "Bairro" },
+  { value: "address_complement", label: "Complemento" },
   { value: "origin", label: "Origem" },
   { value: "opportunity_value", label: "Valor da Oportunidade" },
   { value: "segment", label: "Segmento" },
@@ -231,6 +237,18 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
         crmField = "city";
       } else if (lowerHeader.includes("estado") || lowerHeader.includes("uf") || lowerHeader.includes("state")) {
         crmField = "state";
+      } else if (lowerHeader.includes("cnpj") || lowerHeader.includes("cpf") || lowerHeader.includes("documento")) {
+        crmField = "document";
+      } else if (lowerHeader.includes("cep") || lowerHeader.includes("zipcode") || lowerHeader.includes("zip")) {
+        crmField = "zipcode";
+      } else if (lowerHeader.includes("bairro") || lowerHeader.includes("neighborhood")) {
+        crmField = "address_neighborhood";
+      } else if (lowerHeader.includes("complemento") || lowerHeader.includes("complement")) {
+        crmField = "address_complement";
+      } else if (lowerHeader.includes("numero") || lowerHeader.includes("número")) {
+        crmField = "address_number";
+      } else if (lowerHeader.includes("endereco") || lowerHeader.includes("endereço") || lowerHeader.includes("logradouro") || lowerHeader.includes("rua") || lowerHeader.includes("address")) {
+        crmField = "address";
       } else if (lowerHeader.includes("origem") || lowerHeader.includes("source") || lowerHeader.includes("canal")) {
         crmField = "origin";
       } else if (lowerHeader.includes("valor") || lowerHeader.includes("value") || lowerHeader.includes("oportunidade")) {
@@ -558,8 +576,8 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
   };
 
   const downloadTemplate = () => {
-    const headers = ["Nome", "Telefone", "E-mail", "Empresa", "Cargo", "Cidade", "UF", "Origem", "Valor", "Segmento", "Dor Principal", "Urgência", "Observações", "Funil", "Etapa"];
-    const example = ["João Silva", "(11) 99999-9999", "joao@empresa.com", "Empresa ABC", "Diretor", "São Paulo", "SP", "Indicação", "50000", "Tecnologia", "Precisa de automação", "high", "Cliente potencial", "Pipeline Comercial", "Triagem"];
+    const headers = ["Nome", "Telefone", "E-mail", "Empresa", "Cargo", "CNPJ", "CEP", "Endereço", "Número", "Bairro", "Complemento", "Cidade", "UF", "Origem", "Valor", "Segmento", "Dor Principal", "Urgência", "Observações", "Funil", "Etapa"];
+    const example = ["João Silva", "(11) 99999-9999", "joao@empresa.com", "Empresa ABC", "Diretor", "12.345.678/0001-90", "01310-100", "Av. Paulista", "1000", "Bela Vista", "Sala 5", "São Paulo", "SP", "Indicação", "50000", "Tecnologia", "Precisa de automação", "high", "Cliente potencial", "Pipeline Comercial", "Triagem"];
     
     const csv = [headers.join(","), example.join(",")].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
