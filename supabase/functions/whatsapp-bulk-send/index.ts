@@ -152,22 +152,9 @@ async function sendMediaMessage(
         headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
         body: JSON.stringify({
           number: formattedNumber,
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-          media: mediaUrl,
-          mediatype: mediaType,
-          caption: mediaType === 'audio' ? '' : (caption || ''),
-          fileName: '',
-=======
           url: mediaUrl,
           type: mediaType, // image | video | audio | document
           caption: mediaType === 'audio' ? '' : (caption || ''),
->>>>>>> Stashed changes
-=======
-          url: mediaUrl,
-          type: mediaType, // image | video | audio | document
-          caption: mediaType === 'audio' ? '' : (caption || ''),
->>>>>>> Stashed changes
         }),
       });
       return handleEvolutionResponse(response, formattedNumber, isGroup);
