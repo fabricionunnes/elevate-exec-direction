@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink, Target, Loader2, ThumbsUp, AlertTriangle, MessageCircle, Scale, Search, Compass, Users, CheckCircle2, X, HelpCircle } from "lucide-react";
+import { ArrowLeft, Star, Sparkles, FileText, Trash2, Brain, Copy, Mail, Phone, MapPin, Linkedin, ExternalLink, Target, Loader2, ThumbsUp, AlertTriangle, MessageCircle, Scale, Search, Compass, Users, CheckCircle2, X, HelpCircle, CalendarClock } from "lucide-react";
 import { CULTURE_PILLARS } from "@/data/cultureQuestions";
 import { toast } from "sonner";
 import { PROFILE_PIPELINE_STAGES } from "./types";
@@ -141,6 +141,18 @@ export default function UNVProfileRecruitmentPipelinePage() {
     await supabase.from("profile_candidates").update({ is_favorite: next }).eq("id", cand.id);
     setCands(prev => prev.map(c => c.id === cand.id ? { ...c, is_favorite: next } : c));
     setSelected(prev => prev && prev.id === cand.id ? { ...prev, is_favorite: next } : prev);
+  };
+
+  // kind: "rh" | "manager" ; field: "scheduled" | "done"
+  const toggleInterview = async (cand: any, kind: "rh" | "manager", field: "scheduled" | "done") => {
+    const col = `interview_${kind}_${field}`;
+    const next = !cand[col];
+    const patch: any = { [col]: next };
+    // marcar realizada implica que foi agendada
+    if (field === "done" && next) patch[`interview_${kind}_scheduled`] = true;
+    await supabase.from("profile_candidates").update(patch).eq("id", cand.id);
+    setCands(prev => prev.map(c => c.id === cand.id ? { ...c, ...patch } : c));
+    setSelected(prev => prev && prev.id === cand.id ? { ...prev, ...patch } : prev);
   };
 
   const removeCand = async (cand: any) => {
@@ -691,6 +703,27 @@ export default function UNVProfileRecruitmentPipelinePage() {
                             <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-rose-500/15 text-rose-400 px-2 py-0.5"><X className="w-3 h-3" />Reprovado</span>
                           )}
                         </div>
+                        {(stage.key === "hr_interview" || stage.key === "manager_interview") && (() => {
+                          const kind: "rh" | "manager" = stage.key === "hr_interview" ? "rh" : "manager";
+                          const sched = !!c[`interview_${kind}_scheduled`];
+                          const done = !!c[`interview_${kind}_done`];
+                          return (
+                            <div className="flex items-center gap-1.5 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => toggleInterview(c, kind, "scheduled")}
+                                className={`inline-flex items-center gap-1 text-[10px] rounded-full px-2 py-0.5 border transition-colors ${sched ? "bg-blue-500/15 text-blue-400 border-blue-500/30" : "bg-muted/40 text-muted-foreground/70 border-border hover:text-foreground"}`}
+                              >
+                                <CalendarClock className="w-3 h-3" />Agendada
+                              </button>
+                              <button
+                                onClick={() => toggleInterview(c, kind, "done")}
+                                className={`inline-flex items-center gap-1 text-[10px] rounded-full px-2 py-0.5 border transition-colors ${done ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : "bg-muted/40 text-muted-foreground/70 border-border hover:text-foreground"}`}
+                              >
+                                <CheckCircle2 className="w-3 h-3" />Realizada
+                              </button>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   );
