@@ -23,9 +23,12 @@ import {
 } from "recharts";
 import { format, startOfMonth, endOfMonth, getDaysInMonth, getDate, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Phone, Users, Calendar as CalendarIcon, AlertTriangle, CheckCircle, XCircle, TrendingUp, Upload, ChevronDown } from "lucide-react";
+import { Phone, Users, Calendar as CalendarIcon, AlertTriangle, CheckCircle, XCircle, TrendingUp, Upload, ChevronDown, Loader2 } from "lucide-react";
 import { ImportPreSalesDialog } from "@/components/crm/ImportPreSalesDialog";
 import { MeetingDetailCards, MeetingEventDetail } from "@/components/crm/MeetingDetailCards";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { trackMeetingEvent, getCurrentStaffId } from "@/components/crm/LeadMeetingActions";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +74,8 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
   const [selectedPipeline, setSelectedPipeline] = useState<string>("all");
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [semDesfechoOpen, setSemDesfechoOpen] = useState(false);
+  const [markingKey, setMarkingKey] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
@@ -594,6 +599,70 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     };
   })();
 
+  // Leads agendados SEM DESFECHO (agendados que nunca viraram realizada/no-show/fora do ICP)
+  const semDesfechoLeads = useMemo(() => {
+    const source = selectedSDR !== "all"
+      ? meetingEventDetails.filter(e => e.attributed_sdr_id === selectedSDR)
+      : meetingEventDetails;
+    const byLead = new Map<string, { lead_id: string; lead_name: string; lead_company?: string; types: Set<string>; scheduledDate?: string }>();
+    source.forEach((e) => {
+      if (!e.lead_id) return;
+      let r = byLead.get(e.lead_id);
+      if (!r) {
+        r = { lead_id: e.lead_id, lead_name: e.lead_name, lead_company: e.lead_company, types: new Set<string>() };
+        byLead.set(e.lead_id, r);
+      }
+      r.types.add(e.event_type);
+      if (e.event_type === "scheduled") r.scheduledDate = e.event_date;
+    });
+    return Array.from(byLead.values())
+      .filter(r => r.types.has("scheduled") && !r.types.has("realized") && !r.types.has("no_show") && !r.types.has("out_of_icp"))
+      .sort((a, b) => (a.scheduledDate || "").localeCompare(b.scheduledDate || ""));
+  }, [meetingEventDetails, selectedSDR]);
+
+  const handleMarkOutcome = async (leadId: string, eventType: "realized" | "no_show" | "out_of_icp") => {
+    setMarkingKey(`${leadId}:${eventType}`);
+    try {
+      const staffId = await getCurrentStaffId();
+      if (!staffId) {
+        toast.error("Não foi possível identificar seu usuário no sistema.");
+        return;
+      }
+      const { data: lead } = await supabase
+        .from("crm_leads")
+        .select("pipeline_id, stage_id, owner_staff_id")
+        .eq("id", leadId)
+        .single();
+      if (!lead?.pipeline_id || !lead?.stage_id) {
+        toast.error("Lead sem pipeline/etapa — não dá pra marcar por aqui.");
+        return;
+      }
+      const ok = await trackMeetingEvent(
+        leadId,
+        lead.pipeline_id,
+        lead.stage_id,
+        eventType,
+        lead.owner_staff_id || staffId,
+        staffId
+      );
+      if (!ok) {
+        toast.error("Não foi possível marcar (talvez já esteja marcado).");
+        return;
+      }
+      toast.success(
+        eventType === "realized" ? "Reunião marcada como realizada."
+          : eventType === "no_show" ? "Reunião marcada como no-show."
+          : "Lead marcado como fora do ICP."
+      );
+      await loadData();
+    } catch (err: any) {
+      console.error("Erro ao marcar desfecho:", err);
+      toast.error(err?.message || "Erro ao marcar desfecho.");
+    } finally {
+      setMarkingKey(null);
+    }
+  };
+
   // Card limpo (sem glow/escala) — visual profissional
   const GlowCard = ({ children, className = "" }: { children: React.ReactNode; className?: string; glowColor?: string }) => (
     <div className={cn("relative rounded-lg border border-border/60 bg-card overflow-hidden transition-colors hover:border-border", className)}>
@@ -612,9 +681,13 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       <div className={cn("grid gap-3", cols || "grid-cols-2 sm:grid-cols-3")}>{children}</div>
     </div>
   );
-  const Metric = ({ tone, label, value, color, big }: { tone: string; label: string; value: string | number; color?: string; big?: boolean }) => (
-    <div className="rounded-lg border bg-card p-4" style={{ borderColor: `${tone}26` }}>
-      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
+  const Metric = ({ tone, label, value, color, big, onClick }: { tone: string; label: string; value: string | number; color?: string; big?: boolean; onClick?: () => void }) => (
+    <div
+      className={cn("rounded-lg border bg-card p-4", onClick && "cursor-pointer hover:bg-muted/40 transition-colors")}
+      style={{ borderColor: `${tone}26` }}
+      onClick={onClick}
+    >
+      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{label}{onClick ? " ›" : ""}</p>
       <p className={cn("font-semibold mt-1.5 tabular-nums", big ? "text-2xl" : "text-lg")} style={color ? { color } : undefined}>{value}</p>
     </div>
   );
@@ -697,7 +770,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         <Metric tone={TONE.amber} label="Cancelamentos" value={visibleMetrics.cancelamentos} />
         <Metric tone={TONE.amber} label="Reagendamentos" value={visibleMetrics.reagendamentos} />
         <Metric tone={TONE.amber} label="No Show" value={visibleMetrics.noShow} color={visibleMetrics.noShow > 0 ? "#f87171" : undefined} />
-        <Metric tone={TONE.amber} label="Sem Desfecho" value={visibleMetrics.semDesfecho} color={visibleMetrics.semDesfecho > 0 ? "#fb923c" : undefined} />
+        <Metric tone={TONE.amber} label="Sem Desfecho" value={visibleMetrics.semDesfecho} color={visibleMetrics.semDesfecho > 0 ? "#fb923c" : undefined} onClick={semDesfechoLeads.length > 0 ? () => setSemDesfechoOpen(true) : undefined} />
         <Metric tone={TONE.amber} label="% da Meta" value={`${visibleMetrics.metaPercent.toFixed(1)}%`} color={visibleMetrics.metaPercent >= 100 ? "#34d399" : "#fbbf24"} />
       </Section>
 
@@ -929,6 +1002,63 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         onOpenChange={setImportDialogOpen}
         onSuccess={() => window.location.reload()}
       />
+
+      <Dialog open={semDesfechoOpen} onOpenChange={setSemDesfechoOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Reuniões agendadas sem desfecho</DialogTitle>
+            <DialogDescription>
+              Foram agendadas mas ninguém marcou o resultado. Marque cada uma pra contar certo no mês.
+            </DialogDescription>
+          </DialogHeader>
+          {semDesfechoLeads.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">Nada pendente. Tudo marcado.</p>
+          ) : (
+            <div className="space-y-2">
+              {semDesfechoLeads.map((l) => (
+                <div key={l.lead_id} className="flex items-center gap-3 rounded-lg border p-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{l.lead_name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {l.lead_company ? `${l.lead_company} · ` : ""}
+                      {l.scheduledDate ? `agendada ${format(new Date(l.scheduledDate), "dd/MM/yy")}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="outline" size="sm"
+                      className="h-8 gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                      disabled={!!markingKey}
+                      onClick={() => handleMarkOutcome(l.lead_id, "realized")}
+                    >
+                      {markingKey === `${l.lead_id}:realized` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                      Realizada
+                    </Button>
+                    <Button
+                      variant="outline" size="sm"
+                      className="h-8 gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      disabled={!!markingKey}
+                      onClick={() => handleMarkOutcome(l.lead_id, "no_show")}
+                    >
+                      {markingKey === `${l.lead_id}:no_show` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />}
+                      No-show
+                    </Button>
+                    <Button
+                      variant="ghost" size="sm"
+                      className="h-8 gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                      disabled={!!markingKey}
+                      onClick={() => handleMarkOutcome(l.lead_id, "out_of_icp")}
+                      title="Fora do ICP"
+                    >
+                      {markingKey === `${l.lead_id}:out_of_icp` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

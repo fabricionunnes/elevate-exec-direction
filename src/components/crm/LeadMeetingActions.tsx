@@ -26,7 +26,7 @@ interface LeadMeetingActionsProps {
   className?: string;
 }
 
-const trackMeetingEvent = async (
+export const trackMeetingEvent = async (
   leadId: string,
   pipelineId: string,
   stageId: string,
@@ -174,7 +174,7 @@ const trackMeetingEvent = async (
   }
 };
 
-const getCurrentStaffId = async (): Promise<string | null> => {
+export const getCurrentStaffId = async (): Promise<string | null> => {
   const {
     data: { user },
   } = await supabase.auth.getUser();
