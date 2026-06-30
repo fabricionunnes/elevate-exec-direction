@@ -42,6 +42,7 @@ interface SDRMetrics {
   qualified: number;
   meetings: number;
   noShowPercent: number;
+  semDesfecho: number;
 }
 
 interface SaleBySDR {
@@ -86,6 +87,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     cancelamentos: 0,
     reagendamentos: 0,
     noShow: 0,
+    semDesfecho: 0,
     metaPercent: 0,
     metaAgendamentos: 122,
     metaReunioes: 99,
@@ -308,6 +310,20 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       const meetingEventsRealized = uniqueByLead.filter(e => e.event_type === "realized").length;
       const meetingEventsNoShow = uniqueByLead.filter(e => e.event_type === "no_show").length;
 
+      // Reuniões agendadas SEM DESFECHO: lead foi agendado mas nunca virou realizada/no-show/fora do ICP
+      const leadEventTypes = new Map<string, Set<string>>();
+      uniqueAttributedMeetingEvents.forEach((e: any) => {
+        if (!e.lead_id) return;
+        if (!leadEventTypes.has(e.lead_id)) leadEventTypes.set(e.lead_id, new Set());
+        leadEventTypes.get(e.lead_id)!.add(e.event_type);
+      });
+      let meetingEventsSemDesfecho = 0;
+      leadEventTypes.forEach((types) => {
+        if (types.has("scheduled") && !types.has("realized") && !types.has("no_show") && !types.has("out_of_icp")) {
+          meetingEventsSemDesfecho++;
+        }
+      });
+
       const eventDetails: MeetingEventDetail[] = uniqueAttributedMeetingEvents
         .filter(e => ["scheduled", "realized", "no_show", "out_of_icp"].includes(e.event_type))
         .map(e => ({
@@ -354,6 +370,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         cancelamentos: totalCancelled,
         reagendamentos: totalRescheduled,
         noShow: totalNoShow,
+        semDesfecho: meetingEventsSemDesfecho,
         metaPercent: metaAgendamentos > 0 ? (totalScheduled / metaAgendamentos) * 100 : 0,
         metaAgendamentos,
         metaReunioes,
@@ -381,6 +398,20 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         const sdrEventsRealized = sdrMeetingEvents.filter(e => e.event_type === "realized").length;
         const sdrEventsNoShow = sdrMeetingEvents.filter(e => e.event_type === "no_show").length;
 
+        // Agendadas sem desfecho deste SDR
+        const sdrLeadEventTypes = new Map<string, Set<string>>();
+        sdrMeetingEvents.forEach((e: any) => {
+          if (!e.lead_id) return;
+          if (!sdrLeadEventTypes.has(e.lead_id)) sdrLeadEventTypes.set(e.lead_id, new Set());
+          sdrLeadEventTypes.get(e.lead_id)!.add(e.event_type);
+        });
+        let sdrSemDesfecho = 0;
+        sdrLeadEventTypes.forEach((types) => {
+          if (types.has("scheduled") && !types.has("realized") && !types.has("no_show") && !types.has("out_of_icp")) {
+            sdrSemDesfecho++;
+          }
+        });
+
         const approaches = sdrActivities.reduce((sum, a) => sum + (a.approaches || 0), 0);
         const connections = sdrActivities.reduce((sum, a) => sum + (a.connections || 0), 0);
         const scheduled = sdrActivities.reduce((sum, a) => sum + (a.scheduled || 0), 0);
@@ -405,6 +436,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
           qualified,
           meetings,
           noShowPercent: noShowPct,
+          semDesfecho: sdrSemDesfecho,
         };
       });
       setSDRs(sdrMetricsList);
@@ -541,6 +573,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     const qualificacoes = filteredSdrs.reduce((sum, sdr) => sum + sdr.qualified, 0);
     const cancelamentos = filteredSdrs.reduce((sum, sdr) => sum + sdr.cancelled, 0);
     const reagendamentos = filteredSdrs.reduce((sum, sdr) => sum + sdr.rescheduled, 0);
+    const semDesfecho = filteredSdrs.reduce((sum, sdr) => sum + (sdr.semDesfecho || 0), 0);
     const showUpPercent = agendamentos > 0 ? (reunioes / agendamentos) * 100 : 0;
     const noShowPercent = agendamentos > 0 ? (noShow / agendamentos) * 100 : 0;
 
@@ -549,6 +582,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       agendamentos,
       reunioes,
       noShow,
+      semDesfecho,
       qualificacoes,
       cancelamentos,
       reagendamentos,
@@ -656,13 +690,14 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       </div>
 
       {/* ── Atividades (âmbar) ── */}
-      <Section tone={TONE.amber} label="Atividades" cols="grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
+      <Section tone={TONE.amber} label="Atividades" cols="grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
         <Metric tone={TONE.amber} label="Agendamentos" value={visibleMetrics.agendamentos} color={TONE.amber} />
         <Metric tone={TONE.amber} label="Reuniões" value={visibleMetrics.reunioes} />
         <Metric tone={TONE.amber} label="Qualificações" value={visibleMetrics.qualificacoes} />
         <Metric tone={TONE.amber} label="Cancelamentos" value={visibleMetrics.cancelamentos} />
         <Metric tone={TONE.amber} label="Reagendamentos" value={visibleMetrics.reagendamentos} />
         <Metric tone={TONE.amber} label="No Show" value={visibleMetrics.noShow} color={visibleMetrics.noShow > 0 ? "#f87171" : undefined} />
+        <Metric tone={TONE.amber} label="Sem Desfecho" value={visibleMetrics.semDesfecho} color={visibleMetrics.semDesfecho > 0 ? "#fb923c" : undefined} />
         <Metric tone={TONE.amber} label="% da Meta" value={`${visibleMetrics.metaPercent.toFixed(1)}%`} color={visibleMetrics.metaPercent >= 100 ? "#34d399" : "#fbbf24"} />
       </Section>
 
