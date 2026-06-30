@@ -62,6 +62,7 @@ import { sendPaymentNotification } from "@/utils/paymentNotification";
 import { ReceivablePaymentDialog } from "./ReceivablePaymentDialog";
 import { EditPaymentsDialog } from "./EditPaymentsDialog";
 import { ReceivableEditDialog } from "./ReceivableEditDialog";
+import { DistributeAdjustmentDialog } from "./DistributeAdjustmentDialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -297,6 +298,7 @@ export function ReceivablesPanel() {
   };
 
   const [deletingAdjId, setDeletingAdjId] = useState<string | null>(null);
+  const [distributeTarget, setDistributeTarget] = useState<Receivable | null>(null);
 
   const handleDeleteAdjustment = async (receivable: Receivable) => {
     const ok = window.confirm(
@@ -999,6 +1001,12 @@ export function ReceivablesPanel() {
                             Duplicar
                           </DropdownMenuItem>
                           {receivable.description?.startsWith("Ajuste automático Asaas") && (
+                            <DropdownMenuItem onClick={() => setDistributeTarget(receivable)}>
+                              <Filter className="h-4 w-4 mr-2" />
+                              Distribuir ajuste
+                            </DropdownMenuItem>
+                          )}
+                          {receivable.description?.startsWith("Ajuste automático Asaas") && (
                             <DropdownMenuItem
                               className="text-red-600"
                               disabled={deletingAdjId === receivable.id}
@@ -1142,6 +1150,22 @@ export function ReceivablesPanel() {
         onSuccess={() => {
           loadData();
         }}
+      />
+
+      <DistributeAdjustmentDialog
+        open={!!distributeTarget}
+        onOpenChange={(o) => { if (!o) setDistributeTarget(null); }}
+        kind="receivable"
+        adjustment={distributeTarget ? {
+          id: distributeTarget.id,
+          description: distributeTarget.description,
+          amount: Number(distributeTarget.amount),
+        } : null}
+        categories={categories}
+        existingAccounts={receivables
+          .filter(r => (r.status === "pending" || r.status === "overdue") && !r.description?.startsWith("Ajuste automático Asaas"))
+          .map(r => ({ id: r.id, description: r.description, amount: Number(r.amount), party: r.company?.name || r.custom_receiver_name || null }))}
+        onDone={() => { setDistributeTarget(null); loadData(); }}
       />
     </div>
   );
