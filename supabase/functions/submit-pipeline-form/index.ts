@@ -645,8 +645,17 @@ async function sendWhatsAppNotification(
 
   console.log('[submit-pipeline-form] Numbers to notify:', numbersToNotify);
 
+  // Stevo Manager V2 (*.stevo.chat) usa POST /send/text (sem instance no path);
+  // Evolution API padrão usa POST /message/sendText/{instance}. Detecta pelo host.
+  const isV2 = (() => {
+    try { return new URL(instance.api_url).hostname.toLowerCase().endsWith('.stevo.chat'); }
+    catch { return false; }
+  })();
+  const sendUrl = isV2
+    ? `${instance.api_url}/send/text`
+    : `${instance.api_url}/message/sendText/${instance.instance_name}`;
+
   for (const phone of numbersToNotify) {
-    const sendUrl = `${instance.api_url}/message/sendText/${instance.instance_name}`;
     const payload = JSON.stringify({ number: phone, text: message });
     const maxRetries = 2;
 
