@@ -1326,7 +1326,7 @@ export function PayablesPanel() {
         categories={categories}
         existingAccounts={payables
           .filter(p => (p.status === "pending" || p.status === "overdue") && !p.description?.startsWith("Ajuste automático Asaas"))
-          .map(p => ({ id: p.id, description: p.description, amount: Number(p.amount), party: p.supplier_name }))}
+          .map(p => ({ id: p.id, description: p.description, amount: Number(p.amount), party: p.supplier_name, due_date: p.due_date }))}
         onDone={() => { setDistributeTarget(null); loadData(); }}
       />
     </div>

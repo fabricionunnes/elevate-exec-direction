@@ -36,7 +36,17 @@ export interface ExistingAccount {
   description: string;
   amount: number;
   party: string | null;
+  due_date?: string | null;
 }
+
+const currentMonthStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 interface NewLine {
   key: string;
@@ -81,14 +91,21 @@ export function DistributeAdjustmentDialog({
   const [pickedIds, setPickedIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [existingSearch, setExistingSearch] = useState("");
+  const [monthFilter, setMonthFilter] = useState(currentMonthStr());
+  const [includeOverdue, setIncludeOverdue] = useState(true);
 
   const filteredExisting = useMemo(() => {
     const q = existingSearch.trim().toLowerCase();
-    if (!q) return existingAccounts;
-    return existingAccounts.filter(
-      (a) => (a.description || "").toLowerCase().includes(q) || (a.party || "").toLowerCase().includes(q)
-    );
-  }, [existingAccounts, existingSearch]);
+    const today = todayStr();
+    return existingAccounts.filter((a) => {
+      const due = a.due_date || "";
+      const inMonth = !!due && due.slice(0, 7) === monthFilter;
+      const overdue = includeOverdue && !!due && due < today;
+      if (!inMonth && !overdue) return false;
+      if (q && !((a.description || "").toLowerCase().includes(q) || (a.party || "").toLowerCase().includes(q))) return false;
+      return true;
+    });
+  }, [existingAccounts, existingSearch, monthFilter, includeOverdue]);
 
   const partyLabel = kind === "payable" ? "Fornecedor" : "Recebedor";
   const total = adjustment?.amount || 0;
@@ -119,6 +136,8 @@ export function DistributeAdjustmentDialog({
     setPickedIds(new Set());
     setSaving(false);
     setExistingSearch("");
+    setMonthFilter(currentMonthStr());
+    setIncludeOverdue(true);
   };
 
   const close = () => {
@@ -277,8 +296,23 @@ export function DistributeAdjustmentDialog({
         {existingAccounts.length > 0 && (
           <div className="space-y-2">
             <Label className="text-sm font-semibold">
-              Puxar contas já lançadas — {filteredExisting.length}{existingSearch.trim() ? ` de ${existingAccounts.length}` : ""} {existingAccounts.length === 1 ? "conta" : "contas"} (dá baixa e abate do ajuste)
+              Puxar contas já lançadas — {filteredExisting.length} {filteredExisting.length === 1 ? "conta" : "contas"} (dá baixa e abate do ajuste)
             </Label>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Mês:</span>
+                <input
+                  type="month"
+                  value={monthFilter}
+                  onChange={(e) => setMonthFilter(e.target.value)}
+                  className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                />
+              </div>
+              <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+                <Checkbox checked={includeOverdue} onCheckedChange={(v) => setIncludeOverdue(!!v)} />
+                Incluir atrasadas
+              </label>
+            </div>
             <Input
               placeholder="Pesquisar conta pelo nome ou fornecedor..."
               value={existingSearch}

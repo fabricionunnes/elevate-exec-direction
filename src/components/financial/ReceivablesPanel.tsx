@@ -1164,7 +1164,7 @@ export function ReceivablesPanel() {
         categories={categories}
         existingAccounts={receivables
           .filter(r => (r.status === "pending" || r.status === "overdue") && !r.description?.startsWith("Ajuste automático Asaas"))
-          .map(r => ({ id: r.id, description: r.description, amount: Number(r.amount), party: r.company?.name || r.custom_receiver_name || null }))}
+          .map(r => ({ id: r.id, description: r.description, amount: Number(r.amount), party: r.company?.name || r.custom_receiver_name || null, due_date: r.due_date }))}
         onDone={() => { setDistributeTarget(null); loadData(); }}
       />
     </div>
