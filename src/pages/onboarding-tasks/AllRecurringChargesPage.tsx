@@ -38,7 +38,7 @@ import {
   ArrowUpCircle, Calculator, CheckCircle2, Undo2, Clock, AlertTriangle,
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
   ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
-  TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays, Bell, Truck, MessageSquare, ChevronDown, ChevronRight, Headphones,
+  TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays, Bell, Truck, MessageSquare, ChevronDown, ChevronRight, Headphones, Split,
   ArrowUpDown, ArrowUp, ArrowDown, FileCheck, Link2, DollarSign, Scale,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -66,6 +66,7 @@ import { FinancialPlanningPanel } from "@/components/financial/FinancialPlanning
 import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
 import { FinancialImportDialog } from "@/components/financial/FinancialImportDialog";
+import { DistributeAdjustmentDialog } from "@/components/financial/DistributeAdjustmentDialog";
 import { CFOFilterBar, type CFOFilters } from "@/components/financial/CFOFilterBar";
 import { BillingRulesPanel } from "@/components/financial/BillingRulesPanel";
 import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
@@ -241,6 +242,8 @@ export default function AllRecurringChargesPage() {
   const [staffList, setStaffList] = useState<any[]>([]);
   const [payables, setPayables] = useState<FinancialEntry[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [distributePayable, setDistributePayable] = useState<any>(null);
+  const [distributeReceivable, setDistributeReceivable] = useState<any>(null);
   const [processingInvoiceId, setProcessingInvoiceId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; invoiceId: string; action: "confirm" | "revert" | "revert_payable"; description: string }>({
     open: false, invoiceId: "", action: "confirm", description: "",
@@ -1968,6 +1971,12 @@ export default function AllRecurringChargesPage() {
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                   )}
+                                  {isMaster && inv.source_table === "financial_receivables" && inv.description?.startsWith("Ajuste automático Asaas") && (
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" title="Distribuir ajuste"
+                                      onClick={() => setDistributeReceivable(inv)}>
+                                      <Split className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
                                   <Button variant="ghost" size="icon" className="h-7 w-7" title="Duplicar"
                                     onClick={() => {
                                       setReceivableForm({
@@ -2286,6 +2295,12 @@ export default function AllRecurringChargesPage() {
                                   onClick={() => setPayableEditDialog({ open: true, payable: p })}>
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
+                                {isMaster && p.description?.startsWith("Ajuste automático Asaas") && (
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Distribuir ajuste"
+                                    onClick={() => setDistributePayable(p)}>
+                                    <Split className="h-4 w-4 text-primary" />
+                                  </Button>
+                                )}
                                 {isMaster && (
                                   <Button variant="ghost" size="icon" className="h-8 w-8" title="Excluir"
                                     onClick={async () => {
@@ -2897,6 +2912,37 @@ export default function AllRecurringChargesPage() {
         open={isStatementOpen}
         onOpenChange={setIsStatementOpen}
         formatCurrencyCents={formatCurrencyCents}
+      />
+      {/* Distribuir Ajuste Asaas */}
+      <DistributeAdjustmentDialog
+        open={!!distributePayable}
+        onOpenChange={(o) => { if (!o) setDistributePayable(null); }}
+        kind="payable"
+        adjustment={distributePayable ? {
+          id: distributePayable.id,
+          description: distributePayable.description,
+          amount: Number(distributePayable.amount),
+        } : null}
+        categories={staffCategories.filter((c: any) => c.type === "despesa").map((c: any) => ({ id: c.id, name: c.name }))}
+        existingAccounts={payables
+          .filter((x: any) => (x.status === "pending" || x.status === "overdue") && !x.description?.startsWith("Ajuste automático Asaas"))
+          .map((x: any) => ({ id: x.id, description: x.description, amount: Number(x.amount), party: x.supplier_name }))}
+        onDone={() => { setDistributePayable(null); loadData(); }}
+      />
+      <DistributeAdjustmentDialog
+        open={!!distributeReceivable}
+        onOpenChange={(o) => { if (!o) setDistributeReceivable(null); }}
+        kind="receivable"
+        adjustment={distributeReceivable ? {
+          id: distributeReceivable.id,
+          description: distributeReceivable.description,
+          amount: Number(distributeReceivable.amount_cents || 0) / 100,
+        } : null}
+        categories={staffCategories.filter((c: any) => c.type === "receita").map((c: any) => ({ id: c.id, name: c.name }))}
+        existingAccounts={invoices
+          .filter((x: any) => x.source_table === "financial_receivables" && (x.status === "pending" || x.status === "overdue") && !x.description?.startsWith("Ajuste automático Asaas"))
+          .map((x: any) => ({ id: x.id, description: x.description, amount: Number(x.amount_cents || 0) / 100, party: x.company_name || x.custom_receiver_name || null }))}
+        onDone={() => { setDistributeReceivable(null); loadData(); }}
       />
       {/* Transfer Dialog */}
       <Dialog open={isTransferDialogOpen} onOpenChange={setIsTransferDialogOpen}>
