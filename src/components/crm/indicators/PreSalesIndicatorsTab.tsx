@@ -74,7 +74,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
   const [selectedPipeline, setSelectedPipeline] = useState<string>("all");
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [semDesfechoOpen, setSemDesfechoOpen] = useState(false);
+  const [leadListType, setLeadListType] = useState<"scheduled" | "realized" | "no_show" | "sem_desfecho" | null>(null);
   const [markingKey, setMarkingKey] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
@@ -620,6 +620,29 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       .sort((a, b) => (a.scheduledDate || "").localeCompare(b.scheduledDate || ""));
   }, [meetingEventDetails, selectedSDR]);
 
+  // Leads por trás de cada card (agendadas/realizadas/no-show)
+  const leadsForType = (type: "scheduled" | "realized" | "no_show" | "sem_desfecho") => {
+    if (type === "sem_desfecho") return semDesfechoLeads;
+    const source = selectedSDR !== "all"
+      ? meetingEventDetails.filter(e => e.attributed_sdr_id === selectedSDR)
+      : meetingEventDetails;
+    const byLead = new Map<string, { lead_id: string; lead_name: string; lead_company?: string; types: Set<string>; scheduledDate?: string }>();
+    source.forEach((e) => {
+      if (!e.lead_id || e.event_type !== type) return;
+      if (!byLead.has(e.lead_id)) {
+        byLead.set(e.lead_id, { lead_id: e.lead_id, lead_name: e.lead_name, lead_company: e.lead_company, types: new Set([type]), scheduledDate: e.event_date });
+      }
+    });
+    return Array.from(byLead.values());
+  };
+  const LEAD_LIST_TITLE: Record<string, string> = {
+    scheduled: "Reuniões agendadas",
+    realized: "Reuniões realizadas",
+    no_show: "No-shows",
+    sem_desfecho: "Reuniões agendadas sem desfecho",
+  };
+  const dialogLeads = leadListType ? leadsForType(leadListType) : [];
+
   const handleMarkOutcome = async (leadId: string, eventType: "realized" | "no_show" | "out_of_icp") => {
     setMarkingKey(`${leadId}:${eventType}`);
     try {
@@ -764,13 +787,13 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
 
       {/* ── Atividades (âmbar) ── */}
       <Section tone={TONE.amber} label="Atividades" cols="grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
-        <Metric tone={TONE.amber} label="Agendamentos" value={visibleMetrics.agendamentos} color={TONE.amber} />
-        <Metric tone={TONE.amber} label="Reuniões" value={visibleMetrics.reunioes} />
+        <Metric tone={TONE.amber} label="Agendamentos" value={visibleMetrics.agendamentos} color={TONE.amber} onClick={leadsForType("scheduled").length > 0 ? () => setLeadListType("scheduled") : undefined} />
+        <Metric tone={TONE.amber} label="Reuniões" value={visibleMetrics.reunioes} onClick={leadsForType("realized").length > 0 ? () => setLeadListType("realized") : undefined} />
         <Metric tone={TONE.amber} label="Qualificações" value={visibleMetrics.qualificacoes} />
         <Metric tone={TONE.amber} label="Cancelamentos" value={visibleMetrics.cancelamentos} />
         <Metric tone={TONE.amber} label="Reagendamentos" value={visibleMetrics.reagendamentos} />
-        <Metric tone={TONE.amber} label="No Show" value={visibleMetrics.noShow} color={visibleMetrics.noShow > 0 ? "#f87171" : undefined} />
-        <Metric tone={TONE.amber} label="Sem Desfecho" value={visibleMetrics.semDesfecho} color={visibleMetrics.semDesfecho > 0 ? "#fb923c" : undefined} onClick={semDesfechoLeads.length > 0 ? () => setSemDesfechoOpen(true) : undefined} />
+        <Metric tone={TONE.amber} label="No Show" value={visibleMetrics.noShow} color={visibleMetrics.noShow > 0 ? "#f87171" : undefined} onClick={leadsForType("no_show").length > 0 ? () => setLeadListType("no_show") : undefined} />
+        <Metric tone={TONE.amber} label="Sem Desfecho" value={visibleMetrics.semDesfecho} color={visibleMetrics.semDesfecho > 0 ? "#fb923c" : undefined} onClick={semDesfechoLeads.length > 0 ? () => setLeadListType("sem_desfecho") : undefined} />
         <Metric tone={TONE.amber} label="% da Meta" value={`${visibleMetrics.metaPercent.toFixed(1)}%`} color={visibleMetrics.metaPercent >= 100 ? "#34d399" : "#fbbf24"} />
       </Section>
 
@@ -1003,54 +1026,63 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         onSuccess={() => window.location.reload()}
       />
 
-      <Dialog open={semDesfechoOpen} onOpenChange={setSemDesfechoOpen}>
+      <Dialog open={leadListType !== null} onOpenChange={(o) => { if (!o) setLeadListType(null); }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Reuniões agendadas sem desfecho</DialogTitle>
+            <DialogTitle>{leadListType ? LEAD_LIST_TITLE[leadListType] : ""}</DialogTitle>
             <DialogDescription>
-              Foram agendadas mas ninguém marcou o resultado. Marque cada uma pra contar certo no mês.
+              {leadListType === "sem_desfecho"
+                ? "Foram agendadas mas ninguém marcou o resultado. Marque cada uma pra contar certo no mês, ou abra o negócio."
+                : "Clique em \"Abrir negócio\" pra tratar o lead. Abre em nova aba."}
             </DialogDescription>
           </DialogHeader>
-          {semDesfechoLeads.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">Nada pendente. Tudo marcado.</p>
+          {dialogLeads.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">Nenhum lead aqui.</p>
           ) : (
             <div className="space-y-2">
-              {semDesfechoLeads.map((l) => (
+              {dialogLeads.map((l) => (
                 <div key={l.lead_id} className="flex items-center gap-3 rounded-lg border p-3">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{l.lead_name}</p>
                     <p className="text-[11px] text-muted-foreground truncate">
                       {l.lead_company ? `${l.lead_company} · ` : ""}
-                      {l.scheduledDate ? `agendada ${format(new Date(l.scheduledDate), "dd/MM/yy")}` : ""}
+                      {l.scheduledDate ? format(new Date(l.scheduledDate), "dd/MM/yy") : ""}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="outline" size="sm"
-                      className="h-8 gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                      disabled={!!markingKey}
-                      onClick={() => handleMarkOutcome(l.lead_id, "realized")}
-                    >
-                      {markingKey === `${l.lead_id}:realized` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
-                      Realizada
-                    </Button>
-                    <Button
-                      variant="outline" size="sm"
-                      className="h-8 gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
-                      disabled={!!markingKey}
-                      onClick={() => handleMarkOutcome(l.lead_id, "no_show")}
-                    >
-                      {markingKey === `${l.lead_id}:no_show` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />}
-                      No-show
-                    </Button>
-                    <Button
-                      variant="ghost" size="sm"
-                      className="h-8 gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                      disabled={!!markingKey}
-                      onClick={() => handleMarkOutcome(l.lead_id, "out_of_icp")}
-                      title="Fora do ICP"
-                    >
-                      {markingKey === `${l.lead_id}:out_of_icp` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+                    {leadListType === "sem_desfecho" && (
+                      <>
+                        <Button
+                          variant="outline" size="sm"
+                          className="h-8 gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                          disabled={!!markingKey}
+                          onClick={() => handleMarkOutcome(l.lead_id, "realized")}
+                        >
+                          {markingKey === `${l.lead_id}:realized` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                          Realizada
+                        </Button>
+                        <Button
+                          variant="outline" size="sm"
+                          className="h-8 gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          disabled={!!markingKey}
+                          onClick={() => handleMarkOutcome(l.lead_id, "no_show")}
+                        >
+                          {markingKey === `${l.lead_id}:no_show` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />}
+                          No-show
+                        </Button>
+                        <Button
+                          variant="ghost" size="sm"
+                          className="h-8 gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                          disabled={!!markingKey}
+                          onClick={() => handleMarkOutcome(l.lead_id, "out_of_icp")}
+                          title="Fora do ICP"
+                        >
+                          {markingKey === `${l.lead_id}:out_of_icp` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+                        </Button>
+                      </>
+                    )}
+                    <Button asChild variant="outline" size="sm" className="h-8">
+                      <a href={`#/crm/leads/${l.lead_id}`} target="_blank" rel="noreferrer">Abrir negócio</a>
                     </Button>
                   </div>
                 </div>

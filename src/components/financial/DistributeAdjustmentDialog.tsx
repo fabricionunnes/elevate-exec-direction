@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -270,7 +269,7 @@ export function DistributeAdjustmentDialog({
             <Label className="text-sm font-semibold">
               Puxar contas já lançadas (dá baixa e abate do ajuste)
             </Label>
-            <ScrollArea className="max-h-44 rounded-lg border">
+            <div className="max-h-56 overflow-y-auto rounded-lg border">
               <div className="divide-y">
                 {existingAccounts.map((a) => (
                   <label
@@ -286,7 +285,7 @@ export function DistributeAdjustmentDialog({
                   </label>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
           </div>
         )}
 
