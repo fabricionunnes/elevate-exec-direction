@@ -144,7 +144,8 @@ Deno.serve(async (req) => {
     } = body;
 
     if (!form_token) return jsonResponse({ error: 'Token do formulário é obrigatório' }, 400);
-    if (!nome || !telefone || !email) return jsonResponse({ error: 'Campos obrigatórios: nome, telefone, email' }, 400);
+    // Email é opcional: formulários de captação rápida (ex.: landing /sessao) coletam só nome + WhatsApp.
+    if (!nome || !telefone) return jsonResponse({ error: 'Campos obrigatórios: nome, telefone' }, 400);
 
     const { data: form } = await supabase
       .from('crm_pipeline_forms')
@@ -164,11 +165,14 @@ Deno.serve(async (req) => {
 
     // ── Check for existing lead by email or phone in the same pipeline ──
     const cleanPhone = telefone.replace(/\D/g, '');
+    // Dedup por email quando houver; sempre por telefone.
+    const dedupeFilters = [`phone.eq.${cleanPhone}`];
+    if (email) dedupeFilters.unshift(`email.eq.${email}`);
     const { data: existingLead } = await supabase
       .from('crm_leads')
       .select('id, pipeline_id, stage_id, tenant_id')
       .eq('pipeline_id', form.pipeline_id)
-      .or(`email.eq.${email},phone.eq.${cleanPhone}`)
+      .or(dedupeFilters.join(','))
       .limit(1)
       .maybeSingle();
 
@@ -188,7 +192,7 @@ Deno.serve(async (req) => {
         .update({
           name: nome,
           phone: cleanPhone,
-          email,
+          ...(email ? { email } : {}),
           entered_pipeline_at: reentryAt,
           ...(empresa ? { company: empresa } : {}),
           ...(desafio ? { main_pain: desafio } : {}),
@@ -300,7 +304,7 @@ Deno.serve(async (req) => {
       .insert({
         name: nome,
         phone: cleanPhone,
-        email,
+        email: email || null,
         company: empresa || null,
         main_pain: desafio || null,
         notes,
