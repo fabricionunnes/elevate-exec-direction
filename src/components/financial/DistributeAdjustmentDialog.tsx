@@ -99,12 +99,14 @@ export function DistributeAdjustmentDialog({
     const q = existingSearch.trim().toLowerCase();
     const today = todayStr();
     return existingAccounts.filter((a) => {
+      const matchesText = !q || (a.description || "").toLowerCase().includes(q) || (a.party || "").toLowerCase().includes(q);
+      if (!matchesText) return false;
+      // Buscando: procura em TODOS os meses (ignora filtro de mês/atrasadas).
+      if (q) return true;
       const due = a.due_date || "";
       const inMonth = !!due && due.slice(0, 7) === monthFilter;
       const overdue = includeOverdue && !!due && due < today;
-      if (!inMonth && !overdue) return false;
-      if (q && !((a.description || "").toLowerCase().includes(q) || (a.party || "").toLowerCase().includes(q))) return false;
-      return true;
+      return inMonth || overdue;
     });
   }, [existingAccounts, existingSearch, monthFilter, includeOverdue]);
 
@@ -313,7 +315,7 @@ export function DistributeAdjustmentDialog({
         {existingAccounts.length > 0 && (
           <div className="space-y-2">
             <Label className="text-sm font-semibold">
-              Puxar contas já lançadas — {filteredExisting.length} {filteredExisting.length === 1 ? "conta" : "contas"} (dá baixa e abate do ajuste)
+              Puxar contas já lançadas — {filteredExisting.length} {filteredExisting.length === 1 ? "conta" : "contas"}{existingSearch.trim() ? " (busca em todos os meses)" : ""} (dá baixa e abate do ajuste)
             </Label>
             <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-2">
