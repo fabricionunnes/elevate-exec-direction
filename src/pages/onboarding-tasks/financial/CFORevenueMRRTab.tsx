@@ -37,19 +37,25 @@ export default function CFORevenueMRRTab({ invoices, companies, filters, formatC
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   })();
 
-  // Helper: only count as MRR if it's recurring AND has more than 1 installment
-  const isMRR = (i: any) => (i.total_installments || 1) > 1;
+  // MRR = SOMENTE clientes em recorrência mensal. Regra: empresa SEM data de término
+  // de contrato paga mensalmente (entra no MRR). Empresa COM data de término pagou no
+  // cartão (anual/semestral, à vista) e NÃO entra no MRR (nem ganho, nem perdido).
+  const recurringCompanyIds = useMemo(
+    () => new Set((companies || []).filter((c: any) => !c.contract_end_date).map((c: any) => c.id)),
+    [companies]
+  );
+  const isMRR = (i: any) => recurringCompanyIds.has(i.company_id);
 
   const mrrBreakdown = useMemo(() => {
-    // Current MRR: recurring invoices this month with multiple installments
+    // MRR atual: faturas deste mês de clientes mensais (sem data de término)
     const currentRecurring = invoices.filter(i => i.due_date?.startsWith(monthStr) && isMRR(i));
     const mrrAtual = currentRecurring.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
 
-    // Previous MRR
+    // MRR mês anterior
     const prevRecurring = invoices.filter(i => i.due_date?.startsWith(prevMonthStr) && isMRR(i));
     const mrrAnterior = prevRecurring.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
 
-    // New MRR: companies with recurring invoices this month but not last month
+    // Novo MRR: clientes mensais com receita este mês e não no mês anterior
     const currentCompanies = new Set(currentRecurring.map(i => i.company_id));
     const prevCompanies = new Set(prevRecurring.map(i => i.company_id));
 
@@ -57,24 +63,13 @@ export default function CFORevenueMRRTab({ invoices, companies, filters, formatC
     const novoMrr = currentRecurring.filter(i => newCompanies.includes(i.company_id))
       .reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
 
-    // Churn MRR: only companies that actively cancelled (not non-renewals)
-    // A company that simply finished all installments is NOT churn
-    const churnedCompanies = [...prevCompanies].filter(id => {
-      if (currentCompanies.has(id)) return false;
-      // Check if this company still has remaining installments that won't be paid
-      const lastInvoice = prevRecurring.filter(i => i.company_id === id)
-        .sort((a: any, b: any) => (a.installment_number || 0) - (b.installment_number || 0))
-        .pop();
-      if (!lastInvoice) return false;
-      // If the last installment_number equals total_installments, contract ended naturally (not churn)
-      if (lastInvoice.installment_number >= lastInvoice.total_installments) return false;
-      // Otherwise it's a real cancellation - MRR loss
-      return true;
-    });
+    // Churn de MRR: cliente mensal que tinha receita no mês anterior e sumiu este mês.
+    // (Mensal = sem data de término, então qualquer saída é churn — soma a parcela mensal.)
+    const churnedCompanies = [...prevCompanies].filter(id => !currentCompanies.has(id));
     const mrrChurn = prevRecurring.filter(i => churnedCompanies.includes(i.company_id))
       .reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
 
-    // Expansion/Contraction for continuing companies
+    // Expansão/Contração dos clientes que continuam
     const continuingCompanies = [...currentCompanies].filter(id => prevCompanies.has(id));
     let expansion = 0;
     let contraction = 0;
@@ -89,7 +84,7 @@ export default function CFORevenueMRRTab({ invoices, companies, filters, formatC
     const netNewMrr = novoMrr + expansion - contraction - mrrChurn;
 
     return { mrrAtual, mrrAnterior, novoMrr, expansion, contraction, mrrChurn, netNewMrr };
-  }, [invoices, monthStr, prevMonthStr]);
+  }, [invoices, monthStr, prevMonthStr, recurringCompanyIds]);
 
   // Ticket Médio
   const ticketMedio = useMemo(() => {
@@ -116,7 +111,7 @@ export default function CFORevenueMRRTab({ invoices, companies, filters, formatC
       months.push({ label, mrr: recurring, naoRecorrente: nonRecurring, total: recurring + nonRecurring });
     }
     return months;
-  }, [invoices]);
+  }, [invoices, refDate, recurringCompanyIds]);
 
   const breakdownCards = [
     { label: "MRR Atual", value: mrrBreakdown.mrrAtual, icon: DollarSign },
