@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -600,7 +600,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
   })();
 
   // Leads agendados SEM DESFECHO (agendados que nunca viraram realizada/no-show/fora do ICP)
-  const semDesfechoLeads = useMemo(() => {
+  const semDesfechoLeads = (() => {
     const source = selectedSDR !== "all"
       ? meetingEventDetails.filter(e => e.attributed_sdr_id === selectedSDR)
       : meetingEventDetails;
@@ -618,7 +618,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     return Array.from(byLead.values())
       .filter(r => r.types.has("scheduled") && !r.types.has("realized") && !r.types.has("no_show") && !r.types.has("out_of_icp"))
       .sort((a, b) => (a.scheduledDate || "").localeCompare(b.scheduledDate || ""));
-  }, [meetingEventDetails, selectedSDR]);
+  })();
 
   // Leads por trás de cada card (agendadas/realizadas/no-show)
   const leadsForType = (type: "scheduled" | "realized" | "no_show" | "sem_desfecho") => {
