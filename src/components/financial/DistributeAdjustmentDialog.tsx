@@ -80,6 +80,15 @@ export function DistributeAdjustmentDialog({
   const [lines, setLines] = useState<NewLine[]>([newLine()]);
   const [pickedIds, setPickedIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [existingSearch, setExistingSearch] = useState("");
+
+  const filteredExisting = useMemo(() => {
+    const q = existingSearch.trim().toLowerCase();
+    if (!q) return existingAccounts;
+    return existingAccounts.filter(
+      (a) => (a.description || "").toLowerCase().includes(q) || (a.party || "").toLowerCase().includes(q)
+    );
+  }, [existingAccounts, existingSearch]);
 
   const partyLabel = kind === "payable" ? "Fornecedor" : "Recebedor";
   const total = adjustment?.amount || 0;
@@ -109,6 +118,7 @@ export function DistributeAdjustmentDialog({
     setLines([newLine()]);
     setPickedIds(new Set());
     setSaving(false);
+    setExistingSearch("");
   };
 
   const close = () => {
@@ -267,11 +277,21 @@ export function DistributeAdjustmentDialog({
         {existingAccounts.length > 0 && (
           <div className="space-y-2">
             <Label className="text-sm font-semibold">
-              Puxar contas já lançadas (dá baixa e abate do ajuste)
+              Puxar contas já lançadas — {filteredExisting.length}{existingSearch.trim() ? ` de ${existingAccounts.length}` : ""} {existingAccounts.length === 1 ? "conta" : "contas"} (dá baixa e abate do ajuste)
             </Label>
-            <div className="max-h-56 overflow-y-auto rounded-lg border">
+            <Input
+              placeholder="Pesquisar conta pelo nome ou fornecedor..."
+              value={existingSearch}
+              onChange={(e) => setExistingSearch(e.target.value)}
+            />
+            <div
+              className="max-h-64 overflow-y-scroll rounded-lg border"
+              style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(148,163,184,0.6) transparent" }}
+            >
               <div className="divide-y">
-                {existingAccounts.map((a) => (
+                {filteredExisting.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">Nenhuma conta encontrada.</p>
+                ) : filteredExisting.map((a) => (
                   <label
                     key={a.id}
                     className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/40"
