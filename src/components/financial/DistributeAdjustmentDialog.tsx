@@ -37,6 +37,7 @@ export interface ExistingAccount {
   amount: number;
   party: string | null;
   due_date?: string | null;
+  paid?: number;
 }
 
 const currentMonthStr = () => {
@@ -88,7 +89,7 @@ export function DistributeAdjustmentDialog({
   onDone,
 }: Props) {
   const [lines, setLines] = useState<NewLine[]>([newLine()]);
-  const [pickedIds, setPickedIds] = useState<Set<string>>(new Set());
+  const [pickedAmounts, setPickedAmounts] = useState<Map<string, number>>(new Map());
   const [saving, setSaving] = useState(false);
   const [existingSearch, setExistingSearch] = useState("");
   const [monthFilter, setMonthFilter] = useState(currentMonthStr());
@@ -110,12 +111,11 @@ export function DistributeAdjustmentDialog({
   const partyLabel = kind === "payable" ? "Fornecedor" : "Recebedor";
   const total = adjustment?.amount || 0;
 
+  const openOf = (a: ExistingAccount) => Math.round((Number(a.amount || 0) - Number(a.paid || 0)) * 100) / 100;
+
   const existingSum = useMemo(
-    () =>
-      existingAccounts
-        .filter((a) => pickedIds.has(a.id))
-        .reduce((s, a) => s + Number(a.amount || 0), 0),
-    [existingAccounts, pickedIds]
+    () => Array.from(pickedAmounts.values()).reduce((s, v) => s + (v > 0 ? v : 0), 0),
+    [pickedAmounts]
   );
   const newSum = useMemo(
     () => lines.reduce((s, l) => s + (l.amount > 0 ? l.amount : 0), 0),
@@ -133,7 +133,7 @@ export function DistributeAdjustmentDialog({
 
   const reset = () => {
     setLines([newLine()]);
-    setPickedIds(new Set());
+    setPickedAmounts(new Map());
     setSaving(false);
     setExistingSearch("");
     setMonthFilter(currentMonthStr());
@@ -145,10 +145,25 @@ export function DistributeAdjustmentDialog({
     setTimeout(reset, 200);
   };
 
-  const togglePicked = (id: string) => {
-    setPickedIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+  const togglePicked = (a: ExistingAccount) => {
+    setPickedAmounts((prev) => {
+      const next = new Map(prev);
+      if (next.has(a.id)) {
+        next.delete(a.id);
+        return next;
+      }
+      const curExisting = Array.from(next.values()).reduce((s, v) => s + v, 0);
+      const free = Math.max(0, Math.round((total - curExisting - newSum) * 100) / 100);
+      const open = openOf(a);
+      next.set(a.id, free > 0 ? Math.min(open, free) : open);
+      return next;
+    });
+  };
+
+  const updatePickedAmount = (id: string, val: number, max: number) => {
+    setPickedAmounts((prev) => {
+      const next = new Map(prev);
+      next.set(id, Math.min(Math.max(0, val), max));
       return next;
     });
   };
@@ -174,13 +189,15 @@ export function DistributeAdjustmentDialog({
         category_id: l.category_id || null,
         party: l.party.trim() || null,
       }));
-      const p_existing_ids = Array.from(pickedIds);
+      const p_existing = Array.from(pickedAmounts.entries())
+        .filter(([, amt]) => amt > 0)
+        .map(([id, amount]) => ({ id, amount }));
 
       const { data, error } = await supabase.rpc("distribute_asaas_adjustment", {
         p_kind: kind,
         p_adjustment_id: adjustment.id,
         p_new_lines: p_new_lines,
-        p_existing_ids: p_existing_ids,
+        p_existing: p_existing,
       });
       if (error) throw error;
 
@@ -325,19 +342,37 @@ export function DistributeAdjustmentDialog({
               <div className="divide-y">
                 {filteredExisting.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-4">Nenhuma conta encontrada.</p>
-                ) : filteredExisting.map((a) => (
-                  <label
-                    key={a.id}
-                    className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/40"
-                  >
-                    <Checkbox checked={pickedIds.has(a.id)} onCheckedChange={() => togglePicked(a.id)} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm truncate">{a.description}</p>
-                      {a.party && <p className="text-[11px] text-muted-foreground truncate">{a.party}</p>}
+                ) : filteredExisting.map((a) => {
+                  const checked = pickedAmounts.has(a.id);
+                  const open = openOf(a);
+                  const partial = Number(a.paid || 0) > 0;
+                  return (
+                    <div key={a.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/40">
+                      <Checkbox checked={checked} onCheckedChange={() => togglePicked(a)} />
+                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => togglePicked(a)}>
+                        <p className="text-sm truncate">{a.description}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          {a.party ? `${a.party} · ` : ""}
+                          {partial ? `falta ${fmt(open)} de ${fmt(a.amount)}` : fmt(a.amount)}
+                        </p>
+                      </div>
+                      {checked ? (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[11px] text-muted-foreground">abater</span>
+                          <div className="w-28">
+                            <CurrencyInput
+                              value={pickedAmounts.get(a.id) || 0}
+                              onChange={(v) => updatePickedAmount(a.id, v, open)}
+                              className="h-8 text-right"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-sm font-medium shrink-0">{fmt(open)}</span>
+                      )}
                     </div>
-                    <span className="text-sm font-medium shrink-0">{fmt(a.amount)}</span>
-                  </label>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

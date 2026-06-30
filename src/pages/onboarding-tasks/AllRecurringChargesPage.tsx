@@ -2925,8 +2925,8 @@ export default function AllRecurringChargesPage() {
         } : null}
         categories={staffCategories.filter((c: any) => c.type === "despesa").map((c: any) => ({ id: c.id, name: c.name }))}
         existingAccounts={payables
-          .filter((x: any) => (x.status === "pending" || x.status === "overdue") && !x.description?.startsWith("Ajuste automático Asaas"))
-          .map((x: any) => ({ id: x.id, description: x.description, amount: Number(x.amount), party: x.supplier_name, due_date: x.due_date }))}
+          .filter((x: any) => (x.status === "pending" || x.status === "overdue" || x.status === "partial") && !x.description?.startsWith("Ajuste automático Asaas"))
+          .map((x: any) => ({ id: x.id, description: x.description, amount: Number(x.amount), party: x.supplier_name, due_date: x.due_date, paid: Number(x.paid_amount || 0) }))}
         onDone={() => { setDistributePayable(null); loadData(); }}
       />
       <DistributeAdjustmentDialog
@@ -2940,8 +2940,8 @@ export default function AllRecurringChargesPage() {
         } : null}
         categories={staffCategories.filter((c: any) => c.type === "receita").map((c: any) => ({ id: c.id, name: c.name }))}
         existingAccounts={invoices
-          .filter((x: any) => x.source_table === "financial_receivables" && (x.status === "pending" || x.status === "overdue") && !x.description?.startsWith("Ajuste automático Asaas"))
-          .map((x: any) => ({ id: x.id, description: x.description, amount: Number(x.amount_cents || 0) / 100, party: x.company_name || x.custom_receiver_name || null, due_date: x.due_date }))}
+          .filter((x: any) => x.source_table === "financial_receivables" && (x.status === "pending" || x.status === "overdue" || x.status === "partial") && !x.description?.startsWith("Ajuste automático Asaas"))
+          .map((x: any) => ({ id: x.id, description: x.description, amount: Number(x.amount_cents || 0) / 100, party: x.company_name || x.custom_receiver_name || null, due_date: x.due_date, paid: Number(x.paid_amount_cents || 0) / 100 }))}
         onDone={() => { setDistributeReceivable(null); loadData(); }}
       />
       {/* Transfer Dialog */}
