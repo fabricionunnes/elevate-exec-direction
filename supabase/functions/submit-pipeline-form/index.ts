@@ -553,10 +553,12 @@ async function sendWhatsAppNotification(
   owner?: { id: string; phone: string | null } | null,
   pipelineName?: string
 ) {
-  const APP_URL = 'https://elevate-exec-direction.lovable.app';
+  const APP_URL = 'https://unvholdings.com.br';
   const leadLink = `${APP_URL}/#/crm/leads/${leadId}`;
 
-  const message = `📋 *${nome}* preencheu o formulário no funil *${pipelineName || 'Desconhecido'}*.\n\n🔗 ${leadLink}`;
+  const message = `📋 *${nome}* preencheu o formulário no funil *${pipelineName || 'Desconhecido'}*.` +
+    (telefone ? `\n\n📱 ${telefone}` : '') +
+    `\n\n🔗 ${leadLink}`;
 
   // Read configured instance from crm_settings, fallback to "fabricionunnes"
   const { data: instanceSetting } = await supabase
