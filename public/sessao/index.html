@@ -370,7 +370,7 @@
   var SUPA = "https://xrncvhzxjmddqluxoosu.supabase.co";
   var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
   var PIXEL = "247392077001023";
-  var WA_NUMBER = "5531984935274";
+  var WA_NUMBER = "5511927008490";
   var WA_MSG = "Olá, vi o anúncio e quero o Fabrício Nunnes como meu Diretor Comercial pra fazer meu time bater meta";
   var WA_URL = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(WA_MSG);
   var VIDEOS = ["Mw24mKQ30LI","WjlTR6qDhlA","pOUL5pil2kk","r2XWLQlig30","66pAUJmga0Q","pVdibOvP7E0"];
@@ -406,7 +406,6 @@
   });
 
   // ── Form submit ──
-  var submitted = false;
   function wireForm(form){
     var phone = form.querySelector('input[name="telefone"]');
     phone.addEventListener("input", function(){ phone.value = maskPhone(phone.value); });
@@ -448,27 +447,13 @@
         return r.json().then(function(data){ return { ok:r.ok, data:data }; });
       }).then(function(res){
         if(!res.ok) throw new Error((res.data && res.data.error) || "Erro ao enviar");
-        if(!submitted){ submitted = true; try{ fbq("track","Lead"); }catch(e){} }
-        showSuccess();
+        // O evento Lead (conversao) dispara na pagina de obrigado, que tem o mesmo pixel. Redireciona pra la.
+        window.location.href = window.location.origin + "/#/sessao-estrategica/obrigado";
       }).catch(function(err){
         btn.disabled = false; btn.innerHTML = original;
         showErr((err && err.message) || "Algo deu errado. Tenta de novo ou fala comigo no WhatsApp.");
       });
     });
-  }
-
-  function showSuccess(){
-    var card = document.querySelector("#formTop .fc-inner");
-    if(!card) return;
-    card.innerHTML =
-      '<div class="form-ok">' +
-        '<div class="ok-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5" style="width:26px;height:26px"><path d="M20 6L9 17l-5-5"/></svg></div>' +
-        '<h3>Recebi seu cadastro.</h3>' +
-        '<p>Vou avaliar seu cenário comercial e te chamar no WhatsApp pra agendar a sessão. Quer adiantar? Me chama agora:</p>' +
-        '<a class="btn btn-wa" href="'+WA_URL+'" target="_blank" rel="noopener">Falar comigo no WhatsApp agora</a>' +
-      '</div>';
-    var t = document.getElementById("formTop");
-    if(t) t.scrollIntoView({behavior:"smooth", block:"center"});
   }
 
   Array.prototype.forEach.call(document.querySelectorAll("#formTop form"), wireForm);
