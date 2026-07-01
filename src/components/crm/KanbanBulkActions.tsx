@@ -169,17 +169,14 @@ export const KanbanBulkActions = ({
 
       const targetOriginId = targetOrigins?.[0]?.id || null;
 
-      // Update all leads (em lotes, pra não estourar o tamanho da requisição)
-      for (const leadIds of chunkLeadIds(selectedLeads)) {
-        const { error } = await supabase
-          .from("crm_leads")
-          .update({
-            stage_id: targetStageId,
-            origin_id: targetOriginId
-          })
-          .in("id", leadIds);
-        if (error) throw error;
-      }
+      // Move em massa via RPC (uma requisição, pulando os triggers por linha —
+      // cadência/log/sync/notificação — que estouravam com muitos leads).
+      const { error: moveErr } = await supabase.rpc("bulk_change_lead_pipeline", {
+        p_ids: selectedLeads,
+        p_stage: targetStageId,
+        p_origin: targetOriginId,
+      });
+      if (moveErr) throw moveErr;
 
       // Automações de etapa só para seleções pequenas (evita spam/timeout em massa)
       if (selectedLeads.length <= BULK_AUTOMATION_LIMIT) {
