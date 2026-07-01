@@ -50,6 +50,8 @@ export interface RemotePlayerState extends TeamProfile {
   screenOn: boolean
   /** modo foco: não recebe cutucada (auto-responde) */
   focused: boolean
+  /** mão levantada na call (pediu pra falar) */
+  handRaised?: boolean
 }
 
 /** Assento alvo: clicar numa cadeira anda até lá e senta */
@@ -98,6 +100,8 @@ interface CallState {
   camOn: boolean
   /** compartilhando a tela (substitui o vídeo da câmera) */
   screenOn: boolean
+  /** mão levantada (pedi pra falar) */
+  handRaised: boolean
   /** stream local (mic/cam) — para preview e para os peers */
   localStream: MediaStream | null
   /** streams remotos por user_id */
@@ -265,6 +269,7 @@ export const useTeamStore = create<TeamState>((set) => ({
     micOn: false,
     camOn: false,
     screenOn: false,
+    handRaised: false,
     localStream: null,
     remoteStreams: {},
   },

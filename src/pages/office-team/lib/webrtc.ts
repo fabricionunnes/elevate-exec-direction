@@ -231,6 +231,15 @@ export class CallManager {
     void this.realtime.updateCallState({ micOn: next })
   }
 
+  /** Levanta/baixa a mão (pedir pra falar) — todos veem no presence. */
+  toggleHandRaise() {
+    const { call } = useTeamStore.getState()
+    if (!call.joined) return
+    const next = !call.handRaised
+    useTeamStore.getState().setCall({ handRaised: next })
+    void this.realtime.updateCallState({ handRaised: next })
+  }
+
   /** Compartilhar tela: substitui o vídeo transmitido (modelo "câmera OU tela"). */
   async toggleScreenShare() {
     const { call } = useTeamStore.getState()

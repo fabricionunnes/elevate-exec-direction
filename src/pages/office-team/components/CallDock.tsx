@@ -224,6 +224,7 @@ function GridTile({
   mirrored,
   color,
   micOn,
+  handRaised,
   onClick,
   fill,
   fit,
@@ -235,6 +236,7 @@ function GridTile({
   mirrored?: boolean
   color: string
   micOn: boolean
+  handRaised?: boolean
   onClick?: () => void
   /** ocupa todo o espaço do container (modo destaque) */
   fill?: boolean
@@ -316,7 +318,30 @@ function GridTile({
       >
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
         <span style={{ fontSize: '13px' }}>{micOn ? '🎙️' : '🔇'}</span>
+        {handRaised && <span style={{ fontSize: '13px', marginLeft: 'auto' }} title="Mão levantada">✋</span>}
       </div>
+      {handRaised && (
+        <div
+          title="Pediu pra falar"
+          style={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            width: 34,
+            height: 34,
+            borderRadius: '50%',
+            background: '#F5C518',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '18px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.45)',
+            animation: 'handRaisePulse 1.4s ease-in-out infinite',
+          }}
+        >
+          ✋
+        </div>
+      )}
     </div>
   )
 }
@@ -799,6 +824,7 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
 
   return (
     <>
+      <style>{`@keyframes handRaisePulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }`}</style>
       {/* Áudio dos peers com volume espacial */}
       {call.joined &&
         Object.entries(call.remoteStreams).map(([id, stream]) => (
@@ -852,6 +878,7 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
                 mirrored: !call.screenOn, // tela compartilhada não espelha
                 color: me?.color ?? '#1A4A8A',
                 micOn: call.micOn,
+                handRaised: call.handRaised,
               },
               ...meetingPeers.map((p) => ({
                 id: p.id,
@@ -861,6 +888,7 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
                 mirrored: false,
                 color: p.color,
                 micOn: p.micOn,
+                handRaised: p.handRaised,
               })),
             ]
             const focused = focusedId ? participants.find((p) => p.id === focusedId) : null
@@ -1088,6 +1116,13 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
                 title={call.micOn ? 'Microfone — clique para desativar' : 'Microfone — clique para ativar'}
               >
                 {call.micOn ? '🎙️' : '🔇'}
+              </DockButton>
+              <DockButton
+                onClick={() => callManager.toggleHandRaise()}
+                active={call.handRaised}
+                title={call.handRaised ? 'Baixar a mão' : 'Levantar a mão (pedir pra falar)'}
+              >
+                ✋
               </DockButton>
               <DockButton
                 onClick={() => run(() => callManager.toggleCam())}

@@ -40,6 +40,8 @@ interface PresencePayload {
   screen: boolean
   /** modo foco (não recebe cutucada) */
   focus: boolean
+  /** mão levantada (pediu pra falar na call) */
+  handRaised: boolean
   // Última posição parada — quem entra depois sincroniza por aqui
   // (o broadcast 'pos' é efêmero e só flui enquanto o jogador anda)
   x: number
@@ -78,6 +80,7 @@ export class TeamRealtime {
       camOn: false,
       screen: false,
       focus: false,
+      handRaised: false,
       x: me.spawn?.[0] ?? 0,
       z: me.spawn?.[1] ?? 0.5,
       rot: me.spawn?.[2] ?? 0,
@@ -147,6 +150,7 @@ export class TeamRealtime {
             camOn: meta.camOn,
             screenOn: meta.screen ?? false,
             focused: meta.focus ?? false,
+            handRaised: meta.handRaised ?? false,
             position,
             rotation,
             moving: existing?.moving ?? false,
@@ -500,7 +504,7 @@ export class TeamRealtime {
   }
 
   /** Atualiza estado de chamada no presence (todos veem). */
-  async updateCallState(patch: Partial<Pick<PresencePayload, 'inCall' | 'micOn' | 'camOn' | 'screen'>>) {
+  async updateCallState(patch: Partial<Pick<PresencePayload, 'inCall' | 'micOn' | 'camOn' | 'screen' | 'handRaised'>>) {
     this.presenceState = { ...this.presenceState, ...patch }
     await this.channel?.track(this.presenceState)
   }
