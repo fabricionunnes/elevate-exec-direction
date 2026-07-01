@@ -280,7 +280,7 @@ export const LeadSummaryGuide = ({ data, loading, onRegenerate }: Props) => {
       {/* Banco de perguntas NEPQ por segmento (referência sempre disponível) */}
       <Card>
         <CardContent className="pt-5">
-          <NEPQQuestionBank />
+          <NEPQQuestionBank leadSegment={lead?.segment} />
         </CardContent>
       </Card>
     </div>

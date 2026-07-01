@@ -140,8 +140,23 @@ const OVERRIDES: Record<string, Record<number, string[]>> = {
 const questionsFor = (segment: string, phase: number): string[] =>
   OVERRIDES[segment]?.[phase] ?? GENERICO[phase] ?? [];
 
-export const NEPQQuestionBank = () => {
-  const [segment, setSegment] = useState("generico");
+// Mapeia o campo Segmento (texto livre do lead) para uma das chaves do banco.
+const SEGMENT_MATCHERS: { key: string; rx: RegExp }[] = [
+  { key: "academia", rx: /academ|studio|st[uú]dio|fitness|crossfit|pilates|muscula|personal|\bbox\b|ginas|yoga/i },
+  { key: "clinica", rx: /cl[ií]nic|est[eé]tic|odonto|dent|dermato|sa[uú]de|m[eé]dic|spa|fisio|nutri|harmoniza|capilar|hospital/i },
+  { key: "escola", rx: /escola|curso|idioma|col[eé]gio|ensino|educa|faculdade|profissionaliz|prep|vestibular|aula|treinamento/i },
+  { key: "comercio", rx: /com[eé]rcio|loja|varejo|vestu[aá]rio|moda|cal[çc]ad|distribuidora|papelaria|semij[oó]ia|joalheria|[oó]tica|perfumaria|autopeça|material|mercado|revend/i },
+];
+
+const guessSegment = (raw?: string | null): string => {
+  if (!raw) return "generico";
+  const found = SEGMENT_MATCHERS.find((m) => m.rx.test(raw));
+  return found?.key ?? "generico";
+};
+
+export const NEPQQuestionBank = ({ leadSegment }: { leadSegment?: string | null }) => {
+  const [segment, setSegment] = useState(() => guessSegment(leadSegment));
+  const autoDetected = guessSegment(leadSegment) !== "generico";
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -163,7 +178,10 @@ export const NEPQQuestionBank = () => {
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Perguntas de referência pra cada fase do roteiro NEPQ. Tom curioso e calmo, sem empurrar — deixe o cliente elaborar. Adapte às palavras dele.
+        {autoDetected
+          ? "Segmento sugerido pelo cadastro do lead — troque no seletor se preferir. "
+          : "Escolha o segmento do cliente no seletor. "}
+        Perguntas de referência pra cada fase do NEPQ. Tom curioso e calmo, sem empurrar — deixe o cliente elaborar e adapte às palavras dele.
       </p>
       <Accordion type="multiple" className="w-full">
         {PHASES.map((p) => (
