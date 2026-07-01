@@ -18,19 +18,20 @@ interface Props {
   onRegenerate: () => void;
 }
 
+// Roteiro NEPQ (Neuro-Emotional Persuasion Questioning) adaptado em 12 passos.
 const PHASE_NAMES: Record<number, string> = {
-  1: "Rapport",
-  2: "Expectativas",
+  1: "Conexão",
+  2: "Contexto & Expectativas",
   3: "Tomadores de Decisão",
-  4: "A Razão (A Dor)",
-  5: "Cavar (Aprofundar)",
-  6: "Tentou (Tentativas)",
-  7: "Situação Atual e Desejada",
-  8: "Porquê (Motivação)",
-  9: "Admissão",
-  10: "Compromisso",
-  11: "Fechamento Personalizado",
-  12: "Preço",
+  4: "Situação",
+  5: "Consciência do Problema",
+  6: "Sondagem de Precisão",
+  7: "O que já tentou",
+  8: "Consciência da Solução",
+  9: "Consequência",
+  10: "Qualificação",
+  11: "Transição & Apresentação",
+  12: "Compromisso & Preço",
 };
 
 export const LeadSummaryGuide = ({ data, loading, onRegenerate }: Props) => {

@@ -236,7 +236,7 @@ ${JSON.stringify(leadContext, null, 2)}
 
 IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown.`;
     } else if (type === "guide") {
-      systemPrompt = `Você é um coach de vendas especialista no roteiro de 12 fases de uma ligação comercial. Responda APENAS em JSON válido, sem markdown, sem code blocks.`;
+      systemPrompt = `Você é um coach de vendas especialista na metodologia NEPQ (Neuro-Emotional Persuasion Questioning) aplicada num roteiro de 12 fases de uma reunião comercial. Responda APENAS em JSON válido, sem markdown, sem code blocks.`;
       userPrompt = `Com base no histórico completo do lead abaixo, gere um guia de atendimento personalizado em JSON.
 
 IMPORTANTE: O array "recommended_phases" DEVE conter EXATAMENTE as 12 fases, sempre. Cada fase deve ter insights e scripts personalizados com base nos dados do lead. Para fases já concluídas, marque is_completed como true e ainda assim forneça insights úteis. Para fases futuras, gere scripts e dicas baseados no que sabemos do cliente para que o closer esteja preparado.
@@ -266,19 +266,21 @@ Estrutura do JSON:
   }
 }
 
-Roteiro de referência (12 fases — GERE TODAS):
-Fase 1 - Rapport: criar conexão genuína, espelhamento, correspondência de comportamento
-Fase 2 - Expectativas: alinhar formato da ligação, assumir controle, analogia do médico
-Fase 3 - Tomadores de decisão: identificar quem fecha, atenção ao Assassino Silencioso
-Fase 4 - A Razão (A Dor): fazer o prospect declarar o motivo da ligação
-Fase 5 - Cavar: aprofundar a dor com emoção, nunca usar PORQUE
-Fase 6 - Tentou: descobrir tentativas anteriores frustradas
-Fase 7 - Situação Atual e Desejada: onde está e onde quer chegar em 12 meses
-Fase 8 - Porquê: motivação emocional profunda (AMOR ou STATUS)
-Fase 9 - Admissão: fazer admitir que precisa de ajuda
-Fase 10 - Compromisso: confirmar urgência
-Fase 11 - Fechamento Personalizado: pitch usando palavras do prospect
-Fase 12 - Preço: NUNCA falar o preço sem ser solicitado
+Metodologia: NEPQ (Neuro-Emotional Persuasion Questioning). O closer NÃO empurra — ele faz perguntas que baixam a resistência e levam o próprio cliente a concluir que precisa mudar. Tonalidade curiosa e calma, postura de especialista neutro (como um médico), nunca de vendedor ansioso. Fale ~20%, ouça ~80%. Evite perguntar "por quê?" de forma acusatória; use suavizadores como "então...", "parece que...", "me ajuda a entender...". Os 5 estágios do NEPQ (Conexão → Engajamento → Transição → Apresentação → Compromisso) estão distribuídos nas 12 fases abaixo.
+
+Roteiro de referência NEPQ (12 fases — GERE TODAS):
+Fase 1 - Conexão: perguntas de conexão; foco 100% no cliente e não em você; baixar a resistência de vendas. Nada de pitch aqui.
+Fase 2 - Contexto & Expectativas: enquadrar a conversa e assumir o controle sem pressão; alinhar como será a reunião (postura de especialista neutro).
+Fase 3 - Tomadores de Decisão: mapear quem decide de verdade; atenção ao decisor oculto ("assassino silencioso").
+Fase 4 - Situação: perguntas de situação; entender o cenário atual (números, estrutura, processo) com neutralidade.
+Fase 5 - Consciência do Problema: perguntas que abrem a porta emocional — quais são os problemas, por que existem e como estão afetando o cliente.
+Fase 6 - Sondagem de Precisão (Cavar): aprofundar a dor principal com perguntas de sondagem; deixar o cliente elaborar; "então...", "parece que...", nunca "por quê?" acusatório.
+Fase 7 - O que já tentou: descobrir tentativas anteriores e por que não funcionaram (amplia a consciência do problema).
+Fase 8 - Consciência da Solução: perguntas que fazem o cliente descrever o futuro ideal com o problema resolvido (ele vende para si mesmo).
+Fase 9 - Consequência: perguntas de consequência; explorar o custo de não mudar e o que acontece se continuar como está.
+Fase 10 - Qualificação: confirmar o quanto é importante mudar e por quê — a motivação emocional e o compromisso com a mudança.
+Fase 11 - Transição & Apresentação: perguntas de transição fazendo a ponte para a solução; apresentar sob medida, ligando cada benefício às palavras e dores que o cliente disse (feedback/concordância).
+Fase 12 - Compromisso & Preço: perguntas de compromisso que levam o cliente a dar o próximo passo (ele se fecha); reformular objeções com calma, sem confrontar; ancorar o preço no custo da inação e não jogar o valor antes da hora.
 
 Dados do lead:
 ${JSON.stringify(leadContext, null, 2)}
@@ -399,7 +401,7 @@ IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown.`;
       }
 
       systemPrompt = `Você é um diretor comercial experiente que analisa transcrições de reuniões de vendas. Avalie com rigor e honestidade, dando notas justas. Responda APENAS em JSON válido, sem markdown, sem code blocks.`;
-      userPrompt = `Analise a transcrição da reunião abaixo e avalie a performance do vendedor em cada uma das 12 fases do roteiro de vendas.
+      userPrompt = `Analise a transcrição da reunião abaixo e avalie a performance do vendedor em cada uma das 12 fases do roteiro NEPQ (Neuro-Emotional Persuasion Questioning).
 
 Para cada fase, dê:
 - Uma nota de 0 a 10 (0 = não aplicou / péssimo, 10 = execução perfeita)
@@ -434,19 +436,19 @@ Gere um JSON com a seguinte estrutura:
   "next_meeting_recommendations": "recomendações para a próxima reunião com base nesta análise"
 }
 
-As 12 fases do roteiro:
-Fase 1 - Rapport (peso 1): Conexão genuína, espelhamento, correspondência de comportamento, ponto em comum
-Fase 2 - Expectativas (peso 1): Alinhar formato, assumir controle, analogia do médico
-Fase 3 - Tomadores de Decisão (peso 1.5): Identificar decisor, Assassino Silencioso
-Fase 4 - A Razão / A Dor (peso 2): Fazer declarar o motivo e a dor específica
-Fase 5 - Cavar (peso 2): Aprofundar dor com emoção, usar "então"/"parece que", nunca PORQUE
-Fase 6 - Tentou (peso 1): Descobrir tentativas anteriores frustradas
-Fase 7 - Situação Atual e Desejada (peso 1.5): Onde está e onde quer chegar em 12 meses
-Fase 8 - Porquê (peso 1.5): Motivação emocional profunda (AMOR ou STATUS)
-Fase 9 - Admissão (peso 1.5): Fazer admitir que precisa de ajuda
-Fase 10 - Compromisso (peso 1): Confirmar urgência, "quando quer resolver?"
-Fase 11 - Fechamento Personalizado (peso 2): Pitch usando palavras do prospect
-Fase 12 - Preço (peso 1.5): NUNCA falar preço sem ser solicitado, calar após falar valor
+As 12 fases do roteiro NEPQ (Neuro-Emotional Persuasion Questioning):
+Fase 1 - Conexão (peso 1): Perguntas de conexão, foco no cliente, baixar a resistência, tom neutro (sem pitch)
+Fase 2 - Contexto & Expectativas (peso 1): Enquadrar a conversa, assumir controle sem pressão, postura de especialista
+Fase 3 - Tomadores de Decisão (peso 1.5): Identificar quem decide, atenção ao decisor oculto (assassino silencioso)
+Fase 4 - Situação (peso 1.5): Perguntas de situação, entender o cenário atual (números, estrutura, processo) com neutralidade
+Fase 5 - Consciência do Problema (peso 2): Abrir a porta emocional — quais os problemas, por que existem e como afetam
+Fase 6 - Sondagem de Precisão (peso 2): Aprofundar a dor; "então"/"parece que", deixar elaborar, nunca "por quê?" acusatório
+Fase 7 - O que já tentou (peso 1): Descobrir tentativas anteriores e por que não funcionaram
+Fase 8 - Consciência da Solução (peso 1.5): Fazer o cliente descrever o futuro ideal com o problema resolvido
+Fase 9 - Consequência (peso 1.5): Explorar o custo de não mudar, o que acontece se continuar como está
+Fase 10 - Qualificação (peso 1.5): Confirmar o quanto é importante mudar e por quê (compromisso emocional)
+Fase 11 - Transição & Apresentação (peso 2): Ponte para a solução; apresentar sob medida ligando benefícios às palavras/dores do cliente
+Fase 12 - Compromisso & Preço (peso 1.5): Perguntas de compromisso (o cliente se fecha); reformular objeções sem confronto; ancorar preço no custo da inação
 
 Dados do lead:
 ${JSON.stringify(leadContext, null, 2)}
