@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { LeadSummaryData } from "./useLeadSummary";
+import { NEPQQuestionBank } from "./NEPQQuestionBank";
 
 interface Props {
   data: LeadSummaryData | null;
@@ -275,6 +276,13 @@ export const LeadSummaryGuide = ({ data, loading, onRegenerate }: Props) => {
           </CardContent>
         </Card>
       )}
+
+      {/* Banco de perguntas NEPQ por segmento (referência sempre disponível) */}
+      <Card>
+        <CardContent className="pt-5">
+          <NEPQQuestionBank />
+        </CardContent>
+      </Card>
     </div>
   );
 };
