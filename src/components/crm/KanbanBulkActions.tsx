@@ -47,6 +47,11 @@ interface Pipeline {
   name: string;
 }
 
+// Acima deste volume, a ação em massa NÃO dispara automações de etapa.
+// (createStageActivities cria atividades e dispara WhatsApp por lead — inviável e
+//  indesejado num remanejamento em massa; o lead é movido, só não roda a automação.)
+const BULK_AUTOMATION_LIMIT = 50;
+
 interface KanbanBulkActionsProps {
   selectedLeads: string[];
   onClearSelection: () => void;
@@ -106,15 +111,18 @@ export const KanbanBulkActions = ({
     
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("crm_leads")
-        .update({ stage_id: moveToStage })
-        .in("id", selectedLeads);
+      for (const leadIds of chunkLeadIds(selectedLeads)) {
+        const { error } = await supabase
+          .from("crm_leads")
+          .update({ stage_id: moveToStage })
+          .in("id", leadIds);
+        if (error) throw error;
+      }
 
-      if (error) throw error;
-
-      for (const leadId of selectedLeads) {
-        await createStageActivities(leadId, moveToStage);
+      if (selectedLeads.length <= BULK_AUTOMATION_LIMIT) {
+        for (const leadId of selectedLeads) {
+          await createStageActivities(leadId, moveToStage);
+        }
       }
 
       toast.success(`${selectedLeads.length} leads movidos com sucesso`);
@@ -161,20 +169,23 @@ export const KanbanBulkActions = ({
 
       const targetOriginId = targetOrigins?.[0]?.id || null;
 
-      // Update all leads
-      const { error } = await supabase
-        .from("crm_leads")
-        .update({ 
-          stage_id: targetStageId,
-          origin_id: targetOriginId 
-        })
-        .in("id", selectedLeads);
+      // Update all leads (em lotes, pra não estourar o tamanho da requisição)
+      for (const leadIds of chunkLeadIds(selectedLeads)) {
+        const { error } = await supabase
+          .from("crm_leads")
+          .update({
+            stage_id: targetStageId,
+            origin_id: targetOriginId
+          })
+          .in("id", leadIds);
+        if (error) throw error;
+      }
 
-      if (error) throw error;
-
-      // Create stage activities for each lead
-      for (const leadId of selectedLeads) {
-        await createStageActivities(leadId, targetStageId);
+      // Automações de etapa só para seleções pequenas (evita spam/timeout em massa)
+      if (selectedLeads.length <= BULK_AUTOMATION_LIMIT) {
+        for (const leadId of selectedLeads) {
+          await createStageActivities(leadId, targetStageId);
+        }
       }
 
       toast.success(`${selectedLeads.length} leads movidos para outro funil`);
@@ -194,12 +205,13 @@ export const KanbanBulkActions = ({
     
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("crm_leads")
-        .update({ owner_staff_id: assignToOwner })
-        .in("id", selectedLeads);
-
-      if (error) throw error;
+      for (const leadIds of chunkLeadIds(selectedLeads)) {
+        const { error } = await supabase
+          .from("crm_leads")
+          .update({ owner_staff_id: assignToOwner })
+          .in("id", leadIds);
+        if (error) throw error;
+      }
 
       toast.success(`${selectedLeads.length} leads atribuídos com sucesso`);
       setAssignToOwner("");
