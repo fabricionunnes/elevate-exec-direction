@@ -66,6 +66,25 @@ serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(5);
 
+    // Conversas de WhatsApp do lead — a SDR muitas vezes qualifica por aqui,
+    // então essas mensagens têm informação valiosa pro resumo/guia.
+    const { data: waConvos } = await supabase
+      .from("crm_whatsapp_conversations")
+      .select("id")
+      .eq("lead_id", leadId);
+    const waIds = (waConvos || []).map((c: any) => c.id);
+    let whatsappMessages: any[] = [];
+    if (waIds.length > 0) {
+      const { data: msgs } = await supabase
+        .from("crm_whatsapp_messages")
+        .select("direction, content, sender_name, created_at")
+        .in("conversation_id", waIds)
+        .not("content", "is", null)
+        .order("created_at", { ascending: true })
+        .limit(150);
+      whatsappMessages = (msgs || []).filter((m: any) => (m.content || "").trim());
+    }
+
     // Fetch Scanner UNV submission (Isca de baleia funnel) for richer context
     const { data: scannerSub } = await supabase
       .from("sales_scanner_submissions")
@@ -164,6 +183,15 @@ serve(async (req) => {
         content: (t.transcription_text || "").substring(0, 3000),
         date: t.created_at,
       })),
+      whatsapp_conversas: {
+        _description: "Mensagens trocadas com o lead no WhatsApp (aba Conversas). A SDR muitas vezes qualifica o lead por aqui — extraia dores, contexto, objeções, horário/agendamento e qualquer informação valiosa dita nessas mensagens.",
+        mensagens: whatsappMessages.map((m: any) => ({
+          quem: m.direction === "outbound" ? "UNV" : "Cliente",
+          autor: m.sender_name || null,
+          texto: (m.content || "").substring(0, 600),
+          data: m.created_at,
+        })),
+      },
       scanner_unv: scannerSub ? {
         _description: "Diagnóstico comercial completo respondido pelo lead no Scanner de Vendas UNV (funil Isca de Baleia). Use estas informações para personalizar o atendimento, abordar dores reais, citar números do próprio cliente e construir urgência baseada nas perdas declaradas.",
         empresa: scannerSub.company_name,
