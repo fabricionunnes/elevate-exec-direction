@@ -39,6 +39,7 @@ import {
   BarChart3,
   Phone,
   ChevronDown,
+  Contact,
 } from "lucide-react";
 import logoUnv from "@/assets/logo-unv-nexus.png";
 import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
@@ -95,6 +96,7 @@ const getNavTabs = (role: string | null) => {
   }
   if (role === "master" || role === "admin" || role === "head_comercial") {
     tabs.push({ title: "Resumo Calls", href: "/crm/call-summary", icon: Phone });
+    tabs.push({ title: "UNV Profile", href: "/unv-profile", icon: Contact });
   }
   return tabs;
 };
