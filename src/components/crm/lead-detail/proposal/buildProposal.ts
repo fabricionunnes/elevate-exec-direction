@@ -37,13 +37,20 @@ export async function buildAndStoreProposal({
   transcription,
   transcriptionId,
 }: BuildArgs) {
-  // 1. serviço selecionado no lead
+  // 1. serviço selecionado no lead + valor/forma de pagamento já preenchidos no Negócio
   const { data: lead } = await supabase
     .from("crm_leads")
-    .select("product_id")
+    .select("product_id, opportunity_value, payment_method")
     .eq("id", leadId)
     .maybeSingle();
   const productId = (lead as any)?.product_id || null;
+  const dealValue = Number((lead as any)?.opportunity_value || 0);
+  let paymentName = "";
+  const pmId = (lead as any)?.payment_method;
+  if (pmId) {
+    const { data: pm } = await supabase.from("crm_payment_method_options").select("name").eq("id", pmId).maybeSingle();
+    paymentName = (pm as any)?.name || "";
+  }
   const svc = await resolveService(productId);
 
   // 2. conteúdo via IA (valores/forma de pagamento saem da transcrição)
@@ -59,6 +66,16 @@ export async function buildAndStoreProposal({
   if (error) throw new Error(error.message || "Falha ao gerar a proposta");
   const proposal: ProposalContent | undefined = (data as any)?.proposal;
   if (!proposal) throw new Error("Proposta não retornada pela IA");
+
+  // 2b. Fallback: se a IA não achou o valor/forma na transcrição ("A combinar"),
+  // usa o que já está preenchido no Negócio (fonte de verdade do lead).
+  const vago = (s?: string) => !s || !s.trim() || /a\s*combinar/i.test(s.trim());
+  if (vago(proposal.investimento) && dealValue > 0) {
+    proposal.investimento = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(dealValue);
+  }
+  if (vago(proposal.forma_pagamento) && paymentName) {
+    proposal.forma_pagamento = paymentName;
+  }
 
   // 3. PDF
   const blob = await generateProposalPDF({

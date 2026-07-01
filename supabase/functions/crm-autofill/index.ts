@@ -14,6 +14,26 @@ function headTail(s: string | null | undefined, n: number): string {
   return t.slice(0, head) + "\n\n[…trecho do meio omitido…]\n\n" + t.slice(t.length - (n - head));
 }
 
+// Interpreta valor em reais tolerando formatos: number, "2000", "2.000",
+// "2.000,00", "R$ 2.000", "24 mil", "2,5 mil". Retorna number>0 ou null.
+export function parseMoneyBR(raw: unknown): number | null {
+  if (typeof raw === "number") return Number.isFinite(raw) && raw > 0 ? raw : null;
+  if (typeof raw !== "string") return null;
+  let s = raw.toLowerCase().replace(/r\$/g, "").trim();
+  const mil = s.match(/([\d.,]+)\s*mil\b/);
+  if (mil) {
+    const base = Number(mil[1].replace(/\./g, "").replace(",", "."));
+    if (Number.isFinite(base) && base > 0) return Math.round(base * 1000);
+  }
+  s = s.replace(/[^\d.,]/g, "");
+  if (!s) return null;
+  if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");        // 2.000,00 -> 2000.00
+  else if ((s.match(/\./g) || []).length > 1) s = s.replace(/\./g, "");   // 1.234.567 -> 1234567
+  else if (/^\d{1,3}\.\d{3}$/.test(s)) s = s.replace(".", "");            // 2.000 -> 2000 (milhar)
+  const n = Number(s);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
@@ -69,8 +89,7 @@ Responda APENAS com JSON válido:
     const pIds = new Set(paymentMethods.map((p) => p.id));
     if (fields.product_id && !sIds.has(fields.product_id)) fields.product_id = null;
     if (fields.payment_method_id && !pIds.has(fields.payment_method_id)) fields.payment_method_id = null;
-    const v = Number(fields.opportunity_value);
-    fields.opportunity_value = Number.isFinite(v) && v > 0 ? v : null;
+    fields.opportunity_value = parseMoneyBR(fields.opportunity_value);
 
     return new Response(JSON.stringify({ fields }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error: any) {
