@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
       charts.faturamento = await chartPng({
         type: "bar",
         data: { labels: fatSerie.map((s) => brMonth(s.mes)), datasets: [{ label: "Faturamento (R$)", data: fatSerie.map((s) => Math.round(s.valor)), backgroundColor: NAVY }] },
-        options: { plugins: { legend: { display: false }, title: { display: true, text: "Evolução do Faturamento", color: NAVY, font: { size: 16 } } }, scales: { y: { ticks: { callback: "function(v){return 'R$ '+v.toLocaleString('pt-BR')}" } } } },
+        options: { plugins: { legend: { display: false }, title: { display: true, text: "Evolução do Faturamento", color: NAVY, font: { size: 16 } } }, scales: { y: { beginAtZero: true, ticks: { callback: "function(v){return 'R$ '+v.toLocaleString('pt-BR')}" } } } },
       });
     }
     const amKeys = Object.keys(actionsByMonth).sort();
@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
       charts.acoes = await chartPng({
         type: "bar",
         data: { labels: amKeys.map(brMonth), datasets: [{ label: "Ações concluídas", data: amKeys.map((m) => actionsByMonth[m]), backgroundColor: GREEN }] },
-        options: { plugins: { legend: { display: false }, title: { display: true, text: "Ações Realizadas por Mês", color: NAVY, font: { size: 16 } } } },
+        options: { plugins: { legend: { display: false }, title: { display: true, text: "Ações Realizadas por Mês", color: NAVY, font: { size: 16 } } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
       });
     }
 
