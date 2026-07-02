@@ -39,6 +39,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -58,7 +59,7 @@ import { StrategicDiagnosticModule } from "@/components/client-diagnostic/Strate
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
 import { GeneratePDFTasksDialog } from "@/components/onboarding-tasks/GeneratePDFTasksDialog";
 import { Settings, Sparkles, Building2, Wand2, UserCircle, Route, LayoutList, CalendarDays, LogOut, FileUp, BarChart3 as PanelIcon, Columns3, FileText, Loader2 } from "lucide-react";
-import { generateProjectFullReportPDF, type ReportPeriod } from "@/components/project-report/generateProjectFullReportPDF";
+import { generateProjectFullReportPDF, type ReportPeriod, type ReportKind } from "@/components/project-report/generateProjectFullReportPDF";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { ChurnReasonDialog } from "@/components/onboarding-tasks/ChurnReasonDialog";
@@ -568,12 +569,12 @@ const OnboardingProjectPage = () => {
   };
 
   const [reportLoading, setReportLoading] = useState(false);
-  const handleGenerateReport = async (period: ReportPeriod) => {
+  const handleGenerateReport = async (period: ReportPeriod, kind: ReportKind = "full") => {
     if (!projectId) return;
     setReportLoading(true);
-    const tid = toast.loading("Gerando relatório completo… pode levar até 1 minuto.");
+    const tid = toast.loading(kind === "retention" ? "Gerando relatório de retenção… pode levar até 1 minuto." : "Gerando relatório completo… pode levar até 1 minuto.");
     try {
-      await generateProjectFullReportPDF(projectId, period);
+      await generateProjectFullReportPDF(projectId, period, kind);
       toast.success("Relatório gerado com sucesso!", { id: tid });
     } catch (e: any) {
       toast.error(e?.message || "Erro ao gerar o relatório", { id: tid });
@@ -1272,6 +1273,17 @@ const OnboardingProjectPage = () => {
                       <DropdownMenuItem onClick={() => handleGenerateReport(30)}>Últimos 30 dias</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleGenerateReport(15)}>Últimos 15 dias</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleGenerateReport(7)}>Últimos 7 dias</DropdownMenuItem>
+                      {project?.status === "cancellation_signaled" && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-red-600 focus:text-red-600 font-medium"
+                            onClick={() => handleGenerateReport("all", "retention")}
+                          >
+                            Relatório de Retenção
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <Button variant="outline" size="sm" onClick={() => setShowPDFTasksDialog(true)}>

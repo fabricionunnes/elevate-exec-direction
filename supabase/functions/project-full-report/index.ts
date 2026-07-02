@@ -36,18 +36,7 @@ async function chartPng(chart: unknown): Promise<string | null> {
   } catch { return null; }
 }
 
-async function aiNarrative(ctx: string): Promise<any> {
-  if (!ANTHROPIC) return null;
-  try {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": ANTHROPIC, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 8000,
-        messages: [{
-          role: "user",
-          content: `Você é o diretor comercial da UNV (Universidade Nacional de Vendas) escrevendo, para o CLIENTE, um relatório PREMIUM e detalhado do trabalho feito na empresa dele. Tom: profissional, humano, direto, orientado a resultado, sem enrolação e sem inventar dados — use só o que está no contexto. Escreva em português do Brasil.
+const PROMPT_FULL = `Você é o diretor comercial da UNV (Universidade Nacional de Vendas) escrevendo, para o CLIENTE, um relatório PREMIUM e detalhado do trabalho feito na empresa dele. Tom: profissional, humano, direto, orientado a resultado, sem enrolação e sem inventar dados — use só o que está no contexto. Escreva em português do Brasil.
 
 Com base no CONTEXTO abaixo, retorne SOMENTE um JSON válido (sem markdown, sem cercas), no formato:
 {
@@ -59,7 +48,38 @@ Com base no CONTEXTO abaixo, retorne SOMENTE um JSON válido (sem markdown, sem 
  "analise_grupos": "1 a 2 parágrafos sobre o acompanhamento pelos grupos de WhatsApp (gestão e vendedores): ritmo, temas, engajamento e como a consultoria conduziu o time — sem citar mensagens específicas nem nomes de pacientes",
  "destaques": ["destaque 1", "destaque 2", "destaque 3", "destaque 4"],  // 3 a 4 pontos fortes/conquistas
  "proximos_passos": ["passo 1", "passo 2", "passo 3"]  // 3 a 5 recomendações concretas de continuidade
-}
+}`;
+
+// Relatório de RETENÇÃO: cliente sinalizou cancelamento; o documento vai pro cliente
+// e sustenta a reunião de retenção — prova valor e resultado, mostra o que está em
+// jogo e propõe caminho de continuidade. NUNCA usar a palavra "retenção" no texto.
+const PROMPT_RETENTION = `Você é o diretor comercial da UNV (Universidade Nacional de Vendas). O cliente sinalizou a intenção de encerrar o contrato e este documento será apresentado A ELE numa reunião de alinhamento. O objetivo do documento: mostrar com honestidade e força TUDO que foi construído e o resultado gerado, deixar claro o que está em jogo se a operação parar, e propor um caminho de continuidade. Tom: respeitoso, humano, direto, orientado a dado — sem soar defensivo, sem pressão barata, sem inventar números. NUNCA use a palavra "retenção" nem mencione que este é um material de retenção. Escreva em português do Brasil.
+
+Com base no CONTEXTO abaixo, retorne SOMENTE um JSON válido (sem markdown, sem cercas), no formato:
+{
+ "resumo_executivo": "2 a 3 parágrafos de abertura ('o ponto central'): reconhecer o momento da decisão com respeito, e apresentar em alto nível o que foi construído na parceria e o resultado gerado — os números que existirem",
+ "o_que_fizemos": ["entrega 1", "..."],  // 8 a 12 itens concretos do que a UNV construiu/executou, dos mais estruturais aos mais operacionais
+ "reunioes": [{"data": "YYYY-MM-DD", "titulo": "título curto", "resumo": "1 a 2 frases do que foi tratado/decidido"}],  // máx 15
+ "acoes": [{"titulo": "título EXATO da ação como está no contexto", "resumo": "1 a 2 frases: o que foi feito, o diagnóstico e a melhoria gerada"}],  // só ações com DETALHE; máx 60; não invente
+ "resultado": "2 parágrafos provando o resultado com os números do contexto (faturamento, evolução, volume de trabalho). Se o investimento mensal for conhecido, relacione custo x retorno com honestidade. Se os números forem escassos, foque no que foi estruturado e no estágio da curva (estruturação → tração)",
+ "analise_grupos": "1 parágrafo sobre a presença ativa da consultoria nos grupos (gestão e vendedores): ritmo, orientação diária, suporte ao time — sem citar mensagens específicas",
+ "destaques": ["conquista 1", "conquista 2", "conquista 3", "conquista 4"],
+ "o_que_esta_em_jogo": ["ponto 1", "ponto 2", "ponto 3"],  // 3 a 5 pontos concretos do que a empresa perde/interrompe se a operação parar agora (motor de leads, rotina de gestão, curva de aprendizado do time, pipeline em andamento) — baseado no contexto, sem terrorismo
+ "caminho_continuidade": ["opção 1", "opção 2", "opção 3"]  // 3 a 4 propostas concretas de continuidade/ajuste de formato (redimensionar escopo, focar no que gera caixa, período de transição) — a mensagem é 'ajustar o formato, não desligar a máquina'
+}`;
+
+async function aiNarrative(ctx: string, kind: string): Promise<any> {
+  if (!ANTHROPIC) return null;
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": ANTHROPIC, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 8000,
+        messages: [{
+          role: "user",
+          content: `${kind === "retention" ? PROMPT_RETENTION : PROMPT_FULL}
 
 CONTEXTO:
 ${ctx}`,
@@ -77,9 +97,22 @@ ${ctx}`,
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
-    const { project_id, since, until } = await req.json();
+    const body = await req.json();
+    const { project_id, until } = body;
+    const kind: string = body.kind === "retention" ? "retention" : "full";
+    // retenção olha sempre o histórico completo da parceria
+    const since = kind === "retention" ? undefined : body.since;
     if (!project_id) return json({ error: "project_id obrigatório" }, 400);
     const sb = createClient(SUPABASE_URL, SERVICE);
+
+    // ---- cache diário: mesmo projeto + período + tipo no mesmo dia = mesmo relatório ----
+    // (economia de tokens quando outro usuário — ou o envio automático — pede de novo)
+    const dayBRT = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+    const cacheKey = `${project_id}:${kind}:${since || "all"}:${until || "-"}:${dayBRT}`;
+    if (!body.force) {
+      const { data: hit } = await sb.from("project_report_cache").select("payload").eq("cache_key", cacheKey).maybeSingle();
+      if (hit?.payload) return json({ ...hit.payload, cached: true });
+    }
 
     // ---- projeto + empresa ----
     const { data: proj, error: pe } = await sb.from("onboarding_projects")
@@ -182,10 +215,10 @@ Deno.serve(async (req) => {
       `\nCONVERSAS DOS GRUPOS DE WHATSAPP:${groupSamples || " (sem grupos vinculados)"}`,
     ].join("\n");
 
-    const narrative = await aiNarrative(ctx) || {
+    const narrative = await aiNarrative(ctx, kind) || {
       resumo_executivo: `Relatório do trabalho realizado pela UNV na ${company.name}.`,
       o_que_fizemos: done.slice(0, 8).map((t: any) => t.title),
-      reunioes: [], acoes: [],
+      reunioes: [], acoes: [], o_que_esta_em_jogo: [], caminho_continuidade: [],
       resultado: `Faturamento no período: R$ ${fatTotal.toLocaleString("pt-BR")}.`,
       analise_grupos: "", destaques: [], proximos_passos: [],
     };
@@ -208,8 +241,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    return json({
+    const payload = {
       ok: true,
+      kind,
       generatedAt: new Date().toISOString(),
       period: { since: since || null, until: until || null },
       company: { name: company.name, segment: company.segment },
@@ -221,7 +255,11 @@ Deno.serve(async (req) => {
       groups,
       narrative,
       charts,
-    });
+    };
+    // grava o cache do dia (e limpa entradas velhas, fire-and-forget)
+    await sb.from("project_report_cache").upsert({ project_id, cache_key: cacheKey, payload }, { onConflict: "cache_key" });
+    sb.from("project_report_cache").delete().lt("created_at", new Date(Date.now() - 7 * 86400000).toISOString()).then(() => {}, () => {});
+    return json(payload);
   } catch (e) {
     return json({ error: String(e) }, 500);
   }

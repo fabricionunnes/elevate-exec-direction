@@ -40,7 +40,10 @@ function loadImg(src: string): Promise<HTMLImageElement | null> {
 
 export type ReportPeriod = "all" | 7 | 15 | 30 | 90;
 
-export async function generateProjectFullReportPDF(projectId: string, period: ReportPeriod = "all") {
+export type ReportKind = "full" | "retention";
+
+export async function generateProjectFullReportPDF(projectId: string, period: ReportPeriod = "all", kind: ReportKind = "full") {
+  if (kind === "retention") period = "all"; // retenção sempre olha a parceria inteira
   let since: string | undefined;
   if (period !== "all") {
     const dt = new Date();
@@ -49,7 +52,7 @@ export async function generateProjectFullReportPDF(projectId: string, period: Re
   }
 
   const { data, error } = await supabase.functions.invoke("project-full-report", {
-    body: { project_id: projectId, since },
+    body: { project_id: projectId, since, kind },
   });
   if (error) throw new Error(error.message || "Falha ao gerar o relatório");
   if (!data || data.error) throw new Error(data?.error || "Sem dados para o relatório");
@@ -159,7 +162,8 @@ export async function generateProjectFullReportPDF(projectId: string, period: Re
 
   y = 118;
   setText(NAVY); pdf.setFont("helvetica", "bold"); pdf.setFontSize(31);
-  pdf.text("RELATÓRIO DE RESULTADOS", W / 2, y, { align: "center" });
+  const coverTitle = kind === "retention" ? "PARCERIA E RESULTADOS" : "RELATÓRIO DE RESULTADOS";
+  pdf.text(coverTitle, W / 2, y, { align: "center" });
   y += 8;
   setFill(RED); pdf.rect(W / 2 - 32, y, 64, 1.5, "F");
   y += 14;
@@ -340,18 +344,42 @@ export async function generateProjectFullReportPDF(projectId: string, period: Re
     });
   }
 
+  // ============ RETENÇÃO: O QUE ESTÁ EM JOGO + CAMINHO DE CONTINUIDADE ============
+  if ((n.o_que_esta_em_jogo || []).length) {
+    sectionTitle("O Que Está em Jogo");
+    para("Interromper a operação agora significa abrir mão do que já está construído e em movimento:", { gap: 3 });
+    (n.o_que_esta_em_jogo || []).forEach((t: string) => bullet(t));
+  }
+  if ((n.caminho_continuidade || []).length) {
+    sectionTitle("O Caminho de Continuidade");
+    para("Se o momento pede ajuste, o caminho não é desligar a máquina — é redimensionar o formato. Algumas opções para conversarmos:", { gap: 3 });
+    (n.caminho_continuidade || []).forEach((t: string, i: number) => {
+      const lines = pdf.splitTextToSize(t, CW - 12);
+      ensure(lines.length * 5.5 + 4);
+      setFill(NAVY); pdf.roundedRect(M, y - 4, 7, 7, 1, 1, "F");
+      setText([255, 255, 255]); pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
+      pdf.text(String(i + 1), M + 3.5, y + 0.8, { align: "center" });
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(10.5); setText(DARK);
+      lines.forEach((ln: string, li: number) => { pdf.text(ln, M + 11, y); if (li < lines.length - 1) y += 5.5; });
+      y += 8.5;
+    });
+  }
+
   // fecho
   ensure(30);
   y += 3;
   setFill(NAVY); pdf.roundedRect(M, y, CW, 24, 2, 2, "F");
   setFill(RED); pdf.rect(M, y, 2.2, 24, "F");
   setText([255, 255, 255]); pdf.setFont("helvetica", "bold"); pdf.setFontSize(11.5);
-  pdf.text("Processo, gestão e resultado — todos os meses.", M + 8, y + 10);
+  const fechoTxt = kind === "retention"
+    ? "O caminho certo é ajustar o formato — não desligar a máquina."
+    : "Processo, gestão e resultado — todos os meses.";
+  pdf.text(fechoTxt, M + 8, y + 10);
   setText([200, 212, 232]); pdf.setFont("helvetica", "normal"); pdf.setFontSize(9.5);
   pdf.text("Universidade Nacional de Vendas · Seu Diretor Comercial", M + 8, y + 17.5);
 
   footer();
-  const fname = `Relatorio_${(d.company?.name || "Empresa").replace(/[^a-zA-Z0-9]+/g, "_")}_${(d.generatedAt || "").slice(0, 10)}.pdf`;
+  const fname = `${kind === "retention" ? "Relatorio_Parceria" : "Relatorio"}_${(d.company?.name || "Empresa").replace(/[^a-zA-Z0-9]+/g, "_")}_${(d.generatedAt || "").slice(0, 10)}.pdf`;
   pdf.save(fname);
   return fname;
 }
