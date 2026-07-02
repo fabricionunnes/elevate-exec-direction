@@ -94,38 +94,38 @@
     letter-spacing: -0.01em;
   }
 
-  /* Modo claro refinado (estilo Attio/Notion) */
+  /* Modo claro clean (estilo Pipedrive: canvas cinza suave, cards brancos) */
   .crm-app {
-    --background: 220 24% 96%;
+    --background: 220 18% 97%;
     --foreground: 222 30% 16%;
     --card: 0 0% 100%;
     --card-foreground: 222 30% 16%;
-    --secondary: 220 20% 95%;
+    --secondary: 220 18% 95%;
     --secondary-foreground: 222 28% 22%;
-    --muted: 220 20% 94%;
-    --muted-foreground: 218 14% 46%;
-    --border: 220 16% 90%;
-    --input: 220 16% 89%;
-    --crm-column: 220 22% 97%;
-    --crm-column-header: 220 22% 95%;
-    --crm-positive: 152 58% 38%;
+    --muted: 220 18% 94%;
+    --muted-foreground: 218 12% 46%;
+    --border: 220 14% 89%;
+    --input: 220 14% 88%;
+    --crm-column: 220 16% 94%;
+    --crm-column-header: 220 16% 94%;
+    --crm-positive: 152 58% 36%;
   }
 
-  /* Modo escuro refinado (navy UNV com profundidade) */
+  /* Modo escuro clean (navy UNV, camadas com mais contraste, menos saturação) */
   .dark .crm-app {
-    --background: 216 52% 8%;
-    --foreground: 210 32% 96%;
-    --card: 215 36% 15%;
-    --card-foreground: 210 32% 96%;
-    --popover: 215 36% 15%;
-    --secondary: 215 34% 18%;
-    --secondary-foreground: 210 30% 94%;
-    --muted: 215 30% 21%;
-    --muted-foreground: 214 18% 66%;
-    --border: 214 26% 23%;
-    --input: 214 26% 23%;
-    --crm-column: 216 44% 11%;
-    --crm-column-header: 215 40% 13%;
+    --background: 217 40% 9%;
+    --foreground: 210 30% 96%;
+    --card: 216 32% 14%;
+    --card-foreground: 210 30% 96%;
+    --popover: 216 32% 14%;
+    --secondary: 216 28% 18%;
+    --secondary-foreground: 210 28% 94%;
+    --muted: 216 26% 20%;
+    --muted-foreground: 215 16% 68%;
+    --border: 215 22% 22%;
+    --input: 215 22% 22%;
+    --crm-column: 217 34% 11.5%;
+    --crm-column-header: 217 34% 11.5%;
     --crm-positive: 152 56% 52%;
   }
 }

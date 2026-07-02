@@ -774,33 +774,29 @@ export const CRMPipelinePage = () => {
         />
       </div>
 
-      {/* Summary Cards */}
+      {/* Barra de indicadores (uma linha, sempre alinhada) */}
       <div className="shrink-0 px-3 sm:px-4 pb-2">
-        <div className="grid grid-cols-2 gap-3">
-          <Card className="p-3 flex items-center gap-3 border-border/50">
-            <div className="h-9 w-9 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center shrink-0">
-              <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Forecast</p>
-              <p className="text-base font-bold text-blue-700 dark:text-blue-400 tabular-nums">
-                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(filteredForecastTotal)}
-              </p>
-              <p className="text-[10px] text-muted-foreground">{forecastData.length} negócio{forecastData.length !== 1 ? "s" : ""} aberto{forecastData.length !== 1 ? "s" : ""}</p>
-            </div>
-          </Card>
-          <Card className="p-3 flex items-center gap-3 border-border/50">
-            <div className="h-9 w-9 rounded-lg bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center shrink-0">
-              <Handshake className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Em Negociação</p>
-              <p className="text-base font-bold text-amber-700 dark:text-amber-400 tabular-nums">
-                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(filteredNegotiationTotal)}
-              </p>
-              <p className="text-[10px] text-muted-foreground">{negotiationData.length} negócio{negotiationData.length !== 1 ? "s" : ""}</p>
-            </div>
-          </Card>
+        <div className="flex items-stretch rounded-lg border border-border/60 bg-card divide-x divide-border/60 overflow-hidden">
+          <div className="flex-1 basis-0 flex items-center gap-2 px-3 sm:px-4 py-2 min-w-0">
+            <TrendingUp className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium shrink-0">Forecast</span>
+            <span className="text-sm font-bold text-foreground tabular-nums truncate">
+              {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(filteredForecastTotal)}
+            </span>
+            <span className="text-[10px] text-muted-foreground hidden sm:inline shrink-0">
+              {forecastData.length} aberto{forecastData.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <div className="flex-1 basis-0 flex items-center gap-2 px-3 sm:px-4 py-2 min-w-0">
+            <Handshake className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium shrink-0">Em Negociação</span>
+            <span className="text-sm font-bold text-foreground tabular-nums truncate">
+              {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(filteredNegotiationTotal)}
+            </span>
+            <span className="text-[10px] text-muted-foreground hidden sm:inline shrink-0">
+              {negotiationData.length} negócio{negotiationData.length !== 1 ? "s" : ""}
+            </span>
+          </div>
         </div>
       </div>
 

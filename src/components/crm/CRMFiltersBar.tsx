@@ -129,17 +129,17 @@ export const CRMFiltersBar = ({
   ];
 
   return (
-    <div className="flex flex-col gap-3 p-3 border-b border-border bg-card">
+    <div className="flex flex-col gap-2 px-3 py-2 border-b border-border/60 bg-card">
       {/* Main Filter Row */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-1.5 flex-wrap">
         {/* Search */}
-        <div className="relative flex-1 min-w-[200px] max-w-[300px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative flex-1 min-w-[180px] max-w-[280px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Buscar..."
             value={filters.search}
             onChange={(e) => updateFilter("search", e.target.value)}
-            className="pl-9 h-9"
+            className="pl-8 h-8 text-sm bg-muted/40 border-transparent focus-visible:bg-background focus-visible:border-input"
           />
         </div>
 
@@ -147,14 +147,14 @@ export const CRMFiltersBar = ({
         <Popover open={dateOpen} onOpenChange={setDateOpen}>
           <PopoverTrigger asChild>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               className={cn(
-                "h-9 gap-2",
-                filters.dateRange && "bg-primary/10 border-primary/30"
+                "h-8 gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground",
+                filters.dateRange && "bg-primary/10 text-foreground font-medium"
               )}
             >
-              <CalendarIcon className="h-4 w-4" />
+              <CalendarIcon className="h-3.5 w-3.5" />
               {filters.dateRange?.from ? (
                 filters.dateRange.to ? (
                   <>
@@ -188,11 +188,11 @@ export const CRMFiltersBar = ({
         <Popover>
           <PopoverTrigger asChild>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               className={cn(
-                "h-9 gap-2",
-                filters.fields.length > 0 && "bg-primary/10 border-primary/30"
+                "h-8 gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground",
+                filters.fields.length > 0 && "bg-primary/10 text-foreground font-medium"
               )}
             >
               Campos
@@ -227,11 +227,11 @@ export const CRMFiltersBar = ({
         <Popover>
           <PopoverTrigger asChild>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               className={cn(
-                "h-9 gap-2",
-                filters.tags.length > 0 && "bg-primary/10 border-primary/30"
+                "h-8 gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground",
+                filters.tags.length > 0 && "bg-primary/10 text-foreground font-medium"
               )}
             >
               Tags
@@ -276,11 +276,11 @@ export const CRMFiltersBar = ({
         <Popover>
           <PopoverTrigger asChild>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               className={cn(
-                "h-9 gap-2",
-                filters.owners.length > 0 && "bg-primary/10 border-primary/30"
+                "h-8 gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground",
+                filters.owners.length > 0 && "bg-primary/10 text-foreground font-medium"
               )}
             >
               Dono do negócio
@@ -314,11 +314,11 @@ export const CRMFiltersBar = ({
         <Popover>
           <PopoverTrigger asChild>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               className={cn(
-                "h-9 gap-2",
-                filters.status.length > 0 && "bg-primary/10 border-primary/30"
+                "h-8 gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground",
+                filters.status.length > 0 && "bg-primary/10 text-foreground font-medium"
               )}
             >
               Status
@@ -355,11 +355,11 @@ export const CRMFiltersBar = ({
         >
           <SelectTrigger
             className={cn(
-              "h-9 w-auto min-w-[140px] gap-2",
-              filters.phoneFilter !== "all" && "bg-primary/10 border-primary/30"
+              "h-8 w-auto min-w-[120px] gap-1.5 text-xs border-transparent bg-transparent text-muted-foreground hover:text-foreground shadow-none",
+              filters.phoneFilter !== "all" && "bg-primary/10 text-foreground font-medium"
             )}
           >
-            <Phone className="h-4 w-4" />
+            <Phone className="h-3.5 w-3.5" />
             <SelectValue placeholder="Telefone" />
           </SelectTrigger>
           <SelectContent>
@@ -372,8 +372,8 @@ export const CRMFiltersBar = ({
         {/* More Filters */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 gap-2">
-              <Filter className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground">
+              <Filter className="h-3.5 w-3.5" />
               Mais filtros
               {(filters.stages.length > 0 || filters.valueMin || filters.valueMax) && (
                 <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
@@ -445,30 +445,30 @@ export const CRMFiltersBar = ({
             variant="ghost"
             size="sm"
             onClick={clearFilters}
-            className="h-9 text-muted-foreground hover:text-foreground"
+            className="h-8 text-xs text-muted-foreground hover:text-foreground"
           >
             Limpar filtros
           </Button>
         )}
 
         {/* Right Side Actions */}
-        <div className="ml-auto flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-9 w-9">
-            <RotateCcw className="h-4 w-4" />
+        <div className="ml-auto flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+            <RotateCcw className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9">
-            <Download className="h-4 w-4" />
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+            <Download className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9">
-            <Settings2 className="h-4 w-4" />
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+            <Settings2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
 
       {/* Results Count */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span>
-          {totalCount} oportunidades de <strong className="text-foreground">{entityName}</strong>
+          {totalCount} oportunidades de <strong className="text-foreground font-semibold">{entityName}</strong>
         </span>
       </div>
     </div>

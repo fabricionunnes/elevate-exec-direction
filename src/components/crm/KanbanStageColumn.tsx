@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { MoreHorizontal, Loader2, Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KanbanLeadCard } from "./KanbanLeadCard";
 
@@ -125,68 +124,57 @@ export const KanbanStageColumn = ({
     return () => observer.disconnect();
   }, [hasMore, isLoadingMore, leads.length]);
 
-  const dotColor = stage.color;
-
   return (
     <div
-      className="w-[270px] sm:w-[290px] h-full flex-shrink-0 flex flex-col rounded-xl border border-border/70 bg-[hsl(var(--crm-column))] overflow-hidden"
+      className="w-[270px] sm:w-[290px] h-full flex-shrink-0 flex flex-col rounded-lg bg-[hsl(var(--crm-column))] border border-border/40 overflow-hidden"
       onDragOver={onDragOver}
       onDrop={(e) => onDrop(e, stage.id)}
     >
-      {/* Stage Header */}
-      <div className="px-3 py-2.5 flex items-center gap-2 bg-[hsl(var(--crm-column-header))] border-b border-border/50">
-        {isMaster && leads.length > 0 && (
-          <Checkbox
-            checked={allStageSelected}
-            onCheckedChange={() => onSelectAllInStage(stage.id)}
-            className="cursor-pointer"
-            title={allStageSelected ? "Desmarcar todos" : "Selecionar todos"}
-          />
-        )}
-        
-        {/* Color dot */}
-        <div 
-          className="w-2.5 h-2.5 rounded-full shrink-0"
-          style={{ backgroundColor: dotColor }}
-        />
-        
-        <span className="font-semibold text-[13px] flex-1 truncate text-foreground">{stage.name}</span>
+      {/* Faixa de cor da etapa (hierarquia visual sem poluir) */}
+      <div className="h-[3px] shrink-0" style={{ backgroundColor: stage.color }} />
 
-        <Badge
-          variant="secondary"
-          className="text-[10px] h-5 min-w-[22px] justify-center font-semibold tabular-nums rounded-full bg-muted text-muted-foreground border-0 px-2"
-        >
-          {leads.length}
-        </Badge>
+      {/* Stage Header */}
+      <div className="px-3 pt-2 pb-1.5 shrink-0">
+        <div className="flex items-center gap-2">
+          {isMaster && leads.length > 0 && (
+            <Checkbox
+              checked={allStageSelected}
+              onCheckedChange={() => onSelectAllInStage(stage.id)}
+              className="cursor-pointer h-3.5 w-3.5"
+              title={allStageSelected ? "Desmarcar todos" : "Selecionar todos"}
+            />
+          )}
+
+          <span className="font-semibold text-[13px] flex-1 truncate text-foreground">{stage.name}</span>
+
+          <span className="text-[11px] text-muted-foreground font-medium tabular-nums shrink-0">
+            {leads.length}
+          </span>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
+            onClick={() => onAddLead(stage.id)}
+            title="Adicionar negócio nesta etapa"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+        </div>
 
         {stageTotal > 0 && (
-          <span className="text-[10px] text-muted-foreground font-medium hidden sm:inline tabular-nums">
+          <p className="text-[10px] text-muted-foreground/80 tabular-nums mt-0.5">
             {formatCurrency(stageTotal)}
-          </span>
+          </p>
         )}
-        
-        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
-          <MoreHorizontal className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-
-      {/* Add Deal Button */}
-      <div className="px-2.5 py-2">
-        <button 
-          onClick={() => onAddLead(stage.id)}
-          className="w-full py-1.5 text-xs font-medium text-primary/60 hover:text-primary border border-dashed border-primary/20 rounded-lg hover:border-primary/40 hover:bg-primary/5 transition-all flex items-center justify-center gap-1"
-        >
-          <Plus className="h-3 w-3" />
-          Adicionar negócio
-        </button>
       </div>
 
       {/* Lead Cards */}
-      <div 
+      <div
         ref={scrollRef}
-        className="flex-1 min-h-0 kanban-scroll px-2.5 pb-2.5"
+        className="flex-1 min-h-0 kanban-scroll px-2 pb-2 pt-1"
       >
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {visibleLeads.map(lead => (
             <KanbanLeadCard
               key={lead.id}
