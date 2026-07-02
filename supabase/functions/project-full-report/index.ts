@@ -44,7 +44,7 @@ async function aiNarrative(ctx: string): Promise<any> {
       headers: { "x-api-key": ANTHROPIC, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 4500,
+        max_tokens: 8000,
         messages: [{
           role: "user",
           content: `Você é o diretor comercial da UNV (Universidade Nacional de Vendas) escrevendo, para o CLIENTE, um relatório PREMIUM e detalhado do trabalho feito na empresa dele. Tom: profissional, humano, direto, orientado a resultado, sem enrolação e sem inventar dados — use só o que está no contexto. Escreva em português do Brasil.
@@ -54,6 +54,7 @@ Com base no CONTEXTO abaixo, retorne SOMENTE um JSON válido (sem markdown, sem 
  "resumo_executivo": "2 a 3 parágrafos abrindo o relatório: a parceria, o que foi construído e o resultado em uma leitura de alto nível",
  "o_que_fizemos": ["frase 1 do que a UNV executou", "frase 2", "..."],  // 6 a 10 itens concretos e específicos, baseados nas reuniões e ações
  "reunioes": [{"data": "YYYY-MM-DD", "titulo": "título curto", "resumo": "1 a 2 frases: o que foi tratado/decidido nessa reunião"}],  // UMA entrada por reunião do contexto (máx 15, as mais relevantes), na ordem cronológica
+ "acoes": [{"titulo": "título EXATO da ação como está no contexto", "resumo": "1 a 2 frases: o que foi feito, o diagnóstico/motivo e a melhoria gerada"}],  // UMA entrada para CADA ação que tiver DETALHE no contexto (use o campo DETALHE + o que souber das reuniões). Ações sem material, OMITA — não invente. Máx 60.
  "resultado": "2 parágrafos sobre os resultados gerados, citando os números que existem (faturamento, evolução, ações). Se os números forem escassos, seja honesto e foque no que foi estruturado.",
  "analise_grupos": "1 a 2 parágrafos sobre o acompanhamento pelos grupos de WhatsApp (gestão e vendedores): ritmo, temas, engajamento e como a consultoria conduziu o time — sem citar mensagens específicas nem nomes de pacientes",
  "destaques": ["destaque 1", "destaque 2", "destaque 3", "destaque 4"],  // 3 a 4 pontos fortes/conquistas
@@ -109,7 +110,7 @@ Deno.serve(async (req) => {
     const meetings = (mRows || []).filter((m: any) => !m.is_no_show && !m.is_internal);
 
     // ---- ações (tarefas concluídas) ----
-    let tQ = sb.from("onboarding_tasks").select("title, status, created_at, completed_at, tags").eq("project_id", project_id);
+    let tQ = sb.from("onboarding_tasks").select("title, status, created_at, completed_at, tags, description, observations").eq("project_id", project_id);
     const { data: tRows } = await tQ;
     const done = (tRows || []).filter((t: any) => t.status === "completed" || t.completed_at);
     const openCount = (tRows || []).filter((t: any) => t.status !== "completed" && !t.completed_at).length;
@@ -166,7 +167,10 @@ Deno.serve(async (req) => {
       `\nREUNIÕES (${meetings.length}):`,
       ...meetings.map((m: any) => `- ${(m.meeting_date || "").slice(0, 10)} | ${m.meeting_title || m.subject || "Reunião"} | ${(m.notes || m.transcript || "").replace(/\s+/g, " ").slice(0, 700)}`),
       `\nAÇÕES CONCLUÍDAS (${done.length}; ${openCount} em aberto):`,
-      ...done.slice(0, 120).map((t: any) => `- ${(t.completed_at || t.created_at || "").slice(0, 10)} | ${t.title}`),
+      ...done.slice(0, 120).map((t: any) => {
+        const det = [t.description, t.observations].filter(Boolean).join(" | ").replace(/\s+/g, " ").slice(0, 380);
+        return `- ${(t.completed_at || t.created_at || "").slice(0, 10)} | ${t.title}${det ? ` || DETALHE: ${det}` : ""}`;
+      }),
       `\nRESULTADOS (KPI):`,
       `Faturamento total no período: R$ ${fatTotal.toLocaleString("pt-BR")} | Vendas: ${vendasTotal}`,
       `Faturamento mês a mês: ${fatSerie.map((s) => `${brMonth(s.mes)}=R$${Math.round(s.valor).toLocaleString("pt-BR")}`).join(", ") || "sem lançamentos"}`,
@@ -176,7 +180,7 @@ Deno.serve(async (req) => {
     const narrative = await aiNarrative(ctx) || {
       resumo_executivo: `Relatório do trabalho realizado pela UNV na ${company.name}.`,
       o_que_fizemos: done.slice(0, 8).map((t: any) => t.title),
-      reunioes: [],
+      reunioes: [], acoes: [],
       resultado: `Faturamento no período: R$ ${fatTotal.toLocaleString("pt-BR")}.`,
       analise_grupos: "", destaques: [], proximos_passos: [],
     };

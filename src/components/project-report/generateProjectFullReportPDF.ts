@@ -54,7 +54,15 @@ export async function generateProjectFullReportPDF(projectId: string, period: Re
   if (error) throw new Error(error.message || "Falha ao gerar o relatório");
   if (!data || data.error) throw new Error(data?.error || "Sem dados para o relatório");
 
-  const d = data;
+  // Sanitiza strings: emojis/símbolos fora do latin-1 viram lixo na fonte padrão do jsPDF
+  const cleanStr = (s: string) => s.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{FE0F}\u{200D}\u{2B00}-\u{2BFF}]/gu, "").replace(/\s{2,}/g, " ").trim();
+  const deepClean = (o: any): any => {
+    if (typeof o === "string") return o.startsWith("data:image") ? o : cleanStr(o);
+    if (Array.isArray(o)) return o.map(deepClean);
+    if (o && typeof o === "object") { const r: any = {}; for (const k of Object.keys(o)) r[k] = deepClean(o[k]); return r; }
+    return o;
+  };
+  const d = deepClean(data);
   const n = d.narrative || {};
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const W = 210, H = 297, M = 18, CW = W - 2 * M;
@@ -234,6 +242,14 @@ export async function generateProjectFullReportPDF(projectId: string, period: Re
     { label: "Em andamento", value: String(d.actions?.open || 0) },
   ]);
   await chartImg(d.charts?.acoes);
+  // resumos por ação (IA): o que foi feito, diagnóstico e melhoria
+  const aiActs: any[] = Array.isArray(n.acoes) ? n.acoes : [];
+  const actSummary = (title: string) => {
+    const t = (title || "").trim().toLowerCase();
+    const hit = aiActs.find((x) => (x.titulo || "").trim().toLowerCase() === t) ||
+      aiActs.find((x) => t && ((x.titulo || "").trim().toLowerCase().startsWith(t.slice(0, 40)) || t.startsWith((x.titulo || "").trim().toLowerCase().slice(0, 40))));
+    return hit?.resumo || "";
+  };
   const acts: any[] = (d.actions?.list || []).slice().sort((a: any, b: any) => (a.date || "").localeCompare(b.date || ""));
   const byMonth: Record<string, any[]> = {};
   acts.forEach((a) => { const k = (a.date || "").slice(0, 7) || "—"; (byMonth[k] = byMonth[k] || []).push(a); });
@@ -244,13 +260,22 @@ export async function generateProjectFullReportPDF(projectId: string, period: Re
     pdf.text(mkey === "—" ? "Sem data" : brMonthLong(mkey) + `  ·  ${byMonth[mkey].length} ações`, M + 4, y + 1.4);
     y += 9.5;
     byMonth[mkey].forEach((a) => {
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); setText(DARK);
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(9); setText(DARK);
       const lines = pdf.splitTextToSize(a.title || "", CW - 26);
-      ensure(lines.length * 4.6 + 1.5);
-      setText(GREY); pdf.text(ptDateShort(a.date).slice(0, 5), M + 3, y);
-      setText(DARK);
+      const resumo = actSummary(a.title);
+      const rLines = resumo ? pdf.splitTextToSize(resumo, CW - 22) : [];
+      ensure(lines.length * 4.6 + rLines.length * 4.5 + 3);
+      setText(GREY); pdf.setFont("helvetica", "normal"); pdf.text(ptDateShort(a.date).slice(0, 5), M + 3, y);
+      setText(DARK); pdf.setFont("helvetica", "bold");
       lines.forEach((ln: string, i: number) => { pdf.text(ln, M + 16, y); if (i < lines.length - 1) y += 4.6; });
-      y += 5.2;
+      y += 4.8;
+      if (rLines.length) {
+        pdf.setFont("helvetica", "normal"); pdf.setFontSize(8.7); setText([80, 88, 100]);
+        rLines.forEach((ln: string) => { ensure(5.5); pdf.text(ln, M + 16, y); y += 4.5; });
+        y += 1.6;
+      } else {
+        y += 0.6;
+      }
     });
     y += 2;
   });
