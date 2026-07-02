@@ -53,7 +53,8 @@ import {
   ListChecks,
   Bell,
   Link2,
-  FileText
+  FileText,
+  Shuffle
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
 import { StageChecklistDialog } from "@/components/crm/StageChecklistDialog";
@@ -63,6 +64,7 @@ import { WonNotificationSettings } from "@/components/crm/settings/WonNotificati
 import { LeadNotificationSettings } from "@/components/crm/settings/LeadNotificationSettings";
 import { ClintIntegrationTab } from "@/components/crm/settings/ClintIntegrationTab";
 import { PipelineFormsManager } from "@/components/crm/PipelineFormsManager";
+import { CRMDistributionTab } from "@/components/crm/settings/CRMDistributionTab";
 import { CRMMessageRulesTab } from "@/components/crm/settings/CRMMessageRulesTab";
 import { toast } from "sonner";
 
@@ -1118,6 +1120,11 @@ export const CRMSettingsPage = () => {
             <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             Formulários
           </TabsTrigger>
+          <TabsTrigger value="distribution" className="gap-1.5 text-xs sm:text-sm">
+            <Shuffle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Distribuição</span>
+            <span className="sm:hidden">Distrib.</span>
+          </TabsTrigger>
         </TabsList>
 
         {/* Pipelines Tab */}
@@ -2167,6 +2174,11 @@ export const CRMSettingsPage = () => {
         {/* Forms Tab */}
         <TabsContent value="forms" className="mt-6">
           <PipelineFormsManager />
+        </TabsContent>
+
+        {/* Distribuição automática de leads/conversas */}
+        <TabsContent value="distribution" className="mt-6">
+          <CRMDistributionTab />
         </TabsContent>
       </Tabs>
 
