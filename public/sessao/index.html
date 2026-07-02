@@ -206,7 +206,7 @@
               </div>
               <div class="field">
                 <label>Seu WhatsApp (com DDD)</label>
-                <input name="telefone" type="tel" inputmode="numeric" placeholder="(31) 99999-9999" autocomplete="tel" maxlength="16" required />
+                <input name="telefone" type="tel" inputmode="numeric" placeholder="(31) 99999-9999" autocomplete="tel" maxlength="24" required />
               </div>
               <p class="form-err" hidden></p>
               <button class="btn" type="submit">
@@ -389,7 +389,11 @@
 
   // ── Phone mask (BR) ──
   function maskPhone(v){
-    var d = v.replace(/\D/g,"").slice(0,11);
+    var d = v.replace(/\D/g,"");
+    // Autofill costuma trazer o DDI +55 na frente. Remove quando o total passa de 11 digitos
+    // (12 = 55+DDD+8 fixo, 13 = 55+DDD+9 celular). Nao remove com 11 digitos (preserva DDD 55).
+    if(d.length > 11 && d.slice(0,2) === "55") d = d.slice(2);
+    d = d.slice(0,11);
     if(d.length<=2) return d.length?"("+d:d;
     if(d.length<=6) return "("+d.slice(0,2)+") "+d.slice(2);
     if(d.length<=10) return "("+d.slice(0,2)+") "+d.slice(2,6)+"-"+d.slice(6);
