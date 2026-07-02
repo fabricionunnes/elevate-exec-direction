@@ -57,7 +57,8 @@ import { AdsBriefingSection } from "@/components/social/strategy/AdsBriefingSect
 import { StrategicDiagnosticModule } from "@/components/client-diagnostic/StrategicDiagnosticModule";
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
 import { GeneratePDFTasksDialog } from "@/components/onboarding-tasks/GeneratePDFTasksDialog";
-import { Settings, Sparkles, Building2, Wand2, UserCircle, Route, LayoutList, CalendarDays, LogOut, FileUp, BarChart3 as PanelIcon, Columns3 } from "lucide-react";
+import { Settings, Sparkles, Building2, Wand2, UserCircle, Route, LayoutList, CalendarDays, LogOut, FileUp, BarChart3 as PanelIcon, Columns3, FileText, Loader2 } from "lucide-react";
+import { generateProjectFullReportPDF, type ReportPeriod } from "@/components/project-report/generateProjectFullReportPDF";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { ChurnReasonDialog } from "@/components/onboarding-tasks/ChurnReasonDialog";
@@ -564,6 +565,21 @@ const OnboardingProjectPage = () => {
 
   const handleOpenAddTaskDialog = () => {
     setShowAddTaskDialog(true);
+  };
+
+  const [reportLoading, setReportLoading] = useState(false);
+  const handleGenerateReport = async (period: ReportPeriod) => {
+    if (!projectId) return;
+    setReportLoading(true);
+    const tid = toast.loading("Gerando relatório completo… pode levar até 1 minuto.");
+    try {
+      await generateProjectFullReportPDF(projectId, period);
+      toast.success("Relatório gerado com sucesso!", { id: tid });
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao gerar o relatório", { id: tid });
+    } finally {
+      setReportLoading(false);
+    }
   };
 
   const handleTaskAddedFromDialog = () => {
@@ -1243,6 +1259,19 @@ const OnboardingProjectPage = () => {
             <div className="hidden sm:flex items-center gap-2 shrink-0">
               {currentUserRole && currentUserRole !== "client" && (
                 <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" disabled={reportLoading} className="bg-[#0D2B5E] hover:bg-[#0a2350] text-white shadow-sm">
+                        {reportLoading ? <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" /> : <FileText className="h-4 w-4 sm:mr-2" />}
+                        <span className="hidden sm:inline">Relatório Completo</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleGenerateReport("all")}>Histórico completo</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleGenerateReport(90)}>Últimos 90 dias</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleGenerateReport(30)}>Últimos 30 dias</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button variant="outline" size="sm" onClick={() => setShowPDFTasksDialog(true)}>
                     <FileUp className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Plano via PDF</span>
