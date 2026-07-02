@@ -37,8 +37,10 @@ import {
   Plus,
   Sparkles,
   ClipboardList,
+  Copy,
   ExternalLink,
   FolderOpen,
+  ListChecks,
   Users,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -74,6 +76,21 @@ const MEMBER_STATUS_BADGE: Record<string, { label: string; className: string }> 
   completed: { label: "Concluído", className: "border-blue-500 text-blue-600" },
 };
 
+const TASK_STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  pending: { label: "Pendente", className: "border-yellow-500 text-yellow-600" },
+  in_progress: { label: "Em andamento", className: "border-blue-500 text-blue-600" },
+  completed: { label: "Concluída", className: "border-green-500 text-green-600" },
+  cancelled: { label: "Cancelada", className: "border-red-500 text-red-600" },
+};
+
+interface MemberTaskRow {
+  id: string;
+  title: string;
+  due_date: string | null;
+  status: string;
+  form_link: string | null;
+}
+
 export function BoardMembersTab({ onOpenDeliverables }: BoardMembersTabProps) {
   const navigate = useNavigate();
   const [members, setMembers] = useState<BoardMember[]>([]);
@@ -96,6 +113,11 @@ export function BoardMembersTab({ onOpenDeliverables }: BoardMembersTabProps) {
 
   // dialog de revisão de plano
   const [reviewMember, setReviewMember] = useState<BoardMember | null>(null);
+
+  // dialog de tarefas do membro
+  const [tasksMember, setTasksMember] = useState<BoardMember | null>(null);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [memberTasks, setMemberTasks] = useState<MemberTaskRow[]>([]);
 
   const fetchMembers = useCallback(async () => {
     try {
@@ -224,6 +246,64 @@ export function BoardMembersTab({ onOpenDeliverables }: BoardMembersTabProps) {
     }
   };
 
+  const openTasks = async (member: BoardMember) => {
+    setTasksMember(member);
+    setMemberTasks([]);
+    if (!member.project_id) return;
+    setTasksLoading(true);
+    try {
+      const { data: tasks, error } = await (supabase as any)
+        .from("onboarding_tasks")
+        .select("id, title, due_date, status")
+        .eq("project_id", member.project_id)
+        .order("due_date", { ascending: true });
+      if (error) throw error;
+
+      const taskIds = (tasks || []).map((t: any) => t.id);
+      let linkByTask: Record<string, string> = {};
+      if (taskIds.length > 0) {
+        const { data: forms, error: formsErr } = await (supabase as any)
+          .from("unv_board_task_forms")
+          .select("task_id, token")
+          .in("task_id", taskIds);
+        if (formsErr) {
+          console.error("Erro ao buscar formulários das tarefas:", formsErr);
+        } else {
+          linkByTask = Object.fromEntries(
+            (forms || []).map((f: any) => [
+              f.task_id,
+              `${window.location.origin}/#/board/tarefa/${f.token}`,
+            ]),
+          );
+        }
+      }
+
+      setMemberTasks(
+        (tasks || []).map((t: any) => ({
+          id: t.id,
+          title: t.title,
+          due_date: t.due_date,
+          status: t.status,
+          form_link: linkByTask[t.id] || null,
+        })),
+      );
+    } catch (err) {
+      console.error("Erro ao carregar tarefas do membro:", err);
+      toast.error("Erro ao carregar as tarefas");
+    } finally {
+      setTasksLoading(false);
+    }
+  };
+
+  const copyFormLink = async (link: string) => {
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success("Link do formulário copiado");
+    } catch {
+      toast.error("Não foi possível copiar o link");
+    }
+  };
+
   const roomLabel = (roomId: string | null) => {
     if (!roomId) return "—";
     const room = rooms.find((r) => r.id === roomId);
@@ -348,6 +428,14 @@ export function BoardMembersTab({ onOpenDeliverables }: BoardMembersTabProps) {
                                 <FolderOpen className="h-4 w-4 mr-1" />
                                 Entregáveis
                               </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openTasks(member)}
+                              >
+                                <ListChecks className="h-4 w-4 mr-1" />
+                                Tarefas
+                              </Button>
                             </>
                           )}
                         </div>
@@ -435,6 +523,95 @@ export function BoardMembersTab({ onOpenDeliverables }: BoardMembersTabProps) {
               Adicionar
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: tarefas do membro */}
+      <Dialog open={!!tasksMember} onOpenChange={(open) => !open && setTasksMember(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Tarefas — {tasksMember?.company_name || "Empresa"}</DialogTitle>
+            <DialogDescription>
+              Tarefas do plano publicado e o link do formulário público de cada uma.
+            </DialogDescription>
+          </DialogHeader>
+          {!tasksMember?.project_id ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              Este membro não tem projeto vinculado.
+            </div>
+          ) : tasksLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10" />
+              <Skeleton className="h-10" />
+              <Skeleton className="h-10" />
+            </div>
+          ) : memberTasks.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              Nenhuma tarefa encontrada no projeto.
+            </div>
+          ) : (
+            <div className="max-h-[60vh] overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tarefa</TableHead>
+                    <TableHead>Prazo</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Formulário</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {memberTasks.map((task) => {
+                    const st = TASK_STATUS_BADGE[task.status] || {
+                      label: task.status || "—",
+                      className: "",
+                    };
+                    return (
+                      <TableRow key={task.id}>
+                        <TableCell className="font-medium max-w-[320px]">
+                          <span className="line-clamp-2">{task.title}</span>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {task.due_date
+                            ? format(new Date(`${task.due_date}T12:00:00`), "dd/MM")
+                            : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={st.className}>
+                            {st.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {task.form_link ? (
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                title="Copiar link"
+                                onClick={() => copyFormLink(task.form_link!)}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                title="Abrir formulário"
+                                onClick={() => window.open(task.form_link!, "_blank")}
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

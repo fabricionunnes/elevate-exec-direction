@@ -12,7 +12,8 @@ export type BoardDeliverableType =
   | "script"
   | "calendario"
   | "book"
-  | "outro";
+  | "outro"
+  | "execucao";
 
 export interface DeliverableFormField {
   key: string;
@@ -394,6 +395,42 @@ export const BOARD_DELIVERABLE_TYPES: Record<BoardDeliverableType, DeliverableTy
       },
     ],
   },
+  execucao: {
+    label: "Relatório de Execução",
+    description: "Relate como a ação foi executada",
+    fields: [
+      {
+        key: "o_que_foi_feito",
+        label: "O que foi feito na prática?",
+        placeholder: "Ex.: montamos a planilha de acompanhamento e apresentamos pro time na segunda-feira...",
+        type: "textarea",
+      },
+      {
+        key: "como_foi_feito",
+        label: "Como foi feito? Descreva o passo a passo",
+        placeholder: "Ex.: primeiro levantei os números do mês, depois reuni o time, depois definimos os responsáveis...",
+        type: "textarea",
+      },
+      {
+        key: "resultados_obtidos",
+        label: "Resultados obtidos — números, se houver",
+        placeholder: "Ex.: taxa de resposta caiu de 2h pra 15 min; 12 propostas enviadas na semana...",
+        type: "textarea",
+      },
+      {
+        key: "dificuldades",
+        label: "Dificuldades encontradas",
+        placeholder: "Ex.: parte do time resistiu no começo; faltou tempo pra treinar todo mundo...",
+        type: "textarea",
+      },
+      {
+        key: "proximos_passos",
+        label: "Próximos passos sugeridos",
+        placeholder: "Ex.: revisar os números com o time toda sexta e ajustar o processo no fim do mês...",
+        type: "textarea",
+      },
+    ],
+  },
   outro: {
     label: "Documento Personalizado",
     description: "Um documento sob medida a partir das informações que você fornecer.",
@@ -426,7 +463,11 @@ export const BOARD_DELIVERABLE_TYPES: Record<BoardDeliverableType, DeliverableTy
   },
 };
 
-export const BOARD_DELIVERABLE_TYPE_KEYS = Object.keys(BOARD_DELIVERABLE_TYPES) as BoardDeliverableType[];
+// "execucao" é exclusivo do formulário público de tarefa (BoardTaskFormPage) —
+// não aparece no catálogo de criação da Biblioteca Comercial.
+export const BOARD_DELIVERABLE_TYPE_KEYS = (
+  Object.keys(BOARD_DELIVERABLE_TYPES) as BoardDeliverableType[]
+).filter((k) => k !== "execucao");
 
 export function boardDeliverableLabel(type: string | null | undefined): string {
   if (!type) return "Documento";

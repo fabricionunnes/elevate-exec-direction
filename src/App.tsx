@@ -168,6 +168,7 @@ const GlobalTalentPoolResumesPage = lazy(() => import("./pages/onboarding-tasks/
 const HotseatAdminPage = lazy(() => import("./pages/onboarding-tasks/HotseatAdminPage"));
 const BoardAdminPage = lazy(() => import("./pages/onboarding-tasks/BoardAdminPage"));
 const BoardDeliverablePage = lazy(() => import("./pages/BoardDeliverablePage"));
+const BoardTaskFormPage = lazy(() => import("./pages/BoardTaskFormPage"));
 const ClientAccessReportPage = lazy(() => import("./pages/onboarding-tasks/ClientAccessReportPage"));
 const BillingRulesPage = lazy(() => import("./pages/onboarding-tasks/BillingRulesPage"));
 const SurveySendConfigPage = lazy(() => import("./pages/onboarding-tasks/SurveySendConfigPage"));
@@ -550,6 +551,7 @@ const AppShell = () => {
             
             <Route path="/onboarding-client/:projectId" element={<ClientOnboardingPage />} />
             <Route path="/board/entregavel/:memberId" element={<BoardDeliverablePage />} />
+            <Route path="/board/tarefa/:token" element={<BoardTaskFormPage />} />
             <Route path="/disparador/:projectId" element={<ClientDisparadorPage />} />
             <Route path="/cac-form/:projectId" element={<CACFormPage />} />
             <Route path="/kickoff/:companyId" element={<KickoffFormPage />} />

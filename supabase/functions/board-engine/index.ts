@@ -25,6 +25,11 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = body.action as string;
 
+    // Ações públicas de formulário de tarefa: o token É a credencial
+    if (action === "get_task_form") return await getTaskForm(supabase, body.token);
+    if (action === "submit_task_form") return await submitTaskForm(supabase, body);
+    if (action === "attach_task_pdf") return await attachTaskPdf(supabase, body);
+
     // Autorização: staff ativo (JWT), service key ou secret do cron
     const authHeader = req.headers.get("authorization") || "";
     const apiKeyHeader = req.headers.get("apikey") || "";
@@ -109,6 +114,38 @@ async function generatePlan(supabase: any, memberId: string) {
 
   await supabase.from("unv_board_members").update({ plan_status: "generating" }).eq("id", memberId);
 
+  // Contexto do CRM: transcrição da reunião de venda + proposta (dores reais do cliente)
+  let crmContext = "";
+  if (member.crm_lead_id) {
+    const { data: lead } = await supabase
+      .from("crm_leads")
+      .select("name, company, segment, notes")
+      .eq("id", member.crm_lead_id)
+      .maybeSingle();
+    const { data: transcription } = await supabase
+      .from("crm_transcriptions")
+      .select("summary, transcription_text, created_at")
+      .eq("lead_id", member.crm_lead_id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const { data: proposal } = await supabase
+      .from("crm_lead_proposals")
+      .select("content, created_at")
+      .eq("lead_id", member.crm_lead_id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const parts: string[] = [];
+    if (lead?.notes) parts.push(`ANOTAÇÕES DO LEAD: ${String(lead.notes).substring(0, 1500)}`);
+    if (transcription?.summary) parts.push(`RESUMO DA REUNIÃO DE VENDA: ${String(transcription.summary).substring(0, 3000)}`);
+    else if (transcription?.transcription_text) parts.push(`TRECHO DA TRANSCRIÇÃO DA REUNIÃO DE VENDA: ${String(transcription.transcription_text).substring(0, 4000)}`);
+    if (proposal?.content) parts.push(`PROPOSTA APRESENTADA (contém as dores mapeadas): ${String(proposal.content).substring(0, 3000)}`);
+    if (parts.length) {
+      crmContext = `\n\nCONTEXTO DA VENDA (vem do CRM — são as dores REAIS ditas pelo cliente na reunião; use isso pra priorizar e especificar as ações):\n${parts.join("\n\n")}`;
+    }
+  }
+
   const profile = {
     empresa: company?.name,
     segmento: company?.segment || member.segment_snapshot || "não informado",
@@ -132,7 +169,7 @@ async function generatePlan(supabase: any, memberId: string) {
 O plano segue o Método CRESCER em 7 fases: 1-Cenário, 2-Resultado Ideal, 3-Estrutura, 4-Sistema de Captação, 5-Conversão, 6-Escala, 7-Revisão.
 
 PERFIL DA EMPRESA:
-${JSON.stringify(profile, null, 2)}
+${JSON.stringify(profile, null, 2)}${crmContext}
 
 TEMPLATE-MÃE (ações padrão do ano, offsets relativos à data de entrada):
 ${JSON.stringify(templates)}
@@ -276,10 +313,14 @@ async function publishPlan(supabase: any, memberId: string) {
 
   let published = 0;
   for (const a of actions) {
+    // Token do formulário público nasce junto com a tarefa (link vai na descrição)
+    const token = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, "");
+    const formUrl = `${PUBLIC_DOMAIN}/#/board/tarefa/${token}`;
     const descParts = [a.description || ""];
     if (a.deliverable_type) {
-      descParts.push(`\n[UNV Board] Esta ação gera entregável oficial: ${deliverableLabel(a.deliverable_type)}. Preencha na aba Entregáveis do Board.`);
+      descParts.push(`\n\n[UNV Board] Esta ação gera o documento oficial: ${deliverableLabel(a.deliverable_type)}.`);
     }
+    descParts.push(`\nExecute pelo formulário oficial: ${formUrl}`);
     const { data: task, error: tErr } = await supabase
       .from("onboarding_tasks")
       .insert({
@@ -299,6 +340,17 @@ async function publishPlan(supabase: any, memberId: string) {
     await supabase.from("unv_board_plan_actions")
       .update({ status: "published", task_id: task.id })
       .eq("id", a.id);
+    // O trigger de autocreate pode ter criado o form com token próprio — força o nosso
+    // (que já está na descrição) e o tipo certo
+    await supabase.from("unv_board_task_forms").upsert(
+      {
+        task_id: task.id,
+        member_id: memberId,
+        token,
+        form_type: a.deliverable_type || "execucao",
+      },
+      { onConflict: "task_id" }
+    );
     published++;
   }
 
@@ -432,6 +484,211 @@ REGRAS DE FORMA:
   if (insErr) return json({ error: insErr.message }, 500);
 
   return json({ success: true, deliverable_id: row.id, version: row.version, content_md: content });
+}
+
+// ──────────────── FORMULÁRIO PÚBLICO DE TAREFA (token = credencial) ────────────────
+
+const EXECUTION_SPEC = {
+  label: "Relatório de Execução",
+  guidance:
+    "Estruture o relatório de execução da ação: o que era a ação e o objetivo dela; o que foi feito na prática (passo a passo do que o cliente relatou); resultados obtidos (números quando houver); dificuldades encontradas e como foram tratadas; pendências e próximos passos recomendados. Feche com um parecer curto de qualidade da execução.",
+};
+
+async function loadFormByToken(supabase: any, token: string) {
+  if (!token || String(token).length < 20) return null;
+  const { data: form } = await supabase
+    .from("unv_board_task_forms")
+    .select("*")
+    .eq("token", token)
+    .maybeSingle();
+  return form;
+}
+
+async function getTaskForm(supabase: any, token: string) {
+  const form = await loadFormByToken(supabase, token);
+  if (!form) return json({ error: "Formulário não encontrado" }, 404);
+
+  const { data: task } = await supabase
+    .from("onboarding_tasks")
+    .select("id, title, description, due_date, status")
+    .eq("id", form.task_id)
+    .single();
+  const { data: member } = await supabase
+    .from("unv_board_members")
+    .select("id, company_id")
+    .eq("id", form.member_id)
+    .single();
+  const { data: company } = await supabase
+    .from("onboarding_companies")
+    .select("name")
+    .eq("id", member?.company_id)
+    .single();
+
+  // Limpa o link técnico da descrição mostrada ao cliente
+  const cleanDesc = (task?.description || "")
+    .replace(/\nExecute pelo formulário oficial:.*$/s, "")
+    .trim();
+
+  return json({
+    success: true,
+    form_type: form.form_type,
+    status: form.status,
+    submitted_at: form.submitted_at,
+    deliverable_id: form.deliverable_id,
+    task: { title: task?.title, description: cleanDesc, due_date: task?.due_date, status: task?.status },
+    company_name: company?.name,
+  });
+}
+
+async function submitTaskForm(supabase: any, body: any) {
+  const { token, form_data } = body;
+  if (!form_data) return json({ error: "form_data obrigatório" }, 400);
+  const form = await loadFormByToken(supabase, token);
+  if (!form) return json({ error: "Formulário não encontrado" }, 404);
+  if (form.status === "submitted") return json({ error: "Esta tarefa já foi concluída" }, 409);
+  if (!ANTHROPIC_API_KEY) return json({ error: "ANTHROPIC_API_KEY não configurada" }, 500);
+
+  const { data: member } = await supabase
+    .from("unv_board_members").select("*").eq("id", form.member_id).single();
+  const { data: company } = await supabase
+    .from("onboarding_companies")
+    .select("name, segment, company_description, target_audience, average_ticket, sales_team_size")
+    .eq("id", member.company_id).single();
+  const { data: task } = await supabase
+    .from("onboarding_tasks")
+    .select("title, description")
+    .eq("id", form.task_id).single();
+
+  const spec = DELIVERABLE_SPECS[form.form_type] || EXECUTION_SPEC;
+
+  const prompt = `Você é o diretor comercial da UNV (Universidade Nacional de Vendas) e vai redigir um documento oficial pro cliente da mentoria UNV Board, a partir da execução de uma ação do plano anual.
+
+DOCUMENTO: ${spec.label}
+AÇÃO DO PLANO: ${task?.title}
+CONTEXTO DA AÇÃO: ${(task?.description || "").replace(/\nExecute pelo formulário oficial:.*$/s, "").substring(0, 800)}
+EMPRESA: ${company?.name} — segmento: ${company?.segment || "não informado"}
+CONTEXTO DA EMPRESA: ${JSON.stringify({ descricao: company?.company_description, publico: company?.target_audience, ticket_medio: company?.average_ticket, time_vendas: company?.sales_team_size })}
+
+RESPOSTAS DO FORMULÁRIO (preenchido pelo cliente — é a matéria-prima do documento):
+${JSON.stringify(form_data, null, 2)}
+
+INSTRUÇÕES: ${spec.guidance}
+
+REGRAS DE FORMA:
+- Markdown limpo: títulos com ##, subtítulos com ###, listas com -. Sem tabelas complexas, sem emojis.
+- Português do Brasil, tom profissional e direto, linguagem do segmento da empresa.
+- Use SOMENTE as informações fornecidas; onde faltar, escreva a seção com orientação prática marcada como "A definir:".
+- Comece direto no título: # ${spec.label} — ${company?.name}.`;
+
+  const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 12000, messages: [{ role: "user", content: prompt }] }),
+  });
+  if (!aiResp.ok) {
+    const errText = await aiResp.text();
+    return json({ error: `Anthropic ${aiResp.status}: ${errText.substring(0, 300)}` }, 500);
+  }
+  const aiData = await aiResp.json();
+  const content = (aiData.content || []).map((b: any) => b.text || "").join("").trim();
+  if (content.length < 100) return json({ error: "IA retornou documento vazio" }, 500);
+
+  const validTypes = ["raiox", "metas", "icp", "playbook", "processos", "script", "calendario", "book", "outro"];
+  const dType = validTypes.includes(form.form_type) ? form.form_type : "outro";
+
+  const { data: prev } = await supabase
+    .from("unv_board_deliverables")
+    .select("version")
+    .eq("member_id", form.member_id)
+    .eq("type", dType)
+    .order("version", { ascending: false })
+    .limit(1);
+  const version = (prev?.[0]?.version || 0) + 1;
+
+  const { data: row, error: insErr } = await supabase
+    .from("unv_board_deliverables")
+    .insert({
+      member_id: form.member_id,
+      company_id: member.company_id,
+      type: dType,
+      title: `${spec.label} — ${task?.title}`,
+      version,
+      form_data,
+      content_md: content,
+      status: "draft",
+      task_id: form.task_id,
+    })
+    .select("id, version")
+    .single();
+  if (insErr) return json({ error: insErr.message }, 500);
+
+  await supabase.from("unv_board_task_forms")
+    .update({ form_data, deliverable_id: row.id })
+    .eq("id", form.id);
+
+  return json({
+    success: true,
+    deliverable_id: row.id,
+    version: row.version,
+    content_md: content,
+    doc_label: spec.label,
+    company_name: company?.name,
+  });
+}
+
+async function attachTaskPdf(supabase: any, body: any) {
+  const { token, deliverable_id, pdf_base64, file_name } = body;
+  if (!deliverable_id || !pdf_base64) return json({ error: "deliverable_id e pdf_base64 obrigatórios" }, 400);
+  const form = await loadFormByToken(supabase, token);
+  if (!form) return json({ error: "Formulário não encontrado" }, 404);
+  if (form.deliverable_id !== deliverable_id) return json({ error: "Documento não pertence a esta tarefa" }, 403);
+
+  const { data: member } = await supabase
+    .from("unv_board_members").select("company_id, project_id").eq("id", form.member_id).single();
+
+  const bytes = Uint8Array.from(atob(pdf_base64), (c) => c.charCodeAt(0));
+  if (bytes.length > 15 * 1024 * 1024) return json({ error: "PDF muito grande" }, 413);
+
+  const safeName = (file_name || "documento.pdf").replace(/[^a-zA-Z0-9._-]/g, "_");
+
+  // 1) Biblioteca do Board
+  const boardPath = `${form.member_id}/tasks/${form.task_id}/${Date.now()}_${safeName}`;
+  const { error: upErr } = await supabase.storage
+    .from("board-deliverables")
+    .upload(boardPath, bytes, { contentType: "application/pdf", upsert: true });
+  if (upErr) return json({ error: `Upload: ${upErr.message}` }, 500);
+
+  // 2) Anexo da tarefa dentro do projeto (padrão onboarding-documents)
+  const docPath = `${member.company_id}/tasks/${form.task_id}/${Date.now()}_${safeName}`;
+  const { error: docUpErr } = await supabase.storage
+    .from("onboarding-documents")
+    .upload(docPath, bytes, { contentType: "application/pdf", upsert: true });
+  if (!docUpErr) {
+    await supabase.from("onboarding_documents").insert({
+      company_id: member.company_id,
+      project_id: member.project_id,
+      task_id: form.task_id,
+      file_name: safeName,
+      file_path: docPath,
+      file_type: "application/pdf",
+      file_size: bytes.length,
+      category: "general",
+      description: "Documento oficial UNV Board gerado pelo formulário da tarefa",
+    });
+  }
+
+  // 3) Finaliza documento, formulário e TAREFA
+  await supabase.from("unv_board_deliverables")
+    .update({ pdf_path: boardPath, status: "final" })
+    .eq("id", deliverable_id);
+  await supabase.from("unv_board_task_forms")
+    .update({ status: "submitted", submitted_at: new Date().toISOString() })
+    .eq("id", form.id);
+  await supabase.from("onboarding_tasks")
+    .update({ status: "completed", completed_at: new Date().toISOString() })
+    .eq("id", form.task_id);
+
+  return json({ success: true, task_completed: true });
 }
 
 // ─────────────────────────── NPS CRON ───────────────────────────
