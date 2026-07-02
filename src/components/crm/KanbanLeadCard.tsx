@@ -9,6 +9,7 @@ import {
   Megaphone,
 } from "lucide-react";
 import { TwilioCallButton } from "@/components/crm/TwilioCallButton";
+import { useMetaAdNames } from "@/components/crm/useMetaAdNames";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -68,6 +69,12 @@ export const KanbanLeadCard = ({
   onOpenChat,
   onRefresh,
 }: KanbanLeadCardProps) => {
+  const adNames = useMetaAdNames();
+  // Resolve o ID guardado no lead para o nome legível (fallback = o próprio valor).
+  const campaignLabel = lead.utm_campaign ? (adNames.campaigns[lead.utm_campaign] || lead.utm_campaign) : null;
+  const adsetLabel = lead.utm_term ? (adNames.adsets[lead.utm_term] || lead.utm_term) : null;
+  const adLabel = lead.utm_content ? (adNames.ads[lead.utm_content] || lead.utm_content) : null;
+
   const formatCurrency = (value: number | null) => {
     if (!value) return null;
     return new Intl.NumberFormat("pt-BR", {
@@ -208,22 +215,22 @@ export const KanbanLeadCard = ({
             <Megaphone className="h-3 w-3 shrink-0" />
             <span className="text-[9px] font-semibold uppercase tracking-wider">Origem do Anúncio</span>
           </div>
-          {lead.utm_campaign && (
+          {campaignLabel && (
             <div className="flex items-baseline gap-1 text-[10px]">
               <span className="text-muted-foreground shrink-0">Camp.:</span>
-              <span className="text-foreground font-medium truncate" title={lead.utm_campaign}>{lead.utm_campaign}</span>
+              <span className="text-foreground font-medium truncate" title={lead.utm_campaign || undefined}>{campaignLabel}</span>
             </div>
           )}
-          {lead.utm_term && (
+          {adsetLabel && (
             <div className="flex items-baseline gap-1 text-[10px]">
               <span className="text-muted-foreground shrink-0">Conj.:</span>
-              <span className="text-foreground font-medium truncate" title={lead.utm_term}>{lead.utm_term}</span>
+              <span className="text-foreground font-medium truncate" title={lead.utm_term || undefined}>{adsetLabel}</span>
             </div>
           )}
-          {lead.utm_content && (
+          {adLabel && (
             <div className="flex items-baseline gap-1 text-[10px]">
               <span className="text-muted-foreground shrink-0">Anún.:</span>
-              <span className="text-foreground font-medium truncate" title={lead.utm_content}>{lead.utm_content}</span>
+              <span className="text-foreground font-medium truncate" title={lead.utm_content || undefined}>{adLabel}</span>
             </div>
           )}
         </div>
