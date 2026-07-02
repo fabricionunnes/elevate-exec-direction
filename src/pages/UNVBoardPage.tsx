@@ -1,5 +1,6 @@
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
+import logoUnv from "@/assets/logo-unv-oficial.png";
 import {
   Accordion,
   AccordionContent,
@@ -197,6 +198,9 @@ export default function UNVBoardPage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
         <div className="container-premium relative z-10 py-20">
           <div className="max-w-3xl mx-auto text-center animate-fade-up">
+            <div className="flex justify-center mb-8">
+              <img src={logoUnv} alt="UNV" className="h-16 md:h-20" />
+            </div>
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary text-sm font-medium rounded-full mb-6 border border-primary/30">
               Programa Anual
             </div>
