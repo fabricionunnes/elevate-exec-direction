@@ -44,18 +44,20 @@ async function aiNarrative(ctx: string): Promise<any> {
       headers: { "x-api-key": ANTHROPIC, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 2600,
+        max_tokens: 4500,
         messages: [{
           role: "user",
-          content: `Você é o diretor comercial da UNV (Universidade Nacional de Vendas) escrevendo, para o CLIENTE, um relatório do trabalho feito na empresa dele. Tom: profissional, humano, direto, orientado a resultado, sem enrolação e sem inventar dados — use só o que está no contexto. Escreva em português do Brasil.
+          content: `Você é o diretor comercial da UNV (Universidade Nacional de Vendas) escrevendo, para o CLIENTE, um relatório PREMIUM e detalhado do trabalho feito na empresa dele. Tom: profissional, humano, direto, orientado a resultado, sem enrolação e sem inventar dados — use só o que está no contexto. Escreva em português do Brasil.
 
 Com base no CONTEXTO abaixo, retorne SOMENTE um JSON válido (sem markdown, sem cercas), no formato:
 {
  "resumo_executivo": "2 a 3 parágrafos abrindo o relatório: a parceria, o que foi construído e o resultado em uma leitura de alto nível",
- "o_que_fizemos": ["frase 1 do que a UNV executou", "frase 2", "..."],  // 5 a 8 itens concretos, baseados nas reuniões e ações
- "resultado": "1 a 2 parágrafos sobre os resultados gerados, citando os números que existem (faturamento, evolução, ações). Se os números forem escassos, seja honesto e foque no que foi estruturado.",
- "analise_grupos": "1 parágrafo sobre o acompanhamento pelos grupos de WhatsApp (gestão e vendedores): ritmo, temas, engajamento — sem citar mensagens específicas nem nomes de pacientes",
- "destaques": ["destaque 1", "destaque 2", "destaque 3"]  // 3 pontos fortes/conquistas
+ "o_que_fizemos": ["frase 1 do que a UNV executou", "frase 2", "..."],  // 6 a 10 itens concretos e específicos, baseados nas reuniões e ações
+ "reunioes": [{"data": "YYYY-MM-DD", "titulo": "título curto", "resumo": "1 a 2 frases: o que foi tratado/decidido nessa reunião"}],  // UMA entrada por reunião do contexto (máx 15, as mais relevantes), na ordem cronológica
+ "resultado": "2 parágrafos sobre os resultados gerados, citando os números que existem (faturamento, evolução, ações). Se os números forem escassos, seja honesto e foque no que foi estruturado.",
+ "analise_grupos": "1 a 2 parágrafos sobre o acompanhamento pelos grupos de WhatsApp (gestão e vendedores): ritmo, temas, engajamento e como a consultoria conduziu o time — sem citar mensagens específicas nem nomes de pacientes",
+ "destaques": ["destaque 1", "destaque 2", "destaque 3", "destaque 4"],  // 3 a 4 pontos fortes/conquistas
+ "proximos_passos": ["passo 1", "passo 2", "passo 3"]  // 3 a 5 recomendações concretas de continuidade
 }
 
 CONTEXTO:
@@ -162,9 +164,9 @@ Deno.serve(async (req) => {
       `EMPRESA: ${company.name || "-"} | Segmento: ${company.segment || "-"} | Serviço UNV: ${proj.product_name || "-"}`,
       `Consultor: ${consultant || "-"} | CS: ${cs || "-"} | Início: ${proj.contract_start_date || proj.created_at?.slice(0, 10) || "-"} | NPS: ${proj.current_nps ?? "-"}`,
       `\nREUNIÕES (${meetings.length}):`,
-      ...meetings.map((m: any) => `- ${(m.meeting_date || "").slice(0, 10)} | ${m.meeting_title || m.subject || "Reunião"} | ${(m.notes || m.transcript || "").replace(/\s+/g, " ").slice(0, 400)}`),
+      ...meetings.map((m: any) => `- ${(m.meeting_date || "").slice(0, 10)} | ${m.meeting_title || m.subject || "Reunião"} | ${(m.notes || m.transcript || "").replace(/\s+/g, " ").slice(0, 700)}`),
       `\nAÇÕES CONCLUÍDAS (${done.length}; ${openCount} em aberto):`,
-      ...done.slice(0, 60).map((t: any) => `- ${(t.completed_at || t.created_at || "").slice(0, 10)} | ${t.title}`),
+      ...done.slice(0, 120).map((t: any) => `- ${(t.completed_at || t.created_at || "").slice(0, 10)} | ${t.title}`),
       `\nRESULTADOS (KPI):`,
       `Faturamento total no período: R$ ${fatTotal.toLocaleString("pt-BR")} | Vendas: ${vendasTotal}`,
       `Faturamento mês a mês: ${fatSerie.map((s) => `${brMonth(s.mes)}=R$${Math.round(s.valor).toLocaleString("pt-BR")}`).join(", ") || "sem lançamentos"}`,
@@ -174,8 +176,9 @@ Deno.serve(async (req) => {
     const narrative = await aiNarrative(ctx) || {
       resumo_executivo: `Relatório do trabalho realizado pela UNV na ${company.name}.`,
       o_que_fizemos: done.slice(0, 8).map((t: any) => t.title),
+      reunioes: [],
       resultado: `Faturamento no período: R$ ${fatTotal.toLocaleString("pt-BR")}.`,
-      analise_grupos: "", destaques: [],
+      analise_grupos: "", destaques: [], proximos_passos: [],
     };
 
     // ---- gráficos (QuickChart) ----

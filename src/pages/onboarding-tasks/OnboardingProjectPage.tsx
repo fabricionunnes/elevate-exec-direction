@@ -1270,6 +1270,8 @@ const OnboardingProjectPage = () => {
                       <DropdownMenuItem onClick={() => handleGenerateReport("all")}>Histórico completo</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleGenerateReport(90)}>Últimos 90 dias</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleGenerateReport(30)}>Últimos 30 dias</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleGenerateReport(15)}>Últimos 15 dias</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleGenerateReport(7)}>Últimos 7 dias</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <Button variant="outline" size="sm" onClick={() => setShowPDFTasksDialog(true)}>
