@@ -29,6 +29,7 @@ const CorePage = lazy(() => import("./pages/CorePage"));
 const ControlPage = lazy(() => import("./pages/ControlPage"));
 const GrowthRoomPage = lazy(() => import("./pages/GrowthRoomPage"));
 const PartnersPage = lazy(() => import("./pages/PartnersPage"));
+const UNVBoardPage = lazy(() => import("./pages/UNVBoardPage"));
 const SalesOpsPage = lazy(() => import("./pages/SalesOpsPage"));
 const AISalesSystemPage = lazy(() => import("./pages/AISalesSystemPage"));
 const FractionalCROPage = lazy(() => import("./pages/FractionalCROPage"));
@@ -165,6 +166,8 @@ const LeaderDashboardPage = lazy(() => import("./pages/onboarding-tasks/LeaderDa
 const GlobalJobOpeningsPage = lazy(() => import("./pages/onboarding-tasks/GlobalJobOpeningsPage"));
 const GlobalTalentPoolResumesPage = lazy(() => import("./pages/onboarding-tasks/GlobalTalentPoolResumesPage"));
 const HotseatAdminPage = lazy(() => import("./pages/onboarding-tasks/HotseatAdminPage"));
+const BoardAdminPage = lazy(() => import("./pages/onboarding-tasks/BoardAdminPage"));
+const BoardDeliverablePage = lazy(() => import("./pages/BoardDeliverablePage"));
 const ClientAccessReportPage = lazy(() => import("./pages/onboarding-tasks/ClientAccessReportPage"));
 const BillingRulesPage = lazy(() => import("./pages/onboarding-tasks/BillingRulesPage"));
 const SurveySendConfigPage = lazy(() => import("./pages/onboarding-tasks/SurveySendConfigPage"));
@@ -375,6 +378,7 @@ const AppShell = () => {
             <Route path="/control" element={<ControlPage />} />
             <Route path="/growth-room" element={<GrowthRoomPage />} />
             <Route path="/partners" element={<PartnersPage />} />
+            <Route path="/unv-board" element={<UNVBoardPage />} />
             <Route path="/sales-ops" element={<SalesOpsPage />} />
             <Route path="/ai-sales-system" element={<AISalesSystemPage />} />
             <Route path="/fractional-cro" element={<FractionalCROPage />} />
@@ -485,6 +489,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/vagas" element={<GlobalJobOpeningsPage />} />
               <Route path="/onboarding-tasks/banco-talentos" element={<GlobalTalentPoolResumesPage />} />
               <Route path="/onboarding-tasks/hotseat" element={<HotseatAdminPage />} />
+              <Route path="/onboarding-tasks/board-unv" element={<BoardAdminPage />} />
               <Route path="/onboarding-tasks/consultorias" element={<ConsultoriasAdminPage />} />
               <Route path="/onboarding-tasks/client-access" element={<ClientAccessReportPage />} />
               <Route path="/onboarding-tasks/billing-rules" element={<ModuleGuard module="financial" label="Financeiro"><BillingRulesPage /></ModuleGuard>} />
@@ -544,6 +549,7 @@ const AppShell = () => {
             <Route path="/hotseat" element={<HotseatFormPage />} />
             
             <Route path="/onboarding-client/:projectId" element={<ClientOnboardingPage />} />
+            <Route path="/board/entregavel/:memberId" element={<BoardDeliverablePage />} />
             <Route path="/disparador/:projectId" element={<ClientDisparadorPage />} />
             <Route path="/cac-form/:projectId" element={<CACFormPage />} />
             <Route path="/kickoff/:companyId" element={<KickoffFormPage />} />
