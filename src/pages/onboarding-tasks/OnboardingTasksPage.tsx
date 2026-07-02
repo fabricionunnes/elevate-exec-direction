@@ -1969,6 +1969,13 @@ const OnboardingTasksPage = () => {
                       Assinaturas
                     </DropdownMenuItem>
                   )}
+                  {/* UNV Board */}
+                  {canCreateCompany && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/board-unv")}>
+                      <Crown className="h-4 w-4 mr-2" />
+                      UNV Board
+                    </DropdownMenuItem>
+                  )}
                   {/* Hotseat */}
                   {canCreateCompany && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/hotseat")}>
@@ -2383,6 +2390,14 @@ const OnboardingTasksPage = () => {
               <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60" onClick={() => navigate("/onboarding-tasks/financeiro/recorrencias")}>
                 <Calculator className="h-4 w-4" />
                 Financeiro
+              </Button>
+            )}
+
+            {/* ── UNV Board — botão direto ─────────────────── */}
+            {canCreateCompany && (
+              <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60" onClick={() => navigate("/onboarding-tasks/board-unv")}>
+                <Crown className="h-4 w-4" />
+                UNV Board
               </Button>
             )}
 
