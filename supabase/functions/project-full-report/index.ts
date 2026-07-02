@@ -112,7 +112,12 @@ Deno.serve(async (req) => {
     // ---- ações (tarefas concluídas) ----
     let tQ = sb.from("onboarding_tasks").select("title, status, created_at, completed_at, tags, description, observations").eq("project_id", project_id);
     const { data: tRows } = await tQ;
-    const done = (tRows || []).filter((t: any) => t.status === "completed" || t.completed_at);
+    // filtro de período em código: a data efetiva é completed_at, com fallback em created_at
+    const inPeriod = (t: any) => {
+      const dt = (t.completed_at || t.created_at || "").slice(0, 10);
+      return (!since || dt >= since) && (!until || dt <= until);
+    };
+    const done = (tRows || []).filter((t: any) => (t.status === "completed" || t.completed_at) && inPeriod(t));
     const openCount = (tRows || []).filter((t: any) => t.status !== "completed" && !t.completed_at).length;
     const dateOf = (t: any) => (t.completed_at || t.created_at || "").slice(0, 7);
     const actionsByMonth: Record<string, number> = {};
