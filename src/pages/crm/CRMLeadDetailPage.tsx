@@ -81,6 +81,7 @@ import {
   LeadTranscriptionTab,
 } from "@/components/crm/lead-detail";
 import { LeadContractDataTab } from "@/components/crm/lead-detail/LeadContractDataTab";
+import { useMetaAdNames } from "@/components/crm/useMetaAdNames";
 import { LeadProposalTab } from "@/components/crm/lead-detail/LeadProposalTab";
 import { LeadConversationsTab } from "@/components/crm/lead-detail/LeadConversationsTab";
 import { LeadFormAnswersTab } from "@/components/crm/lead-detail/LeadFormAnswersTab";
@@ -171,6 +172,8 @@ export const CRMLeadDetailPage = () => {
   const { startCall } = useCallDock();
   const [lead, setLead] = useState<Lead | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [adOriginOpen, setAdOriginOpen] = useState(false);
+  const adNames = useMetaAdNames();
   const [stages, setStages] = useState<Stage[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [lossReasons, setLossReasons] = useState<any[]>([]);
@@ -1202,80 +1205,86 @@ export const CRMLeadDetailPage = () => {
         </div>
       </div>
 
-      {/* Rastreamento Meta Ads */}
-      {(lead.utm_source || lead.utm_medium || lead.utm_campaign || lead.utm_content || lead.utm_term || lead.fbclid || lead.ad_name || lead.adset_name || lead.campaign_name || lead.meta_ad_id) && (
-        <div className="px-4 sm:px-6 py-2">
-          <div className="rounded-lg border border-blue-200/50 dark:border-blue-800/30 bg-gradient-to-br from-blue-50/70 to-violet-50/40 dark:from-blue-950/30 dark:to-violet-950/20 p-4 space-y-3">
-            <p className="text-[11px] uppercase tracking-wider text-blue-700 dark:text-blue-300 font-bold flex items-center gap-1.5">
-              <Activity className="h-3.5 w-3.5" />
-              Origem do Anúncio (Meta Ads)
-            </p>
+      {/* Rastreamento Meta Ads (retrátil, igual Observações; nomes resolvidos) */}
+      {(lead.utm_source || lead.utm_medium || lead.utm_campaign || lead.utm_content || lead.utm_term || lead.fbclid || lead.ad_name || lead.adset_name || lead.campaign_name || lead.meta_ad_id) && (() => {
+        // O lead guarda o ID do Meta em utm_campaign/utm_term/utm_content;
+        // o nome vem do módulo de Tráfego (crm_meta_ads_*) via useMetaAdNames.
+        const campaignName =
+          (lead.utm_campaign && adNames.campaigns[lead.utm_campaign]) || lead.campaign_name ||
+          (lead.meta_campaign_id && adNames.campaigns[lead.meta_campaign_id]) || lead.utm_campaign;
+        const adsetName =
+          (lead.utm_term && adNames.adsets[lead.utm_term]) || lead.adset_name ||
+          (lead.meta_adset_id && adNames.adsets[lead.meta_adset_id]) || lead.utm_term;
+        const adName =
+          (lead.utm_content && adNames.ads[lead.utm_content]) || lead.ad_name ||
+          (lead.meta_ad_id && adNames.ads[lead.meta_ad_id]) || lead.utm_content;
+        const campaignId = lead.meta_campaign_id || (/^\d{6,}$/.test(lead.utm_campaign || "") ? lead.utm_campaign : null);
+        const adsetId = lead.meta_adset_id || (/^\d{6,}$/.test(lead.utm_term || "") ? lead.utm_term : null);
+        const adId = lead.meta_ad_id || (/^\d{6,}$/.test(lead.utm_content || "") ? lead.utm_content : null);
+        const rows = [
+          { icon: "📢", label: "Campanha", name: campaignName, id: campaignId },
+          { icon: "🎯", label: "Conjunto de Anúncios", name: adsetName, id: adsetId },
+          { icon: "📋", label: "Anúncio", name: adName, id: adId },
+        ].filter((r) => r.name);
 
-            {/* Hierarquia Campanha → Conjunto → Anúncio */}
-            <div className="space-y-2">
-              {(lead.utm_campaign || lead.campaign_name) && (
-                <div className="flex items-start gap-2 p-2 rounded-md bg-background/70 border border-border/40">
-                  <span className="text-base">📢</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Campanha</p>
-                    <p className="text-sm font-semibold truncate" title={lead.utm_campaign || lead.campaign_name || ""}>
-                      {lead.utm_campaign || lead.campaign_name}
-                    </p>
-                    {lead.meta_campaign_id && (
-                      <p className="text-[10px] text-muted-foreground tabular-nums">ID: {lead.meta_campaign_id}</p>
-                    )}
+        return (
+          <div className="px-4 sm:px-6 py-2">
+            <div className="rounded-lg border border-blue-200/50 dark:border-blue-800/30 bg-blue-50/50 dark:bg-blue-950/20 p-3">
+              <button
+                type="button"
+                onClick={() => setAdOriginOpen((v) => !v)}
+                className="w-full flex items-center gap-1 text-[10px] uppercase tracking-wide text-blue-700 dark:text-blue-300 font-medium"
+              >
+                <Activity className="h-3 w-3" />
+                Origem do Anúncio (Meta Ads)
+                {!adOriginOpen && rows[rows.length - 1]?.name && (
+                  <span className="normal-case tracking-normal text-muted-foreground font-normal truncate max-w-[45%]">
+                    — {rows[rows.length - 1].name}
+                  </span>
+                )}
+                <ChevronRight className={`h-3.5 w-3.5 ml-auto shrink-0 transition-transform ${adOriginOpen ? "rotate-90" : ""}`} />
+              </button>
+
+              {adOriginOpen && (
+                <div className="mt-3 space-y-3">
+                  {/* Hierarquia Campanha → Conjunto → Anúncio */}
+                  <div className="space-y-2">
+                    {rows.map((r) => (
+                      <div key={r.label} className="flex items-start gap-2 p-2 rounded-md bg-background/70 border border-border/40">
+                        <span className="text-base">{r.icon}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{r.label}</p>
+                          <p className="text-sm font-semibold truncate" title={r.name || ""}>{r.name}</p>
+                          {r.id && r.id !== r.name && (
+                            <p className="text-[10px] text-muted-foreground tabular-nums">ID: {r.id}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              )}
-              {(lead.utm_term || lead.adset_name) && (
-                <div className="flex items-start gap-2 p-2 rounded-md bg-background/70 border border-border/40">
-                  <span className="text-base">🎯</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Conjunto de Anúncios</p>
-                    <p className="text-sm font-semibold truncate" title={lead.utm_term || lead.adset_name || ""}>
-                      {lead.utm_term || lead.adset_name}
-                    </p>
-                    {lead.meta_adset_id && (
-                      <p className="text-[10px] text-muted-foreground tabular-nums">ID: {lead.meta_adset_id}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-              {(lead.utm_content || lead.ad_name) && (
-                <div className="flex items-start gap-2 p-2 rounded-md bg-background/70 border border-border/40">
-                  <span className="text-base">📋</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Anúncio</p>
-                    <p className="text-sm font-semibold truncate" title={lead.utm_content || lead.ad_name || ""}>
-                      {lead.utm_content || lead.ad_name}
-                    </p>
-                    {lead.meta_ad_id && (
-                      <p className="text-[10px] text-muted-foreground tabular-nums">ID: {lead.meta_ad_id}</p>
-                    )}
-                  </div>
+
+                  {/* UTMs auxiliares */}
+                  {(lead.utm_source || lead.utm_medium || lead.fbclid) && (
+                    <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/40">
+                      {lead.utm_source && (
+                        <Badge variant="outline" className="text-[10px] bg-background">Source: {lead.utm_source}</Badge>
+                      )}
+                      {lead.utm_medium && (
+                        <Badge variant="outline" className="text-[10px] bg-background">Medium: {lead.utm_medium}</Badge>
+                      )}
+                      {lead.fbclid && (
+                        <Badge variant="outline" className="text-[10px] bg-background text-muted-foreground">
+                          FBCLID: {lead.fbclid.slice(0, 12)}…
+                        </Badge>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-
-            {/* UTMs auxiliares */}
-            {(lead.utm_source || lead.utm_medium || lead.fbclid) && (
-              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/40">
-                {lead.utm_source && (
-                  <Badge variant="outline" className="text-[10px] bg-background">Source: {lead.utm_source}</Badge>
-                )}
-                {lead.utm_medium && (
-                  <Badge variant="outline" className="text-[10px] bg-background">Medium: {lead.utm_medium}</Badge>
-                )}
-                {lead.fbclid && (
-                  <Badge variant="outline" className="text-[10px] bg-background text-muted-foreground">
-                    FBCLID: {lead.fbclid.slice(0, 12)}…
-                  </Badge>
-                )}
-              </div>
-            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
