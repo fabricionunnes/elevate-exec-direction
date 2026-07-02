@@ -371,10 +371,10 @@ export default function UNVBoardPage() {
               Investimento
             </h2>
             <p className="text-4xl md:text-5xl font-display font-bold text-primary mb-4">
-              R$ 15.000
+              R$ 20.000
             </p>
             <p className="text-muted-foreground text-lg mb-2">
-              Programa anual • ou 12x de R$ 1.250
+              Programa anual • ou 12x de R$ 1.666,67
             </p>
             <p className="text-body mb-6 max-w-xl mx-auto">
               Menos que o custo de meio vendedor júnior — com a direção de quem

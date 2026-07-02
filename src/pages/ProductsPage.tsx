@@ -161,7 +161,7 @@ const advancedTrail: Product[] = [
       "Um ano de gestão comercial com método, sistema e diretor comercial cobrando a execução da sua equipe todos os dias — dentro do seu WhatsApp.",
     icp: "1+ vendedor • Faturamento R$ 50k+/mês",
     href: "/unv-board",
-    investment: "R$ 15.000/ano",
+    investment: "R$ 20.000/ano",
   },
   {
     name: "UNV Partners",
