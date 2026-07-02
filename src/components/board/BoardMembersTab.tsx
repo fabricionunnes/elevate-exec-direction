@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Select,
   SelectContent,
@@ -372,23 +373,14 @@ export function BoardMembersTab({ onOpenDeliverables }: BoardMembersTabProps) {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Empresa</Label>
-              <Select
+              <SearchableSelect
                 value={form.company_id}
                 onValueChange={(v) => setForm((f) => ({ ...f, company_id: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={companiesLoading ? "Carregando..." : "Selecione a empresa"}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={companies.map((c) => ({ value: c.id, label: c.name }))}
+                placeholder={companiesLoading ? "Carregando..." : "Digite pra buscar a empresa"}
+                emptyMessage="Nenhuma empresa encontrada."
+                className="w-full"
+              />
             </div>
             <div className="space-y-2">
               <Label>Data de entrada</Label>
