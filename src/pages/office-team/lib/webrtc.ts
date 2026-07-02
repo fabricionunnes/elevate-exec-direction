@@ -6,6 +6,7 @@
 import { useTeamStore } from '../store/useTeamStore'
 import { CameraFx, CameraBg } from './cameraFx'
 import type { TeamRealtime, RtcSignal } from './realtime'
+import { supabase } from '@/integrations/supabase/client'
 
 const BG_KEY = 'office-camera-bg'
 function loadBg(): CameraBg {
@@ -16,10 +17,39 @@ function loadBg(): CameraBg {
   return { kind: 'none' }
 }
 
-const ICE_SERVERS: RTCIceServer[] = [
+const STUN_FALLBACK: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
 ]
+
+// TURN efêmero (Twilio, via edge office-turn): sem relay, a conexão P2P
+// falha em redes com NAT restritivo — "estou na sala e não ouço ninguém".
+// Cache em módulo com renovação antes do TTL (24h) expirar.
+let cachedIceServers: RTCIceServer[] = STUN_FALLBACK
+let iceFetchedAt = 0
+let iceTtlMs = 0
+let iceInflight: Promise<void> | null = null
+
+async function refreshIceServers(): Promise<void> {
+  const fresh = iceFetchedAt && Date.now() - iceFetchedAt < Math.max(iceTtlMs - 3_600_000, 600_000)
+  if (fresh) return
+  if (iceInflight) return iceInflight
+  iceInflight = (async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('office-turn', { body: {} })
+      if (!error && data?.iceServers?.length) {
+        cachedIceServers = [...STUN_FALLBACK.slice(0, 1), ...data.iceServers]
+        iceFetchedAt = Date.now()
+        iceTtlMs = (Number(data.ttl) || 86400) * 1000
+      }
+    } catch {
+      // segue com STUN — o watchdog recria os pares quando o TURN chegar
+    } finally {
+      iceInflight = null
+    }
+  })()
+  return iceInflight
+}
 
 interface PeerEntry {
   pc: RTCPeerConnection
@@ -70,6 +100,9 @@ export class CallManager {
 
   async joinCall() {
     if (this.joined) return
+    // Busca TURN antes de conectar (máx 2.5s; senão entra com STUN e o
+    // watchdog renegocia com TURN quando as credenciais chegarem)
+    await Promise.race([refreshIceServers(), new Promise((r) => setTimeout(r, 2500))])
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true },
     })
@@ -133,7 +166,8 @@ export class CallManager {
   }
 
   private createPeer(peerId: string): PeerEntry {
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
+    void refreshIceServers() // renova em background se estiver pra vencer
+    const pc = new RTCPeerConnection({ iceServers: cachedIceServers })
     const entry: PeerEntry = { pc, pendingCandidates: [], remoteStream: new MediaStream(), lastOk: Date.now() }
 
     pc.onicecandidate = (ev) => {
