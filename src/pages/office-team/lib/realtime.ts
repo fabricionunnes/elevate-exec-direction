@@ -135,6 +135,12 @@ export class TeamRealtime {
               position = [meta.x, 0, meta.z]
               rotation = meta.rot ?? rotation
               sitting = meta.sit ?? false
+              // Muta o objeto atual também: o setRemotePlayers reutiliza a
+              // referência existente quando o perfil não mudou — a correção
+              // de drift precisa valer nesse caso.
+              existing.position = position
+              existing.rotation = rotation
+              existing.sitting = sitting
             }
           }
 
@@ -227,13 +233,24 @@ export class TeamRealtime {
         useTeamStore.getState().addToast(`📨 Recado novo de ${n.fromName}`, 'in')
       })
       .on('broadcast', { event: 'rec' }, ({ payload }) => {
-        const r = payload as { on: boolean; byId: string; byName: string }
+        // Gravação é POR SALA: o payload traz a sala; salas diferentes
+        // gravam ao mesmo tempo sem interferir uma na outra.
+        const r = payload as { on: boolean; byId: string; byName: string; room?: string }
         if (!r || r.byId === this.me.id) return
-        useTeamStore.getState().setRecording({ on: r.on, byId: r.on ? r.byId : null, byName: r.on ? r.byName : null })
+        const roomKey = r.room || '__office__'
+        const st = useTeamStore.getState()
+        if (r.on) {
+          st.setRoomRecording(roomKey, { byId: r.byId, byName: r.byName })
+        } else {
+          // só limpa se quem parou é quem estava gravando aquela sala
+          const cur = st.recordings[roomKey]
+          if (!cur || cur.byId === r.byId) st.setRoomRecording(roomKey, null)
+        }
       })
-      .on('broadcast', { event: 'rec-stop' }, () => {
-        // Master mandou parar a gravação — quem está gravando reage (CallDock)
-        useTeamStore.getState().bumpRecStop()
+      .on('broadcast', { event: 'rec-stop' }, ({ payload }) => {
+        // Master mandou parar a gravação DAQUELA sala — quem grava lá reage
+        const p = payload as { by: string; room?: string }
+        useTeamStore.getState().bumpRecStop(p?.room || '__office__')
       })
       .on('broadcast', { event: 'sale' }, ({ payload }) => {
         // Disparado pelo TRIGGER do Postgres (realtime.send) quando um lead
@@ -327,11 +344,8 @@ export class TeamRealtime {
       lastPos: [pending.player.position[0], pending.player.position[2]],
       ts: Date.now(),
     })
-    // Quem estava gravando saiu de verdade → limpa o indicador
-    const rec = store.recording
-    if (rec.on && rec.byId === id) {
-      store.setRecording({ on: false, byId: null, byName: null })
-    }
+    // Quem estava gravando saiu de verdade → limpa o indicador da(s) sala(s)
+    store.clearRecordingsBy(id)
   }
 
   /** Avisa o destinatário que ganhou um recado novo. */
@@ -343,18 +357,18 @@ export class TeamRealtime {
     })
   }
 
-  /** Avisa todos que a gravação de reunião começou/terminou. */
-  sendRecording(on: boolean) {
+  /** Avisa todos que a gravação de reunião começou/terminou NUMA sala. */
+  sendRecording(on: boolean, room: string) {
     void this.channel?.send({
       type: 'broadcast',
       event: 'rec',
-      payload: { on, byId: this.me.id, byName: this.me.name },
+      payload: { on, byId: this.me.id, byName: this.me.name, room },
     })
   }
 
-  /** Master pede pra parar a gravação ativa (quem grava recebe e para). */
-  sendStopRecording() {
-    void this.channel?.send({ type: 'broadcast', event: 'rec-stop', payload: { by: this.me.id } })
+  /** Master pede pra parar a gravação de UMA sala (quem grava lá para). */
+  sendStopRecording(room: string) {
+    void this.channel?.send({ type: 'broadcast', event: 'rec-stop', payload: { by: this.me.id, room } })
   }
 
   /** Toca a campainha/cutuca outro usuário online (leva minha posição

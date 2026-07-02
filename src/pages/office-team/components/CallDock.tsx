@@ -116,6 +116,29 @@ function BackgroundPicker({
 const HEAR_NEAR = 2.5 // até aqui, volume 1 em área aberta
 const HEAR_FAR = 11 // a partir daqui, silêncio em área aberta
 
+// Chave de "sala" pra área aberta/corredor (gravação e indicador por sala)
+const OFFICE_KEY = '__office__'
+
+/** Chave da sala em que um ponto está (corredor/lounge conta como escritório aberto). */
+function roomKeyAt(x: number, z: number, rooms: OfficeRoom[]): string {
+  const r = roomAt(x, z, rooms)
+  return r ? r.id : OFFICE_KEY
+}
+
+/** Streams dos peers em call que estão DENTRO da sala gravada — a gravação
+ * captura só a sala, nunca as conversas das outras salas do escritório. */
+function streamsInRoom(roomKey: string): Record<string, MediaStream> {
+  const st = useTeamStore.getState()
+  const out: Record<string, MediaStream> = {}
+  for (const p of Object.values(st.remotePlayers)) {
+    if (!p.inCall) continue
+    if (roomKeyAt(p.position[0], p.position[2], st.rooms) !== roomKey) continue
+    const s = st.call.remoteStreams[p.id]
+    if (s) out[p.id] = s
+  }
+  return out
+}
+
 function spatialVolume(
   myPos: [number, number, number],
   myRoomId: string | null,
@@ -467,11 +490,15 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
   const incomingRing = useTeamStore((s) => s.incomingRing)
   const setIncomingRing = useTeamStore((s) => s.setIncomingRing)
   const voiceBlocked = useTeamStore((s) => s.voiceBlocked)
-  const recording = useTeamStore((s) => s.recording)
-  const recStopNonce = useTeamStore((s) => s.recStopNonce)
+  const recordings = useTeamStore((s) => s.recordings)
+  const recStop = useTeamStore((s) => s.recStop)
   const { isMaster } = useStaffPermissions()
   const recorderRef = useRef<MeetingRecorder | null>(null)
   if (!recorderRef.current) recorderRef.current = new MeetingRecorder()
+  // Sala da MINHA gravação ativa (a gravação pertence a uma sala)
+  const myRecRoomKeyRef = useRef<string | null>(null)
+  // Sala onde estou agora (pro botão/banner de gravação — atualizada por interval)
+  const [myRoomKey, setMyRoomKey] = useState<string>(OFFICE_KEY)
   // Auto-gravação: sala onde EU estou gravando automaticamente + salas suprimidas
   const autoRecRoomRef = useRef<string | null>(null)
   const autoRecSuppressRef = useRef<Set<string>>(new Set())
@@ -559,22 +586,22 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
     }
   }, [incomingRing, setIncomingRing])
 
-  // ── Gravação de reunião ───────────────────────────────────────────────
-  // Peers que entram no meio da gravação têm o áudio plugado na hora
+  // ── Gravação de reunião (POR SALA) ────────────────────────────────────
+  // Mantém o áudio gravado = quem está NA sala: pluga quem entra, corta quem sai
   useEffect(() => {
     const rec = recorderRef.current
-    if (!rec?.active) return
-    for (const [id, stream] of Object.entries(call.remoteStreams)) {
-      rec.addStream(id, stream)
-    }
+    if (!rec?.active || !myRecRoomKeyRef.current) return
+    rec.syncStreams(streamsInRoom(myRecRoomKeyRef.current))
   }, [call.remoteStreams])
 
   const stopAndSaveRecording = async () => {
     const rec = recorderRef.current
     if (!rec?.active || !me) return
     const st = useTeamStore.getState()
-    st.setRecording({ on: false, byId: null, byName: null })
-    realtime.sendRecording(false)
+    const recRoomKey = myRecRoomKeyRef.current ?? OFFICE_KEY
+    myRecRoomKeyRef.current = null
+    st.setRoomRecording(recRoomKey, null)
+    realtime.sendRecording(false, recRoomKey)
     const result = await rec.stop()
     if (!result) return
     st.addToast('Gravação salva — processando transcrição...', 'in')
@@ -582,7 +609,7 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
       result.videoBlob,
       result.audioBlob,
       result.durationS,
-      myRoomId ? rooms.find((r) => r.id === myRoomId)?.name ?? null : null,
+      recRoomKey !== OFFICE_KEY ? st.rooms.find((r) => r.id === recRoomKey)?.name ?? null : null,
       me
     )
     if (saved.ok) {
@@ -592,8 +619,8 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
     }
   }
 
-  // Inicia a gravação neste cliente (manual ou automática)
-  const startRecording = () => {
+  // Inicia a gravação DESTA sala neste cliente (manual ou automática)
+  const startRecording = (roomKey: string) => {
     const rec = recorderRef.current
     if (!rec || !me || rec.active) return
     const getParticipants = () => {
@@ -610,6 +637,8 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
       ]
       for (const p of Object.values(st.remotePlayers)) {
         if (!p.inCall) continue
+        // grade do vídeo = só quem está na sala gravada
+        if (roomKeyAt(p.position[0], p.position[2], st.rooms) !== roomKey) continue
         list.push({
           id: p.id,
           name: p.name,
@@ -620,9 +649,10 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
       }
       return list
     }
-    rec.start(call.localStream, call.remoteStreams, getParticipants)
-    useTeamStore.getState().setRecording({ on: true, byId: me.id, byName: me.name })
-    realtime.sendRecording(true)
+    myRecRoomKeyRef.current = roomKey
+    rec.start(call.localStream, streamsInRoom(roomKey), getParticipants)
+    useTeamStore.getState().setRoomRecording(roomKey, { byId: me.id, byName: me.name })
+    realtime.sendRecording(true, roomKey)
   }
 
   const toggleRecording = () => {
@@ -636,12 +666,14 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
       void stopAndSaveRecording()
       return
     }
-    if (recording.on) {
-      // Outra pessoa grava: master pode mandar parar
-      if (isMaster) realtime.sendStopRecording()
+    const st = useTeamStore.getState()
+    const roomKey = roomKeyAt(st.playerPosition[0], st.playerPosition[2], st.rooms)
+    if (st.recordings[roomKey]) {
+      // Outra pessoa grava ESTA sala: master pode mandar parar
+      if (isMaster) realtime.sendStopRecording(roomKey)
       return
     }
-    startRecording()
+    startRecording(roomKey)
   }
 
   // Saiu da chamada/escritório gravando → para e salva
@@ -652,17 +684,15 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [call.joined])
 
-  // Master mandou parar (broadcast rec-stop) → quem grava para e salva
+  // Master mandou parar (broadcast rec-stop) → quem grava AQUELA sala para e salva
   useEffect(() => {
-    if (recStopNonce > 0 && recorderRef.current?.active) {
-      const st = useTeamStore.getState()
-      const r = roomAt(st.playerPosition[0], st.playerPosition[2], st.rooms)
-      if (r) autoRecSuppressRef.current.add(r.id) // não re-grava sozinho até esvaziar
+    if (recStop.nonce > 0 && recorderRef.current?.active && myRecRoomKeyRef.current === recStop.room) {
+      if (recStop.room !== OFFICE_KEY) autoRecSuppressRef.current.add(recStop.room) // não re-grava sozinho até esvaziar
       autoRecRoomRef.current = null
       void stopAndSaveRecording()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recStopNonce])
+  }, [recStop])
 
   // ── GRAVAÇÃO AUTOMÁTICA ──────────────────────────────────────────────
   // Sala de reunião/setor com 2+ pessoas na call → grava sozinho. Um único
@@ -710,24 +740,33 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
         return
       }
 
-      // Eleição: menor id de staff presente é o gravador
+      // Gravação em andamento: mantém o áudio/vídeo = quem está NA sala
+      if (rec?.active && myRecRoomKeyRef.current) {
+        rec.syncStreams(streamsInRoom(myRecRoomKeyRef.current))
+      }
+
+      // Eleição: menor id de staff presente é o gravador. A trava de
+      // "já tem gravação" é POR SALA — outras salas gravam em paralelo.
       const recorder = staff.length ? [...staff].sort()[0] : null
       const shouldStart =
         auto &&
         present >= 2 &&
         recorder === meNow.id &&
-        !st.recording.on &&
+        !st.recordings[myRoom!.id] &&
         !rec?.active &&
         !autoRecSuppressRef.current.has(myRoom!.id)
 
       if (shouldStart && !autoStartTimerRef.current) {
         // estabiliza 6s (evita gravar quem só passou pela sala)
+        const roomKey = myRoom!.id
         autoStartTimerRef.current = setTimeout(() => {
           autoStartTimerRef.current = null
           const s2 = useTeamStore.getState()
-          if (s2.recording.on || recorderRef.current?.active) return
-          autoRecRoomRef.current = myRoom!.id
-          startRecording()
+          if (s2.recordings[roomKey] || recorderRef.current?.active) return
+          // confere que ainda estou na mesma sala antes de gravar
+          if (roomKeyAt(s2.playerPosition[0], s2.playerPosition[2], s2.rooms) !== roomKey) return
+          autoRecRoomRef.current = roomKey
+          startRecording(roomKey)
           s2.addToast('🔴 Gravação automática iniciada', 'in')
         }, 6000)
       } else if (!shouldStart && autoStartTimerRef.current) {
@@ -770,6 +809,17 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
     return () => window.removeEventListener('keydown', onKey)
   }, [call.joined, expanded])
 
+  // Sala atual (pro indicador de gravação por sala) — 1s é suficiente
+  useEffect(() => {
+    const tick = () => {
+      const st = useTeamStore.getState()
+      setMyRoomKey(roomKeyAt(st.playerPosition[0], st.playerPosition[2], st.rooms))
+    }
+    tick()
+    const iv = setInterval(tick, 1000)
+    return () => clearInterval(iv)
+  }, [])
+
   // Recalcula volumes espaciais a cada 250ms
   useEffect(() => {
     if (!call.joined) return
@@ -794,6 +844,9 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
   }, [call.joined])
 
   const myRoomName = myRoomId ? rooms.find((r) => r.id === myRoomId)?.name ?? null : null
+  // Gravação da MINHA sala atual (indicador/botão são por sala)
+  const roomRec = recordings[myRoomKey] ?? null
+  const roomRecName = myRoomKey !== OFFICE_KEY ? rooms.find((r) => r.id === myRoomKey)?.name ?? null : null
 
   const run = async (fn: () => Promise<void>) => {
     if (busy) return
@@ -1170,15 +1223,15 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
               </DockButton>
               <DockButton
                 onClick={toggleRecording}
-                danger={recording.on}
+                danger={!!roomRec}
                 title={
-                  recording.on
-                    ? recording.byId === me?.id
-                      ? 'Gravando — clique para parar'
+                  roomRec
+                    ? roomRec.byId === me?.id
+                      ? 'Gravando esta sala — clique para parar'
                       : isMaster
-                        ? `Gravando (${recording.byName}) — clique para parar`
-                        : `Gravação em andamento por ${recording.byName}`
-                    : 'Gravar reunião — vídeo + transcrição e ata (30 dias). Reuniões com 2+ gravam sozinhas'
+                        ? `Gravando esta sala (${roomRec.byName}) — clique para parar`
+                        : `Gravação em andamento nesta sala por ${roomRec.byName}`
+                    : 'Gravar reunião desta sala — vídeo + transcrição e ata (30 dias). Reuniões com 2+ gravam sozinhas'
                 }
               >
                 ⏺
@@ -1188,8 +1241,8 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
         </div>
       </div>
 
-      {/* Indicador de gravação — visível pra TODOS */}
-      {recording.on && (
+      {/* Indicador de gravação — só pra quem está NA sala sendo gravada */}
+      {roomRec && (
         <div
           style={{
             position: 'fixed',
@@ -1220,7 +1273,7 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
             }}
           />
           <style>{`@keyframes npc-pulse-rec { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }`}</style>
-          Gravando — {recording.byName}
+          Gravando{roomRecName ? ` — ${roomRecName}` : ''} · {roomRec.byName}
         </div>
       )}
 

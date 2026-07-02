@@ -135,6 +135,34 @@ export class MeetingRecorder {
     }
   }
 
+  /** Remove o áudio de um peer (saiu da sala gravada). */
+  removeStream(id: string) {
+    const src = this.sources.get(id)
+    if (src) {
+      try {
+        src.disconnect()
+      } catch {
+        // já desconectado
+      }
+      this.sources.delete(id)
+    }
+    const el = this.videoEls.get(id)
+    if (el) {
+      el.srcObject = null
+      this.videoEls.delete(id)
+    }
+  }
+
+  /** Sincroniza o áudio gravado com quem está NA SALA agora: pluga quem
+   * entrou e desconecta quem saiu (a gravação é da sala, não do escritório). */
+  syncStreams(allowed: Record<string, MediaStream>) {
+    if (!this.active) return
+    for (const id of [...this.sources.keys()]) {
+      if (id !== 'me' && !allowed[id]) this.removeStream(id)
+    }
+    for (const [id, s] of Object.entries(allowed)) this.addStream(id, s)
+  }
+
   private videoElFor(id: string, stream: MediaStream): HTMLVideoElement {
     let el = this.videoEls.get(id)
     if (!el) {

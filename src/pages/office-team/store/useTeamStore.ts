@@ -139,10 +139,11 @@ interface TeamState {
   incomingRing: { fromId: string; fromName: string; x: number; z: number; ts: number } | null
   /** notificações pequenas (entrou/saiu do escritório) */
   toasts: { id: string; text: string; kind: 'in' | 'out' }[]
-  /** gravação de reunião em andamento (visível pra todos) */
-  recording: { on: boolean; byId: string | null; byName: string | null }
-  /** nonce incrementado quando o master manda parar a gravação (broadcast) */
-  recStopNonce: number
+  /** gravações de reunião em andamento POR SALA (roomKey -> quem grava).
+   * Salas diferentes gravam simultaneamente; o aviso só vale pra sala. */
+  recordings: Record<string, { byId: string; byName: string }>
+  /** pedido do master pra parar a gravação de UMA sala (broadcast) */
+  recStop: { nonce: number; room: string }
 
   /** recados na mesa */
   composeNoteFor: { userId: string; name: string } | null
@@ -209,8 +210,9 @@ interface TeamState {
   setIncomingRing: (ring: { fromId: string; fromName: string; x: number; z: number; ts: number } | null) => void
   addToast: (text: string, kind: 'in' | 'out') => void
   removeToast: (id: string) => void
-  setRecording: (rec: { on: boolean; byId: string | null; byName: string | null }) => void
-  bumpRecStop: () => void
+  setRoomRecording: (roomKey: string, rec: { byId: string; byName: string } | null) => void
+  clearRecordingsBy: (userId: string) => void
+  bumpRecStop: (room: string) => void
   setComposeNoteFor: (target: { userId: string; name: string } | null) => void
   setUnreadNotes: (notes: DeskNote[]) => void
   setNotesPanelOpen: (open: boolean) => void
@@ -229,7 +231,14 @@ interface TeamState {
   setRemoteStream: (id: string, stream: MediaStream | null) => void
 }
 
-export const useTeamStore = create<TeamState>((set) => ({
+// ── Throttle de movimento ────────────────────────────────────────────────
+// Posições chegam ~9x/s POR jogador (broadcast) e a local muda a cada frame.
+// Os bonecos leem posição dentro do useFrame (sem re-render); o restante da
+// UI só precisa de uma visão "fresca o bastante" — notificamos em lote.
+let motionNotifyTimer: ReturnType<typeof setTimeout> | null = null
+let lastLocalPosSetAt = 0
+
+export const useTeamStore = create<TeamState>((set, get) => ({
   me: null,
   playerPosition: [0, 0, 0],
   playerRotation: 0,
@@ -249,8 +258,8 @@ export const useTeamStore = create<TeamState>((set) => ({
   npcChatOpen: false,
   incomingRing: null,
   toasts: [],
-  recording: { on: false, byId: null, byName: null },
-  recStopNonce: 0,
+  recordings: {},
+  recStop: { nonce: 0, room: '' },
   composeNoteFor: null,
   unreadNotes: [],
   notesPanelOpen: false,
@@ -277,7 +286,16 @@ export const useTeamStore = create<TeamState>((set) => ({
   setMe: (me) => set({ me }),
   setAvatar: (avatar) =>
     set((prev) => (prev.me ? { me: { ...prev.me, avatar } } : prev)),
-  setPlayerPosition: (pos) => set({ playerPosition: pos }),
+  setPlayerPosition: (pos) => {
+    // Chamado do useFrame (até 60x/s andando). Throttle: quem deriva UI da
+    // posição local (sala, volumes, café) não precisa de mais que ~7x/s.
+    const now = Date.now()
+    const prev = get().playerPosition
+    const moved = Math.hypot(pos[0] - prev[0], pos[2] - prev[2])
+    if (now - lastLocalPosSetAt < 140 && moved < 0.5) return
+    lastLocalPosSetAt = now
+    set({ playerPosition: pos })
+  },
   setPlayerRotation: (rot) => set({ playerRotation: rot }),
 
   upsertRemotePlayer: (player) =>
@@ -308,17 +326,28 @@ export const useTeamStore = create<TeamState>((set) => ({
       }
     }),
 
-  setRemotePlayerPos: (id, pos, rot, moving, sitting) =>
-    set((prev) => {
-      const existing = prev.remotePlayers[id]
-      if (!existing) return prev
-      return {
-        remotePlayers: {
-          ...prev.remotePlayers,
-          [id]: { ...existing, position: pos, rotation: rot, moving, sitting },
-        },
-      }
-    }),
+  setRemotePlayerPos: (id, pos, rot, moving, sitting) => {
+    // Caminho QUENTE (broadcast 'pos', ~9x/s por jogador andando): muta o
+    // objeto do jogador in place — o RemotePlayer lê position/rotation dentro
+    // do useFrame, então o movimento fica fluido SEM re-render de React.
+    // A UI derivada (listas, salas, café) é notificada em lote (500ms).
+    const existing = get().remotePlayers[id]
+    if (!existing) return
+    const satChanged = existing.sitting !== sitting
+    existing.position = pos
+    existing.rotation = rot
+    existing.moving = moving
+    existing.sitting = sitting
+    if (satChanged) {
+      // sentar/levantar é raro e muda UI (balões do café) → notifica na hora
+      set((p) => ({ remotePlayers: { ...p.remotePlayers } }))
+    } else if (!motionNotifyTimer) {
+      motionNotifyTimer = setTimeout(() => {
+        motionNotifyTimer = null
+        set((p) => ({ remotePlayers: { ...p.remotePlayers } }))
+      }, 500)
+    }
+  },
 
   removeRemotePlayer: (id) =>
     set((prev) => {
@@ -327,7 +356,39 @@ export const useTeamStore = create<TeamState>((set) => ({
       return { remotePlayers: next }
     }),
 
-  setRemotePlayers: (players) => set({ remotePlayers: players }),
+  setRemotePlayers: (players) => {
+    // Presence sync roda a cada re-track (keepalive de cada usuário ~20s).
+    // Reutiliza a referência do jogador quando nada relevante mudou — e se
+    // NADA mudou, nem notifica (evita re-render geral em sync sem novidade).
+    const current = get().remotePlayers
+    const next: Record<string, RemotePlayerState> = {}
+    let changed = false
+    for (const [id, p] of Object.entries(players)) {
+      const ex = current[id]
+      if (
+        ex &&
+        ex.name === p.name &&
+        ex.role === p.role &&
+        ex.color === p.color &&
+        ex.pantsColor === p.pantsColor &&
+        ex.inCall === p.inCall &&
+        ex.micOn === p.micOn &&
+        ex.camOn === p.camOn &&
+        ex.screenOn === p.screenOn &&
+        ex.focused === p.focused &&
+        ex.handRaised === p.handRaised &&
+        ex.sitting === p.sitting &&
+        JSON.stringify(ex.avatar) === JSON.stringify(p.avatar)
+      ) {
+        next[id] = ex // mantém a ref (posição segue fluindo por mutação)
+      } else {
+        next[id] = p
+        changed = true
+      }
+    }
+    if (Object.keys(current).length !== Object.keys(next).length) changed = true
+    if (changed) set({ remotePlayers: next })
+  },
 
   setRooms: (rooms) => set({ rooms }),
   setMyRoomId: (id) => set({ myRoomId: id }),
@@ -358,8 +419,20 @@ export const useTeamStore = create<TeamState>((set) => ({
     })),
   removeToast: (id) =>
     set((prev) => ({ toasts: prev.toasts.filter((t) => t.id !== id) })),
-  setRecording: (rec) => set({ recording: rec }),
-  bumpRecStop: () => set((prev) => ({ recStopNonce: prev.recStopNonce + 1 })),
+  setRoomRecording: (roomKey, rec) =>
+    set((prev) => {
+      const next = { ...prev.recordings }
+      if (rec) next[roomKey] = rec
+      else delete next[roomKey]
+      return { recordings: next }
+    }),
+  clearRecordingsBy: (userId) =>
+    set((prev) => {
+      const entries = Object.entries(prev.recordings).filter(([, r]) => r.byId !== userId)
+      if (entries.length === Object.keys(prev.recordings).length) return prev
+      return { recordings: Object.fromEntries(entries) }
+    }),
+  bumpRecStop: (room) => set((prev) => ({ recStop: { nonce: prev.recStop.nonce + 1, room } })),
   setComposeNoteFor: (target) => set({ composeNoteFor: target }),
   setUnreadNotes: (notes) => set({ unreadNotes: notes }),
   setNotesPanelOpen: (open) => set({ notesPanelOpen: open }),
