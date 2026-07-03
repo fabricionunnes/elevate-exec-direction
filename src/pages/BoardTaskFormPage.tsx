@@ -21,12 +21,16 @@ import {
   CheckCircle2,
   Download,
   FileText,
+  ListChecks,
+  Plus,
   Sparkles,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
   BOARD_DELIVERABLE_TYPES,
   BoardDeliverableType,
+  DeliverableFormField,
   DeliverableTypeConfig,
 } from "@/components/board/boardDeliverableConfig";
 import { generateBoardDeliverablePDF } from "@/components/board/generateBoardDeliverablePDF";
@@ -38,6 +42,7 @@ interface TaskFormInfo {
   status: "pending" | "submitted";
   submitted_at: string | null;
   deliverable_id: string | null;
+  questions?: DeliverableFormField[] | null;
   task: {
     title: string;
     description: string | null;
@@ -52,6 +57,27 @@ interface PreviewData {
   version: number;
   content_md: string;
   doc_label: string;
+}
+
+interface EditableAction {
+  title: string;
+  description: string;
+  metric: string;
+  days: number;
+}
+
+/** Monta a seção "## Plano de Ação" no mesmo formato que o backend persiste no content_md. */
+function buildPlanMd(actions: EditableAction[]): string {
+  if (!actions.length) return "";
+  return [
+    "\n\n## Plano de Ação",
+    ...actions.map((a, i) => {
+      const due = new Date();
+      due.setDate(due.getDate() + a.days);
+      const dd = `${String(due.getDate()).padStart(2, "0")}/${String(due.getMonth() + 1).padStart(2, "0")}`;
+      return `\n### ${i + 1}. ${a.title}\n- O que fazer: ${a.description || "—"}\n- Métrica de resultado: ${a.metric || "—"}\n- Prazo: ${dd}`;
+    }),
+  ].join("");
 }
 
 type Step = "form" | "preview" | "success";
@@ -153,6 +179,10 @@ export default function BoardTaskFormPage() {
   const [redownloading, setRedownloading] = useState(false);
   const [smartActionsCreated, setSmartActionsCreated] = useState(0);
 
+  // Plano de ação proposto pela IA — editável pelo cliente antes de finalizar
+  const [hasPlan, setHasPlan] = useState(false);
+  const [actions, setActions] = useState<EditableAction[]>([]);
+
   useEffect(() => {
     const init = async () => {
       if (!token) {
@@ -173,9 +203,20 @@ export default function BoardTaskFormPage() {
     init();
   }, [token]);
 
+  // Diagnóstico usa as perguntas geradas por IA (específicas do assunto da tarefa);
+  // se elas não vieram (falha da geração), cai no formulário de execução.
   const config: DeliverableTypeConfig | null = info
-    ? BOARD_DELIVERABLE_TYPES[info.form_type as BoardDeliverableType] ||
-      BOARD_DELIVERABLE_TYPES.outro
+    ? info.form_type === "diagnostico"
+      ? info.questions && info.questions.length > 0
+        ? {
+            label: "Diagnóstico",
+            description:
+              "Responda com a realidade de hoje — o diagnóstico vai constatar os problemas e propor o plano de ação.",
+            fields: info.questions,
+          }
+        : BOARD_DELIVERABLE_TYPES.execucao
+      : BOARD_DELIVERABLE_TYPES[info.form_type as BoardDeliverableType] ||
+        BOARD_DELIVERABLE_TYPES.outro
     : null;
 
   const dueLabel = info?.task?.due_date
@@ -215,6 +256,18 @@ export default function BoardTaskFormPage() {
         content_md: data.content_md,
         doc_label: data.doc_label || config.label,
       });
+      const proposed: EditableAction[] = Array.isArray(data.proposed_actions)
+        ? data.proposed_actions
+            .filter((a: any) => a?.title)
+            .map((a: any) => ({
+              title: String(a.title),
+              description: a.description ? String(a.description) : "",
+              metric: a.metric ? String(a.metric) : "",
+              days: Math.max(1, parseInt(a.days) || 14),
+            }))
+        : [];
+      setHasPlan(proposed.length > 0);
+      setActions(proposed);
       setStep("preview");
       window.scrollTo({ top: 0 });
     } catch (err: any) {
@@ -225,12 +278,17 @@ export default function BoardTaskFormPage() {
     }
   };
 
+  // Ações válidas do plano (sem título são ignoradas no envio e no PDF)
+  const validActions = () => actions.filter((a) => a.title.trim().length > 0);
+
   const buildPdf = async () => {
     if (!preview || !info) throw new Error("Documento não disponível");
+    // O plano final aprovado entra no PDF (mesmo formato que o backend persiste)
+    const planMd = hasPlan ? buildPlanMd(validActions()) : "";
     return generateBoardDeliverablePDF({
       title: `${preview.doc_label} — ${info.task.title}`,
       companyName: info.company_name || "Sua empresa",
-      contentMd: preview.content_md,
+      contentMd: preview.content_md + planMd,
       version: preview.version,
       date: new Date().toISOString(),
     });
@@ -248,12 +306,19 @@ export default function BoardTaskFormPage() {
       const doc = await buildPdf();
       const base64 = arrayBufferToBase64(doc.output("arraybuffer") as ArrayBuffer);
       const fileName = pdfFileName();
+      const finalActions = validActions().map((a) => ({
+        title: a.title.trim(),
+        description: a.description.trim(),
+        metric: a.metric.trim(),
+        days: Math.max(1, Math.round(a.days) || 14),
+      }));
       const attachRes = await invokeEngine({
         action: "attach_task_pdf",
         token,
         deliverable_id: preview.deliverable_id,
         pdf_base64: base64,
         file_name: fileName,
+        ...(finalActions.length > 0 ? { actions: finalActions } : {}),
       });
       setSmartActionsCreated(attachRes?.smart_actions_created || 0);
       doc.save(fileName);
@@ -421,6 +486,124 @@ export default function BoardTaskFormPage() {
               <div className="bg-muted/40 rounded-md border p-4 max-h-[420px] overflow-y-auto">
                 <MarkdownPreview content={preview.content_md} />
               </div>
+
+              {hasPlan && (
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-base font-semibold flex items-center gap-2">
+                      <ListChecks className="h-5 w-5 shrink-0" style={{ color: NAVY }} />
+                      Plano de Ação — revise antes de finalizar
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Estas ações vão virar tarefas com prazo no seu projeto. Ajuste, remova ou
+                      acrescente o que fizer sentido.
+                    </p>
+                  </div>
+                  {actions.map((action, idx) => (
+                    <Card key={idx} className="relative">
+                      <CardContent className="pt-4 pb-4 space-y-3">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          title="Remover ação"
+                          disabled={finalizing}
+                          className="absolute top-2 right-2 h-7 w-7 text-muted-foreground hover:text-red-600"
+                          onClick={() =>
+                            setActions((prev) => prev.filter((_, i) => i !== idx))
+                          }
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                        <div className="space-y-1.5 pr-8">
+                          <Label className="text-xs text-muted-foreground">Ação</Label>
+                          <Input
+                            value={action.title}
+                            placeholder="O que precisa ser feito"
+                            disabled={finalizing}
+                            onChange={(e) =>
+                              setActions((prev) =>
+                                prev.map((a, i) =>
+                                  i === idx ? { ...a, title: e.target.value } : a,
+                                ),
+                              )
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Descrição</Label>
+                          <Textarea
+                            rows={2}
+                            value={action.description}
+                            placeholder="Como fazer na prática"
+                            disabled={finalizing}
+                            onChange={(e) =>
+                              setActions((prev) =>
+                                prev.map((a, i) =>
+                                  i === idx ? { ...a, description: e.target.value } : a,
+                                ),
+                              )
+                            }
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_130px] gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">
+                              Métrica de resultado
+                            </Label>
+                            <Input
+                              value={action.metric}
+                              placeholder="Como medir o resultado"
+                              disabled={finalizing}
+                              onChange={(e) =>
+                                setActions((prev) =>
+                                  prev.map((a, i) =>
+                                    i === idx ? { ...a, metric: e.target.value } : a,
+                                  ),
+                                )
+                              }
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">
+                              Prazo (dias)
+                            </Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={String(action.days)}
+                              disabled={finalizing}
+                              onChange={(e) =>
+                                setActions((prev) =>
+                                  prev.map((a, i) =>
+                                    i === idx
+                                      ? { ...a, days: Math.max(1, parseInt(e.target.value) || 1) }
+                                      : a,
+                                  ),
+                                )
+                              }
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={finalizing}
+                    onClick={() =>
+                      setActions((prev) => [
+                        ...prev,
+                        { title: "", description: "", metric: "", days: 14 },
+                      ])
+                    }
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar ação
+                  </Button>
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
                 <Button
                   variant="outline"
@@ -441,7 +624,9 @@ export default function BoardTaskFormPage() {
                   ) : (
                     <Download className="h-4 w-4 mr-2" />
                   )}
-                  Finalizar e gerar documento oficial
+                  {validActions().length > 0
+                    ? "Aprovar plano e gerar documento oficial"
+                    : "Finalizar e gerar documento oficial"}
                 </Button>
               </div>
               {finalizing && (

@@ -347,7 +347,7 @@ async function publishPlan(supabase: any, memberId: string) {
         task_id: task.id,
         member_id: memberId,
         token,
-        form_type: a.deliverable_type || "execucao",
+        form_type: a.deliverable_type || "diagnostico",
       },
       { onConflict: "task_id" }
     );
@@ -494,6 +494,12 @@ const EXECUTION_SPEC = {
     "Estruture o relatório de execução da ação: o que era a ação e o objetivo dela; o que foi feito na prática (passo a passo do que o cliente relatou); resultados obtidos (números quando houver); dificuldades encontradas e como foram tratadas; pendências e próximos passos recomendados. Feche com um parecer curto de qualidade da execução.",
 };
 
+const DIAGNOSTIC_SPEC = {
+  label: "Relatório de Diagnóstico",
+  guidance:
+    "Estruture o diagnóstico do tema da ação: situação atual (retrato fiel do que o cliente respondeu, organizado); PROBLEMAS CONSTATADOS (seção central — cada problema com evidência tirada das respostas e o impacto comercial dele, priorizados do mais grave pro menos grave); pontos fortes a preservar; e recomendações objetivas. Seja direto: diagnóstico bom aponta a ferida.",
+};
+
 async function loadFormByToken(supabase: any, token: string) {
   if (!token || String(token).length < 20) return null;
   const { data: form } = await supabase
@@ -520,7 +526,7 @@ async function getTaskForm(supabase: any, token: string) {
     .single();
   const { data: company } = await supabase
     .from("onboarding_companies")
-    .select("name")
+    .select("name, segment")
     .eq("id", member?.company_id)
     .single();
 
@@ -529,15 +535,59 @@ async function getTaskForm(supabase: any, token: string) {
     .replace(/\nExecute pelo formulário oficial:.*$/s, "")
     .trim();
 
+  // Diagnóstico: as perguntas são específicas do assunto da tarefa, geradas por IA
+  // na primeira abertura e congeladas no formulário
+  let questions = form.questions || null;
+  if (form.form_type === "diagnostico" && !questions && form.status === "pending" && ANTHROPIC_API_KEY) {
+    try {
+      questions = await generateDiagnosticQuestions(task, company);
+      if (questions?.length) {
+        await supabase.from("unv_board_task_forms").update({ questions }).eq("id", form.id);
+      }
+    } catch (e) {
+      console.error("generateDiagnosticQuestions falhou:", e);
+    }
+  }
+
   return json({
     success: true,
     form_type: form.form_type,
     status: form.status,
     submitted_at: form.submitted_at,
     deliverable_id: form.deliverable_id,
+    questions,
     task: { title: task?.title, description: cleanDesc, due_date: task?.due_date, status: task?.status },
     company_name: company?.name,
   });
+}
+
+async function generateDiagnosticQuestions(task: any, company: any): Promise<any[]> {
+  const prompt = `Você é o diretor comercial da UNV. O cliente ${company?.name} (segmento: ${company?.segment || "n/i"}) vai executar esta ação da mentoria UNV Board respondendo um formulário de diagnóstico:
+
+AÇÃO: ${task?.title}
+CONTEXTO: ${(task?.description || "").substring(0, 600)}
+
+Crie de 5 a 8 perguntas objetivas que levantem as INFORMAÇÕES REAIS necessárias pra essa ação — perguntas que um dono de PME consegue responder de cabeça ou consultando rapidamente seus números. Adapte a linguagem ao segmento. As respostas vão alimentar um relatório de diagnóstico que constata problemas e propõe ações.
+
+RESPONDA SOMENTE com um array JSON válido (sem markdown), cada item: {"key": "slug-curto", "label": "pergunta clara", "placeholder": "Ex.: exemplo concreto do segmento", "type": "textarea"} (use "text" só pra respostas de uma linha, "list" quando a resposta natural é uma lista — nesse caso o placeholder avisa 'um item por linha').`;
+
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY!, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 2000, messages: [{ role: "user", content: prompt }] }),
+  });
+  if (!resp.ok) return [];
+  const data = await resp.json();
+  const text = (data.content || []).map((b: any) => b.text || "").join("");
+  const match = text.match(/\[[\s\S]*\]/);
+  const parsed = JSON.parse(match ? match[0] : text);
+  return Array.isArray(parsed)
+    ? parsed.filter((q) => q?.key && q?.label).slice(0, 8).map((q) => ({
+        key: String(q.key), label: String(q.label),
+        placeholder: q.placeholder ? String(q.placeholder) : "",
+        type: ["text", "textarea", "list"].includes(q.type) ? q.type : "textarea",
+      }))
+    : [];
 }
 
 async function submitTaskForm(supabase: any, body: any) {
@@ -559,7 +609,17 @@ async function submitTaskForm(supabase: any, body: any) {
     .select("title, description")
     .eq("id", form.task_id).single();
 
-  const spec = DELIVERABLE_SPECS[form.form_type] || EXECUTION_SPEC;
+  const isExecution = form.form_type === "execucao";
+  const spec = isExecution
+    ? EXECUTION_SPEC
+    : DELIVERABLE_SPECS[form.form_type] || DIAGNOSTIC_SPEC;
+
+  // Documento estratégico sai junto com o plano de ação PROPOSTO (o cliente edita antes de finalizar)
+  const actionsBlock = isExecution
+    ? ""
+    : `
+
+DEPOIS do documento, escreva a linha exata ===ACOES=== e em seguida SOMENTE um array JSON com o plano de ação: 3 a 5 ações SMART extraídas dos problemas constatados, cada item {"title": "ação curta com verbo (máx 90 chars)", "description": "o que fazer na prática, 1-3 frases", "metric": "métrica de resultado esperada", "days": prazo em dias a partir de hoje (int, entre 5 e 45, escalonados)}. As ações devem atacar os problemas do diagnóstico em ordem de impacto.`;
 
   const prompt = `Você é o diretor comercial da UNV (Universidade Nacional de Vendas) e vai redigir um documento oficial pro cliente da mentoria UNV Board, a partir da execução de uma ação do plano anual.
 
@@ -578,19 +638,44 @@ REGRAS DE FORMA:
 - Markdown limpo: títulos com ##, subtítulos com ###, listas com -. Sem tabelas complexas, sem emojis.
 - Português do Brasil, tom profissional e direto, linguagem do segmento da empresa.
 - Use SOMENTE as informações fornecidas; onde faltar, escreva a seção com orientação prática marcada como "A definir:".
-- Comece direto no título: # ${spec.label} — ${company?.name}.`;
+- Comece direto no título: # ${spec.label} — ${company?.name}.${actionsBlock}`;
 
   const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 12000, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 14000, messages: [{ role: "user", content: prompt }] }),
   });
   if (!aiResp.ok) {
     const errText = await aiResp.text();
     return json({ error: `Anthropic ${aiResp.status}: ${errText.substring(0, 300)}` }, 500);
   }
   const aiData = await aiResp.json();
-  const content = (aiData.content || []).map((b: any) => b.text || "").join("").trim();
+  const raw = (aiData.content || []).map((b: any) => b.text || "").join("").trim();
+
+  // Separa documento e plano de ação proposto
+  let content = raw;
+  let proposedActions: any[] = [];
+  const splitIdx = raw.indexOf("===ACOES===");
+  if (splitIdx >= 0) {
+    content = raw.substring(0, splitIdx).trim();
+    try {
+      const jsonPart = raw.substring(splitIdx + "===ACOES===".length);
+      const match = jsonPart.match(/\[[\s\S]*\]/);
+      if (match) {
+        proposedActions = JSON.parse(match[0])
+          .filter((a: any) => a?.title)
+          .slice(0, 5)
+          .map((a: any) => ({
+            title: String(a.title).substring(0, 200),
+            description: a.description ? String(a.description).substring(0, 800) : "",
+            metric: a.metric ? String(a.metric).substring(0, 200) : "",
+            days: Math.min(60, Math.max(3, parseInt(a.days) || 14)),
+          }));
+      }
+    } catch (e) {
+      console.error("Falha ao parsear plano de ação proposto:", e);
+    }
+  }
   if (content.length < 100) return json({ error: "IA retornou documento vazio" }, 500);
 
   const validTypes = ["raiox", "metas", "icp", "playbook", "processos", "script", "calendario", "book", "outro"];
@@ -623,7 +708,7 @@ REGRAS DE FORMA:
   if (insErr) return json({ error: insErr.message }, 500);
 
   await supabase.from("unv_board_task_forms")
-    .update({ form_data, deliverable_id: row.id })
+    .update({ form_data, deliverable_id: row.id, proposed_actions: proposedActions.length ? proposedActions : null })
     .eq("id", form.id);
 
   return json({
@@ -633,11 +718,12 @@ REGRAS DE FORMA:
     content_md: content,
     doc_label: spec.label,
     company_name: company?.name,
+    proposed_actions: proposedActions,
   });
 }
 
 async function attachTaskPdf(supabase: any, body: any) {
-  const { token, deliverable_id, pdf_base64, file_name } = body;
+  const { token, deliverable_id, pdf_base64, file_name, actions } = body;
   if (!deliverable_id || !pdf_base64) return json({ error: "deliverable_id e pdf_base64 obrigatórios" }, 400);
   const form = await loadFormByToken(supabase, token);
   if (!form) return json({ error: "Formulário não encontrado" }, 404);
@@ -688,86 +774,59 @@ async function attachTaskPdf(supabase: any, body: any) {
     .update({ status: "completed", completed_at: new Date().toISOString() })
     .eq("id", form.task_id);
 
-  // 4) Documento estratégico gera plano de ação SMART → novas tarefas com link próprio.
-  //    Relatório de execução NÃO gera (é o canal de resultado — senão vira cadeia infinita).
+  // 4) Plano de ação FINAL (editado pelo cliente na tela de revisão) vira tarefas
+  //    novas do projeto — cada uma com formulário de execução próprio.
+  //    Relatório de execução não cria ações (é o canal de resultado).
   let smartCreated = 0;
-  if (form.form_type !== "execucao" && member.project_id) {
+  if (form.form_type !== "execucao" && member.project_id && Array.isArray(actions) && actions.length) {
     try {
-      smartCreated = await spawnSmartActions(supabase, form, member, deliverable_id);
+      smartCreated = await createActionTasks(supabase, form, member, deliverable_id, actions);
     } catch (e) {
-      console.error("spawnSmartActions falhou (não bloqueia a conclusão):", e);
+      console.error("createActionTasks falhou (não bloqueia a conclusão):", e);
     }
   }
 
   return json({ success: true, task_completed: true, smart_actions_created: smartCreated });
 }
 
-// Extrai ações SMART do documento finalizado e cria como tarefas do projeto Board.
-// Cada tarefa nasce com formulário público de execução (o cliente reporta o que fez,
-// feedback e resultado em números pelo link).
-async function spawnSmartActions(supabase: any, form: any, member: any, deliverableId: string): Promise<number> {
-  if (!ANTHROPIC_API_KEY) return 0;
-
+// Cria as tarefas do plano de ação aprovado pelo cliente.
+async function createActionTasks(supabase: any, form: any, member: any, deliverableId: string, actions: any[]): Promise<number> {
   const { data: deliverable } = await supabase
     .from("unv_board_deliverables")
-    .select("title, type, content_md")
+    .select("title, content_md")
     .eq("id", deliverableId)
     .single();
-  if (!deliverable?.content_md) return 0;
 
-  const { data: company } = await supabase
-    .from("onboarding_companies").select("name, segment").eq("id", member.company_id).single();
-
-  const prompt = `Você é o diretor comercial da UNV. O cliente ${company?.name} (segmento: ${company?.segment || "n/i"}) acabou de finalizar o documento "${deliverable.title}" na mentoria UNV Board.
-
-DOCUMENTO:
-${String(deliverable.content_md).substring(0, 9000)}
-
-Extraia dele um plano de ação SMART: de 3 a 5 ações de execução que o cliente deve realizar pra colocar esse documento em prática. Cada ação precisa ser:
-- Específica (o que exatamente fazer, com verbo de ação)
-- Mensurável (qual número/evidência prova que foi feita)
-- Atingível e relevante pro conteúdo do documento
-- Temporal (prazo em dias a partir de hoje: entre 5 e 45 dias, escalonados)
-
-RESPONDA SOMENTE com um array JSON válido (sem markdown), cada item: {"title": "ação curta com verbo (máx 90 chars)", "description": "o que fazer na prática, 1-3 frases diretas", "metric": "métrica de resultado esperada (ex.: taxa de resposta, nº de reativações, R$ gerado)", "days": prazo em dias (int)}.`;
-
-  const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 2500, messages: [{ role: "user", content: prompt }] }),
-  });
-  if (!aiResp.ok) return 0;
-  const aiData = await aiResp.json();
-  const text = (aiData.content || []).map((b: any) => b.text || "").join("");
-  let actions: any[] = [];
-  try {
-    const match = text.match(/\[[\s\S]*\]/);
-    actions = JSON.parse(match ? match[0] : text);
-  } catch {
-    return 0;
-  }
+  const clean = actions
+    .filter((a: any) => a?.title && String(a.title).trim().length > 3)
+    .slice(0, 7)
+    .map((a: any) => ({
+      title: String(a.title).trim().substring(0, 200),
+      description: a.description ? String(a.description).trim().substring(0, 800) : "",
+      metric: a.metric ? String(a.metric).trim().substring(0, 200) : "",
+      days: Math.min(90, Math.max(1, parseInt(a.days) || 14)),
+    }));
+  if (!clean.length) return 0;
 
   let created = 0;
-  for (const a of actions.slice(0, 5)) {
-    if (!a?.title) continue;
-    const days = Math.min(60, Math.max(3, parseInt(a.days) || 14));
+  for (const a of clean) {
     const due = new Date();
-    due.setDate(due.getDate() + days);
+    due.setDate(due.getDate() + a.days);
     const dueStr = due.toISOString().substring(0, 10);
 
     const actionToken = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, "");
     const formUrl = `${PUBLIC_DOMAIN}/#/board/tarefa/${actionToken}`;
     const desc = [
-      a.description || "",
+      a.description,
       a.metric ? `\nMétrica de resultado: ${a.metric}` : "",
-      `\nOrigem: plano de ação do documento "${deliverable.title}".`,
+      `\nOrigem: plano de ação do documento "${deliverable?.title || "UNV Board"}".`,
     ].join("");
 
     const { data: task, error: tErr } = await supabase
       .from("onboarding_tasks")
       .insert({
         project_id: member.project_id,
-        title: String(a.title).substring(0, 200),
+        title: a.title,
         description: desc,
         due_date: dueStr,
         status: "pending",
@@ -779,11 +838,28 @@ RESPONDA SOMENTE com um array JSON válido (sem markdown), cada item: {"title": 
     if (tErr) continue;
 
     await supabase.from("unv_board_task_forms").upsert(
-      { task_id: task.id, member_id: member.id ?? form.member_id, token: actionToken, form_type: "execucao" },
+      { task_id: task.id, member_id: form.member_id, token: actionToken, form_type: "execucao" },
       { onConflict: "task_id" }
     );
     created++;
   }
+
+  // Grava o plano final dentro do documento (o PDF do cliente já sai com ele)
+  if (created && deliverable?.content_md && !deliverable.content_md.includes("## Plano de Ação")) {
+    const planMd = [
+      "\n\n## Plano de Ação",
+      ...clean.map((a, i) => {
+        const due = new Date();
+        due.setDate(due.getDate() + a.days);
+        const dd = `${String(due.getDate()).padStart(2, "0")}/${String(due.getMonth() + 1).padStart(2, "0")}`;
+        return `\n### ${i + 1}. ${a.title}\n- O que fazer: ${a.description || "—"}\n- Métrica de resultado: ${a.metric || "—"}\n- Prazo: ${dd}`;
+      }),
+    ].join("");
+    await supabase.from("unv_board_deliverables")
+      .update({ content_md: deliverable.content_md + planMd })
+      .eq("id", deliverableId);
+  }
+
   return created;
 }
 
