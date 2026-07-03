@@ -85,6 +85,27 @@ serve(async (req) => {
       whatsappMessages = (msgs || []).filter((m: any) => (m.content || "").trim());
     }
 
+    // Instagram preenchido na aba Contato (campo customizado) — a Visão Geral
+    // usa como fallback quando a coluna crm_leads.instagram está vazia.
+    let customInstagram: string | null = null;
+    {
+      const { data: igField } = await supabase
+        .from("crm_custom_fields")
+        .select("id")
+        .eq("field_name", "instagram")
+        .limit(1)
+        .maybeSingle();
+      if (igField?.id) {
+        const { data: igVal } = await supabase
+          .from("crm_custom_field_values")
+          .select("value")
+          .eq("lead_id", leadId)
+          .eq("field_id", igField.id)
+          .maybeSingle();
+        customInstagram = (igVal?.value || "").trim() || null;
+      }
+    }
+
     // Ligações do discador — transcrição/resumo por IA e notas da atendente.
     // Terceiro canal de qualificação (junto de WhatsApp e observações).
     const { data: dialerCalls } = await supabase
@@ -599,7 +620,7 @@ IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown. Se
         opportunity_value: lead.opportunity_value,
         probability: lead.probability,
         trade_name: lead.trade_name,
-        instagram: lead.instagram,
+        instagram: lead.instagram || customInstagram,
         has_partner: lead.has_partner,
       },
       journey: {
