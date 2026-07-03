@@ -20,6 +20,7 @@ interface TrafficLead {
   phone: string | null;
   arrived_at: string;
   status: string;
+  source: string;
   notes: string | null;
   created_at: string;
 }
@@ -194,7 +195,14 @@ export const ClientTrafficLeadsTab = ({ projectId }: { projectId: string }) => {
               <div key={l.id} className="rounded-lg border border-border/60 bg-card px-3 py-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{l.name}</p>
+                    <p className="text-sm font-medium truncate flex items-center gap-1.5">
+                      <span className="truncate">{l.name}</span>
+                      {l.source === "lead_ads" && (
+                        <Badge variant="outline" className="text-[8px] h-3.5 px-1 shrink-0 border-blue-400/40 text-blue-500" title="Importado automaticamente do formulário do Meta Ads">
+                          Meta
+                        </Badge>
+                      )}
+                    </p>
                     <p className="text-[11px] text-muted-foreground flex items-center gap-2">
                       {l.phone && (
                         <span className="inline-flex items-center gap-1">
