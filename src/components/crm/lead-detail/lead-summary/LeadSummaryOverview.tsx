@@ -122,6 +122,64 @@ export const LeadSummaryOverview = ({ data, loading, onRegenerate }: Props) => {
         </CardContent>
       </Card>
 
+      {/* Section 2.1: Qualificação (playbook) — extraída de WhatsApp, ligações e notas */}
+      {ai?.qualification && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-primary" />
+              Qualificação do Lead
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Extraída automaticamente das conversas de WhatsApp, ligações do discador e observações.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                { key: "budget", label: "Budget (disponibilidade pra investir)" },
+                { key: "revenue", label: "Faturamento" },
+                { key: "niche", label: "Nicho" },
+                { key: "pains", label: "Dores" },
+                { key: "desires", label: "Desejos" },
+                { key: "urgency", label: "Urgência" },
+                { key: "company_context", label: "Contexto da empresa" },
+                { key: "previous_attempts", label: "Já tentou algo pra resolver" },
+              ].map(({ key, label }) => {
+                const q = ai.qualification?.[key];
+                const sourceLabel: Record<string, string> = {
+                  whatsapp: "WhatsApp", ligacao: "Ligação", nota: "Nota", reuniao: "Reunião", scanner: "Scanner",
+                };
+                return (
+                  <div key={key} className="rounded-lg border border-border/60 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">{label}</p>
+                      {q?.source && (
+                        <Badge variant="secondary" className="text-[9px] h-4 px-1.5 shrink-0">
+                          {sourceLabel[q.source] || q.source}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className={cn("text-sm mt-1 leading-relaxed", q?.value ? "text-foreground" : "text-muted-foreground/60 italic")}>
+                      {q?.value || "Não descoberto ainda"}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+            {Array.isArray(ai.qualification?.missing) && ai.qualification.missing.length > 0 && (
+              <div className="rounded-lg border border-amber-300/50 dark:border-amber-700/40 bg-amber-50/60 dark:bg-amber-950/20 p-3">
+                <p className="text-[10px] uppercase tracking-wide font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                  <AlertTriangle className="h-3 w-3" />
+                  Falta descobrir
+                </p>
+                <p className="text-sm mt-1 text-foreground">{ai.qualification.missing.join(" · ")}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Section 3: Journey */}
       <Card>
         <CardHeader className="pb-3">

@@ -85,6 +85,16 @@ serve(async (req) => {
       whatsappMessages = (msgs || []).filter((m: any) => (m.content || "").trim());
     }
 
+    // Ligações do discador — transcrição/resumo por IA e notas da atendente.
+    // Terceiro canal de qualificação (junto de WhatsApp e observações).
+    const { data: dialerCalls } = await supabase
+      .from("crm_calls")
+      .select("created_at, duration_seconds, ai_summary, ai_disposition, transcription, notes, disposition")
+      .eq("lead_id", leadId)
+      .or("transcription.not.is.null,ai_summary.not.is.null,notes.not.is.null")
+      .order("created_at", { ascending: false })
+      .limit(10);
+
     // Fetch Scanner UNV submission (Isca de baleia funnel) for richer context
     const { data: scannerSub } = await supabase
       .from("sales_scanner_submissions")
@@ -192,6 +202,17 @@ serve(async (req) => {
           data: m.created_at,
         })),
       },
+      ligacoes_discador: {
+        _description: "Ligações feitas pelo discador pra este lead: transcrição, resumo por IA e notas da atendente. Fonte importante de qualificação — extraia o que o cliente disse por telefone.",
+        chamadas: (dialerCalls || []).map((c: any) => ({
+          data: c.created_at,
+          duracao_segundos: c.duration_seconds,
+          desfecho: c.disposition || c.ai_disposition,
+          resumo_ia: c.ai_summary,
+          notas_atendente: c.notes,
+          transcricao: (c.transcription || "").substring(0, 2500),
+        })),
+      },
       scanner_unv: scannerSub ? {
         _description: "Diagnóstico comercial completo respondido pelo lead no Scanner de Vendas UNV (funil Isca de Baleia). Use estas informações para personalizar o atendimento, abordar dores reais, citar números do próprio cliente e construir urgência baseada nas perdas declaradas.",
         empresa: scannerSub.company_name,
@@ -240,7 +261,7 @@ serve(async (req) => {
       systemPrompt = `Você é um analista comercial especialista. Responda APENAS em JSON válido, sem markdown, sem code blocks. Use o formato exato pedido.`;
       userPrompt = `Com base nos dados abaixo de um lead no CRM, gere um JSON com a seguinte estrutura:
 {
-  "company_summary": "Resumo executivo da empresa em 3-5 linhas, tom direto e profissional",
+  "company_summary": "Resumo executivo da empresa em 4-8 linhas, tom direto e profissional. Consolide TUDO que já foi dito pelo cliente em qualquer canal (WhatsApp, ligações do discador, observações/notas, reuniões): contexto do negócio, números, dores, desejos e situação atual.",
   "temperature": "hot" | "warm" | "cold",
   "temperature_reason": "Justificativa curta para a temperatura",
   "interest_level": "high" | "medium" | "low",
@@ -248,6 +269,17 @@ serve(async (req) => {
   "main_objection": "Principal objeção registrada ou 'Nenhuma objeção registrada'",
   "close_probability": número de 0 a 100,
   "close_probability_reason": "Justificativa para a probabilidade",
+  "qualification": {
+    "budget": { "value": "disponibilidade de investimento declarada (valores, faixa) ou null", "source": "whatsapp" | "ligacao" | "nota" | "reuniao" | "scanner" | null },
+    "revenue": { "value": "faturamento da empresa (mensal/anual, faixa) ou null", "source": ... },
+    "niche": { "value": "nicho/segmento de atuação ou null", "source": ... },
+    "pains": { "value": "dores relatadas pelo cliente (resuma todas) ou null", "source": ... },
+    "desires": { "value": "desejos/objetivos declarados (onde quer chegar) ou null", "source": ... },
+    "urgency": { "value": "urgência pra resolver (prazo, gatilho, 'pra ontem') ou null", "source": ... },
+    "company_context": { "value": "contexto da empresa: estrutura, time, quantos vendedores, como opera hoje, ou null", "source": ... },
+    "previous_attempts": { "value": "o que já tentou pra resolver (consultoria, agência, contratações, ferramentas) e por que não funcionou, ou null", "source": ... },
+    "missing": ["campos da qualificação que AINDA NÃO foram descobertos, em pt-BR, ex: 'Budget', 'Urgência' — o que a SDR/closer precisa perguntar"]
+  },
   "meeting_summaries": [
     {
       "date": "data",
@@ -258,6 +290,8 @@ serve(async (req) => {
     }
   ]
 }
+
+REGRAS DA QUALIFICAÇÃO (playbook UNV): preencha cada campo EXCLUSIVAMENTE com o que o cliente disse/registrado nos canais disponíveis nos dados — whatsapp_conversas, ligacoes_discador, notes/activities (observações) e transcriptions (reuniões) — além do scanner_unv quando existir. NÃO invente nem deduza além do razoável; campo sem informação = value null e entra em "missing". Em "source" aponte o canal principal de onde veio a informação. Cite números e palavras do próprio cliente quando houver.
 
 Dados do lead:
 ${JSON.stringify(leadContext, null, 2)}
