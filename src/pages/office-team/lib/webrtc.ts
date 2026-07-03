@@ -57,6 +57,8 @@ interface PeerEntry {
   remoteStream: MediaStream
   /** última vez que a conexão esteve 'connected' (ou criação) — watchdog */
   lastOk: number
+  /** quando ficou 'connected' pela 1ª vez (0 = nunca) — detecta "conectado sem áudio" */
+  connectedAt: number
 }
 
 export class CallManager {
@@ -72,6 +74,9 @@ export class CallManager {
   private unsubscribe: (() => void) | null = null
   /** watchdog: reconecta pares que ficaram presos (offer/ICE perdidos) */
   private watchdog: ReturnType<typeof setInterval> | null = null
+  /** cura bidirecional: o lado que NÃO oferta (id maior) pede re-offer via 'poke' */
+  private lastPokeSent = new Map<string, number>()
+  private lastPokeHandled = new Map<string, number>()
   /** áudio da tela compartilhada, mixado com o microfone num track só
    * (replaceTrack no sender de áudio — sem renegociação) */
   private screenAudioTrack: MediaStreamTrack | null = null
@@ -131,19 +136,48 @@ export class CallManager {
       const state = entry.pc.connectionState
       if (state === 'connected') {
         entry.lastOk = now
+        if (!entry.connectedAt) entry.connectedAt = now
+        // "Conectado mas mudo": o transporte fechou e o áudio nunca chegou
+        // (ontrack perdido). Sem isso, o par parece saudável pra sempre.
+        if (now - entry.connectedAt > 7_000 && entry.remoteStream.getAudioTracks().length === 0) {
+          this.closePeer(id)
+          const player = useTeamStore.getState().remotePlayers[id]
+          if (player?.inCall) {
+            if (this.myId < id) void this.createOfferTo(id)
+            else this.sendPoke(id)
+          }
+        }
         continue
       }
       // 'new'/'connecting' preso, ou 'disconnected' sem se recuperar
       if (now - entry.lastOk > 12_000) {
         this.closePeer(id)
-        // quem tem o menor id re-oferece na hora; o outro lado vai
-        // receber a offer nova (ou o watchdog dele faz o mesmo)
         const player = useTeamStore.getState().remotePlayers[id]
-        if (player?.inCall && this.myId < id) void this.createOfferTo(id)
+        if (player?.inCall) {
+          // menor id re-oferece na hora; o maior PEDE a re-offer (poke) —
+          // antes o lado maior ficava esperando pra sempre
+          if (this.myId < id) void this.createOfferTo(id)
+          else this.sendPoke(id)
+        }
       }
     }
-    // Garante pares que nunca chegaram a ser criados (sinal perdido)
+    // Pares que nunca chegaram a ser criados (offer perdida no signaling):
+    // o menor cria via syncPeers; o MAIOR pede a offer via poke
+    const remotePlayers = useTeamStore.getState().remotePlayers
+    for (const [id, player] of Object.entries(remotePlayers)) {
+      if (player.inCall && !this.peers.has(id) && this.myId > id) {
+        this.sendPoke(id)
+      }
+    }
     this.syncPeers()
+  }
+
+  /** Pede ao lado ofertante (id menor) que refaça a conexão comigo. */
+  private sendPoke(peerId: string) {
+    const now = Date.now()
+    if (now - (this.lastPokeSent.get(peerId) ?? 0) < 8_000) return
+    this.lastPokeSent.set(peerId, now)
+    this.realtime.sendRtcSignal({ to: peerId, type: 'poke' })
   }
 
   /** Cria/derruba conexões conforme quem está com inCall=true no presence. */
@@ -168,7 +202,7 @@ export class CallManager {
   private createPeer(peerId: string): PeerEntry {
     void refreshIceServers() // renova em background se estiver pra vencer
     const pc = new RTCPeerConnection({ iceServers: cachedIceServers })
-    const entry: PeerEntry = { pc, pendingCandidates: [], remoteStream: new MediaStream(), lastOk: Date.now() }
+    const entry: PeerEntry = { pc, pendingCandidates: [], remoteStream: new MediaStream(), lastOk: Date.now(), connectedAt: 0 }
 
     pc.onicecandidate = (ev) => {
       if (ev.candidate) {
@@ -182,6 +216,7 @@ export class CallManager {
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'connected') {
         entry.lastOk = Date.now()
+        if (!entry.connectedAt) entry.connectedAt = Date.now()
       } else if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
         this.closePeer(peerId)
         // Renegocia na hora em vez de esperar o watchdog
@@ -211,6 +246,23 @@ export class CallManager {
   private async handleSignal(signal: RtcSignal) {
     if (!this.joined) return
     const peerId = signal.from
+
+    if (signal.type === 'poke') {
+      // O outro lado não está me ouvindo. Só o ofertante (menor id) refaz.
+      if (this.myId >= peerId) return
+      const entry = this.peers.get(peerId)
+      const healthy = entry && entry.pc.connectionState === 'connected'
+      const now = Date.now()
+      const lastPoke = this.lastPokeHandled.get(peerId) ?? 0
+      this.lastPokeHandled.set(peerId, now)
+      // Par ruim/ausente → renegocia já. Par que PARECE saudável daqui mas o
+      // outro lado insiste (2º poke em <20s) = conexão meio-aberta → renegocia.
+      if (!healthy || now - lastPoke < 20_000) {
+        this.closePeer(peerId)
+        void this.createOfferTo(peerId)
+      }
+      return
+    }
 
     if (signal.type === 'offer') {
       // Recebi offer: sou o answerer deste par
@@ -476,6 +528,8 @@ export class CallManager {
       this.watchdog = null
     }
     for (const id of [...this.peers.keys()]) this.closePeer(id)
+    this.lastPokeSent.clear()
+    this.lastPokeHandled.clear()
     if (this.screenTrack) {
       this.screenTrack.stop()
       this.screenTrack = null

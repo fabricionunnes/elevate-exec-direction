@@ -22,7 +22,8 @@ const POS_INTERVAL_MS = 110
 export interface RtcSignal {
   from: string
   to: string
-  type: 'offer' | 'answer' | 'ice'
+  /** 'poke' = "não estou te ouvindo/conectando — refaça a offer pra mim" */
+  type: 'offer' | 'answer' | 'ice' | 'poke'
   sdp?: string
   candidate?: RTCIceCandidateInit
 }
