@@ -1,8 +1,9 @@
 // client-traffic-leads-sync: puxa os leads dos FORMULÁRIOS NATIVOS do Meta
 // (Lead Ads) pra aba Leads do Tráfego Pago do portal do cliente.
-// Percorre as contas de unv_meta_ads_accounts que têm project_id vinculado,
-// lista os anúncios ativos e lê /{ad_id}/leads (exige leads_retrieval no
-// token — reconectar a conta no módulo Meta Ads se der erro de permissão).
+// Percorre as contas de meta_ads_accounts (módulo Meta Ads do PORTAL, por
+// projeto — é a conta que o botão Conectar/Desconectar do módulo gerencia),
+// lista os anúncios e lê /{ad_id}/leads (exige leads_retrieval no token —
+// reconectar a conta no módulo Meta Ads se der erro de permissão).
 // Dedup por meta_lead_id. Cron a cada 30 min.
 import { createClient } from "@supabase/supabase-js";
 
@@ -36,7 +37,7 @@ Deno.serve(async (req) => {
     );
 
     const { data: accounts } = await supabase
-      .from("unv_meta_ads_accounts")
+      .from("meta_ads_accounts")
       .select("ad_account_id, ad_account_name, access_token, project_id")
       .not("project_id", "is", null)
       .eq("is_connected", true);
@@ -47,9 +48,13 @@ Deno.serve(async (req) => {
       let inserted = 0;
       let permissionError = false;
       try {
-        // Anúncios da conta (ativos primeiro; inclui pausados recentes pra não perder lead)
+        // Anúncios da conta (ativos primeiro; inclui pausados recentes pra não
+        // perder lead). meta_ads_accounts guarda o id já com prefixo "act_".
+        const actId = String(acc.ad_account_id).startsWith("act_")
+          ? acc.ad_account_id
+          : `act_${acc.ad_account_id}`;
         const adsRes = await fetch(
-          `${GRAPH}/act_${acc.ad_account_id}/ads?fields=id,name,effective_status&limit=100&access_token=${acc.access_token}`,
+          `${GRAPH}/${actId}/ads?fields=id,name,effective_status&limit=100&access_token=${acc.access_token}`,
         );
         const adsData = await adsRes.json();
         if (adsData.error) {
