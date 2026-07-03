@@ -37,7 +37,7 @@ const statusColor: Record<string, string> = {
 export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campaigns: CampaignOpt[]; staffId: string | null; tenantId?: string | null }) {
   const active = campaigns.filter((c) => c.status === "active");
   const [campaignId, setCampaignId] = useState<string>("");
-  const { status, error, goReady, goOffline, hangup } = useTwilioDevice(staffId);
+  const { status, error, callWarning, goReady, goOffline, hangup } = useTwilioDevice(staffId);
   const [current, setCurrent] = useState<CurrentCall | null>(null);
   const [dialing, setDialing] = useState(false);
   const [note, setNote] = useState("");
@@ -296,6 +296,14 @@ export function DialerLivePanel({ campaigns, staffId, tenantId = null }: { campa
         </div>
 
         {error && <p className="text-xs text-red-500">{error}</p>}
+
+        {/* Aviso de qualidade em tempo real (Twilio): mic mudo / rede ruim */}
+        {callWarning && (
+          <div className="rounded-md border border-red-500/50 bg-red-500/10 text-red-600 dark:text-red-400 p-2 text-xs flex items-start gap-2 animate-pulse">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span className="font-medium">{callWarning}</span>
+          </div>
+        )}
 
         {!hours.allowed && (
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 p-2 text-xs flex items-start gap-2">

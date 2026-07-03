@@ -93,10 +93,72 @@ export class CallManager {
     return this.mixedAudioTrack ?? this.localStream?.getAudioTracks()[0] ?? null
   }
 
+  /** Microfone cedido pro discador (mesma máquina/navegador): alguns headsets
+   * só captam pra UM consumidor — com o Office segurando o mic, o cliente da
+   * ligação não ouvia a atendente. O discador avisa via BroadcastChannel. */
+  private micSuspendedForDialer = false
+  private micWasOnBeforeDialer = false
+  private micChannel: BroadcastChannel | null = null
+
   constructor(myId: string, realtime: TeamRealtime) {
     this.myId = myId
     this.realtime = realtime
     realtime.setRtcHandler((signal) => void this.handleSignal(signal))
+    try {
+      this.micChannel = new BroadcastChannel('unv-mic-priority')
+      this.micChannel.onmessage = (ev) => {
+        const t = ev?.data?.type
+        if (t === 'dialer-call-start') void this.suspendMicForDialer()
+        else if (t === 'dialer-call-end') void this.resumeMicAfterDialer()
+      }
+    } catch {
+      // navegador sem BroadcastChannel
+    }
+  }
+
+  /** Solta o microfone do escritório enquanto a ligação do discador durar. */
+  private async suspendMicForDialer() {
+    if (!this.joined || !this.localStream || this.micSuspendedForDialer) return
+    this.micSuspendedForDialer = true
+    this.micWasOnBeforeDialer = useTeamStore.getState().call.micOn
+    for (const track of this.localStream.getAudioTracks()) {
+      track.stop() // stop libera o dispositivo de verdade (enabled=false não)
+      this.localStream.removeTrack(track)
+    }
+    for (const { pc } of this.peers.values()) {
+      const sender = pc.getSenders().find((s) => s.track?.kind === 'audio' && s.track !== this.mixedAudioTrack)
+      if (sender) await sender.replaceTrack(null).catch(() => undefined)
+    }
+    useTeamStore.getState().setCall({ micOn: false })
+    await this.realtime.updateCallState({ micOn: false })
+    useTeamStore.getState().addToast('🎧 Em ligação no discador — microfone do escritório pausado', 'in')
+  }
+
+  /** Devolve o microfone ao escritório quando a ligação do discador termina. */
+  private async resumeMicAfterDialer() {
+    if (!this.micSuspendedForDialer) return
+    this.micSuspendedForDialer = false
+    if (!this.joined || !this.localStream) return
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true },
+      })
+      const track = stream.getAudioTracks()[0]
+      if (!track) return
+      track.enabled = this.micWasOnBeforeDialer
+      this.localStream.addTrack(track)
+      for (const { pc } of this.peers.values()) {
+        // identifica a perna de ÁUDIO pelo transceiver (sender.track pode ser
+        // null tanto no áudio suspenso quanto no vídeo com câmera desligada)
+        const tx = pc.getTransceivers().find((t) => t.receiver.track?.kind === 'audio')
+        if (tx && tx.sender.track !== this.mixedAudioTrack) await tx.sender.replaceTrack(track).catch(() => undefined)
+      }
+      useTeamStore.getState().setCall({ micOn: this.micWasOnBeforeDialer, localStream: this.localStream })
+      await this.realtime.updateCallState({ micOn: this.micWasOnBeforeDialer })
+      useTeamStore.getState().addToast('🎙️ Microfone de volta no escritório', 'in')
+    } catch {
+      // usuário pode reativar manualmente pelo botão de mic
+    }
   }
 
   get joined() {
@@ -583,6 +645,12 @@ export class CallManager {
   }
 
   destroy() {
+    try {
+      this.micChannel?.close()
+    } catch {
+      // já fechado
+    }
+    this.micChannel = null
     void this.leaveCall()
   }
 }

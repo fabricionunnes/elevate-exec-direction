@@ -9,6 +9,28 @@ export interface DialerCallInfo {
   callSid?: string;
 }
 
+// Avisos de qualidade do Twilio traduzidos em ação pra atendente.
+// "constant-audio-input-level" = o mic NÃO está captando → o cliente não ouve.
+const WARNING_MESSAGES: Record<string, string> = {
+  "constant-audio-input-level":
+    "Seu microfone não está captando áudio — o cliente NÃO está te ouvindo. Verifique o headset e feche outras abas que usam o microfone (ex.: UNV Office).",
+  "constant-audio-output-level": "Sem áudio do cliente — verifique seu fone/alto-falante.",
+  "high-packet-loss": "Rede instável — o cliente pode estar te ouvindo picotado.",
+  "high-packets-lost-fraction": "Rede instável — o cliente pode estar te ouvindo picotado.",
+  "high-jitter": "Rede instável — o áudio pode chegar distorcido pro cliente.",
+  "high-rtt": "Conexão lenta — o áudio está com atraso.",
+  "low-mos": "Qualidade da chamada degradada — se possível, use internet cabeada.",
+};
+
+// Coordenação de microfone entre abas do mesmo navegador (UNV Office solta
+// o mic enquanto a atendente está em ligação do discador).
+const micChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("unv-mic-priority") : null;
+function announceDialerCall(active: boolean) {
+  try {
+    micChannel?.postMessage({ type: active ? "dialer-call-start" : "dialer-call-end", ts: Date.now() });
+  } catch { /* sem suporte */ }
+}
+
 /**
  * Softphone da atendente no navegador. Registra o Twilio Device e auto-aceita as
  * ligações que o discador conecta (modelo power dialer). Expõe estado + controles.
@@ -17,6 +39,8 @@ export function useTwilioDevice(staffId: string | null) {
   const [status, setStatus] = useState<DeviceStatus>("offline");
   const [error, setError] = useState<string | null>(null);
   const [callInfo, setCallInfo] = useState<DialerCallInfo | null>(null);
+  /** aviso de qualidade da ligação atual (mic mudo, rede ruim) — mostrar na UI */
+  const [callWarning, setCallWarning] = useState<string | null>(null);
   const deviceRef = useRef<Device | null>(null);
   const callRef = useRef<Call | null>(null);
 
@@ -63,22 +87,26 @@ export function useTwilioDevice(staffId: string | null) {
           callSid: call.parameters?.CallSid,
         });
         setStatus("incoming");
-        call.on("accept", () => setStatus("oncall"));
-        call.on("disconnect", () => {
+        const endCall = () => {
           setStatus("ready");
           setCallInfo(null);
+          setCallWarning(null);
           callRef.current = null;
+          announceDialerCall(false); // Office pode retomar o microfone
+        };
+        call.on("accept", () => {
+          setStatus("oncall");
+          announceDialerCall(true); // Office solta o microfone durante a ligação
         });
-        call.on("cancel", () => {
-          setStatus("ready");
-          setCallInfo(null);
-          callRef.current = null;
+        call.on("disconnect", endCall);
+        call.on("cancel", endCall);
+        call.on("reject", endCall);
+        // Qualidade em tempo real: mic sem captação = cliente não ouve a atendente
+        call.on("warning", (name: string) => {
+          console.warn("[dialer] quality warning:", name);
+          setCallWarning(WARNING_MESSAGES[name] || `Qualidade da chamada degradada (${name}).`);
         });
-        call.on("reject", () => {
-          setStatus("ready");
-          setCallInfo(null);
-          callRef.current = null;
-        });
+        call.on("warning-cleared", () => setCallWarning(null));
         // Power dialer: aceita automaticamente
         call.accept();
       });
@@ -105,7 +133,9 @@ export function useTwilioDevice(staffId: string | null) {
     deviceRef.current = null;
     callRef.current = null;
     setCallInfo(null);
+    setCallWarning(null);
     setStatus("offline");
+    announceDialerCall(false);
   }, []);
 
   const hangup = useCallback(() => {
@@ -122,5 +152,5 @@ export function useTwilioDevice(staffId: string | null) {
     };
   }, []);
 
-  return { status, error, callInfo, goReady, goOffline, hangup };
+  return { status, error, callInfo, callWarning, goReady, goOffline, hangup };
 }
