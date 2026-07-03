@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import logoUnvBoard from "@/assets/logo-unv-board.png";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import {
@@ -150,6 +151,7 @@ export default function BoardTaskFormPage() {
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [finalizing, setFinalizing] = useState(false);
   const [redownloading, setRedownloading] = useState(false);
+  const [smartActionsCreated, setSmartActionsCreated] = useState(0);
 
   useEffect(() => {
     const init = async () => {
@@ -246,13 +248,14 @@ export default function BoardTaskFormPage() {
       const doc = await buildPdf();
       const base64 = arrayBufferToBase64(doc.output("arraybuffer") as ArrayBuffer);
       const fileName = pdfFileName();
-      await invokeEngine({
+      const attachRes = await invokeEngine({
         action: "attach_task_pdf",
         token,
         deliverable_id: preview.deliverable_id,
         pdf_base64: base64,
         file_name: fileName,
       });
+      setSmartActionsCreated(attachRes?.smart_actions_created || 0);
       doc.save(fileName);
       setStep("success");
       window.scrollTo({ top: 0 });
@@ -281,8 +284,8 @@ export default function BoardTaskFormPage() {
   const header = (
     <div style={{ backgroundColor: NAVY }} className="text-white">
       <div className="container mx-auto px-4 py-6 max-w-2xl">
-        <p className="text-xs uppercase tracking-[0.2em] text-white/60">UNV Board</p>
-        <h1 className="text-xl font-bold mt-1">
+        <img src={logoUnvBoard} alt="UNV Board" className="h-20 md:h-24" />
+        <h1 className="text-xl font-bold mt-2">
           {info?.company_name || "Formulário de Tarefa"}
         </h1>
         <div className="mt-3 h-1 w-14 bg-[#CC1B1B] rounded-full" />
@@ -372,6 +375,14 @@ export default function BoardTaskFormPage() {
                   O documento oficial foi anexado ao seu projeto e o download começou no seu
                   aparelho. Pode fechar esta página.
                 </p>
+                {smartActionsCreated > 0 && (
+                  <p className="text-sm mt-3 text-foreground font-medium">
+                    Com base neste documento, {smartActionsCreated}{" "}
+                    {smartActionsCreated === 1 ? "nova ação foi criada" : "novas ações foram criadas"}{" "}
+                    no seu plano — elas já têm prazo e você vai receber o link de cada uma pra
+                    executar e reportar o resultado.
+                  </p>
+                )}
               </div>
               <Button variant="outline" onClick={downloadAgain} disabled={redownloading}>
                 {redownloading ? (

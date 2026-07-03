@@ -688,7 +688,103 @@ async function attachTaskPdf(supabase: any, body: any) {
     .update({ status: "completed", completed_at: new Date().toISOString() })
     .eq("id", form.task_id);
 
-  return json({ success: true, task_completed: true });
+  // 4) Documento estratégico gera plano de ação SMART → novas tarefas com link próprio.
+  //    Relatório de execução NÃO gera (é o canal de resultado — senão vira cadeia infinita).
+  let smartCreated = 0;
+  if (form.form_type !== "execucao" && member.project_id) {
+    try {
+      smartCreated = await spawnSmartActions(supabase, form, member, deliverable_id);
+    } catch (e) {
+      console.error("spawnSmartActions falhou (não bloqueia a conclusão):", e);
+    }
+  }
+
+  return json({ success: true, task_completed: true, smart_actions_created: smartCreated });
+}
+
+// Extrai ações SMART do documento finalizado e cria como tarefas do projeto Board.
+// Cada tarefa nasce com formulário público de execução (o cliente reporta o que fez,
+// feedback e resultado em números pelo link).
+async function spawnSmartActions(supabase: any, form: any, member: any, deliverableId: string): Promise<number> {
+  if (!ANTHROPIC_API_KEY) return 0;
+
+  const { data: deliverable } = await supabase
+    .from("unv_board_deliverables")
+    .select("title, type, content_md")
+    .eq("id", deliverableId)
+    .single();
+  if (!deliverable?.content_md) return 0;
+
+  const { data: company } = await supabase
+    .from("onboarding_companies").select("name, segment").eq("id", member.company_id).single();
+
+  const prompt = `Você é o diretor comercial da UNV. O cliente ${company?.name} (segmento: ${company?.segment || "n/i"}) acabou de finalizar o documento "${deliverable.title}" na mentoria UNV Board.
+
+DOCUMENTO:
+${String(deliverable.content_md).substring(0, 9000)}
+
+Extraia dele um plano de ação SMART: de 3 a 5 ações de execução que o cliente deve realizar pra colocar esse documento em prática. Cada ação precisa ser:
+- Específica (o que exatamente fazer, com verbo de ação)
+- Mensurável (qual número/evidência prova que foi feita)
+- Atingível e relevante pro conteúdo do documento
+- Temporal (prazo em dias a partir de hoje: entre 5 e 45 dias, escalonados)
+
+RESPONDA SOMENTE com um array JSON válido (sem markdown), cada item: {"title": "ação curta com verbo (máx 90 chars)", "description": "o que fazer na prática, 1-3 frases diretas", "metric": "métrica de resultado esperada (ex.: taxa de resposta, nº de reativações, R$ gerado)", "days": prazo em dias (int)}.`;
+
+  const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 2500, messages: [{ role: "user", content: prompt }] }),
+  });
+  if (!aiResp.ok) return 0;
+  const aiData = await aiResp.json();
+  const text = (aiData.content || []).map((b: any) => b.text || "").join("");
+  let actions: any[] = [];
+  try {
+    const match = text.match(/\[[\s\S]*\]/);
+    actions = JSON.parse(match ? match[0] : text);
+  } catch {
+    return 0;
+  }
+
+  let created = 0;
+  for (const a of actions.slice(0, 5)) {
+    if (!a?.title) continue;
+    const days = Math.min(60, Math.max(3, parseInt(a.days) || 14));
+    const due = new Date();
+    due.setDate(due.getDate() + days);
+    const dueStr = due.toISOString().substring(0, 10);
+
+    const actionToken = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, "");
+    const formUrl = `${PUBLIC_DOMAIN}/#/board/tarefa/${actionToken}`;
+    const desc = [
+      a.description || "",
+      a.metric ? `\nMétrica de resultado: ${a.metric}` : "",
+      `\nOrigem: plano de ação do documento "${deliverable.title}".`,
+      `\nExecute pelo formulário oficial: ${formUrl}`,
+    ].join("");
+
+    const { data: task, error: tErr } = await supabase
+      .from("onboarding_tasks")
+      .insert({
+        project_id: member.project_id,
+        title: String(a.title).substring(0, 200),
+        description: desc,
+        due_date: dueStr,
+        status: "pending",
+        tags: ["unv-board", "plano-smart"],
+      })
+      .select("id")
+      .single();
+    if (tErr) continue;
+
+    await supabase.from("unv_board_task_forms").upsert(
+      { task_id: task.id, member_id: member.id ?? form.member_id, token: actionToken, form_type: "execucao" },
+      { onConflict: "task_id" }
+    );
+    created++;
+  }
+  return created;
 }
 
 // ─────────────────────────── NPS CRON ───────────────────────────
