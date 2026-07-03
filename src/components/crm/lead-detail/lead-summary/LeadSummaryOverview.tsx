@@ -1,12 +1,16 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   Building2, Globe, Phone, PhoneCall, MapPin, User, Briefcase, Instagram,
   RefreshCw, Thermometer, Target, AlertTriangle, TrendingUp,
   Calendar, Clock, CheckCircle, XCircle, Tag, StickyNote,
+  Pencil, Check, ExternalLink,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -98,7 +102,7 @@ export const LeadSummaryOverview = ({ data, loading, onRegenerate }: Props) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <InfoCard icon={Building2} label="Empresa" value={lead.company || lead.name} />
             <InfoCard icon={Briefcase} label="Segmento" value={lead.segment} />
-            {lead.trade_name && <InfoCard icon={Instagram} label="Instagram" value={`@${lead.trade_name.replace('@', '')}`} link={`https://instagram.com/${lead.trade_name.replace('@', '')}`} />}
+            <InstagramCard leadId={lead.id} initialHandle={lead.instagram || lead.trade_name} />
             <InfoCard icon={Globe} label="Website" value={lead.email} />
             <InfoCard icon={Phone} label="Telefone" value={lead.phone} onCall={lead.phone ? () => startCall({ id: lead.id, name: lead.company || lead.name, phone: lead.phone }) : undefined} />
             <InfoCard icon={MapPin} label="Localização" value={[lead.city, lead.state].filter(Boolean).join("/")} />
@@ -388,6 +392,75 @@ export const LeadSummaryOverview = ({ data, loading, onRegenerate }: Props) => {
     </div>
   );
 };
+
+/** Campo Instagram: sempre visível, editável no lápis e clicável (abre o perfil). */
+function InstagramCard({ leadId, initialHandle }: { leadId: string; initialHandle: string | null | undefined }) {
+  const clean = (v: string | null | undefined) => (v || "").trim().replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/\/.*$/, "");
+  const [handle, setHandle] = useState(clean(initialHandle));
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(handle);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    const next = clean(draft);
+    setSaving(true);
+    const { error } = await supabase.from("crm_leads").update({ instagram: next || null }).eq("id", leadId);
+    setSaving(false);
+    if (error) {
+      toast.error("Erro ao salvar o Instagram");
+      return;
+    }
+    setHandle(next);
+    setEditing(false);
+    if (next) toast.success("Instagram salvo");
+  };
+
+  return (
+    <div className={cn("rounded-lg border p-2.5", !handle && !editing && "bg-muted/20")}>
+      <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+        <Instagram className="h-3 w-3" /> Instagram
+        {!editing && (
+          <button
+            onClick={() => { setDraft(handle); setEditing(true); }}
+            className="ml-auto text-muted-foreground/60 hover:text-foreground"
+            title="Editar Instagram"
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
+        )}
+      </p>
+      {editing ? (
+        <div className="flex items-center gap-1 mt-1">
+          <span className="text-xs text-muted-foreground">@</span>
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
+            placeholder="perfil"
+            className="flex-1 min-w-0 h-6 text-xs bg-background border border-input rounded px-1.5 outline-none focus:ring-1 focus:ring-ring"
+          />
+          <button onClick={save} disabled={saving} className="shrink-0 text-emerald-600 hover:text-emerald-500" title="Salvar">
+            <Check className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ) : handle ? (
+        <a
+          href={`https://instagram.com/${handle}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-primary hover:underline mt-0.5 flex items-center gap-1 truncate"
+          title={`Abrir instagram.com/${handle}`}
+        >
+          <span className="truncate">@{handle}</span>
+          <ExternalLink className="h-3 w-3 shrink-0" />
+        </a>
+      ) : (
+        <p className="text-xs text-muted-foreground/60 mt-0.5">—</p>
+      )}
+    </div>
+  );
+}
 
 function InfoCard({ icon: Icon, label, value, link, onCall }: { icon: any; label: string; value: string | null | undefined; link?: string; onCall?: () => void }) {
   if (!value) return (

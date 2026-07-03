@@ -598,6 +598,7 @@ IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown. Se
         opportunity_value: lead.opportunity_value,
         probability: lead.probability,
         trade_name: lead.trade_name,
+        instagram: lead.instagram,
       },
       journey: {
         stages: pipelineStages,
