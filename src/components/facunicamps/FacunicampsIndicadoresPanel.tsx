@@ -123,6 +123,24 @@ type ActiveView = "mes-atual" | "historico" | "comparar";
 const CANCELLED_TYPES = ["CANCELADO", "TRANSFERIDO"];
 const EXCLUDED_SELLERS = ["SECRETARIA", "ALUNO"];
 
+// Filtros próprios de cada período no modo Comparar.
+// Campo vazio = herda o filtro geral do painel de filtros.
+type PeriodExtraFilters = {
+  modalidade: string[];
+  vendedor: string[];
+  formaIngresso: string[];
+  excluirVendedor: string[];
+  cancelados: "incluir" | "excluir";
+};
+
+const EMPTY_PERIOD_FILTERS: PeriodExtraFilters = {
+  modalidade: [],
+  vendedor: [],
+  formaIngresso: [],
+  excluirVendedor: [],
+  cancelados: "incluir",
+};
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function fmtBRL(value: number) {
@@ -630,6 +648,107 @@ function MultiSearchableSelect({
   );
 }
 
+// ─── Per-period filter controls (Comparar view) ──────────────────────────────
+
+function PeriodFilterControls({
+  pf,
+  onChange,
+  accent,
+  modalidades,
+  vendedores,
+  formasIngresso,
+}: {
+  pf: PeriodExtraFilters;
+  onChange: (pf: PeriodExtraFilters) => void;
+  accent: "blue" | "purple";
+  modalidades: string[];
+  vendedores: string[];
+  formasIngresso: string[];
+}) {
+  const hasAny =
+    pf.modalidade.length > 0 ||
+    pf.vendedor.length > 0 ||
+    pf.formaIngresso.length > 0 ||
+    pf.excluirVendedor.length > 0 ||
+    pf.cancelados === "excluir";
+  const activeBtn = accent === "blue" ? "bg-blue-500 text-white" : "bg-purple-500 text-white";
+  return (
+    <div className="space-y-1.5 pt-2 border-t border-white/10">
+      <p className="text-[10px] text-white/40 leading-tight">Filtros do período (vazio = usa os filtros gerais)</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+        <div>
+          <p className="text-[10px] text-white/50 mb-1">Modalidade</p>
+          <MultiSearchableSelect
+            values={pf.modalidade}
+            onValuesChange={(v) => onChange({ ...pf, modalidade: v })}
+            placeholder="Filtro geral"
+            emptyLabel="Usar filtro geral"
+            options={modalidades.map((m) => ({ label: m, value: m }))}
+          />
+        </div>
+        <div>
+          <p className="text-[10px] text-white/50 mb-1">Vendedor</p>
+          <MultiSearchableSelect
+            values={pf.vendedor}
+            onValuesChange={(v) => onChange({ ...pf, vendedor: v })}
+            placeholder="Filtro geral"
+            emptyLabel="Usar filtro geral"
+            options={vendedores.map((v) => ({ label: v, value: v }))}
+          />
+        </div>
+        <div>
+          <p className="text-[10px] text-white/50 mb-1">Forma de Ingresso</p>
+          <MultiSearchableSelect
+            values={pf.formaIngresso}
+            onValuesChange={(v) => onChange({ ...pf, formaIngresso: v })}
+            placeholder="Filtro geral"
+            emptyLabel="Usar filtro geral"
+            options={formasIngresso.map((f) => ({ label: f, value: f }))}
+          />
+        </div>
+        <div>
+          <p className="text-[10px] text-white/50 mb-1">Excluir Vendedor</p>
+          <MultiSearchableSelect
+            values={pf.excluirVendedor}
+            onValuesChange={(v) => onChange({ ...pf, excluirVendedor: v })}
+            placeholder="Filtro geral"
+            emptyLabel="Usar filtro geral"
+            options={vendedores.map((v) => ({ label: v, value: v }))}
+          />
+        </div>
+      </div>
+      <div>
+        <p className="text-[10px] text-white/50 mb-1">Cancelados / Transferidos</p>
+        <div className="flex rounded-md overflow-hidden border border-white/20 w-fit">
+          <button
+            type="button"
+            onClick={() => onChange({ ...pf, cancelados: "incluir" })}
+            className={`px-3 py-1 text-[11px] font-medium transition-colors ${pf.cancelados === "incluir" ? activeBtn : "bg-white/5 text-white/60 hover:bg-white/10"}`}
+          >
+            Incluir
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange({ ...pf, cancelados: "excluir" })}
+            className={`px-3 py-1 text-[11px] font-medium transition-colors ${pf.cancelados === "excluir" ? activeBtn : "bg-white/5 text-white/60 hover:bg-white/10"}`}
+          >
+            Excluir
+          </button>
+        </div>
+      </div>
+      {hasAny && (
+        <button
+          type="button"
+          onClick={() => onChange({ ...EMPTY_PERIOD_FILTERS })}
+          className="text-[10px] text-white/50 underline hover:text-white/80"
+        >
+          Limpar filtros do período
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Term Vision Card (identical to ProjectTermVisionCard but uses spreadsheet data) ──
 
 interface TermVisionProps {
@@ -957,6 +1076,8 @@ export function FacunicampsIndicadoresPanel() {
   const [compareTo1, setCompareTo1] = useState("");
   const [compareFrom2, setCompareFrom2] = useState("");
   const [compareTo2, setCompareTo2] = useState("");
+  const [periodFilters1, setPeriodFilters1] = useState<PeriodExtraFilters>(EMPTY_PERIOD_FILTERS);
+  const [periodFilters2, setPeriodFilters2] = useState<PeriodExtraFilters>(EMPTY_PERIOD_FILTERS);
 
   // Show cancelled toggle (default false = cancelados ocultos)
   const [showCancelled, setShowCancelled] = useState(false);
@@ -1378,8 +1499,21 @@ export function FacunicampsIndicadoresPanel() {
     return result;
   }, [activeSales]);
 
-  const getPeriodStats = (from: string, to: string) => {
-    const rows = activeSales.filter((m) => {
+  const getPeriodStats = (from: string, to: string, pf: PeriodExtraFilters) => {
+    // Filtros próprios do período substituem os gerais campo a campo; vazio herda o geral
+    const effModalidade = pf.modalidade.length > 0 ? pf.modalidade : filterModalidade;
+    const effVendedor = pf.vendedor.length > 0 ? pf.vendedor : filterVendedorAtivo;
+    const effForma = pf.formaIngresso.length > 0 ? pf.formaIngresso : filterFormaIngresso;
+    const effExcluir = pf.excluirVendedor.length > 0 ? pf.excluirVendedor : filterVendedorDesligado;
+    let base = matriculas;
+    if (effModalidade.length > 0) base = base.filter((m) => effModalidade.includes(m.modalidade ?? ""));
+    if (effVendedor.length > 0) base = base.filter((m) => effVendedor.includes(m.vendedor ?? ""));
+    if (effForma.length > 0) base = base.filter((m) => effForma.includes(m.forma_ingresso ?? ""));
+    if (effExcluir.length > 0) base = base.filter((m) => !effExcluir.includes(m.vendedor ?? ""));
+    if (filterDateFrom) base = base.filter((m) => m.data_venda != null && m.data_venda >= filterDateFrom);
+    if (filterDateTo) base = base.filter((m) => m.data_venda != null && m.data_venda <= filterDateTo);
+    if (pf.cancelados === "excluir") base = base.filter((m) => !isCancelled(m));
+    const rows = base.filter((m) => {
       if (!m.data_venda) return false;
       if (from && m.data_venda < from) return false;
       if (to && m.data_venda > to) return false;
@@ -1403,8 +1537,8 @@ export function FacunicampsIndicadoresPanel() {
     return { count, valorTotal, ticketMedio, topCursos, topVendedores };
   };
 
-  const period1Stats = compareFrom1 && compareTo1 ? getPeriodStats(compareFrom1, compareTo1) : null;
-  const period2Stats = compareFrom2 && compareTo2 ? getPeriodStats(compareFrom2, compareTo2) : null;
+  const period1Stats = compareFrom1 && compareTo1 ? getPeriodStats(compareFrom1, compareTo1, periodFilters1) : null;
+  const period2Stats = compareFrom2 && compareTo2 ? getPeriodStats(compareFrom2, compareTo2, periodFilters2) : null;
 
   // ── Current month table data (sortable + searchable) ──────────────────────
 
@@ -1654,7 +1788,7 @@ export function FacunicampsIndicadoresPanel() {
           </div>
           {/* Cancelled info — always included */}
           <div className="flex items-center gap-2 pt-1 border-t border-border">
-            <span className="text-xs text-amber-400/70">⚠ Cancelados e transferidos são sempre contabilizados nas métricas.</span>
+            <span className="text-xs text-amber-400/70">⚠ Cancelados e transferidos são sempre contabilizados nas métricas. Na aba Comparar, cada período tem filtros próprios e permite excluí-los.</span>
           </div>
           <div className="flex justify-between items-center">
             <Button size="sm" variant="ghost" className="text-xs" onClick={() => {
@@ -2241,6 +2375,14 @@ export function FacunicampsIndicadoresPanel() {
                   {format(parseISO(compareFrom1), "dd/MM/yy")} → {format(parseISO(compareTo1), "dd/MM/yy")}
                 </p>
               )}
+              <PeriodFilterControls
+                pf={periodFilters1}
+                onChange={setPeriodFilters1}
+                accent="blue"
+                modalidades={uniqueModalidades}
+                vendedores={uniqueVendedores}
+                formasIngresso={uniqueFormasIngresso}
+              />
             </div>
 
             {/* Período 2 */}
@@ -2273,6 +2415,14 @@ export function FacunicampsIndicadoresPanel() {
                   {format(parseISO(compareFrom2), "dd/MM/yy")} → {format(parseISO(compareTo2), "dd/MM/yy")}
                 </p>
               )}
+              <PeriodFilterControls
+                pf={periodFilters2}
+                onChange={setPeriodFilters2}
+                accent="purple"
+                modalidades={uniqueModalidades}
+                vendedores={uniqueVendedores}
+                formasIngresso={uniqueFormasIngresso}
+              />
             </div>
           </div>
 
@@ -2343,6 +2493,12 @@ export function FacunicampsIndicadoresPanel() {
                     <div className="px-3 sm:px-5 py-3 border-b border-blue-500/20">
                       <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-0.5">Período 1</p>
                       <p className="text-sm font-semibold text-white">{compareFrom1 && compareTo1 ? `${format(parseISO(compareFrom1), "dd/MM/yy")} → ${format(parseISO(compareTo1), "dd/MM/yy")}` : "—"}</p>
+                      {periodFilters1.cancelados === "excluir" && (
+                        <p className="text-[10px] text-amber-300/80 mt-0.5">sem cancelados/transferidos</p>
+                      )}
+                      {(periodFilters1.modalidade.length > 0 || periodFilters1.vendedor.length > 0 || periodFilters1.formaIngresso.length > 0 || periodFilters1.excluirVendedor.length > 0) && (
+                        <p className="text-[10px] text-blue-300/70 mt-0.5">filtros próprios ativos</p>
+                      )}
                     </div>
                     <div className="px-3 sm:px-5 py-3 space-y-3">
                       <CompareMetric label="Qtde. Vendas" value={period1Stats.count} other={period2Stats.count} />
@@ -2374,6 +2530,12 @@ export function FacunicampsIndicadoresPanel() {
                     <div className="px-3 sm:px-5 py-3 border-b border-purple-500/20">
                       <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-0.5">Período 2</p>
                       <p className="text-sm font-semibold text-white">{compareFrom2 && compareTo2 ? `${format(parseISO(compareFrom2), "dd/MM/yy")} → ${format(parseISO(compareTo2), "dd/MM/yy")}` : "—"}</p>
+                      {periodFilters2.cancelados === "excluir" && (
+                        <p className="text-[10px] text-amber-300/80 mt-0.5">sem cancelados/transferidos</p>
+                      )}
+                      {(periodFilters2.modalidade.length > 0 || periodFilters2.vendedor.length > 0 || periodFilters2.formaIngresso.length > 0 || periodFilters2.excluirVendedor.length > 0) && (
+                        <p className="text-[10px] text-purple-300/70 mt-0.5">filtros próprios ativos</p>
+                      )}
                     </div>
                     <div className="px-3 sm:px-5 py-3 space-y-3">
                       <CompareMetric label="Qtde. Vendas" value={period2Stats.count} other={period1Stats.count} />
