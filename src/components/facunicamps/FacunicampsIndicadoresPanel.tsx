@@ -673,11 +673,11 @@ function PeriodFilterControls({
     pf.cancelados === "excluir";
   const activeBtn = accent === "blue" ? "bg-blue-500 text-white" : "bg-purple-500 text-white";
   return (
-    <div className="space-y-1.5 pt-2 border-t border-white/10">
-      <p className="text-[10px] text-white/40 leading-tight">Filtros do período (vazio = usa os filtros gerais)</p>
+    <div className="space-y-1.5 pt-2 border-t border-border/60">
+      <p className="text-[10px] text-muted-foreground/80 leading-tight">Filtros do período (vazio = usa os filtros gerais)</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
         <div>
-          <p className="text-[10px] text-white/50 mb-1">Modalidade</p>
+          <p className="text-[10px] text-muted-foreground mb-1">Modalidade</p>
           <MultiSearchableSelect
             values={pf.modalidade}
             onValuesChange={(v) => onChange({ ...pf, modalidade: v })}
@@ -687,7 +687,7 @@ function PeriodFilterControls({
           />
         </div>
         <div>
-          <p className="text-[10px] text-white/50 mb-1">Vendedor</p>
+          <p className="text-[10px] text-muted-foreground mb-1">Vendedor</p>
           <MultiSearchableSelect
             values={pf.vendedor}
             onValuesChange={(v) => onChange({ ...pf, vendedor: v })}
@@ -697,7 +697,7 @@ function PeriodFilterControls({
           />
         </div>
         <div>
-          <p className="text-[10px] text-white/50 mb-1">Forma de Ingresso</p>
+          <p className="text-[10px] text-muted-foreground mb-1">Forma de Ingresso</p>
           <MultiSearchableSelect
             values={pf.formaIngresso}
             onValuesChange={(v) => onChange({ ...pf, formaIngresso: v })}
@@ -707,7 +707,7 @@ function PeriodFilterControls({
           />
         </div>
         <div>
-          <p className="text-[10px] text-white/50 mb-1">Excluir Vendedor</p>
+          <p className="text-[10px] text-muted-foreground mb-1">Excluir Vendedor</p>
           <MultiSearchableSelect
             values={pf.excluirVendedor}
             onValuesChange={(v) => onChange({ ...pf, excluirVendedor: v })}
@@ -718,19 +718,19 @@ function PeriodFilterControls({
         </div>
       </div>
       <div>
-        <p className="text-[10px] text-white/50 mb-1">Cancelados / Transferidos</p>
-        <div className="flex rounded-md overflow-hidden border border-white/20 w-fit">
+        <p className="text-[10px] text-muted-foreground mb-1">Cancelados / Transferidos</p>
+        <div className="flex rounded-md overflow-hidden border border-border w-fit">
           <button
             type="button"
             onClick={() => onChange({ ...pf, cancelados: "incluir" })}
-            className={`px-3 py-1 text-[11px] font-medium transition-colors ${pf.cancelados === "incluir" ? activeBtn : "bg-white/5 text-white/60 hover:bg-white/10"}`}
+            className={`px-3 py-1 text-[11px] font-medium transition-colors ${pf.cancelados === "incluir" ? activeBtn : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
           >
             Incluir
           </button>
           <button
             type="button"
             onClick={() => onChange({ ...pf, cancelados: "excluir" })}
-            className={`px-3 py-1 text-[11px] font-medium transition-colors ${pf.cancelados === "excluir" ? activeBtn : "bg-white/5 text-white/60 hover:bg-white/10"}`}
+            className={`px-3 py-1 text-[11px] font-medium transition-colors ${pf.cancelados === "excluir" ? activeBtn : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
           >
             Excluir
           </button>
@@ -740,7 +740,7 @@ function PeriodFilterControls({
         <button
           type="button"
           onClick={() => onChange({ ...EMPTY_PERIOD_FILTERS })}
-          className="text-[10px] text-white/50 underline hover:text-white/80"
+          className="text-[10px] text-muted-foreground underline hover:text-foreground"
         >
           Limpar filtros do período
         </button>
@@ -2350,28 +2350,28 @@ export function FacunicampsIndicadoresPanel() {
               <p className="text-[10px] sm:text-xs font-bold text-blue-400 uppercase tracking-widest">Período 1</p>
               <div className="space-y-1.5">
                 <div>
-                  <p className="text-[10px] text-white/50 mb-1">De</p>
+                  <p className="text-[10px] text-muted-foreground mb-1">De</p>
                   <input
                     type="date"
-                    className="w-full rounded-md border border-white/20 bg-white/10 px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-                    style={{ colorScheme: "dark", minHeight: 34 }}
+                    className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    style={{ minHeight: 34 }}
                     value={compareFrom1}
                     onChange={(e) => setCompareFrom1(e.target.value)}
                   />
                 </div>
                 <div>
-                  <p className="text-[10px] text-white/50 mb-1">Até</p>
+                  <p className="text-[10px] text-muted-foreground mb-1">Até</p>
                   <input
                     type="date"
-                    className="w-full rounded-md border border-white/20 bg-white/10 px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-                    style={{ colorScheme: "dark", minHeight: 34 }}
+                    className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    style={{ minHeight: 34 }}
                     value={compareTo1}
                     onChange={(e) => setCompareTo1(e.target.value)}
                   />
                 </div>
               </div>
               {compareFrom1 && compareTo1 && (
-                <p className="text-[10px] text-blue-300/70 leading-tight">
+                <p className="text-[10px] text-blue-600/80 dark:text-blue-300/70 leading-tight">
                   {format(parseISO(compareFrom1), "dd/MM/yy")} → {format(parseISO(compareTo1), "dd/MM/yy")}
                 </p>
               )}
@@ -2390,28 +2390,28 @@ export function FacunicampsIndicadoresPanel() {
               <p className="text-[10px] sm:text-xs font-bold text-purple-400 uppercase tracking-widest">Período 2</p>
               <div className="space-y-1.5">
                 <div>
-                  <p className="text-[10px] text-white/50 mb-1">De</p>
+                  <p className="text-[10px] text-muted-foreground mb-1">De</p>
                   <input
                     type="date"
-                    className="w-full rounded-md border border-white/20 bg-white/10 px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-400"
-                    style={{ colorScheme: "dark", minHeight: 34 }}
+                    className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-purple-400"
+                    style={{ minHeight: 34 }}
                     value={compareFrom2}
                     onChange={(e) => setCompareFrom2(e.target.value)}
                   />
                 </div>
                 <div>
-                  <p className="text-[10px] text-white/50 mb-1">Até</p>
+                  <p className="text-[10px] text-muted-foreground mb-1">Até</p>
                   <input
                     type="date"
-                    className="w-full rounded-md border border-white/20 bg-white/10 px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-400"
-                    style={{ colorScheme: "dark", minHeight: 34 }}
+                    className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-purple-400"
+                    style={{ minHeight: 34 }}
                     value={compareTo2}
                     onChange={(e) => setCompareTo2(e.target.value)}
                   />
                 </div>
               </div>
               {compareFrom2 && compareTo2 && (
-                <p className="text-[10px] text-purple-300/70 leading-tight">
+                <p className="text-[10px] text-purple-600/80 dark:text-purple-300/70 leading-tight">
                   {format(parseISO(compareFrom2), "dd/MM/yy")} → {format(parseISO(compareTo2), "dd/MM/yy")}
                 </p>
               )}
@@ -2605,9 +2605,9 @@ export function FacunicampsIndicadoresPanel() {
               </div>
             );
           })() : (
-            <div className="rounded-xl border border-white/10 bg-white/5 p-10 text-center">
-              <p className="text-white/40 text-sm">Defina o intervalo de datas dos dois períodos para comparar</p>
-              <p className="text-white/20 text-xs mt-1">Ex: Período 1 = 01/03/2026 → 31/03/2026 · Período 2 = 01/04/2026 → 30/04/2026</p>
+            <div className="rounded-xl border border-border/60 bg-muted/30 p-10 text-center">
+              <p className="text-muted-foreground text-sm">Defina o intervalo de datas dos dois períodos para comparar</p>
+              <p className="text-muted-foreground/60 text-xs mt-1">Ex: Período 1 = 01/03/2026 → 31/03/2026 · Período 2 = 01/04/2026 → 30/04/2026</p>
             </div>
           )}
         </div>
