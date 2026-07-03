@@ -320,7 +320,6 @@ async function publishPlan(supabase: any, memberId: string) {
     if (a.deliverable_type) {
       descParts.push(`\n\n[UNV Board] Esta ação gera o documento oficial: ${deliverableLabel(a.deliverable_type)}.`);
     }
-    descParts.push(`\nExecute pelo formulário oficial: ${formUrl}`);
     const { data: task, error: tErr } = await supabase
       .from("onboarding_tasks")
       .insert({
@@ -330,6 +329,7 @@ async function publishPlan(supabase: any, memberId: string) {
         due_date: a.due_date,
         status: "pending",
         tags: ["unv-board", a.phase_name || `Fase ${a.phase}`],
+        board_form_url: formUrl,
       })
       .select("id")
       .single();
@@ -761,7 +761,6 @@ RESPONDA SOMENTE com um array JSON válido (sem markdown), cada item: {"title": 
       a.description || "",
       a.metric ? `\nMétrica de resultado: ${a.metric}` : "",
       `\nOrigem: plano de ação do documento "${deliverable.title}".`,
-      `\nExecute pelo formulário oficial: ${formUrl}`,
     ].join("");
 
     const { data: task, error: tErr } = await supabase
@@ -773,6 +772,7 @@ RESPONDA SOMENTE com um array JSON válido (sem markdown), cada item: {"title": 
         due_date: dueStr,
         status: "pending",
         tags: ["unv-board", "plano-smart"],
+        board_form_url: formUrl,
       })
       .select("id")
       .single();
