@@ -317,11 +317,17 @@ export async function generateProjectFullReportPDF(projectId: string, period: Re
   // ============ 06 GRUPOS ============
   sectionTitle("Acompanhamento nos Grupos de WhatsApp");
   const g = d.groups || {};
-  statRow([
-    { label: "Grupo de Gestão", value: g.gestao ? String(g.gestao.total) + " msgs" : "—" },
-    { label: "Grupo de Vendedores", value: g.vendedores ? String(g.vendedores.total) + " msgs" : "—" },
-  ]);
-  para(n.analise_grupos || "A operação foi acompanhada de perto pelos grupos de gestão e de vendedores, com orientação diária ao time.");
+  if (g.board) {
+    // UNV Board: grupo único, sem separação gestão/vendedores
+    statRow([{ label: "Grupo UNV Board", value: String(g.board.total) + " msgs" }]);
+    para(n.analise_grupos || "A execução do plano foi acompanhada de perto pelo grupo UNV Board da empresa, com cobrança de prazos e orientação contínua.");
+  } else {
+    statRow([
+      { label: "Grupo de Gestão", value: g.gestao ? String(g.gestao.total) + " msgs" : "—" },
+      { label: "Grupo de Vendedores", value: g.vendedores ? String(g.vendedores.total) + " msgs" : "—" },
+    ]);
+    para(n.analise_grupos || "A operação foi acompanhada de perto pelos grupos de gestão e de vendedores, com orientação diária ao time.");
+  }
 
   // ============ 07 DESTAQUES ============
   if ((n.destaques || []).length) {

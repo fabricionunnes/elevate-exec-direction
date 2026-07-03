@@ -45,7 +45,7 @@ Com base no CONTEXTO abaixo, retorne SOMENTE um JSON válido (sem markdown, sem 
  "reunioes": [{"data": "YYYY-MM-DD", "titulo": "título curto", "resumo": "1 a 2 frases: o que foi tratado/decidido nessa reunião"}],  // UMA entrada por reunião do contexto (máx 15, as mais relevantes), na ordem cronológica
  "acoes": [{"titulo": "título EXATO da ação como está no contexto", "resumo": "1 a 2 frases: o que foi feito, o diagnóstico/motivo e a melhoria gerada"}],  // UMA entrada para CADA ação que tiver DETALHE no contexto (use o campo DETALHE + o que souber das reuniões). Ações sem material, OMITA — não invente. Máx 60.
  "resultado": "2 parágrafos sobre os resultados gerados, citando os números que existem (faturamento, evolução, ações). Se os números forem escassos, seja honesto e foque no que foi estruturado.",
- "analise_grupos": "1 a 2 parágrafos sobre o acompanhamento pelos grupos de WhatsApp (gestão e vendedores): ritmo, temas, engajamento e como a consultoria conduziu o time — sem citar mensagens específicas nem nomes de pacientes",
+ "analise_grupos": "1 a 2 parágrafos sobre o acompanhamento pelos grupos de WhatsApp da empresa: ritmo, temas, engajamento e como a consultoria conduziu o time — fale APENAS dos grupos presentes no contexto (se for o grupo UNV Board, é um grupo único; não invente grupo de gestão ou de vendedores que não exista) — sem citar mensagens específicas nem nomes de pacientes",
  "destaques": ["destaque 1", "destaque 2", "destaque 3", "destaque 4"],  // 3 a 4 pontos fortes/conquistas
  "proximos_passos": ["passo 1", "passo 2", "passo 3"]  // 3 a 5 recomendações concretas de continuidade
 }`;
@@ -62,7 +62,7 @@ Com base no CONTEXTO abaixo, retorne SOMENTE um JSON válido (sem markdown, sem 
  "reunioes": [{"data": "YYYY-MM-DD", "titulo": "título curto", "resumo": "1 a 2 frases do que foi tratado/decidido"}],  // máx 15
  "acoes": [{"titulo": "título EXATO da ação como está no contexto", "resumo": "1 a 2 frases: o que foi feito, o diagnóstico e a melhoria gerada"}],  // só ações com DETALHE; máx 60; não invente
  "resultado": "2 parágrafos provando o resultado com os números do contexto (faturamento, evolução, volume de trabalho). Se o investimento mensal for conhecido, relacione custo x retorno com honestidade. Se os números forem escassos, foque no que foi estruturado e no estágio da curva (estruturação → tração)",
- "analise_grupos": "1 parágrafo sobre a presença ativa da consultoria nos grupos (gestão e vendedores): ritmo, orientação diária, suporte ao time — sem citar mensagens específicas",
+ "analise_grupos": "1 parágrafo sobre a presença ativa da consultoria nos grupos de WhatsApp presentes no contexto (não invente grupos que não existam): ritmo, orientação diária, suporte ao time — sem citar mensagens específicas",
  "destaques": ["conquista 1", "conquista 2", "conquista 3", "conquista 4"],
  "o_que_esta_em_jogo": ["ponto 1", "ponto 2", "ponto 3"],  // 3 a 5 pontos concretos do que a empresa perde/interrompe se a operação parar agora (motor de leads, rotina de gestão, curva de aprendizado do time, pipeline em andamento) — baseado no contexto, sem terrorismo
  "caminho_continuidade": ["opção 1", "opção 2", "opção 3"]  // 3 a 4 propostas concretas de continuidade/ajuste de formato (redimensionar escopo, focar no que gera caixa, período de transição) — a mensagem é 'ajustar o formato, não desligar a máquina'
@@ -174,19 +174,27 @@ Deno.serve(async (req) => {
     const fatSerie = Object.keys(fatMensal).sort().map((m) => ({ mes: m, valor: fatMensal[m] }));
 
     // ---- WhatsApp (grupos via Marcelo, cross-conta) ----
-    let groups: any = { gestao: null, vendedores: null };
+    let groups: any = { gestao: null, vendedores: null, board: null };
     let groupSamples = "";
     if (MARCELO_URL && MARCELO_KEY) {
       try {
         const mc = createClient(MARCELO_URL, MARCELO_KEY);
         const { data: grps } = await mc.from("marcelo_groups").select("group_jid, group_name, group_type, company_id, company_name");
         const nName = norm(company.name || "");
-        const mine = (grps || []).filter((g: any) =>
-          (companyId && g.company_id === companyId) ||
-          (nName && g.company_name && (norm(g.company_name).includes(nName) || nName.includes(norm(g.company_name)))));
+        // Vínculo auditado manda; match por nome só com igualdade (ou contenção com nome
+        // longo — empresa de nome curto tipo "UNV" pescava grupo interno errado)
+        const linked = (grps || []).filter((g: any) => companyId && g.company_id === companyId);
+        const mine = linked.length ? linked : (grps || []).filter((g: any) => {
+          const gn = norm(g.company_name || "");
+          if (!nName || !gn) return false;
+          if (gn === nName) return true;
+          return Math.min(gn.length, nName.length) >= 6 && (gn.includes(nName) || nName.includes(gn));
+        });
         for (const g of mine) {
-          const isVend = /vend/i.test(g.group_type || "") || /vend/i.test(g.group_name || "");
-          const key = isVend ? "vendedores" : "gestao";
+          // Grupo do UNV Board é único (padrão "[Empresa] - UNV Board"), sem gestão/vendedores
+          const isBoard = /unv\s*board/i.test(g.group_name || "");
+          const isVend = !isBoard && (/vend/i.test(g.group_type || "") || /vend/i.test(g.group_name || ""));
+          const key = isBoard ? "board" : isVend ? "vendedores" : "gestao";
           let cQ = mc.from("marcelo_group_messages").select("sender_name, message_text, msg_timestamp", { count: "exact" }).eq("group_jid", g.group_jid);
           cQ = cQ.not("message_text", "is", null).neq("message_text", "").order("msg_timestamp", { ascending: false }).limit(40);
           const { data: msgs, count } = await cQ;
