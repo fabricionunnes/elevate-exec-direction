@@ -103,6 +103,7 @@ export const LeadSummaryOverview = ({ data, loading, onRegenerate }: Props) => {
             <InfoCard icon={Building2} label="Empresa" value={lead.company || lead.name} />
             <InfoCard icon={Briefcase} label="Segmento" value={lead.segment} />
             <InstagramCard leadId={lead.id} initialHandle={lead.instagram || lead.trade_name} />
+            <PartnerCard leadId={lead.id} manualValue={lead.has_partner} aiValue={ai?.qualification?.has_partner} />
             <InfoCard icon={Globe} label="Website" value={lead.email} />
             <InfoCard icon={Phone} label="Telefone" value={lead.phone} onCall={lead.phone ? () => startCall({ id: lead.id, name: lead.company || lead.name, phone: lead.phone }) : undefined} />
             <InfoCard icon={MapPin} label="Localização" value={[lead.city, lead.state].filter(Boolean).join("/")} />
@@ -392,6 +393,76 @@ export const LeadSummaryOverview = ({ data, loading, onRegenerate }: Props) => {
     </div>
   );
 };
+
+/** Campo Sócio: valor manual manda; sem manual, usa o que a IA extraiu das
+ * conversas (badge "IA"). Botões Sim/Não pra confirmar/corrigir na mão. */
+function PartnerCard({ leadId, manualValue, aiValue }: {
+  leadId: string;
+  manualValue: boolean | null | undefined;
+  aiValue?: { value?: boolean | null; detail?: string | null } | null;
+}) {
+  const [manual, setManual] = useState<boolean | null>(manualValue ?? null);
+  const [saving, setSaving] = useState(false);
+  const aiDetected = typeof aiValue?.value === "boolean" ? aiValue.value : null;
+  const effective = manual !== null ? manual : aiDetected;
+  const fromAI = manual === null && aiDetected !== null;
+
+  const save = async (v: boolean) => {
+    const next = manual === v ? null : v; // clicar de novo limpa (volta pra IA/—)
+    setSaving(true);
+    const { error } = await supabase.from("crm_leads").update({ has_partner: next }).eq("id", leadId);
+    setSaving(false);
+    if (error) {
+      toast.error("Erro ao salvar");
+      return;
+    }
+    setManual(next);
+  };
+
+  return (
+    <div className={cn("rounded-lg border p-2.5", effective === null && "bg-muted/20")}>
+      <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+        <User className="h-3 w-3" /> Sócio
+        {fromAI && (
+          <Badge variant="secondary" className="text-[8px] h-3.5 px-1 ml-1" title="Detectado pela IA nas conversas — confirme com os botões">
+            IA
+          </Badge>
+        )}
+        <span className="ml-auto flex items-center gap-0.5">
+          <button
+            onClick={() => save(true)}
+            disabled={saving}
+            className={cn(
+              "px-1.5 py-0.5 rounded text-[10px] font-medium border transition-colors",
+              manual === true
+                ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/40"
+                : "text-muted-foreground/60 border-transparent hover:text-foreground hover:border-border"
+            )}
+          >
+            Sim
+          </button>
+          <button
+            onClick={() => save(false)}
+            disabled={saving}
+            className={cn(
+              "px-1.5 py-0.5 rounded text-[10px] font-medium border transition-colors",
+              manual === false
+                ? "bg-red-500/15 text-red-600 border-red-500/40"
+                : "text-muted-foreground/60 border-transparent hover:text-foreground hover:border-border"
+            )}
+          >
+            Não
+          </button>
+        </span>
+      </p>
+      <p className={cn("text-xs mt-0.5 truncate", effective === null ? "text-muted-foreground/60" : "font-medium")}
+        title={aiValue?.detail || undefined}
+      >
+        {effective === null ? "—" : effective ? `Tem sócio${aiValue?.detail ? ` — ${aiValue.detail}` : ""}` : "Não tem sócio"}
+      </p>
+    </div>
+  );
+}
 
 /** Campo Instagram: sempre visível, editável no lápis e clicável (abre o perfil). */
 function InstagramCard({ leadId, initialHandle }: { leadId: string; initialHandle: string | null | undefined }) {

@@ -30,6 +30,7 @@ export interface LeadSummaryData {
     probability: number | null;
     trade_name: string | null;
     instagram: string | null;
+    has_partner: boolean | null;
   };
   journey: {
     stages: { id: string; name: string; color: string; sort_order: number; is_final: boolean; final_type: string | null }[];

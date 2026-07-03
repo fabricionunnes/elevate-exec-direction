@@ -278,7 +278,8 @@ serve(async (req) => {
     "urgency": { "value": "urgência pra resolver (prazo, gatilho, 'pra ontem') ou null", "source": ... },
     "company_context": { "value": "contexto da empresa: estrutura, time, quantos vendedores, como opera hoje, ou null", "source": ... },
     "previous_attempts": { "value": "o que já tentou pra resolver (consultoria, agência, contratações, ferramentas) e por que não funcionou, ou null", "source": ... },
-    "missing": ["campos da qualificação que AINDA NÃO foram descobertos, em pt-BR, ex: 'Budget', 'Urgência' — o que a SDR/closer precisa perguntar"]
+    "has_partner": { "value": true | false | null, "detail": "quem é o sócio / como decide junto, ou null", "source": ... },
+    "missing": ["campos da qualificação que AINDA NÃO foram descobertos, em pt-BR, ex: 'Budget', 'Urgência', 'Sócio' — o que a SDR/closer precisa perguntar"]
   },
   "meeting_summaries": [
     {
@@ -291,7 +292,7 @@ serve(async (req) => {
   ]
 }
 
-REGRAS DA QUALIFICAÇÃO (playbook UNV): preencha cada campo EXCLUSIVAMENTE com o que o cliente disse/registrado nos canais disponíveis nos dados — whatsapp_conversas, ligacoes_discador, notes/activities (observações) e transcriptions (reuniões) — além do scanner_unv quando existir. NÃO invente nem deduza além do razoável; campo sem informação = value null e entra em "missing". Em "source" aponte o canal principal de onde veio a informação. Cite números e palavras do próprio cliente quando houver.
+REGRAS DA QUALIFICAÇÃO (playbook UNV): em "has_partner", true = cliente mencionou sócio/decide junto com alguém; false = deixou claro que decide sozinho/não tem sócio; null = nunca falou sobre isso (e entra em "missing" como 'Sócio'). Preencha cada campo EXCLUSIVAMENTE com o que o cliente disse/registrado nos canais disponíveis nos dados — whatsapp_conversas, ligacoes_discador, notes/activities (observações) e transcriptions (reuniões) — além do scanner_unv quando existir. NÃO invente nem deduza além do razoável; campo sem informação = value null e entra em "missing". Em "source" aponte o canal principal de onde veio a informação. Cite números e palavras do próprio cliente quando houver.
 
 Dados do lead:
 ${JSON.stringify(leadContext, null, 2)}
@@ -599,6 +600,7 @@ IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown. Se
         probability: lead.probability,
         trade_name: lead.trade_name,
         instagram: lead.instagram,
+        has_partner: lead.has_partner,
       },
       journey: {
         stages: pipelineStages,
