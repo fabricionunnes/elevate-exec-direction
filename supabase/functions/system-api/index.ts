@@ -215,7 +215,10 @@ serve(async (req) => {
           if (c.companyId) q = q.or(`company_id.eq.${c.companyId},onboarding_company_id.eq.${c.companyId}`);
           const { data, error } = await q;
           if (error) throw error;
-          return json({ data: data || [], pagination: { limit: c.limit, offset: c.offset } });
+          // company_id efetivo: projetos novos gravam só onboarding_company_id — sem o coalesce,
+          // consumidores que filtram por company_id (ex.: escopo do Marcelo) descartam a linha
+          const rows = (data || []).map((r: any) => ({ ...r, company_id: r.company_id ?? r.onboarding_company_id }));
+          return json({ data: rows, pagination: { limit: c.limit, offset: c.offset } });
         },
         get: async (c) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
@@ -282,16 +285,30 @@ serve(async (req) => {
       // ===== TASKS =====
       tasks: {
         list: async (c) => {
-          let q = c.supabase.from("onboarding_tasks").select("id, project_id, title, description, due_date, start_date, status, priority, assignee_id, responsible_staff_id, observations, tags, estimated_hours, actual_hours, completed_at, created_at, updated_at").order("due_date", { ascending: true }).range(c.offset, c.offset + c.limit - 1);
+          let q = c.supabase.from("onboarding_tasks").select("id, project_id, title, description, due_date, start_date, status, priority, assignee_id, responsible_staff_id, observations, tags, estimated_hours, actual_hours, completed_at, created_at, updated_at, board_form_url").order("due_date", { ascending: true }).range(c.offset, c.offset + c.limit - 1);
           if (c.status) q = q.eq("status", c.status);
           if (c.projectId) q = q.eq("project_id", c.projectId);
+          // Escopo por empresa: tarefa não tem company_id — resolve pelos projetos da empresa.
+          // Sem isso, chamadas escopadas (Marcelo nos grupos) recebiam a lista GLOBAL de tarefas.
+          if (c.companyId && !c.projectId) {
+            const { data: projs, error: pErr } = await c.supabase
+              .from("onboarding_projects")
+              .select("id")
+              .or(`company_id.eq.${c.companyId},onboarding_company_id.eq.${c.companyId}`);
+            if (pErr) throw pErr;
+            const ids = (projs || []).map((p: any) => p.id);
+            if (!ids.length) return json({ data: [], pagination: { limit: c.limit, offset: c.offset } });
+            q = q.in("project_id", ids);
+          }
           if (c.dateFrom) q = q.gte("due_date", c.dateFrom);
           if (c.dateTo) q = q.lte("due_date", c.dateTo);
           const staffId = c.url.searchParams.get("staff_id");
           if (staffId) q = q.eq("responsible_staff_id", staffId);
           const { data, error } = await q;
           if (error) throw error;
-          return json({ data: data || [], pagination: { limit: c.limit, offset: c.offset } });
+          // Marca a empresa nas linhas quando o escopo veio — deixa o filtro defensivo do Marcelo operante
+          const rows = c.companyId ? (data || []).map((r: any) => ({ ...r, company_id: c.companyId })) : (data || []);
+          return json({ data: rows, pagination: { limit: c.limit, offset: c.offset } });
         },
         get: async (c) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
