@@ -455,9 +455,7 @@ function PartnerCard({ leadId, manualValue, aiValue }: {
           </button>
         </span>
       </p>
-      <p className={cn("text-xs mt-0.5 truncate", effective === null ? "text-muted-foreground/60" : "font-medium")}
-        title={aiValue?.detail || undefined}
-      >
+      <p className={cn("text-xs mt-0.5 leading-relaxed whitespace-normal break-words", effective === null ? "text-muted-foreground/60" : "font-medium")}>
         {effective === null ? "—" : effective ? `Tem sócio${aiValue?.detail ? ` — ${aiValue.detail}` : ""}` : "Não tem sócio"}
       </p>
     </div>
