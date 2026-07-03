@@ -1619,7 +1619,12 @@ export function FacunicampsIndicadoresPanel() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-3 sm:space-y-4 overflow-x-hidden">
+    // Painel desenhado pra fundo escuro — escopo `dark` força os tokens do tema
+    // e o fundo escuro independente do tema claro/escuro do Nexus
+    <div
+      className="dark space-y-3 sm:space-y-4 overflow-x-hidden rounded-2xl p-2 sm:p-3"
+      style={{ background: "linear-gradient(160deg, #0a1122 0%, #0e1930 100%)" }}
+    >
       {/* Header */}
       <div className="rounded-xl p-3 sm:p-4 space-y-2" style={{ background: "#0D2B5E" }}>
         {/* Row 1: brand + month selectors + actions */}
