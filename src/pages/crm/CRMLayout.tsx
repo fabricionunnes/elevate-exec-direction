@@ -217,8 +217,9 @@ export const CRMLayout = () => {
   if (!hasAccess) return null;
 
   const isAdmin = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
-  // Configurações do CRM: só master/admin (head_comercial NÃO acessa).
-  const canSettings = staffRole === "master" || staffRole === "admin";
+  // Configurações do CRM: master/admin e head comercial (gerencia funis,
+  // metas, automações e distribuição do próprio time).
+  const canSettings = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
   const isMaster = staffRole === "master";
   const initials = staffName?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "U";
   // Cliente "só discador": vê apenas a aba Discador.
