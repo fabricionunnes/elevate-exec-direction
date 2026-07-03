@@ -169,21 +169,24 @@ Deno.serve(async (req) => {
           .eq("user_id", consultant.user_id);
       }
 
-      // Get meetings (including is_finalized status)
+      // Get meetings (including is_finalized status) — last 60 days only
+      const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString();
       const { data: meetings } = await supabase
         .from("onboarding_meeting_notes")
-        .select("id, meeting_title, meeting_date, subject, recording_link, transcript, is_finalized, notes, project_id")
-        .eq("project_id", project.id);
+        .select("id, meeting_title, meeting_date, subject, recording_link, transcript, is_finalized, notes, project_id, meeting_link")
+        .eq("project_id", project.id)
+        .gte("meeting_date", sixtyDaysAgo);
 
       if (!meetings || meetings.length === 0) {
         continue;
       }
 
-      // Search for recordings AND transcripts in Drive
+      // Search for recordings AND transcripts in Drive (Meet salva transcrição como Google Docs hoje)
       const recordingsQuery = "mimeType='video/mp4' and (name contains 'Meet Recording' or name contains 'Gravação')";
       const transcriptQuery = "(mimeType='text/vtt' or mimeType='text/plain' or mimeType='application/x-subrip') and (name contains 'transcript' or name contains 'transcrição' or name contains 'Transcript')";
-      
-      const combinedQuery = `(${recordingsQuery}) or (${transcriptQuery})`;
+      const docsTranscriptQuery = "mimeType='application/vnd.google-apps.document' and (name contains 'Transcript' or name contains 'Transcrição' or name contains 'Gemini' or name contains 'Anotações')";
+
+      const combinedQuery = `(${recordingsQuery}) or (${transcriptQuery}) or (${docsTranscriptQuery})`;
       const driveUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(combinedQuery)}&fields=files(id,name,createdTime,webViewLink,mimeType)&orderBy=createdTime desc&pageSize=200`;
 
       const driveResponse = await fetch(driveUrl, {
@@ -199,25 +202,37 @@ Deno.serve(async (req) => {
       const allFiles = driveData.files || [];
       
       const recordings = allFiles.filter((f: { mimeType: string }) => f.mimeType === 'video/mp4');
-      const transcripts = allFiles.filter((f: { mimeType: string }) => 
-        f.mimeType === 'text/vtt' || f.mimeType === 'text/plain' || f.mimeType === 'application/x-subrip'
+      const transcripts = allFiles.filter((f: { mimeType: string }) =>
+        f.mimeType === 'text/vtt' || f.mimeType === 'text/plain' || f.mimeType === 'application/x-subrip' ||
+        f.mimeType === 'application/vnd.google-apps.document'
       );
 
-      // Match files with meetings
-      for (const meeting of meetings) {
+      // Cada arquivo do Drive só pode casar com uma reunião (evita colisão em dias com várias reuniões)
+      const usedFileIds = new Set<string>();
+      // Match por proximidade de horário: arquivo criado entre 30min antes e 12h depois do início da reunião
+      const pickByProximity = (files: { id: string; createdTime: string }[], meetingDate: Date) => {
+        let best: any = null;
+        let bestDiff = Infinity;
+        for (const f of files) {
+          if (usedFileIds.has(f.id)) continue;
+          const diff = new Date(f.createdTime).getTime() - meetingDate.getTime();
+          if (diff < -30 * 60 * 1000 || diff > 12 * 3600 * 1000) continue;
+          if (Math.abs(diff) < bestDiff) { bestDiff = Math.abs(diff); best = f; }
+        }
+        return best;
+      };
+
+      // Match files with meetings (mais recentes primeiro, pra proximidade valer)
+      const sortedMeetings = [...meetings].sort((a, b) => new Date(b.meeting_date).getTime() - new Date(a.meeting_date).getTime());
+      for (const meeting of sortedMeetings) {
         const meetingDate = new Date(meeting.meeting_date);
-        const meetingDateStr = meetingDate.toISOString().split('T')[0];
-        const titleWords = (meeting.meeting_title || meeting.subject || "").toLowerCase().split(" ").filter((w: string) => w.length > 3);
 
         // Sync recording if not linked
         if (!meeting.recording_link) {
-          const matchingRecording = recordings.find((rec: { createdTime: string; name: string }) => {
-            const recDate = new Date(rec.createdTime);
-            const recDateStr = recDate.toISOString().split('T')[0];
-            return recDateStr === meetingDateStr;
-          });
+          const matchingRecording = pickByProximity(recordings, meetingDate);
 
           if (matchingRecording) {
+            usedFileIds.add(matchingRecording.id);
             await supabase
               .from("onboarding_meeting_notes")
               .update({ recording_link: matchingRecording.webViewLink })
@@ -228,24 +243,24 @@ Deno.serve(async (req) => {
 
         // Sync transcript if empty (using new transcript column)
         if (!meeting.transcript) {
-          const matchingTranscript = transcripts.find((t: { createdTime: string; name: string }) => {
-            const tDate = new Date(t.createdTime);
-            const tDateStr = tDate.toISOString().split('T')[0];
-            return tDateStr === meetingDateStr;
-          });
+          const matchingTranscript = pickByProximity(transcripts, meetingDate);
 
           if (matchingTranscript) {
             try {
-              const downloadUrl = `https://www.googleapis.com/drive/v3/files/${matchingTranscript.id}?alt=media`;
+              // Google Docs (transcrição nativa do Meet) precisa de export; demais baixam direto
+              const downloadUrl = matchingTranscript.mimeType === 'application/vnd.google-apps.document'
+                ? `https://www.googleapis.com/drive/v3/files/${matchingTranscript.id}/export?mimeType=text/plain`
+                : `https://www.googleapis.com/drive/v3/files/${matchingTranscript.id}?alt=media`;
               const downloadResponse = await fetch(downloadUrl, {
                 headers: { Authorization: `Bearer ${accessToken}` },
               });
-              
+
               if (downloadResponse.ok) {
                 const content = await downloadResponse.text();
-                const transcriptText = parseSubtitleToText(content);
-                
+                const transcriptText = /-->/m.test(content) ? parseSubtitleToText(content) : content.trim();
+
                 if (transcriptText.length > 50) {
+                  usedFileIds.add(matchingTranscript.id);
                   await supabase
                     .from("onboarding_meeting_notes")
                     .update({ transcript: transcriptText })
@@ -390,12 +405,64 @@ Deno.serve(async (req) => {
           }
         }
 
-        // If meeting has transcript, create a task with the transcript
+        // If meeting has transcript, finalize the ORIGINAL meeting task with the transcript inside
         if (refreshedMeeting && refreshedMeeting.transcript && refreshedMeeting.transcript.length > 50) {
-          // Check if task already exists for this meeting
           const meetingTitle = refreshedMeeting.meeting_title || refreshedMeeting.subject || "Reunião";
           const taskTitle = `📝 Transcrição: ${meetingTitle}`;
-          
+
+          const truncatedForTask = refreshedMeeting.transcript.length > 8000
+            ? refreshedMeeting.transcript.substring(0, 8000) + "\n\n... [transcrição truncada]"
+            : refreshedMeeting.transcript;
+          const transcriptBlock = `## Transcrição da Reunião\n\n**Data:** ${new Date(refreshedMeeting.meeting_date).toLocaleDateString('pt-BR')}\n**Assunto:** ${meetingTitle}\n\n---\n\n${truncatedForTask}`;
+
+          // Tenta achar a tarefa de reunião original (mesmo projeto + mesmo link do Meet, senão mesmo título)
+          let originalTask: { id: string; status: string; observations: string | null } | null = null;
+          if (refreshedMeeting.meeting_link) {
+            const { data: byLink } = await supabase
+              .from("onboarding_tasks")
+              .select("id, status, observations")
+              .eq("project_id", refreshedMeeting.project_id)
+              .eq("meeting_link", refreshedMeeting.meeting_link)
+              .limit(1);
+            originalTask = byLink?.[0] || null;
+          }
+          if (!originalTask) {
+            const { data: byTitle } = await supabase
+              .from("onboarding_tasks")
+              .select("id, status, observations")
+              .eq("project_id", refreshedMeeting.project_id)
+              .ilike("title", meetingTitle)
+              .limit(1);
+            originalTask = byTitle?.[0] || null;
+          }
+
+          if (originalTask) {
+            const updates: Record<string, unknown> = {};
+            if (!(originalTask.observations || "").includes("## Transcrição da Reunião")) {
+              updates.observations = originalTask.observations
+                ? `${originalTask.observations}\n\n${transcriptBlock}`
+                : transcriptBlock;
+            }
+            if (originalTask.status !== "completed") {
+              updates.status = "completed";
+              updates.completed_at = new Date().toISOString();
+            }
+            if (Object.keys(updates).length > 0) {
+              const { error: taskUpdateError } = await supabase
+                .from("onboarding_tasks")
+                .update(updates)
+                .eq("id", originalTask.id);
+              if (!taskUpdateError) {
+                totalTasksCreated++;
+                console.log(`✓ Original meeting task finalized with transcript: ${meetingTitle}`);
+              } else {
+                console.error(`Error finalizing original task for meeting ${refreshedMeeting.id}:`, taskUpdateError);
+              }
+            }
+            continue;
+          }
+
+          // Fallback: sem tarefa original — cria tarefa de transcrição (comportamento anterior)
           const { data: existingTask } = await supabase
             .from("onboarding_tasks")
             .select("id")
