@@ -45,6 +45,54 @@ const parseSubtitleToText = (content: string): string => {
 
 const TRANSCRIPT_NAME_RE = /(transcri|transcript|gemini|anota)/i;
 
+// Resumo do fechamento vai só pro Fabrício (mesmo número do alerta de inbox mudo)
+const FABRICIO_PHONE = "5531989840003";
+
+// Envia via function evolution-api (abstrai Stevo/Evolution conforme o provider da instância)
+// deno-lint-ignore no-explicit-any
+async function sendWhatsApp(supabase: any, phone: string, message: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { data: config } = await supabase
+      .from("whatsapp_default_config")
+      .select("setting_value")
+      .eq("setting_key", "default_instance")
+      .maybeSingle();
+    const instanceName = config?.setting_value;
+    if (!instanceName) return { ok: false, error: "sem instância padrão" };
+
+    const { data: instance } = await supabase
+      .from("whatsapp_instances")
+      .select("id, instance_name, provider_type, api_url, api_key")
+      .eq("instance_name", instanceName)
+      .eq("status", "connected")
+      .single();
+    if (!instance) return { ok: false, error: `instância ${instanceName} não conectada` };
+
+    const apiUrl = (instance.api_url || Deno.env.get("EVOLUTION_API_URL") || "").replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
+    const apiKey = instance.api_key || Deno.env.get("EVOLUTION_API_KEY");
+    if (!apiUrl || !apiKey) return { ok: false, error: "sem credenciais da instância" };
+
+    // Stevo (manager_v2) usa /send/text; Evolution padrão usa /message/sendText/{instância}
+    const isManagerV2 = instance.provider_type === "manager_v2";
+    const endpoint = isManagerV2 ? `${apiUrl}/send/text` : `${apiUrl}/message/sendText/${instance.instance_name}`;
+    const headers: HeadersInit = isManagerV2
+      ? { "Content-Type": "application/json", apikey: apiKey }
+      : { "Content-Type": "application/json", apikey: apiKey, Authorization: `Bearer ${apiKey}` };
+    const payload = isManagerV2 ? { number: phone, text: message, delay: 0 } : { number: phone, text: message };
+
+    const resp = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify(payload) });
+    if (!resp.ok) {
+      const errText = await resp.text();
+      console.error(`[crm-meetings-eod] envio ${resp.status}: ${errText.substring(0, 300)}`);
+      return { ok: false, error: `HTTP ${resp.status}: ${errText.substring(0, 200)}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error("[crm-meetings-eod] WhatsApp falhou:", e);
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -77,7 +125,7 @@ Deno.serve(async (req) => {
 
     console.log(`[crm-meetings-eod] dia=${dayStr} dry=${dryRun}`);
 
-    const { data: meetings, error: meetingsError } = await supabase
+    const { data: meetingsData, error: meetingsError } = await supabase
       .from("crm_activities")
       .select(`
         id, lead_id, title, scheduled_at, status, notes, meeting_link,
@@ -92,14 +140,8 @@ Deno.serve(async (req) => {
 
     if (meetingsError) throw meetingsError;
 
-    if (!meetings || meetings.length === 0) {
-      console.log("[crm-meetings-eod] Nenhuma reunião pendente do dia");
-      return new Response(
-        JSON.stringify({ success: true, day: dayStr, meetings: 0, finalized: 0, transcriptsImported: 0 }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
+    // Sem early return: mesmo com 0 pendentes no CRM, o resumo do dia ainda é enviado
+    const meetings = meetingsData || [];
     console.log(`[crm-meetings-eod] ${meetings.length} reuniões pendentes do dia`);
 
     // Resolve fallback de usuário Google via staff responsável
@@ -206,17 +248,26 @@ Deno.serve(async (req) => {
           `https://www.googleapis.com/drive/v3/files/${fileId}?fields=webContentLink,size`,
           { headers: { Authorization: `Bearer ${accessToken}` } },
         );
-        if (!metaResp.ok) return null;
+        if (!metaResp.ok) {
+          console.log(`[crm-meetings-eod] AssemblyAI: meta do arquivo falhou (${metaResp.status})`);
+          return null;
+        }
         const meta = await metaResp.json();
         const fileSize = parseInt(meta.size || "0");
-        if (fileSize > 100 * 1024 * 1024 || !meta.webContentLink) return null;
+        if (fileSize > 100 * 1024 * 1024 || !meta.webContentLink) {
+          console.log(`[crm-meetings-eod] AssemblyAI: pulado (size=${fileSize}, webContentLink=${!!meta.webContentLink})`);
+          return null;
+        }
 
         const submitResp = await fetch("https://api.assemblyai.com/v2/transcript", {
           method: "POST",
           headers: { Authorization: assemblyAiKey, "Content-Type": "application/json" },
           body: JSON.stringify({ audio_url: meta.webContentLink, language_code: "pt", speaker_labels: true }),
         });
-        if (!submitResp.ok) return null;
+        if (!submitResp.ok) {
+          console.log(`[crm-meetings-eod] AssemblyAI: submit falhou (${submitResp.status})`);
+          return null;
+        }
         const { id: jobId } = await submitResp.json();
 
         let status = "queued";
@@ -449,6 +500,49 @@ Deno.serve(async (req) => {
 
     console.log(`[crm-meetings-eod] fim: ${finalized} finalizadas, ${transcriptsImported} transcrições, ${recordingsLinked} gravações`);
 
+    // Resumo do fechamento no WhatsApp do Fabrício (só em execução real e se houve reunião no dia)
+    let summaryStatus: string = "não enviado";
+    if (!dryRun) {
+      const { data: projNotes } = await supabase
+        .from("onboarding_meeting_notes")
+        .select("id, is_finalized, transcript, is_no_show")
+        .gte("meeting_date", dayStartUtc)
+        .lt("meeting_date", dayEndUtc);
+      const projTotal = projNotes?.length || 0;
+      const projFinalized = projNotes?.filter((n) => n.is_finalized).length || 0;
+      const projWithTranscript = projNotes?.filter((n) => n.transcript && n.transcript.length > 50).length || 0;
+
+      if (meetings.length > 0 || projTotal > 0) {
+        const dayBr = `${dayStr.slice(8, 10)}/${dayStr.slice(5, 7)}`;
+        const lines: string[] = [`Fechamento de reuniões — ${dayBr}`];
+
+        lines.push("");
+        if (meetings.length > 0) {
+          lines.push(`CRM: ${meetings.length} pendente(s) do dia, ${finalized} finalizada(s), ${transcriptsImported} transcrição(ões) importada(s).`);
+          for (const r of results) {
+            const hora = new Date(r.scheduled_at as string).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
+            const st = r.transcript === true || r.transcript === "já importada"
+              ? "transcrição no lead"
+              : r.recording === true
+                ? "gravação vinculada, sem transcrição"
+                : "sem gravação/transcrição";
+            lines.push(`- ${hora} ${r.lead}: ${st}`);
+          }
+        } else {
+          lines.push("CRM: nenhuma reunião pendente do dia.");
+        }
+
+        lines.push("");
+        lines.push(`Projetos: ${projTotal} reunião(ões) hoje, ${projFinalized} finalizada(s), ${projWithTranscript} com transcrição.`);
+
+        const sent = await sendWhatsApp(supabase, FABRICIO_PHONE, lines.join("\n"));
+        summaryStatus = sent.ok ? "enviado" : sent.error || "falhou";
+        console.log(`[crm-meetings-eod] resumo WhatsApp ${summaryStatus}`);
+      } else {
+        summaryStatus = "sem reuniões no dia";
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -458,6 +552,7 @@ Deno.serve(async (req) => {
         finalized,
         transcriptsImported,
         recordingsLinked,
+        whatsappSummary: summaryStatus,
         results,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
