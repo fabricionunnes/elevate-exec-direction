@@ -121,18 +121,25 @@ Deno.serve(async (req) => {
 Dados (JSON):
 ${JSON.stringify(ctx, null, 2)}
 
+QUALIFICAÇÃO PELO PLAYBOOK (BANT): avalie a ligação pelos 4 eixos —
+B (Budget): sinais de maturidade/capacidade de investir em estrutura comercial;
+A (Authority): quem decide (o contato decide sozinho? tem sócio/diretor?);
+N (Need): dor identificada E o impacto dela (faturamento/rotina);
+T (Timing): contexto/momento (metas, motivo de buscar agora).
+O fit_score deve refletir a cobertura BANT: os 4 eixos descobertos e positivos = alto; dor sem impacto/decisor desconhecido = médio; nada descoberto = baixo.
+
 Responda APENAS com JSON válido (sem markdown):
 {
   "resumo": "3 a 5 frases objetivas do que rolou na ligação e do estágio comercial",
   "disposicao": "qualificado | agendou_reuniao | retornar_depois | sem_interesse | nao_qualificado | nao_atendeu | sem_transcricao",
-  "observacoes": "anotações que devem ir pro CRM, prontas pra próxima abordagem",
-  "fit_score": número de 0 a 100 (ou null se não der pra avaliar),
+  "observacoes": "anotações pro CRM prontas pra próxima abordagem, SEMPRE terminando com a leitura BANT em 4 linhas: 'B: ...' 'A: ...' 'N: ...' 'T: ...' (o que foi descoberto em cada eixo, ou 'não descoberto')",
+  "fit_score": número de 0 a 100 baseado na cobertura BANT (ou null se não der pra avaliar),
   "urgencia": "alta | media | baixa | desconhecida",
   "campos_atualizados": {
     "segment": "valor ou null", "estimated_revenue": "valor ou null",
     "employee_count": "valor ou null", "main_pain": "valor ou null"
   },
-  "proximo_passo": "ação recomendada"
+  "proximo_passo": "ação recomendada (se faltou eixo do BANT, aponte qual descobrir na próxima)"
 }
 Regras: não invente dados que não aparecem. Português do Brasil.`;
 

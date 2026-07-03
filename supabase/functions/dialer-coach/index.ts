@@ -36,7 +36,13 @@ async function coachCall(supabase: any, anthropicKey: string, callId: string): P
   const prompt = `Você é gerente comercial da UNV avaliando a performance da SDR numa ligação de prospecção, pra dar uma nota e um coaching prático.
 ${UNV_CONTEXT}
 
-Avalie a ligação nestes eixos: abertura/rapport, descoberta e diagnóstico (fez as perguntas certas?), escuta ativa, condução e controle da ligação, qualificação pelo ICP, e fechamento de próximo passo (agendou?). Tom consultivo, sem pressão, conta pontos.
+Avalie a ligação CONTRA O PLAYBOOK OFICIAL da SDR (5 etapas):
+1 Conectar — abertura com permissão e respeito ao tempo (sem "tem um minutinho?" nem "vou apresentar nossa empresa");
+2 Descobrir — perguntas abertas sobre como a empresa vende hoje (quem vende, processo, maior desafio);
+3 Aprofundar — quando achou dor, cavou? (causa, há quanto tempo, impacto, o que já tentou) ou trocou de assunto?;
+4 Gerar Valor — vendeu o DIAGNÓSTICO da reunião (não a solução), deixando claro que não é apresentação de vendas;
+5 Agendar — validou o decisor ANTES de oferecer horário, incluiu o decisor na reunião, ofereceu 2 opções de horário, criou compromisso.
+Também avalie: proporção fala/escuta (meta da SDR: ~30% falando / 70% ouvindo — quem pergunta conduz) e a qualificação BANT como raciocínio (Budget=maturidade de investimento, Authority=decisor descoberto naturalmente, Need=dor com impacto, Timing=contexto do momento). Tom consultivo, sem pressão, conta pontos.
 
 Dados da ligação (JSON):
 ${JSON.stringify(ctx, null, 2)}

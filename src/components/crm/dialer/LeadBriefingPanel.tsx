@@ -23,6 +23,7 @@ interface Brief {
   principal_dor?: string | null;
   urgencia?: string;
   ja_falou_antes?: { sim?: boolean; quando?: string | null; resumo?: string | null };
+  abertura_sugerida?: string | null;
   pontos_chave?: string[];
   perguntas_qualificacao?: string[];
   alertas?: string[];
@@ -198,7 +199,7 @@ export function LeadBriefingPanel({ leadId }: { leadId: string | null }) {
               <span className="ml-auto text-[10px] font-normal text-muted-foreground normal-case">leia no começo da ligação</span>
             </div>
             <p className="text-sm leading-relaxed italic">
-              "{aberturaScript((lead?.name || "").trim().split(/\s+/)[0] || null)}"
+              "{brief.abertura_sugerida || aberturaScript((lead?.name || "").trim().split(/\s+/)[0] || null)}"
             </p>
           </div>
 

@@ -138,6 +138,16 @@ Deno.serve(async (req) => {
 
     const prompt = `Você é um analista comercial da UNV. Monte um BRIEFING DE QUALIFICAÇÃO curto e direto para a SDR usar AO VIVO no instante em que o cliente atende a ligação. Foco no que importa pra qualificar e conduzir a conversa. Sem enrolação.
 
+PLAYBOOK DA SDR (siga à risca — é o método oficial):
+- O papel da SDR é vender a PRÓXIMA CONVERSA (reunião com o especialista), nunca o serviço. Quem pergunta conduz: 30% falando, 70% ouvindo.
+- Qualificação BANT como RACIOCÍNIO por trás da conversa (nunca questionário engessado; o lead não pode perceber que está sendo qualificado):
+  B (Budget): maturidade pra investir, nunca número direto — "Hoje vocês já investem em alguma estrutura comercial?", "Quem costuma aprovar esse tipo de investimento?"
+  A (Authority): decisor de forma natural — "Além de você, quem participa desse tipo de decisão?", "Tem sócio ou diretor que acompanha?" NUNCA "você é o decisor?"
+  N (Need): dor COM impacto — "Como funciona o comercial hoje?", "O que mais dificulta o crescimento?", "Como isso impacta o faturamento/rotina?"
+  T (Timing): contexto, não pressão — "Tem meta pros próximos meses?", "O que motivou buscar isso agora?"
+- Estrutura da ligação em 5 etapas: 1 Conectar (permissão + respeito ao tempo: "prometo ser breve... dois minutinhos? Se eu perceber que não faz sentido, eu mesma encerro"); 2 Descobrir (como chegam clientes, quem vende, processo, maior desafio); 3 Aprofundar (achou dor? NÃO troca de assunto: causa, há quanto tempo, impacto, o que já tentou); 4 Gerar Valor (vender o DIAGNÓSTICO da reunião, não a solução: "não é apresentação de vendas"); 5 Agendar (validar o decisor ANTES, incluir o decisor na reunião, oferecer 2 horários, criar compromisso).
+- Erros proibidos: "você tem um minutinho?", "estou ligando pra apresentar nossa empresa", falar/apresentar/explicar demais.
+
 Dados do lead (JSON):
 ${JSON.stringify(ctx, null, 2)}
 
@@ -150,10 +160,11 @@ Responda APENAS com um JSON válido (sem markdown, sem cercas de código) neste 
   "principal_dor": "principal dor/necessidade aparente, ou null",
   "urgencia": "alta | media | baixa | desconhecida",
   "ja_falou_antes": { "sim": true ou false, "quando": "data/período do último contato ou null", "resumo": "o que já rolou nas conversas anteriores em 1-2 frases, ou null" },
+  "abertura_sugerida": "frase de abertura (etapa Conectar do playbook) personalizada com o nome do lead e o gancho de origem — com pedido de permissão, sem cara de venda",
   "pontos_chave": ["3 a 5 bullets do mais relevante pra SDR saber antes de falar"],
-  "perguntas_qualificacao": ["2 a 4 perguntas específicas pra fazer nesta ligação, considerando o contexto"],
+  "perguntas_qualificacao": ["4 a 6 perguntas BANT consultivas adaptadas a ESTE lead, na ordem da ligação (Descobrir → Aprofundar); nunca pergunta direta de orçamento nem 'você é o decisor?'"],
   "alertas": ["riscos/sensibilidades a evitar, ou [] se nenhum"],
-  "proximo_passo_sugerido": "objetivo claro desta ligação"
+  "proximo_passo_sugerido": "objetivo claro desta ligação (qualificar BANT + agendar com o decisor presente)"
 }
 
 Regras: se um dado não existir, use null (não invente). Português do Brasil. Seja específico ao lead, nada genérico.`;
