@@ -121,8 +121,12 @@ interface Origin {
 }
 
 export const CRMSettingsPage = () => {
-  const { canSettings } = useOutletContext<{ staffRole: string; isAdmin: boolean; canSettings: boolean }>();
+  const { canSettings, staffRole } = useOutletContext<{ staffRole: string; isAdmin: boolean; canSettings: boolean }>();
   const navigate = useNavigate();
+  // Head comercial: só Pipelines, Origens, Motivos de Perda e Tags.
+  // Metas/Notificações/Acessos/Régua/Integrações/Formulários/Distribuição
+  // são exclusivas de master/admin.
+  const fullSettings = staffRole === "master" || staffRole === "admin";
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
   const [lossReasons, setLossReasons] = useState<LossReason[]>([]);
@@ -1093,38 +1097,42 @@ export const CRMSettingsPage = () => {
             <Tag className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             Tags
           </TabsTrigger>
-          <TabsTrigger value="access" className="gap-1.5 text-xs sm:text-sm">
-            <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            Acessos
-          </TabsTrigger>
-          <TabsTrigger value="goals" className="gap-1.5 text-xs sm:text-sm">
-            <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            Metas
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="gap-1.5 text-xs sm:text-sm">
-            <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            <span className="hidden sm:inline">Notificações</span>
-            <span className="sm:hidden">Notif.</span>
-          </TabsTrigger>
-          <TabsTrigger value="message-rules" className="gap-1.5 text-xs sm:text-sm">
-            <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            <span className="hidden sm:inline">Régua de Mensagens</span>
-            <span className="sm:hidden">Régua</span>
-          </TabsTrigger>
-          <TabsTrigger value="integrations" className="gap-1.5 text-xs sm:text-sm">
-            <Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            <span className="hidden sm:inline">Integrações</span>
-            <span className="sm:hidden">Integ.</span>
-          </TabsTrigger>
-          <TabsTrigger value="forms" className="gap-1.5 text-xs sm:text-sm">
-            <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            Formulários
-          </TabsTrigger>
-          <TabsTrigger value="distribution" className="gap-1.5 text-xs sm:text-sm">
-            <Shuffle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            <span className="hidden sm:inline">Distribuição</span>
-            <span className="sm:hidden">Distrib.</span>
-          </TabsTrigger>
+          {fullSettings && (
+            <>
+              <TabsTrigger value="access" className="gap-1.5 text-xs sm:text-sm">
+                <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                Acessos
+              </TabsTrigger>
+              <TabsTrigger value="goals" className="gap-1.5 text-xs sm:text-sm">
+                <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                Metas
+              </TabsTrigger>
+              <TabsTrigger value="notifications" className="gap-1.5 text-xs sm:text-sm">
+                <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Notificações</span>
+                <span className="sm:hidden">Notif.</span>
+              </TabsTrigger>
+              <TabsTrigger value="message-rules" className="gap-1.5 text-xs sm:text-sm">
+                <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Régua de Mensagens</span>
+                <span className="sm:hidden">Régua</span>
+              </TabsTrigger>
+              <TabsTrigger value="integrations" className="gap-1.5 text-xs sm:text-sm">
+                <Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Integrações</span>
+                <span className="sm:hidden">Integ.</span>
+              </TabsTrigger>
+              <TabsTrigger value="forms" className="gap-1.5 text-xs sm:text-sm">
+                <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                Formulários
+              </TabsTrigger>
+              <TabsTrigger value="distribution" className="gap-1.5 text-xs sm:text-sm">
+                <Shuffle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Distribuição</span>
+                <span className="sm:hidden">Distrib.</span>
+              </TabsTrigger>
+            </>
+          )}
         </TabsList>
 
         {/* Pipelines Tab */}
@@ -2143,43 +2151,48 @@ export const CRMSettingsPage = () => {
           </Card>
         </TabsContent>
 
-        {/* Access Tab */}
-        <TabsContent value="access" className="mt-6">
-          <CRMPermissionsManager />
-        </TabsContent>
+        {/* Abas exclusivas de master/admin (head comercial não acessa) */}
+        {fullSettings && (
+          <>
+            {/* Access Tab */}
+            <TabsContent value="access" className="mt-6">
+              <CRMPermissionsManager />
+            </TabsContent>
 
-        {/* Goals Tab */}
-        <TabsContent value="goals" className="mt-6">
-          <CRMGoalsTab />
-        </TabsContent>
+            {/* Goals Tab */}
+            <TabsContent value="goals" className="mt-6">
+              <CRMGoalsTab />
+            </TabsContent>
 
-        {/* Notifications Tab */}
-        <TabsContent value="notifications" className="mt-6">
-          <div className="space-y-8">
-            <LeadNotificationSettings />
-            <WonNotificationSettings />
-          </div>
-        </TabsContent>
+            {/* Notifications Tab */}
+            <TabsContent value="notifications" className="mt-6">
+              <div className="space-y-8">
+                <LeadNotificationSettings />
+                <WonNotificationSettings />
+              </div>
+            </TabsContent>
 
-        {/* Message Rules Tab */}
-        <TabsContent value="message-rules" className="mt-6">
-          <CRMMessageRulesTab pipelines={pipelines} stages={stages} />
-        </TabsContent>
+            {/* Message Rules Tab */}
+            <TabsContent value="message-rules" className="mt-6">
+              <CRMMessageRulesTab pipelines={pipelines} stages={stages} />
+            </TabsContent>
 
-        {/* Integrations Tab */}
-        <TabsContent value="integrations" className="mt-6">
-          <ClintIntegrationTab />
-        </TabsContent>
+            {/* Integrations Tab */}
+            <TabsContent value="integrations" className="mt-6">
+              <ClintIntegrationTab />
+            </TabsContent>
 
-        {/* Forms Tab */}
-        <TabsContent value="forms" className="mt-6">
-          <PipelineFormsManager />
-        </TabsContent>
+            {/* Forms Tab */}
+            <TabsContent value="forms" className="mt-6">
+              <PipelineFormsManager />
+            </TabsContent>
 
-        {/* Distribuição automática de leads/conversas */}
-        <TabsContent value="distribution" className="mt-6">
-          <CRMDistributionTab />
-        </TabsContent>
+            {/* Distribuição automática de leads/conversas */}
+            <TabsContent value="distribution" className="mt-6">
+              <CRMDistributionTab />
+            </TabsContent>
+          </>
+        )}
       </Tabs>
 
       {/* Delete Dialog */}
