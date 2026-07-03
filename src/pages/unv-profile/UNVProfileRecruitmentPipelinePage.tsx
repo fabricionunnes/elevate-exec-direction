@@ -870,7 +870,20 @@ export default function UNVProfileRecruitmentPipelinePage() {
                       {selected.cpf && <p className="flex items-center gap-2"><FileText className="w-4 h-4 text-muted-foreground" />CPF: {selected.cpf}</p>}
                       {selected.cnpj && <p className="flex items-center gap-2"><FileText className="w-4 h-4 text-muted-foreground" />CNPJ: {selected.cnpj}</p>}
                       {selected.linkedin_url && (
-                        <p className="flex items-center gap-2"><Linkedin className="w-4 h-4 text-muted-foreground" /><a href={selected.linkedin_url} target="_blank" rel="noopener" className="text-primary underline truncate">{selected.linkedin_url}</a></p>
+                        // min-w-0 no pai + flex-1 no link: sem isso a URL longa não
+                        // encolhe (truncate não age) e estoura a largura do modal
+                        <p className="flex items-center gap-2 min-w-0">
+                          <Linkedin className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <a
+                            href={selected.linkedin_url}
+                            target="_blank"
+                            rel="noopener"
+                            title={selected.linkedin_url}
+                            className="text-primary underline truncate flex-1 min-w-0"
+                          >
+                            {selected.linkedin_url.replace(/^https?:\/\/(www\.)?/, "")}
+                          </a>
+                        </p>
                       )}
                     </div>
                   ) : (
