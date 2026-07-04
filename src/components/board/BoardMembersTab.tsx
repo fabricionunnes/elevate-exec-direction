@@ -91,12 +91,31 @@ interface MemberTaskRow {
   form_link: string | null;
 }
 
+// Fases do Método CRESCER em ordem — progressão visível na jornada
+const CRESCER_PHASES = [
+  "Cenário",
+  "Resultado Ideal",
+  "Estrutura",
+  "Sistema de Captação",
+  "Conversão",
+  "Escala",
+  "Revisão",
+];
+
+interface PhaseProgress {
+  currentPhase: string;
+  currentIndex: number; // 1-based
+  phasesDone: number;
+  totalPhases: number;
+}
+
 export function BoardMembersTab({ onOpenDeliverables }: BoardMembersTabProps) {
   const navigate = useNavigate();
   const [members, setMembers] = useState<BoardMember[]>([]);
   const [rooms, setRooms] = useState<BoardRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
+  const [phaseByMember, setPhaseByMember] = useState<Record<string, PhaseProgress>>({});
 
   // dialog de novo membro
   const [addOpen, setAddOpen] = useState(false);
@@ -143,6 +162,49 @@ export function BoardMembersTab({ onOpenDeliverables }: BoardMembersTabProps) {
         }));
       }
       setMembers(rows as BoardMember[]);
+
+      // Progressão da jornada: fase atual de cada membro publicado
+      const projectIds = rows
+        .filter((m: any) => m.plan_status === "published" && m.project_id)
+        .map((m: any) => m.project_id);
+      if (projectIds.length) {
+        const { data: phaseTasks } = await (supabase as any)
+          .from("onboarding_tasks")
+          .select("project_id, status, tags")
+          .in("project_id", projectIds)
+          .contains("tags", ["unv-board"]);
+        // project_id -> phase -> {total, done}
+        const agg: Record<string, Record<string, { total: number; done: number }>> = {};
+        for (const t of phaseTasks || []) {
+          const tags: string[] = Array.isArray(t.tags) ? t.tags : [];
+          const phase = CRESCER_PHASES.find((p) => tags.includes(p));
+          if (!phase) continue;
+          (agg[t.project_id] ||= {});
+          (agg[t.project_id][phase] ||= { total: 0, done: 0 });
+          agg[t.project_id][phase].total++;
+          if (t.status === "completed") agg[t.project_id][phase].done++;
+        }
+        const map: Record<string, PhaseProgress> = {};
+        for (const m of rows) {
+          if (m.plan_status !== "published" || !m.project_id) continue;
+          const phases = agg[m.project_id] || {};
+          const phasesDone = CRESCER_PHASES.filter(
+            (p) => phases[p] && phases[p].total > 0 && phases[p].done === phases[p].total
+          ).length;
+          // fase atual = primeira não 100% concluída (ou última se tudo pronto)
+          let idx = CRESCER_PHASES.findIndex(
+            (p) => phases[p] && (phases[p].done < phases[p].total)
+          );
+          if (idx < 0) idx = CRESCER_PHASES.length - 1;
+          map[m.id] = {
+            currentPhase: CRESCER_PHASES[idx],
+            currentIndex: idx + 1,
+            phasesDone,
+            totalPhases: CRESCER_PHASES.length,
+          };
+        }
+        setPhaseByMember(map);
+      }
     } catch (err) {
       console.error("Erro ao carregar membros do Board:", err);
       toast.error("Erro ao carregar membros");
@@ -345,6 +407,7 @@ export function BoardMembersTab({ onOpenDeliverables }: BoardMembersTabProps) {
                 <TableRow>
                   <TableHead>Empresa</TableHead>
                   <TableHead>Entrada</TableHead>
+                  <TableHead>Jornada</TableHead>
                   <TableHead>Sala</TableHead>
                   <TableHead>Plano</TableHead>
                   <TableHead>Status</TableHead>
@@ -370,6 +433,28 @@ export function BoardMembersTab({ onOpenDeliverables }: BoardMembersTabProps) {
                         {member.entry_date
                           ? format(new Date(`${member.entry_date}T12:00:00`), "dd/MM/yyyy")
                           : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {phaseByMember[member.id] ? (
+                          <div className="min-w-[130px]">
+                            <div className="flex items-center justify-between text-xs mb-1">
+                              <span className="font-medium">{phaseByMember[member.id].currentPhase}</span>
+                              <span className="text-muted-foreground">
+                                {phaseByMember[member.id].currentIndex}/7
+                              </span>
+                            </div>
+                            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                              <div
+                                className="h-full bg-primary rounded-full transition-all"
+                                style={{
+                                  width: `${(phaseByMember[member.id].phasesDone / 7) * 100}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {roomLabel(member.room_id)}
