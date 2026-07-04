@@ -1015,6 +1015,7 @@ const ClientOnboardingPage = () => {
                 canSeeSalesLinks={hasPermission(CLIENT_MENU_KEYS.kpis_sales_links)}
                 canSeeConfig={hasPermission(CLIENT_MENU_KEYS.kpis_config)}
                 isClientView={true}
+                isSalespersonView={!!salespersonId}
               />
             </motion.div>
           )}
