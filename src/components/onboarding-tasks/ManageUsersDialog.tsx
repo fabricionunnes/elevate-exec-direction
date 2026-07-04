@@ -297,13 +297,14 @@ export const ManageUsersDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Gerenciar Usuários</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Users table */}
+          {/* Users table (contida: e-mails longos não estouram o modal) */}
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -317,8 +318,8 @@ export const ManageUsersDialog = ({
             <TableBody>
               {users.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
+                  <TableCell className="font-medium max-w-[160px] truncate" title={user.name}>{user.name}</TableCell>
+                  <TableCell className="max-w-[230px] truncate" title={user.email}>{user.email}</TableCell>
                   <TableCell>{getRoleBadge(user.role)}</TableCell>
                   <TableCell>
                     {user.role !== "client" ? (
@@ -391,6 +392,7 @@ export const ManageUsersDialog = ({
               )}
             </TableBody>
           </Table>
+          </div>
 
           {/* Add user form */}
           {showAddForm ? (
