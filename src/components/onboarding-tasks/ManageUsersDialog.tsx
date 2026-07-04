@@ -96,6 +96,7 @@ export const ManageUsersDialog = ({
   
   // Change password state
   const [changingPasswordUserId, setChangingPasswordUserId] = useState<string | null>(null);
+  const [changingSalespersonId, setChangingSalespersonId] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
@@ -305,13 +306,40 @@ export const ManageUsersDialog = ({
   };
 
   const handleChangePassword = async () => {
-    if (!changingPasswordUserId || !newPassword.trim()) {
+    if ((!changingPasswordUserId && !changingSalespersonId) || !newPassword.trim()) {
       toast.error("Digite a nova senha");
       return;
     }
 
     if (newPassword.length < 6) {
       toast.error("A senha deve ter pelo menos 6 caracteres");
+      return;
+    }
+
+    // Senha de VENDEDOR: caminho oficial do system-api (reset_password)
+    if (changingSalespersonId) {
+      setChangingPassword(true);
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (!token) throw new Error("Sessão expirada — recarregue a página.");
+        const params = new URLSearchParams({ module: "salespeople", action: "reset_password", id: changingSalespersonId });
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/system-api?${params}`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ new_password: newPassword.trim() }),
+        });
+        const result = await res.json();
+        if (result?.error) throw new Error(result.error);
+        toast.success("Senha do vendedor alterada!");
+        setChangingPasswordUserId(null);
+        setChangingSalespersonId(null);
+        setNewPassword("");
+      } catch (error: any) {
+        toast.error(error.message || "Erro ao alterar a senha do vendedor");
+      } finally {
+        setChangingPassword(false);
+      }
       return;
     }
 
@@ -453,7 +481,40 @@ export const ManageUsersDialog = ({
                   </TableCell>
                 </TableRow>
               ))}
-              {users.length === 0 && (
+              {/* Vendedores da empresa com login de acesso */}
+              {salespeople.filter((sp) => sp.user_id).map((sp) => (
+                <TableRow key={`sp-${sp.id}`}>
+                  <TableCell className="font-medium max-w-[160px] truncate" title={sp.name}>{sp.name}</TableCell>
+                  <TableCell className="max-w-[230px] truncate" title={sp.email || ""}>{sp.email}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-0">
+                      Vendedor
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-muted-foreground text-sm">Definida no cadastro</span>
+                  </TableCell>
+                  <TableCell>
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                          setChangingSalespersonId(sp.id);
+                          setChangingPasswordUserId(null);
+                          setNewPassword("");
+                          setShowChangePassword(false);
+                        }}
+                        title="Alterar senha do vendedor"
+                      >
+                        <KeyRound className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {users.length === 0 && salespeople.filter((sp) => sp.user_id).length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                     Nenhum usuário adicionado
@@ -644,7 +705,7 @@ export const ManageUsersDialog = ({
           )}
 
           {/* Change Password Dialog */}
-          {changingPasswordUserId && (
+          {(changingPasswordUserId || changingSalespersonId) && (
             <div className="border rounded-lg p-4 space-y-4 bg-amber-50/50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
               <div className="flex items-center justify-between">
                 <h4 className="font-medium flex items-center gap-2">
@@ -656,6 +717,7 @@ export const ManageUsersDialog = ({
                   size="sm"
                   onClick={() => {
                     setChangingPasswordUserId(null);
+                    setChangingSalespersonId(null);
                     setNewPassword("");
                     setShowChangePassword(false);
                   }}
@@ -666,7 +728,7 @@ export const ManageUsersDialog = ({
 
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Alterando senha de: <span className="font-medium text-foreground">{users.find(u => u.id === changingPasswordUserId)?.name}</span>
+                  Alterando senha de: <span className="font-medium text-foreground">{changingSalespersonId ? `${salespeople.find(sp => sp.id === changingSalespersonId)?.name} (vendedor)` : users.find(u => u.id === changingPasswordUserId)?.name}</span>
                 </p>
                 
                 <div className="space-y-2">
