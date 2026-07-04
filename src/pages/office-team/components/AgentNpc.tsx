@@ -317,6 +317,19 @@ function AgentFigure({
       }
       setPoseIfChanged('stand')
     }
+
+    // Vida: parado e com o jogador local por perto → vira pra encarar você
+    const meState = useTeamStore.getState()
+    const [mpx, , mpz] = meState.playerPosition
+    const dm = Math.hypot(mpx - g.position.x, mpz - g.position.z)
+    if (dm < 3.6 && dm > 0.4) {
+      const face = Math.atan2(mpx - g.position.x, mpz - g.position.z)
+      let diff = face - rotRef.current
+      while (diff > Math.PI) diff -= Math.PI * 2
+      while (diff < -Math.PI) diff += Math.PI * 2
+      rotRef.current += diff * 0.06
+      g.rotation.y = rotRef.current
+    }
   })
 
   return (
