@@ -6,9 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Plus, Phone, UserPlus, StickyNote } from "lucide-react";
+import { Loader2, Plus, Phone, UserPlus, StickyNote, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 
 // Leads do tráfego pago registrados pela SDR do CLIENTE: cada lead que chegou
@@ -47,6 +51,8 @@ export const ClientTrafficLeadsTab = ({ projectId }: { projectId: string }) => {
   const [newDate, setNewDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [notesDraft, setNotesDraft] = useState<Record<string, string>>({});
   const [notesOpenFor, setNotesOpenFor] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TrafficLead | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -107,6 +113,23 @@ export const ClientTrafficLeadsTab = ({ projectId }: { projectId: string }) => {
       setLeads(prev);
       toast.error("Erro ao atualizar");
     }
+  };
+
+  const deleteLead = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { error } = await supabase
+      .from("client_traffic_leads" as never)
+      .delete()
+      .eq("id", deleteTarget.id);
+    setDeleting(false);
+    if (error) {
+      toast.error("Erro ao excluir o lead");
+      return;
+    }
+    setLeads((ls) => ls.filter((l) => l.id !== deleteTarget.id));
+    setDeleteTarget(null);
+    toast.success("Lead excluído");
   };
 
   const saveNotes = async (id: string) => {
@@ -238,6 +261,15 @@ export const ClientTrafficLeadsTab = ({ projectId }: { projectId: string }) => {
                   >
                     <StickyNote className={`h-3.5 w-3.5 ${l.notes ? "text-amber-500" : "text-muted-foreground/50"}`} />
                   </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0 text-muted-foreground/50 hover:text-destructive"
+                    title="Excluir lead"
+                    onClick={() => setDeleteTarget(l)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
                 {notesOpenFor === l.id && (
                   <div className="mt-2 flex items-center gap-2">
@@ -262,6 +294,29 @@ export const ClientTrafficLeadsTab = ({ projectId }: { projectId: string }) => {
           })}
         </div>
       )}
+
+      {/* Confirmação de exclusão */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir "{deleteTarget?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O lead e as anotações dele saem da lista e dos contadores. Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); deleteLead(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Dialog de novo lead */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
