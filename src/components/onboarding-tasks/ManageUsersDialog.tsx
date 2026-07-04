@@ -67,6 +67,32 @@ export const ManageUsersDialog = ({
   });
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [showNewPassword, setShowNewPassword] = useState(false);
+
+  // Vendedores já cadastrados na empresa (pra criar o acesso deles daqui)
+  const [salespeople, setSalespeople] = useState<
+    { id: string; name: string; email: string | null; user_id: string | null; is_active: boolean }[]
+  >([]);
+  const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>("");
+  const isSalespersonType = (newUser.role as string) === "salesperson";
+
+  const fetchSalespeople = async () => {
+    const { data: proj } = await supabase
+      .from("onboarding_projects")
+      .select("onboarding_company_id")
+      .eq("id", projectId)
+      .maybeSingle();
+    if (!proj?.onboarding_company_id) return;
+    const { data } = await supabase
+      .from("company_salespeople")
+      .select("id, name, email, user_id, is_active")
+      .eq("company_id", proj.onboarding_company_id)
+      .order("name");
+    setSalespeople((data as any) || []);
+  };
+
+  useEffect(() => {
+    if (open) fetchSalespeople();
+  }, [open, projectId]);
   
   // Change password state
   const [changingPasswordUserId, setChangingPasswordUserId] = useState<string | null>(null);
@@ -107,6 +133,50 @@ export const ManageUsersDialog = ({
   const isStaffRole = (role: OnboardingRole) => checkIsStaffRole(role);
 
   const handleAddUser = async () => {
+    // Vendedor existente: cria o login pelo caminho oficial (system-api
+    // salespeople/create_login — mesmo usado na aba Vendedores)
+    if (isSalespersonType) {
+      const sp = salespeople.find((s) => s.id === selectedSalespersonId);
+      if (!sp) {
+        toast.error("Selecione um vendedor");
+        return;
+      }
+      if (!sp.email) {
+        toast.error("Esse vendedor não tem e-mail cadastrado — atualize o cadastro dele primeiro.");
+        return;
+      }
+      if (newUser.password.trim().length < 6) {
+        toast.error("Defina uma senha com pelo menos 6 caracteres");
+        return;
+      }
+      setLoading(true);
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (!token) throw new Error("Sessão expirada — recarregue a página.");
+        const params = new URLSearchParams({ module: "salespeople", action: "create_login", id: sp.id });
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/system-api?${params}`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ password: newUser.password.trim() }),
+          },
+        );
+        const result = await res.json();
+        if (result?.error) throw new Error(result.error);
+        toast.success(`Login criado pro vendedor ${sp.name}!`);
+        resetForm();
+        fetchSalespeople();
+        onUsersChanged();
+      } catch (error: any) {
+        toast.error(error.message || "Erro ao criar login do vendedor");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     const isStaff = isStaffRole(newUser.role);
 
     if (isStaff) {
@@ -409,9 +479,10 @@ export const ManageUsersDialog = ({
                   <Label>Tipo de Usuário</Label>
                   <Select
                     value={newUser.role}
-                    onValueChange={(value: "admin" | "cs" | "consultant" | "client") => {
-                      setNewUser({ ...newUser, role: value, name: "", email: "", password: "" });
+                    onValueChange={(value: string) => {
+                      setNewUser({ ...newUser, role: value as any, name: "", email: "", password: "" });
                       setSelectedStaffId("");
+                      setSelectedSalespersonId("");
                       setShowNewPassword(false);
                     }}
                   >
@@ -422,11 +493,66 @@ export const ManageUsersDialog = ({
                       <SelectItem value="client">Cliente (Dono da Empresa)</SelectItem>
                       <SelectItem value="cs">CS (Customer Success)</SelectItem>
                       <SelectItem value="consultant">Consultor</SelectItem>
+                      <SelectItem value="salesperson">Vendedor (já cadastrado)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                {isStaffRole(newUser.role) ? (
+                {isSalespersonType ? (
+                  // Vendedor existente da empresa: escolhe e define a senha de acesso
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Selecionar Vendedor</Label>
+                      <Select value={selectedSalespersonId} onValueChange={setSelectedSalespersonId}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Selecione um vendedor da empresa" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {salespeople.filter((s) => s.is_active).length === 0 ? (
+                            <div className="p-2 text-sm text-muted-foreground text-center">
+                              Nenhum vendedor cadastrado nesta empresa
+                            </div>
+                          ) : (
+                            salespeople
+                              .filter((s) => s.is_active)
+                              .map((sp) => (
+                                <SelectItem key={sp.id} value={sp.id} disabled={!!sp.user_id || !sp.email}>
+                                  <span>{sp.name}</span>
+                                  <span className="text-xs text-muted-foreground ml-2">
+                                    {sp.user_id ? "(já tem acesso)" : !sp.email ? "(sem e-mail no cadastro)" : `(${sp.email})`}
+                                  </span>
+                                </SelectItem>
+                              ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        O login usa o e-mail do cadastro do vendedor. Quem já tem acesso aparece desabilitado.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Senha do Vendedor</Label>
+                      <div className="relative">
+                        <Input
+                          type={showNewPassword ? "text" : "password"}
+                          placeholder="Mínimo 6 caracteres"
+                          value={newUser.password}
+                          onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                          className="pr-10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full px-3"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                        >
+                          {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : isStaffRole(newUser.role) ? (
                   // Seleção de Staff existente
                   <div className="space-y-2">
                     <Label>Selecionar {newUser.role === "cs" ? "CS" : "Consultor"}</Label>
@@ -505,7 +631,7 @@ export const ManageUsersDialog = ({
                 <div className="flex justify-end pt-2">
                   <Button onClick={handleAddUser} disabled={loading}>
                     {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    {isStaffRole(newUser.role) ? "Vincular ao Projeto" : "Criar Cliente"}
+                    {isSalespersonType ? "Criar Login do Vendedor" : isStaffRole(newUser.role) ? "Vincular ao Projeto" : "Criar Cliente"}
                   </Button>
                 </div>
               </div>
