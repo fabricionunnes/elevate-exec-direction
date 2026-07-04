@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Brain, RefreshCw, AlertTriangle, CheckCircle2, Clock, Quote,
-  HeartPulse, Trophy, Flame, ListChecks, MessagesSquare,
+  HeartPulse, Trophy, Flame, ListChecks, MessagesSquare, Plus, Loader2,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -53,6 +53,43 @@ export const ClientBrainPanel = ({ projectId }: { projectId: string }) => {
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [creatingTask, setCreatingTask] = useState<number | null>(null);
+  const [createdTasks, setCreatedTasks] = useState<Set<number>>(new Set());
+
+  // Vira a ação sugerida numa tarefa real do projeto (dono = usuário atual)
+  const createTask = async (idx: number, acao: { acao: string; motivo?: string; urgencia: string }) => {
+    setCreatingTask(idx);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      let staffId: string | null = null;
+      if (userData?.user?.id) {
+        const { data: staff } = await supabase
+          .from("onboarding_staff")
+          .select("id")
+          .eq("user_id", userData.user.id)
+          .maybeSingle();
+        staffId = staff?.id || null;
+      }
+      const dueDays = acao.urgencia === "hoje" ? 0 : acao.urgencia === "esta_semana" ? 3 : 14;
+      const { error: insErr } = await supabase.from("onboarding_tasks").insert({
+        project_id: projectId,
+        title: acao.acao.slice(0, 140),
+        description: acao.motivo ? `${acao.motivo}\n\n(Origem: Cérebro do Cliente)` : "(Origem: Cérebro do Cliente)",
+        due_date: format(addDays(new Date(), dueDays), "yyyy-MM-dd"),
+        status: "pending",
+        priority: acao.urgencia === "hoje" ? "high" : "medium",
+        is_internal: true,
+        responsible_staff_id: staffId,
+      } as never);
+      if (insErr) throw insErr;
+      setCreatedTasks((s) => new Set(s).add(idx));
+      toast.success("Tarefa criada no projeto");
+    } catch {
+      toast.error("Erro ao criar a tarefa");
+    } finally {
+      setCreatingTask(null);
+    }
+  };
 
   const load = async (force = false) => {
     setLoading(true);
@@ -176,6 +213,24 @@ export const ClientBrainPanel = ({ projectId }: { projectId: string }) => {
                   </Badge>
                 </div>
                 {a.motivo && <p className="text-xs text-muted-foreground mt-1">{a.motivo}</p>}
+                <div className="mt-1.5">
+                  {createdTasks.has(i) ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                      <CheckCircle2 className="h-3 w-3" /> Tarefa criada
+                    </span>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 px-2 text-[11px] gap-1"
+                      disabled={creatingTask !== null}
+                      onClick={() => createTask(i, a)}
+                    >
+                      {creatingTask === i ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                      Criar tarefa
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
           </CardContent>
