@@ -54,6 +54,7 @@ import { TaskDetailsDialog } from "@/components/onboarding-tasks/TaskDetailsDial
 import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
 import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
 import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBriefingPanel";
+import { ClientBrainPanel } from "@/components/onboarding-tasks/ClientBrainPanel";
 import { AdsBriefingSection } from "@/components/social/strategy/AdsBriefingSection";
 import { StrategicDiagnosticModule } from "@/components/client-diagnostic/StrategicDiagnosticModule";
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
@@ -1548,6 +1549,9 @@ const OnboardingProjectPage = () => {
 
               const subTabs: Record<string, React.ReactNode[]> = {
                 principal: [
+                  ...(currentUserRole !== "client" ? [
+                    <TabsTrigger key="brain" value="brain"><Brain className="h-3.5 w-3.5 shrink-0" />Cérebro</TabsTrigger>
+                  ] : []),
                   ...(project?.onboarding_company_id === FACUNICAMPS_ID ? [
                     <TabsTrigger key="indicadores" value="indicadores"><BarChart3 className="h-3.5 w-3.5 shrink-0" />Indicadores</TabsTrigger>
                   ] : [
@@ -1856,6 +1860,12 @@ const OnboardingProjectPage = () => {
           <TabsContent value="diagnostic">
             <StrategicDiagnosticModule projectId={projectId!} />
           </TabsContent>
+
+          {currentUserRole !== "client" && (
+            <TabsContent value="brain">
+              <ClientBrainPanel projectId={projectId!} />
+            </TabsContent>
+          )}
 
           <TabsContent value="ai-coach">
             <ProjectAIChat
