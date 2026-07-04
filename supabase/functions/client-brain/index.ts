@@ -35,15 +35,26 @@ function json(obj: unknown, status = 200) {
   });
 }
 
-/** WhatsApp pelo mesmo caminho das instâncias do sistema (Stevo/Evolution). */
+/** WhatsApp pelo mesmo caminho das instâncias do sistema (Stevo/Evolution).
+ * Envia SEMPRE pela instância "fabricionunnes" (alerta oficial do Fabrício);
+ * fallback pra qualquer conectada só se ela estiver fora. */
 async function sendWhatsApp(supabase: SupabaseClient, phone: string, text: string): Promise<boolean> {
   try {
-    const { data: inst } = await supabase
+    let { data: inst } = await supabase
       .from("whatsapp_instances")
       .select("instance_name, api_url, api_key, status, provider_type")
+      .eq("instance_name", "fabricionunnes")
       .eq("status", "connected")
-      .limit(1)
       .maybeSingle();
+    if (!inst) {
+      const { data: fallback } = await supabase
+        .from("whatsapp_instances")
+        .select("instance_name, api_url, api_key, status, provider_type")
+        .eq("status", "connected")
+        .limit(1)
+        .maybeSingle();
+      inst = fallback;
+    }
     if (!inst?.api_url || !inst?.api_key) return false;
     let host = "";
     try { host = new URL(inst.api_url).hostname.toLowerCase(); } catch { /* noop */ }
