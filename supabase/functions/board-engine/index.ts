@@ -73,6 +73,7 @@ Deno.serve(async (req) => {
     if (action === "generate_plan") return await generatePlan(supabase, body.member_id);
     if (action === "publish_plan") return await publishPlan(supabase, body.member_id);
     if (action === "nps_cron") return await npsCron(supabase);
+    if (action === "risk_cron") return await riskCron(supabase, body.dry_run === true);
     if (action === "generate_deliverable") return await generateDeliverable(supabase, body);
 
     return json({ error: `Ação desconhecida: ${action}` }, 400);
@@ -614,9 +615,51 @@ async function submitTaskForm(supabase: any, body: any) {
     ? EXECUTION_SPEC
     : DELIVERABLE_SPECS[form.form_type] || DIAGNOSTIC_SPEC;
 
+  // Memória do cliente no Board: documentos anteriores + resultados atribuídos.
+  // Cada mês o sistema conhece mais o negócio — e o documento novo cita o histórico.
+  let historyBlock = "";
+  try {
+    const { data: prevDocs } = await supabase
+      .from("unv_board_deliverables")
+      .select("title, type, created_at, content_md")
+      .eq("member_id", form.member_id)
+      .neq("id", form.deliverable_id || "00000000-0000-0000-0000-000000000000")
+      .order("created_at", { ascending: false })
+      .limit(4);
+    const { data: prevResults } = await supabase
+      .from("unv_board_results")
+      .select("description, value_brl, metric_text, reported_at")
+      .eq("member_id", form.member_id)
+      .order("reported_at", { ascending: false })
+      .limit(12);
+    const parts: string[] = [];
+    if (prevDocs?.length) {
+      parts.push("DOCUMENTOS ANTERIORES DO CLIENTE NO BOARD (cite números e fatos deles quando relevante — mostre evolução):");
+      for (const d of prevDocs) {
+        parts.push(`- [${(d.created_at || "").substring(0, 10)}] ${d.title}: ${String(d.content_md || "").replace(/\s+/g, " ").substring(0, 400)}`);
+      }
+    }
+    if (prevResults?.length) {
+      parts.push("RESULTADOS JÁ REPORTADOS PELO CLIENTE:");
+      for (const r of prevResults) {
+        parts.push(`- ${r.description}${r.value_brl ? ` (R$ ${Number(r.value_brl).toLocaleString("pt-BR")})` : ""}${r.metric_text ? ` [${r.metric_text}]` : ""}`);
+      }
+    }
+    if (parts.length) historyBlock = `\n\nHISTÓRICO DO CLIENTE NO BOARD:\n${parts.join("\n")}`;
+  } catch (e) {
+    console.error("histórico não carregado:", e);
+  }
+
+  // Relatório de execução: extrai também os RESULTADOS estruturados (alimenta o painel de ROI)
+  const resultsBlock = isExecution
+    ? `
+
+DEPOIS do documento, escreva a linha exata ===RESULTADOS=== e em seguida SOMENTE um array JSON com os resultados mensuráveis relatados pelo cliente (pode ser vazio []): cada item {"descricao": "resultado em 1 frase", "valor_brl": número em reais quando o resultado for financeiro (senão null), "metrica": "métrica e valor (ex.: tempo de resposta 2h -> 15min)"}. Extraia SOMENTE o que o cliente relatou — não invente número.`
+    : "";
+
   // Documento estratégico sai junto com o plano de ação PROPOSTO (o cliente edita antes de finalizar)
   const actionsBlock = isExecution
-    ? ""
+    ? resultsBlock
     : `
 
 DEPOIS do documento, escreva a linha exata ===ACOES=== e em seguida SOMENTE um array JSON com o plano de ação: 3 a 5 ações SMART extraídas dos problemas constatados, cada item {"title": "ação curta com verbo (máx 90 chars)", "description": "o que fazer na prática, 1-3 frases", "metric": "métrica de resultado esperada", "days": prazo em dias a partir de hoje (int, entre 5 e 45, escalonados)}. As ações devem atacar os problemas do diagnóstico em ordem de impacto.`;
@@ -630,7 +673,7 @@ EMPRESA: ${company?.name} — segmento: ${company?.segment || "não informado"}
 CONTEXTO DA EMPRESA: ${JSON.stringify({ descricao: company?.company_description, publico: company?.target_audience, ticket_medio: company?.average_ticket, time_vendas: company?.sales_team_size })}
 
 RESPOSTAS DO FORMULÁRIO (preenchido pelo cliente — é a matéria-prima do documento):
-${JSON.stringify(form_data, null, 2)}
+${JSON.stringify(form_data, null, 2)}${historyBlock}
 
 INSTRUÇÕES: ${spec.guidance}
 
@@ -652,9 +695,10 @@ REGRAS DE FORMA:
   const aiData = await aiResp.json();
   const raw = (aiData.content || []).map((b: any) => b.text || "").join("").trim();
 
-  // Separa documento e plano de ação proposto
+  // Separa documento, plano de ação proposto e resultados estruturados
   let content = raw;
   let proposedActions: any[] = [];
+  let extractedResults: any[] = [];
   const splitIdx = raw.indexOf("===ACOES===");
   if (splitIdx >= 0) {
     content = raw.substring(0, splitIdx).trim();
@@ -674,6 +718,26 @@ REGRAS DE FORMA:
       }
     } catch (e) {
       console.error("Falha ao parsear plano de ação proposto:", e);
+    }
+  }
+  const resIdx = raw.indexOf("===RESULTADOS===");
+  if (resIdx >= 0) {
+    if (resIdx < (splitIdx < 0 ? raw.length : splitIdx)) content = raw.substring(0, resIdx).trim();
+    try {
+      const jsonPart = raw.substring(resIdx + "===RESULTADOS===".length);
+      const match = jsonPart.match(/\[[\s\S]*?\]/);
+      if (match) {
+        extractedResults = JSON.parse(match[0])
+          .filter((r: any) => r?.descricao)
+          .slice(0, 10)
+          .map((r: any) => ({
+            description: String(r.descricao).substring(0, 400),
+            value_brl: typeof r.valor_brl === "number" && isFinite(r.valor_brl) ? r.valor_brl : null,
+            metric_text: r.metrica ? String(r.metrica).substring(0, 200) : null,
+          }));
+      }
+    } catch (e) {
+      console.error("Falha ao parsear resultados:", e);
     }
   }
   if (content.length < 100) return json({ error: "IA retornou documento vazio" }, 500);
@@ -710,6 +774,23 @@ REGRAS DE FORMA:
   await supabase.from("unv_board_task_forms")
     .update({ form_data, deliverable_id: row.id, proposed_actions: proposedActions.length ? proposedActions : null })
     .eq("id", form.id);
+
+  // Resultados estruturados alimentam o painel de ROI atribuído.
+  // Regeneração ("voltar e ajustar") substitui os resultados do mesmo formulário.
+  if (isExecution) {
+    await supabase.from("unv_board_results").delete().eq("task_id", form.task_id);
+    if (extractedResults.length) {
+      await supabase.from("unv_board_results").insert(
+        extractedResults.map((r) => ({
+          member_id: form.member_id,
+          company_id: member.company_id,
+          task_id: form.task_id,
+          deliverable_id: row.id,
+          ...r,
+        }))
+      );
+    }
+  }
 
   return json({
     success: true,
@@ -861,6 +942,100 @@ async function createActionTasks(supabase: any, form: any, member: any, delivera
   }
 
   return created;
+}
+
+// ─────────────────────────── RADAR DE RESGATE ───────────────────────────
+// Semanal. Cliente com execução fraca ou NPS detrator = alerta pro Fabrício ANTES
+// do pedido de cancelamento nascer (o padrão dos churns: desconexão 6-8 semanas antes).
+const RISK_ALERT_PHONE = "5531989840003"; // Fabrício
+
+async function riskCron(supabase: any, dryRun: boolean) {
+  const results = { checked: 0, alerts: 0, previews: [] as any[], errors: [] as string[] };
+  const today = new Date();
+  const since28 = new Date(today.getTime() - 28 * 86400000).toISOString().substring(0, 10);
+  const todayStr = today.toISOString().substring(0, 10);
+
+  const { data: members } = await supabase
+    .from("unv_board_members")
+    .select("id, company_id, project_id, entry_date, owner_name, status, plan_status")
+    .eq("status", "active")
+    .eq("plan_status", "published");
+
+  for (const m of members || []) {
+    try {
+      if (!m.project_id) continue;
+      results.checked++;
+
+      // Execução: tarefas com prazo nos últimos 28 dias
+      const { data: dueTasks } = await supabase
+        .from("onboarding_tasks")
+        .select("id, status, due_date")
+        .eq("project_id", m.project_id)
+        .gte("due_date", since28)
+        .lte("due_date", todayStr);
+      const total = dueTasks?.length || 0;
+      const done = (dueTasks || []).filter((t: any) => t.status === "completed").length;
+      const execRate = total > 0 ? done / total : null;
+
+      // Último NPS respondido
+      const { data: lastNps } = await supabase
+        .from("unv_board_nps")
+        .select("score, answered_at")
+        .eq("member_id", m.id)
+        .eq("status", "answered")
+        .order("answered_at", { ascending: false })
+        .limit(1);
+      const npsScore = lastNps?.[0]?.score ?? null;
+
+      const lowExec = execRate !== null && total >= 3 && execRate < 0.6;
+      const detractor = npsScore !== null && npsScore <= 6;
+      if (!lowExec && !detractor) continue;
+
+      // Máximo 1 alerta por membro a cada 14 dias
+      const since14 = new Date(today.getTime() - 14 * 86400000).toISOString();
+      const { data: recent } = await supabase
+        .from("unv_board_risk_alerts")
+        .select("id")
+        .eq("member_id", m.id)
+        .gte("sent_at", since14)
+        .limit(1);
+      if (recent?.length) continue;
+
+      const { data: company } = await supabase
+        .from("onboarding_companies").select("name").eq("id", m.company_id).single();
+
+      const reasons: string[] = [];
+      if (lowExec) reasons.push(`execução ${Math.round(execRate! * 100)}% nos últimos 28 dias (${done}/${total} tarefas)`);
+      if (detractor) reasons.push(`último NPS: ${npsScore} (detrator)`);
+
+      const message =
+        `RADAR UNV BOARD — ${company?.name}\n\n` +
+        `Sinal de risco: ${reasons.join(" e ")}.\n\n` +
+        `Padrão de churn começa assim. Sugestão: call de resgate de 20 min com ${m.owner_name || "o dono"} essa semana, antes do encontro.\n\n` +
+        `Painel: https://unvholdings.com.br/#/onboarding-tasks/board-unv`;
+
+      if (dryRun) {
+        results.previews.push({ empresa: company?.name, reasons });
+        continue;
+      }
+
+      const instanceName = await getInstanceName(supabase, null);
+      if (instanceName) {
+        const send = await sendWhatsApp(supabase, instanceName, RISK_ALERT_PHONE, message);
+        if (!send.success) results.errors.push(`${company?.name}: ${send.error}`);
+      }
+      await supabase.from("unv_board_risk_alerts").insert({
+        member_id: m.id,
+        reason: reasons.join("; "),
+        exec_rate: execRate,
+        last_nps: npsScore,
+      });
+      results.alerts++;
+    } catch (e: any) {
+      results.errors.push(`${m.id}: ${e.message}`);
+    }
+  }
+  return json(results);
 }
 
 // ─────────────────────────── NPS CRON ───────────────────────────

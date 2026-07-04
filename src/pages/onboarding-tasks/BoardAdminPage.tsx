@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowLeft, Crown, Users, DoorOpen, FileText, CalendarClock, Gauge } from "lucide-react";
+import { ArrowLeft, Crown, Users, DoorOpen, FileText, CalendarClock, Gauge, TrendingUp } from "lucide-react";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { BoardMembersTab } from "@/components/board/BoardMembersTab";
 import { BoardRoomsTab } from "@/components/board/BoardRoomsTab";
 import { BoardDeliverablesTab } from "@/components/board/BoardDeliverablesTab";
 import { BoardSessionsTab } from "@/components/board/BoardSessionsTab";
 import { BoardNpsTab } from "@/components/board/BoardNpsTab";
+import { BoardResultsTab } from "@/components/board/BoardResultsTab";
 
 export default function BoardAdminPage() {
   const navigate = useNavigate();
@@ -118,6 +119,10 @@ export default function BoardAdminPage() {
               <Gauge className="h-4 w-4" />
               NPS
             </TabsTrigger>
+            <TabsTrigger value="resultados" className="gap-1.5">
+              <TrendingUp className="h-4 w-4" />
+              Resultados
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="membros">
@@ -134,6 +139,9 @@ export default function BoardAdminPage() {
           </TabsContent>
           <TabsContent value="nps">
             <BoardNpsTab />
+          </TabsContent>
+          <TabsContent value="resultados">
+            <BoardResultsTab />
           </TabsContent>
         </Tabs>
       </div>

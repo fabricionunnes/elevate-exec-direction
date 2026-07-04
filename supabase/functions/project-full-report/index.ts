@@ -105,6 +105,28 @@ Deno.serve(async (req) => {
     if (!project_id) return json({ error: "project_id obrigatório" }, 400);
     const sb = createClient(SUPABASE_URL, SERVICE);
 
+    // ROI atribuído do UNV Board: resultados reportados pelo cliente nas execuções.
+    // Entra no contexto da narrativa — a IA soma, destaca e compara com o investimento.
+    async function boardRoiCtx(client: any, projId: string): Promise<string> {
+      try {
+        const { data: bMember } = await client
+          .from("unv_board_members").select("id").eq("project_id", projId).maybeSingle();
+        if (!bMember) return "";
+        const { data: bResults } = await client
+          .from("unv_board_results")
+          .select("description, value_brl, metric_text, reported_at")
+          .eq("member_id", bMember.id)
+          .order("reported_at", { ascending: true })
+          .limit(60);
+        if (!bResults?.length) return "";
+        const totalBrl = bResults.reduce((s: number, r: any) => s + (Number(r.value_brl) || 0), 0);
+        return `\nRESULTADOS ATRIBUÍDOS AO UNV BOARD (reportados pelo cliente ao executar as ações — some, destaque na narrativa e, quando houver valor financeiro, compare com o investimento do programa de R$ 1.666/mês):\nTotal financeiro reportado: R$ ${totalBrl.toLocaleString("pt-BR")}\n` +
+          bResults.map((r: any) => `- ${(r.reported_at || "").slice(0, 10)} | ${r.description}${r.value_brl ? ` (R$ ${Number(r.value_brl).toLocaleString("pt-BR")})` : ""}${r.metric_text ? ` [${r.metric_text}]` : ""}`).join("\n");
+      } catch (_e) {
+        return "";
+      }
+    }
+
     // ---- cache diário: mesmo projeto + período + tipo no mesmo dia = mesmo relatório ----
     // (economia de tokens quando outro usuário — ou o envio automático — pede de novo)
     const dayBRT = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
@@ -220,6 +242,7 @@ Deno.serve(async (req) => {
       `\nRESULTADOS (KPI):`,
       `Faturamento total no período: R$ ${fatTotal.toLocaleString("pt-BR")} | Vendas: ${vendasTotal}`,
       `Faturamento mês a mês: ${fatSerie.map((s) => `${brMonth(s.mes)}=R$${Math.round(s.valor).toLocaleString("pt-BR")}`).join(", ") || "sem lançamentos"}`,
+      await boardRoiCtx(sb, project_id),
       `\nCONVERSAS DOS GRUPOS DE WHATSAPP:${groupSamples || " (sem grupos vinculados)"}`,
     ].join("\n");
 
