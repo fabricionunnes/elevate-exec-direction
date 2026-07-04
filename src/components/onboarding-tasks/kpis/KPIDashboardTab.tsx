@@ -134,10 +134,14 @@ const KPI_WIDGETS = [
   { id: "salespeople_table",   label: "Comparativo de Vendedores",     description: "Tabela comparativa detalhada entre vendedores" },
   { id: "performance",         label: "Comparação de Performance",     description: "Performance por unidade, setor ou equipe" },
   { id: "monthly_chart",       label: "Gráfico de Vendas Mensais",     description: "Evolução mensal dos KPIs" },
-  { id: "term_vision",         label: "Visão QTR / YTD / MAT",        description: "Visão acumulada por período" },
+  { id: "term_vision",         label: "Visão de Curto, Médio e Longo Prazo", description: "Visão acumulada QTR / YTD / MAT" },
   { id: "before_after",        label: "Antes vs Depois UNV",           description: "Comparação de resultados antes e depois" },
   { id: "cac",                 label: "Calculadora CAC",               description: "Custo de aquisição de clientes" },
   { id: "conversion",          label: "Taxa de Conversão",             description: "Funil de conversão detalhado" },
+  { id: "sales_funnel",        label: "Funil de Vendas",               description: "Conversão entre etapas do processo comercial" },
+  { id: "target_vs_realized",  label: "Meta x Realizado",              description: "Gráfico de meta versus realizado no período" },
+  { id: "daily_evolution",     label: "Evolução Diária / Ranking",     description: "Evolução diária dos KPIs e ranking de vendedores" },
+  { id: "sales_heatmap",       label: "Vendas por Dia (Semana e Mês)", description: "Vendas por dia da semana e por dia do mês" },
   { id: "avg_ticket",          label: "Ticket Médio",                  description: "Ticket médio por venda" },
   { id: "endomarketing",       label: "Endomarketing",                 description: "Campanhas internas" },
   { id: "gamification",        label: "Gamificação",                   description: "Pontuação e conquistas" },
@@ -2321,7 +2325,9 @@ export const KPIDashboardTab = ({
       )}
 
       {/* Monthly Sales Chart */}
-      {showWidget("monthly_chart") && hasMultipleMainGoalsForCharts ? (
+      {/* Desligado = some de verdade (antes o "senão" do ternário renderizava
+          a versão single mesmo com o widget desmarcado) */}
+      {showWidget("monthly_chart") && (hasMultipleMainGoalsForCharts ? (
         mainGoalKpisForCharts.map((kpi) => (
           <MonthlySalesChart
             key={`monthly-${kpi.id}`}
@@ -2360,11 +2366,11 @@ export const KPIDashboardTab = ({
           selectedSalesperson={selectedSalesperson}
           isClientView={isSalespersonView}
         />
-      )}
+      ))}
 
 
-      {/* Term Vision Card - QTR/YTD/MAT */}
-      {showWidget("term_vision") && hasMultipleMainGoalsForCharts ? (
+      {/* Term Vision Card - QTR/YTD/MAT (Visão de Curto, Médio e Longo Prazo) */}
+      {showWidget("term_vision") && (hasMultipleMainGoalsForCharts ? (
         mainGoalKpisForCharts.map((kpi) => (
           <ProjectTermVisionCard
             key={`term-${kpi.id}`}
@@ -2387,7 +2393,7 @@ export const KPIDashboardTab = ({
           selectedTeam={selectedTeam}
           selectedSector={selectedSector}
         />
-      )}
+      ))}
 
       {/* Sales Comparison Chart - Before vs After UNV */}
       {showWidget("before_after") && <SalesComparisonChart 
@@ -2733,7 +2739,8 @@ export const KPIDashboardTab = ({
         );
       })()}
 
-      {/* Sales Funnel Chart - Always show */}
+      {/* Sales Funnel Chart */}
+      {showWidget("sales_funnel") && (
       <Card className="relative overflow-hidden border-0 shadow-2xl bg-gradient-to-br from-card via-card to-card">
         {/* Decorative background layers */}
         <div className="absolute inset-0 bg-gradient-to-br from-violet-600/[0.04] via-fuchsia-500/[0.02] to-purple-600/[0.05] dark:from-violet-700/20 dark:via-fuchsia-600/10 dark:to-purple-800/15" />
@@ -2864,9 +2871,10 @@ export const KPIDashboardTab = ({
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* Target vs Realized Chart - per KPI when multiple main goals */}
-      {hasMultipleMainGoalsForCharts ? (
+      {showWidget("target_vs_realized") && (hasMultipleMainGoalsForCharts ? (
         <div className="space-y-4">
           {mainGoalKpisForCharts.map((kpi) => {
             const kpiTvR = getTargetVsRealizedData(kpi.id);
@@ -2984,10 +2992,10 @@ export const KPIDashboardTab = ({
             )}
           </CardContent>
         </Card>
-      )}
+      ))}
 
       {/* Charts Row - Daily Evolution + Ranking */}
-      {hasMultipleMainGoalsForCharts ? (
+      {showWidget("daily_evolution") && (hasMultipleMainGoalsForCharts ? (
         <div className="space-y-4">
           {mainGoalKpisForCharts.map((kpi) => {
             const kpiDailyData = getDailyChartData(kpi.id);
@@ -3165,7 +3173,7 @@ export const KPIDashboardTab = ({
           </CardContent>
         </Card>
         </div>
-      )}
+      ))}
 
       {/* Detailed KPI Table */}
       <Card className="relative overflow-hidden border-0 shadow-xl">
@@ -3238,8 +3246,8 @@ export const KPIDashboardTab = ({
         </CardContent>
       </Card>
 
-      {/* Sales Heatmap Charts */}
-      {hasMultipleMainGoalsForCharts ? (
+      {/* Sales Heatmap Charts — Vendas por Dia da Semana / do Mês */}
+      {showWidget("sales_heatmap") && (hasMultipleMainGoalsForCharts ? (
         mainGoalKpisForCharts.filter(k => k.kpi_type === "monetary").map((kpi) => (
           <SalesHeatmapCharts
             key={`heatmap-${kpi.id}`}
@@ -3261,7 +3269,7 @@ export const KPIDashboardTab = ({
           selectedTeam={selectedTeam}
           selectedSector={selectedSector}
         />
-      )}
+      ))}
 
       {/* Endomarketing Campaigns Widget */}
       {showWidget("endomarketing") && projectId && (
