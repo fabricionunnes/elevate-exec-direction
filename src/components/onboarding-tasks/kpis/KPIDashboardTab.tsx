@@ -218,17 +218,21 @@ export const KPIDashboardTab = ({
       });
   }, [companyId]);
 
+  // Salva automaticamente a cada toggle (o botão "Salvar" no rodapé passava
+  // despercebido — o staff desmarcava, via o próprio dashboard mudar em memória
+  // e o cliente continuava vendo tudo). select() detecta RLS silencioso.
   const saveWidgetConfig = async (config: Record<WidgetId, boolean>) => {
     setSavingWidgetConfig(true);
+    setWidgetConfig(config);
     try {
-      await supabase
+      const { data, error } = await supabase
         .from("onboarding_companies")
         .update({ dashboard_widget_config: config } as any)
-        .eq("id", companyId);
-      setWidgetConfig(config);
-      toast.success("Configuração salva");
+        .eq("id", companyId)
+        .select("id");
+      if (error || !data?.length) throw error || new Error("no rows");
     } catch {
-      toast.error("Erro ao salvar configuração");
+      toast.error("Erro ao salvar configuração dos widgets");
     } finally {
       setSavingWidgetConfig(false);
     }
@@ -1654,25 +1658,22 @@ export const KPIDashboardTab = ({
                     </div>
                     <Switch
                       checked={widgetConfig[widget.id as WidgetId] !== false}
+                      disabled={savingWidgetConfig}
                       onCheckedChange={(checked) => {
-                        const newConfig = { ...widgetConfig, [widget.id]: checked };
-                        setWidgetConfig(newConfig);
+                        // salva na hora — sem depender do botão no rodapé
+                        saveWidgetConfig({ ...widgetConfig, [widget.id]: checked });
                       }}
                     />
                   </div>
                 ))}
               </div>
-              <div className="mt-4 pt-4 border-t flex gap-2">
-                <Button
-                  className="flex-1"
-                  onClick={() => saveWidgetConfig(widgetConfig)}
-                  disabled={savingWidgetConfig}
-                >
-                  {savingWidgetConfig ? "Salvando..." : "Salvar Configuração"}
-                </Button>
-                <Button variant="outline" onClick={() => {
+              <div className="mt-4 pt-4 border-t flex items-center gap-2">
+                <p className="flex-1 text-xs text-muted-foreground">
+                  {savingWidgetConfig ? "Salvando..." : "As alterações são salvas automaticamente."}
+                </p>
+                <Button variant="outline" disabled={savingWidgetConfig} onClick={() => {
                   const all = Object.fromEntries(KPI_WIDGETS.map(w => [w.id, true])) as Record<WidgetId, boolean>;
-                  setWidgetConfig(all);
+                  saveWidgetConfig(all);
                 }}>
                   Mostrar Tudo
                 </Button>
