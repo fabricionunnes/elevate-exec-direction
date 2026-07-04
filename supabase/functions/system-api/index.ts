@@ -2090,6 +2090,126 @@ serve(async (req) => {
         },
       },
 
+      // ===== UNV BOARD (cérebro do cliente: jornada, documentos, resultados, sessões) =====
+      board: {
+        // Visão geral do membro: fase atual, progresso, prazos, resultados, NPS, sessões
+        context: async (c) => {
+          if (!c.companyId) return json({ error: "Parâmetro 'company_id' obrigatório" }, 400);
+          const { data: member } = await c.supabase
+            .from("unv_board_members")
+            .select("id, project_id, entry_date, status, plan_status, celebrated_phases")
+            .eq("company_id", c.companyId)
+            .maybeSingle();
+          if (!member) return json({ data: null, note: "Empresa não é membro do UNV Board" });
+
+          const PHASES = ["Cenário", "Resultado Ideal", "Estrutura", "Sistema de Captação", "Conversão", "Escala", "Revisão"];
+          let journey: any = null;
+          let nextDeadlines: any[] = [];
+          if (member.project_id) {
+            const { data: tasks } = await c.supabase
+              .from("onboarding_tasks")
+              .select("title, status, due_date, tags, board_form_url")
+              .eq("project_id", member.project_id)
+              .contains("tags", ["unv-board"])
+              .limit(300);
+            const byPhase: Record<string, { total: number; done: number }> = {};
+            for (const t of tasks || []) {
+              const phase = PHASES.find((p) => (t.tags || []).includes(p));
+              if (!phase) continue;
+              (byPhase[phase] ||= { total: 0, done: 0 });
+              byPhase[phase].total++;
+              if (t.status === "completed") byPhase[phase].done++;
+            }
+            const phasesDone = PHASES.filter((p) => byPhase[p] && byPhase[p].done === byPhase[p].total && byPhase[p].total > 0);
+            let idx = PHASES.findIndex((p) => byPhase[p] && byPhase[p].done < byPhase[p].total);
+            if (idx < 0) idx = PHASES.length - 1;
+            journey = { fase_atual: PHASES[idx], fases_concluidas: phasesDone, progresso: `${phasesDone.length}/7`, por_fase: byPhase };
+            const today = new Date().toISOString().substring(0, 10);
+            nextDeadlines = (tasks || [])
+              .filter((t: any) => t.status !== "completed" && t.due_date && t.due_date >= today)
+              .sort((a: any, b: any) => (a.due_date < b.due_date ? -1 : 1))
+              .slice(0, 5)
+              .map((t: any) => ({ title: t.title, due_date: t.due_date, link: t.board_form_url }));
+          }
+
+          const { data: results } = await c.supabase
+            .from("unv_board_results")
+            .select("description, value_brl, metric_text, reported_at")
+            .eq("member_id", member.id)
+            .order("reported_at", { ascending: false })
+            .limit(10);
+          const totalBrl = (results || []).reduce((s: number, r: any) => s + (Number(r.value_brl) || 0), 0);
+
+          const { data: nps } = await c.supabase
+            .from("unv_board_nps")
+            .select("cycle_days, score, answered_at")
+            .eq("member_id", member.id)
+            .eq("status", "answered")
+            .order("answered_at", { ascending: false })
+            .limit(3);
+
+          const { data: sessions } = await c.supabase
+            .from("unv_board_sessions")
+            .select("scheduled_at, status, meeting_link, agenda")
+            .eq("member_id", member.id)
+            .gte("scheduled_at", new Date().toISOString())
+            .order("scheduled_at")
+            .limit(3);
+
+          return json({
+            data: {
+              company_id: c.companyId,
+              entrada: member.entry_date,
+              jornada: journey,
+              proximos_prazos: nextDeadlines,
+              resultados_recentes: results || [],
+              resultado_total_atribuido_brl: totalBrl,
+              nps_recentes: nps || [],
+              proximas_sessoes: sessions || [],
+            },
+          });
+        },
+        // Documentos oficiais da empresa (playbook, diagnósticos, scripts...)
+        deliverables: async (c) => {
+          if (!c.companyId) return json({ error: "Parâmetro 'company_id' obrigatório" }, 400);
+          const { data, error } = await c.supabase
+            .from("unv_board_deliverables")
+            .select("id, type, title, version, status, created_at, company_id")
+            .eq("company_id", c.companyId)
+            .order("created_at", { ascending: false })
+            .limit(50);
+          if (error) throw error;
+          return json({ data: data || [] });
+        },
+        // Conteúdo de um documento (pra responder "o que diz meu playbook sobre X")
+        deliverable_get: async (c) => {
+          if (!c.companyId) return json({ error: "Parâmetro 'company_id' obrigatório" }, 400);
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data, error } = await c.supabase
+            .from("unv_board_deliverables")
+            .select("id, type, title, version, content_md, created_at, company_id")
+            .eq("id", c.id)
+            .eq("company_id", c.companyId) // trava de escopo: documento tem que ser da empresa
+            .maybeSingle();
+          if (error) throw error;
+          if (!data) return json({ error: "Documento não encontrado para esta empresa" }, 404);
+          return json({ data });
+        },
+        // Resultados atribuídos (ROI do Board)
+        results: async (c) => {
+          if (!c.companyId) return json({ error: "Parâmetro 'company_id' obrigatório" }, 400);
+          const { data, error } = await c.supabase
+            .from("unv_board_results")
+            .select("description, value_brl, metric_text, reported_at, company_id")
+            .eq("company_id", c.companyId)
+            .order("reported_at", { ascending: false })
+            .limit(100);
+          if (error) throw error;
+          const total = (data || []).reduce((s: number, r: any) => s + (Number(r.value_brl) || 0), 0);
+          return json({ data: data || [], resultado_total_brl: total });
+        },
+      },
+
       // ===== SYSTEM INFO =====
       system: {
         endpoints: async () => {
@@ -2098,6 +2218,7 @@ serve(async (req) => {
               companies: { actions: ["list", "get", "create", "update", "kickoff_link"], description: "Gerenciar empresas/clientes (kickoff_link retorna link do formulário de kickoff por empresa)" },
               projects: { actions: ["list", "get", "create", "set_monthly_goal"], description: "Projetos de clientes (listar, buscar, criar, definir meta mensal)" },
               tasks: { actions: ["list", "get", "create", "update", "delete"], description: "Gerenciar tarefas" },
+              board: { actions: ["context", "deliverables", "deliverable_get", "results"], description: "UNV Board (mentoria): jornada CRESCER e fase atual, documentos oficiais (playbook, diagnósticos, scripts — deliverable_get traz o conteúdo), resultados atribuídos (ROI) e próximas sessões" },
               staff: { actions: ["list"], description: "Listar colaboradores" },
               leads: { actions: ["list", "get", "create", "update", "delete", "move_stage", "win", "lose", "add_note"], description: "CRM completo" },
               tags: { actions: ["list", "create", "add_to_lead", "remove_from_lead", "lead_tags"], description: "Tags do CRM" },
