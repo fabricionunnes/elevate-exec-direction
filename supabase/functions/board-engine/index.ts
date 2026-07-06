@@ -16,6 +16,10 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const PUBLIC_DOMAIN = "https://unvholdings.com.br";
+// Horizonte de publicação: só vira tarefa no sistema o que cai nos próximos N dias.
+// O resto da jornada de 12 meses fica guardado como 'approved' e é publicado
+// automaticamente (roll-forward diário) conforme cada ação entra na janela.
+const HORIZON_DAYS = 60;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -333,52 +337,86 @@ async function publishPlan(supabase: any, memberId: string) {
     await supabase.from("unv_board_members").update({ project_id: projectId }).eq("id", memberId);
   }
 
+  // Só publica o que cai nos próximos HORIZON_DAYS. O resto vira 'approved' (guardado)
+  // e o roll-forward diário publica quando cada ação entrar na janela.
+  const horizon = new Date();
+  horizon.setDate(horizon.getDate() + HORIZON_DAYS);
+  const horizonStr = horizon.toISOString().substring(0, 10);
+
   let published = 0;
+  let deferred = 0;
   for (const a of actions) {
-    // Token do formulário público nasce junto com a tarefa (link vai na descrição)
-    const token = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, "");
-    const formUrl = `${PUBLIC_DOMAIN}/#/board/tarefa/${token}`;
-    const descParts = [a.description || ""];
-    if (a.deliverable_type) {
-      descParts.push(`\n\n[UNV Board] Esta ação gera o documento oficial: ${deliverableLabel(a.deliverable_type)}.`);
-    }
-    const { data: task, error: tErr } = await supabase
-      .from("onboarding_tasks")
-      .insert({
-        project_id: projectId,
-        title: a.title,
-        description: descParts.join(""),
-        due_date: a.due_date,
-        status: "pending",
-        tags: ["unv-board", a.phase_name || `Fase ${a.phase}`],
-        board_form_url: formUrl,
-      })
-      .select("id")
-      .single();
-    if (tErr) {
-      console.error(`Erro ao criar task "${a.title}":`, tErr.message);
+    if (a.due_date && a.due_date > horizonStr) {
+      // fora da janela: guarda como aprovada, não cria tarefa ainda
+      if (a.status !== "approved") {
+        await supabase.from("unv_board_plan_actions").update({ status: "approved" }).eq("id", a.id);
+      }
+      deferred++;
       continue;
     }
-    await supabase.from("unv_board_plan_actions")
-      .update({ status: "published", task_id: task.id })
-      .eq("id", a.id);
-    // O trigger de autocreate pode ter criado o form com token próprio — força o nosso
-    // (que já está na descrição) e o tipo certo
-    await supabase.from("unv_board_task_forms").upsert(
-      {
-        task_id: task.id,
-        member_id: memberId,
-        token,
-        form_type: a.deliverable_type || "diagnostico",
-      },
-      { onConflict: "task_id" }
-    );
-    published++;
+    const ok = await publishAction(supabase, memberId, projectId, a);
+    if (ok) published++;
   }
 
   await supabase.from("unv_board_members").update({ plan_status: "published" }).eq("id", memberId);
 
-  return json({ success: true, project_id: projectId, tasks_created: published, total_actions: actions.length });
+  return json({ success: true, project_id: projectId, tasks_created: published, deferred, total_actions: actions.length });
+}
+
+// Publica UMA ação do plano: cria a tarefa + formulário público e marca como published.
+async function publishAction(supabase: any, memberId: string, projectId: string, a: any): Promise<boolean> {
+  const token = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, "");
+  const formUrl = `${PUBLIC_DOMAIN}/#/board/tarefa/${token}`;
+  const descParts = [a.description || ""];
+  if (a.deliverable_type) {
+    descParts.push(`\n\n[UNV Board] Esta ação gera o documento oficial: ${deliverableLabel(a.deliverable_type)}.`);
+  }
+  const { data: task, error: tErr } = await supabase
+    .from("onboarding_tasks")
+    .insert({
+      project_id: projectId,
+      title: a.title,
+      description: descParts.join(""),
+      due_date: a.due_date,
+      status: "pending",
+      tags: ["unv-board", a.phase_name || `Fase ${a.phase}`],
+      board_form_url: formUrl,
+    })
+    .select("id")
+    .single();
+  if (tErr) {
+    console.error(`Erro ao criar task "${a.title}":`, tErr.message);
+    return false;
+  }
+  await supabase.from("unv_board_plan_actions")
+    .update({ status: "published", task_id: task.id })
+    .eq("id", a.id);
+  await supabase.from("unv_board_task_forms").upsert(
+    { task_id: task.id, member_id: memberId, token, form_type: a.deliverable_type || "diagnostico" },
+    { onConflict: "task_id" }
+  );
+  return true;
+}
+
+// Roll-forward diário: publica as ações 'approved' que entraram na janela de HORIZON_DAYS.
+async function rollPlans(supabase: any) {
+  const horizon = new Date();
+  horizon.setDate(horizon.getDate() + HORIZON_DAYS);
+  const horizonStr = horizon.toISOString().substring(0, 10);
+  const { data: due } = await supabase
+    .from("unv_board_plan_actions")
+    .select("*, unv_board_members!inner(id, project_id, status)")
+    .eq("status", "approved")
+    .lte("due_date", horizonStr)
+    .limit(500);
+  let published = 0;
+  for (const a of due || []) {
+    const m = (a as any).unv_board_members;
+    if (!m?.project_id || m.status !== "active") continue;
+    const ok = await publishAction(supabase, m.id, m.project_id, a);
+    if (ok) published++;
+  }
+  return published;
 }
 
 function deliverableLabel(type: string): string {
@@ -1063,7 +1101,10 @@ async function riskCron(supabase: any, dryRun: boolean) {
 
 async function npsCron(supabase: any) {
   const today = new Date();
-  const results = { sent: 0, skipped: 0, reconciled: 0, errors: [] as string[] };
+  const results = { sent: 0, skipped: 0, reconciled: 0, rolled: 0, errors: [] as string[] };
+
+  // Roll-forward diário da jornada: publica as ações que entraram na janela de 60 dias.
+  try { results.rolled = await rollPlans(supabase); } catch (e) { console.error("rollPlans:", e); }
 
   const { data: members } = await supabase
     .from("unv_board_members")
