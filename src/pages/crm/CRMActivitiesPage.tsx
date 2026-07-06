@@ -102,8 +102,15 @@ export const CRMActivitiesPage = () => {
   const loadActivities = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from("crm_activities")
+      // Closer/SDR/Social Setter: só veem atividades que criaram, que foram
+      // atribuídas a eles, ou de leads onde são o dono. A visibilidade é
+      // resolvida no banco (RPC crm_visible_activities, SETOF), permitindo
+      // embutir os joins e filtrar/ordenar como na visão de admin.
+      const base = (!isAdmin && staffId)
+        ? supabase.rpc("crm_visible_activities", { p_staff: staffId })
+        : supabase.from("crm_activities");
+
+      let query = base
         .select(`
           *,
           lead:crm_leads(
@@ -118,11 +125,6 @@ export const CRMActivitiesPage = () => {
           responsible:onboarding_staff!crm_activities_responsible_staff_id_fkey(name, avatar_url)
         `)
         .order("scheduled_at", { ascending: true });
-
-      // Closers/SDRs only see activities assigned to them
-      if (!isAdmin && staffId) {
-        query = query.eq("responsible_staff_id", staffId);
-      }
 
       if (filterStatus !== "all") {
         query = query.eq("status", filterStatus);

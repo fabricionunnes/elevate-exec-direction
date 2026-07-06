@@ -94,6 +94,7 @@ export async function createStageActivities(
         scheduled_at: scheduledAt,
         status: "pending",
         responsible_staff_id: staffId || null,
+        created_by: staffId || null,
         is_automation: isAutomation,
         automation_config: automationConfig,
       };
