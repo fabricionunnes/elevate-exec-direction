@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,11 +37,22 @@ const PHASE_NAMES: Record<number, string> = {
 };
 
 export const LeadSummaryGuide = ({ data, loading, onRegenerate }: Props) => {
+  // Se o guia salvo veio com erro (falha transitória da IA), regenera 1x
+  // sozinho — o guia é pra PREPARAR a reunião, não precisa de histórico.
+  const autoRetried = useRef(false);
+  const hasError = !loading && !!data && (!data.ai || (data.ai as any).error);
+  useEffect(() => {
+    if (hasError && !autoRetried.current) {
+      autoRetried.current = true;
+      onRegenerate();
+    }
+  }, [hasError, onRegenerate]);
+
   if (loading) return <GuideSkeleton />;
 
   if (!data) return (
     <div className="p-6 text-center text-muted-foreground text-sm">
-      Carregando guia de atendimento...
+      Preparando o guia de atendimento...
     </div>
   );
 
@@ -51,12 +63,12 @@ export const LeadSummaryGuide = ({ data, loading, onRegenerate }: Props) => {
       <div className="p-6 text-center space-y-3">
         <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto" />
         <p className="text-sm text-muted-foreground">
-          Ainda não há histórico suficiente para gerar o guia completo.<br />
-          Registre a primeira reunião para ativar esta função.
+          Não consegui montar o guia agora.<br />
+          Clique em Gerar guia — ele monta o roteiro da reunião com o que já se sabe do lead.
         </p>
         <Button variant="outline" size="sm" onClick={onRegenerate} className="gap-1.5">
           <RefreshCw className="h-3.5 w-3.5" />
-          Tentar novamente
+          Gerar guia
         </Button>
       </div>
     );

@@ -653,19 +653,23 @@ IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown. Se
       })),
     };
 
-    // Save summary to database (upsert)
-    try {
-      await supabase
-        .from("crm_lead_summaries")
-        .upsert({
-          lead_id: leadId,
-          summary_type: type,
-          summary_data: responseData,
-          generated_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "lead_id,summary_type" });
-    } catch (saveErr) {
-      console.error("Save summary error (non-critical):", saveErr);
+    // Save summary to database (upsert) — NUNCA persiste resposta com erro de
+    // parse: senão uma falha transitória da IA fica "grudada" e o front mostra
+    // pra sempre "sem histórico" mesmo com a função funcionando.
+    if (!parsed?.error) {
+      try {
+        await supabase
+          .from("crm_lead_summaries")
+          .upsert({
+            lead_id: leadId,
+            summary_type: type,
+            summary_data: responseData,
+            generated_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "lead_id,summary_type" });
+      } catch (saveErr) {
+        console.error("Save summary error (non-critical):", saveErr);
+      }
     }
 
     // Log access
