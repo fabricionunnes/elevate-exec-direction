@@ -1323,6 +1323,14 @@ const OnboardingProjectPage = () => {
                     <Wand2 className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Gerar Tarefas</span>
                   </Button>
+                  <Button variant="outline" size="sm" onClick={createWhatsAppGroup} disabled={creatingGroup}>
+                    {creatingGroup ? (
+                      <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                    ) : (
+                      <MessageCircle className="h-4 w-4 sm:mr-2" />
+                    )}
+                    <span className="hidden sm:inline">Criar grupo</span>
+                  </Button>
                 </>
               )}
               <Button variant="outline" size="sm" onClick={() => setShowUsersDialog(true)}>
