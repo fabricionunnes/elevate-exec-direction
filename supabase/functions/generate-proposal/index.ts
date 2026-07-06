@@ -77,8 +77,8 @@ Responda APENAS com JSON válido (sem markdown, sem comentários):
   "antes_depois": [{"hoje": "frase do estado atual", "meta": "frase do estado desejado"}],
   "solucao_intro": "1 a 2 frases introduzindo a solução/serviço",
   "entregas": ["entrega 1", "entrega 2", "..."],
-  "investimento": "valor combinado na reunião OU 'A combinar'",
-  "forma_pagamento": "forma combinada na reunião OU 'A combinar'",
+  "investimento": "APENAS o valor principal, curto (ex.: 'R$ 2.000/mês', 'R$ 24.000/ano', 'R$ 3.000/mês'). NÃO coloque aqui condições, créditos, devoluções nem parcelamento — isso vai em forma_pagamento. OU 'A combinar'",
+  "forma_pagamento": "condições em frase(s) curta(s): parcelamento, crédito/devolução negociada, carência, setup, mudança de valor a partir de tal mês. Ex.: '3 primeiros meses sem custo (crédito de R$ 6.000 existente); a partir do 4º mês R$ 3.000/mês, renegociável'. OU 'A combinar'",
   "prazo": "prazo/vigência se mencionado, senão ''",
   "proximos_passos": [{"titulo": "string curto", "descricao": "1 frase"}],
   "cta": "uma frase de fechamento (ex.: 'Quando quiser bater meta todo mês — é só chamar.')"

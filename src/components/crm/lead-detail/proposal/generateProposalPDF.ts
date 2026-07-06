@@ -261,22 +261,52 @@ export async function generateProposalPDF({ proposal, leadName, companyName, ser
   startSection("05", "Investimento", "O investimento");
   const inv = proposal.investimento || "A combinar";
   const fpg = proposal.forma_pagamento || "A combinar";
-  ensure(46);
-  const boxH = 38;
-  const leftW = CW * 0.56;
+  // Caixa DINÂMICA: valor e forma de pagamento podem ter muito texto
+  // (ex.: devolução/crédito negociado) — as duas colunas quebram em linhas e
+  // a altura cresce pra caber tudo, sem sobreposição.
+  const padX = 8;
+  const gap = 6;
+  const leftW = CW * 0.52;
+  const rightW = CW - leftW - gap; // coluna direita (forma de pagamento)
+
+  // Valor: reduz a fonte só o necessário e quebra em linhas dentro da coluna esquerda
+  doc.setFont("helvetica", "bold");
+  let vSize = 20; doc.setFontSize(vSize);
+  let invLines = doc.splitTextToSize(inv, leftW - padX * 2) as string[];
+  while (vSize > 11 && invLines.length > 3) { vSize -= 1; doc.setFontSize(vSize); invLines = doc.splitTextToSize(inv, leftW - padX * 2) as string[]; }
+  const invLineH = vSize * 0.42; // mm por linha (jsPDF em mm, fonte em pt)
+
+  // Forma de pagamento: quebra na coluna direita
+  const fpgLines = doc.splitTextToSize(fpg, rightW - padX * 2) as string[];
+  const fpgLineH = 4.6;
+
+  // Altura de cada coluna a partir do topo da caixa
+  const leftStack = 12 /* kicker */ + invLines.length * invLineH
+    + (proposal.prazo ? 6 : 0);
+  const rightStack = 10 /* label */ + 2 + fpgLines.length * fpgLineH;
+  const boxH = Math.max(34, leftStack, rightStack) + 8;
+
+  ensure(boxH + 10);
   setFill(NAVY); doc.roundedRect(M, y, CW, boxH, 3, 3, "F");
   setFill(RED); doc.rect(M, y, 2.2, boxH, "F");
-  kicker(servico, M + 8, y + 9, [150, 170, 200]);
-  // valor: auto-ajusta a fonte pra caber na coluna esquerda (não invadir a forma de pagamento)
-  doc.setFont("helvetica", "bold");
-  let vSize = 21; doc.setFontSize(vSize);
-  while (vSize > 12 && doc.getTextWidth(inv) > leftW - 8) { vSize -= 1; doc.setFontSize(vSize); }
-  setColor([255, 255, 255]); doc.text(inv, M + 8, y + 21);
+
+  // Coluna esquerda: serviço + valor + vigência
+  kicker(servico, M + padX, y + 8, [150, 170, 200]);
+  setColor([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(vSize);
+  let ly = y + 12 + invLineH;
+  invLines.forEach((ln) => { doc.text(ln, M + padX, ly); ly += invLineH; });
+  if (proposal.prazo) {
+    setColor([150, 170, 200]); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+    doc.text(`Vigência: ${proposal.prazo}`, M + padX, y + boxH - 4, { maxWidth: leftW - padX });
+  }
+
+  // Coluna direita: forma de pagamento
+  const rightX = W - M - padX;
   setColor([170, 188, 214]); doc.setFont("helvetica", "normal"); doc.setFontSize(8.5);
-  doc.text("FORMA DE PAGAMENTO", W - M - 8, y + 9, { align: "right" });
-  setColor([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(10.5);
-  doc.splitTextToSize(fpg, CW - leftW - 12).forEach((ln: string, i: number) => doc.text(ln, W - M - 8, y + 17 + i * 5, { align: "right" }));
-  if (proposal.prazo) { setColor([150, 170, 200]); doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.text(`Vigência: ${proposal.prazo}`, M + 8, y + boxH - 4); }
+  doc.text("FORMA DE PAGAMENTO", rightX, y + 8, { align: "right" });
+  setColor([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+  fpgLines.forEach((ln, i) => doc.text(ln, rightX, y + 15 + i * fpgLineH, { align: "right" }));
+
   y += boxH + 9;
   if (entregas.length) {
     kicker("O que está incluído", M, y, RED); y += 7;
