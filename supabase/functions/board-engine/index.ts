@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
     if (action === "nps_cron") return await npsCron(supabase);
     if (action === "risk_cron") return await riskCron(supabase, body.dry_run === true);
     if (action === "generate_deliverable") return await generateDeliverable(supabase, body);
-    if (action === "create_group") return await createGroup(body.company_id);
+    if (action === "create_group") return await createGroup(body.company_id, body.project_id);
 
     return json({ error: `Ação desconhecida: ${action}` }, 400);
   } catch (e: any) {
@@ -91,16 +91,18 @@ function json(data: unknown, status = 200) {
   });
 }
 
-// Cria/reprocessa o grupo de WhatsApp do Board (proxy pra função do projeto Marcelo)
-async function createGroup(companyId: string) {
-  if (!companyId) return json({ error: "company_id obrigatório" }, 400);
+// Cria/reprocessa o grupo de WhatsApp (proxy pra função do projeto Marcelo).
+// project_id → grupo do serviço "[Empresa] - [Serviço]"; company_id → grupo do Board.
+async function createGroup(companyId?: string, projectId?: string) {
+  if (!companyId && !projectId) return json({ error: "company_id ou project_id obrigatório" }, 400);
   const secret = Deno.env.get("BOARD_GROUP_SECRET");
   if (!secret) return json({ error: "BOARD_GROUP_SECRET não configurada" }, 500);
   try {
+    const payload: any = projectId ? { project_id: projectId } : { company_id: companyId };
     const r = await fetch("https://kktocqnwlmmxjzgmnxgs.supabase.co/functions/v1/marcelo-board-group", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-scheduler-secret": secret },
-      body: JSON.stringify({ company_id: companyId }),
+      body: JSON.stringify(payload),
     });
     const data = await r.json().catch(() => ({}));
     return json(data, r.ok ? 200 : 500);

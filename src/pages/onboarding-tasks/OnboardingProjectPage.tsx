@@ -59,7 +59,7 @@ import { AdsBriefingSection } from "@/components/social/strategy/AdsBriefingSect
 import { StrategicDiagnosticModule } from "@/components/client-diagnostic/StrategicDiagnosticModule";
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
 import { GeneratePDFTasksDialog } from "@/components/onboarding-tasks/GeneratePDFTasksDialog";
-import { Settings, Sparkles, Building2, Wand2, UserCircle, Route, LayoutList, CalendarDays, LogOut, FileUp, BarChart3 as PanelIcon, Columns3, FileText, Loader2 } from "lucide-react";
+import { Settings, Sparkles, Building2, Wand2, UserCircle, Route, LayoutList, CalendarDays, LogOut, FileUp, BarChart3 as PanelIcon, Columns3, FileText, Loader2, MessageCircle } from "lucide-react";
 import { generateProjectFullReportPDF, type ReportPeriod, type ReportKind } from "@/components/project-report/generateProjectFullReportPDF";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
@@ -262,6 +262,26 @@ const OnboardingProjectPage = () => {
   const [isStaffAdmin, setIsStaffAdmin] = useState(false);
   const [showGenerateTasksDialog, setShowGenerateTasksDialog] = useState(false);
   const [showPDFTasksDialog, setShowPDFTasksDialog] = useState(false);
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const createWhatsAppGroup = async () => {
+    if (!projectId) return;
+    setCreatingGroup(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("board-engine", {
+        body: { action: "create_group", project_id: projectId },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      if (data?.already) toast.info(`Grupo já existe: ${data.group_name}`);
+      else if (data?.success) toast.success(`Grupo "${data.group_name}" criado com o time e o dono`);
+      else toast.info("Solicitação enviada");
+    } catch (e: any) {
+      console.error("Erro ao criar grupo:", e);
+      toast.error(e?.message || "Erro ao criar o grupo");
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
   const [tasksViewMode, setTasksViewMode] = useState<"trail" | "list" | "schedule" | "panel" | "kanban">("trail");
   const [staffList, setStaffList] = useState<{ id: string; name: string; role: string }[]>([]);
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
@@ -1230,6 +1250,14 @@ const OnboardingProjectPage = () => {
                       </DropdownMenuItem>
                     </>
                   )}
+                  <DropdownMenuItem onClick={createWhatsAppGroup} disabled={creatingGroup}>
+                    {creatingGroup ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Criar grupo WhatsApp
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowUsersDialog(true)}>
                     <Users className="h-4 w-4 mr-2" />
                     Usuários ({users.length})
