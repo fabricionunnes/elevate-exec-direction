@@ -42,6 +42,7 @@ import {
   FolderOpen,
   ListChecks,
   Users,
+  MessageCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -285,6 +286,30 @@ export function BoardMembersTab({ onOpenDeliverables }: BoardMembersTabProps) {
     }
   };
 
+  const [creatingGroupId, setCreatingGroupId] = useState<string | null>(null);
+  const createGroup = async (member: BoardMember) => {
+    setCreatingGroupId(member.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("board-engine", {
+        body: { action: "create_group", company_id: member.company_id },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      if (data?.already) {
+        toast.info(`Grupo já existe: ${data.group_name}`);
+      } else if (data?.success) {
+        toast.success("Grupo de WhatsApp criado com dono, Eva, Yasmim e Fabrício");
+      } else {
+        toast.info("Solicitação enviada");
+      }
+    } catch (err: any) {
+      console.error("Erro ao criar grupo:", err);
+      toast.error(err?.message || "Erro ao criar o grupo");
+    } finally {
+      setCreatingGroupId(null);
+    }
+  };
+
   const generatePlan = async (member: BoardMember) => {
     setGeneratingIds((prev) => new Set(prev).add(member.id));
     toast.info(`Gerando plano de ${member.company_name} — leva de 60 a 90 segundos`);
@@ -472,6 +497,20 @@ export function BoardMembersTab({ onOpenDeliverables }: BoardMembersTabProps) {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2 flex-wrap">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={creatingGroupId === member.id}
+                            title="Cria (ou reprocessa) o grupo de WhatsApp da empresa com o dono, Eva, Yasmim e Fabrício"
+                            onClick={() => createGroup(member)}
+                          >
+                            {creatingGroupId === member.id ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <MessageCircle className="h-4 w-4 mr-1" />
+                            )}
+                            Grupo
+                          </Button>
                           {member.plan_status === "pending" && (
                             <Button
                               size="sm"
