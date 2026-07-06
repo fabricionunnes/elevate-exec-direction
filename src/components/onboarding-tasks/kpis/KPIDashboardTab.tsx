@@ -409,8 +409,10 @@ export const KPIDashboardTab = ({
     
     // Patterns for "receita" (actual cash received, money in)
     const receitaPatterns = [
-      'receita', 'recebido', 'recebimento', 'entrada', 'caixa', 
-      'dinheiro', 'pagamento recebido', 'pago', 'baixado'
+      'receita', 'recebido', 'recebimento', 'entrada', 'caixa',
+      'dinheiro', 'pagamento recebido', 'pago', 'baixado',
+      // Cash Collected (dinheiro efetivamente recebido) — não é faturamento
+      'cash', 'collected', 'colleted', 'cash collected', 'cash colleted'
     ];
     
     // Check for receita first (more specific pattern like "dinheiro que entrou")
@@ -1372,6 +1374,14 @@ export const KPIDashboardTab = ({
     const proposalsKpi = findKpiByPattern(['proposta', 'propostas', 'orçamento', 'orcamento', 'cotação', 'cotacao']);
     const salesKpi = findKpiByPattern(['venda', 'vendas', 'fechamento', 'fechamentos', 'qtd venda', 'quantidade venda']);
     const revenueKpi = kpis.find(k => k.kpi_type === 'monetary');
+    // Ticket médio deve sair do FATURAMENTO (valor faturado), não de "Cash Collected"/receita.
+    // Quando a empresa tem os dois KPIs monetários, prefere o de faturamento; senão cai no 1º monetário.
+    const monetaryGroups = groupMonetaryKpisByCategory(kpis);
+    const faturamentoKpi = monetaryGroups.faturamento[0] || monetaryGroups.other[0] || revenueKpi;
+    // Base da conversão: "Contatos realizados" (topo de funil real) quando existir.
+    const contatosRealizadosKpi =
+      kpis.find(k => { const n = k.name.toLowerCase(); return n.includes('contato') && n.includes('realizad'); })
+      || findKpiByPattern(['contatos', 'contato']);
 
     // Calculate totals for each found KPI
     const getKpiTotal = (kpi: KPI | undefined | null) => {
@@ -1388,6 +1398,8 @@ export const KPIDashboardTab = ({
     const totalProposals = getKpiTotal(proposalsKpi);
     const totalSales = getKpiTotal(salesKpi);
     const totalRevenue = getKpiTotal(revenueKpi);
+    const totalFaturamento = getKpiTotal(faturamentoKpi);
+    const totalContatosRealizados = getKpiTotal(contatosRealizadosKpi);
 
     // Build conversion stages dynamically based on available data
     // Priority order: Leads → Atendimentos → Visitas → Calls Agendadas → Calls com Pitch → Propostas → Vendas
@@ -1437,10 +1449,13 @@ export const KPIDashboardTab = ({
       }
     }
 
-    // Calculate overall conversion: use Calls com Pitch as base if available, otherwise first stage
-    const conversionBase = pitchKpi && totalPitch > 0
-      ? { name: 'Calls c/ Pitch', value: totalPitch }
-      : conversionStages[0];
+    // Taxa de conversão = vendas realizadas / contatos realizados quando a empresa tem esse KPI.
+    // Senão mantém o comportamento antigo (Calls c/ Pitch → 1ª etapa do funil).
+    const conversionBase = contatosRealizadosKpi && totalContatosRealizados > 0
+      ? { name: contatosRealizadosKpi.name, value: totalContatosRealizados }
+      : pitchKpi && totalPitch > 0
+        ? { name: 'Calls c/ Pitch', value: totalPitch }
+        : conversionStages[0];
     const overallConversion = conversionBase && conversionBase.value > 0 && totalSales > 0
       ? (totalSales / conversionBase.value) * 100
       : 0;
@@ -1450,8 +1465,8 @@ export const KPIDashboardTab = ({
     const proposalToSale = totalProposals > 0 ? (totalSales / totalProposals) * 100 : 0;
     const leadToSale = totalLeads > 0 ? (totalSales / totalLeads) * 100 : 0;
 
-    // Calculate average ticket
-    const avgTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
+    // Ticket médio = faturamento / vendas (usa faturamento, nunca cash collected)
+    const avgTicket = totalSales > 0 ? totalFaturamento / totalSales : 0;
 
     // Calculate average daily sales
     const periodStart = new Date(dateRange.start);

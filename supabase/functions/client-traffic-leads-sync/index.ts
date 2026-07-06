@@ -48,13 +48,25 @@ Deno.serve(async (req) => {
       let inserted = 0;
       let permissionError = false;
       try {
+        // A Meta só entrega leads de Lead Ads com token de PÁGINA (user token
+        // dá erro #100 mesmo com leads_retrieval). Busca as páginas do usuário
+        // e o token de cada uma.
+        const pageTokens = new Map<string, string>();
+        const pagesRes = await fetch(
+          `${GRAPH}/me/accounts?fields=id,access_token&limit=100&access_token=${acc.access_token}`,
+        );
+        const pagesData = await pagesRes.json();
+        for (const p of pagesData.data || []) {
+          if (p.id && p.access_token) pageTokens.set(String(p.id), p.access_token);
+        }
+
         // Anúncios da conta (ativos primeiro; inclui pausados recentes pra não
         // perder lead). meta_ads_accounts guarda o id já com prefixo "act_".
         const actId = String(acc.ad_account_id).startsWith("act_")
           ? acc.ad_account_id
           : `act_${acc.ad_account_id}`;
         const adsRes = await fetch(
-          `${GRAPH}/${actId}/ads?fields=id,name,effective_status&limit=100&access_token=${acc.access_token}`,
+          `${GRAPH}/${actId}/ads?fields=id,name,effective_status,creative{effective_object_story_id}&limit=100&access_token=${acc.access_token}`,
         );
         const adsData = await adsRes.json();
         if (adsData.error) {
@@ -68,8 +80,12 @@ Deno.serve(async (req) => {
         // Leads dos últimos 90 dias por anúncio
         const since = Math.floor(Date.now() / 1000) - 90 * 86400;
         for (const ad of ads) {
+          // página do anúncio (story id = "pageid_postid") → token da página
+          const storyId = String(ad.creative?.effective_object_story_id || "");
+          const pageId = storyId.split("_")[0];
+          const leadToken = pageTokens.get(pageId) || acc.access_token;
           const leadsRes = await fetch(
-            `${GRAPH}/${ad.id}/leads?fields=id,created_time,field_data&limit=100&filtering=[{"field":"time_created","operator":"GREATER_THAN","value":${since}}]&access_token=${acc.access_token}`,
+            `${GRAPH}/${ad.id}/leads?fields=id,created_time,field_data&limit=100&filtering=[{"field":"time_created","operator":"GREATER_THAN","value":${since}}]&access_token=${leadToken}`,
           );
           const leadsData = await leadsRes.json();
           if (leadsData.error) {
