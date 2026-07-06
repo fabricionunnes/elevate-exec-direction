@@ -261,51 +261,53 @@ export async function generateProposalPDF({ proposal, leadName, companyName, ser
   startSection("05", "Investimento", "O investimento");
   const inv = proposal.investimento || "A combinar";
   const fpg = proposal.forma_pagamento || "A combinar";
-  // Caixa DINÂMICA: valor e forma de pagamento podem ter muito texto
-  // (ex.: devolução/crédito negociado) — as duas colunas quebram em linhas e
-  // a altura cresce pra caber tudo, sem sobreposição.
+  // Caixa DINÂMICA em LINHAS (não colunas): valor grande em cima e a forma de
+  // pagamento como uma faixa de largura total embaixo — assim o texto longo
+  // (ex.: devolução/crédito negociado) tem espaço e não empilha letra por letra.
   const padX = 8;
-  const gap = 6;
-  const leftW = CW * 0.52;
-  const rightW = CW - leftW - gap; // coluna direita (forma de pagamento)
+  const innerW = CW - padX * 2; // largura útil pro texto (evita a barra vermelha)
 
-  // Valor: reduz a fonte só o necessário e quebra em linhas dentro da coluna esquerda
+  // Valor: fonte grande, quebra na largura toda da caixa se precisar
   doc.setFont("helvetica", "bold");
-  let vSize = 20; doc.setFontSize(vSize);
-  let invLines = doc.splitTextToSize(inv, leftW - padX * 2) as string[];
-  while (vSize > 11 && invLines.length > 3) { vSize -= 1; doc.setFontSize(vSize); invLines = doc.splitTextToSize(inv, leftW - padX * 2) as string[]; }
-  const invLineH = vSize * 0.42; // mm por linha (jsPDF em mm, fonte em pt)
+  let vSize = 22; doc.setFontSize(vSize);
+  let invLines = doc.splitTextToSize(inv, innerW) as string[];
+  while (vSize > 12 && invLines.length > 2) { vSize -= 1; doc.setFontSize(vSize); invLines = doc.splitTextToSize(inv, innerW) as string[]; }
+  const invLineH = vSize * 0.42; // mm por linha
 
-  // Forma de pagamento: quebra na coluna direita
-  const fpgLines = doc.splitTextToSize(fpg, rightW - padX * 2) as string[];
-  const fpgLineH = 4.6;
+  // Forma de pagamento: linha de largura total
+  doc.setFont("helvetica", "normal"); doc.setFontSize(9.5);
+  const fpgLines = doc.splitTextToSize(fpg, innerW) as string[];
+  const fpgLineH = 4.8;
 
-  // Altura de cada coluna a partir do topo da caixa
-  const leftStack = 12 /* kicker */ + invLines.length * invLineH
-    + (proposal.prazo ? 6 : 0);
-  const rightStack = 10 /* label */ + 2 + fpgLines.length * fpgLineH;
-  const boxH = Math.max(34, leftStack, rightStack) + 8;
+  // Empilhamento vertical: kicker → valor → label → forma de pgto → vigência
+  const valueBlockH = invLines.length * invLineH;
+  const fpgBlockH = fpgLines.length * fpgLineH;
+  const boxH = 8 /* topo→kicker */ + 4 + valueBlockH + 7 /* gap+label */
+    + fpgBlockH + (proposal.prazo ? 7 : 0) + 7;
 
   ensure(boxH + 10);
   setFill(NAVY); doc.roundedRect(M, y, CW, boxH, 3, 3, "F");
   setFill(RED); doc.rect(M, y, 2.2, boxH, "F");
 
-  // Coluna esquerda: serviço + valor + vigência
+  // Linha 1: serviço (kicker) + valor
   kicker(servico, M + padX, y + 8, [150, 170, 200]);
   setColor([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(vSize);
-  let ly = y + 12 + invLineH;
-  invLines.forEach((ln) => { doc.text(ln, M + padX, ly); ly += invLineH; });
+  let cy = y + 12 + invLineH;
+  invLines.forEach((ln) => { doc.text(ln, M + padX, cy); cy += invLineH; });
+
+  // Linha 2: forma de pagamento (largura total)
+  cy += 3;
+  setColor([170, 188, 214]); doc.setFont("helvetica", "normal"); doc.setFontSize(8.5);
+  doc.text("FORMA DE PAGAMENTO", M + padX, cy);
+  cy += 5;
+  setColor([236, 241, 248]); doc.setFont("helvetica", "normal"); doc.setFontSize(9.5);
+  fpgLines.forEach((ln) => { doc.text(ln, M + padX, cy); cy += fpgLineH; });
+
+  // Vigência no rodapé da caixa
   if (proposal.prazo) {
     setColor([150, 170, 200]); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-    doc.text(`Vigência: ${proposal.prazo}`, M + padX, y + boxH - 4, { maxWidth: leftW - padX });
+    doc.text(`Vigência: ${proposal.prazo}`, M + padX, y + boxH - 4, { maxWidth: innerW });
   }
-
-  // Coluna direita: forma de pagamento
-  const rightX = W - M - padX;
-  setColor([170, 188, 214]); doc.setFont("helvetica", "normal"); doc.setFontSize(8.5);
-  doc.text("FORMA DE PAGAMENTO", rightX, y + 8, { align: "right" });
-  setColor([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(10);
-  fpgLines.forEach((ln, i) => doc.text(ln, rightX, y + 15 + i * fpgLineH, { align: "right" }));
 
   y += boxH + 9;
   if (entregas.length) {
