@@ -321,7 +321,11 @@ export function personalVisitorSeat(room: OfficeRoom): { x: number; z: number; r
   return { x: room.x - 0.55, z: deskZ - 1.4, rot: 0 }
 }
 
-/** Garante a sala pessoal do usuário (cria na ala privada se não existir). */
+/** Garante a sala pessoal do usuário.
+ * A ala privada já vem com os 16 slots criados (várias "Sala vazia" sem dono).
+ * Um usuário novo REIVINDICA uma sala vazia existente — não adianta tentar
+ * "criar" porque todos os slots já estão ocupados por linhas de sala e o
+ * findFreeSlot nunca acha vaga (era por isso que o novato entrava sem sala). */
 export async function ensurePersonalRoom(
   userId: string,
   userName: string,
@@ -331,6 +335,26 @@ export async function ensurePersonalRoom(
   const existing = rooms.find((r) => r.roomType === 'personal' && r.ownerUserId === userId)
   if (existing) return existing
   const firstName = userName.split(' ')[0]
+
+  // 1) Reivindica uma sala pessoal vazia (owner nulo). Só as placeholder "Sala vazia"
+  //    são reivindicáveis — salas sem dono mas com nome próprio (ex.: "Marcelo Almeida",
+  //    reservada do NPC) ficam de fora. O filtro is('owner_user_id', null) no UPDATE
+  //    evita corrida: se outro novato pegou primeiro, esta linha volta vazia e tentamos a próxima.
+  const emptyRooms = rooms.filter(
+    (r) => r.roomType === 'personal' && !r.ownerUserId && r.name === 'Sala vazia'
+  )
+  for (const empty of emptyRooms) {
+    const { data, error } = await supabase
+      .from('office_team_rooms' as never)
+      .update({ owner_user_id: userId, name: `Sala ${firstName}`, color } as never)
+      .eq('id', empty.id)
+      .is('owner_user_id', null)
+      .select('*')
+      .maybeSingle()
+    if (!error && data) return mapRow(data as unknown as Record<string, unknown>)
+  }
+
+  // 2) Sem sala vazia disponível → cria nova num slot livre (raro).
   const result = await createRoom({
     name: `Sala ${firstName}`,
     type: 'personal',
