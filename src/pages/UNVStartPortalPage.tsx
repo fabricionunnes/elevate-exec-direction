@@ -114,6 +114,17 @@ async function invokeEngine(body: Record<string, unknown>): Promise<any> {
   return data;
 }
 
+// Máscara de moeda BRL — dígitos entram como centavos: "100000" -> "R$ 1.000,00"
+function maskCurrency(input: string): string {
+  const digits = (input || "").replace(/\D/g, "");
+  if (!digits) return "";
+  const cents = parseInt(digits, 10);
+  return (cents / 100).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
 function arrayBufferToBase64(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
   let bin = "";
@@ -257,6 +268,18 @@ export default function UNVStartPortalPage() {
     }
   };
 
+  // autosave local: guarda o que o cliente digita pra não perder se sair no meio (mesmo navegador)
+  useEffect(() => {
+    if (view !== "module" || activeStep == null || !token || preview) return;
+    try {
+      if (Object.keys(formValues).length > 0) {
+        localStorage.setItem(`unvstart_draft_${token}_${activeStep}`, JSON.stringify(formValues));
+      }
+    } catch {
+      /* ignora storage cheio/indisponível */
+    }
+  }, [formValues, view, activeStep, token, preview]);
+
   const openModule = async (step: number) => {
     if (!token) return;
     setActiveStep(step);
@@ -277,9 +300,17 @@ export default function UNVStartPortalPage() {
         for (const q of mod.questions) {
           const v = (existing.form_data as Record<string, unknown>)[q.key];
           if (Array.isArray(v)) seed[q.key] = v.map((x) => String(x)).join("\n");
-          else if (v != null) seed[q.key] = String(v);
+          else if (v != null) seed[q.key] = q.type === "currency" ? maskCurrency(String(v)) : String(v);
         }
         setFormValues(seed);
+      } else {
+        // sem rascunho no servidor — tenta recuperar o que ele digitou antes de sair (mesmo navegador)
+        try {
+          const cached = localStorage.getItem(`unvstart_draft_${token}_${step}`);
+          if (cached) setFormValues(JSON.parse(cached));
+        } catch {
+          /* ignora */
+        }
       }
     } catch (err: any) {
       console.error("Erro ao carregar o módulo:", err);
@@ -361,6 +392,12 @@ export default function UNVStartPortalPage() {
       });
       doc.save(fileName);
       toast.success("Documento finalizado. Próximo módulo liberado.");
+      // limpa o rascunho local desse documento (já foi finalizado)
+      try {
+        localStorage.removeItem(`unvstart_draft_${token}_${activeStep}`);
+      } catch {
+        /* ignora */
+      }
       // recarrega estado (destrava o próximo) e volta pra central
       setPreview(null);
       setModuleDetail(null);
@@ -634,7 +671,20 @@ export default function UNVStartPortalPage() {
             {moduleDetail.questions.map((q) => (
               <div key={q.key} className="space-y-2">
                 <Label className="font-medium">{q.label}</Label>
-                {q.type === "text" ? (
+                {q.type === "currency" ? (
+                  <Input
+                    inputMode="numeric"
+                    value={formValues[q.key] || ""}
+                    placeholder="R$ 0,00"
+                    disabled={generating}
+                    onChange={(e) =>
+                      setFormValues((v) => ({
+                        ...v,
+                        [q.key]: maskCurrency(e.target.value),
+                      }))
+                    }
+                  />
+                ) : q.type === "text" ? (
                   <Input
                     value={formValues[q.key] || ""}
                     placeholder={q.placeholder}

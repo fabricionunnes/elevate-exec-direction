@@ -2215,6 +2215,11 @@ const OnboardingTasksPage = () => {
                     <DropdownMenuSeparator />
                   </>
                 )}
+                <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/unv-start")}>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  UNV Start (clientes)
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <div className="px-2 py-2">
                   <Input
                     placeholder="Buscar empresa..."

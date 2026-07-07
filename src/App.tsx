@@ -127,6 +127,7 @@ const OnboardingTasksPage = lazy(() => import("./pages/onboarding-tasks/Onboardi
 const OnboardingProjectPage = lazy(() => import("./pages/onboarding-tasks/OnboardingProjectPage"));
 const CommercialActionsDashboardPage = lazy(() => import("./pages/onboarding-tasks/CommercialActionsDashboardPage"));
 const OnboardingCompaniesPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCompaniesPage"));
+const UNVStartClientsPage = lazy(() => import("./pages/onboarding-tasks/UNVStartClientsPage"));
 const OnboardingCompanyDetailPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCompanyDetailPage"));
 const OnboardingStaffPage = lazy(() => import("./pages/onboarding-tasks/OnboardingStaffPage"));
 const ClientOnboardingPage = lazy(() => import("./pages/onboarding-tasks/ClientOnboardingPage"));
@@ -467,6 +468,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks" element={<OnboardingTasksPage />} />
               <Route path="/onboarding-tasks/login" element={<OnboardingLoginPage />} />
               <Route path="/onboarding-tasks/companies" element={<OnboardingCompaniesPage />} />
+              <Route path="/onboarding-tasks/unv-start" element={<UNVStartClientsPage />} />
               <Route path="/onboarding-tasks/companies/new" element={<OnboardingNewCompanyPage />} />
               <Route path="/onboarding-tasks/companies/:companyId" element={<OnboardingCompanyDetailPage />} />
               <Route path="/onboarding-tasks/staff" element={<OnboardingStaffPage />} />
