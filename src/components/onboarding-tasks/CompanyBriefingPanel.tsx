@@ -143,6 +143,8 @@ interface CompanyBriefingPanelProps {
 export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAdmin = false }: CompanyBriefingPanelProps) => {
   // Apenas admin e CS podem editar o briefing
   const canEdit = isStaffAdmin || userRole === "admin" || userRole === "cs";
+  // Consultor também pode gerar o planejamento estratégico (mas não editar o briefing).
+  const canPlan = canEdit || userRole === "consultant";
   const [company, setCompany] = useState<CompanyData | null>(null);
   const [cacForms, setCacForms] = useState<CACFormData[]>([]);
   const [salesHistory, setSalesHistory] = useState<SalesHistoryData[]>([]);
@@ -619,7 +621,7 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header com botões de ação */}
-      {canEdit && (
+      {canPlan && (
         <div className="flex flex-wrap justify-end gap-2">
           {isEditing ? (
             <>
@@ -639,16 +641,20 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
                 <span className="hidden sm:inline">Gerar Planejamento Estratégico</span>
                 <span className="sm:hidden ml-1.5">Planejamento</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowKickoffForm(true)} className="h-8 sm:h-9 text-xs sm:text-sm">
-                <ClipboardList className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Formulário de Kickoff</span>
-                <span className="sm:hidden ml-1.5">Kickoff</span>
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="h-8 sm:h-9 text-xs sm:text-sm">
-                <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Editar Briefing</span>
-                <span className="sm:hidden ml-1.5">Editar</span>
-              </Button>
+              {canEdit && (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setShowKickoffForm(true)} className="h-8 sm:h-9 text-xs sm:text-sm">
+                    <ClipboardList className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Formulário de Kickoff</span>
+                    <span className="sm:hidden ml-1.5">Kickoff</span>
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="h-8 sm:h-9 text-xs sm:text-sm">
+                    <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Editar Briefing</span>
+                    <span className="sm:hidden ml-1.5">Editar</span>
+                  </Button>
+                </>
+              )}
             </>
           )}
         </div>
