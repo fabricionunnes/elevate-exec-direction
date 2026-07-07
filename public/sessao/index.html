@@ -208,6 +208,14 @@
                 <label>Seu WhatsApp (com DDD)</label>
                 <input name="telefone" type="tel" inputmode="numeric" placeholder="(31) 99999-9999" autocomplete="tel" maxlength="24" required />
               </div>
+              <div class="field">
+                <label>Seu e-mail</label>
+                <input name="email" type="email" placeholder="seu@email.com" autocomplete="email" inputmode="email" maxlength="150" required />
+              </div>
+              <div class="field">
+                <label>Instagram da empresa <span style="color:var(--muted2);font-weight:400">(opcional)</span></label>
+                <input name="instagram" type="text" placeholder="@suaempresa" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="120" />
+              </div>
               <p class="form-err" hidden></p>
               <button class="btn" type="submit">
                 Quero minha sessão estratégica
@@ -422,12 +430,15 @@
       var btn = form.querySelector('button[type="submit"]');
       var nome = form.querySelector('input[name="nome"]').value.trim();
       var tel = phone.value.replace(/\D/g,"");
+      var email = form.querySelector('input[name="email"]').value.trim();
+      var instagram = form.querySelector('input[name="instagram"]').value.trim().replace(/^@+/, "");
 
       function showErr(m){ errEl.textContent = m; errEl.hidden = false; }
       errEl.hidden = true;
 
       if(nome.length < 2){ return showErr("Me diz seu nome."); }
       if(tel.length < 10){ return showErr("Coloca seu WhatsApp com DDD."); }
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ return showErr("Coloca um e-mail válido."); }
 
       btn.disabled = true;
       var original = btn.innerHTML;
@@ -437,6 +448,8 @@
         form_token: FORM_TOKEN,
         nome: nome,
         telefone: tel,
+        email: email,
+        instagram: instagram || undefined,
         utm_source: qp("utm_source"), utm_medium: qp("utm_medium"),
         utm_campaign: qp("utm_campaign"), utm_content: qp("utm_content"), utm_term: qp("utm_term"),
         fbclid: qp("fbclid"), ad_name: qp("ad_name"), adset_name: qp("adset_name"), campaign_name: qp("campaign_name"),
