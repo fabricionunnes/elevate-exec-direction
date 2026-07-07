@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
 
     // ── Default action: create lead (step 1) ──
     const {
-      form_token, nome, telefone, email, empresa, desafio,
+      form_token, nome, telefone, email, instagram, empresa, desafio,
       utm_source, utm_medium, utm_campaign, utm_content, utm_term,
       fbclid, ad_name, adset_name, campaign_name,
       meta_campaign_id, meta_adset_id, meta_ad_id,
@@ -193,6 +193,7 @@ Deno.serve(async (req) => {
           name: nome,
           phone: cleanPhone,
           ...(email ? { email } : {}),
+          ...(instagram ? { instagram } : {}),
           entered_pipeline_at: reentryAt,
           ...(empresa ? { company: empresa } : {}),
           ...(desafio ? { main_pain: desafio } : {}),
@@ -305,6 +306,7 @@ Deno.serve(async (req) => {
         name: nome,
         phone: cleanPhone,
         email: email || null,
+        instagram: instagram || null,
         company: empresa || null,
         main_pain: desafio || null,
         notes,
