@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import logoUnvBoard from "@/assets/logo-unv-board.png";
@@ -145,7 +146,7 @@ export default function UNVStartPage() {
   return (
     <Layout>
       {/* 1. Hero */}
-      <section className="relative flex items-center bg-gradient-to-br from-primary via-primary to-[#081d40] overflow-hidden">
+      <section className="relative flex items-center bg-gradient-to-br from-[#0D2B5E] via-[#0D2B5E] to-[#081d40] overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent" />
         <div className="container-premium relative z-10 py-16 md:py-24">
           <div className="max-w-3xl mx-auto text-center animate-fade-up">
@@ -169,12 +170,12 @@ export default function UNVStartPage() {
               com a metodologia que já gerou mais de R$ 1 bilhão em vendas. Sem
               contratar consultor. Sem mensalidade.
             </p>
-            <a href="#oferta">
+            <Link to="/start/checkout">
               <Button variant="hero" size="xl" className="w-full sm:w-auto">
                 Quero minha estrutura por R$ 97
                 <ArrowRight className="ml-2" />
               </Button>
-            </a>
+            </Link>
             <p className="text-sm text-white/60 mt-5">
               Pagamento único · Acesso imediato · Garantia de 7 dias
             </p>
@@ -214,7 +215,7 @@ export default function UNVStartPage() {
       </section>
 
       {/* 3. A Virada */}
-      <section className="section-padding bg-gradient-to-br from-primary to-[#081d40]">
+      <section className="section-padding bg-gradient-to-br from-[#0D2B5E] to-[#081d40]">
         <div className="container-premium">
           <div className="max-w-3xl mx-auto text-center">
             <p className="text-xl md:text-2xl text-white font-medium mb-8">
@@ -264,7 +265,7 @@ export default function UNVStartPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto mb-6">
             {documentos.map((doc, i) => (
               <div key={i} className="card-premium p-6">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                <div className="w-12 h-12 rounded-lg bg-[#0D2B5E]/10 flex items-center justify-center mb-4">
                   <doc.icon className="h-6 w-6 text-primary" />
                 </div>
                 <h3 className="font-semibold text-foreground mb-2">
@@ -345,7 +346,7 @@ export default function UNVStartPage() {
                 </div>
               ))}
             </div>
-            <div className="card-premium p-8 bg-primary/5 border-primary/20 text-center">
+            <div className="card-premium p-8 bg-[#0D2B5E]/5 border-[#0D2B5E]/20 text-center">
               <p className="text-foreground font-medium text-lg">
                 Metodologia UNV — Universidade Nacional de Vendas. Mais de R$ 1
                 bilhão em vendas gerados. A mesma estrutura usada nas empresas
@@ -359,7 +360,7 @@ export default function UNVStartPage() {
       {/* 8. Oferta */}
       <section
         id="oferta"
-        className="section-padding bg-gradient-to-br from-primary to-[#081d40] relative overflow-hidden"
+        className="section-padding bg-gradient-to-br from-[#0D2B5E] to-[#081d40] relative overflow-hidden"
       >
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent pointer-events-none" />
         <div className="container-premium relative">
@@ -391,7 +392,7 @@ export default function UNVStartPage() {
               </p>
             </div>
 
-            <a href="#oferta">
+            <Link to="/start/checkout">
               <Button
                 variant="hero"
                 size="xl"
@@ -400,7 +401,7 @@ export default function UNVStartPage() {
                 Quero minha estrutura por R$ 97
                 <ArrowRight className="ml-2" />
               </Button>
-            </a>
+            </Link>
             <p className="text-sm text-white/60 mt-5">
               Pix ou cartão · Acesso na hora · Garantia incondicional de 7 dias
             </p>
@@ -457,7 +458,7 @@ export default function UNVStartPage() {
       </section>
 
       {/* 11. Fechamento */}
-      <section className="section-padding bg-gradient-to-br from-primary to-[#081d40]">
+      <section className="section-padding bg-gradient-to-br from-[#0D2B5E] to-[#081d40]">
         <div className="container-premium">
           <div className="max-w-3xl mx-auto text-center">
             <p className="text-2xl md:text-3xl font-display text-white mb-10">
@@ -465,7 +466,7 @@ export default function UNVStartPage() {
               meta. Ou pode montar a estrutura comercial da sua empresa hoje,
               por R$ 97.
             </p>
-            <a href="#oferta">
+            <Link to="/start/checkout">
               <Button
                 variant="hero"
                 size="xl"
@@ -474,7 +475,7 @@ export default function UNVStartPage() {
                 Quero minha estrutura por R$ 97
                 <ArrowRight className="ml-2" />
               </Button>
-            </a>
+            </Link>
             <p className="text-sm text-white/60 mt-5">
               Pagamento único · Acesso imediato · Garantia de 7 dias
             </p>

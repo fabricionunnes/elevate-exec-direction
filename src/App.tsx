@@ -31,6 +31,9 @@ const GrowthRoomPage = lazy(() => import("./pages/GrowthRoomPage"));
 const PartnersPage = lazy(() => import("./pages/PartnersPage"));
 const UNVBoardPage = lazy(() => import("./pages/UNVBoardPage"));
 const UNVStartPage = lazy(() => import("./pages/UNVStartPage"));
+const UNVStartLoginPage = lazy(() => import("./pages/UNVStartLoginPage"));
+const UNVStartPortalPage = lazy(() => import("./pages/UNVStartPortalPage"));
+const UNVStartCheckoutPage = lazy(() => import("./pages/UNVStartCheckoutPage"));
 const SalesOpsPage = lazy(() => import("./pages/SalesOpsPage"));
 const AISalesSystemPage = lazy(() => import("./pages/AISalesSystemPage"));
 const FractionalCROPage = lazy(() => import("./pages/FractionalCROPage"));
@@ -382,6 +385,9 @@ const AppShell = () => {
             <Route path="/partners" element={<PartnersPage />} />
             <Route path="/unv-board" element={<UNVBoardPage />} />
             <Route path="/unv-start" element={<UNVStartPage />} />
+            <Route path="/start" element={<UNVStartLoginPage />} />
+            <Route path="/start/checkout" element={<UNVStartCheckoutPage />} />
+            <Route path="/start/:token" element={<UNVStartPortalPage />} />
             <Route path="/sales-ops" element={<SalesOpsPage />} />
             <Route path="/ai-sales-system" element={<AISalesSystemPage />} />
             <Route path="/fractional-cro" element={<FractionalCROPage />} />

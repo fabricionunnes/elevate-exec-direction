@@ -137,6 +137,30 @@ Deno.serve(async (req) => {
       });
     }
 
+    // === UNV Start — libera acesso ao produto de entrada (R$97) ===
+    if (extRef && extRef.startsWith("unv-start:")) {
+      const memberId = extRef.split(":")[1];
+      if (newStatus === "paid" && memberId) {
+        try {
+          await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/unv-start-checkout`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+            },
+            body: JSON.stringify({ action: "status", member_id: memberId }),
+          });
+          console.log(`[Asaas Webhook] UNV Start acesso liberado: member ${memberId}`);
+        } catch (e) {
+          console.error(`[Asaas Webhook] UNV Start erro ao liberar ${memberId}:`, e);
+        }
+      }
+      return new Response(JSON.stringify({ received: true, unv_start: memberId }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Idempotency: if payment is already confirmed and bank was credited, skip
     if (newStatus === "paid") {
       // Check 1: invoice matched by stored Asaas payment id.
