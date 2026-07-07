@@ -2088,6 +2088,54 @@ serve(async (req) => {
           if (calendarWarning) response.warning = calendarWarning;
           return json(response);
         },
+        // Disponibilidade da agenda de um consultor num dia (Google FreeBusy).
+        // Usado pra checar horário livre ANTES de agendar/reagendar uma reunião.
+        availability: async (c) => {
+          const b = c.body || {};
+          const date = b.date;
+          if (!date) return json({ error: "Campo 'date' obrigatório (YYYY-MM-DD)" }, 400);
+          let ownerUserId: string | null = b.calendar_owner_id ?? b.calendar_user_id ?? null;
+          let ownerName: string | null = null;
+          if (!ownerUserId && b.staff_id) {
+            const { data: staffRow } = await c.supabase
+              .from("onboarding_staff").select("user_id, name").eq("id", b.staff_id).maybeSingle();
+            if (staffRow) { ownerUserId = staffRow.user_id; ownerName = staffRow.name; }
+          }
+          if (!ownerUserId) return json({ error: "Envie 'staff_id' ou 'calendar_owner_id' do dono da agenda" }, 400);
+
+          const tokenResult = await getGoogleToken(c.supabase, ownerUserId);
+          if ("error" in tokenResult) return json({ date, ownerName, connected: false, availableSlots: [], note: tokenResult.error });
+
+          const durationMinutes = b.duration_minutes ?? 60;
+          const fbRes = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${tokenResult.token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ timeMin: `${date}T00:00:00-03:00`, timeMax: `${date}T23:59:59-03:00`, timeZone: "America/Sao_Paulo", items: [{ id: "primary" }] }),
+          });
+          if (!fbRes.ok) return json({ date, ownerName, connected: true, availableSlots: [], note: "Falha ao consultar a agenda no Google." });
+          const fbData = await fbRes.json();
+          const busyPeriods = fbData.calendars?.primary?.busy || [];
+
+          const businessStart = 7, businessEnd = 23;
+          const now = new Date();
+          const nowSP = new Date(now.getTime() + (-3 * 60 + now.getTimezoneOffset()) * 60000);
+          const todayStr = `${nowSP.getFullYear()}-${String(nowSP.getMonth() + 1).padStart(2, "0")}-${String(nowSP.getDate()).padStart(2, "0")}`;
+          const isToday = date === todayStr;
+          const availableSlots: string[] = [];
+          for (let hour = businessStart; hour < businessEnd; hour++) {
+            for (let minute = 0; minute < 60; minute += 30) {
+              const slotStr = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+              const slotStart = new Date(`${date}T${slotStr}:00-03:00`);
+              const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60000);
+              const endSP = new Date(slotEnd.getTime() + (-3 * 60 + slotEnd.getTimezoneOffset()) * 60000);
+              if (endSP.getHours() > businessEnd || (endSP.getHours() === businessEnd && endSP.getMinutes() > 0)) continue;
+              if (isToday && slotStart < now) continue;
+              const overlap = busyPeriods.some((busy: any) => slotStart < new Date(busy.end) && slotEnd > new Date(busy.start));
+              if (!overlap) availableSlots.push(slotStr);
+            }
+          }
+          return json({ date, ownerName, connected: true, availableSlots, busyPeriods, durationMinutes });
+        },
       },
 
       // ===== UNV BOARD (cérebro do cliente: jornada, documentos, resultados, sessões) =====
@@ -2238,7 +2286,7 @@ serve(async (req) => {
               asaas: { actions: ["create_charge"], description: "Criar cobrança no Asaas (PIX/Boleto/Cartão)" },
               conversations: { actions: ["list", "get", "messages", "send_message"], description: "Conversas WhatsApp dos projetos" },
               whatsapp: { actions: ["list_instances", "send"], description: "Enviar mensagens WhatsApp escolhendo a instância" },
-              project_meetings: { actions: ["list", "get", "create", "update", "complete", "delete"], description: "Reuniões de projetos (CRUD + finalizar)" },
+              project_meetings: { actions: ["list", "get", "create", "update", "complete", "delete", "availability"], description: "Reuniões de projetos (CRUD + finalizar + disponibilidade da agenda)" },
             },
             usage: "?module=<module>&action=<action>&id=<id>",
             auth: "Authorization: Bearer <jwt> OU x-api-key: <key>",
