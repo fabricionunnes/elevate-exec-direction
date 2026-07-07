@@ -636,6 +636,21 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
 
     setDeleting(true);
     try {
+      // Exclui o evento do Google Agenda ANTES de apagar o registro (senão fica um
+      // evento fantasma na agenda do consultor). Best-effort: se falhar, ainda apaga o registro.
+      let calendarWarn = false;
+      if (meetingToDelete.google_event_id && meetingToDelete.calendar_owner_id) {
+        try {
+          const { error: calErr } = await supabase.functions.invoke("google-calendar?action=delete-event", {
+            body: { eventId: meetingToDelete.google_event_id, target_user_id: meetingToDelete.calendar_owner_id },
+          });
+          if (calErr) calendarWarn = true;
+        } catch (e) {
+          console.error("Falha ao excluir evento do Google Agenda:", e);
+          calendarWarn = true;
+        }
+      }
+
       const { error } = await supabase
         .from("onboarding_meeting_notes")
         .delete()
@@ -643,7 +658,9 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
 
       if (error) throw error;
 
-      toast.success("Registro excluído com sucesso");
+      toast.success(calendarWarn
+        ? "Registro excluído, mas não foi possível remover do Google Agenda (verifique a conexão do consultor)."
+        : "Registro excluído com sucesso");
       setMeetingToDelete(null);
       fetchMeetings();
     } catch (error) {
