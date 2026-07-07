@@ -355,6 +355,11 @@ export default function EmployeeContractPage() {
       if (!uploadError) {
         const { data: urlData } = supabase.storage.from("contract-pdfs").getPublicUrl(fileName);
         pdfUrl = urlData?.publicUrl || null;
+      } else {
+        // Não bloqueia (o PDF é regenerável do snapshot no envio/download),
+        // mas avisa pra não passar batido que o storage falhou.
+        console.error("[employee-contract] upload do PDF falhou:", uploadError);
+        toast.warning("Contrato salvo, mas o PDF não subiu no storage. Ele será regenerado ao baixar/enviar.");
       }
 
       const { data: staffData } = await supabase.auth.getUser();
@@ -505,11 +510,36 @@ export default function EmployeeContractPage() {
     }
   };
 
-  const handleSendToEnvelopeFromHistory = async (contract: SavedEmployeeContract) => {
-    if (!contract.pdf_url) {
-      toast.error("PDF não disponível.");
-      return;
+  // Recupera o PDF do contrato salvo. Se o pdf_url não existir (ex.: upload
+  // falhou na geração), REGENERA o PDF a partir do snapshot de cláusulas — assim
+  // o Enviar/Download nunca somem só porque o storage falhou.
+  const getContractPdfBlob = async (c: SavedEmployeeContract): Promise<Blob> => {
+    if (c.pdf_url) {
+      const res = await fetch(c.pdf_url);
+      if (res.ok) return await res.blob();
     }
+    const clauses = Array.isArray(c.clauses_snapshot) ? c.clauses_snapshot : [];
+    const formDataFromContract: EmployeeContractFormData = {
+      staffId: c.staff_id || "",
+      staffName: c.staff_name,
+      staffRole: c.staff_role,
+      staffEmail: c.staff_email || "",
+      staffPhone: c.staff_phone || "",
+      staffCpf: c.staff_cpf || "",
+      staffCnpj: c.staff_cnpj || "",
+      staffAddress: c.staff_address || "",
+      contractValue: c.contract_value,
+      paymentMethod: c.payment_method,
+      startDate: c.start_date ? new Date(c.start_date + "T12:00:00") : undefined,
+      durationMonths: c.duration_months || 3,
+    };
+    return generateEmployeeContractPDF({
+      formData: formDataFromContract,
+      customClauses: clauses.map((x: any) => ({ id: x.id, title: x.title, content: x.content, isDynamic: x.isDynamic })),
+    });
+  };
+
+  const handleSendToEnvelopeFromHistory = async (contract: SavedEmployeeContract) => {
     if (!contract.staff_email) {
       toast.error("E-mail do colaborador não informado neste contrato.");
       return;
@@ -519,9 +549,7 @@ export default function EmployeeContractPage() {
     try {
       const documentName = `Contrato Colaborador - ${contract.staff_name} - ${roleLabels[contract.staff_role] || contract.staff_role}`;
 
-      const pdfRes = await fetch(contract.pdf_url);
-      if (!pdfRes.ok) throw new Error(`Erro ao baixar PDF: HTTP ${pdfRes.status}`);
-      const pdfBlob = await pdfRes.blob();
+      const pdfBlob = await getContractPdfBlob(contract);
 
       const session = (await supabase.auth.getSession()).data.session;
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -1038,13 +1066,23 @@ export default function EmployeeContractPage() {
               <Separator />
 
               <div className="flex flex-wrap gap-2 pt-1">
-                {selectedContract.pdf_url && (
-                  <Button variant="outline" size="sm" onClick={() => window.open(selectedContract.pdf_url!, "_blank")}>
-                    <Download className="h-4 w-4 mr-1" />
-                    Download PDF
-                  </Button>
-                )}
-                {!selectedContract.zapsign_sent_at && selectedContract.pdf_url && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    if (selectedContract.pdf_url) { window.open(selectedContract.pdf_url, "_blank"); return; }
+                    try {
+                      const blob = await getContractPdfBlob(selectedContract);
+                      const url = URL.createObjectURL(blob);
+                      window.open(url, "_blank");
+                      setTimeout(() => URL.revokeObjectURL(url), 60000);
+                    } catch { toast.error("Não foi possível gerar o PDF."); }
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Download PDF
+                </Button>
+                {!selectedContract.zapsign_sent_at && (
                   <Button
                     variant="default"
                     size="sm"
