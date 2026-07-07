@@ -459,6 +459,11 @@ Deno.serve(async (req) => {
             .update({ status: revertStatus, paid_at: null, paid_amount_cents: null, pagarme_charge_id: null })
             .eq("id", invoice.id);
           matched = true;
+        } else if (invoice.status === "paid" || invoice.status === "partial") {
+          // NUNCA sobrescrever uma fatura já paga com overdue/pending vindo do Asaas.
+          // Senão o cliente aparece como inadimplente e a régua cobra algo já pago.
+          console.log(`[Asaas Webhook] Invoice ${invoice.id} já paga localmente; ignorando status ${newStatus} (invoiceUrl match)`);
+          matched = true;
         } else {
           await supabase.from("company_invoices").update({ status: newStatus }).eq("id", invoice.id);
           matched = true;
