@@ -7,6 +7,49 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Parser tolerante: a IA às vezes trunca o JSON (guia é grande). Tenta parsear
+// normal; se falhar, fecha string/colchetes abertos e descarta fragmento final
+// incompleto — recupera o máximo do conteúdo em vez de perder tudo.
+function tolerantParseJson(input: string): any {
+  if (!input) return null;
+  let s = input.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+  const start = s.indexOf("{");
+  if (start > 0) s = s.slice(start);
+  try { return JSON.parse(s); } catch { /* segue pro reparo */ }
+
+  // Varre balanceando aspas/colchetes (ignorando o que está dentro de string)
+  const stack: string[] = [];
+  let inStr = false, esc = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === "{" || c === "[") stack.push(c);
+    else if (c === "}" || c === "]") stack.pop();
+  }
+
+  let repaired = s;
+  if (inStr) repaired += '"';                       // fecha string aberta
+  repaired = repaired
+    .replace(/,\s*"[^"]*"\s*:\s*$/,"")             // "chave": pendente sem valor
+    .replace(/,\s*"[^"]*$/,"")                     // "chave parcial
+    .replace(/[,:]\s*$/,"");                         // vírgula/dois-pontos soltos
+  for (let i = stack.length - 1; i >= 0; i--) {
+    repaired += stack[i] === "{" ? "}" : "]";
+  }
+  try { return JSON.parse(repaired); } catch { /* último recurso abaixo */ }
+
+  // Último recurso: extrai o maior bloco {...} que fecha corretamente
+  const m = s.match(/\{[\s\S]*\}/);
+  if (m) { try { return JSON.parse(m[0]); } catch { /* nada */ } }
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -554,7 +597,8 @@ IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown. Se
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5",
-          max_tokens: 8096,
+          // Guia tem 12 fases com insights/perguntas — JSON grande, precisa de mais teto senão trunca.
+          max_tokens: type === "guide" ? 16000 : 8096,
         system: systemPrompt,
           messages: [{ role: "user", content: userPrompt }],
       }),
@@ -584,11 +628,9 @@ IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown. Se
     // Clean markdown wrappers if present
     content = content.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
 
-    let parsed;
-    try {
-      parsed = JSON.parse(content);
-    } catch {
-      console.error("Failed to parse AI response:", content);
+    let parsed = tolerantParseJson(content);
+    if (!parsed) {
+      console.error("Failed to parse AI response:", content?.slice(0, 500));
       parsed = { error: "Não foi possível processar a resposta da IA", raw: content };
     }
 
