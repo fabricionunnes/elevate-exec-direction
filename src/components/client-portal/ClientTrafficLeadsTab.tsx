@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Plus, Phone, UserPlus, StickyNote, Trash2 } from "lucide-react";
+import { Loader2, Plus, Phone, UserPlus, StickyNote, Trash2, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 
 // Leads do tráfego pago registrados pela SDR do CLIENTE: cada lead que chegou
@@ -53,6 +53,8 @@ export const ClientTrafficLeadsTab = ({ projectId }: { projectId: string }) => {
   const [notesOpenFor, setNotesOpenFor] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TrafficLead | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [sheetSourceId, setSheetSourceId] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -71,8 +73,40 @@ export const ClientTrafficLeadsTab = ({ projectId }: { projectId: string }) => {
     setLoading(false);
   };
 
+  // Descobre se há planilha configurada pra esse projeto (só quem tem permissão
+  // de leitura enxerga; o cliente segue recebendo pelo cron automático).
+  const checkSheet = async () => {
+    const { data } = await supabase
+      .from("client_sheet_lead_sources" as never)
+      .select("id")
+      .eq("project_id", projectId)
+      .eq("enabled", true)
+      .limit(1);
+    setSheetSourceId(((data as any[]) || [])[0]?.id || null);
+  };
+
+  const syncSheet = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("client-sheet-leads-sync", {
+        body: { projectId },
+      });
+      if (error) throw error;
+      const r = (data?.results || [])[0] || {};
+      if (r.error) toast.error(`Falha na sincronização: ${r.error}`);
+      else if (r.inserted > 0) toast.success(`${r.inserted} novo(s) lead(s) importado(s) da planilha`);
+      else toast.info("Planilha sincronizada — nenhum lead novo");
+      await load();
+    } catch (e: any) {
+      toast.error("Erro ao sincronizar a planilha");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   useEffect(() => {
     load();
+    checkSheet();
   }, [projectId]);
 
   const addLead = async () => {
@@ -194,10 +228,25 @@ export const ClientTrafficLeadsTab = ({ projectId }: { projectId: string }) => {
         <p className="text-xs text-muted-foreground">
           Registre cada lead que chegou das campanhas e marque o que aconteceu com ele.
         </p>
-        <Button size="sm" onClick={() => setAddOpen(true)} className="gap-1.5 shrink-0">
-          <Plus className="h-3.5 w-3.5" />
-          Lead
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {sheetSourceId && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={syncSheet}
+              disabled={syncing}
+              className="gap-1.5"
+              title="Importa agora os leads novos da planilha (também roda sozinho a cada 15 min)"
+            >
+              {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              Sincronizar planilha
+            </Button>
+          )}
+          <Button size="sm" onClick={() => setAddOpen(true)} className="gap-1.5">
+            <Plus className="h-3.5 w-3.5" />
+            Lead
+          </Button>
+        </div>
       </div>
 
       {/* Lista */}
