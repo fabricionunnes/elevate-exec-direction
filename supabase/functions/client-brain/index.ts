@@ -447,6 +447,40 @@ function riskAlertText(items: { companyName: string; brain: any }[]): string {
   return `🚨 *Cérebro do Cliente — RISCO ALTO*\n\n${lines.join("\n\n")}\n\nAbra o projeto no Nexus (aba Cérebro) pra ver promessas, riscos e o plano completo.`;
 }
 
+// Relatório matinal: tarefas registradas automaticamente (tag cerebro-executada)
+// nas últimas 24h, agrupadas por cliente. Vai pro Fabrício e pra Eva.
+const REPORT_PHONES = [
+  "5531989840003", // Fabrício
+  "5531997667686", // Eva Castanon
+];
+
+async function buildExecutedReport(supabase: SupabaseClient): Promise<string> {
+  const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+  const { data: tasks } = await supabase
+    .from("onboarding_tasks")
+    .select("title, completed_at, created_at, project:onboarding_projects(company:onboarding_companies(name))")
+    .contains("tags", ["cerebro-executada"])
+    .gte("created_at", since)
+    .order("created_at", { ascending: true })
+    .limit(200);
+
+  const hoje = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  if (!tasks || tasks.length === 0) {
+    return `*Cérebro do Cliente — ${hoje}*\n\nNenhuma tarefa executada nova foi identificada nos grupos nas últimas 24h.`;
+  }
+
+  const byCompany = new Map<string, string[]>();
+  for (const t of tasks as any[]) {
+    const name = t.project?.company?.name || "Sem empresa";
+    if (!byCompany.has(name)) byCompany.set(name, []);
+    byCompany.get(name)!.push(truncate(t.title, 120));
+  }
+  const blocks = [...byCompany.entries()].map(
+    ([name, titles]) => `*${name}*\n${titles.map((tt) => `  ✓ ${tt}`).join("\n")}`,
+  );
+  return `*Cérebro do Cliente — ${hoje}*\n\nTarefas que o time já executou (detectadas nos grupos) e foram registradas como concluídas no sistema:\n\n${blocks.join("\n\n")}\n\nTotal: ${tasks.length}. Todas com a etiqueta cerebro-executada, dentro de cada projeto.`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
@@ -455,6 +489,18 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // ── Modo REPORT (cron ~7h BRT): resumo das tarefas auto-registradas ──
+    if (body.report) {
+      const text = await buildExecutedReport(supabase);
+      if (body.dry) return json({ ok: true, preview: text });
+      const phones = body.to === "test" ? [REPORT_PHONES[0]] : REPORT_PHONES;
+      const sent: Record<string, boolean> = {};
+      for (const phone of phones) {
+        sent[phone] = await sendWhatsApp(supabase, phone, text);
+      }
+      return json({ ok: true, sent });
+    }
 
     // ── Modo BATCH (cron da madrugada): renova os cérebros mais antigos ──
     if (body.batch) {
