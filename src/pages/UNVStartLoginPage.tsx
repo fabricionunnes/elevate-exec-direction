@@ -42,6 +42,25 @@ export default function UNVStartLoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  const resendLink = async () => {
+    if (!email.trim()) {
+      toast.error("Digite o e-mail da sua compra pra reenviar o link.");
+      return;
+    }
+    setResending(true);
+    try {
+      const { data } = await supabase.functions.invoke("unv-start-checkout", {
+        body: { action: "resend_link", email: email.trim().toLowerCase() },
+      });
+      toast.success(data?.message || "Se houver uma compra com esse e-mail, o link foi reenviado.");
+    } catch {
+      toast.error("Não consegui reenviar agora. Tente de novo em instantes.");
+    } finally {
+      setResending(false);
+    }
+  };
 
   const login = async () => {
     if (!email.trim() || !password) {
@@ -145,12 +164,32 @@ export default function UNVStartLoginPage() {
                 Recebi um link de acesso
               </button>
               {showHelp && (
-                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                  Logo após a compra você recebe um link exclusivo por e-mail e
-                  WhatsApp. É só abrir esse link — ele já entra direto na sua área,
-                  sem senha. Na primeira vez, você pode criar uma senha lá dentro
-                  para voltar quando quiser.
-                </p>
+                <div className="mt-2 space-y-3">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Logo após a compra você recebe um link exclusivo por e-mail e
+                    WhatsApp. É só abrir esse link — ele já entra direto na sua área,
+                    sem senha. Na primeira vez, você pode criar uma senha lá dentro
+                    para voltar quando quiser.
+                  </p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Perdeu o link? Digite o e-mail da compra no campo acima e clique
+                    abaixo — reenvio na hora.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resendLink}
+                    disabled={resending}
+                    className="w-full h-10 border-[#0D2B5E] text-[#0D2B5E] dark:text-blue-300"
+                  >
+                    {resending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Mail className="h-4 w-4 mr-2" />
+                    )}
+                    Reenviar meu link de acesso
+                  </Button>
+                </div>
               )}
             </div>
           </CardContent>

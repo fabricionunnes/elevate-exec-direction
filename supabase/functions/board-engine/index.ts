@@ -629,7 +629,7 @@ CONTEXTO: ${(task?.description || "").substring(0, 600)}
 
 Crie de 5 a 8 perguntas objetivas que levantem as INFORMAÇÕES REAIS necessárias pra essa ação — perguntas que um dono de PME consegue responder de cabeça ou consultando rapidamente seus números. Adapte a linguagem ao segmento. As respostas vão alimentar um relatório de diagnóstico que constata problemas e propõe ações.
 
-RESPONDA SOMENTE com um array JSON válido (sem markdown), cada item: {"key": "slug-curto", "label": "pergunta clara", "placeholder": "Ex.: exemplo concreto do segmento", "type": "textarea"} (use "text" só pra respostas de uma linha, "list" quando a resposta natural é uma lista — nesse caso o placeholder avisa 'um item por linha').`;
+RESPONDA SOMENTE com um array JSON válido (sem markdown), cada item: {"key": "slug-curto", "label": "pergunta clara", "placeholder": "Ex.: exemplo concreto do segmento", "type": "textarea"} (use "text" só pra respostas de uma linha, "list" quando a resposta natural é uma lista — nesse caso o placeholder avisa 'um item por linha', e "currency" quando a resposta é um valor em reais como faturamento, ticket médio, meta ou custo — nesse caso o placeholder é "R$ 0,00").`;
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -645,7 +645,7 @@ RESPONDA SOMENTE com um array JSON válido (sem markdown), cada item: {"key": "s
     ? parsed.filter((q) => q?.key && q?.label).slice(0, 8).map((q) => ({
         key: String(q.key), label: String(q.label),
         placeholder: q.placeholder ? String(q.placeholder) : "",
-        type: ["text", "textarea", "list"].includes(q.type) ? q.type : "textarea",
+        type: ["text", "textarea", "list", "currency"].includes(q.type) ? q.type : "textarea",
       }))
     : [];
 }
@@ -684,7 +684,7 @@ async function submitTaskForm(supabase: any, body: any) {
       .eq("member_id", form.member_id)
       .neq("id", form.deliverable_id || "00000000-0000-0000-0000-000000000000")
       .order("created_at", { ascending: false })
-      .limit(4);
+      .limit(8);
     const { data: prevResults } = await supabase
       .from("unv_board_results")
       .select("description, value_brl, metric_text, reported_at")
@@ -693,9 +693,9 @@ async function submitTaskForm(supabase: any, body: any) {
       .limit(12);
     const parts: string[] = [];
     if (prevDocs?.length) {
-      parts.push("DOCUMENTOS ANTERIORES DO CLIENTE NO BOARD (cite números e fatos deles quando relevante — mostre evolução):");
+      parts.push("DOCUMENTOS JÁ CRIADOS PARA ESTE CLIENTE NO BOARD (é a verdade oficial da empresa — use, referencie e mantenha 100% de coerência; NUNCA peça de novo nem escreva 'a definir' pra algo que já está definido aqui; mostre evolução citando números e fatos):");
       for (const d of prevDocs) {
-        parts.push(`- [${(d.created_at || "").substring(0, 10)}] ${d.title}: ${String(d.content_md || "").replace(/\s+/g, " ").substring(0, 400)}`);
+        parts.push(`\n### [${(d.created_at || "").substring(0, 10)}] ${d.title}\n${String(d.content_md || "").substring(0, 3000)}`);
       }
     }
     if (prevResults?.length) {
@@ -1006,7 +1006,7 @@ async function createActionTasks(supabase: any, form: any, member: any, delivera
 // ─────────────────────────── RADAR DE RESGATE ───────────────────────────
 // Semanal. Cliente com execução fraca ou NPS detrator = alerta pro Fabrício ANTES
 // do pedido de cancelamento nascer (o padrão dos churns: desconexão 6-8 semanas antes).
-const RISK_ALERT_PHONE = "5531989840003"; // Fabrício
+const RISK_ALERT_PHONE = "5531994622556"; // Fabrício
 
 async function riskCron(supabase: any, dryRun: boolean) {
   const results = { checked: 0, alerts: 0, previews: [] as any[], errors: [] as string[] };

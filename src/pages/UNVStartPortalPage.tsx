@@ -768,9 +768,17 @@ export default function UNVStartPortalPage() {
                 variant="outline"
                 className="w-full border-[#0D2B5E] text-[#0D2B5E] hover:bg-[#0D2B5E] hover:text-white"
               >
-                <a href={WA_UPSELL} target="_blank" rel="noopener noreferrer">
+                <a
+                  href={`${WA_UPSELL}?text=${encodeURIComponent(
+                    `Terminei minha estrutura comercial completa no UNV Start${
+                      access?.member.company_name ? ` (${access.member.company_name})` : ""
+                    }. Quero saber como colocar pra rodar com meu time.`,
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <ExternalLink className="h-4 w-4 mr-2" />
-                  Quero saber mais
+                  Quero colocar pra rodar com meu time
                 </a>
               </Button>
             </div>

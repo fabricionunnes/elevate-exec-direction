@@ -97,6 +97,10 @@ export default function UNVStartCheckoutPage() {
 
     setLoading(true);
     try {
+      const fbclid =
+        new URLSearchParams(window.location.search).get("fbclid") ||
+        new URLSearchParams(window.location.hash.split("?")[1] || "").get("fbclid") ||
+        "";
       const r = await callCheckout({
         action: "create",
         name: name.trim(),
@@ -104,6 +108,7 @@ export default function UNVStartCheckoutPage() {
         whatsapp: digitsWhats,
         cpf: digitsCpf,
         payment_method: method,
+        fbclid,
       });
       if (r.error) {
         setError(r.error);

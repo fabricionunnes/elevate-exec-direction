@@ -164,6 +164,13 @@ function MarkdownPreview({ content }: { content: string }) {
   );
 }
 
+// Máscara de moeda BRL — dígitos entram como centavos: "100000" -> "R$ 1.000,00"
+function maskCurrency(input: string): string {
+  const digits = (input || "").replace(/\D/g, "");
+  if (!digits) return "";
+  return (parseInt(digits, 10) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
 export default function BoardTaskFormPage() {
   const { token } = useParams<{ token: string }>();
 
@@ -222,6 +229,31 @@ export default function BoardTaskFormPage() {
   const dueLabel = info?.task?.due_date
     ? format(new Date(`${info.task.due_date}T12:00:00`), "dd/MM")
     : null;
+
+  // autosave local: restaura o que o cliente já tinha digitado (mesmo navegador)
+  useEffect(() => {
+    if (!token || !config) return;
+    try {
+      const cached = localStorage.getItem(`board_draft_${token}`);
+      if (cached) setFormValues((v) => (Object.keys(v).length ? v : JSON.parse(cached)));
+    } catch {
+      /* ignora */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, config?.fields?.length]);
+
+  // autosave local: guarda a cada mudança
+  useEffect(() => {
+    if (!token || !config || preview) return;
+    try {
+      if (Object.keys(formValues).length > 0) {
+        localStorage.setItem(`board_draft_${token}`, JSON.stringify(formValues));
+      }
+    } catch {
+      /* ignora */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formValues, token, preview]);
 
   const buildFormData = (): Record<string, unknown> => {
     if (!config) return {};
@@ -322,6 +354,7 @@ export default function BoardTaskFormPage() {
       });
       setSmartActionsCreated(attachRes?.smart_actions_created || 0);
       doc.save(fileName);
+      try { localStorage.removeItem(`board_draft_${token}`); } catch { /* ignora */ }
       setStep("success");
       window.scrollTo({ top: 0 });
     } catch (err: any) {
@@ -676,7 +709,17 @@ export default function BoardTaskFormPage() {
             {config.fields.map((field) => (
               <div key={field.key} className="space-y-2">
                 <Label className="font-medium">{field.label}</Label>
-                {field.type === "text" ? (
+                {field.type === "currency" ? (
+                  <Input
+                    inputMode="numeric"
+                    value={formValues[field.key] || ""}
+                    placeholder="R$ 0,00"
+                    disabled={generating}
+                    onChange={(e) =>
+                      setFormValues((v) => ({ ...v, [field.key]: maskCurrency(e.target.value) }))
+                    }
+                  />
+                ) : field.type === "text" ? (
                   <Input
                     value={formValues[field.key] || ""}
                     placeholder={field.placeholder}
