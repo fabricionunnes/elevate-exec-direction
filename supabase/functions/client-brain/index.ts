@@ -113,6 +113,82 @@ interface GenResult {
   generatedAt: string;
   companyName: string;
   becameHighRisk: boolean;
+  autoCompleted: number;
+}
+
+/** Palavras significativas (sem acento, >2 letras) pra comparar títulos. */
+function significantWords(s: string): Set<string> {
+  return new Set(
+    (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 2),
+  );
+}
+/** Duas tarefas são "a mesma" se metade das palavras significativas coincide. */
+function tasksSimilar(a: string, b: string): boolean {
+  const wa = significantWords(a);
+  const wb = significantWords(b);
+  if (wa.size === 0 || wb.size === 0) return false;
+  let inter = 0;
+  wa.forEach((w) => { if (wb.has(w)) inter++; });
+  return inter / (wa.size + wb.size - inter) >= 0.5;
+}
+
+/** Registra como CONCLUÍDAS as tarefas que o time já executou (detectadas no
+ * grupo/reuniões pela IA) e que ainda NÃO existem no sistema. Idempotente:
+ * a cada rodada, o que já foi registrado é filtrado pela similaridade. */
+async function reconcileExecutedTasks(
+  supabase: SupabaseClient,
+  projectId: string,
+  executed: any[],
+  generatedAt: string,
+): Promise<number> {
+  const items = (Array.isArray(executed) ? executed : [])
+    .filter((e) => e && typeof e.titulo === "string" && e.titulo.trim().length > 3)
+    .slice(0, 12); // trava anti-flood por rodada
+  if (items.length === 0) return 0;
+
+  // Todos os títulos de tarefas do projeto (abertas e concluídas) pra dedup.
+  const { data: existing } = await supabase
+    .from("onboarding_tasks")
+    .select("title")
+    .eq("project_id", projectId)
+    .limit(1000);
+  const existingTitles = (existing || []).map((t: any) => t.title || "");
+
+  const rows: Record<string, unknown>[] = [];
+  const acceptedTitles: string[] = [];
+  for (const e of items) {
+    const titulo = String(e.titulo).trim().slice(0, 140);
+    // já existe algo parecido no sistema? ou já vamos inserir parecido nesta rodada?
+    if (existingTitles.some((t) => tasksSimilar(t, titulo))) continue;
+    if (acceptedTitles.some((t) => tasksSimilar(t, titulo))) continue;
+    acceptedTitles.push(titulo);
+    // data de conclusão: usa a informada se válida, senão a hora da geração
+    let completedAt = generatedAt;
+    let dueDate = generatedAt.slice(0, 10);
+    if (typeof e.quando === "string" && /^\d{4}-\d{2}-\d{2}/.test(e.quando)) {
+      dueDate = e.quando.slice(0, 10);
+      completedAt = `${dueDate}T12:00:00-03:00`;
+    }
+    rows.push({
+      project_id: projectId,
+      title: titulo,
+      description: `Detectada como JÁ EXECUTADA pelo time e registrada automaticamente pelo Cérebro do Cliente.\nEvidência: ${truncate(e.evidencia, 500)}`,
+      status: "completed",
+      completed_at: completedAt,
+      due_date: dueDate,
+      is_internal: true,
+      priority: "medium",
+      tags: ["cerebro-executada"],
+    });
+  }
+  if (rows.length === 0) return 0;
+  const { error } = await supabase.from("onboarding_tasks").insert(rows as never);
+  if (error) {
+    console.error("reconcileExecutedTasks insert error:", error.message);
+    return 0;
+  }
+  return rows.length;
 }
 
 /** Gera o cérebro de UM projeto e persiste. */
@@ -316,11 +392,13 @@ Responda APENAS com JSON válido (sem markdown) neste formato:
   "riscos": [{ "sinal": "sinal de risco de churn", "evidencia": "fato/frase/data", "gravidade": "alta" | "media" | "baixa" }],
   "proximas_acoes": [{ "acao": "ação concreta pro consultor/CS fazer (SÓ o que ainda NÃO foi feito e NÃO está em aberto)", "motivo": "por quê (ligado a evidência)", "urgencia": "hoje" | "esta_semana" | "este_mes" }],
   "relacionamento": { "ultima_reuniao": "data ou null", "dias_sem_reuniao": número ou null, "whatsapp": "ativo | morno | silencioso", "resumo": "1 frase sobre a qualidade da relação" },
-  "citacoes_chave": [{ "quem": "nome", "frase": "citação real e relevante", "quando": "data", "leitura": "o que essa frase significa pro churn" }]
+  "citacoes_chave": [{ "quem": "nome", "frase": "citação real e relevante", "quando": "data", "leitura": "o que essa frase significa pro churn" }],
+  "tarefas_executadas": [{ "titulo": "entrega/tarefa que a UNV JÁ FEZ e comunicou (ex: 'subiu as campanhas de tráfego', 'entregou os criativos', 'montou o funil no CRM', 'treinou o time de vendas')", "quando": "data YYYY-MM-DD da execução ou null", "evidencia": "trecho/mensagem do grupo (ou reunião) que comprova que foi FEITO, com data" }]
 }
 
 Regras:
 - ANTES de montar "proximas_acoes", leia "tarefas.ja_concluidas" (o que já foi FEITO) e "tarefas.em_aberto" (o que já está na fila). NÃO sugira nenhuma ação que seja igual ou muito parecida (mesma intenção/objetivo) a algo que já está nessas listas — mesmo que as palavras sejam diferentes. Se algo já foi resolvido, ele NÃO é próxima ação; vira, no máximo, uma vitória. Só proponha ações genuinamente novas e ainda pendentes.
+- "tarefas_executadas": liste SÓ o que o time da UNV JÁ ENTREGOU/EXECUTOU e comunicou (principalmente no whatsapp_14d dos grupos; reuniões também valem). Regras rígidas: (a) só entregas CONCLUÍDAS — nada de promessa, plano, "vou fazer", "agendado" ou tarefa do cliente; se houver qualquer dúvida se foi realmente feito, NÃO inclua; (b) cada item precisa de evidência real (frase/data) de que foi feito; (c) não repita algo que já esteja em "tarefas.ja_concluidas". Cada título curto e no passado ("Subiu as campanhas", "Entregou os criativos"). Se não houver nada claramente executado, devolva lista vazia.
 - promessas VENCIDAS e riscos vêm primeiro nas listas. Máximo 6 itens por lista. Se não houver dado pra um campo, use lista vazia ou null — NÃO invente. Português do Brasil.`;
 
   const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -343,9 +421,19 @@ Regras:
     { onConflict: "project_id" },
   );
 
+  // Registra no sistema (como concluídas) as tarefas que o time já executou
+  // e comunicou no grupo, mas que ninguém tinha lançado ainda.
+  let autoCompleted = 0;
+  try {
+    autoCompleted = await reconcileExecutedTasks(supabase, projectId, brain?.tarefas_executadas, generatedAt);
+  } catch (e) {
+    console.error("reconcileExecutedTasks falhou:", String(e).slice(0, 160));
+  }
+
   return {
     brain,
     generatedAt,
+    autoCompleted,
     companyName: project.company?.name || "Cliente",
     becameHighRisk: brain?.termometro === "risco_alto" && prevTermo !== "risco_alto",
   };
@@ -387,7 +475,7 @@ Deno.serve(async (req) => {
       for (const p of pending) {
         try {
           const r = await generateBrain(supabase, p.id);
-          results.push({ project: p.id, empresa: r.companyName, termometro: r.brain?.termometro });
+          results.push({ project: p.id, empresa: r.companyName, termometro: r.brain?.termometro, auto_completed: r.autoCompleted });
           if (r.becameHighRisk) newHighRisk.push({ companyName: r.companyName, brain: r.brain });
         } catch (e) {
           results.push({ project: p.id, error: String(e).slice(0, 120) });
@@ -417,7 +505,7 @@ Deno.serve(async (req) => {
     if (r.becameHighRisk) {
       await sendWhatsApp(supabase, ALERT_PHONE, riskAlertText([{ companyName: r.companyName, brain: r.brain }]));
     }
-    return json({ brain: r.brain, generated_at: r.generatedAt, cached: false });
+    return json({ brain: r.brain, generated_at: r.generatedAt, cached: false, auto_completed: r.autoCompleted });
   } catch (error) {
     console.error("client-brain error:", error);
     return json({ error: String(error).slice(0, 300) }, 500);

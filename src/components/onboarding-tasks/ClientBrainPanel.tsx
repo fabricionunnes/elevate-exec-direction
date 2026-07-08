@@ -133,6 +133,13 @@ export const ClientBrainPanel = ({ projectId }: { projectId: string }) => {
       if (fnErr || data?.error) throw new Error(data?.error || fnErr?.message);
       setBrain(data.brain);
       setGeneratedAt(data.generated_at);
+      if (force && data?.auto_completed > 0) {
+        toast.success(
+          data.auto_completed === 1
+            ? "1 tarefa que o time já executou foi registrada como concluída."
+            : `${data.auto_completed} tarefas que o time já executou foram registradas como concluídas.`,
+        );
+      }
     } catch (e: any) {
       setError(e.message || "Erro ao gerar o cérebro do cliente");
       toast.error("Erro ao gerar o cérebro do cliente");
