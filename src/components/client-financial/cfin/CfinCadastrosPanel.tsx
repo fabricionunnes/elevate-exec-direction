@@ -20,6 +20,9 @@ const ABAS: { key: string; label: string; campos: Campo[]; busca?: string }[] = 
       { campo: "codigo", label: "Código" }, { campo: "nome", label: "Nome" },
       { campo: "nome_completo", label: "Nome completo" }, { campo: "funcao", label: "Função" },
       { campo: "loja_codigo", label: "Loja" }, { campo: "tipo", label: "Tipo (CLT/ESTAGIARIA)" },
+      { campo: "salario_fixo", label: "Salário fixo (R$)", num: true },
+      { campo: "vt_percentual", label: "VT % desconto (ex: 6)", num: true },
+      { campo: "taxa_comissao", label: "Taxa comissão (ex: 0.005)", num: true },
     ],
   },
   {
@@ -67,6 +70,13 @@ const ABAS: { key: string; label: string; campos: Campo[]; busca?: string }[] = 
     campos: [
       { campo: "ano", label: "Ano", num: true }, { campo: "mes", label: "Mês", num: true },
       { campo: "fracao", label: "Fração", num: true }, { campo: "observacao", label: "Observação" },
+    ],
+  },
+  {
+    key: "cfin_inss_faixas", label: "Faixas INSS",
+    campos: [
+      { campo: "ano", label: "Ano", num: true }, { campo: "faixa_ate", label: "Faixa até (R$)", num: true },
+      { campo: "aliquota", label: "Alíquota (%)", num: true },
     ],
   },
 ];

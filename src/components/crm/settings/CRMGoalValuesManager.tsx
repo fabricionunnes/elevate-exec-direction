@@ -310,8 +310,23 @@ export const CRMGoalValuesManager = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Uma linha tem conteúdo se qualquer campo de meta/comissão/bônus foi preenchido.
+      const hasAnyValue = (v: GoalValue) =>
+        (v.meta_value || 0) > 0 ||
+        (v.super_meta_value || 0) > 0 ||
+        (v.hiper_meta_value || 0) > 0 ||
+        (v.ote_base || 0) > 0 ||
+        (v.ote_variable || 0) > 0 ||
+        (v.super_meta_bonus_value || 0) > 0 ||
+        (v.hiper_meta_bonus_value || 0) > 0 ||
+        !!v.super_meta_bonus_text ||
+        !!v.hiper_meta_bonus_text;
+
       const valuesToUpsert = Array.from(goalValues.values())
-        .filter(v => v.meta_value > 0 || v.ote_base > 0)
+        // Linhas que JÁ existem no banco (v.id) são sempre salvas, mesmo zeradas —
+        // senão zerar a meta não persistia e o valor antigo voltava ao recarregar.
+        // Só ignora linha nova que está totalmente vazia (não cria registro à toa).
+        .filter(v => !!v.id || hasAnyValue(v))
         .map((v) => ({
           staff_id: v.staff_id,
           goal_type_id: v.goal_type_id,
