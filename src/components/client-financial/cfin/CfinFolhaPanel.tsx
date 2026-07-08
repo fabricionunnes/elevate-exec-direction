@@ -12,6 +12,7 @@ import { Plus, Printer, Trash2, ArrowLeft, Pencil, Calculator, Wand2 } from "luc
 import { toast } from "sonner";
 import { fmtMoney, fmtDate, MESES, parseValor, calcInss, type InssFaixa } from "./helpers";
 import { CfinVerbaCombobox } from "./CfinVerbaCombobox";
+import { CfinFuncCombobox } from "./CfinFuncCombobox";
 import { CfinComissaoDialog } from "./CfinComissaoDialog";
 
 interface Func {
@@ -411,12 +412,11 @@ ${itens.map(i => `<tr><td>${i.verba}</td><td>${i.ref ?? ""}</td><td class="n">${
           <div className="space-y-3">
             <div className="space-y-1">
               <Label>Funcionário</Label>
-              <Select value={novoFunc || undefined} onValueChange={setNovoFunc}>
-                <SelectTrigger><SelectValue placeholder="selecione…" /></SelectTrigger>
-                <SelectContent className="max-h-72">
-                  {funcs.filter(f => f.ativo).map(f => <SelectItem key={f.id} value={String(f.id)}>{f.codigo ? `${f.codigo} — ` : ""}{f.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <CfinFuncCombobox
+                opcoes={funcs.filter(f => f.ativo).map(f => ({ id: f.id, label: `${f.codigo ? `${f.codigo} — ` : ""}${f.nome}` }))}
+                value={novoFunc ? Number(novoFunc) : null}
+                onChange={id => setNovoFunc(String(id))}
+              />
             </div>
             <div className="space-y-1">
               <Label>Tipo</Label>
