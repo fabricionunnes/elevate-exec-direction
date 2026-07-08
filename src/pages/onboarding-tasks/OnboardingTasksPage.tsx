@@ -2196,6 +2196,9 @@ const OnboardingTasksPage = () => {
 
           {/* Desktop Navigation — clean grouped nav */}
           <div className="hidden sm:flex items-center gap-0.5 border-b border-border/50 pb-2">
+            {/* Menu rola horizontalmente quando estoura a largura, mantendo os
+                controles da direita fixos dentro do esquadro do container. */}
+            <div className="flex items-center gap-0.5 min-w-0 flex-1 overflow-x-auto">
             {/* Empresas dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -2790,8 +2793,10 @@ const OnboardingTasksPage = () => {
               </DropdownMenu>
             )}
 
-            {/* ── Right side ──────────────────────────────── */}
-            <div className="ml-auto flex items-center gap-0.5">
+            </div>
+
+            {/* ── Right side (fixo, não sai do esquadro) ──────────────── */}
+            <div className="shrink-0 flex items-center gap-0.5 pl-1">
               <ThemeToggle />
               <Button
                 variant="ghost"
