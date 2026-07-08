@@ -178,8 +178,55 @@ Regras de escrita:
   return (data?.content?.[0]?.text || "").trim();
 }
 
-function nudgeText(companyName: string): string {
-  return `Bom dia, time ${companyName}. Hoje ainda não chegaram os números do dia aqui pra mim. Lança os indicadores no sistema que eu te devolvo a leitura comercial (o que subiu, o que caiu e onde focar). Sem número, reunião vira achismo.`;
+// Cobrança quando não há número lançado. NÃO pode ser idêntica todos os dias:
+// a IA escreve um texto novo (com a saudação certa pro horário); se falhar,
+// cai num pool rotacionado por dia+empresa.
+function brDayPeriod(): "manhã" | "tarde" | "noite" {
+  const h = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })).getHours();
+  return h < 12 ? "manhã" : h < 18 ? "tarde" : "noite";
+}
+const NUDGE_POOL: ((c: string, sauda: string) => string)[] = [
+  (c, s) => `${s}, time ${c}. Os números de hoje ainda não chegaram aqui. Lança os indicadores no sistema que eu devolvo a leitura comercial de vocês. Gestão sem número é aposta.`,
+  (c, s) => `${s}, ${c}. Dia fechando e o sistema ainda está sem os indicadores de hoje. Lança aí que eu te mostro o que subiu, o que caiu e onde focar amanhã.`,
+  (c, s) => `${s}, time ${c}. Faltou o lançamento dos números de hoje. Sem eles eu não consigo devolver a leitura do dia — e a gente decide no escuro. Bora lançar.`,
+  (c, s) => `${s}, ${c}. Ainda não vi os indicadores de hoje no sistema. Quem lança número todo dia enxerga o padrão antes do problema. Sobe aí que eu analiso.`,
+  (c, s) => `${s}, time ${c}. Cadê os números de hoje? Lançou, eu leio e devolvo o direcionamento. Não lançou, a reunião vira opinião.`,
+  (c, s) => `${s}, ${c}. O sistema está sem os lançamentos de hoje. Dois minutos pra lançar, e vocês ganham a leitura do dia de volta. Combinado?`,
+  (c, s) => `${s}, time ${c}. Passando pra cobrar os indicadores do dia — ainda não caíram aqui. Número lançado é decisão embasada; sem ele é achismo.`,
+  (c, s) => `${s}, ${c}. Hoje o painel ficou em branco até agora. Lança os números que eu te devolvo onde apertar amanhã. Consistência no lançamento é metade da gestão.`,
+];
+function nudgeFallback(companyName: string): string {
+  const sauda = { manhã: "Bom dia", tarde: "Boa tarde", noite: "Boa noite" }[brDayPeriod()];
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+  let hash = 0;
+  for (const ch of companyName) hash = (hash + ch.charCodeAt(0)) % 997;
+  return NUDGE_POOL[(dayOfYear + hash) % NUDGE_POOL.length](companyName, sauda);
+}
+async function nudgeText(companyName: string): Promise<string> {
+  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!ANTHROPIC_API_KEY) return nudgeFallback(companyName);
+  const periodo = brDayPeriod();
+  const prompt = `Você é Marcelo Almeida, diretor comercial da UNV, no grupo de gestão do cliente ${companyName} no WhatsApp. Os indicadores de HOJE ainda não foram lançados no sistema. Escreva UMA cobrança curta (2 a 3 frases) pedindo pro time lançar os números do dia.
+
+Regras:
+- Agora é ${periodo} — use a saudação certa (ou nenhuma).
+- Tom de diretor comercial: direto, humano, sem emoji, sem markdown, português do Brasil.
+- Diga que com os números você devolve a leitura comercial (o que subiu, o que caiu, onde focar).
+- VARIE a construção: essa mensagem sai todo dia e NÃO pode parecer repetida. Não use a frase "Sem número, reunião vira achismo".
+- Responda SÓ com o texto final da mensagem.`;
+  try {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+      body: JSON.stringify({ model: MODEL, max_tokens: 300, temperature: 1, messages: [{ role: "user", content: prompt }] }),
+    });
+    if (!resp.ok) return nudgeFallback(companyName);
+    const data = await resp.json();
+    const text = (data?.content?.[0]?.text || "").trim();
+    return text.length > 30 ? text : nudgeFallback(companyName);
+  } catch {
+    return nudgeFallback(companyName);
+  }
 }
 
 Deno.serve(async (req) => {
@@ -208,9 +255,15 @@ Deno.serve(async (req) => {
       const metrics = await buildMetrics(supabase, c.id, today);
       let text: string;
       if (!metrics || !metrics.hasToday || metrics.rows.length === 0) {
-        text = nudgeText(c.name);
+        text = await nudgeText(c.name);
       } else {
-        text = await generateSummary(c.name, metrics) || nudgeText(c.name);
+        text = await generateSummary(c.name, metrics) || await nudgeText(c.name);
+      }
+
+      // {dry:true}: só retorna os textos, não envia nada (validação).
+      if (body.dry) {
+        results.push({ company: c.name, processed: true, has_data: !!metrics?.hasToday, preview: text });
+        continue;
       }
 
       const target = live ? group.jid : ALERT_PHONE;
