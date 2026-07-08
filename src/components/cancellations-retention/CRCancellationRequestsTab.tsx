@@ -12,7 +12,9 @@ import {
 } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { format, parseISO } from "date-fns";
-import { Search, ExternalLink } from "lucide-react";
+import { Search, ExternalLink, LifeBuoy } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Props {
   projects: any[];
@@ -38,6 +40,27 @@ const REASON_LABELS: Record<string, string> = {
 export function CRCancellationRequestsTab({ projects, staff, filters, onFilterChange }: Props) {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [savingNexus, setSavingNexus] = useState<string | null>(null);
+
+  // Anti-churn: em vez de perder o cliente, oferece downgrade pro plano Nexus Only
+  // (só sistema, R$497). Muda o plano e mantém os dados; a cobrança é ajustada à
+  // mão no Asaas (não automatizo billing sem piloto).
+  const offerNexusOnly = async (p: any) => {
+    const cid = p.onboarding_company_id || p.company_id;
+    if (!cid) { toast.error("Empresa não vinculada ao projeto."); return; }
+    if (!confirm(`Mudar ${p.company_name || "este cliente"} para o plano NEXUS ONLY (R$ 497/mês, só sistema)?\n\nO cliente mantém dashboards, KPIs, evolução, leads e histórico; some o que depende de consultor. IMPORTANTE: ajuste a cobrança pra R$ 497 no Asaas manualmente.`)) return;
+    setSavingNexus(p.id);
+    try {
+      const { error } = await supabase
+        .from("onboarding_companies").update({ plan_tier: "nexus_only" }).eq("id", cid);
+      if (error) throw error;
+      toast.success("Cliente migrado pra Nexus Only. Ajuste a cobrança pra R$ 497 no Asaas.");
+    } catch (e: any) {
+      toast.error("Erro ao migrar: " + (e?.message || e));
+    } finally {
+      setSavingNexus(null);
+    }
+  };
 
   const requests = useMemo(() => {
     return projects.filter(p =>
@@ -128,9 +151,21 @@ export function CRCancellationRequestsTab({ projects, staff, filters, onFilterCh
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="outline" onClick={() => navigate(`/onboarding-tasks/${p.id}`)}>
-                        <ExternalLink className="h-3 w-3 mr-1" /> Ver
-                      </Button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-emerald-600 border-emerald-500/40 hover:bg-emerald-500/10"
+                          disabled={savingNexus === p.id}
+                          onClick={() => offerNexusOnly(p)}
+                          title="Reter como Nexus Only (R$ 497/mês, só sistema)"
+                        >
+                          <LifeBuoy className="h-3 w-3 mr-1" /> Nexus Only
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => navigate(`/onboarding-tasks/${p.id}`)}>
+                          <ExternalLink className="h-3 w-3 mr-1" /> Ver
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
