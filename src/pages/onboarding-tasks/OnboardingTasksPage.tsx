@@ -2195,10 +2195,7 @@ const OnboardingTasksPage = () => {
         <div className="flex flex-col gap-3 mb-4 sm:mb-6">
 
           {/* Desktop Navigation — clean grouped nav */}
-          <div className="hidden sm:flex items-center gap-0.5 border-b border-border/50 pb-2">
-            {/* Menu rola horizontalmente quando estoura a largura, mantendo os
-                controles da direita fixos dentro do esquadro do container. */}
-            <div className="flex items-center gap-0.5 min-w-0 flex-1 overflow-x-auto">
+          <div className="hidden sm:flex flex-wrap items-center gap-x-0.5 gap-y-1 border-b border-border/50 pb-2">
             {/* Empresas dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -2396,20 +2393,25 @@ const OnboardingTasksPage = () => {
               </Button>
             )}
 
-            {/* ── UNV Board — botão direto ─────────────────── */}
+            {/* ── Produtos UNV (Board + Start) — agrupados p/ economizar espaço ── */}
             {canCreateCompany && (
-              <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60" onClick={() => navigate("/onboarding-tasks/board-unv")}>
-                <Crown className="h-4 w-4" />
-                UNV Board
-              </Button>
-            )}
-
-            {/* ── UNV Start — botão direto ─────────────────── */}
-            {canCreateCompany && (
-              <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60" onClick={() => navigate("/onboarding-tasks/unv-start")}>
-                <Sparkles className="h-4 w-4" />
-                UNV Start
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60">
+                    <Crown className="h-4 w-4" />
+                    Produtos
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/board-unv")}>
+                    <Crown className="h-4 w-4 mr-2" /> UNV Board
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/unv-start")}>
+                    <Sparkles className="h-4 w-4 mr-2" /> UNV Start
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
 
             {/* ── Engajamento ─────────────────────────────── */}
@@ -2793,10 +2795,8 @@ const OnboardingTasksPage = () => {
               </DropdownMenu>
             )}
 
-            </div>
-
-            {/* ── Right side (fixo, não sai do esquadro) ──────────────── */}
-            <div className="shrink-0 flex items-center gap-0.5 pl-1">
+            {/* ── Right side ──────────────────────────────── */}
+            <div className="ml-auto flex items-center gap-0.5 shrink-0">
               <ThemeToggle />
               <Button
                 variant="ghost"
