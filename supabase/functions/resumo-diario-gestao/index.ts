@@ -165,8 +165,10 @@ Regras de escrita:
 - 5 a 7 linhas no máximo. Comece com uma saudação curta ao time.
 - Traga os números que importam (faturamento, vendas, leads/atendimentos).
 - Destaque 1 ponto de atenção (a maior queda) OU 1 vitória (a maior alta).
-- Termine com 1 ação concreta pra amanhã.
-- Não invente número que não está na lista. Não use markdown, só texto corrido/linhas.`;
+- Termine com 1 ação concreta pra amanhã — de EXECUÇÃO (ex: follow-up nos deals parados, revisar propostas em aberto, priorizar a lista de leads).
+- NUNCA marque, prometa ou sugira reunião, call ou compromisso com dia/horário — você não tem acesso à agenda de ninguém. Se o dia pediu conversa, no máximo diga que o consultor vai alinhar com o time, sem hora marcada.
+- Não invente número que não está na lista. Não use markdown, só texto corrido/linhas.
+- Varie a construção do texto a cada dia — essa mensagem sai diariamente e não pode parecer repetida.`;
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
