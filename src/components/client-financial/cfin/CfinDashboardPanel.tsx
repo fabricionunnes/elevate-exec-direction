@@ -3,9 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { Wallet, HandCoins, Users, ReceiptText, Banknote, TrendingUp } from "lucide-react";
+import { Wallet, HandCoins, Users, ReceiptText, Banknote, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { fmtMoney, fmtDate, MESES } from "./helpers";
 
 interface Dash {
@@ -20,57 +20,97 @@ interface Dash {
   despesas_pendentes: number;
 }
 
-const CORES = ["#6366f1", "#06b6d4", "#f59e0b", "#ef4444", "#10b981", "#8b5cf6", "#ec4899", "#64748b"];
+// paleta categórica validada (dataviz validator, modo dark — todos os checks PASS)
+const CORES = ["#3987e5", "#0e9aa7", "#c47d24", "#3fa34d", "#d6568c", "#8b6fd6"];
+const EMERALD = "#10b981";
+const RED = "#ef4444";
 
-const fmtMesCurto = (m: string) => {
-  const [, mm] = m.split("-");
-  return MESES[parseInt(mm)]?.slice(0, 3) ?? m;
+const fmtMesCurto = (m: string) => MESES[parseInt(m.split("-")[1])]?.slice(0, 3) ?? m;
+const fmtK = (v: number) => {
+  const a = Math.abs(v);
+  if (a >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+  if (a >= 1000) return `${Math.round(v / 1000)}k`;
+  return String(Math.round(v));
 };
-const fmtK = (v: number) => Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(Math.round(v));
 
-function Card3D({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
+type Tone = "neutral" | "emerald" | "red" | "violet" | "amber" | "cyan" | "blue";
+const TONE: Record<Tone, { chip: string; icon: string; ring: string; value?: string }> = {
+  neutral: { chip: "bg-muted", icon: "text-foreground", ring: "" },
+  emerald: { chip: "bg-emerald-500/15", icon: "text-emerald-500", ring: "hover:border-emerald-500/40", value: "text-emerald-600 dark:text-emerald-400" },
+  red: { chip: "bg-red-500/15", icon: "text-red-500", ring: "hover:border-red-500/40", value: "text-red-600 dark:text-red-400" },
+  violet: { chip: "bg-violet-500/15", icon: "text-violet-500", ring: "hover:border-violet-500/40" },
+  amber: { chip: "bg-amber-500/15", icon: "text-amber-500", ring: "hover:border-amber-500/40" },
+  cyan: { chip: "bg-cyan-500/15", icon: "text-cyan-500", ring: "hover:border-cyan-500/40" },
+  blue: { chip: "bg-blue-500/15", icon: "text-blue-500", ring: "hover:border-blue-500/40" },
+};
+
+function MetricCard({ icon: Icon, label, value, sub, tone, delay, valueTone }: {
+  icon: typeof Wallet; label: string; value: string; sub?: React.ReactNode; tone: Tone; delay: number; valueTone?: boolean;
+}) {
+  const t = TONE[tone];
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24, rotateX: -8 }}
-      animate={{ opacity: 1, y: 0, rotateX: 0 }}
-      transition={{ delay, duration: 0.5, ease: "easeOut" }}
-      whileHover={{ y: -6, scale: 1.015 }}
-      style={{ transformStyle: "preserve-3d", perspective: 1000 }}
-      className={`relative rounded-2xl border border-border/50 bg-gradient-to-br shadow-lg hover:shadow-2xl transition-shadow overflow-hidden ${className}`}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.4, ease: "easeOut" }}
+      className={`group rounded-2xl border border-border/60 bg-card p-5 transition-all hover:shadow-lg hover:-translate-y-0.5 ${t.ring}`}
     >
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className={`grid h-9 w-9 place-items-center rounded-xl ${t.chip}`}>
+          <Icon className={`h-[18px] w-[18px] ${t.icon}`} />
+        </span>
+      </div>
+      <div className={`mt-3 truncate text-[26px] font-bold leading-none tabular-nums ${valueTone && t.value ? t.value : "text-foreground"}`}>{value}</div>
+      {sub && <div className="mt-2 text-xs text-muted-foreground">{sub}</div>}
+    </motion.div>
+  );
+}
+
+function ChartCard({ title, subtitle, right, children, delay }: {
+  title: string; subtitle?: string; right?: React.ReactNode; children: React.ReactNode; delay: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.4, ease: "easeOut" }}
+      className="rounded-2xl border border-border/60 bg-card p-5"
+    >
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+          {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+        </div>
+        {right}
+      </div>
       {children}
     </motion.div>
   );
 }
 
-function MetricCard({ icon: Icon, label, value, sub, gradient, delay }: {
-  icon: typeof Wallet; label: string; value: string; sub?: string; gradient: string; delay: number;
-}) {
-  return (
-    <Card3D delay={delay} className={gradient}>
-      <div className="absolute -right-6 -top-6 opacity-10">
-        <Icon className="h-28 w-28" />
-      </div>
-      <div className="p-4 sm:p-5">
-        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider opacity-80">
-          <Icon className="h-4 w-4" /> {label}
-        </div>
-        <div className="mt-2 text-lg min-[480px]:text-xl sm:text-2xl font-bold tabular-nums break-words">{value}</div>
-        {sub && <div className="mt-1 text-xs opacity-70">{sub}</div>}
-      </div>
-    </Card3D>
-  );
-}
+const tooltipStyle = {
+  backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))",
+  borderRadius: 12, fontSize: 12, color: "hsl(var(--popover-foreground))",
+  boxShadow: "0 8px 24px rgba(0,0,0,.18)", padding: "8px 12px",
+};
 
 export function CfinDashboardPanel({ projectId }: { projectId: string }) {
   const [d, setD] = useState<Dash | null>(null);
 
   useEffect(() => {
-    supabase.rpc("cfin_dashboard", { p_project: projectId })
-      .then(({ data }) => setD(data as unknown as Dash));
+    supabase.rpc("cfin_dashboard", { p_project: projectId }).then(({ data }) => setD(data as unknown as Dash));
   }, [projectId]);
 
-  if (!d) return <p className="text-sm text-muted-foreground animate-pulse">Carregando dashboard…</p>;
+  if (!d) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-[116px] animate-pulse rounded-2xl border border-border/60 bg-card" />
+        ))}
+      </div>
+    );
+  }
 
   const mesAtual = d.mensal[d.mensal.length - 1];
   const resultadoMes = mesAtual ? mesAtual.entradas - mesAtual.saidas : 0;
@@ -78,139 +118,139 @@ export function CfinDashboardPanel({ projectId }: { projectId: string }) {
   const mensalFmt = d.mensal.map(m => ({ ...m, nome: fmtMesCurto(m.mes) }));
   const folhaFmt = d.folha_mensal.map(f => ({ ...f, nome: fmtMesCurto(f.comp) }));
   const contasChart = d.contas.map(c => ({ nome: c.codigo, saldo: Math.round(c.saldo * 100) / 100 }));
-
-  const tooltipStyle = {
-    backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))",
-    borderRadius: 10, fontSize: 12, color: "hsl(var(--foreground))",
-  };
+  const totalDespesasGrupo = d.despesas_grupo.reduce((s, g) => s + g.total, 0);
 
   return (
-    <div className="space-y-5">
-      {/* Cards de métricas */}
-      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-        <MetricCard delay={0} icon={Wallet} label="Saldo contas ativas"
-          value={fmtMoney(d.saldo_total)}
-          sub={`${d.contas.length} contas com movimento`}
-          gradient={d.saldo_total >= 0 ? "from-emerald-500/15 to-emerald-500/5" : "from-red-500/15 to-red-500/5"} />
-        <MetricCard delay={0.05} icon={TrendingUp} label="Resultado do mês"
+    <div className="space-y-4">
+      {/* Métricas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <MetricCard delay={0} icon={Wallet} label="Saldo em conta" tone={d.saldo_total >= 0 ? "emerald" : "red"} valueTone
+          value={fmtMoney(d.saldo_total)} sub={`${d.contas.length} contas ativas com movimento`} />
+        <MetricCard delay={0.04} icon={resultadoMes >= 0 ? TrendingUp : TrendingDown} label="Resultado do mês" tone={resultadoMes >= 0 ? "emerald" : "red"} valueTone
           value={fmtMoney(resultadoMes)}
-          sub={mesAtual ? `entradas ${fmtMoney(mesAtual.entradas)}` : undefined}
-          gradient={resultadoMes >= 0 ? "from-cyan-500/15 to-cyan-500/5" : "from-orange-500/15 to-orange-500/5"} />
-        <MetricCard delay={0.1} icon={HandCoins} label="Empréstimos"
+          sub={mesAtual ? (
+            <span className="flex flex-wrap gap-x-3 gap-y-0.5">
+              <span className="inline-flex items-center gap-1"><ArrowUpRight className="h-3 w-3 text-emerald-500" />{fmtMoney(mesAtual.entradas)}</span>
+              <span className="inline-flex items-center gap-1"><ArrowDownRight className="h-3 w-3 text-red-500" />{fmtMoney(mesAtual.saidas)}</span>
+            </span>
+          ) : undefined} />
+        <MetricCard delay={0.08} icon={HandCoins} label="Empréstimos" tone="amber"
           value={fmtMoney(d.emprestimos.saldo_devedor)}
-          sub={`${d.emprestimos.contratos_ativos} contratos · parcela mês ${fmtMoney(d.emprestimos.parcela_mensal)}`}
-          gradient="from-red-500/15 to-red-500/5" />
-        <MetricCard delay={0.15} icon={Users} label="Folha do mês"
+          sub={`${d.emprestimos.contratos_ativos} contratos · parcela/mês ${fmtMoney(d.emprestimos.parcela_mensal)}`} />
+        <MetricCard delay={0.12} icon={Users} label="Folha do mês" tone="violet"
           value={folhaAtual ? fmtMoney(folhaAtual.liquido) : "—"}
-          sub={`${d.funcionarios_ativos} funcionários ativos`}
-          gradient="from-violet-500/15 to-violet-500/5" />
-        <MetricCard delay={0.2} icon={ReceiptText} label="Despesas pendentes"
-          value={fmtMoney(d.despesas_pendentes)}
-          gradient="from-amber-500/15 to-amber-500/5" />
-        <MetricCard delay={0.25} icon={Banknote} label="Retiradas no mês"
-          value={fmtMoney(d.retiradas_mes)}
-          gradient="from-blue-500/15 to-blue-500/5" />
+          sub={`${d.funcionarios_ativos} funcionários ativos`} />
+        <MetricCard delay={0.16} icon={ReceiptText} label="Despesas pendentes" tone="red"
+          value={fmtMoney(d.despesas_pendentes)} sub="Contas a pagar em aberto" />
+        <MetricCard delay={0.2} icon={Banknote} label="Retiradas no mês" tone="blue"
+          value={fmtMoney(d.retiradas_mes)} sub="Retiradas em dinheiro das lojas" />
       </div>
 
-      {/* Entradas vs saídas */}
-      <Card3D delay={0.3} className="from-card to-card/60">
-        <div className="p-4 sm:p-5">
-          <h3 className="font-semibold mb-3">Entradas × Saídas — últimos 12 meses</h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={mensalFmt}>
-              <defs>
-                <linearGradient id="gEntradas" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.55} />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity={0.02} />
-                </linearGradient>
-                <linearGradient id="gSaidas" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#ef4444" stopOpacity={0.5} />
-                  <stop offset="100%" stopColor="#ef4444" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
-              <XAxis dataKey="nome" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-              <YAxis tickFormatter={fmtK} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" width={48} />
-              <Tooltip contentStyle={tooltipStyle} formatter={(v: number, n: string) => [fmtMoney(v), n === "entradas" ? "Entradas" : "Saídas"]} />
-              <Legend formatter={(v) => v === "entradas" ? "Entradas" : "Saídas"} />
-              <Area type="monotone" dataKey="entradas" stroke="#10b981" strokeWidth={2.5} fill="url(#gEntradas)" />
-              <Area type="monotone" dataKey="saidas" stroke="#ef4444" strokeWidth={2.5} fill="url(#gSaidas)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </Card3D>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Despesas por grupo */}
-        <Card3D delay={0.35} className="from-card to-card/60">
-          <div className="p-4 sm:p-5">
-            <h3 className="font-semibold mb-3">Despesas por grupo (DRE) — ano atual</h3>
-            {d.despesas_grupo.length ? (
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie data={d.despesas_grupo} dataKey="total" nameKey="grupo"
-                    innerRadius={62} outerRadius={95} paddingAngle={3} strokeWidth={0}>
-                    {d.despesas_grupo.map((_, i) => <Cell key={i} fill={CORES[i % CORES.length]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtMoney(v)} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : <p className="text-sm text-muted-foreground">Sem despesas classificadas no período.</p>}
+      {/* Entradas × Saídas */}
+      <ChartCard delay={0.24} title="Entradas × Saídas" subtitle="Últimos 12 meses"
+        right={
+          <div className="flex items-center gap-3 text-xs">
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: EMERALD }} />Entradas</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: RED }} />Saídas</span>
           </div>
-        </Card3D>
+        }>
+        <ResponsiveContainer width="100%" height={280}>
+          <AreaChart data={mensalFmt} margin={{ top: 4, right: 8, left: 4, bottom: 0 }}>
+            <defs>
+              <linearGradient id="gEnt" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={EMERALD} stopOpacity={0.4} />
+                <stop offset="100%" stopColor={EMERALD} stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="gSai" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={RED} stopOpacity={0.35} />
+                <stop offset="100%" stopColor={RED} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.35} vertical={false} />
+            <XAxis dataKey="nome" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+            <YAxis tickFormatter={fmtK} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={44} />
+            <Tooltip contentStyle={tooltipStyle} formatter={(v: number, n: string) => [fmtMoney(v), n === "entradas" ? "Entradas" : "Saídas"]} />
+            <Area type="monotone" dataKey="entradas" stroke={EMERALD} strokeWidth={2} fill="url(#gEnt)" dot={false} activeDot={{ r: 4 }} />
+            <Area type="monotone" dataKey="saidas" stroke={RED} strokeWidth={2} fill="url(#gSai)" dot={false} activeDot={{ r: 4 }} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </ChartCard>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Despesas por grupo */}
+        <ChartCard delay={0.28} title="Despesas por grupo" subtitle="DRE · ano atual">
+          {d.despesas_grupo.length ? (
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="relative">
+                <ResponsiveContainer width={200} height={200}>
+                  <PieChart>
+                    <Pie data={d.despesas_grupo} dataKey="total" nameKey="grupo" innerRadius={64} outerRadius={92} paddingAngle={2} strokeWidth={0}>
+                      {d.despesas_grupo.map((_, i) => <Cell key={i} fill={CORES[i % CORES.length]} />)}
+                    </Pie>
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtMoney(v)} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</span>
+                  <span className="text-sm font-bold tabular-nums">{fmtMoney(totalDespesasGrupo)}</span>
+                </div>
+              </div>
+              <div className="flex-1 space-y-1.5 w-full">
+                {d.despesas_grupo.map((g, i) => (
+                  <div key={g.grupo} className="flex items-center gap-2 text-sm">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: CORES[i % CORES.length] }} />
+                    <span className="flex-1 truncate text-muted-foreground">{g.grupo}</span>
+                    <span className="font-medium tabular-nums">{fmtMoney(g.total)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : <p className="text-sm text-muted-foreground">Sem despesas classificadas no período.</p>}
+        </ChartCard>
 
         {/* Folha mensal */}
-        <Card3D delay={0.4} className="from-card to-card/60">
-          <div className="p-4 sm:p-5">
-            <h3 className="font-semibold mb-3">Folha de pagamento — líquido por mês</h3>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={folhaFmt}>
-                <defs>
-                  <linearGradient id="gFolha" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.45} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
-                <XAxis dataKey="nome" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                <YAxis tickFormatter={fmtK} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" width={48} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [fmtMoney(v), "Líquido"]} />
-                <Bar dataKey="liquido" fill="url(#gFolha)" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card3D>
+        <ChartCard delay={0.32} title="Folha de pagamento" subtitle="Líquido por mês">
+          <ResponsiveContainer width="100%" height={228}>
+            <BarChart data={folhaFmt} margin={{ top: 4, right: 8, left: 4, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gFolha" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#8b6fd6" stopOpacity={1} />
+                  <stop offset="100%" stopColor="#8b6fd6" stopOpacity={0.5} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.35} vertical={false} />
+              <XAxis dataKey="nome" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={fmtK} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={44} />
+              <Tooltip cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }} contentStyle={tooltipStyle} formatter={(v: number) => [fmtMoney(v), "Líquido"]} />
+              <Bar dataKey="liquido" fill="url(#gFolha)" radius={[6, 6, 0, 0]} maxBarSize={38} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
       </div>
 
       {/* Saldo por conta */}
-      <Card3D delay={0.45} className="from-card to-card/60">
-        <div className="p-4 sm:p-5">
-          <h3 className="font-semibold mb-3">Saldo por conta ativa</h3>
-          <ResponsiveContainer width="100%" height={Math.max(200, contasChart.length * 34)}>
-            <BarChart data={contasChart} layout="vertical" margin={{ left: 12 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} horizontal={false} />
-              <XAxis type="number" tickFormatter={fmtK} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-              <YAxis type="category" dataKey="nome" width={110} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-              <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [fmtMoney(v), "Saldo"]} />
-              <Bar dataKey="saldo" radius={[0, 8, 8, 0]}>
-                {contasChart.map((c, i) => <Cell key={i} fill={c.saldo >= 0 ? "#10b981" : "#ef4444"} fillOpacity={0.85} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-            {d.contas.map(c => (
-              <div key={c.codigo} className="flex items-center justify-between rounded-lg border border-border/50 bg-background/40 px-3 py-2 text-sm">
-                <div>
-                  <div className="font-medium">{c.codigo} <span className="text-xs text-muted-foreground">({c.tipo})</span></div>
-                  <div className="text-xs text-muted-foreground">{c.banco} · {c.titular} · últ. mov. {fmtDate(c.ultimo)}</div>
+      <ChartCard delay={0.36} title="Saldo por conta ativa" subtitle={`${d.contas.length} contas com movimento`}>
+        <div className="space-y-2">
+          {d.contas.map(c => {
+            const max = Math.max(...d.contas.map(x => Math.abs(x.saldo)), 1);
+            const pct = Math.min(100, (Math.abs(c.saldo) / max) * 100);
+            const neg = c.saldo < 0;
+            return (
+              <div key={c.codigo} className="flex items-center gap-3">
+                <div className="w-28 shrink-0">
+                  <div className="text-sm font-medium leading-tight">{c.codigo}</div>
+                  <div className="text-[11px] text-muted-foreground leading-tight truncate">{c.banco} · {c.tipo}</div>
                 </div>
-                <div className={`font-semibold tabular-nums ${c.saldo < 0 ? "text-red-500" : "text-emerald-500"}`}>{fmtMoney(c.saldo)}</div>
+                <div className="relative h-7 flex-1 overflow-hidden rounded-md bg-muted/40">
+                  <div className={`h-full rounded-md ${neg ? "bg-red-500/70" : "bg-emerald-500/70"}`} style={{ width: `${pct}%` }} />
+                </div>
+                <div className={`w-32 shrink-0 text-right text-sm font-semibold tabular-nums ${neg ? "text-red-500" : "text-emerald-500"}`}>{fmtMoney(c.saldo)}</div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      </Card3D>
+        <p className="mt-3 text-[11px] text-muted-foreground">Saldo pelos débitos/créditos migrados da planilha; lançamentos futuros e informativos não entram.</p>
+      </ChartCard>
     </div>
   );
 }
