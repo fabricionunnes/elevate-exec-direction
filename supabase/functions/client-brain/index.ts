@@ -134,6 +134,7 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
 
   const now = new Date();
   const d90 = new Date(now.getTime() - 90 * 86400000).toISOString();
+  const d60 = new Date(now.getTime() - 60 * 86400000).toISOString();
   const d30 = new Date(now.getTime() - 30 * 86400000).toISOString();
   const d14 = new Date(now.getTime() - 14 * 86400000).toISOString();
 
@@ -160,6 +161,16 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
   const upcoming = (tasks || []).filter(
     (t: any) => t.status !== "completed" && t.due_date && new Date(t.due_date) >= now,
   ).slice(0, 10);
+  // Para a IA NÃO sugerir algo que já foi feito ou já está na fila: manda os
+  // TÍTULOS do que foi concluído (60d) e de tudo que está em aberto agora.
+  const concluidasTitulos = (tasks || [])
+    .filter((t: any) => t.status === "completed" && t.completed_at && t.completed_at >= d60)
+    .slice(0, 40)
+    .map((t: any) => ({ titulo: t.title, concluida_em: t.completed_at }));
+  const emAbertoTitulos = (tasks || [])
+    .filter((t: any) => t.status !== "completed")
+    .slice(0, 40)
+    .map((t: any) => t.title);
 
   const { data: health } = await supabase
     .from("client_health_scores")
@@ -274,6 +285,8 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
       atrasadas: overdueTasks.slice(0, 10).map((t: any) => ({ titulo: t.title, vencia_em: t.due_date })),
       concluidas_30d: doneRecent.length,
       proximas: upcoming.map((t: any) => ({ titulo: t.title, vence_em: t.due_date })),
+      ja_concluidas: concluidasTitulos, // o que JÁ foi feito (não sugerir de novo)
+      em_aberto: emAbertoTitulos,       // o que JÁ está na fila (não duplicar)
     },
     reunioes_90d: (meetings || []).map((mm: any) => ({
       titulo: mm.meeting_title,
@@ -301,12 +314,14 @@ Responda APENAS com JSON válido (sem markdown) neste formato:
   "dores_atuais": ["dores/insatisfações vivas, com evidência curta"],
   "vitorias_recentes": ["vitórias/resultados que devem ser LEMBRADOS ao cliente (anti-churn)"],
   "riscos": [{ "sinal": "sinal de risco de churn", "evidencia": "fato/frase/data", "gravidade": "alta" | "media" | "baixa" }],
-  "proximas_acoes": [{ "acao": "ação concreta pro consultor/CS fazer", "motivo": "por quê (ligado a evidência)", "urgencia": "hoje" | "esta_semana" | "este_mes" }],
+  "proximas_acoes": [{ "acao": "ação concreta pro consultor/CS fazer (SÓ o que ainda NÃO foi feito e NÃO está em aberto)", "motivo": "por quê (ligado a evidência)", "urgencia": "hoje" | "esta_semana" | "este_mes" }],
   "relacionamento": { "ultima_reuniao": "data ou null", "dias_sem_reuniao": número ou null, "whatsapp": "ativo | morno | silencioso", "resumo": "1 frase sobre a qualidade da relação" },
   "citacoes_chave": [{ "quem": "nome", "frase": "citação real e relevante", "quando": "data", "leitura": "o que essa frase significa pro churn" }]
 }
 
-Regras: promessas VENCIDAS e riscos vêm primeiro nas listas. Máximo 6 itens por lista. Se não houver dado pra um campo, use lista vazia ou null — NÃO invente. Português do Brasil.`;
+Regras:
+- ANTES de montar "proximas_acoes", leia "tarefas.ja_concluidas" (o que já foi FEITO) e "tarefas.em_aberto" (o que já está na fila). NÃO sugira nenhuma ação que seja igual ou muito parecida (mesma intenção/objetivo) a algo que já está nessas listas — mesmo que as palavras sejam diferentes. Se algo já foi resolvido, ele NÃO é próxima ação; vira, no máximo, uma vitória. Só proponha ações genuinamente novas e ainda pendentes.
+- promessas VENCIDAS e riscos vêm primeiro nas listas. Máximo 6 itens por lista. Se não houver dado pra um campo, use lista vazia ou null — NÃO invente. Português do Brasil.`;
 
   const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",

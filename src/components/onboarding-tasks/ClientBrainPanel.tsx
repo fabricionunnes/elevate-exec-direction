@@ -56,10 +56,42 @@ export const ClientBrainPanel = ({ projectId }: { projectId: string }) => {
   const [creatingTask, setCreatingTask] = useState<number | null>(null);
   const [createdTasks, setCreatedTasks] = useState<Set<number>>(new Set());
 
-  // Vira a ação sugerida numa tarefa real do projeto (dono = usuário atual)
+  // Vira a ação sugerida numa tarefa real do projeto (dono = usuário atual).
+  // Guarda: se já existe tarefa igual/parecida (aberta ou concluída há pouco),
+  // não duplica — o cérebro já é instruído a não repetir, isto é a rede de segurança.
+  const norm = (s: string) =>
+    (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 2);
+  const isSimilar = (a: string, b: string) => {
+    const wa = new Set(norm(a));
+    const wb = new Set(norm(b));
+    if (wa.size === 0 || wb.size === 0) return false;
+    let inter = 0;
+    wa.forEach((w) => { if (wb.has(w)) inter++; });
+    const jaccard = inter / (wa.size + wb.size - inter);
+    return jaccard >= 0.5; // metade das palavras significativas em comum
+  };
+
   const createTask = async (idx: number, acao: { acao: string; motivo?: string; urgencia: string }) => {
     setCreatingTask(idx);
     try {
+      // 1) Já existe tarefa parecida no projeto? (aberta ou concluída nos últimos 60 dias)
+      const cutoff = format(addDays(new Date(), -60), "yyyy-MM-dd");
+      const { data: existing } = await supabase
+        .from("onboarding_tasks")
+        .select("title, status, completed_at")
+        .eq("project_id", projectId)
+        .or(`status.neq.completed,completed_at.gte.${cutoff}`)
+        .limit(200);
+      const dup = (existing || []).find((t: any) => isSimilar(t.title || "", acao.acao));
+      if (dup) {
+        const feita = (dup as any).status === "completed";
+        toast.info(feita ? "Já existe uma tarefa parecida concluída — não criei de novo." : "Já existe uma tarefa parecida em aberto — não criei de novo.");
+        setCreatedTasks((s) => new Set(s).add(idx));
+        setCreatingTask(null);
+        return;
+      }
+
       const { data: userData } = await supabase.auth.getUser();
       let staffId: string | null = null;
       if (userData?.user?.id) {
