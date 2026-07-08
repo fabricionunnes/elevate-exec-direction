@@ -16,6 +16,7 @@ interface Props {
   folhaId: number;
   mes: number;
   ano: number;
+  taxaFuncionario?: number | null;
   itensCount: number;
   onDone: () => void;
 }
@@ -23,11 +24,12 @@ interface Props {
 // A comissão da vendedora é dividida em duas verbas no holerite:
 //   Comissão (base)        -> entra como "HORA EXTRA 100 %" ou "BONIFICAÇÃO VENDAS"
 //   Descanso Remunerado    -> = comissão × fração do mês (DSR)
-export function CfinComissaoDialog({ open, onOpenChange, projectId, folhaId, mes, ano, itensCount, onDone }: Props) {
-  const [modo, setModo] = useState<"valor" | "venda">("valor");
+export function CfinComissaoDialog({ open, onOpenChange, projectId, folhaId, mes, ano, taxaFuncionario, itensCount, onDone }: Props) {
+  const taxaPadrao = taxaFuncionario ? String(taxaFuncionario * 100).replace(".", ",") : "0,5";
+  const [modo, setModo] = useState<"valor" | "venda">(taxaFuncionario ? "venda" : "valor");
   const [comissaoStr, setComissaoStr] = useState("");
   const [vendaStr, setVendaStr] = useState("");
-  const [taxaStr, setTaxaStr] = useState("0,5");
+  const [taxaStr, setTaxaStr] = useState(taxaPadrao);
   const [fracaoStr, setFracaoStr] = useState("");
   const [labelBase, setLabelBase] = useState("HORA EXTRA 100 %");
   const [fracaoBanco, setFracaoBanco] = useState<number | null>(null);
@@ -35,7 +37,8 @@ export function CfinComissaoDialog({ open, onOpenChange, projectId, folhaId, mes
 
   useEffect(() => {
     if (!open) return;
-    setComissaoStr(""); setVendaStr(""); setTaxaStr("0,5");
+    setComissaoStr(""); setVendaStr(""); setTaxaStr(taxaPadrao);
+    setModo(taxaFuncionario ? "venda" : "valor");
     supabase.from("cfin_dsr_fracoes").select("fracao").eq("project_id", projectId).eq("ano", ano).eq("mes", mes).maybeSingle()
       .then(({ data }) => {
         const f = data?.fracao != null ? Number(data.fracao) : null;

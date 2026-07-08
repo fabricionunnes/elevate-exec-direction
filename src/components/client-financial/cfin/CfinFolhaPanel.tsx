@@ -8,13 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Printer, Trash2, ArrowLeft, Pencil, Calculator } from "lucide-react";
+import { Plus, Printer, Trash2, ArrowLeft, Pencil, Calculator, Wand2 } from "lucide-react";
 import { toast } from "sonner";
-import { fmtMoney, fmtDate, MESES, parseValor } from "./helpers";
+import { fmtMoney, fmtDate, MESES, parseValor, calcInss, type InssFaixa } from "./helpers";
 import { CfinVerbaCombobox } from "./CfinVerbaCombobox";
 import { CfinComissaoDialog } from "./CfinComissaoDialog";
 
-interface Func { id: number; codigo: string | null; nome: string; nome_completo: string | null; funcao: string | null; loja_codigo: string | null; ativo: boolean }
+interface Func {
+  id: number; codigo: string | null; nome: string; nome_completo: string | null;
+  funcao: string | null; loja_codigo: string | null; ativo: boolean;
+  salario_fixo: number | null; vt_percentual: number | null; taxa_comissao: number | null;
+}
 interface FolhaRow {
   id: number; funcionario_id: number; tipo: string; loja_codigo: string | null;
   empresa: string | null; funcao: string | null; mes: number; ano: number;
@@ -43,6 +47,7 @@ export function CfinFolhaPanel({ projectId, canEdit, canDelete = canEdit }: { pr
   const [busy, setBusy] = useState(false);
 
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [inssFaixas, setInssFaixas] = useState<Map<number, InssFaixa[]>>(new Map());
 
   useEffect(() => {
     supabase.from("cfin_funcionarios").select("*").eq("project_id", projectId).order("nome")
@@ -52,7 +57,34 @@ export function CfinFolhaPanel({ projectId, canEdit, canDelete = canEdit }: { pr
     supabase.from("cfin_empresas").select("logo_url").eq("project_id", projectId)
       .not("logo_url", "is", null).limit(1)
       .then(({ data }) => setLogoUrl(data?.[0]?.logo_url ?? null));
+    supabase.from("cfin_inss_faixas").select("ano,faixa_ate,aliquota").eq("project_id", projectId)
+      .then(({ data }) => {
+        const m = new Map<number, InssFaixa[]>();
+        (data ?? []).forEach((f: { ano: number; faixa_ate: number; aliquota: number }) => {
+          if (!m.has(f.ano)) m.set(f.ano, []);
+          m.get(f.ano)!.push({ faixa_ate: f.faixa_ate, aliquota: f.aliquota });
+        });
+        setInssFaixas(m);
+      });
   }, [projectId]);
+
+  // Preenche a folha aberta com as verbas-base do cadastro do funcionário (sem duplicar)
+  const preencherAutomatico = async () => {
+    if (!aberta) return;
+    const fu = funcs.find(x => x.id === aberta.funcionario_id) ?? (aberta.cfin_funcionarios as Func | null);
+    if (!fu) return;
+    if (!fu.salario_fixo) { toast.error("Cadastre o salário fixo da funcionária em Cadastros › Funcionários."); return; }
+    const jaTem = new Set(itens.map(i => i.verba.toUpperCase().trim()));
+    const novos = verbasBase(fu, aberta.ano, aberta.id, itens.length)
+      .filter(v => !jaTem.has(v.verba.toUpperCase().trim()));
+    if (!novos.length) { toast.info("As verbas-base já estão na folha."); return; }
+    setBusy(true);
+    const { error } = await supabase.from("cfin_folha_itens").insert(novos);
+    setBusy(false);
+    if (error) { toast.error("Erro ao preencher folha"); return; }
+    toast.success(`${novos.length} verba(s) preenchida(s) do cadastro`);
+    abrirFolha(aberta); carregar();
+  };
 
   const carregar = useCallback(async () => {
     const { data } = await supabase.from("cfin_folhas")
@@ -86,11 +118,36 @@ export function CfinFolhaPanel({ projectId, canEdit, canDelete = canEdit }: { pr
       dt_inicio: `${ano}-${String(mes).padStart(2, "0")}-01`,
       aba_origem: "nexus",
     }).select("*, cfin_funcionarios(*)").single();
+    if (error) { setBusy(false); toast.error("Já existe folha deste funcionário nesta competência."); return; }
+    const novaFolhaRow = data as unknown as FolhaRow;
+    // folha mensal: já preenche salário, VT e INSS do cadastro
+    if (novoTipo === "mensal" && fu?.salario_fixo) {
+      const base = verbasBase(fu, ano, novaFolhaRow.id);
+      if (base.length) await supabase.from("cfin_folha_itens").insert(base);
+    }
     setBusy(false);
-    if (error) { toast.error("Já existe folha deste funcionário nesta competência."); return; }
     setNovaFolha(false); setNovoFunc("");
     carregar();
-    abrirFolha(data as unknown as FolhaRow);
+    abrirFolha(novaFolhaRow);
+  };
+
+  // Verbas-base a partir do cadastro do funcionário (salário, VT, INSS)
+  const verbasBase = (fu: Func, anoFolha: number, folhaId: number, ordemInicial = 0) => {
+    const sal = fu.salario_fixo ?? 0;
+    const out: { folha_id: number; ordem: number; verba: string; ref: string | null; credito: number | null; debito: number | null }[] = [];
+    let ordem = ordemInicial;
+    if (!sal) return out;
+    out.push({ folha_id: folhaId, ordem: ++ordem, verba: "SALARIO CONTRATUAL", ref: null, credito: sal, debito: null });
+    if (fu.vt_percentual && fu.vt_percentual > 0) {
+      const vt = Math.round(sal * (fu.vt_percentual / 100) * 100) / 100;
+      out.push({ folha_id: folhaId, ordem: ++ordem, verba: "VALE TRANSPORTE", ref: `${String(fu.vt_percentual).replace(".", ",")}%`, credito: null, debito: vt });
+    }
+    const faixas = inssFaixas.get(anoFolha) ?? [];
+    if (faixas.length) {
+      const inss = calcInss(sal, faixas);
+      if (inss > 0) out.push({ folha_id: folhaId, ordem: ++ordem, verba: "DESCONTO INSS", ref: null, credito: null, debito: inss });
+    }
+    return out;
   };
 
   const addItem = async () => {
@@ -195,13 +252,15 @@ ${itens.map(i => `<tr><td>${i.verba}</td><td>${i.ref ?? ""}</td><td class="n">${
             loja_codigo: aberta.loja_codigo ?? "", funcao: aberta.funcao ?? "", empresa: aberta.empresa ?? "",
             dt_inicio: aberta.dt_inicio ?? "", dt_fim: aberta.dt_fim ?? "",
           })}><Pencil className="h-4 w-4 mr-1" /> Editar dados</Button>}
+          {canEdit && itens.length === 0 && <Button size="sm" onClick={preencherAutomatico}><Wand2 className="h-4 w-4 mr-1" /> Preencher automático</Button>}
           {canEdit && <Button variant="outline" size="sm" onClick={() => setComissaoOpen(true)}><Calculator className="h-4 w-4 mr-1" /> Calcular comissão</Button>}
-          {canEdit && <Button size="sm" onClick={() => setNovoItem({ verba: "", ref: "", tipo: "credito", valor: "" })}><Plus className="h-4 w-4 mr-1" /> Verba</Button>}
+          {canEdit && <Button variant="outline" size="sm" onClick={() => setNovoItem({ verba: "", ref: "", tipo: "credito", valor: "" })}><Plus className="h-4 w-4 mr-1" /> Verba</Button>}
           {canDelete && <Button variant="destructive" size="sm" onClick={excluirFolha}><Trash2 className="h-4 w-4 mr-1" /> Excluir</Button>}
         </div>
 
         <CfinComissaoDialog open={comissaoOpen} onOpenChange={setComissaoOpen}
           projectId={projectId} folhaId={aberta.id} mes={aberta.mes} ano={aberta.ano}
+          taxaFuncionario={(funcs.find(x => x.id === aberta.funcionario_id) ?? aberta.cfin_funcionarios)?.taxa_comissao ?? null}
           itensCount={itens.length} onDone={() => abrirFolha(aberta)} />
         {/* nota: comissão = base (Hora Extra/Bonificação) + Descanso Remunerado (base × fração do mês) */}
 

@@ -997,6 +997,24 @@ export type Database = {
           },
         ]
       }
+      app_secrets: {
+        Row: {
+          key: string
+          updated_at: string | null
+          value: string | null
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          value?: string | null
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          value?: string | null
+        }
+        Relationships: []
+      }
       appointment_clients: {
         Row: {
           birth_date: string | null
@@ -4413,8 +4431,11 @@ export type Database = {
           nome_completo: string | null
           primeira_competencia: string | null
           project_id: string
+          salario_fixo: number | null
+          taxa_comissao: number | null
           tipo: string
           ultima_competencia: string | null
+          vt_percentual: number | null
         }
         Insert: {
           admissao?: string | null
@@ -4428,8 +4449,11 @@ export type Database = {
           nome_completo?: string | null
           primeira_competencia?: string | null
           project_id: string
+          salario_fixo?: number | null
+          taxa_comissao?: number | null
           tipo?: string
           ultima_competencia?: string | null
+          vt_percentual?: number | null
         }
         Update: {
           admissao?: string | null
@@ -4443,12 +4467,50 @@ export type Database = {
           nome_completo?: string | null
           primeira_competencia?: string | null
           project_id?: string
+          salario_fixo?: number | null
+          taxa_comissao?: number | null
           tipo?: string
           ultima_competencia?: string | null
+          vt_percentual?: number | null
         }
         Relationships: [
           {
             foreignKeyName: "cfin_funcionarios_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cfin_inss_faixas: {
+        Row: {
+          aliquota: number
+          ano: number
+          criado_em: string
+          faixa_ate: number
+          id: number
+          project_id: string
+        }
+        Insert: {
+          aliquota: number
+          ano: number
+          criado_em?: string
+          faixa_ate: number
+          id?: number
+          project_id: string
+        }
+        Update: {
+          aliquota?: number
+          ano?: number
+          criado_em?: string
+          faixa_ate?: number
+          id?: number
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cfin_inss_faixas_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onboarding_projects"
@@ -8613,6 +8675,35 @@ export type Database = {
           },
         ]
       }
+      client_brain: {
+        Row: {
+          brain: Json
+          generated_at: string
+          id: string
+          project_id: string
+        }
+        Insert: {
+          brain: Json
+          generated_at?: string
+          id?: string
+          project_id: string
+        }
+        Update: {
+          brain?: Json
+          generated_at?: string
+          id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_brain_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_crm_activities: {
         Row: {
           assigned_to: string | null
@@ -11907,6 +11998,50 @@ export type Database = {
           },
         ]
       }
+      client_sheet_lead_sources: {
+        Row: {
+          created_at: string
+          csv_url: string
+          enabled: boolean
+          id: string
+          label: string
+          last_result: Json | null
+          last_sync_at: string | null
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          csv_url: string
+          enabled?: boolean
+          id?: string
+          label?: string
+          last_result?: Json | null
+          last_sync_at?: string | null
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          csv_url?: string
+          enabled?: boolean
+          id?: string
+          label?: string
+          last_result?: Json | null
+          last_sync_at?: string | null
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_sheet_lead_sources_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_strategic_diagnostics: {
         Row: {
           acompanha_relatorios: string | null
@@ -12094,6 +12229,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "client_strategic_diagnostics_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_traffic_leads: {
+        Row: {
+          arrived_at: string
+          created_at: string
+          created_by: string | null
+          id: string
+          meta_lead_id: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          project_id: string
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          arrived_at?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          meta_lead_id?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          project_id: string
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          arrived_at?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          meta_lead_id?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          project_id?: string
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_traffic_leads_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onboarding_projects"
@@ -13545,6 +13733,7 @@ export type Database = {
           automation_config: Json | null
           completed_at: string | null
           created_at: string
+          created_by: string | null
           description: string | null
           google_calendar_event_id: string | null
           google_calendar_user_id: string | null
@@ -13566,6 +13755,7 @@ export type Database = {
           automation_config?: Json | null
           completed_at?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           google_calendar_event_id?: string | null
           google_calendar_user_id?: string | null
@@ -13587,6 +13777,7 @@ export type Database = {
           automation_config?: Json | null
           completed_at?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           google_calendar_event_id?: string | null
           google_calendar_user_id?: string | null
@@ -14054,6 +14245,7 @@ export type Database = {
       crm_calls: {
         Row: {
           activity_id: string | null
+          agent_call_sid: string | null
           agent_staff_id: string | null
           ai_disposition: string | null
           ai_qualification: Json | null
@@ -14061,6 +14253,7 @@ export type Database = {
           answered_at: string | null
           answered_by: string | null
           campaign_id: string | null
+          conference_name: string | null
           conference_sid: string | null
           cost: number | null
           cost_currency: string | null
@@ -14089,6 +14282,7 @@ export type Database = {
         }
         Insert: {
           activity_id?: string | null
+          agent_call_sid?: string | null
           agent_staff_id?: string | null
           ai_disposition?: string | null
           ai_qualification?: Json | null
@@ -14096,6 +14290,7 @@ export type Database = {
           answered_at?: string | null
           answered_by?: string | null
           campaign_id?: string | null
+          conference_name?: string | null
           conference_sid?: string | null
           cost?: number | null
           cost_currency?: string | null
@@ -14124,6 +14319,7 @@ export type Database = {
         }
         Update: {
           activity_id?: string | null
+          agent_call_sid?: string | null
           agent_staff_id?: string | null
           ai_disposition?: string | null
           ai_qualification?: Json | null
@@ -14131,6 +14327,7 @@ export type Database = {
           answered_at?: string | null
           answered_by?: string | null
           campaign_id?: string | null
+          conference_name?: string | null
           conference_sid?: string | null
           cost?: number | null
           cost_currency?: string | null
@@ -14440,6 +14637,7 @@ export type Database = {
           consent_message: string
           created_at: string
           created_by: string | null
+          enable_monitoring: boolean
           id: string
           max_attempts: number
           name: string
@@ -14456,6 +14654,7 @@ export type Database = {
           consent_message?: string
           created_at?: string
           created_by?: string | null
+          enable_monitoring?: boolean
           id?: string
           max_attempts?: number
           name: string
@@ -14472,6 +14671,7 @@ export type Database = {
           consent_message?: string
           created_at?: string
           created_by?: string | null
+          enable_monitoring?: boolean
           id?: string
           max_attempts?: number
           name?: string
@@ -14843,6 +15043,80 @@ export type Database = {
           },
         ]
       }
+      crm_lead_distribution: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          pipeline_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          pipeline_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          pipeline_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_distribution_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_lead_distribution_members: {
+        Row: {
+          assigned_count: number
+          distribution_id: string
+          id: string
+          is_active: boolean
+          last_assigned_at: string
+          staff_id: string
+        }
+        Insert: {
+          assigned_count?: number
+          distribution_id: string
+          id?: string
+          is_active?: boolean
+          last_assigned_at?: string
+          staff_id: string
+        }
+        Update: {
+          assigned_count?: number
+          distribution_id?: string
+          id?: string
+          is_active?: boolean
+          last_assigned_at?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_distribution_members_distribution_id_fkey"
+            columns: ["distribution_id"]
+            isOneToOne: false
+            referencedRelation: "crm_lead_distribution"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_distribution_members_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_lead_files: {
         Row: {
           created_at: string
@@ -15154,9 +15428,11 @@ export type Database = {
           estimated_revenue: string | null
           fbclid: string | null
           fit_score: number | null
+          has_partner: boolean | null
           head_closing_date: string | null
           head_status: string | null
           id: string
+          instagram: string | null
           installments: string | null
           last_activity_at: string | null
           legal_representative_name: string | null
@@ -15226,9 +15502,11 @@ export type Database = {
           estimated_revenue?: string | null
           fbclid?: string | null
           fit_score?: number | null
+          has_partner?: boolean | null
           head_closing_date?: string | null
           head_status?: string | null
           id?: string
+          instagram?: string | null
           installments?: string | null
           last_activity_at?: string | null
           legal_representative_name?: string | null
@@ -15298,9 +15576,11 @@ export type Database = {
           estimated_revenue?: string | null
           fbclid?: string | null
           fit_score?: number | null
+          has_partner?: boolean | null
           head_closing_date?: string | null
           head_status?: string | null
           id?: string
+          instagram?: string | null
           installments?: string | null
           last_activity_at?: string | null
           legal_representative_name?: string | null
@@ -20701,6 +20981,7 @@ export type Database = {
           payment_method: string | null
           recurrence_type: string | null
           reference_month: string | null
+          source_adjustment_id: string | null
           status: string | null
           supplier_name: string
           tenant_id: string | null
@@ -20728,6 +21009,7 @@ export type Database = {
           payment_method?: string | null
           recurrence_type?: string | null
           reference_month?: string | null
+          source_adjustment_id?: string | null
           status?: string | null
           supplier_name: string
           tenant_id?: string | null
@@ -20755,6 +21037,7 @@ export type Database = {
           payment_method?: string | null
           recurrence_type?: string | null
           reference_month?: string | null
+          source_adjustment_id?: string | null
           status?: string | null
           supplier_name?: string
           tenant_id?: string | null
@@ -20864,6 +21147,7 @@ export type Database = {
           payment_link: string | null
           payment_method: string | null
           reference_month: string | null
+          source_adjustment_id: string | null
           status: string | null
           tenant_id: string | null
           updated_at: string
@@ -20892,6 +21176,7 @@ export type Database = {
           payment_link?: string | null
           payment_method?: string | null
           reference_month?: string | null
+          source_adjustment_id?: string | null
           status?: string | null
           tenant_id?: string | null
           updated_at?: string
@@ -20920,6 +21205,7 @@ export type Database = {
           payment_link?: string | null
           payment_method?: string | null
           reference_month?: string | null
+          source_adjustment_id?: string | null
           status?: string | null
           tenant_id?: string | null
           updated_at?: string
@@ -25265,6 +25551,42 @@ export type Database = {
           },
         ]
       }
+      meta_capi_log: {
+        Row: {
+          created_at: string | null
+          error: string | null
+          event_id: string | null
+          event_name: string | null
+          events_received: number | null
+          id: string
+          lead_id: string | null
+          response: Json | null
+          status_code: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          error?: string | null
+          event_id?: string | null
+          event_name?: string | null
+          events_received?: number | null
+          id?: string
+          lead_id?: string | null
+          response?: Json | null
+          status_code?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          error?: string | null
+          event_id?: string | null
+          event_name?: string | null
+          events_received?: number | null
+          id?: string
+          lead_id?: string | null
+          response?: Json | null
+          status_code?: number | null
+        }
+        Relationships: []
+      }
       nfse_records: {
         Row: {
           amount_cents: number
@@ -27676,6 +27998,7 @@ export type Database = {
         Row: {
           actual_hours: number | null
           assignee_id: string | null
+          board_form_url: string | null
           completed_at: string | null
           created_at: string
           description: string | null
@@ -27700,6 +28023,7 @@ export type Database = {
         Insert: {
           actual_hours?: number | null
           assignee_id?: string | null
+          board_form_url?: string | null
           completed_at?: string | null
           created_at?: string
           description?: string | null
@@ -27724,6 +28048,7 @@ export type Database = {
         Update: {
           actual_hours?: number | null
           assignee_id?: string | null
+          board_form_url?: string | null
           completed_at?: string | null
           created_at?: string
           description?: string | null
@@ -30492,9 +30817,13 @@ export type Database = {
           email: string | null
           full_name: string
           id: string
+          interview_manager_done: boolean
           interview_manager_notes: string | null
+          interview_manager_scheduled: boolean
           interview_manager_score: number | null
+          interview_rh_done: boolean
           interview_rh_notes: string | null
+          interview_rh_scheduled: boolean
           interview_rh_score: number | null
           is_favorite: boolean
           job_id: string | null
@@ -30532,9 +30861,13 @@ export type Database = {
           email?: string | null
           full_name: string
           id?: string
+          interview_manager_done?: boolean
           interview_manager_notes?: string | null
+          interview_manager_scheduled?: boolean
           interview_manager_score?: number | null
+          interview_rh_done?: boolean
           interview_rh_notes?: string | null
+          interview_rh_scheduled?: boolean
           interview_rh_score?: number | null
           is_favorite?: boolean
           job_id?: string | null
@@ -30572,9 +30905,13 @@ export type Database = {
           email?: string | null
           full_name?: string
           id?: string
+          interview_manager_done?: boolean
           interview_manager_notes?: string | null
+          interview_manager_scheduled?: boolean
           interview_manager_score?: number | null
+          interview_rh_done?: boolean
           interview_rh_notes?: string | null
+          interview_rh_scheduled?: boolean
           interview_rh_score?: number | null
           is_favorite?: boolean
           job_id?: string | null
@@ -31859,6 +32196,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      project_report_cache: {
+        Row: {
+          cache_key: string
+          created_at: string | null
+          id: string
+          payload: Json
+          project_id: string
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string | null
+          id?: string
+          payload: Json
+          project_id: string
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string | null
+          id?: string
+          payload?: Json
+          project_id?: string
+        }
+        Relationships: []
       }
       project_strategic_plans: {
         Row: {
@@ -36383,6 +36744,590 @@ export type Database = {
           },
         ]
       }
+      unv_board_deliverables: {
+        Row: {
+          company_id: string
+          content_md: string | null
+          created_at: string
+          created_by: string | null
+          form_data: Json | null
+          id: string
+          member_id: string
+          pdf_path: string | null
+          status: string
+          task_id: string | null
+          title: string
+          type: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          company_id: string
+          content_md?: string | null
+          created_at?: string
+          created_by?: string | null
+          form_data?: Json | null
+          id?: string
+          member_id: string
+          pdf_path?: string | null
+          status?: string
+          task_id?: string | null
+          title: string
+          type: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          company_id?: string
+          content_md?: string | null
+          created_at?: string
+          created_by?: string | null
+          form_data?: Json | null
+          id?: string
+          member_id?: string
+          pdf_path?: string | null
+          status?: string
+          task_id?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unv_board_deliverables_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unv_board_deliverables_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "unv_board_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unv_board_deliverables_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unv_board_journey_templates: {
+        Row: {
+          created_at: string
+          day_offset: number
+          deliverable_type: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          month_offset: number
+          phase: number
+          phase_name: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          day_offset?: number
+          deliverable_type?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          month_offset: number
+          phase: number
+          phase_name: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          day_offset?: number
+          deliverable_type?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          month_offset?: number
+          phase?: number
+          phase_name?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
+      }
+      unv_board_members: {
+        Row: {
+          celebrated_phases: string[]
+          company_id: string
+          created_at: string
+          crm_lead_id: string | null
+          entry_date: string
+          id: string
+          notes: string | null
+          owner_name: string | null
+          owner_phone: string | null
+          plan_status: string
+          project_id: string | null
+          room_id: string | null
+          segment_snapshot: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          celebrated_phases?: string[]
+          company_id: string
+          created_at?: string
+          crm_lead_id?: string | null
+          entry_date?: string
+          id?: string
+          notes?: string | null
+          owner_name?: string | null
+          owner_phone?: string | null
+          plan_status?: string
+          project_id?: string | null
+          room_id?: string | null
+          segment_snapshot?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          celebrated_phases?: string[]
+          company_id?: string
+          created_at?: string
+          crm_lead_id?: string | null
+          entry_date?: string
+          id?: string
+          notes?: string | null
+          owner_name?: string | null
+          owner_phone?: string | null
+          plan_status?: string
+          project_id?: string | null
+          room_id?: string | null
+          segment_snapshot?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unv_board_members_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unv_board_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unv_board_members_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "unv_board_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unv_board_nps: {
+        Row: {
+          answered_at: string | null
+          company_id: string
+          created_at: string
+          cycle_days: number
+          due_date: string
+          feedback: string | null
+          id: string
+          member_id: string
+          score: number | null
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          answered_at?: string | null
+          company_id: string
+          created_at?: string
+          cycle_days: number
+          due_date: string
+          feedback?: string | null
+          id?: string
+          member_id: string
+          score?: number | null
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          answered_at?: string | null
+          company_id?: string
+          created_at?: string
+          cycle_days?: number
+          due_date?: string
+          feedback?: string | null
+          id?: string
+          member_id?: string
+          score?: number | null
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unv_board_nps_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unv_board_nps_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "unv_board_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unv_board_plan_actions: {
+        Row: {
+          created_at: string
+          deliverable_type: string | null
+          description: string | null
+          due_date: string
+          id: string
+          member_id: string
+          origin: string
+          phase: number
+          phase_name: string | null
+          status: string
+          task_id: string | null
+          template_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deliverable_type?: string | null
+          description?: string | null
+          due_date: string
+          id?: string
+          member_id: string
+          origin?: string
+          phase: number
+          phase_name?: string | null
+          status?: string
+          task_id?: string | null
+          template_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deliverable_type?: string | null
+          description?: string | null
+          due_date?: string
+          id?: string
+          member_id?: string
+          origin?: string
+          phase?: number
+          phase_name?: string | null
+          status?: string
+          task_id?: string | null
+          template_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unv_board_plan_actions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "unv_board_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unv_board_plan_actions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unv_board_plan_actions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "unv_board_journey_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unv_board_results: {
+        Row: {
+          company_id: string
+          deliverable_id: string | null
+          description: string
+          id: string
+          member_id: string
+          metric_text: string | null
+          reported_at: string
+          task_id: string | null
+          value_brl: number | null
+        }
+        Insert: {
+          company_id: string
+          deliverable_id?: string | null
+          description: string
+          id?: string
+          member_id: string
+          metric_text?: string | null
+          reported_at?: string
+          task_id?: string | null
+          value_brl?: number | null
+        }
+        Update: {
+          company_id?: string
+          deliverable_id?: string | null
+          description?: string
+          id?: string
+          member_id?: string
+          metric_text?: string | null
+          reported_at?: string
+          task_id?: string | null
+          value_brl?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unv_board_results_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unv_board_results_deliverable_id_fkey"
+            columns: ["deliverable_id"]
+            isOneToOne: false
+            referencedRelation: "unv_board_deliverables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unv_board_results_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "unv_board_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unv_board_results_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unv_board_risk_alerts: {
+        Row: {
+          exec_rate: number | null
+          id: string
+          last_nps: number | null
+          member_id: string
+          reason: string
+          sent_at: string
+        }
+        Insert: {
+          exec_rate?: number | null
+          id?: string
+          last_nps?: number | null
+          member_id: string
+          reason: string
+          sent_at?: string
+        }
+        Update: {
+          exec_rate?: number | null
+          id?: string
+          last_nps?: number | null
+          member_id?: string
+          reason?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unv_board_risk_alerts_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "unv_board_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unv_board_rooms: {
+        Row: {
+          capacity: number
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          time_slot: string
+          updated_at: string
+          week_parity: string
+          weekday: number
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          time_slot?: string
+          updated_at?: string
+          week_parity?: string
+          weekday?: number
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          time_slot?: string
+          updated_at?: string
+          week_parity?: string
+          weekday?: number
+        }
+        Relationships: []
+      }
+      unv_board_sessions: {
+        Row: {
+          agenda: string | null
+          consultant_staff_id: string | null
+          created_at: string
+          duration_min: number
+          id: string
+          meeting_link: string | null
+          member_id: string
+          notes: string | null
+          scheduled_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agenda?: string | null
+          consultant_staff_id?: string | null
+          created_at?: string
+          duration_min?: number
+          id?: string
+          meeting_link?: string | null
+          member_id: string
+          notes?: string | null
+          scheduled_at: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agenda?: string | null
+          consultant_staff_id?: string | null
+          created_at?: string
+          duration_min?: number
+          id?: string
+          meeting_link?: string | null
+          member_id?: string
+          notes?: string | null
+          scheduled_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unv_board_sessions_consultant_staff_id_fkey"
+            columns: ["consultant_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unv_board_sessions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "unv_board_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unv_board_task_forms: {
+        Row: {
+          announced_at: string | null
+          created_at: string
+          deliverable_id: string | null
+          form_data: Json | null
+          form_type: string
+          id: string
+          member_id: string
+          proposed_actions: Json | null
+          questions: Json | null
+          status: string
+          submitted_at: string | null
+          task_id: string
+          token: string
+        }
+        Insert: {
+          announced_at?: string | null
+          created_at?: string
+          deliverable_id?: string | null
+          form_data?: Json | null
+          form_type?: string
+          id?: string
+          member_id: string
+          proposed_actions?: Json | null
+          questions?: Json | null
+          status?: string
+          submitted_at?: string | null
+          task_id: string
+          token?: string
+        }
+        Update: {
+          announced_at?: string | null
+          created_at?: string
+          deliverable_id?: string | null
+          form_data?: Json | null
+          form_type?: string
+          id?: string
+          member_id?: string
+          proposed_actions?: Json | null
+          questions?: Json | null
+          status?: string
+          submitted_at?: string | null
+          task_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unv_board_task_forms_deliverable_id_fkey"
+            columns: ["deliverable_id"]
+            isOneToOne: false
+            referencedRelation: "unv_board_deliverables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unv_board_task_forms_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "unv_board_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unv_board_task_forms_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       unv_instagram_posts: {
         Row: {
           account_id: string | null
@@ -36481,6 +37426,7 @@ export type Database = {
           instagram_username: string | null
           is_connected: boolean
           is_primary: boolean | null
+          project_id: string | null
           updated_at: string
         }
         Insert: {
@@ -36493,6 +37439,7 @@ export type Database = {
           instagram_username?: string | null
           is_connected?: boolean
           is_primary?: boolean | null
+          project_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -36505,9 +37452,18 @@ export type Database = {
           instagram_username?: string | null
           is_connected?: boolean
           is_primary?: boolean | null
+          project_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "unv_meta_ads_accounts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       unv_mika_chat_history: {
         Row: {
@@ -36554,6 +37510,149 @@ export type Database = {
           plan_context?: string | null
           total_videos?: number | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      unv_start_deliverables: {
+        Row: {
+          content_md: string | null
+          created_at: string
+          form_data: Json | null
+          id: string
+          member_id: string
+          module_type: string
+          pdf_path: string | null
+          status: string
+          step: number
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          content_md?: string | null
+          created_at?: string
+          form_data?: Json | null
+          id?: string
+          member_id: string
+          module_type: string
+          pdf_path?: string | null
+          status?: string
+          step: number
+          title: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          content_md?: string | null
+          created_at?: string
+          form_data?: Json | null
+          id?: string
+          member_id?: string
+          module_type?: string
+          pdf_path?: string | null
+          status?: string
+          step?: number
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unv_start_deliverables_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "unv_start_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unv_start_members: {
+        Row: {
+          access_sent_at: string | null
+          access_token: string
+          activation_reminders: number
+          amount_cents: number | null
+          asaas_invoice_url: string | null
+          asaas_payment_id: string | null
+          company_name: string | null
+          cpf: string | null
+          created_at: string
+          current_step: number
+          email: string
+          fbclid: string | null
+          id: string
+          last_reminder_at: string | null
+          name: string | null
+          nexus_company_id: string | null
+          nexus_crm_lead_id: string | null
+          nexus_project_id: string | null
+          password_hash: string | null
+          payment_method: string | null
+          payment_ref: string | null
+          payment_status: string
+          pix_reminders: number
+          segment: string | null
+          status: string
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          access_sent_at?: string | null
+          access_token?: string
+          activation_reminders?: number
+          amount_cents?: number | null
+          asaas_invoice_url?: string | null
+          asaas_payment_id?: string | null
+          company_name?: string | null
+          cpf?: string | null
+          created_at?: string
+          current_step?: number
+          email: string
+          fbclid?: string | null
+          id?: string
+          last_reminder_at?: string | null
+          name?: string | null
+          nexus_company_id?: string | null
+          nexus_crm_lead_id?: string | null
+          nexus_project_id?: string | null
+          password_hash?: string | null
+          payment_method?: string | null
+          payment_ref?: string | null
+          payment_status?: string
+          pix_reminders?: number
+          segment?: string | null
+          status?: string
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          access_sent_at?: string | null
+          access_token?: string
+          activation_reminders?: number
+          amount_cents?: number | null
+          asaas_invoice_url?: string | null
+          asaas_payment_id?: string | null
+          company_name?: string | null
+          cpf?: string | null
+          created_at?: string
+          current_step?: number
+          email?: string
+          fbclid?: string | null
+          id?: string
+          last_reminder_at?: string | null
+          name?: string | null
+          nexus_company_id?: string | null
+          nexus_crm_lead_id?: string | null
+          nexus_project_id?: string | null
+          password_hash?: string | null
+          payment_method?: string | null
+          payment_ref?: string | null
+          payment_status?: string
+          pix_reminders?: number
+          segment?: string | null
+          status?: string
+          updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }
@@ -37990,6 +39089,10 @@ export type Database = {
       }
     }
     Functions: {
+      bulk_change_lead_pipeline: {
+        Args: { p_ids: string[]; p_origin: string; p_stage: string }
+        Returns: number
+      }
       bulk_merge_phone_duplicates: {
         Args: { p_batch_size?: number; p_offset?: number }
         Returns: Json
@@ -38023,6 +39126,7 @@ export type Database = {
         Args: { p_profile_id: string }
         Returns: undefined
       }
+      check_inbox_silence: { Args: never; Returns: undefined }
       check_notice_period_ending: { Args: never; Returns: undefined }
       circle_add_points: {
         Args: {
@@ -38068,6 +39172,42 @@ export type Database = {
           atendidas: number
           total: number
         }[]
+      }
+      crm_distribute_open_conversations: { Args: never; Returns: number }
+      crm_pick_distribution_member: {
+        Args: { p_dist_id: string }
+        Returns: string
+      }
+      crm_visible_activities: {
+        Args: { p_staff: string }
+        Returns: {
+          automation_config: Json | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          google_calendar_event_id: string | null
+          google_calendar_user_id: string | null
+          id: string
+          is_automation: boolean | null
+          lead_id: string
+          meeting_link: string | null
+          notes: string | null
+          notified_at: string | null
+          recording_url: string | null
+          responsible_staff_id: string | null
+          scheduled_at: string | null
+          status: string | null
+          title: string
+          type: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "crm_activities"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       current_profile_employee_id: { Args: never; Returns: string }
       current_staff_role: { Args: never; Returns: string }
@@ -38126,6 +39266,16 @@ export type Database = {
           sales_won: number
         }[]
       }
+      distribute_asaas_adjustment: {
+        Args: {
+          p_adjustment_id: string
+          p_existing?: Json
+          p_existing_ids?: string[]
+          p_kind: string
+          p_new_lines?: Json
+        }
+        Returns: Json
+      }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
@@ -38168,6 +39318,10 @@ export type Database = {
           stage_id: string
           stage_name: string
         }[]
+      }
+      fire_capi: {
+        Args: { p_event: string; p_lead_id: string; p_value?: number }
+        Returns: undefined
       }
       get_ads_credits_balance: {
         Args: { p_profile_id: string }
@@ -38249,6 +39403,14 @@ export type Database = {
         }[]
       }
       get_user_tenant_id: { Args: never; Returns: string }
+      get_won_leads_this_month: {
+        Args: never
+        Returns: {
+          staff_id: string
+          total_value: number
+          total_won: number
+        }[]
+      }
       has_appointment_access: {
         Args: { check_project_id: string }
         Returns: boolean
@@ -38355,6 +39517,7 @@ export type Database = {
         }
         Returns: number
       }
+      notify_first_real_schedule: { Args: never; Returns: undefined }
       office_validate_invite: { Args: { p_token: string }; Returns: boolean }
       pe_current_staff_id: { Args: never; Returns: string }
       pe_is_instructor: { Args: never; Returns: boolean }
@@ -38417,6 +39580,7 @@ export type Database = {
         }
         Returns: string
       }
+      unv_board_is_staff: { Args: never; Returns: boolean }
       update_client_financial_overdue_status: {
         Args: never
         Returns: undefined
