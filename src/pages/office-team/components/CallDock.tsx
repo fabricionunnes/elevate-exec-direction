@@ -524,6 +524,12 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
     if (!expanded && focusedId) setFocusedId(null)
   }, [expanded, focusedId])
 
+  // Espelha o modo reunião no store: com o overlay aberto, o 3D congela (perf)
+  useEffect(() => {
+    useTeamStore.getState().setMeetingExpanded(expanded)
+    return () => useTeamStore.getState().setMeetingExpanded(false)
+  }, [expanded])
+
   // Pré-carrega o modelo de segmentação quando a câmera liga (1ª troca de fundo rápida)
   useEffect(() => {
     if (call.camOn) preloadCameraFx()

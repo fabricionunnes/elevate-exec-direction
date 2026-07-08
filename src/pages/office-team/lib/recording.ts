@@ -47,8 +47,10 @@ function blobToBase64(blob: Blob): Promise<string> {
   })
 }
 
-const W = 1280
-const H = 720
+// 960x540 compõe/encoda ~44% menos pixels que 720p — diferença visual mínima
+// num registro de reunião, e alivia MUITO a CPU durante a gravação.
+const W = 960
+const H = 540
 
 export class MeetingRecorder {
   private ctx: AudioContext | null = null
@@ -105,7 +107,7 @@ export class MeetingRecorder {
         : 'video/webm'
       this.videoRecorder = new MediaRecorder(composed, {
         mimeType: this.videoMime,
-        videoBitsPerSecond: 500_000,
+        videoBitsPerSecond: 420_000,
         audioBitsPerSecond: 32000,
       })
       this.videoChunks = []

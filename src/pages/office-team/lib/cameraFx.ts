@@ -72,6 +72,7 @@ export class CameraFx {
   private raf = 0
   private running = false
   private outStream: MediaStream | null = null
+  private lastFrameAt = 0
   /** true se o modelo carregou e o efeito está de fato sendo aplicado */
   usingModel = false
 
@@ -127,6 +128,15 @@ export class CameraFx {
 
   private loop = () => {
     if (!this.running || !this.segmenter) return
+    // Segmentação limitada a ~15fps: rodar a cada frame do monitor (60-120Hz)
+    // era o maior custo de CPU com a câmera ligada — 15fps é imperceptível
+    // pra webcam e libera o processador pra reunião/gravação.
+    const nowT = performance.now()
+    if (nowT - this.lastFrameAt < 66) {
+      this.raf = requestAnimationFrame(this.loop)
+      return
+    }
+    this.lastFrameAt = nowT
     const w = this.out.width
     const h = this.out.height
     if (this.video.readyState >= 2) {

@@ -369,6 +369,20 @@ export default function TeamOfficePage() {
   const personalRoomChecked = useRef(false)
   const [agendaToday, setAgendaToday] = useState<AgendaItem[]>([])
   const notifiedMeetings = useRef<Set<string>>(new Set())
+  const meetingExpanded = useTeamStore((s) => s.meetingExpanded)
+
+  // Chamada pesada (gravando ou 3+ na call) → baixa a resolução do 3D.
+  // Poll de 2s de propósito: um selector reativo sobre remotePlayers
+  // re-renderizaria a página a ~9Hz (posições mudam o tempo todo).
+  const [callHeavy, setCallHeavy] = useState(false)
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const st = useTeamStore.getState()
+      const peersInCall = Object.values(st.remotePlayers).filter((p) => p.inCall).length
+      setCallHeavy(st.recording.on || (st.call.joined && peersInCall >= 2))
+    }, 2000)
+    return () => clearInterval(iv)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -547,10 +561,15 @@ export default function TeamOfficePage() {
       <Suspense fallback={<LoadingScreen />}>
         <Canvas
           shadows
+          // PERF em chamada: modo reunião aberto → o 3D CONGELA (overlay cobre
+          // tudo; renderizar atrás era puro desperdício de CPU/GPU). Chamada
+          // pesada (gravando ou 3+ na call) → resolução cai pra 1x, priorizando
+          // vídeo e áudio da reunião.
+          frameloop={meetingExpanded ? 'never' : 'always'}
           // Telas retina renderizam a 2-3x de DPR nativo = 4-9x mais pixels
           // por frame. Cap em 1.5 mantém nitidez e devolve a fluidez no
           // zoom/movimento (o maior ganho de performance da cena).
-          dpr={[1, 1.5]}
+          dpr={callHeavy ? 1 : [1, 1.5]}
           camera={{ position: [0, 16, 18], fov: 60, near: 0.1, far: 320 }}
           gl={{
             antialias: true,
