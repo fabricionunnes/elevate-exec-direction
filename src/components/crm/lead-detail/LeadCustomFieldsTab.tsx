@@ -616,6 +616,12 @@ export const LeadCustomFieldsTab = ({
   };
 
   const getFieldValue = (field: CustomField) => {
+    // Instagram tem duas origens: a coluna crm_leads.instagram (preenchida no
+    // intake e mostrada no Resumo) e o campo customizado (leads antigos). Unifica
+    // priorizando a coluna — que é a fonte do Resumo — e caindo no custom se vazia.
+    if (field.field_name === "instagram") {
+      return (leadData.instagram || "") || values[field.id] || "";
+    }
     // First check system fields
     if (field.is_system) {
       const sysValue = getSystemValue(field.field_name);
@@ -701,6 +707,12 @@ export const LeadCustomFieldsTab = ({
 
         if (error) throw error;
         setValues(prev => ({ ...prev, [field.id]: value }));
+
+        // Instagram: espelha na coluna crm_leads.instagram pra ficar igual ao Resumo.
+        if (field.field_name === "instagram") {
+          await supabase.from("crm_leads").update({ instagram: value || null }).eq("id", leadId);
+          onUpdate();
+        }
       } catch (error) {
         console.error("Error updating field:", error);
         toast.error("Erro ao salvar");
