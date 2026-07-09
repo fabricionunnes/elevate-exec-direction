@@ -2966,7 +2966,7 @@ const OnboardingTasksPage = () => {
         )}
 
         {/* Companies List - Hidden when on NPS, CSAT or Referrals tab */}
-        {activeDashboardTab === "nps" || activeDashboardTab === "csat" || activeDashboardTab === "referrals" ? null : filteredCompanies.length === 0 ? (
+        {activeDashboardTab === "nps" || activeDashboardTab === "csat" || activeDashboardTab === "referrals" || activeDashboardTab === "parcelas" ? null : filteredCompanies.length === 0 ? (
           <Card className="p-12 text-center">
             <Building2 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">Nenhuma empresa encontrada</h3>
