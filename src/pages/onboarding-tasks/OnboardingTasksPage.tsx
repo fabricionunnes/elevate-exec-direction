@@ -1937,7 +1937,7 @@ const OnboardingTasksPage = () => {
                   {/* Baixar extensão Closer Copilot — todo o staff */}
                   <DropdownMenuItem onClick={() => window.open("https://unv-closer-install.pages.dev/", "_blank", "noopener,noreferrer")}>
                     <Download className="h-4 w-4 mr-2" />
-                    Baixar Closer Copilot
+                    Baixar Copilot
                   </DropdownMenuItem>
                   {/* Escritório 3D dos agentes IA — somente master */}
                   {isMaster && (
@@ -2307,7 +2307,7 @@ const OnboardingTasksPage = () => {
                   <Sparkles className="h-4 w-4 mr-2" /> Copiloto de Resultados
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => window.open("https://unv-closer-install.pages.dev/", "_blank", "noopener,noreferrer")}>
-                  <Download className="h-4 w-4 mr-2" /> Baixar Closer Copilot
+                  <Download className="h-4 w-4 mr-2" /> Baixar Copilot
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/task-manager")}>
                   <LayoutGrid className="h-4 w-4 mr-2" /> Gerenciador
