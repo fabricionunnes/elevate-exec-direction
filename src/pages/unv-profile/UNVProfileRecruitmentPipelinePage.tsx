@@ -332,6 +332,19 @@ export default function UNVProfileRecruitmentPipelinePage() {
       mgrNotes: c.interview_manager_notes || "",
     });
     setSelected(c);
+    // Refetch ao abrir: a aderência pode ter ficado pronta DEPOIS da lista carregar
+    // (a análise roda automática na inscrição) — senão o modal mostra dado velho
+    // sem score até dar F5.
+    void (async () => {
+      const { data: fresh } = await supabase
+        .from("profile_candidates")
+        .select("*")
+        .eq("id", c.id)
+        .maybeSingle();
+      if (!fresh) return;
+      setSelected((prev: any) => (prev && prev.id === c.id ? { ...prev, ...fresh } : prev));
+      setCands((prev: any[]) => prev.map((x) => (x.id === c.id ? { ...x, ...fresh } : x)));
+    })();
   };
 
   const setCadastral = async (status: "approved" | "rejected") => {
