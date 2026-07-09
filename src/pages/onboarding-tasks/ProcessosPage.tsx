@@ -1,7 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
+import { MermaidDiagram } from "@/components/processos/MermaidDiagram";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Search, BookOpen, Plus, Pencil, ChevronRight, DollarSign, RefreshCw,
+  ArrowLeft, Search, BookOpen, Plus, Pencil, ChevronRight, DollarSign, RefreshCw, ImagePlus,
 } from "lucide-react";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 
@@ -97,6 +100,30 @@ const brl = (v: number) =>
 const billingLabel = (t: string) =>
   t === "monthly" ? "/mês" : t === "one_time" ? " (único)" : ` (${t})`;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const markdownComponents: any = {
+  pre: (props: { children?: React.ReactNode } & Record<string, unknown>) => {
+    const child = Array.isArray(props.children) ? props.children[0] : props.children;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const codeProps = (child as any)?.props;
+    const className: string = codeProps?.className ?? "";
+    if (className.includes("language-mermaid")) {
+      return <MermaidDiagram code={String(codeProps.children ?? "")} />;
+    }
+    return <pre {...props} />;
+  },
+  img: (props: { src?: string; alt?: string }) => (
+    <a href={props.src} target="_blank" rel="noopener noreferrer">
+      <img
+        src={props.src}
+        alt={props.alt ?? ""}
+        loading="lazy"
+        className="my-4 max-h-[480px] w-auto max-w-full rounded-lg border shadow-sm"
+      />
+    </a>
+  ),
+};
+
 const emptyForm = {
   id: "",
   title: "",
@@ -123,6 +150,39 @@ export default function ProcessosPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const contentRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const uploadImage = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Só imagens (PNG, JPG, WEBP, GIF)");
+      return;
+    }
+    setUploading(true);
+    const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+    const path = `${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from("staff-processes").upload(path, file, {
+      contentType: file.type,
+      cacheControl: "31536000",
+    });
+    setUploading(false);
+    if (error) {
+      toast.error("Erro no upload: " + error.message);
+      return;
+    }
+    const { data } = supabase.storage.from("staff-processes").getPublicUrl(path);
+    const snippet = `\n![print](${data.publicUrl})\n`;
+    const el = contentRef.current;
+    setForm((f) => {
+      if (el) {
+        const pos = el.selectionStart ?? f.content.length;
+        return { ...f, content: f.content.slice(0, pos) + snippet + f.content.slice(pos) };
+      }
+      return { ...f, content: f.content + snippet };
+    });
+    toast.success("Imagem inserida no conteúdo");
+  };
 
   const selectedSlug = searchParams.get("p");
   const selected = processes.find((p) => p.slug === selectedSlug) ?? null;
@@ -331,8 +391,10 @@ export default function ProcessosPage() {
                 Atualizado em {new Date(selected.updated_at).toLocaleDateString("pt-BR")}
               </span>
             </div>
-            <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none">
-              <ReactMarkdown>{selected.content}</ReactMarkdown>
+            <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none prose-table:text-sm prose-th:text-left">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                {selected.content}
+              </ReactMarkdown>
             </div>
           </article>
         ) : (
@@ -407,6 +469,29 @@ export default function ProcessosPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="overflow-x-auto">
+                    {productStats.length > 0 && (
+                      <div className="mb-6 h-56 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={productStats} margin={{ top: 4, right: 8, left: -16, bottom: 32 }}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                            <XAxis
+                              dataKey="product_name"
+                              angle={-28}
+                              textAnchor="end"
+                              interval={0}
+                              tick={{ fontSize: 11 }}
+                              height={56}
+                            />
+                            <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                            <RechartsTooltip
+                              formatter={(value: number) => [`${value} clientes`, "Ativos"]}
+                              labelClassName="font-medium"
+                            />
+                            <Bar dataKey="ativos" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={48} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b text-left text-muted-foreground">
@@ -568,12 +653,46 @@ export default function ProcessosPage() {
               <Input value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <Label>Conteúdo (markdown)</Label>
+              <div className="flex items-center justify-between">
+                <Label>Conteúdo (markdown — suporta tabelas, checklists, imagens e diagramas mermaid)</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 text-xs"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <ImagePlus className="h-3.5 w-3.5" />
+                  {uploading ? "Enviando..." : "Imagem"}
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadImage(f);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
               <Textarea
+                ref={contentRef}
                 value={form.content}
                 onChange={(e) => setForm({ ...form, content: e.target.value })}
-                rows={14}
+                onPaste={(e) => {
+                  const img = [...e.clipboardData.items].find((i) => i.type.startsWith("image/"));
+                  if (img) {
+                    e.preventDefault();
+                    const f = img.getAsFile();
+                    if (f) uploadImage(f);
+                  }
+                }}
+                rows={16}
                 className="font-mono text-sm"
+                placeholder="Cole um print direto aqui (Cmd+V) que ele vira imagem no processo."
               />
             </div>
             <label className="flex items-center gap-2 text-sm">
