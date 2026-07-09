@@ -51,6 +51,9 @@ const publicRoutes = [
   "/pdi/enroll",
   "/pdi/participant",
   "/staff-register",
+  // Não é pública (exige login de staff), mas precisa do redirect path→hash
+  // pra unvholdings.com.br/processos funcionar como link direto.
+  "/processos",
 ];
 
 const urlSearch = new URLSearchParams(window.location.search);

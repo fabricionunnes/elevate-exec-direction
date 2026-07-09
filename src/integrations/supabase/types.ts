@@ -32703,6 +32703,57 @@ export type Database = {
           },
         ]
       }
+      staff_processes: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          roles: string[]
+          sector: string
+          slug: string
+          sort_order: number
+          summary: string | null
+          tags: string[]
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          roles?: string[]
+          sector: string
+          slug: string
+          sort_order?: number
+          summary?: string | null
+          tags?: string[]
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          roles?: string[]
+          sector?: string
+          slug?: string
+          sort_order?: number
+          summary?: string | null
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       staff_registrations: {
         Row: {
           address_number: string | null
@@ -35072,6 +35123,14 @@ export type Database = {
       get_portal_company_id: {
         Args: { check_user_id: string }
         Returns: string
+      }
+      get_product_contract_stats: {
+        Args: never
+        Returns: {
+          product_name: string
+          ativos: number
+          mediana: number | null
+        }[]
       }
       get_staff_id_for_user: {
         Args: { check_user_id: string }
