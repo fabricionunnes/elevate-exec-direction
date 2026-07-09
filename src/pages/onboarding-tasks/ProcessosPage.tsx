@@ -117,7 +117,6 @@ const markdownComponents: any = {
       <img
         src={props.src}
         alt={props.alt ?? ""}
-        loading="lazy"
         className="my-4 max-h-[480px] w-auto max-w-full rounded-lg border shadow-sm"
       />
     </a>
