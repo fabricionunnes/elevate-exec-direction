@@ -2425,14 +2425,6 @@ const OnboardingTasksPage = () => {
               </DropdownMenu>
             )}
 
-            {/* ── UNV Start — botão direto ─────────────────── */}
-            {canCreateCompany && (
-              <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60" onClick={() => navigate("/onboarding-tasks/unv-start")}>
-                <Sparkles className="h-4 w-4" />
-                UNV Start
-              </Button>
-            )}
-
             {/* ── Engajamento ─────────────────────────────── */}
             {canCreateCompany && (
               <DropdownMenu>
