@@ -165,12 +165,19 @@ export function Footer() {
             >
               Termos
             </Link>
-            <Link 
-              to="/admin" 
+            <Link
+              to="/admin"
               className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors"
             >
               <Lock className="h-3 w-3" />
               Área Restrita
+            </Link>
+            <Link
+              to="/processos"
+              className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+            >
+              <Lock className="h-3 w-3" />
+              Processos
             </Link>
           </div>
         </div>
