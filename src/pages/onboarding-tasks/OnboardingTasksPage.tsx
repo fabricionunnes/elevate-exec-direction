@@ -2306,6 +2306,9 @@ const OnboardingTasksPage = () => {
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/copiloto")} className="text-primary focus:text-primary font-semibold">
                   <Sparkles className="h-4 w-4 mr-2" /> Copiloto de Resultados
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.open("https://unv-closer-install.pages.dev/", "_blank", "noopener,noreferrer")}>
+                  <Download className="h-4 w-4 mr-2" /> Baixar Closer Copilot
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/task-manager")}>
                   <LayoutGrid className="h-4 w-4 mr-2" /> Gerenciador
                 </DropdownMenuItem>
