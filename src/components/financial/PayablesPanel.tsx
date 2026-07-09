@@ -64,6 +64,7 @@ import {
 } from "lucide-react";
 import { PayableEditDialog } from "./PayableActionDialogs";
 import { EditPaymentsDialog } from "./EditPaymentsDialog";
+import { DistributeAdjustmentDialog } from "./DistributeAdjustmentDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -133,6 +134,7 @@ export function PayablesPanel() {
   const [currentPage, setCurrentPage] = useState(0);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Payable | null>(null);
+  const [distributeTarget, setDistributeTarget] = useState<Payable | null>(null);
   const [deleteScope, setDeleteScope] = useState<"single" | "future">("single");
   const [isEditPayableOpen, setIsEditPayableOpen] = useState(false);
   const [isEditPaymentsOpen, setIsEditPaymentsOpen] = useState(false);
@@ -1061,6 +1063,12 @@ export function PayablesPanel() {
                               Editar Pagamentos
                             </DropdownMenuItem>
                           )}
+                          {isMaster && payable.description?.startsWith("Ajuste automático Asaas") && (
+                            <DropdownMenuItem onClick={() => setDistributeTarget(payable)}>
+                              <Filter className="h-4 w-4 mr-2" />
+                              Distribuir ajuste
+                            </DropdownMenuItem>
+                          )}
                           {isMaster && (
                             <DropdownMenuItem
                               className="text-red-600"
@@ -1304,6 +1312,22 @@ export function PayablesPanel() {
           status: selectedPayable.status || "pending",
         } : null}
         onSuccess={() => { loadData(); }}
+      />
+
+      <DistributeAdjustmentDialog
+        open={!!distributeTarget}
+        onOpenChange={(o) => { if (!o) setDistributeTarget(null); }}
+        kind="payable"
+        adjustment={distributeTarget ? {
+          id: distributeTarget.id,
+          description: distributeTarget.description,
+          amount: Number(distributeTarget.amount),
+        } : null}
+        categories={categories}
+        existingAccounts={payables
+          .filter(p => (p.status === "pending" || p.status === "overdue" || p.status === "partial") && !p.description?.startsWith("Ajuste automático Asaas"))
+          .map(p => ({ id: p.id, description: p.description, amount: Number(p.amount), party: p.supplier_name, due_date: p.due_date, paid: Number(p.paid_amount || 0) }))}
+        onDone={() => { setDistributeTarget(null); loadData(); }}
       />
     </div>
   );

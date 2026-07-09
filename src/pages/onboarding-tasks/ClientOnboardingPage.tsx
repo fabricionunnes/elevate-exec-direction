@@ -62,6 +62,8 @@ import { ClientReferralsPanel } from "@/components/client-portal/ClientReferrals
 import { ClientHRView } from "@/components/client-portal/ClientHRView";
 import { ClientVirtualBoard } from "@/components/onboarding-tasks/ClientVirtualBoard";
 import { ClientFinancialModule } from "@/components/client-financial/ClientFinancialModule";
+import { CfinSistemaModule } from "@/components/client-financial/cfin/CfinSistemaModule";
+import { Landmark } from "lucide-react";
 import { ClientInventoryModule } from "@/components/client-inventory/ClientInventoryModule";
 import { ClientSalesModule } from "@/components/client-sales/ClientSalesModule";
 import { ClientAppointmentsModule } from "@/components/client-appointments/ClientAppointmentsModule";
@@ -117,6 +119,7 @@ interface OnboardingTask {
 }
 
 import type { OnboardingUser } from "@/types/onboarding";
+import { DialerPortalBanner } from "@/components/onboarding-tasks/DialerPortalBanner";
 
 interface TaskPhase {
   name: string;
@@ -125,7 +128,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "kpis" | "indicadores" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing" | "paid_traffic" | "sales_funnel" | "instagram" | "commercial_director" | "other_services" | "crm_comercial" | "b2b_prospection" | "diagnostic" | "unv_office" | "sf_comissoes";
+type ViewType = "kpis" | "indicadores" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing" | "paid_traffic" | "sales_funnel" | "instagram" | "commercial_director" | "other_services" | "crm_comercial" | "b2b_prospection" | "diagnostic" | "unv_office" | "sf_comissoes" | "cfin_sistema";
 
 const FACUNICAMPS_ID = "1081cb78-bd6c-42b2-8a85-104ead3ecc18";
 const FACUNICAMPS_PROJECT_ID = "1152db5b-2053-45e4-a0ac-6e68a0beb852";
@@ -141,6 +144,14 @@ const ClientOnboardingPage = () => {
   const [users, setUsers] = useState<OnboardingUser[]>([]);
   const [currentUser, setCurrentUser] = useState<OnboardingUser | null>(null);
   const [activeView, setActiveView] = useState<ViewType>("kpis");
+  // Projetos com sistema financeiro migrado de planilha (cfin_*) ganham menu "Sistema"
+  const [temCfin, setTemCfin] = useState(false);
+  useEffect(() => {
+    if (!projectId) return;
+    supabase.from("cfin_contas_bancarias").select("id", { count: "exact", head: true })
+      .eq("project_id", projectId)
+      .then(({ count }) => setTemCfin((count ?? 0) > 0));
+  }, [projectId]);
   const [projectCompanyId, setProjectCompanyId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<OnboardingTask | null>(null);
   const [showTaskDetail, setShowTaskDetail] = useState(false);
@@ -519,6 +530,7 @@ const ClientOnboardingPage = () => {
       (projectCompanyId === FACUNICAMPS_ID || projectId === FACUNICAMPS_PROJECT_ID)
         ? { id: "indicadores" as ViewType, icon: BarChart3, label: "Indicadores" }
         : { id: "kpis" as ViewType, icon: BarChart3, label: "KPIs", menuKey: CLIENT_MENU_KEYS.kpis },
+      ...(temCfin ? [{ id: "cfin_sistema" as ViewType, icon: Landmark, label: "Sistema" }] : []),
       {
         id: "trilha-group",
         icon: Map,
@@ -581,7 +593,7 @@ const ClientOnboardingPage = () => {
         return item;
       })
       .filter(Boolean) as typeof allMenus;
-  }, [hasPermission, projectCompanyId, projectId]);
+  }, [hasPermission, projectCompanyId, projectId, temCfin]);
 
   const hasViewAccess = useCallback(
     (view: ViewType) => {
@@ -874,6 +886,8 @@ const ClientOnboardingPage = () => {
         </div>
       </header>
 
+      <DialerPortalBanner />
+
       {/* Bottom Navigation - Mobile Only */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t safe-area-bottom lg:hidden">
         <div className="flex items-stretch gap-1 overflow-x-auto scrollbar-hide px-2">
@@ -1001,6 +1015,7 @@ const ClientOnboardingPage = () => {
                 canSeeSalesLinks={hasPermission(CLIENT_MENU_KEYS.kpis_sales_links)}
                 canSeeConfig={hasPermission(CLIENT_MENU_KEYS.kpis_config)}
                 isClientView={true}
+                isSalespersonView={!!salespersonId}
               />
             </motion.div>
           )}
@@ -1130,6 +1145,20 @@ const ClientOnboardingPage = () => {
                 companyId={companyId || ""}
                 companyName={company?.name || ""}
                 isClientView={true}
+              />
+            </motion.div>
+          )}
+
+          {activeView === "cfin_sistema" && (
+            <motion.div
+              key="cfin_sistema"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <CfinSistemaModule
+                projectId={projectId || ""}
+                userRole={currentUser?.role}
               />
             </motion.div>
           )}

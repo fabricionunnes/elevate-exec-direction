@@ -23,6 +23,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+// Horizonte máximo das tarefas: nada além de 60 dias (foco no curto prazo).
+const TASK_HORIZON_DAYS = 60;
+function clampToHorizon(d: Date): Date {
+  const max = new Date();
+  max.setHours(0, 0, 0, 0);
+  max.setDate(max.getDate() + TASK_HORIZON_DAYS);
+  return d > max ? max : d;
+}
+
 type TemplateTask = {
   id: string;
   title: string;
@@ -295,8 +304,8 @@ export const GenerateTasksDialog = ({
     try {
       const today = ensureBusinessDay(new Date());
       const tasksToInsert = selectedActions.map((action, index) => {
-        const dueDate = action.due_days > 0 ? addBusinessDays(today, action.due_days) : today;
-        
+        const dueDate = clampToHorizon(action.due_days > 0 ? addBusinessDays(today, action.due_days) : today);
+
         return {
           project_id: projectId,
           title: action.title,
@@ -338,7 +347,7 @@ export const GenerateTasksDialog = ({
       const tasksToInsert = Array.from(selectedAiTasks).map((index, i) => {
         const task = aiTasks[index];
         // Use business days: start 7 business days from now, stagger by 3 business days
-        const dueDate = addBusinessDays(today, 7 + i * 3);
+        const dueDate = clampToHorizon(addBusinessDays(today, 7 + i * 3));
 
         return {
           project_id: projectId,
@@ -401,7 +410,7 @@ export const GenerateTasksDialog = ({
       const tasksToInsert = templates.map((tpl, idx) => {
         const offset = (tpl.default_days_offset ?? 0) + (tpl.duration_days ?? 0);
         // Always calculate due date using business days (even for offset 0, use today which is guaranteed to be a business day)
-        const due = offset > 0 ? addBusinessDays(today, offset) : today;
+        const due = clampToHorizon(offset > 0 ? addBusinessDays(today, offset) : today);
         const dueDate = due.toISOString().split("T")[0];
 
         return {

@@ -137,14 +137,15 @@ Deno.serve(async (req) => {
 
     // ── Default action: create lead (step 1) ──
     const {
-      form_token, nome, telefone, email, empresa, desafio,
+      form_token, nome, telefone, email, instagram, empresa, desafio,
       utm_source, utm_medium, utm_campaign, utm_content, utm_term,
       fbclid, ad_name, adset_name, campaign_name,
       meta_campaign_id, meta_adset_id, meta_ad_id,
     } = body;
 
     if (!form_token) return jsonResponse({ error: 'Token do formulário é obrigatório' }, 400);
-    if (!nome || !telefone || !email) return jsonResponse({ error: 'Campos obrigatórios: nome, telefone, email' }, 400);
+    // Email é opcional: formulários de captação rápida (ex.: landing /sessao) coletam só nome + WhatsApp.
+    if (!nome || !telefone) return jsonResponse({ error: 'Campos obrigatórios: nome, telefone' }, 400);
 
     const { data: form } = await supabase
       .from('crm_pipeline_forms')
@@ -164,11 +165,14 @@ Deno.serve(async (req) => {
 
     // ── Check for existing lead by email or phone in the same pipeline ──
     const cleanPhone = telefone.replace(/\D/g, '');
+    // Dedup por email quando houver; sempre por telefone.
+    const dedupeFilters = [`phone.eq.${cleanPhone}`];
+    if (email) dedupeFilters.unshift(`email.eq.${email}`);
     const { data: existingLead } = await supabase
       .from('crm_leads')
       .select('id, pipeline_id, stage_id, tenant_id')
       .eq('pipeline_id', form.pipeline_id)
-      .or(`email.eq.${email},phone.eq.${cleanPhone}`)
+      .or(dedupeFilters.join(','))
       .limit(1)
       .maybeSingle();
 
@@ -188,7 +192,8 @@ Deno.serve(async (req) => {
         .update({
           name: nome,
           phone: cleanPhone,
-          email,
+          ...(email ? { email } : {}),
+          ...(instagram ? { instagram } : {}),
           entered_pipeline_at: reentryAt,
           ...(empresa ? { company: empresa } : {}),
           ...(desafio ? { main_pain: desafio } : {}),
@@ -300,7 +305,8 @@ Deno.serve(async (req) => {
       .insert({
         name: nome,
         phone: cleanPhone,
-        email,
+        email: email || null,
+        instagram: instagram || null,
         company: empresa || null,
         main_pain: desafio || null,
         notes,
@@ -549,10 +555,12 @@ async function sendWhatsAppNotification(
   owner?: { id: string; phone: string | null } | null,
   pipelineName?: string
 ) {
-  const APP_URL = 'https://elevate-exec-direction.lovable.app';
+  const APP_URL = 'https://unvholdings.com.br';
   const leadLink = `${APP_URL}/#/crm/leads/${leadId}`;
 
-  const message = `📋 *${nome}* preencheu o formulário no funil *${pipelineName || 'Desconhecido'}*.\n\n🔗 ${leadLink}`;
+  const message = `📋 *${nome}* preencheu o formulário no funil *${pipelineName || 'Desconhecido'}*.` +
+    (telefone ? `\n\n📱 ${telefone}` : '') +
+    `\n\n🔗 ${leadLink}`;
 
   // Read configured instance from crm_settings, fallback to "fabricionunnes"
   const { data: instanceSetting } = await supabase
@@ -641,8 +649,17 @@ async function sendWhatsAppNotification(
 
   console.log('[submit-pipeline-form] Numbers to notify:', numbersToNotify);
 
+  // Stevo Manager V2 (*.stevo.chat) usa POST /send/text (sem instance no path);
+  // Evolution API padrão usa POST /message/sendText/{instance}. Detecta pelo host.
+  const isV2 = (() => {
+    try { return new URL(instance.api_url).hostname.toLowerCase().endsWith('.stevo.chat'); }
+    catch { return false; }
+  })();
+  const sendUrl = isV2
+    ? `${instance.api_url}/send/text`
+    : `${instance.api_url}/message/sendText/${instance.instance_name}`;
+
   for (const phone of numbersToNotify) {
-    const sendUrl = `${instance.api_url}/message/sendText/${instance.instance_name}`;
     const payload = JSON.stringify({ number: phone, text: message });
     const maxRetries = 2;
 

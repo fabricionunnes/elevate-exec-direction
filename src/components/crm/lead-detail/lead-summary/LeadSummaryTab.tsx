@@ -7,6 +7,7 @@ import { LeadSummaryGuide } from "./LeadSummaryGuide";
 import { LeadSummaryFollowUp } from "./LeadSummaryFollowUp";
 import { LeadSummaryAnalysis } from "./LeadSummaryAnalysis";
 import { LeadSummaryAIChat } from "./LeadSummaryAIChat";
+import { LeadDialerCallsSection } from "./LeadDialerCallsSection";
 
 interface LeadSummaryTabProps {
   leadId: string;
@@ -59,6 +60,9 @@ export const LeadSummaryTab = ({ leadId, leadName }: LeadSummaryTabProps) => {
             loading={summary.loadingOverview}
             onRegenerate={() => summary.fetchOverview(true)}
           />
+          <div className="px-4 sm:px-6 pb-6">
+            <LeadDialerCallsSection leadId={leadId} />
+          </div>
         </TabsContent>
 
         <TabsContent value="guide" className="flex-1 mt-0 overflow-auto">

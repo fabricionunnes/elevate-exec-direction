@@ -306,7 +306,7 @@ export const productDetails: Record<string, ProductDetail> = {
     priceType: "/ano",
     description: "Fabrício como seu diretor comercial de fato, não como consultor.",
     deliverables: [
-      "Board mensal de direção",
+      "Board quinzenal de direção com o diretor comercial Fabrício Nunes",
       "Acompanhamento semanal",
       "Cobrança de execução direta",
       "Direção individual recorrente",
@@ -321,7 +321,7 @@ export const productDetails: Record<string, ProductDetail> = {
     problemsSolved: [
       {
         problem: "Decisões estratégicas tomadas sozinho, sem conselho qualificado",
-        solution: "Board mensal de direção + direção individual com quem já escalou dezenas de empresas",
+        solution: "Board quinzenal de direção com o Fabrício + direção individual com quem já escalou dezenas de empresas",
         result: "Decisões mais assertivas, menos erros caros, crescimento mais rápido"
       },
       {

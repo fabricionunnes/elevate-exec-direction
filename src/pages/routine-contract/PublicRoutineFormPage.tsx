@@ -13,7 +13,7 @@ const PublicRoutineFormPage = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [linkData, setLinkData] = useState<{ id: string; project_id: string } | null>(null);
+  const [linkData, setLinkData] = useState<{ id: string; project_id: string; role_name: string | null } | null>(null);
   const [error, setError] = useState("");
 
   const [form, setForm] = useState({
@@ -39,14 +39,15 @@ const PublicRoutineFormPage = () => {
       if (!token) { setError("Link inválido."); setLoading(false); return; }
       const { data, error: err } = await supabase
         .from("routine_form_links")
-        .select("id, project_id, is_active, expires_at")
+        .select("id, project_id, is_active, expires_at, role_name")
         .eq("access_token", token)
         .maybeSingle();
 
       if (err || !data) { setError("Link não encontrado."); setLoading(false); return; }
       if (!data.is_active) { setError("Este link foi desativado."); setLoading(false); return; }
       if (data.expires_at && new Date(data.expires_at) < new Date()) { setError("Este link expirou."); setLoading(false); return; }
-      setLinkData({ id: data.id, project_id: data.project_id });
+      setLinkData({ id: data.id, project_id: data.project_id, role_name: data.role_name ?? null });
+      if (data.role_name) setForm((prev) => ({ ...prev, employee_role: data.role_name }));
       setLoading(false);
     };
     loadLink();
@@ -110,8 +111,14 @@ const PublicRoutineFormPage = () => {
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="text-center space-y-2">
           <FileText className="h-12 w-12 text-primary mx-auto" />
-          <h1 className="text-2xl font-bold">Contrato de Rotina</h1>
-          <p className="text-muted-foreground">Preencha o formulário abaixo descrevendo sua rotina de trabalho</p>
+          <h1 className="text-2xl font-bold">
+            Contrato de Rotina{linkData?.role_name ? ` — ${linkData.role_name}` : ""}
+          </h1>
+          <p className="text-muted-foreground">
+            {linkData?.role_name
+              ? `Formulário para o cargo de ${linkData.role_name}. Preencha descrevendo sua rotina de trabalho.`
+              : "Preencha o formulário abaixo descrevendo sua rotina de trabalho"}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -121,7 +128,7 @@ const PublicRoutineFormPage = () => {
             <CardContent className="space-y-4">
               <div><Label>Nome completo *</Label><Input value={form.employee_name} onChange={(e) => updateField("employee_name", e.target.value)} required /></div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div><Label>Cargo</Label><Input value={form.employee_role} onChange={(e) => updateField("employee_role", e.target.value)} /></div>
+                <div><Label>Cargo</Label><Input value={form.employee_role} onChange={(e) => updateField("employee_role", e.target.value)} readOnly={!!linkData?.role_name} className={linkData?.role_name ? "bg-muted" : undefined} /></div>
                 <div><Label>Área ou setor</Label><Input value={form.employee_department} onChange={(e) => updateField("employee_department", e.target.value)} /></div>
               </div>
               <div><Label>Tempo de empresa</Label><Input value={form.employee_tenure} onChange={(e) => updateField("employee_tenure", e.target.value)} placeholder="Ex: 2 anos" /></div>

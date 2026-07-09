@@ -2,7 +2,7 @@ import jsPDF from "jspdf";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { productDetails } from "@/data/productDetails";
-import { contractClauses, companyInfo, rescisaoClause } from "@/data/contractTemplate";
+import { contractClauses, companyInfo, rescisaoClause, buildInvestimentoContent } from "@/data/contractTemplate";
 import { formatCurrencyWithWords, formatCurrencyBR } from "@/lib/numberToWords";
 import type { ContractFormData } from "./ContractForm";
 import { formatFullAddress } from "./ContractForm";
@@ -248,11 +248,15 @@ export async function generateContractPDF({ formData, customClauses }: GenerateP
   // ============ CONTRACT CLAUSES ============
   // Build clause list: inject rescisão clause (6ª) for PIX or Boleto (parcelado or recorrente)
   // and renumber subsequent clauses accordingly
+  let baseClauseList = customClauses || contractClauses;
+
+  // A página (applyRescisaoClause) já pode ter injetado a cláusula de rescisão no editor.
+  // Se ela já está na lista, NÃO injeta de novo aqui (senão a CLÁUSULA 6 sai duplicada).
+  const alreadyHasRescisao = baseClauseList.some((c) => c.id === "rescisao");
   const needsRescisaoClause =
+    !alreadyHasRescisao &&
     (formData.paymentMethod === "pix" || formData.paymentMethod === "boleto") &&
     (formData.isRecurring || formData.installments > 1);
-
-  let baseClauseList = customClauses || contractClauses;
 
   let clausesToRender: typeof baseClauseList;
   if (needsRescisaoClause) {
@@ -295,40 +299,24 @@ export async function generateContractPDF({ formData, customClauses }: GenerateP
       });
       y += 3;
     } else if (clause.id === "investimento") {
-      // Add payment details to investment clause
-      // Use custom clause content if edited, otherwise generate dynamic content
-      const paymentMethodLabels = {
-        card: "Cartão de Crédito",
-        pix: "PIX",
-        boleto: "Boleto Bancário",
-      };
-      
-      if (formData.isRecurring) {
-        addText(`I. O valor do presente contrato será de ${formatCurrencyWithWords(formData.contractValue)} mensais, com cobrança recorrente.`, 10);
-        y += 2;
-        addText(`II. O pagamento será realizado mensalmente via ${paymentMethodLabels[formData.paymentMethod]}, de forma recorrente.`, 10);
-        y += 2;
-      } else {
-        addText(`I. O valor do presente contrato será de ${formatCurrencyWithWords(formData.contractValue)}.`, 10);
-        y += 2;
-        if (formData.installments === 1) {
-          addText(`II. O pagamento será realizado à vista via ${paymentMethodLabels[formData.paymentMethod]}.`, 10);
-        } else {
-          addText(`II. O pagamento será realizado em ${formData.installments}x de ${formatCurrencyWithWords(installmentValue)}, sem juros, via ${paymentMethodLabels[formData.paymentMethod]}.`, 10);
-        }
-        y += 2;
-      }
-      
-      if (formData.dueDay) {
-        addText(`Vencimento: Todo dia ${formData.dueDay} de cada mês.`, 10);
-        y += 2;
-      }
-      
-      // Use the clause content (which may have been edited by the user) for the remaining items
-      // Parse remaining content from the custom clause (items III onwards)
-      const clauseContent = clause.content;
-      const remainingLines = wrapText(clauseContent, contentWidth, 10);
-      remainingLines.forEach((line) => {
+      // CLÁUSULA 5: o VALOR sempre tem que refletir o formulário, nunca o texto congelado.
+      // Reconstrói a partir dos dados do formulário quando a cláusula ainda é o placeholder
+      // OU quando é uma versão auto-gerada (começa com "O valor ... do presente contrato será de").
+      // Só preserva o texto cru se for uma reescrita realmente manual (fora desse padrão).
+      const isPlaceholder = clause.content.includes("conforme especificado nas condições comerciais");
+      const isAutoGerada = /O valor (total )?do presente contrato será de/i.test(clause.content);
+      const isDefault = isPlaceholder || isAutoGerada;
+      const investimentoContent = isDefault
+        ? buildInvestimentoContent({
+            paymentMethod: formData.paymentMethod,
+            isRecurring: formData.isRecurring,
+            installments: formData.installments,
+            contractValue: formData.contractValue,
+            dueDay: formData.dueDay,
+          })
+        : clause.content;
+      const investimentoLines = wrapText(investimentoContent, contentWidth, 10);
+      investimentoLines.forEach((line) => {
         checkPageBreak(6);
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");

@@ -17,6 +17,7 @@ import {
   Lightbulb
 } from "lucide-react";
 import { toast } from "sonner";
+import { ClientEvolutionCard } from "@/components/client-portal/ClientEvolutionCard";
 
 interface PortalUser {
   id: string;
@@ -176,6 +177,13 @@ const PortalHomePage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Sua Evolução + Benchmark do segmento (anti-churn: ativo exclusivo) */}
+      {user?.company_id && (
+        <div className="mb-8">
+          <ClientEvolutionCard companyId={user.company_id} />
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Active Plan / Create Plan */}

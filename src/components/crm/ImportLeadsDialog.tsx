@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -90,8 +91,14 @@ const CRM_FIELDS = [
   { value: "email", label: "E-mail" },
   { value: "company", label: "Empresa" },
   { value: "role", label: "Cargo" },
+  { value: "document", label: "CNPJ / CPF" },
   { value: "city", label: "Cidade" },
   { value: "state", label: "UF" },
+  { value: "zipcode", label: "CEP" },
+  { value: "address", label: "Endereço (rua)" },
+  { value: "address_number", label: "Número" },
+  { value: "address_neighborhood", label: "Bairro" },
+  { value: "address_complement", label: "Complemento" },
   { value: "origin", label: "Origem" },
   { value: "opportunity_value", label: "Valor da Oportunidade" },
   { value: "segment", label: "Segmento" },
@@ -119,7 +126,9 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
   const [uniqueStageValues, setUniqueStageValues] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
-  const [importResults, setImportResults] = useState<{ success: number; errors: number }>({ success: 0, errors: 0 });
+  const [importResults, setImportResults] = useState<{ success: number; errors: number; skipped: number }>({ success: 0, errors: 0, skipped: 0 });
+  const [errorSamples, setErrorSamples] = useState<string[]>([]);
+  const [skipDuplicates, setSkipDuplicates] = useState(true);
 
   const [pipelineStageMappings, setPipelineStageMappings] = useState<PipelineStageMapping[]>([]);
 
@@ -231,6 +240,18 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
         crmField = "city";
       } else if (lowerHeader.includes("estado") || lowerHeader.includes("uf") || lowerHeader.includes("state")) {
         crmField = "state";
+      } else if (lowerHeader.includes("cnpj") || lowerHeader.includes("cpf") || lowerHeader.includes("documento")) {
+        crmField = "document";
+      } else if (lowerHeader.includes("cep") || lowerHeader.includes("zipcode") || lowerHeader.includes("zip")) {
+        crmField = "zipcode";
+      } else if (lowerHeader.includes("bairro") || lowerHeader.includes("neighborhood")) {
+        crmField = "address_neighborhood";
+      } else if (lowerHeader.includes("complemento") || lowerHeader.includes("complement")) {
+        crmField = "address_complement";
+      } else if (lowerHeader.includes("numero") || lowerHeader.includes("número")) {
+        crmField = "address_number";
+      } else if (lowerHeader.includes("endereco") || lowerHeader.includes("endereço") || lowerHeader.includes("logradouro") || lowerHeader.includes("rua") || lowerHeader.includes("address")) {
+        crmField = "address";
       } else if (lowerHeader.includes("origem") || lowerHeader.includes("source") || lowerHeader.includes("canal")) {
         crmField = "origin";
       } else if (lowerHeader.includes("valor") || lowerHeader.includes("value") || lowerHeader.includes("oportunidade")) {
@@ -416,7 +437,8 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
     setImporting(true);
     setStep("importing");
     setImportProgress(0);
-    setImportResults({ success: 0, errors: 0 });
+    setImportResults({ success: 0, errors: 0, skipped: 0 });
+    setErrorSamples([]);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -446,8 +468,44 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
         }
       }
 
+      // Dedupe: carrega as chaves dos leads JÁ existentes nos funis de destino
+      const existingKeys = new Set<string>();
+      const seenKeys = new Set<string>();
+      if (skipDuplicates) {
+        const pipelineIds = Array.from(new Set([selectedPipeline, ...pipelineStageMappings.map(m => m.pipelineId)].filter(Boolean)));
+        if (pipelineIds.length) {
+          const { data: existing } = await supabase.from("crm_leads").select("phone,email,document,name").in("pipeline_id", pipelineIds);
+          (existing || []).forEach((l: any) => {
+            const ph = (l.phone || "").replace(/\D/g, "");
+            const em = (l.email || "").toLowerCase().trim();
+            const doc = (l.document || "").replace(/\D/g, "");
+            const nm = (l.name || "").toLowerCase().trim();
+            if (ph) existingKeys.add("p:" + ph);
+            if (em) existingKeys.add("e:" + em);
+            if (doc) existingKeys.add("d:" + doc);
+            if (nm) existingKeys.add("n:" + nm);
+          });
+        }
+      }
+      // Duplicado se bater telefone/email/CNPJ; sem nenhum desses, cai no nome exato.
+      const isDuplicate = (lead: any): boolean => {
+        const keys: string[] = [];
+        const ph = (lead.phone || "").replace(/\D/g, "");
+        const em = (lead.email || "").toLowerCase().trim();
+        const doc = (lead.document || "").replace(/\D/g, "");
+        if (ph) keys.push("p:" + ph);
+        if (em) keys.push("e:" + em);
+        if (doc) keys.push("d:" + doc);
+        if (keys.length === 0) { const nm = (lead.name || "").toLowerCase().trim(); if (nm) keys.push("n:" + nm); }
+        if (keys.some(k => existingKeys.has(k) || seenKeys.has(k))) return true;
+        keys.forEach(k => seenKeys.add(k));
+        return false;
+      };
+
       let success = 0;
       let errors = 0;
+      let skipped = 0;
+      const errSamples: string[] = [];
       const batchSize = 50;
       
       for (let i = 0; i < csvData.length; i += batchSize) {
@@ -506,23 +564,38 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
           return lead;
         }).filter(lead => lead.name && lead.name.trim() !== '');
 
-        if (leadsToInsert.length > 0) {
-          const { error } = await supabase.from("crm_leads").insert(leadsToInsert);
+        const toInsert = skipDuplicates
+          ? leadsToInsert.filter((l: any) => { if (isDuplicate(l)) { skipped++; return false; } return true; })
+          : leadsToInsert;
+
+        if (toInsert.length > 0) {
+          const { error } = await supabase.from("crm_leads").insert(toInsert);
           if (error) {
-            console.error("Batch error:", error);
-            errors += leadsToInsert.length;
+            // o lote falhou: insere uma a uma pra isolar quem falhou e capturar o motivo
+            for (const one of toInsert) {
+              const { error: e1 } = await supabase.from("crm_leads").insert(one);
+              if (e1) {
+                errors++;
+                if (e1.message && errSamples.length < 5 && !errSamples.includes(e1.message)) errSamples.push(e1.message);
+              } else {
+                success++;
+              }
+            }
+            setErrorSamples([...errSamples]);
           } else {
-            success += leadsToInsert.length;
+            success += toInsert.length;
           }
         }
 
         setImportProgress(Math.round(((i + batch.length) / csvData.length) * 100));
-        setImportResults({ success, errors });
+        setImportResults({ success, errors, skipped });
       }
 
       if (success > 0) {
-        toast.success(`${success} leads importados com sucesso!`);
+        toast.success(`${success} leads importados${skipped > 0 ? ` • ${skipped} duplicados pulados` : ""}!`);
         onSuccess();
+      } else if (skipped > 0 && errors === 0) {
+        toast.info(`Nada novo: ${skipped} leads já existiam (duplicados pulados).`);
       }
       if (errors > 0) {
         toast.error(`${errors} leads com erro na importação`);
@@ -549,7 +622,8 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
     setPipelineStageMappings([]);
     setUniqueStageValues([]);
     setImportProgress(0);
-    setImportResults({ success: 0, errors: 0 });
+    setImportResults({ success: 0, errors: 0, skipped: 0 });
+    setErrorSamples([]);
   };
 
   const handleClose = () => {
@@ -558,8 +632,8 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
   };
 
   const downloadTemplate = () => {
-    const headers = ["Nome", "Telefone", "E-mail", "Empresa", "Cargo", "Cidade", "UF", "Origem", "Valor", "Segmento", "Dor Principal", "Urgência", "Observações", "Funil", "Etapa"];
-    const example = ["João Silva", "(11) 99999-9999", "joao@empresa.com", "Empresa ABC", "Diretor", "São Paulo", "SP", "Indicação", "50000", "Tecnologia", "Precisa de automação", "high", "Cliente potencial", "Pipeline Comercial", "Triagem"];
+    const headers = ["Nome", "Telefone", "E-mail", "Empresa", "Cargo", "CNPJ", "CEP", "Endereço", "Número", "Bairro", "Complemento", "Cidade", "UF", "Origem", "Valor", "Segmento", "Dor Principal", "Urgência", "Observações", "Funil", "Etapa"];
+    const example = ["João Silva", "(11) 99999-9999", "joao@empresa.com", "Empresa ABC", "Diretor", "12.345.678/0001-90", "01310-100", "Av. Paulista", "1000", "Bela Vista", "Sala 5", "São Paulo", "SP", "Indicação", "50000", "Tecnologia", "Precisa de automação", "high", "Cliente potencial", "Pipeline Comercial", "Triagem"];
     
     const csv = [headers.join(","), example.join(",")].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -575,7 +649,7 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5" />
@@ -968,6 +1042,16 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
                 </ul>
               </div>
 
+              <label className="flex items-start gap-2 rounded-lg border p-3 cursor-pointer hover:bg-muted/30">
+                <Checkbox checked={skipDuplicates} onCheckedChange={(v) => setSkipDuplicates(!!v)} className="mt-0.5" />
+                <span className="text-sm">
+                  <span className="font-medium">Não importar duplicados</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Pula leads que já existem no funil (mesmo telefone, e-mail ou CNPJ; sem esses, mesmo nome). Bom pra reimportar sem repetir.
+                  </span>
+                </span>
+              </label>
+
               <div className="flex justify-between pt-4">
                 <Button variant="outline" onClick={() => {
                   if (columnMappings.some(m => m.crmField === "stage_name")) {
@@ -1022,6 +1106,12 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
                   <p className="text-2xl font-bold text-green-500">{importResults.success}</p>
                   <p className="text-xs text-muted-foreground">Importados</p>
                 </div>
+                {importResults.skipped > 0 && (
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-amber-500">{importResults.skipped}</p>
+                    <p className="text-xs text-muted-foreground">Duplicados pulados</p>
+                  </div>
+                )}
                 {importResults.errors > 0 && (
                   <div className="text-center">
                     <p className="text-2xl font-bold text-red-500">{importResults.errors}</p>
@@ -1029,6 +1119,15 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
                   </div>
                 )}
               </div>
+
+              {errorSamples.length > 0 && (
+                <div className="max-w-md mx-auto mt-4 text-left rounded-lg border border-red-500/30 bg-red-500/5 p-3">
+                  <p className="text-xs font-semibold text-red-500 mb-1">Motivo dos erros:</p>
+                  <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4">
+                    {errorSamples.map((m, i) => <li key={i} className="break-words">{m}</li>)}
+                  </ul>
+                </div>
+              )}
 
               {!importing && (
                 <Button onClick={handleClose} className="mt-4">

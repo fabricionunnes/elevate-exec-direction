@@ -26,7 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Save, Calendar, TrendingUp, Target, Users, Plus, Trash2, Settings2, Gift, Trophy, Star } from "lucide-react";
+import { Loader2, Save, Calendar, TrendingUp, Target, Users, Plus, Trash2, Settings2, Gift, Trophy, Star, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 interface GoalType {
@@ -44,6 +44,7 @@ interface StaffMember {
   id: string;
   name: string;
   role: string;
+  is_crm_closer?: boolean;
 }
 
 interface GoalValue {
@@ -127,6 +128,7 @@ const formatCurrency = (value: number) =>
 export const CRMGoalValuesManager = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [replicating, setReplicating] = useState(false);
   const [goalTypes, setGoalTypes] = useState<GoalType[]>([]);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [goalValues, setGoalValues] = useState<Map<string, GoalValue>>(new Map());
@@ -151,7 +153,7 @@ export const CRMGoalValuesManager = () => {
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
   const getGoalTypeForStaff = (staff: StaffMember): GoalType | null => {
-    if (CLOSER_ROLES.includes(staff.role)) return closerOteGoalType;
+    if (staff.is_crm_closer || CLOSER_ROLES.includes(staff.role)) return closerOteGoalType;
     if (SDR_ROLES.includes(staff.role)) return sdrOteGoalType;
     return closerOteGoalType;
   };
@@ -178,8 +180,13 @@ export const CRMGoalValuesManager = () => {
       if (typesError) throw typesError;
       setGoalTypes(typesData || []);
 
-      const closerOte = (typesData || []).find(t => t.category === "closer" && t.has_ote);
-      const sdrOte = (typesData || []).find(t => t.category === "sdr" && t.has_ote);
+      // Métrica principal de cada papel: prefere o tipo com OTE; se NENHUM tiver OTE,
+      // cai pro 1º tipo de meta do papel — senão a linha do colaborador não renderiza
+      // e não dá pra definir meta nenhuma.
+      const closerOte = (typesData || []).find(t => t.category === "closer" && t.has_ote)
+        || (typesData || []).find(t => t.category === "closer");
+      const sdrOte = (typesData || []).find(t => t.category === "sdr" && t.has_ote)
+        || (typesData || []).find(t => t.category === "sdr");
       setCloserOteGoalType(closerOte || null);
       setSdrOteGoalType(sdrOte || null);
 
@@ -192,7 +199,7 @@ export const CRMGoalValuesManager = () => {
 
       const { data: staffData, error: staffError } = await supabase
         .from("onboarding_staff")
-        .select("id, name, role")
+        .select("id, name, role, is_crm_closer")
         .eq("is_active", true)
         .order("name");
 
@@ -200,8 +207,9 @@ export const CRMGoalValuesManager = () => {
 
       const filteredStaff = (staffData || []).filter(
         (s) =>
-          (s.role === "master" || staffIdsWithCRMAccess.has(s.id)) &&
-          [...CLOSER_ROLES, ...SDR_ROLES].includes(s.role)
+          (s as any).is_crm_closer ||
+          ((s.role === "master" || staffIdsWithCRMAccess.has(s.id)) &&
+            [...CLOSER_ROLES, ...SDR_ROLES].includes(s.role))
       );
       setStaffMembers(filteredStaff);
     } catch (error) {
@@ -302,8 +310,23 @@ export const CRMGoalValuesManager = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Uma linha tem conteúdo se qualquer campo de meta/comissão/bônus foi preenchido.
+      const hasAnyValue = (v: GoalValue) =>
+        (v.meta_value || 0) > 0 ||
+        (v.super_meta_value || 0) > 0 ||
+        (v.hiper_meta_value || 0) > 0 ||
+        (v.ote_base || 0) > 0 ||
+        (v.ote_variable || 0) > 0 ||
+        (v.super_meta_bonus_value || 0) > 0 ||
+        (v.hiper_meta_bonus_value || 0) > 0 ||
+        !!v.super_meta_bonus_text ||
+        !!v.hiper_meta_bonus_text;
+
       const valuesToUpsert = Array.from(goalValues.values())
-        .filter(v => v.meta_value > 0 || v.ote_base > 0)
+        // Linhas que JÁ existem no banco (v.id) são sempre salvas, mesmo zeradas —
+        // senão zerar a meta não persistia e o valor antigo voltava ao recarregar.
+        // Só ignora linha nova que está totalmente vazia (não cria registro à toa).
+        .filter(v => !!v.id || hasAnyValue(v))
         .map((v) => ({
           staff_id: v.staff_id,
           goal_type_id: v.goal_type_id,
@@ -340,6 +363,112 @@ export const CRMGoalValuesManager = () => {
       toast.error(error.message || "Erro ao salvar metas");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleReplicatePreviousMonth = async () => {
+    const goalTypeIds: string[] = [];
+    if (closerOteGoalType) goalTypeIds.push(closerOteGoalType.id);
+    if (sdrOteGoalType) goalTypeIds.push(sdrOteGoalType.id);
+    if (goalTypeIds.length === 0) return;
+
+    const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
+    const prevYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
+
+    setReplicating(true);
+    try {
+      // 1. Carrega as metas do mês anterior
+      const { data: prevValues, error: pvErr } = await supabase
+        .from("crm_goal_values")
+        .select("*")
+        .in("goal_type_id", goalTypeIds)
+        .eq("month", prevMonth)
+        .eq("year", prevYear);
+      if (pvErr) throw pvErr;
+
+      if (!prevValues || prevValues.length === 0) {
+        toast.info(`O mês ${String(prevMonth).padStart(2, "0")}/${prevYear} não tem metas configuradas para replicar.`);
+        return;
+      }
+
+      if (!confirm(`Replicar metas, comissões e bônus de ${String(prevMonth).padStart(2, "0")}/${prevYear} para ${String(selectedMonth).padStart(2, "0")}/${selectedYear}?\n\nIsso substitui o que estiver configurado no mês atual. Depois você pode ajustar e salvar.`)) {
+        return;
+      }
+
+      // 2. Copia as metas para o mês selecionado (upsert substitui o que já existir)
+      const rows = prevValues.map((v: any) => ({
+        staff_id: v.staff_id,
+        goal_type_id: v.goal_type_id,
+        month: selectedMonth,
+        year: selectedYear,
+        meta_value: v.meta_value,
+        super_meta_value: v.super_meta_value,
+        hiper_meta_value: v.hiper_meta_value,
+        ote_base: v.ote_base,
+        ote_variable: v.ote_variable,
+        ote_accelerator: v.ote_accelerator,
+        super_meta_bonus_text: v.super_meta_bonus_text,
+        super_meta_bonus_value: v.super_meta_bonus_value,
+        super_meta_bonus_image_url: v.super_meta_bonus_image_url,
+        hiper_meta_bonus_text: v.hiper_meta_bonus_text,
+        hiper_meta_bonus_value: v.hiper_meta_bonus_value,
+        hiper_meta_bonus_image_url: v.hiper_meta_bonus_image_url,
+      }));
+      const { data: newValues, error: upErr } = await supabase
+        .from("crm_goal_values")
+        .upsert(rows, { onConflict: "staff_id,goal_type_id,month,year" })
+        .select();
+      if (upErr) throw upErr;
+
+      // 3. Copia as faixas de comissão de cada meta
+      const prevIds = prevValues.map((v: any) => v.id).filter(Boolean);
+      if (prevIds.length > 0 && newValues && newValues.length > 0) {
+        const { data: prevTiers } = await supabase
+          .from("crm_goal_commission_tiers")
+          .select("*")
+          .in("goal_value_id", prevIds);
+
+        const keyOf = (v: any) => `${v.staff_id}|${v.goal_type_id}`;
+        const prevById = new Map(prevValues.map((v: any) => [v.id, v]));
+        const tiersByKey = new Map<string, any[]>();
+        (prevTiers || []).forEach((t: any) => {
+          const gv = prevById.get(t.goal_value_id);
+          if (!gv) return;
+          const k = keyOf(gv);
+          if (!tiersByKey.has(k)) tiersByKey.set(k, []);
+          tiersByKey.get(k)!.push(t);
+        });
+
+        // Limpa faixas existentes no mês atual e insere as do mês anterior
+        const newIds = newValues.map((v: any) => v.id);
+        if (newIds.length > 0) {
+          await supabase.from("crm_goal_commission_tiers").delete().in("goal_value_id", newIds);
+        }
+        const tiersToInsert: any[] = [];
+        newValues.forEach((nv: any) => {
+          (tiersByKey.get(keyOf(nv)) || []).forEach((t: any) => {
+            tiersToInsert.push({
+              goal_value_id: nv.id,
+              min_percent: t.min_percent,
+              max_percent: t.max_percent,
+              commission_value: t.commission_value,
+              sort_order: t.sort_order,
+            });
+          });
+        });
+        if (tiersToInsert.length > 0) {
+          const { error: tErr } = await supabase.from("crm_goal_commission_tiers").insert(tiersToInsert);
+          if (tErr) throw tErr;
+        }
+      }
+
+      toast.success(`Metas de ${String(prevMonth).padStart(2, "0")}/${prevYear} replicadas. Ajuste o que precisar e salve.`);
+      await loadGoalValues();
+    } catch (error: any) {
+      console.error("Error replicating goals:", error);
+      toast.error(error.message || "Erro ao replicar metas do mês anterior");
+    } finally {
+      setReplicating(false);
     }
   };
 
@@ -487,8 +616,13 @@ export const CRMGoalValuesManager = () => {
     return null;
   };
 
-  const closers = staffMembers.filter(s => CLOSER_ROLES.includes(s.role));
+  const closers = staffMembers.filter(s => s.is_crm_closer || CLOSER_ROLES.includes(s.role));
   const sdrs = staffMembers.filter(s => SDR_ROLES.includes(s.role));
+  // Meta da Head Comercial = soma das metas dos closers (exclui ela mesma). Read-only.
+  const realClosers = closers.filter(s => s.role !== "head_comercial");
+  const closersMetaSum = realClosers.reduce((s, c) => s + (goalValues.get(c.id)?.meta_value || 0), 0);
+  const closersSuperSum = realClosers.reduce((s, c) => s + (goalValues.get(c.id)?.super_meta_value || 0), 0);
+  const closersHiperSum = realClosers.reduce((s, c) => s + (goalValues.get(c.id)?.hiper_meta_value || 0), 0);
 
   if (loading) {
     return (
@@ -534,51 +668,72 @@ export const CRMGoalValuesManager = () => {
           </Badge>
         </TableCell>
         <TableCell>
-          <div className="flex items-center justify-end gap-1">
-            {prefix && (
-              <span className="text-muted-foreground text-sm">{prefix}</span>
-            )}
-            <Input
-              type="number"
-              value={value?.meta_value || 0}
-              onChange={(e) =>
-                updateValue(staff.id, "meta_value", parseFloat(e.target.value) || 0)
-              }
-              className="w-24 text-right"
-            />
-          </div>
+          {staff.role === "head_comercial" ? (
+            <div className="flex items-center justify-end gap-1 text-right" title="Soma das metas dos closers (automático)">
+              {prefix && <span className="text-muted-foreground text-sm">{prefix}</span>}
+              <span className="w-24 text-right font-semibold tabular-nums">{closersMetaSum.toLocaleString("pt-BR")}</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-end gap-1">
+              {prefix && (
+                <span className="text-muted-foreground text-sm">{prefix}</span>
+              )}
+              <Input
+                type="number"
+                value={value?.meta_value || 0}
+                onChange={(e) =>
+                  updateValue(staff.id, "meta_value", parseFloat(e.target.value) || 0)
+                }
+                className="w-24 text-right"
+              />
+            </div>
+          )}
         </TableCell>
         <TableCell>
-          <div className="flex items-center justify-end gap-1">
-            {prefix && (
-              <span className="text-muted-foreground text-sm">{prefix}</span>
-            )}
-            <Input
-              type="number"
-              value={value?.super_meta_value || ""}
-              placeholder="—"
-              onChange={(e) =>
-                updateValue(staff.id, "super_meta_value", e.target.value ? parseFloat(e.target.value) : null)
-              }
-              className="w-24 text-right"
-            />
-          </div>
+          {staff.role === "head_comercial" ? (
+            <div className="flex items-center justify-end gap-1 text-right" title="Soma das super metas dos closers (automático)">
+              {prefix && <span className="text-muted-foreground text-sm">{prefix}</span>}
+              <span className="w-24 text-right font-semibold tabular-nums">{closersSuperSum ? closersSuperSum.toLocaleString("pt-BR") : "—"}</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-end gap-1">
+              {prefix && (
+                <span className="text-muted-foreground text-sm">{prefix}</span>
+              )}
+              <Input
+                type="number"
+                value={value?.super_meta_value || ""}
+                placeholder="—"
+                onChange={(e) =>
+                  updateValue(staff.id, "super_meta_value", e.target.value ? parseFloat(e.target.value) : null)
+                }
+                className="w-24 text-right"
+              />
+            </div>
+          )}
         </TableCell>
         <TableCell>
-          <div className="flex items-center justify-end gap-1">
-            {prefix && (
-              <span className="text-muted-foreground text-sm">{prefix}</span>
-            )}
-            <Input
-              type="number"
-              value={value?.hiper_meta_value || ""}
-              placeholder="—"
-              onChange={(e) =>
-                updateValue(staff.id, "hiper_meta_value", e.target.value ? parseFloat(e.target.value) : null)
-              }
-              className="w-24 text-right"
-            />
-          </div>
+          {staff.role === "head_comercial" ? (
+            <div className="flex items-center justify-end gap-1 text-right" title="Soma das hiper metas dos closers (automático)">
+              {prefix && <span className="text-muted-foreground text-sm">{prefix}</span>}
+              <span className="w-24 text-right font-semibold tabular-nums">{closersHiperSum ? closersHiperSum.toLocaleString("pt-BR") : "—"}</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-end gap-1">
+              {prefix && (
+                <span className="text-muted-foreground text-sm">{prefix}</span>
+              )}
+              <Input
+                type="number"
+                value={value?.hiper_meta_value || ""}
+                placeholder="—"
+                onChange={(e) =>
+                  updateValue(staff.id, "hiper_meta_value", e.target.value ? parseFloat(e.target.value) : null)
+                }
+                className="w-24 text-right"
+              />
+            </div>
+          )}
         </TableCell>
         <TableCell>
           <div className="flex items-center justify-end gap-1">
@@ -635,7 +790,7 @@ export const CRMGoalValuesManager = () => {
 
     return (
       <Dialog open={bonusDialogOpen} onOpenChange={setBonusDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Gift className="h-5 w-5 text-amber-500" />
@@ -771,14 +926,24 @@ export const CRMGoalValuesManager = () => {
                 Configure metas, super/hiper meta, salário fixo, faixas de comissão e bônus
               </CardDescription>
             </div>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4 mr-2" />
-              )}
-              Salvar Metas
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={handleReplicatePreviousMonth} disabled={replicating || saving}>
+                {replicating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Copy className="h-4 w-4 mr-2" />
+                )}
+                Replicar mês anterior
+              </Button>
+              <Button onClick={handleSave} disabled={saving || replicating}>
+                {saving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                Salvar Metas
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -881,7 +1046,7 @@ export const CRMGoalValuesManager = () => {
 
       {/* Commission Tiers Dialog */}
       <Dialog open={tiersDialogOpen} onOpenChange={setTiersDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings2 className="h-5 w-5" />

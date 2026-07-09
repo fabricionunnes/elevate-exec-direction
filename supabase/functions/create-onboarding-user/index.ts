@@ -400,15 +400,19 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existingOnboardingUser) {
-      // If changing from one role to another (e.g., financeiro to vendedor), 
+      // If changing from one role to another (e.g., financeiro to vendedor),
       // update the existing record instead of failing
       const updateData: Record<string, unknown> = {
-        user_id: userId || existingOnboardingUser.id,
         name,
         role,
         temp_password: password,
         password_changed: false,
       };
+      // IMPORTANTE: só grava user_id quando temos o id REAL do auth.
+      // Nunca usar o id da própria linha (existingOnboardingUser.id) como fallback —
+      // isso quebrava o login ("Usuário não encontrado no sistema de onboarding"),
+      // porque user_id nunca batia com auth.uid().
+      if (userId) updateData.user_id = userId;
 
       // Handle salesperson_id - clear it if not vendedor, set it if vendedor
       if (salesperson_id) {
@@ -434,7 +438,7 @@ Deno.serve(async (req) => {
     } else {
       // Create new onboarding user
       const insertData: Record<string, unknown> = {
-        user_id: userId,
+        user_id: userId || null, // nunca "" (uuid inválido); null se o auth não resolveu
         email,
         name,
         project_id,

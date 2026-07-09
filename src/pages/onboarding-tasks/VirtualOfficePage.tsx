@@ -148,7 +148,10 @@ const VirtualOfficePage = () => {
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [newRoom, setNewRoom] = useState({ name: "", description: "", meet_link: "", team_type: "all", is_restricted: false });
   const [isInVideoCall, setIsInVideoCall] = useState(false);
-  const [activeTab, setActiveTab] = useState("office");
+  // ?tab=calendar abre direto na aba Minha Agenda (atalho "Conectar Google Agenda" do menu)
+  const [activeTab, setActiveTab] = useState(() =>
+    new URLSearchParams(window.location.search).get("tab") === "calendar" ? "calendar" : "office"
+  );
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [roomAccessList, setRoomAccessList] = useState<RoomAccess[]>([]);
   const [officeViewMode, setOfficeViewMode] = useState<OfficeViewMode>("3d");

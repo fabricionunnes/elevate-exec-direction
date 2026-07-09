@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft, FileText, Plus, Printer, Trash2, Loader2,
   Send, RefreshCw, Check, Clock, Copy, ExternalLink,
-  CheckCircle2, Download, X
+  CheckCircle2, Download,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -18,7 +18,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,13 +34,32 @@ interface DistratoRecord {
   distrato_date: string;
   created_at: string;
   pdf_url: string | null;
+  envelope_id: string | null;
   zapsign_document_token: string | null;
   zapsign_document_url: string | null;
   zapsign_signers: any[] | null;
   zapsign_sent_at: string | null;
 }
 
-interface SignerStatus {
+interface EnvelopeSigner {
+  id: string;
+  envelope_id: string;
+  name: string;
+  email: string;
+  status: string;
+  signed_at: string | null;
+  order_index: number;
+}
+
+interface EnvelopeInfo {
+  id: string;
+  status: string;
+  completed_at: string | null;
+  final_file_path: string | null;
+  signers: EnvelopeSigner[];
+}
+
+interface ZapSignerStatus {
   name: string;
   email: string;
   status: string;
@@ -48,8 +67,8 @@ interface SignerStatus {
   signUrl: string | null;
 }
 
-interface SignatureStatus {
-  signers: SignerStatus[];
+interface ZapSignatureStatus {
+  signers: ZapSignerStatus[];
   allSigned: boolean;
   signedFileUrl: string | null;
 }
@@ -57,24 +76,43 @@ interface SignatureStatus {
 export default function DistratoHistoryPage() {
   const navigate = useNavigate();
   const [distratos, setDistratos] = useState<DistratoRecord[]>([]);
+  const [envelopeInfos, setEnvelopeInfos] = useState<Record<string, EnvelopeInfo>>({});
   const [loading, setLoading] = useState(true);
 
   // Dialog state
   const [selectedDistrato, setSelectedDistrato] = useState<DistratoRecord | null>(null);
   const [showDialog, setShowDialog] = useState(false);
-  const [signatureStatus, setSignatureStatus] = useState<SignatureStatus | null>(null);
   const [isLoadingSignatures, setIsLoadingSignatures] = useState(false);
+  const [copyingLink, setCopyingLink] = useState<string | null>(null);
 
-  const [isSendingZap, setIsSendingZap] = useState(false);
+  // Legado: status ZapSign (somente distratos antigos enviados pela ZapSign)
+  const [zapStatus, setZapStatus] = useState<ZapSignatureStatus | null>(null);
+
+  const [isSending, setIsSending] = useState(false);
   const [signerName, setSignerName] = useState("");
   const [signerEmail, setSignerEmail] = useState("");
-  const [signerPhone, setSignerPhone] = useState("");
+
+  const fetchEnvelopeInfos = async (envelopeIds: string[]) => {
+    if (envelopeIds.length === 0) return;
+    const [{ data: envs }, { data: sgs }] = await Promise.all([
+      supabase.from("envelopes").select("id, status, completed_at, final_file_path").in("id", envelopeIds),
+      supabase.from("signers").select("id, envelope_id, name, email, status, signed_at, order_index").in("envelope_id", envelopeIds).order("order_index"),
+    ]);
+    const map: Record<string, EnvelopeInfo> = {};
+    for (const env of (envs as any[]) || []) {
+      map[env.id] = { ...env, signers: [] };
+    }
+    for (const s of (sgs as any[]) || []) {
+      map[s.envelope_id]?.signers.push(s);
+    }
+    setEnvelopeInfos(prev => ({ ...prev, ...map }));
+  };
 
   const fetchDistratos = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("distratos")
-      .select("id, company_name, company_cnpj, project_name, distrato_date, created_at, pdf_url, zapsign_document_token, zapsign_document_url, zapsign_signers, zapsign_sent_at")
+      .select("id, company_name, company_cnpj, project_name, distrato_date, created_at, pdf_url, envelope_id, zapsign_document_token, zapsign_document_url, zapsign_signers, zapsign_sent_at")
       .order("created_at", { ascending: false });
     if (error) {
       toast.error("Erro ao carregar histórico");
@@ -83,42 +121,8 @@ export default function DistratoHistoryPage() {
     }
     setLoading(false);
 
-    // Batch refresh ZapSign statuses
-    const withZapSign = (data || []).filter((d: any) => d.zapsign_document_token);
-    if (withZapSign.length > 0) {
-      refreshZapSignStatuses(withZapSign as DistratoRecord[]);
-    }
-  };
-
-  const refreshZapSignStatuses = async (items: DistratoRecord[]) => {
-    const results = await Promise.allSettled(
-      items.map(async (d) => {
-        try {
-          const { data, error } = await supabase.functions.invoke("check-zapsign-status", {
-            body: { documentToken: d.zapsign_document_token },
-          });
-          if (error || !data?.signers) return null;
-          const signersChanged = JSON.stringify(data.signers.map((s: any) => s.status)) !==
-            JSON.stringify((d.zapsign_signers || []).map((s: any) => s.status));
-          if (signersChanged) {
-            await supabase.from("distratos").update({ zapsign_signers: data.signers }).eq("id", d.id);
-          }
-          return { id: d.id, signers: data.signers };
-        } catch { return null; }
-      })
-    );
-
-    const updates = results
-      .filter((r): r is PromiseFulfilledResult<{ id: string; signers: any[] } | null> => r.status === "fulfilled")
-      .map(r => r.value)
-      .filter(Boolean) as { id: string; signers: any[] }[];
-
-    if (updates.length > 0) {
-      setDistratos(prev => prev.map(d => {
-        const update = updates.find(u => u.id === d.id);
-        return update ? { ...d, zapsign_signers: update.signers } : d;
-      }));
-    }
+    const envelopeIds = ((data as any[]) || []).map(d => d.envelope_id).filter(Boolean) as string[];
+    fetchEnvelopeInfos(envelopeIds);
   };
 
   useEffect(() => { fetchDistratos(); }, []);
@@ -144,21 +148,32 @@ export default function DistratoHistoryPage() {
   const handleOpenDetails = async (distrato: DistratoRecord) => {
     setSelectedDistrato(distrato);
     setShowDialog(true);
-    setSignatureStatus(null);
+    setZapStatus(null);
 
-    if (distrato.zapsign_document_token) {
-      await checkSignatureStatus(distrato.zapsign_document_token);
+    if (distrato.envelope_id) {
+      await refreshEnvelopeInfo(distrato.envelope_id);
+    } else if (distrato.zapsign_document_token) {
+      await checkZapSignStatus(distrato.zapsign_document_token);
     }
   };
 
-  const checkSignatureStatus = async (documentToken: string) => {
+  const refreshEnvelopeInfo = async (envelopeId: string) => {
+    setIsLoadingSignatures(true);
+    try {
+      await fetchEnvelopeInfos([envelopeId]);
+    } finally {
+      setIsLoadingSignatures(false);
+    }
+  };
+
+  const checkZapSignStatus = async (documentToken: string) => {
     setIsLoadingSignatures(true);
     try {
       const { data, error } = await supabase.functions.invoke("check-zapsign-status", {
         body: { documentToken },
       });
       if (error) { console.error(error); return; }
-      setSignatureStatus({
+      setZapStatus({
         signers: data.signers || [],
         allSigned: data.allSigned || false,
         signedFileUrl: data.signedFileUrl || null,
@@ -168,6 +183,39 @@ export default function DistratoHistoryPage() {
     } finally {
       setIsLoadingSignatures(false);
     }
+  };
+
+  const handleCopySigningLink = async (signer: EnvelopeSigner) => {
+    setCopyingLink(signer.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return toast.error("Sessão expirada");
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-signing-link`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ signer_id: signer.id }),
+        }
+      );
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error ?? "Erro ao gerar link");
+
+      await navigator.clipboard.writeText(data.data.signing_url);
+      toast.success(`Link de assinatura copiado para ${data.data.signer_name}`);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Erro ao gerar link");
+    } finally {
+      setCopyingLink(null);
+    }
+  };
+
+  const handleDownloadFinal = async (info: EnvelopeInfo) => {
+    if (!info.final_file_path) return toast.error("PDF assinado ainda não disponível");
+    const { data, error } = await supabase.storage.from("envelopes").createSignedUrl(info.final_file_path, 300);
+    if (error || !data?.signedUrl) return toast.error("Erro ao gerar link");
+    window.open(data.signedUrl, "_blank");
   };
 
   const ensurePdfUrl = async (distratoId: string): Promise<string | null> => {
@@ -220,61 +268,90 @@ export default function DistratoHistoryPage() {
     }
   };
 
-  const handleSendToZapSign = async () => {
+  const handleSendForSignature = async () => {
     if (!selectedDistrato) return;
     if (!signerName || !signerEmail) {
       toast.error("Preencha nome e e-mail do signatário");
       return;
     }
-    setIsSendingZap(true);
+    setIsSending(true);
     try {
       const pdfUrl = selectedDistrato.pdf_url || await ensurePdfUrl(selectedDistrato.id);
       if (!pdfUrl) {
-        setIsSendingZap(false);
+        setIsSending(false);
         return;
       }
       const documentName = `Distrato - ${selectedDistrato.company_name} - ${format(new Date(selectedDistrato.distrato_date), "dd-MM-yyyy")}`;
-      const { data: zapData, error: zapError } = await supabase.functions.invoke("send-to-zapsign", {
-        body: {
-          pdfUrl,
-          documentName,
-          signers: [
-            { name: "Fabrício Nunnes", email: "fabricio@universidadevendas.com.br" },
-            { name: signerName, email: signerEmail, phone: signerPhone || undefined },
-          ],
-          sendAutomatically: true,
-        },
+
+      const pdfRes = await fetch(pdfUrl);
+      if (!pdfRes.ok) throw new Error(`Erro ao baixar PDF: HTTP ${pdfRes.status}`);
+      const pdfBlob = await pdfRes.blob();
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Sessão expirada");
+        return;
+      }
+
+      const formDataEnvelope = new FormData();
+      formDataEnvelope.append("title", documentName);
+      formDataEnvelope.append("message", "Por favor, assine o distrato abaixo.");
+      formDataEnvelope.append("signers", JSON.stringify([
+        { name: "Fabrício Nunnes", email: "fabricio@universidadevendas.com.br", order_index: 0 },
+        { name: signerName, email: signerEmail, order_index: 1 },
+      ]));
+      formDataEnvelope.append("expires_in_days", "60");
+      formDataEnvelope.append("pdf", new File([pdfBlob], "distrato.pdf", { type: "application/pdf" }));
+
+      const createRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-envelope`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: formDataEnvelope,
       });
-      if (zapError) throw zapError;
+      const createData = await createRes.json();
+      if (!createRes.ok || !createData.success) throw new Error(createData.error || "Erro ao criar envelope");
+
+      const envelopeId = createData.data.envelope_id;
+
+      const { error: sendError } = await supabase.functions.invoke("send-envelope", {
+        body: { envelope_id: envelopeId },
+      });
+      if (sendError) throw sendError;
 
       await supabase.from("distratos").update({
-        zapsign_document_token: zapData.documentToken,
-        zapsign_document_url: zapData.documentUrl,
-        zapsign_signers: zapData.signers,
+        envelope_id: envelopeId,
         zapsign_sent_at: new Date().toISOString(),
       }).eq("id", selectedDistrato.id);
 
-      toast.success("Distrato enviado para assinatura via ZapSign!");
-      setSignerName(""); setSignerEmail(""); setSignerPhone("");
+      toast.success("Distrato enviado para assinatura!");
+      setSignerName(""); setSignerEmail("");
       const updated = { ...selectedDistrato,
         pdf_url: pdfUrl,
-        zapsign_document_token: zapData.documentToken,
-        zapsign_document_url: zapData.documentUrl,
-        zapsign_signers: zapData.signers,
+        envelope_id: envelopeId,
         zapsign_sent_at: new Date().toISOString(),
       };
       setSelectedDistrato(updated);
       setDistratos(prev => prev.map(d => d.id === updated.id ? updated : d));
-      await checkSignatureStatus(zapData.documentToken);
+      await fetchEnvelopeInfos([envelopeId]);
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao enviar para ZapSign");
+      toast.error(err instanceof Error ? err.message : "Erro ao enviar para assinatura");
     } finally {
-      setIsSendingZap(false);
+      setIsSending(false);
     }
   };
 
-  const getZapSignBadge = (d: DistratoRecord) => {
+  const getSignatureBadge = (d: DistratoRecord) => {
+    if (d.envelope_id) {
+      const info = envelopeInfos[d.envelope_id];
+      if (!info) return <Badge variant="secondary" className="text-[10px]">Enviado</Badge>;
+      if (info.status === "completed") return <Badge className="bg-green-600 text-white text-[10px]">Assinado</Badge>;
+      if (info.status === "cancelled") return <Badge variant="secondary" className="text-[10px]">Cancelado</Badge>;
+      if (info.status === "expired") return <Badge variant="secondary" className="text-[10px]">Expirado</Badge>;
+      const someSigned = info.signers.some(s => s.status === "signed");
+      if (someSigned) return <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px]">Parcial</Badge>;
+      return <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px]">Pendente</Badge>;
+    }
     if (!d.zapsign_document_token) return null;
     const signers = (d.zapsign_signers || []) as any[];
     const allSigned = signers.length > 0 && signers.every(s => s.status === "signed");
@@ -284,6 +361,8 @@ export default function DistratoHistoryPage() {
     if (someSigned) return <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px]">Parcial</Badge>;
     return <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px]">Pendente</Badge>;
   };
+
+  const selectedEnvelopeInfo = selectedDistrato?.envelope_id ? envelopeInfos[selectedDistrato.envelope_id] : undefined;
 
   return (
     <div className="min-h-screen bg-background">
@@ -331,14 +410,14 @@ export default function DistratoHistoryPage() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <p className="font-medium">{d.company_name}</p>
-                      {getZapSignBadge(d)}
+                      {getSignatureBadge(d)}
                     </div>
                     <div className="flex gap-3 text-sm text-muted-foreground">
                       {d.company_cnpj && <span>{d.company_cnpj}</span>}
                       {d.project_name && <span>• {d.project_name}</span>}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Distrato em {format(new Date(d.distrato_date), "dd/MM/yyyy")} • 
+                      Distrato em {format(new Date(d.distrato_date), "dd/MM/yyyy")} •
                       Gerado em {format(new Date(d.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
                   </div>
@@ -373,7 +452,7 @@ export default function DistratoHistoryPage() {
         )}
       </div>
 
-      {/* Detail Dialog with ZapSign Status */}
+      {/* Detail Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -412,20 +491,20 @@ export default function DistratoHistoryPage() {
                 </div>
               )}
 
-              {/* ZapSign Section */}
-              {selectedDistrato.zapsign_document_token && (
+              {/* Assinatura interna (envelope) */}
+              {selectedDistrato.envelope_id && (
                 <>
                   <Separator />
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-medium flex items-center gap-2">
                         <Send className="h-4 w-4 text-primary" />
-                        Assinatura Digital (ZapSign)
+                        Assinatura Digital
                       </h4>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => checkSignatureStatus(selectedDistrato.zapsign_document_token!)}
+                        onClick={() => refreshEnvelopeInfo(selectedDistrato.envelope_id!)}
                         disabled={isLoadingSignatures}
                       >
                         <RefreshCw className={`h-3 w-3 ${isLoadingSignatures ? "animate-spin" : ""}`} />
@@ -443,9 +522,127 @@ export default function DistratoHistoryPage() {
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         <span className="ml-2 text-sm text-muted-foreground">Verificando assinaturas...</span>
                       </div>
-                    ) : signatureStatus ? (
+                    ) : selectedEnvelopeInfo ? (
                       <div className="space-y-2">
-                        {signatureStatus.signers.map((signer, index) => (
+                        {selectedEnvelopeInfo.signers.map((signer) => (
+                          <div
+                            key={signer.id}
+                            className={`flex items-center justify-between p-3 rounded-lg border ${
+                              signer.status === "signed"
+                                ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900"
+                                : "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              {signer.status === "signed" ? (
+                                <Check className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <Clock className="h-4 w-4 text-amber-600" />
+                              )}
+                              <div>
+                                <p className="text-sm font-medium">{signer.name}</p>
+                                <p className="text-xs text-muted-foreground">{signer.email}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              {signer.status === "signed" ? (
+                                <Badge className="bg-green-600 text-white">Assinado</Badge>
+                              ) : (
+                                <div className="flex flex-col items-end gap-1">
+                                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                                    {signer.status === "declined" ? "Recusou" : signer.status === "viewed" ? "Visualizou" : "Pendente"}
+                                  </Badge>
+                                  {signer.status !== "declined" && (
+                                    <button
+                                      onClick={() => handleCopySigningLink(signer)}
+                                      disabled={copyingLink === signer.id}
+                                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                                    >
+                                      {copyingLink === signer.id ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <Copy className="h-3 w-3" />
+                                      )}
+                                      Copiar link
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+
+                        {selectedEnvelopeInfo.status === "completed" && (
+                          <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <CheckCircle2 className="h-5 w-5 text-green-600" />
+                              <span className="text-sm font-medium text-green-800 dark:text-green-300">
+                                Todas as partes assinaram!
+                              </span>
+                            </div>
+                            <Button
+                              onClick={() => handleDownloadFinal(selectedEnvelopeInfo)}
+                              className="w-full bg-green-600 hover:bg-green-700"
+                              size="sm"
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Baixar Distrato Assinado
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-2">
+                        Status disponível apenas para quem enviou o envelope
+                      </p>
+                    )}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate("/onboarding-tasks/assinaturas")}
+                      className="w-full gap-1"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" /> Abrir painel de assinaturas
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {/* Legado: ZapSign (distratos antigos) */}
+              {!selectedDistrato.envelope_id && selectedDistrato.zapsign_document_token && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-medium flex items-center gap-2">
+                        <Send className="h-4 w-4 text-primary" />
+                        Assinatura Digital (ZapSign — legado)
+                      </h4>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => checkZapSignStatus(selectedDistrato.zapsign_document_token!)}
+                        disabled={isLoadingSignatures}
+                      >
+                        <RefreshCw className={`h-3 w-3 ${isLoadingSignatures ? "animate-spin" : ""}`} />
+                      </Button>
+                    </div>
+
+                    {selectedDistrato.zapsign_sent_at && (
+                      <p className="text-xs text-muted-foreground">
+                        Enviado em {format(new Date(selectedDistrato.zapsign_sent_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    )}
+
+                    {isLoadingSignatures ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        <span className="ml-2 text-sm text-muted-foreground">Verificando assinaturas...</span>
+                      </div>
+                    ) : zapStatus ? (
+                      <div className="space-y-2">
+                        {zapStatus.signers.map((signer, index) => (
                           <div
                             key={index}
                             className={`flex items-center justify-between p-3 rounded-lg border ${
@@ -500,7 +697,7 @@ export default function DistratoHistoryPage() {
                           </div>
                         ))}
 
-                        {signatureStatus.allSigned && signatureStatus.signedFileUrl && (
+                        {zapStatus.allSigned && zapStatus.signedFileUrl && (
                           <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 rounded-lg p-4">
                             <div className="flex items-center gap-2 mb-3">
                               <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -509,7 +706,7 @@ export default function DistratoHistoryPage() {
                               </span>
                             </div>
                             <Button
-                              onClick={() => window.open(signatureStatus.signedFileUrl!, "_blank")}
+                              onClick={() => window.open(zapStatus.signedFileUrl!, "_blank")}
                               className="w-full bg-green-600 hover:bg-green-700"
                               size="sm"
                             >
@@ -539,14 +736,14 @@ export default function DistratoHistoryPage() {
                 </>
               )}
 
-              {/* Send to ZapSign (when not yet sent) */}
-              {!selectedDistrato.zapsign_document_token && (
+              {/* Enviar para assinatura (quando ainda não enviado) */}
+              {!selectedDistrato.envelope_id && !selectedDistrato.zapsign_document_token && (
                 <>
                   <Separator />
                   <div className="space-y-3">
                     <h4 className="text-sm font-medium flex items-center gap-2">
                       <Send className="h-4 w-4 text-primary" />
-                      Enviar para assinatura (ZapSign)
+                      Enviar para assinatura
                     </h4>
                     {!selectedDistrato.pdf_url && (
                       <p className="text-xs text-amber-600">
@@ -562,18 +759,17 @@ export default function DistratoHistoryPage() {
                         <Label htmlFor="signer-email" className="text-xs">E-mail *</Label>
                         <Input id="signer-email" type="email" value={signerEmail} onChange={(e) => setSignerEmail(e.target.value)} placeholder="email@empresa.com" />
                       </div>
-                      <div>
-                        <Label htmlFor="signer-phone" className="text-xs">Telefone (opcional)</Label>
-                        <Input id="signer-phone" value={signerPhone} onChange={(e) => setSignerPhone(e.target.value)} placeholder="(11) 99999-9999" />
-                      </div>
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      Os signatários recebem o link de assinatura por e-mail. Fabrício é incluído automaticamente.
+                    </p>
                     <Button
-                      onClick={handleSendToZapSign}
-                      disabled={isSendingZap || !selectedDistrato.pdf_url}
+                      onClick={handleSendForSignature}
+                      disabled={isSending || !selectedDistrato.pdf_url}
                       className="w-full gap-2"
                     >
-                      {isSendingZap ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                      Enviar para ZapSign
+                      {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                      Enviar para Assinatura
                     </Button>
                   </div>
                 </>

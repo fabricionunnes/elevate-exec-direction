@@ -37,13 +37,16 @@ interface KPIMetasPanelProps {
   canSeeSalesLinks?: boolean;
   canSeeConfig?: boolean;
   isClientView?: boolean;
+  /** usuário logado é VENDEDOR: só vê os próprios números (esconde NSM,
+   * comparativo e ranking geral; trava o filtro no próprio vendedor) */
+  isSalespersonView?: boolean;
 }
 
-export const KPIMetasPanel = ({ 
-  companyId, 
-  isAdmin, 
-  projectId, 
-  isStaff = false, 
+export const KPIMetasPanel = ({
+  companyId,
+  isAdmin,
+  projectId,
+  isStaff = false,
   defaultTab,
   salespersonId,
   canSeeDashboard = true,
@@ -51,6 +54,7 @@ export const KPIMetasPanel = ({
   canSeeSalesLinks = false,
   canSeeConfig = false,
   isClientView = false,
+  isSalespersonView = false,
 }: KPIMetasPanelProps) => {
   const canAccessAllTabs = isStaff || isAdmin;
   
@@ -311,13 +315,14 @@ export const KPIMetasPanel = ({
         {/* Tab Contents */}
         {canSeeDashboard && (
           <TabsContent value="dashboard" className="mt-6">
-            <KPIDashboardTab 
-              companyId={companyId} 
-              projectId={projectId} 
-              canDeleteEntries={canAccessAllTabs || isClientView} 
-              canEditSalesHistory={!salespersonId} 
+            <KPIDashboardTab
+              companyId={companyId}
+              projectId={projectId}
+              canDeleteEntries={canAccessAllTabs || isClientView}
+              canEditSalesHistory={!salespersonId}
               salespersonId={salespersonId}
               isClientView={isClientView}
+              isSalespersonView={isSalespersonView}
             />
           </TabsContent>
         )}

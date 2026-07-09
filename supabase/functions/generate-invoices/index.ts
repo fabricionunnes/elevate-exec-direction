@@ -478,10 +478,28 @@ Deno.serve(async (req) => {
         .eq("status", "overdue")
         .gte("due_date", today);
 
+      // Auto-corrige faturas JÁ PAGAS que ficaram com status errado (ex.: paid_at gravado por uma
+      // baixa/webhook mas o status não virou 'paid', e depois caiu no marcador de atraso).
+      const { data: misPaid } = await supabase
+        .from("company_invoices")
+        .select("id, amount_cents, paid_amount_cents")
+        .not("paid_at", "is", null)
+        .neq("status", "paid");
+      for (const inv of misPaid || []) {
+        if ((inv.paid_amount_cents || 0) >= inv.amount_cents) {
+          await supabase
+            .from("company_invoices")
+            .update({ status: "paid", late_fee_cents: 0, interest_cents: 0 })
+            .eq("id", inv.id);
+        }
+      }
+
+      // Marca como vencidas só faturas PENDENTES e NÃO PAGAS (paid_at nulo).
       const { data: overdueInvoices } = await supabase
         .from("company_invoices")
         .select("*")
         .eq("status", "pending")
+        .is("paid_at", null)
         .lt("due_date", today);
 
       let updated = 0;

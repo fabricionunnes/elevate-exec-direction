@@ -589,6 +589,34 @@ export const TaskDetailsDialog = ({
               />
             </div>
 
+            {(task as any)?.board_form_url && (
+              <div className="space-y-2">
+                <Label>Formulário de execução (UNV Board)</Label>
+                <div className="flex items-center gap-2">
+                  <Input value={(task as any).board_form_url} readOnly className="text-xs" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText((task as any).board_form_url);
+                      toast.success("Link copiado");
+                    }}
+                  >
+                    Copiar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open((task as any).board_form_url, "_blank")}
+                  >
+                    Abrir
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Status</Label>

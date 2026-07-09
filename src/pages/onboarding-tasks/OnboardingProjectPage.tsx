@@ -39,6 +39,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -53,11 +54,13 @@ import { TaskDetailsDialog } from "@/components/onboarding-tasks/TaskDetailsDial
 import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
 import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
 import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBriefingPanel";
+import { ClientBrainPanel } from "@/components/onboarding-tasks/ClientBrainPanel";
 import { AdsBriefingSection } from "@/components/social/strategy/AdsBriefingSection";
 import { StrategicDiagnosticModule } from "@/components/client-diagnostic/StrategicDiagnosticModule";
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
 import { GeneratePDFTasksDialog } from "@/components/onboarding-tasks/GeneratePDFTasksDialog";
-import { Settings, Sparkles, Building2, Wand2, UserCircle, Route, LayoutList, CalendarDays, LogOut, FileUp, BarChart3 as PanelIcon, Columns3 } from "lucide-react";
+import { Settings, Sparkles, Building2, Wand2, UserCircle, Route, LayoutList, CalendarDays, LogOut, FileUp, BarChart3 as PanelIcon, Columns3, FileText, Loader2, MessageCircle } from "lucide-react";
+import { generateProjectFullReportPDF, type ReportPeriod, type ReportKind } from "@/components/project-report/generateProjectFullReportPDF";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { ChurnReasonDialog } from "@/components/onboarding-tasks/ChurnReasonDialog";
@@ -94,6 +97,7 @@ import { Ticket } from "lucide-react";
 import { HRRecruitmentPanel } from "@/components/hr-recruitment/HRRecruitmentPanel";
 import { ClientVirtualBoard } from "@/components/onboarding-tasks/ClientVirtualBoard";
 import { ClientFinancialModule } from "@/components/client-financial/ClientFinancialModule";
+import { CfinSistemaModule } from "@/components/client-financial/cfin/CfinSistemaModule";
 import { ClientAccessHistory } from "@/components/onboarding-tasks/ClientAccessHistory";
 import { ProjectHistoryPanel } from "@/components/onboarding-tasks/ProjectHistoryPanel";
 import { ProjectMenuPermissionsDialog } from "@/components/onboarding-tasks/ProjectMenuPermissionsDialog";
@@ -228,11 +232,21 @@ const OnboardingProjectPage = () => {
   const [showAddTaskDialog, setShowAddTaskDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("kpis");
 
+  // Projetos com sistema financeiro migrado de planilha (cfin_*) ganham o grupo "Sistema"
+  const [temCfin, setTemCfin] = useState(false);
+  useEffect(() => {
+    if (!projectId) return;
+    supabase.from("cfin_contas_bancarias").select("id", { count: "exact", head: true })
+      .eq("project_id", projectId)
+      .then(({ count }) => setTemCfin((count ?? 0) > 0));
+  }, [projectId]);
+
   // Two-level navigation: group → sub-tabs
   const tabGroupMap: Record<string, string> = {
     indicadores: "principal", kpis: "principal", briefing: "principal", diagnostic: "principal", tasks: "principal", "ai-coach": "principal",
     nps: "relacionamento", csat: "relacionamento", assessments: "relacionamento", meetings: "relacionamento", support: "relacionamento", whatsapp: "relacionamento",
     health: "gestao", hr: "gestao", board: "gestao", financial: "gestao", history: "gestao",
+    cfin_sistema: "sistema",
     commercial_actions: "comercial", sales_funnel: "comercial", routine_contract: "comercial", commercial_director: "comercial",
     paid_traffic: "marketing", access: "marketing", instagram: "marketing", social: "marketing",
     sf_commissions: "salesforce",
@@ -248,6 +262,26 @@ const OnboardingProjectPage = () => {
   const [isStaffAdmin, setIsStaffAdmin] = useState(false);
   const [showGenerateTasksDialog, setShowGenerateTasksDialog] = useState(false);
   const [showPDFTasksDialog, setShowPDFTasksDialog] = useState(false);
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const createWhatsAppGroup = async () => {
+    if (!projectId) return;
+    setCreatingGroup(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("board-engine", {
+        body: { action: "create_group", project_id: projectId },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      if (data?.already) toast.info(`Grupo já existe: ${data.group_name}`);
+      else if (data?.success) toast.success(`Grupo "${data.group_name}" criado com o time e o dono`);
+      else toast.info("Solicitação enviada");
+    } catch (e: any) {
+      console.error("Erro ao criar grupo:", e);
+      toast.error(e?.message || "Erro ao criar o grupo");
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
   const [tasksViewMode, setTasksViewMode] = useState<"trail" | "list" | "schedule" | "panel" | "kanban">("trail");
   const [staffList, setStaffList] = useState<{ id: string; name: string; role: string }[]>([]);
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
@@ -553,6 +587,21 @@ const OnboardingProjectPage = () => {
 
   const handleOpenAddTaskDialog = () => {
     setShowAddTaskDialog(true);
+  };
+
+  const [reportLoading, setReportLoading] = useState(false);
+  const handleGenerateReport = async (period: ReportPeriod, kind: ReportKind = "full") => {
+    if (!projectId) return;
+    setReportLoading(true);
+    const tid = toast.loading(kind === "retention" ? "Gerando relatório de retenção… pode levar até 1 minuto." : "Gerando relatório completo… pode levar até 1 minuto.");
+    try {
+      await generateProjectFullReportPDF(projectId, period, kind);
+      toast.success("Relatório gerado com sucesso!", { id: tid });
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao gerar o relatório", { id: tid });
+    } finally {
+      setReportLoading(false);
+    }
   };
 
   const handleTaskAddedFromDialog = () => {
@@ -1201,6 +1250,14 @@ const OnboardingProjectPage = () => {
                       </DropdownMenuItem>
                     </>
                   )}
+                  <DropdownMenuItem onClick={createWhatsAppGroup} disabled={creatingGroup}>
+                    {creatingGroup ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Criar grupo WhatsApp
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowUsersDialog(true)}>
                     <Users className="h-4 w-4 mr-2" />
                     Usuários ({users.length})
@@ -1232,6 +1289,32 @@ const OnboardingProjectPage = () => {
             <div className="hidden sm:flex items-center gap-2 shrink-0">
               {currentUserRole && currentUserRole !== "client" && (
                 <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" disabled={reportLoading} className="bg-[#0D2B5E] hover:bg-[#0a2350] text-white shadow-sm">
+                        {reportLoading ? <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" /> : <FileText className="h-4 w-4 sm:mr-2" />}
+                        <span className="hidden sm:inline">Relatório Completo</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleGenerateReport("all")}>Histórico completo</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleGenerateReport(90)}>Últimos 90 dias</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleGenerateReport(30)}>Últimos 30 dias</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleGenerateReport(15)}>Últimos 15 dias</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleGenerateReport(7)}>Últimos 7 dias</DropdownMenuItem>
+                      {project?.status === "cancellation_signaled" && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-red-600 focus:text-red-600 font-medium"
+                            onClick={() => handleGenerateReport("all", "retention")}
+                          >
+                            Relatório de Retenção
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button variant="outline" size="sm" onClick={() => setShowPDFTasksDialog(true)}>
                     <FileUp className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Plano via PDF</span>
@@ -1239,6 +1322,14 @@ const OnboardingProjectPage = () => {
                   <Button variant="outline" size="sm" onClick={() => setShowGenerateTasksDialog(true)}>
                     <Wand2 className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Gerar Tarefas</span>
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={createWhatsAppGroup} disabled={creatingGroup}>
+                    {creatingGroup ? (
+                      <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                    ) : (
+                      <MessageCircle className="h-4 w-4 sm:mr-2" />
+                    )}
+                    <span className="hidden sm:inline">Criar grupo</span>
                   </Button>
                 </>
               )}
@@ -1484,6 +1575,7 @@ const OnboardingProjectPage = () => {
             {(() => {
               const groups = [
                 { id: "principal",      label: "Principal",  icon: <BarChart3 className="h-4 w-4" /> },
+                ...(temCfin ? [{ id: "sistema", label: "Sistema", icon: <Wallet className="h-4 w-4" /> }] : []),
                 { id: "relacionamento", label: "Relac.",     icon: <Heart className="h-4 w-4" /> },
                 { id: "gestao",         label: "Gestão",     icon: <Settings className="h-4 w-4" /> },
                 { id: "comercial",      label: "Comerc.",    icon: <Target className="h-4 w-4" /> },
@@ -1493,6 +1585,9 @@ const OnboardingProjectPage = () => {
 
               const subTabs: Record<string, React.ReactNode[]> = {
                 principal: [
+                  ...(currentUserRole !== "client" ? [
+                    <TabsTrigger key="brain" value="brain"><Brain className="h-3.5 w-3.5 shrink-0" />Cérebro</TabsTrigger>
+                  ] : []),
                   ...(project?.onboarding_company_id === FACUNICAMPS_ID ? [
                     <TabsTrigger key="indicadores" value="indicadores"><BarChart3 className="h-3.5 w-3.5 shrink-0" />Indicadores</TabsTrigger>
                   ] : [
@@ -1517,6 +1612,9 @@ const OnboardingProjectPage = () => {
                   <TabsTrigger key="board" value="board"><Users className="h-3.5 w-3.5 shrink-0" />Board</TabsTrigger>,
                   <TabsTrigger key="financial" value="financial"><Wallet className="h-3.5 w-3.5 shrink-0" />Financeiro</TabsTrigger>,
                   <TabsTrigger key="history" value="history"><Clock className="h-3.5 w-3.5 shrink-0" />Histórico</TabsTrigger>,
+                ],
+                sistema: [
+                  <TabsTrigger key="cfin_sistema" value="cfin_sistema"><Wallet className="h-3.5 w-3.5 shrink-0" />Sistema da Loja</TabsTrigger>,
                 ],
                 comercial: [
                   ...(currentUserRole !== "client" ? [<TabsTrigger key="commercial_actions" value="commercial_actions"><Target className="h-3.5 w-3.5 shrink-0" />Ações Comerciais</TabsTrigger>] : []),
@@ -1548,7 +1646,7 @@ const OnboardingProjectPage = () => {
                       return (
                         <button
                           key={g.id}
-                          onClick={() => setNavGroup(g.id)}
+                          onClick={() => { setNavGroup(g.id); if (g.id === "sistema") setActiveTab("cfin_sistema"); }}
                           className={`flex flex-1 flex-col items-center gap-0.5 px-1 py-1.5 rounded-lg text-[10px] font-semibold transition-all relative ${
                             isActive
                               ? "bg-background text-foreground shadow-sm"
@@ -1799,6 +1897,12 @@ const OnboardingProjectPage = () => {
             <StrategicDiagnosticModule projectId={projectId!} />
           </TabsContent>
 
+          {currentUserRole !== "client" && (
+            <TabsContent value="brain">
+              <ClientBrainPanel projectId={projectId!} />
+            </TabsContent>
+          )}
+
           <TabsContent value="ai-coach">
             <ProjectAIChat
               projectId={projectId!}
@@ -1871,6 +1975,13 @@ const OnboardingProjectPage = () => {
               projectId={projectId!}
               companyId={project.onboarding_company_id || undefined}
               companyName={project.onboarding_company?.name}
+            />
+          </TabsContent>
+
+          <TabsContent value="cfin_sistema">
+            <CfinSistemaModule
+              projectId={projectId!}
+              userRole={currentUserRole || 'staff'}
             />
           </TabsContent>
 

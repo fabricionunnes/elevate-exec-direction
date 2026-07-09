@@ -41,6 +41,8 @@ const PortalAppLayout = () => {
   const [user, setUser] = useState<PortalUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Plano do cliente: 'full' (consultoria+sistema) ou 'nexus_only' (só sistema, R$497).
+  const [planTier, setPlanTier] = useState<string>("full");
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -66,6 +68,14 @@ const PortalAppLayout = () => {
       }
 
       setUser(portalUser as unknown as PortalUser);
+
+      // Carrega o plano do cliente (esconde itens de consultor no Nexus Only).
+      const cid = (portalUser as any).company_id;
+      if (cid) {
+        const { data: comp } = await supabase
+          .from("onboarding_companies").select("plan_tier").eq("id", cid).maybeSingle();
+        if (comp?.plan_tier) setPlanTier(comp.plan_tier);
+      }
       setLoading(false);
     };
 
@@ -86,10 +96,12 @@ const PortalAppLayout = () => {
     navigate("/portal/login");
   };
 
+  const isNexusOnly = planTier === "nexus_only";
   const navItems = [
     { href: "/portal/app", icon: LayoutDashboard, label: "Início" },
-    { href: "/portal/app/planejamento", icon: FileText, label: "Planejamento" },
-    { href: "/portal/app/execucao", icon: ClipboardCheck, label: "Execução" },
+    // Planejamento e Execução dependem de consultor — ocultos no plano Nexus Only.
+    ...(!isNexusOnly ? [{ href: "/portal/app/planejamento", icon: FileText, label: "Planejamento" }] : []),
+    ...(!isNexusOnly ? [{ href: "/portal/app/execucao", icon: ClipboardCheck, label: "Execução" }] : []),
     { href: "/portal/app/dashboard", icon: BarChart3, label: "Dashboard" },
     { href: "/academy", icon: GraduationCap, label: "Academy" },
     { href: "/circle", icon: Users, label: "Circle" },

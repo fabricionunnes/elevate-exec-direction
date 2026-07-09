@@ -86,6 +86,45 @@ Deno.serve(async (req) => {
 
     // Build context for AI
     const company = project.onboarding_company as any;
+
+    // Reunião de VENDAS (CRM): o que foi prometido/discutido antes de contratar.
+    // Vira tarefa de implementação no projeto. Vínculo empresa→lead por nome.
+    let salesContext = "";
+    try {
+      const cname = (company?.name || "").trim();
+      if (cname) {
+        const { data: leads } = await supabase
+          .from("crm_leads")
+          .select("id, name, company")
+          .or(`company.ilike.${cname},name.ilike.${cname}`)
+          .limit(5);
+        const leadIds = (leads || []).map((l: any) => l.id);
+        if (leadIds.length) {
+          const { data: transc } = await supabase
+            .from("crm_transcriptions")
+            .select("summary, transcription_text, created_at")
+            .in("lead_id", leadIds)
+            .order("created_at", { ascending: false })
+            .limit(1);
+          const { data: prop } = await supabase
+            .from("crm_lead_proposals")
+            .select("content, created_at")
+            .in("lead_id", leadIds)
+            .order("created_at", { ascending: false })
+            .limit(1);
+          const parts: string[] = [];
+          const t = transc?.[0];
+          if (t?.summary) parts.push(`RESUMO DA REUNIÃO DE VENDAS:\n${String(t.summary).substring(0, 2500)}`);
+          else if (t?.transcription_text) parts.push(`TRANSCRIÇÃO DA REUNIÃO DE VENDAS:\n${String(t.transcription_text).substring(0, 3500)}`);
+          if (prop?.[0]?.content) parts.push(`PROPOSTA APRESENTADA (o que foi vendido/prometido):\n${String(prop[0].content).substring(0, 2500)}`);
+          if (parts.length) {
+            salesContext = `\n\nREUNIÃO DE VENDAS E PROPOSTA (o cliente contratou com base nisso — TRANSFORME o que foi prometido/combinado em tarefas concretas de implementação no início do projeto):\n${parts.join("\n\n")}`;
+          }
+        }
+      }
+    } catch (e) {
+      console.error("sales context não carregado:", e);
+    }
     const companyContext = company ? `
 Empresa: ${company.name}
 Segmento: ${company.segment || "Não informado"}
@@ -154,6 +193,7 @@ CONTEXTO DO CLIENTE:
 ${companyContext}
 
 SERVIÇO CONTRATADO: ${project.product_name}
+${salesContext}
 ${userSuggestionContext}
 
 TAREFAS JÁ REALIZADAS (NÃO SUGERIR ESTAS NOVAMENTE DA MESMA FORMA):
@@ -176,6 +216,7 @@ INSTRUÇÕES:
 5. Se identificar gaps no que já foi feito, sugira tarefas para cobri-los
 6. Priorize tarefas práticas e executáveis
 7. IMPORTANTE: O texto do consultor define exatamente o tema/foco das tarefas. Siga fielmente o que foi pedido.
+8. Se houver REUNIÃO DE VENDAS E PROPOSTA acima e o projeto ainda tiver poucas tarefas, converta o que foi vendido/prometido em tarefas de implementação — é o que o cliente comprou e espera receber.
 
 Responda APENAS com um array JSON válido no seguinte formato (sem markdown, sem explicações):
 [

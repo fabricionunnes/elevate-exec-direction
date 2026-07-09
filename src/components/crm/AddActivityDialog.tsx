@@ -70,6 +70,7 @@ export const AddActivityDialog = ({ open, onOpenChange, leadId, onSuccess }: Add
           description: formData.description || null,
           scheduled_at: scheduledIso,
           responsible_staff_id: staff?.id,
+          created_by: staff?.id,
           status: "pending",
         });
 

@@ -77,12 +77,6 @@ const testimonials: Testimonial[] = [
     description: "Depoimento da Fabiana, onde em apenas dois meses os serviços da Universidade Nacional de Vendas já foram 100% pagos.",
   },
   {
-    youtubeId: "I5xH75GX_DM",
-    name: "Jeniffer",
-    company: "Instituto Mix - Escola de cursos profissionais",
-    description: "Jeniffer teve toda equipe montada pela Universidade Vendas obtendo os resultados esperados.",
-  },
-  {
     youtubeId: "LUbT6srAeRM",
     name: "Franciscarla",
     company: "Le Fran Perfumaria",

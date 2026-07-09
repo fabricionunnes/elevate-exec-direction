@@ -1851,9 +1851,9 @@ Deno.serve(async (req) => {
 
       console.log(`FreeBusy returned ${busyPeriods.length} busy periods for ${date}:`, JSON.stringify(busyPeriods));
 
-      // Generate available time slots (business hours: 08:00 - 18:00)
-      const businessStart = 8; // 08:00
-      const businessEnd = 18; // 18:00
+      // Generate available time slots (horário liberado: 07:00 - 23:00)
+      const businessStart = 7; // 07:00
+      const businessEnd = 23; // 23:00 (último slot termina às 23:00)
       const slotDuration = duration_minutes || 60;
 
       const availableSlots: string[] = [];

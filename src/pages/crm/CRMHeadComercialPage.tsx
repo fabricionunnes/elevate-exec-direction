@@ -83,7 +83,15 @@ interface StaffMember {
   id: string;
   name: string;
   role: string;
+  is_crm_closer?: boolean;
 }
+
+// Closer não é só quem tem role 'closer': qualquer colaborador marcado com
+// is_crm_closer (ex.: master/admin que também fecha) conta como closer nas
+// metas/vendas do CRM. SDR continua sendo o papel 'sdr'.
+const isSdrStaff = (s: { role: string }) => s.role === "sdr";
+const isCloserStaff = (s: { role: string; is_crm_closer?: boolean }) =>
+  !isSdrStaff(s) && (s.role === "closer" || s.is_crm_closer === true);
 
 interface GoalData {
   staff_id: string;
@@ -308,9 +316,9 @@ export default function CRMHeadComercialPage() {
 
           supabase
             .from("onboarding_staff")
-            .select("id, name, role")
+            .select("id, name, role, is_crm_closer")
             .eq("is_active", true)
-            .in("role", ["closer", "sdr", "head_comercial"])
+            .or("role.in.(closer,sdr,head_comercial),is_crm_closer.eq.true")
             .order("name"),
 
           supabase
@@ -588,7 +596,7 @@ export default function CRMHeadComercialPage() {
   // ── Build staff performance table ──
   const staffPerformance = useMemo((): StaffPerformance[] => {
     return allStaff
-      .filter((s) => s.role === "closer" || s.role === "sdr")
+      .filter((s) => isCloserStaff(s) || isSdrStaff(s))
       .map((staff) => {
         // Goals
         const staffGoals = goals.filter((g) => g.staff_id === staff.id);
@@ -629,7 +637,7 @@ export default function CRMHeadComercialPage() {
 
         // Activity stats - for SDRs use created_at based counts (how many meetings they CREATED)
         // For closers use scheduled_at based counts (meetings happening today/yesterday)
-        const isSdr = staff.role === "sdr";
+        const isSdr = isSdrStaff(staff);
         
         const myYesterday = yesterdayActivities.filter((a) => a.responsible_staff_id === staff.id);
         const myToday = todayActivities.filter((a) => a.responsible_staff_id === staff.id);
@@ -704,8 +712,8 @@ export default function CRMHeadComercialPage() {
       .sort((a, b) => b.percentAtingido - a.percentAtingido);
   }, [allStaff, goals, wonData, leads, yesterdayActivities, todayActivities, activityStats, sdrCreatedYesterday, sdrCreatedToday, sdrCreatedMonth, completedMeetingsMonth, noShowMeetingsMonth, meetingsScheduledYesterday, realizedMeetingEvents, elapsedBizDays, totalBizDays, remainingBizDays]);
 
-  const closersPerf = useMemo(() => staffPerformance.filter((s) => s.staff.role === "closer"), [staffPerformance]);
-  const sdrsPerf = useMemo(() => staffPerformance.filter((s) => s.staff.role === "sdr"), [staffPerformance]);
+  const closersPerf = useMemo(() => staffPerformance.filter((s) => isCloserStaff(s.staff)), [staffPerformance]);
+  const sdrsPerf = useMemo(() => staffPerformance.filter((s) => isSdrStaff(s.staff)), [staffPerformance]);
 
   // Totals
   const totals = useMemo(() => {

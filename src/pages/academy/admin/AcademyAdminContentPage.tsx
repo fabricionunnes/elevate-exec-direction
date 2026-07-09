@@ -122,7 +122,7 @@ export const AcademyAdminContentPage = () => {
     cover_image_url: null as string | null,
     level: 1,
     is_active: true,
-    require_sequential_lessons: true,
+    require_sequential_lessons: false,
     require_quiz_to_advance: true,
     min_quiz_score: 70,
   });
@@ -345,7 +345,7 @@ export const AcademyAdminContentPage = () => {
       cover_image_url: null,
       level: 1,
       is_active: true,
-      require_sequential_lessons: true,
+      require_sequential_lessons: false,
       require_quiz_to_advance: true,
       min_quiz_score: 70,
     });

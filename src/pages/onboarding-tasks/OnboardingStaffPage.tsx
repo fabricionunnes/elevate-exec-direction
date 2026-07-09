@@ -149,10 +149,13 @@ const OnboardingStaffPage = () => {
     setSaving(true);
     
     try {
-      let userId: string | null = null;
+      // Criar login quando: membro novo, OU edição com senha preenchida (cria/define o
+      // acesso de quem ainda não tem login — ex: candidato contratado). A edge cria o
+      // auth user se não existir e faz upsert do staff pelo e-mail.
+      const precisaLogin = !editingStaff || !!formData.password?.trim();
 
-      // Se for novo membro, criar/atualizar login via backend (sem trocar a sessão do admin)
-      if (!editingStaff) {
+      if (precisaLogin) {
+        if (!formData.password?.trim()) throw new Error("Informe uma senha pra criar o acesso do membro.");
         const { data: result, error: fnError } = await supabase.functions.invoke("create-staff-user", {
           body: {
             email: formData.email,
@@ -162,16 +165,10 @@ const OnboardingStaffPage = () => {
             phone: formData.phone || null,
           },
         });
-
         if (fnError) throw fnError;
-        userId = (result?.user_id as string | undefined) ?? null;
-
-        if (!userId) {
-          throw new Error("Não foi possível vincular o login ao membro.");
-        }
-      }
-
-      if (editingStaff) {
+        if (!(result as any)?.user_id) throw new Error((result as any)?.error || "Não foi possível vincular o login ao membro.");
+        toast.success(editingStaff ? "Membro atualizado e acesso definido" : "Membro cadastrado e login vinculado");
+      } else {
         const { error } = await supabase
           .from("onboarding_staff")
           .update({
@@ -180,12 +177,9 @@ const OnboardingStaffPage = () => {
             role: formData.role,
             phone: formData.phone || null,
           })
-          .eq("id", editingStaff.id);
-
+          .eq("id", editingStaff!.id);
         if (error) throw error;
         toast.success("Membro atualizado com sucesso");
-      } else {
-        toast.success("Membro cadastrado e login vinculado com sucesso");
       }
 
       setShowDialog(false);
@@ -360,6 +354,8 @@ const OnboardingStaffPage = () => {
         return <Badge className="bg-gradient-to-r from-amber-500 to-yellow-400 text-white flex items-center gap-1"><Crown className="h-3 w-3" />Master</Badge>;
       case "admin":
         return <Badge className="bg-amber-500">Admin</Badge>;
+      case "head_comercial":
+        return <Badge className="bg-red-500">Head Comercial</Badge>;
       case "cs":
         return <Badge className="bg-blue-500">CS</Badge>;
       case "consultant":
@@ -672,6 +668,7 @@ const OnboardingStaffPage = () => {
                 <SelectContent>
                   <SelectItem value="pending">Pendente (sem acesso)</SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
+                  <SelectItem value="head_comercial">Head Comercial</SelectItem>
                   <SelectItem value="cs">CS (Customer Success)</SelectItem>
                   <SelectItem value="consultant">Consultor</SelectItem>
                   <SelectItem value="closer">Closer</SelectItem>
@@ -690,22 +687,22 @@ const OnboardingStaffPage = () => {
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
             </div>
-            {!editingStaff && (
-              <div className="space-y-2">
-                <Label htmlFor="password">Senha de Acesso *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="Mínimo 6 caracteres"
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  O membro poderá usar este email e senha para fazer login
-                </p>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha de Acesso {!editingStaff && "*"}</Label>
+              <Input
+                id="password"
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder={editingStaff ? "Preencha pra criar/definir o acesso" : "Mínimo 6 caracteres"}
+                required={!editingStaff}
+              />
+              <p className="text-xs text-muted-foreground">
+                {editingStaff
+                  ? "Deixe em branco pra não mexer no login. Preencha pra criar o acesso (ex: colaborador contratado) ou redefinir a senha."
+                  : "O membro poderá usar este email e senha para fazer login"}
+              </p>
+            </div>
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
                 Cancelar

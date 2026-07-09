@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ContractForm, { type ContractFormData } from "@/components/contract-generator/ContractForm";
 import ContractPreview from "@/components/contract-generator/ContractPreview";
 import ClausesEditor, { getDefaultEditableClauses, getEditableClausesWithSavedTemplate, type EditableClause } from "@/components/contract-generator/ClausesEditor";
-import { rescisaoClause } from "@/data/contractTemplate";
+import { rescisaoClause, buildInvestimentoContent } from "@/data/contractTemplate";
 import TemplateEditorDialog from "@/components/contract-generator/TemplateEditorDialog";
 import { generateContractPDF, downloadContractPDF } from "@/components/contract-generator/generateContractPDF";
 import { productDetails } from "@/data/productDetails";
@@ -304,10 +304,31 @@ export default function ContractGeneratorPage() {
     }
   };
 
+  // Guarda o último texto gerado da CLÁUSULA 5, para distinguir edição manual de regeneração automática
+  const lastGenInvestimentoRef = useRef<string>("");
+
+  const buildCurrentInvestimento = () =>
+    buildInvestimentoContent({
+      paymentMethod: formData.paymentMethod,
+      isRecurring: formData.isRecurring,
+      installments: formData.installments,
+      contractValue: formData.contractValue,
+      dueDay: formData.dueDay,
+    });
+
   // Load saved template clauses
   const loadSavedTemplateClauses = async () => {
     const clauses = await getEditableClausesWithSavedTemplate();
-    setEditableClauses(clauses);
+    const generated = buildCurrentInvestimento();
+    lastGenInvestimentoRef.current = generated;
+    setEditableClauses(
+      clauses.map((c) =>
+        c.id === "investimento" &&
+        c.content.includes("conforme especificado nas condições comerciais")
+          ? { ...c, content: generated }
+          : c
+      )
+    );
   };
 
   // Helper: inject or remove the rescisão clause based on payment conditions
@@ -360,6 +381,31 @@ export default function ContractGeneratorPage() {
       applyRescisaoClause(prev, formData.paymentMethod, formData.isRecurring, formData.installments)
     );
   }, [formData.paymentMethod, formData.isRecurring, formData.installments]);
+
+  // Regenera o texto da CLÁUSULA 5 (valor, forma de pagamento, item V) quando o formulário muda.
+  // Só sobrescreve se o consultor não tiver editado a cláusula manualmente desde a última geração.
+  useEffect(() => {
+    const generated = buildCurrentInvestimento();
+    setEditableClauses((prev) =>
+      prev.map((c) => {
+        if (c.id !== "investimento") return c;
+        // auto-gerada = começa com o padrão de valor; re-sincroniza mesmo após snapshot/edição,
+        // pra nunca ficar travada num valor antigo (ex.: R$ 0,00).
+        const untouched =
+          c.content === lastGenInvestimentoRef.current ||
+          c.content.includes("conforme especificado nas condições comerciais") ||
+          /O valor (total )?do presente contrato será de/i.test(c.content);
+        return untouched ? { ...c, content: generated } : c;
+      })
+    );
+    lastGenInvestimentoRef.current = generated;
+  }, [
+    formData.paymentMethod,
+    formData.isRecurring,
+    formData.installments,
+    formData.contractValue,
+    formData.dueDay,
+  ]);
 
   useEffect(() => {
     loadContracts();
@@ -544,10 +590,16 @@ export default function ContractGeneratorPage() {
   };
 
   const handleGenerate = async () => {
+    // Trava contra contrato com valor zerado (evita PDF saindo "R$ 0,00")
+    if (!formData.contractValue || formData.contractValue <= 0) {
+      toast.error("Defina o valor total do contrato (maior que zero) antes de gerar.");
+      return;
+    }
+
     setIsGenerating(true);
     setZapSignSent(false);
     setLastSavedContractId(null);
-    
+
     // Track if this is an edit (before saveContract clears the state)
     const isEditMode = !!editingContractId;
     setWasEditMode(isEditMode);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,11 +20,31 @@ interface Answer {
 export default function PublicProfileDISCPage() {
   const [searchParams] = useSearchParams();
   const tenantId = searchParams.get("tenant");
+  const candidateId = searchParams.get("candidate");
+  const employeeId = searchParams.get("employee");
 
   const [step, setStep] = useState<"form" | "test" | "done">("form");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [identityLocked, setIdentityLocked] = useState(false);
+
+  // Quando o link vem de um candidato (?candidate=) OU colaborador (?employee=),
+  // pré-preenche os dados dele e TRAVA o nome — vincula ao certo, sem preencher por outro.
+  useEffect(() => {
+    if (!candidateId && !employeeId) return;
+    (async () => {
+      const { data, error } = await supabase.functions.invoke("profile-candidate-public-info", {
+        body: candidateId ? { candidateId } : { employeeId },
+      });
+      const c = (data as any)?.candidate;
+      if (!error && c) {
+        if (c.full_name) { setName(c.full_name); setIdentityLocked(true); }
+        if (c.email) setEmail(c.email);
+        if (c.phone) setPhone(c.phone);
+      }
+    })();
+  }, [candidateId, employeeId]);
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
@@ -89,6 +109,8 @@ export default function PublicProfileDISCPage() {
       const { error } = await supabase.functions.invoke("profile-disc-public-submit", {
         body: {
           tenantId,
+          candidateId,
+          employeeId,
           name: name.trim(),
           email: email.trim() || null,
           phone: phone.trim() || null,
@@ -138,7 +160,7 @@ export default function PublicProfileDISCPage() {
           <CardContent className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor="name">Nome completo *</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" />
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" readOnly={identityLocked} className={identityLocked ? "opacity-80" : ""} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="email">E-mail (opcional)</Label>

@@ -93,13 +93,24 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
         const { data: staffList } = await staffQuery;
         if (!staffList?.length) { setLoading(false); return; }
 
-        const { data: goalTypes } = await supabase
+        // Mesma seleção do CRMGoalValuesManager: tipo por categoria, has_ote preferido
+        // mas com FALLBACK pra tipo sem has_ote (senão o card vinha vazio = "não abre nada")
+        const { data: allGoalTypes } = await supabase
           .from("crm_goal_types")
-          .select("id, name, category")
-          .eq("is_active", true)
-          .eq("has_ote", true);
+          .select("id, name, category, has_ote")
+          .eq("is_active", true);
 
-        if (!goalTypes?.length) { setLoading(false); return; }
+        if (!allGoalTypes?.length) { setLoading(false); return; }
+
+        const closerOte = allGoalTypes.find(t => t.category === "closer" && t.has_ote)
+          || allGoalTypes.find(t => t.category === "closer")
+          || allGoalTypes.find(t => t.name === "Vendas");
+        const sdrOte = allGoalTypes.find(t => t.category === "sdr" && t.has_ote)
+          || allGoalTypes.find(t => t.category === "sdr")
+          || allGoalTypes.find(t => t.name === "Reuniões Realizadas");
+
+        const goalTypes = [closerOte, sdrOte].filter(Boolean) as { id: string; name: string; category: string | null }[];
+        if (!goalTypes.length) { setLoading(false); return; }
 
         const goalTypeIds = goalTypes.map(g => g.id);
 
@@ -140,10 +151,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
         const results: CommissionData[] = [];
 
         for (const staff of staffList) {
-          const goalType = goalTypes.find(g =>
-            staff.role === "closer" ? g.category === "closer" || g.name === "Vendas" :
-            staff.role === "sdr" ? g.category === "sdr" || g.name === "Reuniões Realizadas" : false
-          );
+          const goalType = staff.role === "sdr" ? sdrOte : closerOte;
 
           if (!goalType) continue;
 
@@ -293,7 +301,27 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
     }
   }, [staffId, staffRole, isMaster]);
 
-  if (loading || commissionData.length === 0) return null;
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-border/40 bg-card p-6 text-center text-sm text-muted-foreground">
+        Carregando remuneração…
+      </div>
+    );
+  }
+
+  if (commissionData.length === 0) {
+    return (
+      <div className="rounded-xl border border-border/40 bg-card p-6 text-center">
+        <DollarSign className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
+        <p className="text-sm font-medium">Nenhuma remuneração para mostrar este mês</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          {isMaster
+            ? "Configure as metas e faixas de comissão dos closers/SDR em Configurações → Metas para ver a remuneração da equipe aqui."
+            : "Suas metas e faixas de comissão ainda não foram configuradas para este mês."}
+        </p>
+      </div>
+    );
+  }
 
   const remainingDays = getRemainingBusinessDaysInMonth(new Date());
 

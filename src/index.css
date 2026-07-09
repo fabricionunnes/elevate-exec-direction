@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400..700;1,400..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -77,6 +78,55 @@
     --muted-foreground: 214 25% 70%;
     --border: 214 35% 30%;
     --input: 214 35% 30%;
+  }
+
+  /* ============================================================
+   * CRM Comercial — escopo de redesign
+   * Tipografia sans + tema refinado em camadas (profundidade).
+   * Só afeta o que estiver dentro de .crm-app (e portais .font-crm),
+   * preservando a identidade editorial do restante do Nexus.
+   * ============================================================ */
+  .crm-app,
+  .crm-app :where(h1, h2, h3, h4, h5, h6),
+  .font-crm,
+  .font-crm :where(h1, h2, h3, h4, h5, h6) {
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  /* Modo claro clean (estilo Pipedrive: canvas cinza suave, cards brancos) */
+  .crm-app {
+    --background: 220 18% 97%;
+    --foreground: 222 30% 16%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 30% 16%;
+    --secondary: 220 18% 95%;
+    --secondary-foreground: 222 28% 22%;
+    --muted: 220 18% 94%;
+    --muted-foreground: 218 12% 46%;
+    --border: 220 14% 89%;
+    --input: 220 14% 88%;
+    --crm-column: 220 16% 94%;
+    --crm-column-header: 220 16% 94%;
+    --crm-positive: 152 58% 36%;
+  }
+
+  /* Modo escuro clean (navy UNV, camadas com mais contraste, menos saturação) */
+  .dark .crm-app {
+    --background: 217 40% 9%;
+    --foreground: 210 30% 96%;
+    --card: 216 32% 14%;
+    --card-foreground: 210 30% 96%;
+    --popover: 216 32% 14%;
+    --secondary: 216 28% 18%;
+    --secondary-foreground: 210 28% 94%;
+    --muted: 216 26% 20%;
+    --muted-foreground: 215 16% 68%;
+    --border: 215 22% 22%;
+    --input: 215 22% 22%;
+    --crm-column: 217 34% 11.5%;
+    --crm-column-header: 217 34% 11.5%;
+    --crm-positive: 152 56% 52%;
   }
 }
 

@@ -84,6 +84,83 @@ Deno.serve(async (req) => {
 
     console.log(`[Asaas Webhook] Event: ${event}, Payment: ${paymentId}, Status: ${paymentStatus} -> ${newStatus}, Subscription: ${subscriptionId}, DueDate: ${dueDate}, Value: ${paymentValue}, Discount: ${paymentDiscount}`);
 
+    // === Recarga da carteira do discador — tratamento isolado (early return) ===
+    const extRef: string | undefined = payment.externalReference;
+    if (extRef && extRef.startsWith("dialer_recharge:")) {
+      const rechargeId = extRef.split(":")[1];
+      if (newStatus === "paid" && rechargeId) {
+        const { data: rc } = await supabase.from("dialer_recharges").select("id, tenant_id, amount, status").eq("id", rechargeId).maybeSingle();
+        if (rc && rc.status !== "paid") {
+          await supabase.rpc("dialer_credit_wallet", {
+            p_tenant: rc.tenant_id, p_amount: Number(rc.amount), p_operation: "recharge",
+            p_desc: `Recarga via Asaas (${paymentId})`, p_ref: null,
+          });
+          await supabase.from("dialer_recharges").update({ status: "paid", paid_at: new Date().toISOString(), asaas_payment_id: paymentId }).eq("id", rechargeId);
+          console.log(`[Asaas Webhook] Recarga discador creditada: ${rechargeId} tenant ${rc.tenant_id} R$${rc.amount}`);
+        }
+      }
+      return new Response(JSON.stringify({ received: true, dialer_recharge: rechargeId }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === Ativação de cliente do discador (assinatura) ===
+    if (extRef && extRef.startsWith("dialer_activation:")) {
+      const tId = extRef.split(":")[1];
+      if (newStatus === "paid" && tId) {
+        // libera o cliente
+        await supabase.from("whitelabel_tenants").update({ status: "active" }).eq("id", tId);
+        // baixa a conta a receber
+        await supabase.from("financial_receivables").update({
+          status: "paid", paid_date: new Date().toISOString().slice(0, 10), paid_amount: paymentValue, asaas_payment_id: paymentId,
+        }).eq("asaas_payment_id", paymentId).neq("status", "paid");
+        console.log(`[Asaas Webhook] Discador ativado + baixa: tenant ${tId}`);
+      } else if (newStatus === "overdue" && tId) {
+        // corte automático no dia seguinte ao vencimento (Asaas envia OVERDUE)
+        await supabase.from("whitelabel_tenants").update({ status: "suspended" }).eq("id", tId);
+        await supabase.from("financial_receivables").update({ status: "overdue" }).eq("asaas_payment_id", paymentId).neq("status", "paid");
+        console.log(`[Asaas Webhook] Discador suspenso por atraso: tenant ${tId}`);
+      }
+      return new Response(JSON.stringify({ received: true, dialer_activation: tId }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === Cobrança por usuário ativo do discador ===
+    if (extRef && extRef.startsWith("dialer_billing:")) {
+      const billingId = extRef.split(":")[1];
+      if (newStatus === "paid" && billingId) {
+        await supabase.from("dialer_billing").update({ status: "paid", paid_at: new Date().toISOString(), asaas_payment_id: paymentId }).eq("id", billingId).neq("status", "paid");
+      }
+      return new Response(JSON.stringify({ received: true, dialer_billing: billingId }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === UNV Start — libera acesso ao produto de entrada (R$97) ===
+    if (extRef && extRef.startsWith("unv-start:")) {
+      const memberId = extRef.split(":")[1];
+      if (newStatus === "paid" && memberId) {
+        try {
+          await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/unv-start-checkout`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+            },
+            body: JSON.stringify({ action: "status", member_id: memberId }),
+          });
+          console.log(`[Asaas Webhook] UNV Start acesso liberado: member ${memberId}`);
+        } catch (e) {
+          console.error(`[Asaas Webhook] UNV Start erro ao liberar ${memberId}:`, e);
+        }
+      }
+      return new Response(JSON.stringify({ received: true, unv_start: memberId }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Idempotency: if payment is already confirmed and bank was credited, skip
     if (newStatus === "paid") {
       // Check 1: invoice matched by stored Asaas payment id.
@@ -405,6 +482,11 @@ Deno.serve(async (req) => {
             .from("company_invoices")
             .update({ status: revertStatus, paid_at: null, paid_amount_cents: null, pagarme_charge_id: null })
             .eq("id", invoice.id);
+          matched = true;
+        } else if (invoice.status === "paid" || invoice.status === "partial") {
+          // NUNCA sobrescrever uma fatura já paga com overdue/pending vindo do Asaas.
+          // Senão o cliente aparece como inadimplente e a régua cobra algo já pago.
+          console.log(`[Asaas Webhook] Invoice ${invoice.id} já paga localmente; ignorando status ${newStatus} (invoiceUrl match)`);
           matched = true;
         } else {
           await supabase.from("company_invoices").update({ status: newStatus }).eq("id", invoice.id);

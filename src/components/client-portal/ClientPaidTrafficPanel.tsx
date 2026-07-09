@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Megaphone, ExternalLink, Settings, Loader2, Code, Link, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { MetaAdsModule } from "@/components/meta-ads/MetaAdsModule";
+import { ClientTrafficLeadsTab } from "@/components/client-portal/ClientTrafficLeadsTab";
+import { Users } from "lucide-react";
 import { useClientPermissions } from "@/hooks/useClientPermissions";
 import { CLIENT_MENU_KEYS } from "@/types/onboarding";
 
@@ -133,6 +135,10 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
               Meta Ads
             </TabsTrigger>
           )}
+          <TabsTrigger value="leads" className="gap-1.5">
+            <Users className="h-3.5 w-3.5" />
+            Leads
+          </TabsTrigger>
           <TabsTrigger value="dashboard" className="gap-1.5">
             <BarChart3 className="h-3.5 w-3.5" />
             Dashboard
@@ -141,6 +147,11 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
 
         <TabsContent value="meta_ads">
           <MetaAdsModule projectId={projectId} isStaff={canEdit} />
+        </TabsContent>
+
+        {/* Leads do tráfego: a SDR do cliente registra cada lead e o desfecho */}
+        <TabsContent value="leads">
+          <ClientTrafficLeadsTab projectId={projectId} />
         </TabsContent>
 
         <TabsContent value="dashboard">

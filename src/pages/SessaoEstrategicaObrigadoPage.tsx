@@ -1,5 +1,9 @@
 import { useEffect } from "react";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, MessageCircle } from "lucide-react";
+
+const FURAR_FILA_WA = "https://wa.me/5511927008490?text=" + encodeURIComponent(
+  "Olá! Acabei de me cadastrar e quero furar a fila pra ser atendido na frente."
+);
 
 const SessaoEstrategicaObrigadoPage = () => {
   // Meta Pixel + Conversion Event
@@ -68,6 +72,19 @@ const SessaoEstrategicaObrigadoPage = () => {
               <span>Você receberá um plano personalizado para suas vendas</span>
             </li>
           </ul>
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-sm text-gray-400">Não quer esperar a gente chamar?</p>
+          <a
+            href={FURAR_FILA_WA}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full px-6 py-4 rounded-xl bg-green-500 hover:bg-green-600 transition-colors font-bold text-white text-base shadow-lg shadow-green-500/20"
+          >
+            <MessageCircle className="h-5 w-5" />
+            Quero furar a fila e ser atendido na frente
+          </a>
         </div>
 
         <p className="text-sm text-gray-600">

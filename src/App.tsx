@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route } from "react-router-dom";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { OAuthRedirectHandler } from "./components/OAuthRedirectHandler";
+import { InviteRedirectHandler } from "./components/InviteRedirectHandler";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeCustomizationProvider } from "@/contexts/ThemeCustomizationContext";
 import { TenantProvider } from "@/contexts/TenantContext";
@@ -28,6 +29,11 @@ const CorePage = lazy(() => import("./pages/CorePage"));
 const ControlPage = lazy(() => import("./pages/ControlPage"));
 const GrowthRoomPage = lazy(() => import("./pages/GrowthRoomPage"));
 const PartnersPage = lazy(() => import("./pages/PartnersPage"));
+const UNVBoardPage = lazy(() => import("./pages/UNVBoardPage"));
+const UNVStartPage = lazy(() => import("./pages/UNVStartPage"));
+const UNVStartLoginPage = lazy(() => import("./pages/UNVStartLoginPage"));
+const UNVStartPortalPage = lazy(() => import("./pages/UNVStartPortalPage"));
+const UNVStartCheckoutPage = lazy(() => import("./pages/UNVStartCheckoutPage"));
 const SalesOpsPage = lazy(() => import("./pages/SalesOpsPage"));
 const AISalesSystemPage = lazy(() => import("./pages/AISalesSystemPage"));
 const FractionalCROPage = lazy(() => import("./pages/FractionalCROPage"));
@@ -121,6 +127,7 @@ const OnboardingTasksPage = lazy(() => import("./pages/onboarding-tasks/Onboardi
 const OnboardingProjectPage = lazy(() => import("./pages/onboarding-tasks/OnboardingProjectPage"));
 const CommercialActionsDashboardPage = lazy(() => import("./pages/onboarding-tasks/CommercialActionsDashboardPage"));
 const OnboardingCompaniesPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCompaniesPage"));
+const UNVStartClientsPage = lazy(() => import("./pages/onboarding-tasks/UNVStartClientsPage"));
 const OnboardingCompanyDetailPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCompanyDetailPage"));
 const OnboardingStaffPage = lazy(() => import("./pages/onboarding-tasks/OnboardingStaffPage"));
 const ClientOnboardingPage = lazy(() => import("./pages/onboarding-tasks/ClientOnboardingPage"));
@@ -134,6 +141,7 @@ const OnboardingImportPage = lazy(() => import("./pages/onboarding-tasks/Onboard
 const PaymentNotificationsPage = lazy(() => import("./pages/onboarding-tasks/PaymentNotificationsPage"));
 const VirtualOfficePage = lazy(() => import("./pages/onboarding-tasks/VirtualOfficePage"));
 const UNVOfficePage = lazy(() => import("./pages/onboarding-tasks/UNVOfficePage"));
+const OfficePage = lazy(() => import("./pages/office/OfficePage"));
 const CACFormPage = lazy(() => import("./pages/onboarding-tasks/CACFormPage"));
 const RescheduleTasks = lazy(() => import("./pages/onboarding-tasks/RescheduleTasks"));
 const KickoffFormPage = lazy(() => import("./pages/onboarding-tasks/KickoffFormPage"));
@@ -164,6 +172,9 @@ const LeaderDashboardPage = lazy(() => import("./pages/onboarding-tasks/LeaderDa
 const GlobalJobOpeningsPage = lazy(() => import("./pages/onboarding-tasks/GlobalJobOpeningsPage"));
 const GlobalTalentPoolResumesPage = lazy(() => import("./pages/onboarding-tasks/GlobalTalentPoolResumesPage"));
 const HotseatAdminPage = lazy(() => import("./pages/onboarding-tasks/HotseatAdminPage"));
+const BoardAdminPage = lazy(() => import("./pages/onboarding-tasks/BoardAdminPage"));
+const BoardDeliverablePage = lazy(() => import("./pages/BoardDeliverablePage"));
+const BoardTaskFormPage = lazy(() => import("./pages/BoardTaskFormPage"));
 const ClientAccessReportPage = lazy(() => import("./pages/onboarding-tasks/ClientAccessReportPage"));
 const BillingRulesPage = lazy(() => import("./pages/onboarding-tasks/BillingRulesPage"));
 const SurveySendConfigPage = lazy(() => import("./pages/onboarding-tasks/SurveySendConfigPage"));
@@ -177,6 +188,8 @@ const GlobalGamificationPage = lazy(() => import("./pages/onboarding-tasks/Globa
 const SlideGeneratorPage = lazy(() => import("./pages/onboarding-tasks/SlideGeneratorPage"));
 const DatabaseBackupPage = lazy(() => import("./pages/onboarding-tasks/DatabaseBackupPage"));
 const TaskManagerPage = lazy(() => import("./pages/onboarding-tasks/TaskManagerPage"));
+const CopilotPage = lazy(() => import("./pages/onboarding-tasks/CopilotPage"));
+const CerebroPage = lazy(() => import("./pages/onboarding-tasks/CerebroPage"));
 const AutomationsPage = lazy(() => import("./pages/onboarding-tasks/AutomationsPage"));
 const B2BProspectionPage = lazy(() => import("./pages/onboarding-tasks/B2BProspectionPage"));
 const ConsultoriasAdminPage = lazy(() => import("./pages/onboarding-tasks/ConsultoriasAdminPage"));
@@ -206,6 +219,10 @@ const UnifiedAssessmentPage = lazy(() => import("./pages/assessments/UnifiedAsse
 // HR
 const HrCandidateDiscPage = lazy(() => import("./pages/hr-recruitment/HrCandidateDiscPage"));
 const PublicJobApplicationPage = lazy(() => import("./pages/hr-recruitment/PublicJobApplicationPage"));
+const ProfileJobApplicationPage = lazy(() => import("./pages/unv-profile/ProfileJobApplicationPage"));
+const ProfileCulturePublicPage = lazy(() => import("./pages/unv-profile/ProfileCulturePublicPage"));
+const ProfileAssessmentPage = lazy(() => import("./pages/unv-profile/ProfileAssessmentPage"));
+const ProfileHireRegistrationPage = lazy(() => import("./pages/unv-profile/ProfileHireRegistrationPage"));
 const PublicTalentPoolPage = lazy(() => import("./pages/hr-recruitment/PublicTalentPoolPage"));
 const CultureFormPage = lazy(() => import("./pages/hr-recruitment/CultureFormPage"));
 const PublicCareerPlanFormPage = lazy(() => import("./pages/hr-recruitment/PublicCareerPlanFormPage"));
@@ -297,6 +314,8 @@ const CRMOfficePage = lazy(() => import("./pages/crm").then(m => ({ default: m.C
 const CRMHeadComercialPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMHeadComercialPage })));
 const CRMCallSummaryPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMCallSummaryPage })));
 const CRMMeetingsPage = lazy(() => import("./pages/crm/CRMMeetingsPage"));
+const CRMDialerPage = lazy(() => import("./pages/crm/CRMDialerPage"));
+const CRMDialerStandalonePage = lazy(() => import("./pages/crm/CRMDialerStandalonePage"));
 const CRMApiPage = lazy(() => import("./pages/crm/CRMApiPage"));
 const CRMTrafficApiPage = lazy(() => import("./pages/crm/CRMTrafficApiPage"));
 const CRMForecastPage = lazy(() => import("./pages/crm/CRMForecastPage"));
@@ -353,9 +372,11 @@ const AppShell = () => {
             <HashRouter>
               <ScrollToTop />
               <OAuthRedirectHandler />
+              <InviteRedirectHandler />
               <Suspense fallback={<PageLoader />}>
               <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/discador" element={<CRMDialerStandalonePage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/onboarding-tasks/reset-password" element={<ResetPasswordPage />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
@@ -365,6 +386,11 @@ const AppShell = () => {
             <Route path="/control" element={<ControlPage />} />
             <Route path="/growth-room" element={<GrowthRoomPage />} />
             <Route path="/partners" element={<PartnersPage />} />
+            <Route path="/unv-board" element={<UNVBoardPage />} />
+            <Route path="/unv-start" element={<UNVStartPage />} />
+            <Route path="/start" element={<UNVStartLoginPage />} />
+            <Route path="/start/checkout" element={<UNVStartCheckoutPage />} />
+            <Route path="/start/:token" element={<UNVStartPortalPage />} />
             <Route path="/sales-ops" element={<SalesOpsPage />} />
             <Route path="/ai-sales-system" element={<AISalesSystemPage />} />
             <Route path="/fractional-cro" element={<FractionalCROPage />} />
@@ -434,11 +460,17 @@ const AppShell = () => {
             {/* Staff Self-Registration */}
             <Route path="/staff-register/:token" element={<StaffRegistrationPage />} />
             
+            {/* UNV Office 3D: FORA do OnboardingStaffLayout — o layout expulsa
+                pro login quem não tem sessão de staff, e o escritório aceita
+                visitante convidado (a própria página faz a checagem) */}
+            <Route path="/onboarding-tasks/unv-office" element={<UNVOfficePage />} />
+
             {/* Staff pages with global notifications */}
             <Route element={<OnboardingStaffLayout />}>
               <Route path="/onboarding-tasks" element={<OnboardingTasksPage />} />
               <Route path="/onboarding-tasks/login" element={<OnboardingLoginPage />} />
               <Route path="/onboarding-tasks/companies" element={<OnboardingCompaniesPage />} />
+              <Route path="/onboarding-tasks/unv-start" element={<UNVStartClientsPage />} />
               <Route path="/onboarding-tasks/companies/new" element={<OnboardingNewCompanyPage />} />
               <Route path="/onboarding-tasks/companies/:companyId" element={<OnboardingCompanyDetailPage />} />
               <Route path="/onboarding-tasks/staff" element={<OnboardingStaffPage />} />
@@ -448,7 +480,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/import" element={<OnboardingImportPage />} />
               <Route path="/onboarding-tasks/payment-notifications" element={<PaymentNotificationsPage />} />
               <Route path="/onboarding-tasks/office" element={<VirtualOfficePage />} />
-              <Route path="/onboarding-tasks/unv-office" element={<UNVOfficePage />} />
+              <Route path="/office" element={<OfficePage />} />
               <Route path="/onboarding-tasks/reschedule" element={<RescheduleTasks />} />
               <Route path="/onboarding-tasks/renewals" element={<OnboardingRenewalsPage />} />
               <Route path="/onboarding-tasks/cancellations" element={<OnboardingCancellationsPage />} />
@@ -472,6 +504,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/vagas" element={<GlobalJobOpeningsPage />} />
               <Route path="/onboarding-tasks/banco-talentos" element={<GlobalTalentPoolResumesPage />} />
               <Route path="/onboarding-tasks/hotseat" element={<HotseatAdminPage />} />
+              <Route path="/onboarding-tasks/board-unv" element={<BoardAdminPage />} />
               <Route path="/onboarding-tasks/consultorias" element={<ConsultoriasAdminPage />} />
               <Route path="/onboarding-tasks/client-access" element={<ClientAccessReportPage />} />
               <Route path="/onboarding-tasks/billing-rules" element={<ModuleGuard module="financial" label="Financeiro"><BillingRulesPage /></ModuleGuard>} />
@@ -482,6 +515,8 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/slide-generator" element={<SlideGeneratorPage />} />
               <Route path="/onboarding-tasks/database-backup" element={<DatabaseBackupPage />} />
               <Route path="/onboarding-tasks/task-manager" element={<TaskManagerPage />} />
+              <Route path="/onboarding-tasks/copiloto" element={<CopilotPage />} />
+              <Route path="/onboarding-tasks/cerebro" element={<CerebroPage />} />
               <Route path="/onboarding-tasks/automations" element={<AutomationsPage />} />
               <Route path="/onboarding-tasks/juridico" element={<JuridicoPage />} />
               <Route path="/onboarding-tasks/roi-clientes" element={<ROIClientePage />} />
@@ -530,6 +565,8 @@ const AppShell = () => {
             <Route path="/hotseat" element={<HotseatFormPage />} />
             
             <Route path="/onboarding-client/:projectId" element={<ClientOnboardingPage />} />
+            <Route path="/board/entregavel/:memberId" element={<BoardDeliverablePage />} />
+            <Route path="/board/tarefa/:token" element={<BoardTaskFormPage />} />
             <Route path="/disparador/:projectId" element={<ClientDisparadorPage />} />
             <Route path="/cac-form/:projectId" element={<CACFormPage />} />
             <Route path="/kickoff/:companyId" element={<KickoffFormPage />} />
@@ -544,6 +581,10 @@ const AppShell = () => {
             <Route path="/avaliacao" element={<UnifiedAssessmentPage />} />
             <Route path="/hr-disc/:token" element={<HrCandidateDiscPage />} />
             <Route path="/job-application" element={<PublicJobApplicationPage />} />
+            <Route path="/vagas/:token" element={<ProfileJobApplicationPage />} />
+            <Route path="/cultura-publica" element={<ProfileCulturePublicPage />} />
+            <Route path="/avaliacao-candidato" element={<ProfileAssessmentPage />} />
+            <Route path="/cadastro-contratacao" element={<ProfileHireRegistrationPage />} />
             <Route path="/banco-talentos" element={<PublicTalentPoolPage />} />
             <Route path="/social-briefing/:token" element={<SocialBriefingPublicPage />} />
             <Route path="/traffic-analysis/:token" element={<TrafficAnalysisPublicPage />} />
@@ -579,6 +620,7 @@ const AppShell = () => {
               <Route path="leads" element={<CRMLeadsPage />} />
               <Route path="leads/:id" element={<CRMLeadDetailPage />} />
               <Route path="activities" element={<CRMActivitiesPage />} />
+              <Route path="dialer" element={<CRMDialerPage />} />
               <Route path="inbox" element={<CRMInboxPage />} />
               <Route path="transcriptions" element={<CRMTranscriptionsPage />} />
               <Route path="reports" element={<CRMReportsPage />} />

@@ -52,8 +52,9 @@ const UNIT_TYPES = [
   { value: "percentage", label: "Percentual (%)" },
 ];
 
+// "all" é só o sentinel do select (o Radix Select quebra com value=""); ao salvar vira null.
 const CATEGORIES = [
-  { value: "", label: "Todos" },
+  { value: "all", label: "Todos" },
   { value: "closer", label: "Closer" },
   { value: "sdr", label: "SDR" },
   { value: "general", label: "Geral" },
@@ -285,8 +286,8 @@ export const CRMGoalTypesManager = () => {
                   <div>
                     <Label>Categoria</Label>
                     <Select
-                      value={formData.category}
-                      onValueChange={(v) => setFormData(p => ({ ...p, category: v }))}
+                      value={formData.category || "all"}
+                      onValueChange={(v) => setFormData(p => ({ ...p, category: v === "all" ? "" : v }))}
                     >
                       <SelectTrigger>
                         <SelectValue />

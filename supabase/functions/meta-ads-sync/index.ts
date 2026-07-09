@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
         ? redirect_uri.trim()
         : META_ADS_STABLE_REDIRECT_URI;
 
-      const scopes = "ads_read,ads_management,business_management,instagram_content_publish,pages_show_list,pages_read_engagement";
+      const scopes = "ads_read,ads_management,business_management,instagram_content_publish,pages_show_list,pages_read_engagement,leads_retrieval,pages_manage_ads";
       const state = btoa(JSON.stringify({
         project_id,
         flow: "meta_ads",
@@ -255,24 +255,28 @@ Deno.serve(async (req) => {
 
     // ──── SYNC DATA ────
     if (action === "sync") {
-      // Tenta unv_meta_ads_accounts primeiro (agentes UNV), depois meta_ads_accounts (onboarding)
+      // Com project_id, a conta DO PROJETO manda (meta_ads_accounts). O
+      // fallback global (unv_meta_ads_accounts) fica só pros agentes UNV sem
+      // projeto — antes ele vinha PRIMEIRO com limit(1) SEM filtro e podia
+      // sincronizar a conta errada pro cliente (causa do "0 campanhas").
       let account: { access_token: string; ad_account_id: string } | null = null;
-      const { data: unvAccount } = await supabase
-        .from("unv_meta_ads_accounts")
-        .select("access_token, ad_account_id")
-        .eq("is_connected", true)
-        .limit(1)
-        .single();
-      if (unvAccount) {
-        account = unvAccount;
-      } else if (project_id) {
-        const { data: legacyAccount } = await supabase
+      if (project_id) {
+        const { data: projectAccount } = await supabase
           .from("meta_ads_accounts")
           .select("access_token, ad_account_id")
           .eq("project_id", project_id)
           .eq("is_connected", true)
           .single();
-        account = legacyAccount;
+        account = projectAccount;
+      }
+      if (!account) {
+        const { data: unvAccount } = await supabase
+          .from("unv_meta_ads_accounts")
+          .select("access_token, ad_account_id")
+          .eq("is_connected", true)
+          .limit(1)
+          .single();
+        account = unvAccount;
       }
 
       if (!account) throw new Error("No Meta Ads account connected");

@@ -47,7 +47,8 @@ import {
   ExternalLink,
   CalendarDays,
   Copy,
-  Pencil
+  Pencil,
+  Trash2
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -61,6 +62,7 @@ import { sendPaymentNotification } from "@/utils/paymentNotification";
 import { ReceivablePaymentDialog } from "./ReceivablePaymentDialog";
 import { EditPaymentsDialog } from "./EditPaymentsDialog";
 import { ReceivableEditDialog } from "./ReceivableEditDialog";
+import { DistributeAdjustmentDialog } from "./DistributeAdjustmentDialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -292,6 +294,75 @@ export function ReceivablesPanel() {
     } catch (error) {
       console.error("Error cancelling receivable:", error);
       toast.error("Erro ao cancelar conta");
+    }
+  };
+
+  const [deletingAdjId, setDeletingAdjId] = useState<string | null>(null);
+  const [distributeTarget, setDistributeTarget] = useState<Receivable | null>(null);
+
+  const handleDeleteAdjustment = async (receivable: Receivable) => {
+    const ok = window.confirm(
+      `Excluir o ajuste "${receivable.description}"?\n\nIsso vai apagar a conta a receber e DIMINUIR ${formatCurrency(receivable.amount)} do saldo do banco Asaas. Não dá pra desfazer.`
+    );
+    if (!ok) return;
+    setDeletingAdjId(receivable.id);
+    const t = toast.loading("Excluindo ajuste e revertendo saldo...");
+    try {
+      // 1. Apaga a conta a receber (RLS libera só o admin financeiro)
+      const { data: deleted, error: delErr } = await supabase
+        .from("financial_receivables")
+        .delete()
+        .eq("id", receivable.id)
+        .select("id");
+      if (delErr) throw delErr;
+      if (!deleted?.length) {
+        throw new Error("Sem permissão para excluir (apenas o admin financeiro) ou já foi excluída.");
+      }
+
+      // 2. Reverte o saldo do banco Asaas — o ajuste de crédito tinha SOMADO esse valor
+      const amountCents = Math.round(Number(receivable.amount || 0) * 100);
+      const { data: bank } = await supabase
+        .from("financial_banks")
+        .select("id, current_balance_cents")
+        .eq("name", "Asaas")
+        .eq("is_active", true)
+        .maybeSingle();
+      let balanceReverted = false;
+      if (bank && amountCents !== 0) {
+        for (let i = 0; i < 4 && !balanceReverted; i++) {
+          const { data: cur } = await supabase
+            .from("financial_banks")
+            .select("current_balance_cents")
+            .eq("id", bank.id)
+            .maybeSingle();
+          const stored = Number(cur?.current_balance_cents || 0);
+          const { data: upd } = await supabase
+            .from("financial_banks")
+            .update({ current_balance_cents: stored - amountCents, updated_at: new Date().toISOString() })
+            .eq("id", bank.id)
+            .eq("current_balance_cents", stored) // trava otimista
+            .select("id");
+          if (upd?.length) balanceReverted = true;
+        }
+      }
+
+      // 3. Apaga a transação do extrato que originou o ajuste (mesma descrição + tipo da conciliação)
+      await supabase
+        .from("financial_bank_transactions")
+        .delete()
+        .eq("reference_type", "asaas_balance_reconciliation")
+        .eq("description", receivable.description);
+
+      toast.success(
+        balanceReverted ? "Ajuste excluído e saldo revertido" : "Ajuste excluído (banco Asaas não encontrado para reverter saldo)",
+        { id: t }
+      );
+      loadData();
+    } catch (e) {
+      console.error("Error deleting adjustment:", e);
+      toast.error(`Erro ao excluir ajuste: ${String((e as Error)?.message || e)}`, { id: t });
+    } finally {
+      setDeletingAdjId(null);
     }
   };
 
@@ -929,6 +1000,22 @@ export function ReceivablesPanel() {
                             <Copy className="h-4 w-4 mr-2" />
                             Duplicar
                           </DropdownMenuItem>
+                          {receivable.description?.startsWith("Ajuste automático Asaas") && (
+                            <DropdownMenuItem onClick={() => setDistributeTarget(receivable)}>
+                              <Filter className="h-4 w-4 mr-2" />
+                              Distribuir ajuste
+                            </DropdownMenuItem>
+                          )}
+                          {receivable.description?.startsWith("Ajuste automático Asaas") && (
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              disabled={deletingAdjId === receivable.id}
+                              onClick={() => handleDeleteAdjustment(receivable)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Excluir ajuste (reverte saldo)
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -1063,6 +1150,22 @@ export function ReceivablesPanel() {
         onSuccess={() => {
           loadData();
         }}
+      />
+
+      <DistributeAdjustmentDialog
+        open={!!distributeTarget}
+        onOpenChange={(o) => { if (!o) setDistributeTarget(null); }}
+        kind="receivable"
+        adjustment={distributeTarget ? {
+          id: distributeTarget.id,
+          description: distributeTarget.description,
+          amount: Number(distributeTarget.amount),
+        } : null}
+        categories={categories}
+        existingAccounts={receivables
+          .filter(r => (r.status === "pending" || r.status === "overdue" || r.status === "partial") && !r.description?.startsWith("Ajuste automático Asaas"))
+          .map(r => ({ id: r.id, description: r.description, amount: Number(r.amount), party: r.company?.name || r.custom_receiver_name || null, due_date: r.due_date, paid: Number(r.paid_amount || 0) }))}
+        onDone={() => { setDistributeTarget(null); loadData(); }}
       />
     </div>
   );

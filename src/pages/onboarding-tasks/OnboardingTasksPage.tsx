@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain } from "lucide-react";
 import { GlobalAccessControlPanel } from "@/components/onboarding-tasks/GlobalAccessControlPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -124,6 +124,7 @@ const OnboardingTasksPage = () => {
   const [filterConsultant, setFilterConsultant] = useState<string>("all");
   const [filterService, setFilterService] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [ragFilter, setRagFilter] = useState<"all" | "green" | "yellow" | "red">("all"); // semáforo de saúde do cliente
   const [consultants, setConsultants] = useState<Staff[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   
@@ -143,6 +144,7 @@ const OnboardingTasksPage = () => {
   const [kpiEntries, setKpiEntries] = useState<{ company_id: string; kpi_id: string; value: number; entry_date: string }[]>([]);
   const [contractRenewals, setContractRenewals] = useState<{ company_id: string; renewal_date: string }[]>([]);
   const [healthScoresByProject, setHealthScoresByProject] = useState<Map<string, { total_score: number; risk_level: string }>>(new Map());
+  const [whatsappSignals, setWhatsappSignals] = useState<Map<string, { rag: string | null; msgs_7d: number }>>(new Map());
   // Health scores array for DashboardMetrics (eliminates duplicate query)
   const [healthScoresArray, setHealthScoresArray] = useState<{ project_id: string; total_score: number; risk_level: string | null }[]>([]);
   const [companyDailyGoalSettings, setCompanyDailyGoalSettings] = useState<Record<string, { includeSaturday: boolean; includeSunday: boolean; includeHolidays: boolean }>>({});
@@ -1108,11 +1110,15 @@ const OnboardingTasksPage = () => {
       return hasMonetaryEntries ? monetaryKpis : mainGoalKpis;
     };
     
-    // Companies with KPI configured with target_value > 0 (same logic as DashboardMetrics)
+    // Companies with KPI configured with target_value > 0 OU meta lançada em
+    // Metas Mensais para o período (same logic as DashboardMetrics)
     const companiesWithAnyKpiIds = new Set(
       Array.from(activeCompanyIds).filter(companyId => {
         const kpis = getCompanyKpisList(companyId);
-        return kpis.some(k => k.target_value > 0);
+        if (kpis.some(k => k.target_value > 0)) return true;
+        return monthlyTargetsForProjection.some(
+          t => t.company_id === companyId && t.month_year === monthYear && t.target_value > 0
+        );
       })
     );
     
@@ -1324,6 +1330,68 @@ const OnboardingTasksPage = () => {
     return map;
   }, [companies, companyKpis, kpiEntries, monthlyTargetsForProjection, companyDailyGoalSettings]);
 
+  // Sinal de WhatsApp dos grupos (cacheado em client_whatsapp_signals, alimentado pelo sistema do Marcelo)
+  useEffect(() => {
+    let active = true;
+    supabase.from("client_whatsapp_signals").select("company_id, rag, msgs_7d").then(({ data }) => {
+      if (!active) return;
+      const m = new Map<string, { rag: string | null; msgs_7d: number }>();
+      (data || []).forEach((r: any) => m.set(r.company_id, { rag: r.rag, msgs_7d: r.msgs_7d || 0 }));
+      setWhatsappSignals(m);
+    });
+    return () => { active = false; };
+  }, []);
+
+  // Semáforo de saúde por cliente: combina WhatsApp (grupos) + Ações (tarefas) + Resultado (health score).
+  const companyRag = useMemo(() => {
+    const projToCompany = new Map<string, string>();
+    companies.forEach(c => (c.projects || []).forEach(p => projToCompany.set(p.id, c.id)));
+    const todayStart = startOfDay(new Date());
+    const overdueByCompany = new Map<string, number>();
+    allTasks.forEach((t: any) => {
+      if (!t.due_date || t.status === "completed") return;
+      if (!isBefore(normalizeDueDate(t.due_date), todayStart)) return;
+      const cid = projToCompany.get(t.project_id);
+      if (cid) overdueByCompany.set(cid, (overdueByCompany.get(cid) || 0) + 1);
+    });
+    type RagColor = "green" | "yellow" | "red" | null;
+    const worst = (...vals: RagColor[]): RagColor => {
+      const present = vals.filter(Boolean) as ("green" | "yellow" | "red")[];
+      if (!present.length) return null;
+      if (present.includes("red")) return "red";
+      if (present.includes("yellow")) return "yellow";
+      return "green";
+    };
+    const m = new Map<string, { rag: RagColor; resultado: RagColor; acoes: RagColor; whatsapp: RagColor; overdue: number; score: number | null; wppMsgs: number | null }>();
+    companies.forEach(c => {
+      const scores = (c.projects || []).map(p => healthScoresByProject.get(p.id)).filter(Boolean) as { total_score: number; risk_level: string }[];
+      const overdue = overdueByCompany.get(c.id) || 0;
+      // Resultado (health score)
+      let resultado: RagColor = null;
+      let avgScore: number | null = null;
+      if (scores.length) {
+        avgScore = Math.round(scores.reduce((s, x) => s + x.total_score, 0) / scores.length);
+        const critical = scores.some(s => s.risk_level === "critical" || s.risk_level === "at_risk");
+        const attention = scores.some(s => s.risk_level === "attention");
+        resultado = critical || avgScore < 50 ? "red" : (attention || avgScore < 70) ? "yellow" : "green";
+      }
+      // Ações (tarefas em atraso)
+      const acoes: RagColor = overdue >= 5 ? "red" : overdue >= 1 ? "yellow" : (scores.length || c.total_tasks ? "green" : null);
+      // WhatsApp dos grupos (atividade no grupo do cliente, via sistema do Marcelo)
+      const ws = whatsappSignals.get(c.id);
+      const whatsapp: RagColor = (ws?.rag as RagColor) ?? null;
+      const rag = worst(resultado, acoes, whatsapp);
+      m.set(c.id, { rag, resultado, acoes, whatsapp, overdue, score: avgScore, wppMsgs: ws?.msgs_7d ?? null });
+    });
+    return m;
+  }, [companies, healthScoresByProject, allTasks, whatsappSignals]);
+
+  const ragCounts = useMemo(() => {
+    const counts = { green: 0, yellow: 0, red: 0 };
+    companies.forEach(c => { const r = companyRag.get(c.id)?.rag; if (r) counts[r]++; });
+    return counts;
+  }, [companies, companyRag]);
+
   const filteredCompanies = useMemo(() => {
     const filtered = companies.filter((company) => {
       // Hide inactive and closed companies entirely from dashboard
@@ -1352,7 +1420,13 @@ const OnboardingTasksPage = () => {
       if (!company.projects || company.projects.length === 0) {
         return false;
       }
-      
+
+      // Saúde do cliente: por padrão, só empresas com projeto ATIVO.
+      // (ao filtrar por um status específico no dropdown ou por uma métrica, respeita esse filtro.)
+      if (filterStatus === "all" && !activeMetricFilter && !company.projects.some((p) => p.status === "active")) {
+        return false;
+      }
+
       // For consultants: only show companies where they have non-closed projects as consultant or CS
       if (currentUserRole === "consultant" && currentStaffId) {
         const isMyCompany = company.consultant_id === currentStaffId || company.cs_id === currentStaffId;
@@ -1531,9 +1605,10 @@ const OnboardingTasksPage = () => {
         }
       }
       
-      return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter;
+      const matchesRag = ragFilter === "all" || companyRag.get(company.id)?.rag === ragFilter;
+      return matchesSearch && matchesConsultant && matchesService && matchesStatus && matchesMetricFilter && matchesRag;
     });
-    
+
     // Sort rule (business): companies that entered now (<= 30 days) must appear first.
     // Fallback for integrations that may not set contract_start_date: use created_at.
     const now = new Date();
@@ -1553,7 +1628,7 @@ const OnboardingTasksPage = () => {
 
       return bStart.getTime() - aStart.getTime();
     });
-  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, companiesGoalRanges, currentUserRole, currentStaffId, allTasks, contractRenewals]);
+  }, [companies, searchTerm, filterConsultant, filterService, filterStatus, ragFilter, companyRag, activeMetricFilter, dateRange, projectsWithNpsResponse, projectsNpsCategories, companiesGoalRanges, currentUserRole, currentStaffId, allTasks, contractRenewals]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -1859,6 +1934,13 @@ const OnboardingTasksPage = () => {
                     <Video className="h-4 w-4 mr-2" />
                     Escritório UNV
                   </DropdownMenuItem>
+                  {/* Escritório 3D dos agentes IA — somente master */}
+                  {isMaster && (
+                    <DropdownMenuItem onClick={() => navigate("/office")}>
+                      <Gamepad2 className="h-4 w-4 mr-2" />
+                      Escritório Agentes
+                    </DropdownMenuItem>
+                  )}
                   {/* ROI dos Clientes */}
                   {isAdmin && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/roi-clientes")}>
@@ -1885,6 +1967,13 @@ const OnboardingTasksPage = () => {
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/assinaturas")}>
                       <FileSignature className="h-4 w-4 mr-2" />
                       Assinaturas
+                    </DropdownMenuItem>
+                  )}
+                  {/* UNV Board */}
+                  {canCreateCompany && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/board-unv")}>
+                      <Crown className="h-4 w-4 mr-2" />
+                      UNV Board
                     </DropdownMenuItem>
                   )}
                   {/* Hotseat */}
@@ -2106,7 +2195,7 @@ const OnboardingTasksPage = () => {
         <div className="flex flex-col gap-3 mb-4 sm:mb-6">
 
           {/* Desktop Navigation — clean grouped nav */}
-          <div className="hidden sm:flex items-center gap-0.5 border-b border-border/50 pb-2">
+          <div className="hidden sm:flex flex-wrap items-center gap-x-0.5 gap-y-1 border-b border-border/50 pb-2">
             {/* Empresas dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -2209,15 +2298,24 @@ const OnboardingTasksPage = () => {
                     <DropdownMenuSeparator />
                   </>
                 )}
+                <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/copiloto")} className="text-primary focus:text-primary font-semibold">
+                  <Sparkles className="h-4 w-4 mr-2" /> Copiloto de Resultados
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/task-manager")}>
                   <LayoutGrid className="h-4 w-4 mr-2" /> Gerenciador
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/office")}>
-                  <Video className="h-4 w-4 mr-2" /> Escritório
+                <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/office?tab=calendar")}>
+                  <Calendar className="h-4 w-4 mr-2" /> Conectar Google Agenda
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/unv-office")}>
                   <Building2 className="h-4 w-4 mr-2" /> UNV Office
                 </DropdownMenuItem>
+                {/* Escritório 3D dos agentes IA — somente master */}
+                {isMaster && (
+                  <DropdownMenuItem onClick={() => navigate("/office")}>
+                    <Gamepad2 className="h-4 w-4 mr-2" /> Escritório Agentes
+                  </DropdownMenuItem>
+                )}
                 {currentUserRole && currentStaffId && (
                   <DropdownMenuItem onClick={() => setShowMyTasks(true)}>
                     <CheckCircle2 className="h-4 w-4 mr-2" /> Minhas Tarefas
@@ -2298,6 +2396,35 @@ const OnboardingTasksPage = () => {
               </Button>
             )}
 
+            {/* ── Produtos UNV (Board + Start) — agrupados p/ economizar espaço ── */}
+            {canCreateCompany && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60">
+                    <Crown className="h-4 w-4" />
+                    Produtos
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/board-unv")}>
+                    <Crown className="h-4 w-4 mr-2" /> UNV Board
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/unv-start")}>
+                    <Sparkles className="h-4 w-4 mr-2" /> UNV Start
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            {/* ── UNV Start — botão direto ─────────────────── */}
+            {canCreateCompany && (
+              <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60" onClick={() => navigate("/onboarding-tasks/unv-start")}>
+                <Sparkles className="h-4 w-4" />
+                UNV Start
+              </Button>
+            )}
+
             {/* ── Engajamento ─────────────────────────────── */}
             {canCreateCompany && (
               <DropdownMenu>
@@ -2346,6 +2473,10 @@ const OnboardingTasksPage = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 max-h-[80vh] overflow-y-auto">
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cerebro")} className="text-primary focus:text-primary font-semibold">
+                    <Brain className="h-4 w-4 mr-2" />
+                    Cérebro da Carteira
+                  </DropdownMenuItem>
                   {isAdmin && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations-retention")}>
                       <AlertTriangle className="h-4 w-4 mr-2" />
@@ -2680,7 +2811,7 @@ const OnboardingTasksPage = () => {
             )}
 
             {/* ── Right side ──────────────────────────────── */}
-            <div className="ml-auto flex items-center gap-0.5">
+            <div className="ml-auto flex items-center gap-0.5 shrink-0">
               <ThemeToggle />
               <Button
                 variant="ghost"
@@ -2781,8 +2912,25 @@ const OnboardingTasksPage = () => {
                 </Select>
               </div>
 
-              {hasActiveFilters && (
-                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 sm:h-10 px-2 shrink-0">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] sm:text-xs text-muted-foreground font-medium">Saúde do cliente</span>
+                <div className="flex items-center gap-1">
+                  {([["all", "Todos", ""], ["green", "Verde", "#22c55e"], ["yellow", "Amarelo", "#eab308"], ["red", "Vermelho", "#ef4444"]] as const).map(([k, lbl, color]) => (
+                    <button
+                      key={k}
+                      onClick={() => setRagFilter(k as any)}
+                      title={lbl}
+                      className={`flex items-center gap-1 px-2 h-8 sm:h-10 rounded-md border text-xs transition-colors ${ragFilter === k ? "border-foreground/40 bg-muted font-medium" : "border-border text-muted-foreground hover:bg-muted/50"}`}
+                    >
+                      {color ? <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: color }} /> : null}
+                      {k === "all" ? "Todos" : <span className="tabular-nums">{ragCounts[k as "green" | "yellow" | "red"]}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(hasActiveFilters || ragFilter !== "all") && (
+                <Button variant="ghost" size="sm" onClick={() => { clearFilters(); setRagFilter("all"); }} className="h-8 sm:h-10 px-2 shrink-0">
                   <X className="h-4 w-4" />
                 </Button>
               )}
@@ -2825,7 +2973,7 @@ const OnboardingTasksPage = () => {
         )}
 
         {/* Companies List - Hidden when on NPS, CSAT or Referrals tab */}
-        {activeDashboardTab === "nps" || activeDashboardTab === "csat" || activeDashboardTab === "referrals" ? null : filteredCompanies.length === 0 ? (
+        {activeDashboardTab === "nps" || activeDashboardTab === "csat" || activeDashboardTab === "referrals" || activeDashboardTab === "parcelas" ? null : filteredCompanies.length === 0 ? (
           <Card className="p-12 text-center">
             <Building2 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">Nenhuma empresa encontrada</h3>
@@ -2878,11 +3026,22 @@ const OnboardingTasksPage = () => {
               // Get the realized goal percentage for this company
               const companyGoalPercent = currentMonthProjectionByCompany.get(company.id);
 
+              // Borda lateral indica a saúde do cliente — escaneável sem ler o score
+              const healthBorderClass = !companyHealthData
+                ? "border-l-[#0A2240]"
+                : companyHealthData.riskLevel === "critical"
+                  ? "border-l-red-500"
+                  : companyHealthData.riskLevel === "at_risk"
+                    ? "border-l-orange-500"
+                    : companyHealthData.riskLevel === "attention"
+                      ? "border-l-yellow-500"
+                      : "border-l-emerald-500";
+
               return (
               <div key={company.id}>
                 {/* Company Card - Mobile Optimized */}
                 <Card
-                  className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-[#0A2240] bg-gradient-to-r from-[#0A2240]/5 to-transparent"
+                  className={`cursor-pointer hover:shadow-lg transition-shadow border-l-4 ${healthBorderClass} bg-gradient-to-r from-[#0A2240]/5 to-transparent`}
                   onClick={() => handleCompanyClick(company.id)}
                 >
                   <CardContent className="p-3 sm:p-4">
@@ -2893,6 +3052,28 @@ const OnboardingTasksPage = () => {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                            {(() => {
+                              const sig = companyRag.get(company.id);
+                              const colorOf = (r?: string | null) => r === "green" ? "#22c55e" : r === "yellow" ? "#eab308" : r === "red" ? "#ef4444" : "#6b7280";
+                              const Row = ({ name, r, extra }: { name: string; r?: string | null; extra: string }) => (
+                                <span className="flex items-center gap-1.5">
+                                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: colorOf(r) }} />
+                                  <span className="text-muted-foreground">{name}</span>
+                                  <span className="ml-auto text-foreground">{extra}</span>
+                                </span>
+                              );
+                              return (
+                                <span className="relative group/rag inline-flex" onClick={(e) => e.stopPropagation()}>
+                                  <span className="h-3 w-3 rounded-full shrink-0 ring-2 ring-background cursor-default" style={{ background: colorOf(sig?.rag) }} />
+                                  <span className="invisible opacity-0 group-hover/rag:visible group-hover/rag:opacity-100 transition-opacity absolute left-0 top-5 z-50 w-48 rounded-md border border-border bg-popover p-2 text-[11px] shadow-lg flex flex-col gap-1">
+                                    <span className="font-semibold text-foreground">Saúde do cliente</span>
+                                    <Row name="Resultado" r={sig?.resultado} extra={sig?.score != null ? `${sig.score}/100` : "sem dados"} />
+                                    <Row name="Ações" r={sig?.acoes} extra={sig?.overdue ? `${sig.overdue} em atraso` : "em dia"} />
+                                    <Row name="WhatsApp" r={sig?.whatsapp} extra={sig?.whatsapp ? (sig?.wppMsgs ? `${sig.wppMsgs} msgs/7d` : "sem msgs 7d") : "sem grupo"} />
+                                  </span>
+                                </span>
+                              );
+                            })()}
                             <h3 className="text-sm sm:text-base md:text-lg font-bold text-foreground uppercase tracking-wide break-words max-w-full">{company.name}</h3>
                             <div className="flex flex-wrap items-center gap-1">
                               {getStatusBadge(company.status, (company.projects as any[])?.find((p: any) => p.status === "notice_period")?.notice_end_date)}
@@ -2902,8 +3083,8 @@ const OnboardingTasksPage = () => {
                                 new Date(),
                                 new Date(company.contract_start_date ?? company.created_at)
                               ) <= 30 && (
-                                <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] sm:text-xs font-semibold shadow-md animate-pulse">
-                                  ✨ Empresa Nova
+                                <Badge className="bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 text-[10px] sm:text-xs font-semibold">
+                                  Empresa Nova
                                 </Badge>
                               )}
                             </div>
@@ -2916,7 +3097,7 @@ const OnboardingTasksPage = () => {
                               <>
                                 <span className="hidden sm:inline">•</span>
                                 <span className="hidden sm:inline">
-                                  {company.completed_tasks}/{company.total_tasks} tarefas
+                                  {company.completed_tasks}/{company.total_tasks} tarefas ({Math.round(((company.completed_tasks || 0) / company.total_tasks) * 100)}%)
                                 </span>
                               </>
                             ) : null}
@@ -2926,9 +3107,9 @@ const OnboardingTasksPage = () => {
                             <span>CS: {company.cs?.name || "—"}</span>
                             <span>Cons: {company.consultant?.name || "—"}</span>
                             {/* Contract info */}
-                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-100">
-                              <Calendar className="h-2.5 w-2.5 text-slate-600" />
-                              <span className="font-medium text-slate-700">
+                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-muted">
+                              <Calendar className="h-2.5 w-2.5 text-muted-foreground" />
+                              <span className="font-medium text-foreground">
                                 {company.payment_method === 'monthly'
                                   ? 'Recorr.'
                                   : company.contract_end_date 
@@ -2954,7 +3135,7 @@ const OnboardingTasksPage = () => {
                                         ? 'bg-yellow-100' 
                                         : 'bg-red-100'
                               }`}
-                              title={(company as any).goal_not_required ? "Meta Não Necessária" : "Projeção da Meta Principal"}
+                              title={(company as any).goal_not_required ? "Meta não necessária" : companyGoalPercent === null || companyGoalPercent === undefined ? "S/M — sem meta definida para esta empresa" : "Projeção da meta principal no mês"}
                             >
                               <Target className={`h-2.5 w-2.5 ${
                                 (company as any).goal_not_required
@@ -2987,10 +3168,13 @@ const OnboardingTasksPage = () => {
                       <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                         {/* Health Score Indicator */}
                         {companyHealthData && (
-                          <div className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full ${companyHealthData.riskInfo.bg}`}>
+                          <div className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full ${companyHealthData.riskInfo.bg}`} title="Saúde do cliente (0–100)">
                             <Heart className={`h-3.5 w-3.5 ${companyHealthData.riskInfo.color}`} />
                             <span className={`text-sm font-semibold ${companyHealthData.riskInfo.color}`}>
                               {companyHealthData.avgScore}
+                            </span>
+                            <span className={`hidden lg:inline text-[10px] font-medium ${companyHealthData.riskInfo.color}`}>
+                              {companyHealthData.riskLevel === "critical" ? "crítica" : companyHealthData.riskLevel === "at_risk" ? "em risco" : companyHealthData.riskLevel === "attention" ? "atenção" : "saudável"}
                             </span>
                           </div>
                         )}
@@ -3007,7 +3191,7 @@ const OnboardingTasksPage = () => {
                                     ? 'bg-yellow-100' 
                                     : 'bg-red-100'
                           }`}
-                          title={(company as any).goal_not_required ? "Meta Não Necessária" : "Projeção da Meta Principal"}
+                          title={(company as any).goal_not_required ? "Meta não necessária" : companyGoalPercent === null || companyGoalPercent === undefined ? "S/M — sem meta definida para esta empresa" : "Projeção da meta principal no mês"}
                         >
                           <Target className={`h-3.5 w-3.5 ${
                             (company as any).goal_not_required
@@ -3034,17 +3218,33 @@ const OnboardingTasksPage = () => {
                             {(company as any).goal_not_required ? '—' : companyGoalPercent === null || companyGoalPercent === undefined ? 'S/M' : `${companyGoalPercent}%`}
                           </span>
                         </div>
-                        {/* Contract End Date / Recurring */}
-                        <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-100">
-                          <Calendar className="h-3.5 w-3.5 text-slate-600" />
-                          <span className="text-sm font-medium text-slate-700">
-                            {company.payment_method === 'monthly'
-                              ? 'Recorrente'
-                              : company.contract_end_date 
-                                ? format(new Date(company.contract_end_date), "dd/MM/yyyy")
-                                : '—'}
-                          </span>
-                        </div>
+                        {/* Contract End Date / Recurring — com contagem de dias até a renovação */}
+                        {(() => {
+                          if (company.payment_method === 'monthly' || !company.contract_end_date) {
+                            return (
+                              <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-muted">
+                                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="text-sm font-medium text-foreground">
+                                  {company.payment_method === 'monthly' ? 'Recorrente' : '—'}
+                                </span>
+                              </div>
+                            );
+                          }
+                          const daysToEnd = differenceInDays(new Date(company.contract_end_date), new Date());
+                          const contractExpired = daysToEnd < 0;
+                          return (
+                            <div
+                              className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full ${contractExpired ? 'bg-red-500/10' : 'bg-muted'}`}
+                              title={contractExpired ? 'Contrato vencido' : 'Fim do contrato · dias restantes'}
+                            >
+                              <Calendar className={`h-3.5 w-3.5 ${contractExpired ? 'text-red-500' : 'text-muted-foreground'}`} />
+                              <span className={`text-sm font-medium ${contractExpired ? 'text-red-500' : 'text-foreground'}`}>
+                                {format(new Date(company.contract_end_date), "dd/MM/yyyy")}
+                                {contractExpired ? ' · vencido' : daysToEnd <= 365 ? ` · ${daysToEnd}d` : ''}
+                              </span>
+                            </div>
+                          );
+                        })()}
                         {/* Desktop: Show CS/Consultant */}
                         <div className="hidden sm:block text-right text-sm">
                           <div className="text-muted-foreground">CS: {company.cs?.name || "—"}</div>
@@ -3060,17 +3260,25 @@ const OnboardingTasksPage = () => {
                       </div>
                     </div>
 
-                    {/* Progress bar */}
-                    {company.total_tasks ? (
-                      <div className="mt-2 sm:mt-3 w-full bg-muted rounded-full h-1.5 sm:h-2">
-                        <div
-                          className="bg-[#C41E3A] h-1.5 sm:h-2 rounded-full transition-all"
-                          style={{
-                            width: `${(company.completed_tasks! / company.total_tasks) * 100}%`,
-                          }}
-                        />
-                      </div>
-                    ) : null}
+                    {/* Progress bar — cor acompanha o avanço, não fica vermelha o tempo todo */}
+                    {company.total_tasks ? (() => {
+                      const progressPercent = ((company.completed_tasks || 0) / company.total_tasks) * 100;
+                      const progressColor = progressPercent >= 100
+                        ? "bg-emerald-500"
+                        : progressPercent >= 70
+                          ? "bg-blue-500"
+                          : progressPercent >= 40
+                            ? "bg-amber-500"
+                            : "bg-[#C41E3A]";
+                      return (
+                        <div className="mt-2 sm:mt-3 w-full bg-muted rounded-full h-1.5 sm:h-2">
+                          <div
+                            className={`${progressColor} h-1.5 sm:h-2 rounded-full transition-all`}
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </div>
+                      );
+                    })() : null}
                   </CardContent>
                 </Card>
 

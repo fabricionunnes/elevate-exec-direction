@@ -13,6 +13,8 @@ const corsHeaders = {
 
 interface Payload {
   tenantId?: string | null;
+  candidateId?: string | null;
+  employeeId?: string | null;
   name: string;
   email?: string | null;
   phone?: string | null;
@@ -46,41 +48,47 @@ Deno.serve(async (req) => {
     );
 
     const tenantId = body.tenantId ?? null;
+    const candidateId = body.candidateId ?? null;
 
-    // Try to find an existing employee by email within the same tenant scope.
-    let employeeId: string | null = null;
-    if (body.email) {
-      const { data: existing } = await supabase
-        .from("profile_employees")
-        .select("id")
-        .eq("email", body.email)
-        .is("tenant_id", tenantId as any)
-        .maybeSingle();
-      if (existing) employeeId = existing.id;
-    }
-
-    if (!employeeId) {
-      const { data: created, error: insertErr } = await supabase
-        .from("profile_employees")
-        .insert({
-          tenant_id: tenantId,
-          full_name: body.name.trim(),
-          email: body.email || null,
-          phone: body.phone || null,
-          status: "active",
-          employee_type: "external",
-          is_employee: false,
-          metadata: { source: "public_disc_link" },
-        })
-        .select("id")
-        .single();
-      if (insertErr) throw insertErr;
-      employeeId = created.id;
+    // Se veio employeeId (link individual do colaborador), vincula a ELE — sem criar
+    // novo registro e sem risco de preencher por outra pessoa.
+    // Se é um CANDIDATO (link da vaga), NÃO cria employee (vira colaborador só quando
+    // contratado). Só cria employee no uso genérico do link público (sem ids).
+    let employeeId: string | null = body.employeeId ?? null;
+    if (!employeeId && !candidateId) {
+      if (body.email) {
+        const { data: existing } = await supabase
+          .from("profile_employees")
+          .select("id")
+          .eq("email", body.email)
+          .is("tenant_id", tenantId as any)
+          .maybeSingle();
+        if (existing) employeeId = existing.id;
+      }
+      if (!employeeId) {
+        const { data: created, error: insertErr } = await supabase
+          .from("profile_employees")
+          .insert({
+            tenant_id: tenantId,
+            full_name: body.name.trim(),
+            email: body.email || null,
+            phone: body.phone || null,
+            status: "active",
+            employee_type: "external",
+            is_employee: false,
+            metadata: { source: "public_disc_link" },
+          })
+          .select("id")
+          .single();
+        if (insertErr) throw insertErr;
+        employeeId = created.id;
+      }
     }
 
     const { error: discErr } = await supabase.from("profile_disc_results").insert({
       tenant_id: tenantId,
       employee_id: employeeId,
+      candidate_id: body.candidateId ?? null,
       d_score: body.scores.D,
       i_score: body.scores.I,
       s_score: body.scores.S,
@@ -89,6 +97,13 @@ Deno.serve(async (req) => {
       raw_responses: body.rawAnswers as any,
     });
     if (discErr) throw discErr;
+
+    // Candidato respondeu o teste -> avança pra Entrevista RH (só se ainda estiver
+    // numa etapa anterior; não move pra trás quem já passou).
+    if (candidateId) {
+      await supabase.from("profile_candidates").update({ stage: "hr_interview" })
+        .eq("id", candidateId).in("stage", ["applied", "screening", "test"]);
+    }
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

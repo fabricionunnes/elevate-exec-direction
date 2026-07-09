@@ -215,7 +215,10 @@ serve(async (req) => {
           if (c.companyId) q = q.or(`company_id.eq.${c.companyId},onboarding_company_id.eq.${c.companyId}`);
           const { data, error } = await q;
           if (error) throw error;
-          return json({ data: data || [], pagination: { limit: c.limit, offset: c.offset } });
+          // company_id efetivo: projetos novos gravam só onboarding_company_id — sem o coalesce,
+          // consumidores que filtram por company_id (ex.: escopo do Marcelo) descartam a linha
+          const rows = (data || []).map((r: any) => ({ ...r, company_id: r.company_id ?? r.onboarding_company_id }));
+          return json({ data: rows, pagination: { limit: c.limit, offset: c.offset } });
         },
         get: async (c) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
@@ -282,16 +285,30 @@ serve(async (req) => {
       // ===== TASKS =====
       tasks: {
         list: async (c) => {
-          let q = c.supabase.from("onboarding_tasks").select("id, project_id, title, description, due_date, start_date, status, priority, assignee_id, responsible_staff_id, observations, tags, estimated_hours, actual_hours, completed_at, created_at, updated_at").order("due_date", { ascending: true }).range(c.offset, c.offset + c.limit - 1);
+          let q = c.supabase.from("onboarding_tasks").select("id, project_id, title, description, due_date, start_date, status, priority, assignee_id, responsible_staff_id, observations, tags, estimated_hours, actual_hours, completed_at, created_at, updated_at, board_form_url").order("due_date", { ascending: true }).range(c.offset, c.offset + c.limit - 1);
           if (c.status) q = q.eq("status", c.status);
           if (c.projectId) q = q.eq("project_id", c.projectId);
+          // Escopo por empresa: tarefa não tem company_id — resolve pelos projetos da empresa.
+          // Sem isso, chamadas escopadas (Marcelo nos grupos) recebiam a lista GLOBAL de tarefas.
+          if (c.companyId && !c.projectId) {
+            const { data: projs, error: pErr } = await c.supabase
+              .from("onboarding_projects")
+              .select("id")
+              .or(`company_id.eq.${c.companyId},onboarding_company_id.eq.${c.companyId}`);
+            if (pErr) throw pErr;
+            const ids = (projs || []).map((p: any) => p.id);
+            if (!ids.length) return json({ data: [], pagination: { limit: c.limit, offset: c.offset } });
+            q = q.in("project_id", ids);
+          }
           if (c.dateFrom) q = q.gte("due_date", c.dateFrom);
           if (c.dateTo) q = q.lte("due_date", c.dateTo);
           const staffId = c.url.searchParams.get("staff_id");
           if (staffId) q = q.eq("responsible_staff_id", staffId);
           const { data, error } = await q;
           if (error) throw error;
-          return json({ data: data || [], pagination: { limit: c.limit, offset: c.offset } });
+          // Marca a empresa nas linhas quando o escopo veio — deixa o filtro defensivo do Marcelo operante
+          const rows = c.companyId ? (data || []).map((r: any) => ({ ...r, company_id: c.companyId })) : (data || []);
+          return json({ data: rows, pagination: { limit: c.limit, offset: c.offset } });
         },
         get: async (c) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
@@ -2071,6 +2088,174 @@ serve(async (req) => {
           if (calendarWarning) response.warning = calendarWarning;
           return json(response);
         },
+        // Disponibilidade da agenda de um consultor num dia (Google FreeBusy).
+        // Usado pra checar horário livre ANTES de agendar/reagendar uma reunião.
+        availability: async (c) => {
+          const b = c.body || {};
+          const date = b.date;
+          if (!date) return json({ error: "Campo 'date' obrigatório (YYYY-MM-DD)" }, 400);
+          let ownerUserId: string | null = b.calendar_owner_id ?? b.calendar_user_id ?? null;
+          let ownerName: string | null = null;
+          if (!ownerUserId && b.staff_id) {
+            const { data: staffRow } = await c.supabase
+              .from("onboarding_staff").select("user_id, name").eq("id", b.staff_id).maybeSingle();
+            if (staffRow) { ownerUserId = staffRow.user_id; ownerName = staffRow.name; }
+          }
+          if (!ownerUserId) return json({ error: "Envie 'staff_id' ou 'calendar_owner_id' do dono da agenda" }, 400);
+
+          const tokenResult = await getGoogleToken(c.supabase, ownerUserId);
+          if ("error" in tokenResult) return json({ date, ownerName, connected: false, availableSlots: [], note: tokenResult.error });
+
+          const durationMinutes = b.duration_minutes ?? 60;
+          const fbRes = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${tokenResult.token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ timeMin: `${date}T00:00:00-03:00`, timeMax: `${date}T23:59:59-03:00`, timeZone: "America/Sao_Paulo", items: [{ id: "primary" }] }),
+          });
+          if (!fbRes.ok) return json({ date, ownerName, connected: true, availableSlots: [], note: "Falha ao consultar a agenda no Google." });
+          const fbData = await fbRes.json();
+          const busyPeriods = fbData.calendars?.primary?.busy || [];
+
+          const businessStart = 7, businessEnd = 23;
+          const now = new Date();
+          const nowSP = new Date(now.getTime() + (-3 * 60 + now.getTimezoneOffset()) * 60000);
+          const todayStr = `${nowSP.getFullYear()}-${String(nowSP.getMonth() + 1).padStart(2, "0")}-${String(nowSP.getDate()).padStart(2, "0")}`;
+          const isToday = date === todayStr;
+          const availableSlots: string[] = [];
+          for (let hour = businessStart; hour < businessEnd; hour++) {
+            for (let minute = 0; minute < 60; minute += 30) {
+              const slotStr = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+              const slotStart = new Date(`${date}T${slotStr}:00-03:00`);
+              const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60000);
+              const endSP = new Date(slotEnd.getTime() + (-3 * 60 + slotEnd.getTimezoneOffset()) * 60000);
+              if (endSP.getHours() > businessEnd || (endSP.getHours() === businessEnd && endSP.getMinutes() > 0)) continue;
+              if (isToday && slotStart < now) continue;
+              const overlap = busyPeriods.some((busy: any) => slotStart < new Date(busy.end) && slotEnd > new Date(busy.start));
+              if (!overlap) availableSlots.push(slotStr);
+            }
+          }
+          return json({ date, ownerName, connected: true, availableSlots, busyPeriods, durationMinutes });
+        },
+      },
+
+      // ===== UNV BOARD (cérebro do cliente: jornada, documentos, resultados, sessões) =====
+      board: {
+        // Visão geral do membro: fase atual, progresso, prazos, resultados, NPS, sessões
+        context: async (c) => {
+          if (!c.companyId) return json({ error: "Parâmetro 'company_id' obrigatório" }, 400);
+          const { data: member } = await c.supabase
+            .from("unv_board_members")
+            .select("id, project_id, entry_date, status, plan_status, celebrated_phases")
+            .eq("company_id", c.companyId)
+            .maybeSingle();
+          if (!member) return json({ data: null, note: "Empresa não é membro do UNV Board" });
+
+          const PHASES = ["Cenário", "Resultado Ideal", "Estrutura", "Sistema de Captação", "Conversão", "Escala", "Revisão"];
+          let journey: any = null;
+          let nextDeadlines: any[] = [];
+          if (member.project_id) {
+            const { data: tasks } = await c.supabase
+              .from("onboarding_tasks")
+              .select("title, status, due_date, tags, board_form_url")
+              .eq("project_id", member.project_id)
+              .contains("tags", ["unv-board"])
+              .limit(300);
+            const byPhase: Record<string, { total: number; done: number }> = {};
+            for (const t of tasks || []) {
+              const phase = PHASES.find((p) => (t.tags || []).includes(p));
+              if (!phase) continue;
+              (byPhase[phase] ||= { total: 0, done: 0 });
+              byPhase[phase].total++;
+              if (t.status === "completed") byPhase[phase].done++;
+            }
+            const phasesDone = PHASES.filter((p) => byPhase[p] && byPhase[p].done === byPhase[p].total && byPhase[p].total > 0);
+            let idx = PHASES.findIndex((p) => byPhase[p] && byPhase[p].done < byPhase[p].total);
+            if (idx < 0) idx = PHASES.length - 1;
+            journey = { fase_atual: PHASES[idx], fases_concluidas: phasesDone, progresso: `${phasesDone.length}/7`, por_fase: byPhase };
+            const today = new Date().toISOString().substring(0, 10);
+            nextDeadlines = (tasks || [])
+              .filter((t: any) => t.status !== "completed" && t.due_date && t.due_date >= today)
+              .sort((a: any, b: any) => (a.due_date < b.due_date ? -1 : 1))
+              .slice(0, 5)
+              .map((t: any) => ({ title: t.title, due_date: t.due_date, link: t.board_form_url }));
+          }
+
+          const { data: results } = await c.supabase
+            .from("unv_board_results")
+            .select("description, value_brl, metric_text, reported_at")
+            .eq("member_id", member.id)
+            .order("reported_at", { ascending: false })
+            .limit(10);
+          const totalBrl = (results || []).reduce((s: number, r: any) => s + (Number(r.value_brl) || 0), 0);
+
+          const { data: nps } = await c.supabase
+            .from("unv_board_nps")
+            .select("cycle_days, score, answered_at")
+            .eq("member_id", member.id)
+            .eq("status", "answered")
+            .order("answered_at", { ascending: false })
+            .limit(3);
+
+          const { data: sessions } = await c.supabase
+            .from("unv_board_sessions")
+            .select("scheduled_at, status, meeting_link, agenda")
+            .eq("member_id", member.id)
+            .gte("scheduled_at", new Date().toISOString())
+            .order("scheduled_at")
+            .limit(3);
+
+          return json({
+            data: {
+              company_id: c.companyId,
+              entrada: member.entry_date,
+              jornada: journey,
+              proximos_prazos: nextDeadlines,
+              resultados_recentes: results || [],
+              resultado_total_atribuido_brl: totalBrl,
+              nps_recentes: nps || [],
+              proximas_sessoes: sessions || [],
+            },
+          });
+        },
+        // Documentos oficiais da empresa (playbook, diagnósticos, scripts...)
+        deliverables: async (c) => {
+          if (!c.companyId) return json({ error: "Parâmetro 'company_id' obrigatório" }, 400);
+          const { data, error } = await c.supabase
+            .from("unv_board_deliverables")
+            .select("id, type, title, version, status, created_at, company_id")
+            .eq("company_id", c.companyId)
+            .order("created_at", { ascending: false })
+            .limit(50);
+          if (error) throw error;
+          return json({ data: data || [] });
+        },
+        // Conteúdo de um documento (pra responder "o que diz meu playbook sobre X")
+        deliverable_get: async (c) => {
+          if (!c.companyId) return json({ error: "Parâmetro 'company_id' obrigatório" }, 400);
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data, error } = await c.supabase
+            .from("unv_board_deliverables")
+            .select("id, type, title, version, content_md, created_at, company_id")
+            .eq("id", c.id)
+            .eq("company_id", c.companyId) // trava de escopo: documento tem que ser da empresa
+            .maybeSingle();
+          if (error) throw error;
+          if (!data) return json({ error: "Documento não encontrado para esta empresa" }, 404);
+          return json({ data });
+        },
+        // Resultados atribuídos (ROI do Board)
+        results: async (c) => {
+          if (!c.companyId) return json({ error: "Parâmetro 'company_id' obrigatório" }, 400);
+          const { data, error } = await c.supabase
+            .from("unv_board_results")
+            .select("description, value_brl, metric_text, reported_at, company_id")
+            .eq("company_id", c.companyId)
+            .order("reported_at", { ascending: false })
+            .limit(100);
+          if (error) throw error;
+          const total = (data || []).reduce((s: number, r: any) => s + (Number(r.value_brl) || 0), 0);
+          return json({ data: data || [], resultado_total_brl: total });
+        },
       },
 
       // ===== SYSTEM INFO =====
@@ -2081,6 +2266,7 @@ serve(async (req) => {
               companies: { actions: ["list", "get", "create", "update", "kickoff_link"], description: "Gerenciar empresas/clientes (kickoff_link retorna link do formulário de kickoff por empresa)" },
               projects: { actions: ["list", "get", "create", "set_monthly_goal"], description: "Projetos de clientes (listar, buscar, criar, definir meta mensal)" },
               tasks: { actions: ["list", "get", "create", "update", "delete"], description: "Gerenciar tarefas" },
+              board: { actions: ["context", "deliverables", "deliverable_get", "results"], description: "UNV Board (mentoria): jornada CRESCER e fase atual, documentos oficiais (playbook, diagnósticos, scripts — deliverable_get traz o conteúdo), resultados atribuídos (ROI) e próximas sessões" },
               staff: { actions: ["list"], description: "Listar colaboradores" },
               leads: { actions: ["list", "get", "create", "update", "delete", "move_stage", "win", "lose", "add_note"], description: "CRM completo" },
               tags: { actions: ["list", "create", "add_to_lead", "remove_from_lead", "lead_tags"], description: "Tags do CRM" },
@@ -2100,7 +2286,7 @@ serve(async (req) => {
               asaas: { actions: ["create_charge"], description: "Criar cobrança no Asaas (PIX/Boleto/Cartão)" },
               conversations: { actions: ["list", "get", "messages", "send_message"], description: "Conversas WhatsApp dos projetos" },
               whatsapp: { actions: ["list_instances", "send"], description: "Enviar mensagens WhatsApp escolhendo a instância" },
-              project_meetings: { actions: ["list", "get", "create", "update", "complete", "delete"], description: "Reuniões de projetos (CRUD + finalizar)" },
+              project_meetings: { actions: ["list", "get", "create", "update", "complete", "delete", "availability"], description: "Reuniões de projetos (CRUD + finalizar + disponibilidade da agenda)" },
             },
             usage: "?module=<module>&action=<action>&id=<id>",
             auth: "Authorization: Bearer <jwt> OU x-api-key: <key>",

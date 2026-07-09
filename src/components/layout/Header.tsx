@@ -43,6 +43,7 @@ const productCategories: ProductCategory[] = [
     category: "Trilha Avançada",
     items: [
       { name: "Growth Room", href: "/growth-room", comingSoon: true },
+      { name: "UNV Board", href: "/unv-board", highlight: true },
       { name: "UNV Partners", href: "/partners" },
       { name: "UNV Mastermind", href: "/mastermind", highlight: true },
       { name: "Execution Partnership", href: "/execution-partnership", highlight: true },

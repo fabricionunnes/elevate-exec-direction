@@ -185,14 +185,36 @@ export function useCRMTrafficData() {
         })),
       );
 
-      // Estatísticas de leads/vendas por funil + utm_campaign + dia + IDs do Meta
-      const { data: leads } = await supabase
-        .from("crm_leads")
-        .select("pipeline_id, utm_campaign, opportunity_value, created_at, meta_campaign_id, meta_adset_id, meta_ad_id, crm_stages(final_type)");
+      // Estatísticas de leads/vendas por funil + utm_campaign + dia + IDs do Meta.
+      // IMPORTANTE: o Supabase corta em 1000 linhas por requisição. Antes a query
+      // vinha sem paginação e sem filtro, então só via os 1000 primeiros leads
+      // (dominados pelos funis antigos com milhares) — funis pequenos apareciam
+      // com contagem errada e vendas sumiam. Agora escopa só aos funis vinculados
+      // a campanhas (o que o dashboard mostra) e pagina até pegar tudo.
+      const linkedPipelineIds = Array.from(
+        new Set((((l as any) || []).map((x: any) => x.pipeline_id).filter(Boolean))),
+      ) as string[];
+
+      const leadCols =
+        "pipeline_id, utm_campaign, opportunity_value, created_at, closed_at, updated_at, meta_campaign_id, meta_adset_id, meta_ad_id, crm_stages(final_type)";
+      const leadsArr: any[] = [];
+      if (linkedPipelineIds.length) {
+        const PAGE = 1000;
+        for (let from = 0; from <= 100000; from += PAGE) {
+          const { data: page } = await supabase
+            .from("crm_leads")
+            .select(leadCols)
+            .in("pipeline_id", linkedPipelineIds)
+            .order("created_at", { ascending: false })
+            .range(from, from + PAGE - 1);
+          const rows = (page as any) || [];
+          leadsArr.push(...rows);
+          if (rows.length < PAGE) break;
+        }
+      }
 
       const map = new Map<string, PipelineLeadCount>();
       const adMap = new Map<string, AdLeadStat>();
-      const leadsArr = (leads as any) || [];
       const diag: TrackingDiagnostics = {
         total_leads: leadsArr.length,
         with_ad_id: 0, with_adset_id: 0, with_campaign_id: 0,
@@ -204,6 +226,11 @@ export function useCRMTrafficData() {
         const date = lead.created_at ? String(lead.created_at).slice(0, 10) : null;
         const isWon = lead.crm_stages?.final_type === "won";
         const won_val = Number(lead.opportunity_value || 0);
+        // A VENDA conta no dia do FECHAMENTO (closed_at), não no dia que o lead
+        // entrou. Senão uma venda de um lead antigo some do período atual.
+        const wonDate = isWon
+          ? String(lead.closed_at || lead.updated_at || lead.created_at || "").slice(0, 10) || null
+          : null;
 
         if (lead.meta_ad_id) { diag.with_ad_id += 1; adIdSet.add(lead.meta_ad_id); }
         if (lead.meta_adset_id) diag.with_adset_id += 1;
@@ -212,6 +239,7 @@ export function useCRMTrafficData() {
 
         if (lead.pipeline_id) {
           const utm = lead.utm_campaign || null;
+          // Lead (total) conta no dia que ENTROU (created_at)
           const key = `${lead.pipeline_id}::${utm || "__none__"}::${date || "__nd__"}`;
           const cur = map.get(key) || {
             pipeline_id: lead.pipeline_id,
@@ -222,11 +250,22 @@ export function useCRMTrafficData() {
             won_value: 0,
           };
           cur.total += 1;
-          if (isWon) {
-            cur.won += 1;
-            cur.won_value += won_val;
-          }
           map.set(key, cur);
+          // Venda conta no dia do FECHAMENTO (pode ser outro dia / outra linha)
+          if (isWon) {
+            const wKey = `${lead.pipeline_id}::${utm || "__none__"}::${wonDate || "__nd__"}`;
+            const curW = map.get(wKey) || {
+              pipeline_id: lead.pipeline_id,
+              utm_campaign: utm,
+              date: wonDate,
+              total: 0,
+              won: 0,
+              won_value: 0,
+            };
+            curW.won += 1;
+            curW.won_value += won_val;
+            map.set(wKey, curW);
+          }
         }
 
         // Atribuição direta por anúncio (quando o lead carrega meta_ad_id)
@@ -242,11 +281,23 @@ export function useCRMTrafficData() {
             won_value: 0,
           };
           cur.total += 1;
-          if (isWon) {
-            cur.won += 1;
-            cur.won_value += won_val;
-          }
           adMap.set(aKey, cur);
+          // Venda pela data do fechamento
+          if (isWon) {
+            const awKey = `${lead.meta_ad_id}::${wonDate || "__nd__"}`;
+            const curW = adMap.get(awKey) || {
+              meta_ad_id: lead.meta_ad_id,
+              meta_adset_id: lead.meta_adset_id || null,
+              meta_campaign_id: lead.meta_campaign_id || null,
+              date: wonDate,
+              total: 0,
+              won: 0,
+              won_value: 0,
+            };
+            curW.won += 1;
+            curW.won_value += won_val;
+            adMap.set(awKey, curW);
+          }
         }
       }
       diag.unique_ads_tracked = adIdSet.size;
@@ -255,14 +306,27 @@ export function useCRMTrafficData() {
       setLeadStats(Array.from(map.values()));
       setAdLeadStats(Array.from(adMap.values()));
 
-      // Estatísticas de reuniões por funil + utm_campaign + dia
-      const { data: meetings } = await supabase
-        .from("crm_meeting_events")
-        .select("event_type, pipeline_id, event_date, lead:crm_leads(utm_campaign)")
-        .in("event_type", ["scheduled", "realized"]);
+      // Estatísticas de reuniões por funil + utm_campaign + dia (mesmo escopo +
+      // paginação dos leads, pra não truncar em 1000).
+      const meetingsArr: any[] = [];
+      if (linkedPipelineIds.length) {
+        const PAGE = 1000;
+        for (let from = 0; from <= 100000; from += PAGE) {
+          const { data: page } = await supabase
+            .from("crm_meeting_events")
+            .select("event_type, pipeline_id, event_date, lead:crm_leads(utm_campaign)")
+            .in("event_type", ["scheduled", "realized"])
+            .in("pipeline_id", linkedPipelineIds)
+            .order("event_date", { ascending: false })
+            .range(from, from + PAGE - 1);
+          const rows = (page as any) || [];
+          meetingsArr.push(...rows);
+          if (rows.length < PAGE) break;
+        }
+      }
 
       const mMap = new Map<string, MeetingStat>();
-      for (const ev of (meetings as any) || []) {
+      for (const ev of meetingsArr) {
         const utm = ev.lead?.utm_campaign || null;
         if (!ev.pipeline_id) continue;
         const date = ev.event_date ? String(ev.event_date).slice(0, 10) : null;

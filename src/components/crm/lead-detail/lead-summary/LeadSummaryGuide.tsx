@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { LeadSummaryData } from "./useLeadSummary";
+import { NEPQQuestionBank } from "./NEPQQuestionBank";
 
 interface Props {
   data: LeadSummaryData | null;
@@ -18,27 +20,39 @@ interface Props {
   onRegenerate: () => void;
 }
 
+// Roteiro NEPQ (Neuro-Emotional Persuasion Questioning) adaptado em 12 passos.
 const PHASE_NAMES: Record<number, string> = {
-  1: "Rapport",
-  2: "Expectativas",
+  1: "Conexão",
+  2: "Contexto & Expectativas",
   3: "Tomadores de Decisão",
-  4: "A Razão (A Dor)",
-  5: "Cavar (Aprofundar)",
-  6: "Tentou (Tentativas)",
-  7: "Situação Atual e Desejada",
-  8: "Porquê (Motivação)",
-  9: "Admissão",
-  10: "Compromisso",
-  11: "Fechamento Personalizado",
-  12: "Preço",
+  4: "Situação",
+  5: "Consciência do Problema",
+  6: "Sondagem de Precisão",
+  7: "O que já tentou",
+  8: "Consciência da Solução",
+  9: "Consequência",
+  10: "Qualificação",
+  11: "Transição & Apresentação",
+  12: "Compromisso & Preço",
 };
 
 export const LeadSummaryGuide = ({ data, loading, onRegenerate }: Props) => {
+  // Se o guia salvo veio com erro (falha transitória da IA), regenera 1x
+  // sozinho — o guia é pra PREPARAR a reunião, não precisa de histórico.
+  const autoRetried = useRef(false);
+  const hasError = !loading && !!data && (!data.ai || (data.ai as any).error);
+  useEffect(() => {
+    if (hasError && !autoRetried.current) {
+      autoRetried.current = true;
+      onRegenerate();
+    }
+  }, [hasError, onRegenerate]);
+
   if (loading) return <GuideSkeleton />;
 
   if (!data) return (
     <div className="p-6 text-center text-muted-foreground text-sm">
-      Carregando guia de atendimento...
+      Preparando o guia de atendimento...
     </div>
   );
 
@@ -49,12 +63,12 @@ export const LeadSummaryGuide = ({ data, loading, onRegenerate }: Props) => {
       <div className="p-6 text-center space-y-3">
         <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto" />
         <p className="text-sm text-muted-foreground">
-          Ainda não há histórico suficiente para gerar o guia completo.<br />
-          Registre a primeira reunião para ativar esta função.
+          Não consegui montar o guia agora.<br />
+          Clique em Gerar guia — ele monta o roteiro da reunião com o que já se sabe do lead.
         </p>
         <Button variant="outline" size="sm" onClick={onRegenerate} className="gap-1.5">
           <RefreshCw className="h-3.5 w-3.5" />
-          Tentar novamente
+          Gerar guia
         </Button>
       </div>
     );
@@ -274,6 +288,13 @@ export const LeadSummaryGuide = ({ data, loading, onRegenerate }: Props) => {
           </CardContent>
         </Card>
       )}
+
+      {/* Banco de perguntas NEPQ por segmento (referência sempre disponível) */}
+      <Card>
+        <CardContent className="pt-5">
+          <NEPQQuestionBank leadSegment={lead?.segment} />
+        </CardContent>
+      </Card>
     </div>
   );
 };

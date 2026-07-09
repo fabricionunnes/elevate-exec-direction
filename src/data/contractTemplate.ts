@@ -25,6 +25,57 @@ III. As parcelas vencidas e não pagas ficarão sujeitas a:
 IV. A rescisão contratual somente produzirá efeitos após o cumprimento integral do aviso prévio e a quitação de todos os valores devidos até a data efetiva do encerramento.`
 };
 
+// Item V da CLÁUSULA 5 quando o pagamento é CARTÃO DE CRÉDITO (pagamento integral antecipado):
+// não cabe rescisão unilateral por desistência. ATENÇÃO: validar com advogado antes de uso.
+export const RESCISAO_V_CARTAO =
+  "V. Em razão de o pagamento ter sido realizado de forma integral e antecipada por meio de Cartão de Crédito, referente à contratação dos serviços ora ajustados, o presente contrato é celebrado em caráter IRRETRATÁVEL e IRREVOGÁVEL, não sendo admitida a rescisão unilateral pela CONTRATANTE por simples desistência ou arrependimento, nem cabível o reembolso dos valores pagos em razão da eventual não utilização dos serviços, permanecendo a CONTRATADA integralmente obrigada a disponibilizar e prestar os serviços contratados durante toda a vigência, nos termos deste instrumento e dos artigos 389 e 475 do Código Civil.";
+
+// Item V padrão (PIX/Boleto parcelado/recorrente): mantém rescisão com aviso prévio.
+export const RESCISAO_V_PADRAO =
+  "V. A rescisão poderá ser feita com aviso prévio de 30 (trinta) dias do vencimento da próxima parcela.";
+
+const PAYMENT_LABELS: Record<string, string> = {
+  card: "Cartão de Crédito",
+  pix: "PIX",
+  boleto: "Boleto Bancário",
+};
+
+export interface InvestimentoFormData {
+  paymentMethod: string;
+  isRecurring: boolean;
+  installments: number | null;
+  contractValue: number;
+  dueDay?: number | string | null;
+}
+
+function fmtBRL(v: number): string {
+  return (Number(v) || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+// Monta o texto COMPLETO da CLÁUSULA 5 (itens I a V) a partir dos dados do formulário.
+// Fica tudo editável no editor; o gerador do PDF usa este conteúdo como está.
+export function buildInvestimentoContent(fd: InvestimentoFormData): string {
+  const label = PAYMENT_LABELS[fd.paymentMethod] || fd.paymentMethod;
+  const parts: string[] = [];
+  if (fd.isRecurring) {
+    parts.push(`I. O valor do presente contrato será de ${fmtBRL(fd.contractValue)} mensais, com cobrança recorrente.`);
+    parts.push(`II. O pagamento será realizado mensalmente via ${label}, de forma recorrente.`);
+    parts.push(`Parágrafo único — Desconto por pagamento antecipado: a CONTRATANTE terá 5% (cinco por cento) de desconto sobre o valor da parcela mensal caso efetue o pagamento até 1 (um) dia antes da data de vencimento. Caso a data de vencimento recaia em sábado, domingo ou feriado, o prazo para pagamento com desconto permanece sendo o dia imediatamente anterior à data de vencimento original, NÃO havendo prorrogação para data posterior. O desconto não se aplica a pagamentos realizados na data do vencimento ou após.`);
+  } else {
+    parts.push(`I. O valor total do presente contrato será de ${fmtBRL(fd.contractValue)}.`);
+    if (fd.installments > 1) {
+      parts.push(`II. O pagamento será realizado em ${fd.installments}x de ${fmtBRL(fd.contractValue / fd.installments)}, sem juros, via ${label}.`);
+    } else {
+      parts.push(`II. O pagamento será realizado à vista via ${label}.`);
+    }
+  }
+  if (fd.dueDay) parts.push(`Vencimento: todo dia ${fd.dueDay} de cada mês.`);
+  parts.push(`III. Em caso de atraso no pagamento, incidirão multa moratória de 2% (dois por cento) e juros de mora de 1% (um por cento) ao mês sobre o valor em atraso.`);
+  parts.push(`IV. Este contrato caracteriza-se como prestação de serviço com pagamento ${fd.isRecurring ? "recorrente" : fd.installments > 1 ? "parcelado" : "à vista"}. O não uso dos serviços não isenta a CONTRATANTE do pagamento dos valores acordados.`);
+  parts.push(fd.paymentMethod === "card" ? RESCISAO_V_CARTAO : RESCISAO_V_PADRAO);
+  return parts.join("\n\n");
+}
+
 export const contractClauses: ContractClause[] = [
   {
     id: "objeto",

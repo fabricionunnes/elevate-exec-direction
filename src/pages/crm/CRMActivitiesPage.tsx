@@ -26,7 +26,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
+import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
 import {
   Search,
   Calendar as CalendarIcon,
@@ -40,7 +48,7 @@ import {
   Plus,
   RefreshCw,
 } from "lucide-react";
-import { format, isToday, isTomorrow, isPast, addDays } from "date-fns";
+import { format, isToday, isTomorrow, isPast, addDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -56,9 +64,12 @@ interface Activity {
   completed_at: string | null;
   status: string;
   lead_id: string;
-  lead?: { 
-    name: string; 
+  responsible_staff_id: string | null;
+  lead?: {
+    name: string;
     company: string | null;
+    origin_id?: string | null;
+    stage_id?: string | null;
     origin?: { name: string } | null;
     stage?: { name: string } | null;
     tags?: { tag: { id: string; name: string; color: string } }[];
@@ -79,6 +90,9 @@ export const CRMActivitiesPage = () => {
   const [filterOwner, setFilterOwner] = useState("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
+  // Fluxo pós-conclusão: criar próxima atividade ou finalizar atendimento
+  const [postCompleteLead, setPostCompleteLead] = useState<{ id: string; name: string } | null>(null);
+  const [addActivityLeadId, setAddActivityLeadId] = useState<string | null>(null);
 
   // Filter options
   const [origins, setOrigins] = useState<{ id: string; name: string }[]>([]);
@@ -88,13 +102,22 @@ export const CRMActivitiesPage = () => {
   const loadActivities = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from("crm_activities")
+      // Closer/SDR/Social Setter: só veem atividades que criaram, que foram
+      // atribuídas a eles, ou de leads onde são o dono. A visibilidade é
+      // resolvida no banco (RPC crm_visible_activities, SETOF), permitindo
+      // embutir os joins e filtrar/ordenar como na visão de admin.
+      const base = (!isAdmin && staffId)
+        ? supabase.rpc("crm_visible_activities", { p_staff: staffId })
+        : supabase.from("crm_activities");
+
+      let query = base
         .select(`
           *,
           lead:crm_leads(
-            name, 
+            name,
             company,
+            origin_id,
+            stage_id,
             origin:crm_origins(name),
             stage:crm_stages(name),
             tags:crm_lead_tags(tag:crm_tags(id, name, color))
@@ -102,11 +125,6 @@ export const CRMActivitiesPage = () => {
           responsible:onboarding_staff!crm_activities_responsible_staff_id_fkey(name, avatar_url)
         `)
         .order("scheduled_at", { ascending: true });
-
-      // Closers/SDRs only see activities assigned to them
-      if (!isAdmin && staffId) {
-        query = query.eq("responsible_staff_id", staffId);
-      }
 
       if (filterStatus !== "all") {
         query = query.eq("status", filterStatus);
@@ -146,7 +164,7 @@ export const CRMActivitiesPage = () => {
     loadFilterOptions();
   }, [filterStatus, filterType]);
 
-  const handleComplete = async (activityId: string) => {
+  const handleComplete = async (activity: Activity) => {
     try {
       const { error } = await supabase
         .from("crm_activities")
@@ -154,11 +172,13 @@ export const CRMActivitiesPage = () => {
           status: "completed",
           completed_at: new Date().toISOString(),
         })
-        .eq("id", activityId);
+        .eq("id", activity.id);
 
       if (error) throw error;
       toast.success("Atividade concluída");
       loadActivities();
+      // Abre o fluxo: criar próxima atividade para o mesmo lead ou finalizar atendimento
+      setPostCompleteLead({ id: activity.lead_id, name: activity.lead?.name || "este lead" });
     } catch (error) {
       console.error("Error completing activity:", error);
       toast.error("Erro ao concluir atividade");
@@ -218,16 +238,31 @@ export const CRMActivitiesPage = () => {
         }
       }
 
-      // Date filter
-      if (dateRange?.from && activity.scheduled_at) {
+      // Date filter — um único dia (sem 'to') vira o dia inteiro; range usa início e fim inclusivos
+      if (dateRange?.from) {
+        if (!activity.scheduled_at) return false;
         const activityDate = new Date(activity.scheduled_at);
-        if (activityDate < dateRange.from) return false;
-        if (dateRange.to && activityDate > dateRange.to) return false;
+        const from = startOfDay(dateRange.from);
+        const to = endOfDay(dateRange.to || dateRange.from);
+        if (activityDate < from || activityDate > to) return false;
+      }
+
+      // Dono do negócio (responsável da atividade)
+      if (filterOwner !== "all" && activity.responsible_staff_id !== filterOwner) {
+        return false;
+      }
+
+      // Origem e Etapa (do lead)
+      if (filterOrigin !== "all" && activity.lead?.origin_id !== filterOrigin) {
+        return false;
+      }
+      if (filterStage !== "all" && activity.lead?.stage_id !== filterStage) {
+        return false;
       }
 
       return true;
     });
-  }, [activities, searchTerm, dateRange]);
+  }, [activities, searchTerm, dateRange, filterOwner, filterOrigin, filterStage]);
 
   const toggleSelectAll = () => {
     if (selectedActivities.length === filteredActivities.length) {
@@ -339,17 +374,19 @@ export const CRMActivitiesPage = () => {
         <div className="hidden md:flex items-center gap-2">
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 gap-2">
-              Origem
+            <Button variant="outline" size="sm" className={`h-9 gap-2 ${filterOrigin !== "all" ? "border-primary text-primary" : ""}`}>
+              {filterOrigin === "all" ? "Origem" : (origins.find((o) => o.id === filterOrigin)?.name || "Origem")}
               <ChevronDown className="h-3 w-3" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-48" align="start">
             <div className="space-y-1 max-h-[200px] overflow-auto">
+              <button onClick={() => setFilterOrigin("all")} className={`w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded ${filterOrigin === "all" ? "bg-muted font-medium" : ""}`}>Todas as origens</button>
               {origins.map((origin) => (
                 <button
                   key={origin.id}
-                  className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded"
+                  onClick={() => setFilterOrigin(origin.id)}
+                  className={`w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded ${filterOrigin === origin.id ? "bg-muted font-medium" : ""}`}
                 >
                   {origin.name}
                 </button>
@@ -361,17 +398,19 @@ export const CRMActivitiesPage = () => {
         {/* Stage Filter */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 gap-2">
-              Etapa
+            <Button variant="outline" size="sm" className={`h-9 gap-2 ${filterStage !== "all" ? "border-primary text-primary" : ""}`}>
+              {filterStage === "all" ? "Etapa" : (stages.find((s) => s.id === filterStage)?.name || "Etapa")}
               <ChevronDown className="h-3 w-3" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-48" align="start">
             <div className="space-y-1 max-h-[200px] overflow-auto">
+              <button onClick={() => setFilterStage("all")} className={`w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded ${filterStage === "all" ? "bg-muted font-medium" : ""}`}>Todas as etapas</button>
               {stages.map((stage) => (
                 <button
                   key={stage.id}
-                  className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded"
+                  onClick={() => setFilterStage(stage.id)}
+                  className={`w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded ${filterStage === stage.id ? "bg-muted font-medium" : ""}`}
                 >
                   {stage.name}
                 </button>
@@ -396,17 +435,19 @@ export const CRMActivitiesPage = () => {
         {/* Owner Filter */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 gap-2">
-              Dono do negócio
+            <Button variant="outline" size="sm" className={`h-9 gap-2 ${filterOwner !== "all" ? "border-primary text-primary" : ""}`}>
+              {filterOwner === "all" ? "Dono do negócio" : (owners.find((o) => o.id === filterOwner)?.name || "Dono do negócio")}
               <ChevronDown className="h-3 w-3" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-48" align="start">
             <div className="space-y-1 max-h-[200px] overflow-auto">
+              <button onClick={() => setFilterOwner("all")} className={`w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded ${filterOwner === "all" ? "bg-muted font-medium" : ""}`}>Todos</button>
               {owners.map((owner) => (
                 <button
                   key={owner.id}
-                  className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded"
+                  onClick={() => setFilterOwner(owner.id)}
+                  className={`w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded ${filterOwner === owner.id ? "bg-muted font-medium" : ""}`}
                 >
                   {owner.name}
                 </button>
@@ -460,7 +501,7 @@ export const CRMActivitiesPage = () => {
                   <TableCell>
                     <Checkbox
                       checked={activity.status === "completed"}
-                      onCheckedChange={() => handleComplete(activity.id)}
+                      onCheckedChange={() => handleComplete(activity)}
                       disabled={activity.status === "completed"}
                     />
                   </TableCell>
@@ -567,7 +608,7 @@ export const CRMActivitiesPage = () => {
             >
               <Checkbox
                 checked={activity.status === "completed"}
-                onCheckedChange={() => handleComplete(activity.id)}
+                onCheckedChange={() => handleComplete(activity)}
                 disabled={activity.status === "completed"}
                 className="mt-1"
               />
@@ -606,6 +647,53 @@ export const CRMActivitiesPage = () => {
           )}
         </div>
       </div>
+
+      {/* Pós-conclusão: criar próxima atividade ou finalizar atendimento */}
+      <Dialog open={!!postCompleteLead} onOpenChange={(o) => !o && setPostCompleteLead(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Atividade concluída</DialogTitle>
+            <DialogDescription>
+              O que você quer fazer com {postCompleteLead?.name} agora?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 pt-1">
+            <Button
+              className="w-full justify-start gap-2"
+              onClick={() => {
+                if (postCompleteLead) setAddActivityLeadId(postCompleteLead.id);
+                setPostCompleteLead(null);
+              }}
+            >
+              <Plus className="h-4 w-4" /> Criar próxima atividade
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={() => setPostCompleteLead(null)}
+            >
+              <CheckCircle className="h-4 w-4" /> Finalizar atendimento
+            </Button>
+            <p className="text-xs text-muted-foreground pt-1">
+              Ao finalizar, o lead fica sem atividade pendente até você criar uma nova
+              manualmente dentro do lead.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Criação da próxima atividade para o lead recém-concluído */}
+      {addActivityLeadId && (
+        <AddActivityDialog
+          open={!!addActivityLeadId}
+          onOpenChange={(o) => !o && setAddActivityLeadId(null)}
+          leadId={addActivityLeadId}
+          onSuccess={() => {
+            setAddActivityLeadId(null);
+            loadActivities();
+          }}
+        />
+      )}
     </div>
   );
 };

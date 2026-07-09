@@ -9,6 +9,7 @@ import {
   Calendar,
   Search,
   Filter,
+  ExternalLink,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -22,6 +23,7 @@ interface OnboardingTask {
   completed_at: string | null;
   status: "pending" | "in_progress" | "completed" | "inactive";
   observations: string | null;
+  board_form_url?: string | null;
   assignee?: { id: string; name: string; role: string };
   responsible_staff?: { id: string; name: string } | null;
 }
@@ -205,6 +207,20 @@ export const ClientTasksList = ({ tasks, onTaskClick }: ClientTasksListProps) =>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                         {task.description}
                       </p>
+                    )}
+
+                    {/* Formulário de execução (UNV Board) */}
+                    {task.board_form_url && task.status !== "completed" && (
+                      <a
+                        href={task.board_form_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-md bg-[#0D2B5E] text-white text-xs font-medium hover:bg-[#0D2B5E]/90 transition-colors"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Executar tarefa
+                      </a>
                     )}
 
                     {/* Meta */}

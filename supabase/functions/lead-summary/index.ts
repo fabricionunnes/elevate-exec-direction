@@ -7,6 +7,49 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Parser tolerante: a IA às vezes trunca o JSON (guia é grande). Tenta parsear
+// normal; se falhar, fecha string/colchetes abertos e descarta fragmento final
+// incompleto — recupera o máximo do conteúdo em vez de perder tudo.
+function tolerantParseJson(input: string): any {
+  if (!input) return null;
+  let s = input.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+  const start = s.indexOf("{");
+  if (start > 0) s = s.slice(start);
+  try { return JSON.parse(s); } catch { /* segue pro reparo */ }
+
+  // Varre balanceando aspas/colchetes (ignorando o que está dentro de string)
+  const stack: string[] = [];
+  let inStr = false, esc = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === "{" || c === "[") stack.push(c);
+    else if (c === "}" || c === "]") stack.pop();
+  }
+
+  let repaired = s;
+  if (inStr) repaired += '"';                       // fecha string aberta
+  repaired = repaired
+    .replace(/,\s*"[^"]*"\s*:\s*$/,"")             // "chave": pendente sem valor
+    .replace(/,\s*"[^"]*$/,"")                     // "chave parcial
+    .replace(/[,:]\s*$/,"");                         // vírgula/dois-pontos soltos
+  for (let i = stack.length - 1; i >= 0; i--) {
+    repaired += stack[i] === "{" ? "}" : "]";
+  }
+  try { return JSON.parse(repaired); } catch { /* último recurso abaixo */ }
+
+  // Último recurso: extrai o maior bloco {...} que fecha corretamente
+  const m = s.match(/\{[\s\S]*\}/);
+  if (m) { try { return JSON.parse(m[0]); } catch { /* nada */ } }
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -65,6 +108,56 @@ serve(async (req) => {
       .not("transcription_text", "is", null)
       .order("created_at", { ascending: false })
       .limit(5);
+
+    // Conversas de WhatsApp do lead — a SDR muitas vezes qualifica por aqui,
+    // então essas mensagens têm informação valiosa pro resumo/guia.
+    const { data: waConvos } = await supabase
+      .from("crm_whatsapp_conversations")
+      .select("id")
+      .eq("lead_id", leadId);
+    const waIds = (waConvos || []).map((c: any) => c.id);
+    let whatsappMessages: any[] = [];
+    if (waIds.length > 0) {
+      const { data: msgs } = await supabase
+        .from("crm_whatsapp_messages")
+        .select("direction, content, sender_name, created_at")
+        .in("conversation_id", waIds)
+        .not("content", "is", null)
+        .order("created_at", { ascending: true })
+        .limit(150);
+      whatsappMessages = (msgs || []).filter((m: any) => (m.content || "").trim());
+    }
+
+    // Instagram preenchido na aba Contato (campo customizado) — a Visão Geral
+    // usa como fallback quando a coluna crm_leads.instagram está vazia.
+    let customInstagram: string | null = null;
+    {
+      const { data: igField } = await supabase
+        .from("crm_custom_fields")
+        .select("id")
+        .eq("field_name", "instagram")
+        .limit(1)
+        .maybeSingle();
+      if (igField?.id) {
+        const { data: igVal } = await supabase
+          .from("crm_custom_field_values")
+          .select("value")
+          .eq("lead_id", leadId)
+          .eq("field_id", igField.id)
+          .maybeSingle();
+        customInstagram = (igVal?.value || "").trim() || null;
+      }
+    }
+
+    // Ligações do discador — transcrição/resumo por IA e notas da atendente.
+    // Terceiro canal de qualificação (junto de WhatsApp e observações).
+    const { data: dialerCalls } = await supabase
+      .from("crm_calls")
+      .select("created_at, duration_seconds, ai_summary, ai_disposition, transcription, notes, disposition")
+      .eq("lead_id", leadId)
+      .or("transcription.not.is.null,ai_summary.not.is.null,notes.not.is.null")
+      .order("created_at", { ascending: false })
+      .limit(10);
 
     // Fetch Scanner UNV submission (Isca de baleia funnel) for richer context
     const { data: scannerSub } = await supabase
@@ -164,6 +257,26 @@ serve(async (req) => {
         content: (t.transcription_text || "").substring(0, 3000),
         date: t.created_at,
       })),
+      whatsapp_conversas: {
+        _description: "Mensagens trocadas com o lead no WhatsApp (aba Conversas). A SDR muitas vezes qualifica o lead por aqui — extraia dores, contexto, objeções, horário/agendamento e qualquer informação valiosa dita nessas mensagens.",
+        mensagens: whatsappMessages.map((m: any) => ({
+          quem: m.direction === "outbound" ? "UNV" : "Cliente",
+          autor: m.sender_name || null,
+          texto: (m.content || "").substring(0, 600),
+          data: m.created_at,
+        })),
+      },
+      ligacoes_discador: {
+        _description: "Ligações feitas pelo discador pra este lead: transcrição, resumo por IA e notas da atendente. Fonte importante de qualificação — extraia o que o cliente disse por telefone.",
+        chamadas: (dialerCalls || []).map((c: any) => ({
+          data: c.created_at,
+          duracao_segundos: c.duration_seconds,
+          desfecho: c.disposition || c.ai_disposition,
+          resumo_ia: c.ai_summary,
+          notas_atendente: c.notes,
+          transcricao: (c.transcription || "").substring(0, 2500),
+        })),
+      },
       scanner_unv: scannerSub ? {
         _description: "Diagnóstico comercial completo respondido pelo lead no Scanner de Vendas UNV (funil Isca de Baleia). Use estas informações para personalizar o atendimento, abordar dores reais, citar números do próprio cliente e construir urgência baseada nas perdas declaradas.",
         empresa: scannerSub.company_name,
@@ -212,7 +325,7 @@ serve(async (req) => {
       systemPrompt = `Você é um analista comercial especialista. Responda APENAS em JSON válido, sem markdown, sem code blocks. Use o formato exato pedido.`;
       userPrompt = `Com base nos dados abaixo de um lead no CRM, gere um JSON com a seguinte estrutura:
 {
-  "company_summary": "Resumo executivo da empresa em 3-5 linhas, tom direto e profissional",
+  "company_summary": "Resumo executivo da empresa em 4-8 linhas, tom direto e profissional. Consolide TUDO que já foi dito pelo cliente em qualquer canal (WhatsApp, ligações do discador, observações/notas, reuniões): contexto do negócio, números, dores, desejos e situação atual.",
   "temperature": "hot" | "warm" | "cold",
   "temperature_reason": "Justificativa curta para a temperatura",
   "interest_level": "high" | "medium" | "low",
@@ -220,6 +333,18 @@ serve(async (req) => {
   "main_objection": "Principal objeção registrada ou 'Nenhuma objeção registrada'",
   "close_probability": número de 0 a 100,
   "close_probability_reason": "Justificativa para a probabilidade",
+  "qualification": {
+    "budget": { "value": "disponibilidade de investimento declarada (valores, faixa) ou null", "source": "whatsapp" | "ligacao" | "nota" | "reuniao" | "scanner" | null },
+    "revenue": { "value": "faturamento da empresa (mensal/anual, faixa) ou null", "source": ... },
+    "niche": { "value": "nicho/segmento de atuação ou null", "source": ... },
+    "pains": { "value": "dores relatadas pelo cliente (resuma todas) ou null", "source": ... },
+    "desires": { "value": "desejos/objetivos declarados (onde quer chegar) ou null", "source": ... },
+    "urgency": { "value": "urgência pra resolver (prazo, gatilho, 'pra ontem') ou null", "source": ... },
+    "company_context": { "value": "contexto da empresa: estrutura, time, quantos vendedores, como opera hoje, ou null", "source": ... },
+    "previous_attempts": { "value": "o que já tentou pra resolver (consultoria, agência, contratações, ferramentas) e por que não funcionou, ou null", "source": ... },
+    "has_partner": { "value": true | false | null, "detail": "quem é o sócio / como decide junto, ou null", "source": ... },
+    "missing": ["campos da qualificação que AINDA NÃO foram descobertos, em pt-BR, ex: 'Budget', 'Urgência', 'Sócio' — o que a SDR/closer precisa perguntar"]
+  },
   "meeting_summaries": [
     {
       "date": "data",
@@ -231,12 +356,14 @@ serve(async (req) => {
   ]
 }
 
+REGRAS DA QUALIFICAÇÃO (playbook UNV): em "has_partner", true = cliente mencionou sócio/decide junto com alguém; false = deixou claro que decide sozinho/não tem sócio; null = nunca falou sobre isso (e entra em "missing" como 'Sócio'). Preencha cada campo EXCLUSIVAMENTE com o que o cliente disse/registrado nos canais disponíveis nos dados — whatsapp_conversas, ligacoes_discador, notes/activities (observações) e transcriptions (reuniões) — além do scanner_unv quando existir. NÃO invente nem deduza além do razoável; campo sem informação = value null e entra em "missing". Em "source" aponte o canal principal de onde veio a informação. Cite números e palavras do próprio cliente quando houver.
+
 Dados do lead:
 ${JSON.stringify(leadContext, null, 2)}
 
 IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown.`;
     } else if (type === "guide") {
-      systemPrompt = `Você é um coach de vendas especialista no roteiro de 12 fases de uma ligação comercial. Responda APENAS em JSON válido, sem markdown, sem code blocks.`;
+      systemPrompt = `Você é um coach de vendas especialista na metodologia NEPQ (Neuro-Emotional Persuasion Questioning) aplicada num roteiro de 12 fases de uma reunião comercial. Responda APENAS em JSON válido, sem markdown, sem code blocks.`;
       userPrompt = `Com base no histórico completo do lead abaixo, gere um guia de atendimento personalizado em JSON.
 
 IMPORTANTE: O array "recommended_phases" DEVE conter EXATAMENTE as 12 fases, sempre. Cada fase deve ter insights e scripts personalizados com base nos dados do lead. Para fases já concluídas, marque is_completed como true e ainda assim forneça insights úteis. Para fases futuras, gere scripts e dicas baseados no que sabemos do cliente para que o closer esteja preparado.
@@ -266,19 +393,21 @@ Estrutura do JSON:
   }
 }
 
-Roteiro de referência (12 fases — GERE TODAS):
-Fase 1 - Rapport: criar conexão genuína, espelhamento, correspondência de comportamento
-Fase 2 - Expectativas: alinhar formato da ligação, assumir controle, analogia do médico
-Fase 3 - Tomadores de decisão: identificar quem fecha, atenção ao Assassino Silencioso
-Fase 4 - A Razão (A Dor): fazer o prospect declarar o motivo da ligação
-Fase 5 - Cavar: aprofundar a dor com emoção, nunca usar PORQUE
-Fase 6 - Tentou: descobrir tentativas anteriores frustradas
-Fase 7 - Situação Atual e Desejada: onde está e onde quer chegar em 12 meses
-Fase 8 - Porquê: motivação emocional profunda (AMOR ou STATUS)
-Fase 9 - Admissão: fazer admitir que precisa de ajuda
-Fase 10 - Compromisso: confirmar urgência
-Fase 11 - Fechamento Personalizado: pitch usando palavras do prospect
-Fase 12 - Preço: NUNCA falar o preço sem ser solicitado
+Metodologia: NEPQ (Neuro-Emotional Persuasion Questioning). O closer NÃO empurra — ele faz perguntas que baixam a resistência e levam o próprio cliente a concluir que precisa mudar. Tonalidade curiosa e calma, postura de especialista neutro (como um médico), nunca de vendedor ansioso. Fale ~20%, ouça ~80%. Evite perguntar "por quê?" de forma acusatória; use suavizadores como "então...", "parece que...", "me ajuda a entender...". Os 5 estágios do NEPQ (Conexão → Engajamento → Transição → Apresentação → Compromisso) estão distribuídos nas 12 fases abaixo.
+
+Roteiro de referência NEPQ (12 fases — GERE TODAS):
+Fase 1 - Conexão: perguntas de conexão; foco 100% no cliente e não em você; baixar a resistência de vendas. Nada de pitch aqui.
+Fase 2 - Contexto & Expectativas: enquadrar a conversa e assumir o controle sem pressão; alinhar como será a reunião (postura de especialista neutro).
+Fase 3 - Tomadores de Decisão: mapear quem decide de verdade; atenção ao decisor oculto ("assassino silencioso").
+Fase 4 - Situação: perguntas de situação; entender o cenário atual (números, estrutura, processo) com neutralidade.
+Fase 5 - Consciência do Problema: perguntas que abrem a porta emocional — quais são os problemas, por que existem e como estão afetando o cliente.
+Fase 6 - Sondagem de Precisão (Cavar): aprofundar a dor principal com perguntas de sondagem; deixar o cliente elaborar; "então...", "parece que...", nunca "por quê?" acusatório.
+Fase 7 - O que já tentou: descobrir tentativas anteriores e por que não funcionaram (amplia a consciência do problema).
+Fase 8 - Consciência da Solução: perguntas que fazem o cliente descrever o futuro ideal com o problema resolvido (ele vende para si mesmo).
+Fase 9 - Consequência: perguntas de consequência; explorar o custo de não mudar e o que acontece se continuar como está.
+Fase 10 - Qualificação: confirmar o quanto é importante mudar e por quê — a motivação emocional e o compromisso com a mudança.
+Fase 11 - Transição & Apresentação: perguntas de transição fazendo a ponte para a solução; apresentar sob medida, ligando cada benefício às palavras e dores que o cliente disse (feedback/concordância).
+Fase 12 - Compromisso & Preço: perguntas de compromisso que levam o cliente a dar o próximo passo (ele se fecha); reformular objeções com calma, sem confrontar; ancorar o preço no custo da inação e não jogar o valor antes da hora.
 
 Dados do lead:
 ${JSON.stringify(leadContext, null, 2)}
@@ -399,7 +528,7 @@ IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown.`;
       }
 
       systemPrompt = `Você é um diretor comercial experiente que analisa transcrições de reuniões de vendas. Avalie com rigor e honestidade, dando notas justas. Responda APENAS em JSON válido, sem markdown, sem code blocks.`;
-      userPrompt = `Analise a transcrição da reunião abaixo e avalie a performance do vendedor em cada uma das 12 fases do roteiro de vendas.
+      userPrompt = `Analise a transcrição da reunião abaixo e avalie a performance do vendedor em cada uma das 12 fases do roteiro NEPQ (Neuro-Emotional Persuasion Questioning).
 
 Para cada fase, dê:
 - Uma nota de 0 a 10 (0 = não aplicou / péssimo, 10 = execução perfeita)
@@ -434,19 +563,19 @@ Gere um JSON com a seguinte estrutura:
   "next_meeting_recommendations": "recomendações para a próxima reunião com base nesta análise"
 }
 
-As 12 fases do roteiro:
-Fase 1 - Rapport (peso 1): Conexão genuína, espelhamento, correspondência de comportamento, ponto em comum
-Fase 2 - Expectativas (peso 1): Alinhar formato, assumir controle, analogia do médico
-Fase 3 - Tomadores de Decisão (peso 1.5): Identificar decisor, Assassino Silencioso
-Fase 4 - A Razão / A Dor (peso 2): Fazer declarar o motivo e a dor específica
-Fase 5 - Cavar (peso 2): Aprofundar dor com emoção, usar "então"/"parece que", nunca PORQUE
-Fase 6 - Tentou (peso 1): Descobrir tentativas anteriores frustradas
-Fase 7 - Situação Atual e Desejada (peso 1.5): Onde está e onde quer chegar em 12 meses
-Fase 8 - Porquê (peso 1.5): Motivação emocional profunda (AMOR ou STATUS)
-Fase 9 - Admissão (peso 1.5): Fazer admitir que precisa de ajuda
-Fase 10 - Compromisso (peso 1): Confirmar urgência, "quando quer resolver?"
-Fase 11 - Fechamento Personalizado (peso 2): Pitch usando palavras do prospect
-Fase 12 - Preço (peso 1.5): NUNCA falar preço sem ser solicitado, calar após falar valor
+As 12 fases do roteiro NEPQ (Neuro-Emotional Persuasion Questioning):
+Fase 1 - Conexão (peso 1): Perguntas de conexão, foco no cliente, baixar a resistência, tom neutro (sem pitch)
+Fase 2 - Contexto & Expectativas (peso 1): Enquadrar a conversa, assumir controle sem pressão, postura de especialista
+Fase 3 - Tomadores de Decisão (peso 1.5): Identificar quem decide, atenção ao decisor oculto (assassino silencioso)
+Fase 4 - Situação (peso 1.5): Perguntas de situação, entender o cenário atual (números, estrutura, processo) com neutralidade
+Fase 5 - Consciência do Problema (peso 2): Abrir a porta emocional — quais os problemas, por que existem e como afetam
+Fase 6 - Sondagem de Precisão (peso 2): Aprofundar a dor; "então"/"parece que", deixar elaborar, nunca "por quê?" acusatório
+Fase 7 - O que já tentou (peso 1): Descobrir tentativas anteriores e por que não funcionaram
+Fase 8 - Consciência da Solução (peso 1.5): Fazer o cliente descrever o futuro ideal com o problema resolvido
+Fase 9 - Consequência (peso 1.5): Explorar o custo de não mudar, o que acontece se continuar como está
+Fase 10 - Qualificação (peso 1.5): Confirmar o quanto é importante mudar e por quê (compromisso emocional)
+Fase 11 - Transição & Apresentação (peso 2): Ponte para a solução; apresentar sob medida ligando benefícios às palavras/dores do cliente
+Fase 12 - Compromisso & Preço (peso 1.5): Perguntas de compromisso (o cliente se fecha); reformular objeções sem confronto; ancorar preço no custo da inação
 
 Dados do lead:
 ${JSON.stringify(leadContext, null, 2)}
@@ -468,7 +597,8 @@ IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown. Se
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5",
-          max_tokens: 8096,
+          // Guia tem 12 fases com insights/perguntas — JSON grande, precisa de mais teto senão trunca.
+          max_tokens: type === "guide" ? 16000 : 8096,
         system: systemPrompt,
           messages: [{ role: "user", content: userPrompt }],
       }),
@@ -498,11 +628,9 @@ IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown. Se
     // Clean markdown wrappers if present
     content = content.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
 
-    let parsed;
-    try {
-      parsed = JSON.parse(content);
-    } catch {
-      console.error("Failed to parse AI response:", content);
+    let parsed = tolerantParseJson(content);
+    if (!parsed) {
+      console.error("Failed to parse AI response:", content?.slice(0, 500));
       parsed = { error: "Não foi possível processar a resposta da IA", raw: content };
     }
 
@@ -534,6 +662,8 @@ IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown. Se
         opportunity_value: lead.opportunity_value,
         probability: lead.probability,
         trade_name: lead.trade_name,
+        instagram: lead.instagram || customInstagram,
+        has_partner: lead.has_partner,
       },
       journey: {
         stages: pipelineStages,
@@ -565,19 +695,23 @@ IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown. Se
       })),
     };
 
-    // Save summary to database (upsert)
-    try {
-      await supabase
-        .from("crm_lead_summaries")
-        .upsert({
-          lead_id: leadId,
-          summary_type: type,
-          summary_data: responseData,
-          generated_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "lead_id,summary_type" });
-    } catch (saveErr) {
-      console.error("Save summary error (non-critical):", saveErr);
+    // Save summary to database (upsert) — NUNCA persiste resposta com erro de
+    // parse: senão uma falha transitória da IA fica "grudada" e o front mostra
+    // pra sempre "sem histórico" mesmo com a função funcionando.
+    if (!parsed?.error) {
+      try {
+        await supabase
+          .from("crm_lead_summaries")
+          .upsert({
+            lead_id: leadId,
+            summary_type: type,
+            summary_data: responseData,
+            generated_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "lead_id,summary_type" });
+      } catch (saveErr) {
+        console.error("Save summary error (non-critical):", saveErr);
+      }
     }
 
     // Log access

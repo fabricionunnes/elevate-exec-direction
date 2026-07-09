@@ -42,6 +42,7 @@ import { DailyGoalCard } from "./DailyGoalCard";
 import { ProjectTermVisionCard } from "./ProjectTermVisionCard";
 import { NorthStarMetricCard } from "./NorthStarMetricCard";
 import { SalesHeatmapCharts } from "./SalesHeatmapCharts";
+import { UnitRankingCard } from "./UnitRankingCard";
 import { PeriodComparisonCard } from "./PeriodComparisonCard";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 
@@ -133,10 +134,14 @@ const KPI_WIDGETS = [
   { id: "salespeople_table",   label: "Comparativo de Vendedores",     description: "Tabela comparativa detalhada entre vendedores" },
   { id: "performance",         label: "Comparação de Performance",     description: "Performance por unidade, setor ou equipe" },
   { id: "monthly_chart",       label: "Gráfico de Vendas Mensais",     description: "Evolução mensal dos KPIs" },
-  { id: "term_vision",         label: "Visão QTR / YTD / MAT",        description: "Visão acumulada por período" },
+  { id: "term_vision",         label: "Visão de Curto, Médio e Longo Prazo", description: "Visão acumulada QTR / YTD / MAT" },
   { id: "before_after",        label: "Antes vs Depois UNV",           description: "Comparação de resultados antes e depois" },
   { id: "cac",                 label: "Calculadora CAC",               description: "Custo de aquisição de clientes" },
   { id: "conversion",          label: "Taxa de Conversão",             description: "Funil de conversão detalhado" },
+  { id: "sales_funnel",        label: "Funil de Vendas",               description: "Conversão entre etapas do processo comercial" },
+  { id: "target_vs_realized",  label: "Meta x Realizado",              description: "Gráfico de meta versus realizado no período" },
+  { id: "daily_evolution",     label: "Evolução Diária / Ranking",     description: "Evolução diária dos KPIs e ranking de vendedores" },
+  { id: "sales_heatmap",       label: "Vendas por Dia (Semana e Mês)", description: "Vendas por dia da semana e por dia do mês" },
   { id: "avg_ticket",          label: "Ticket Médio",                  description: "Ticket médio por venda" },
   { id: "endomarketing",       label: "Endomarketing",                 description: "Campanhas internas" },
   { id: "gamification",        label: "Gamificação",                   description: "Pontuação e conquistas" },
@@ -213,17 +218,21 @@ export const KPIDashboardTab = ({
       });
   }, [companyId]);
 
+  // Salva automaticamente a cada toggle (o botão "Salvar" no rodapé passava
+  // despercebido — o staff desmarcava, via o próprio dashboard mudar em memória
+  // e o cliente continuava vendo tudo). select() detecta RLS silencioso.
   const saveWidgetConfig = async (config: Record<WidgetId, boolean>) => {
     setSavingWidgetConfig(true);
+    setWidgetConfig(config);
     try {
-      await supabase
+      const { data, error } = await supabase
         .from("onboarding_companies")
         .update({ dashboard_widget_config: config } as any)
-        .eq("id", companyId);
-      setWidgetConfig(config);
-      toast.success("Configuração salva");
+        .eq("id", companyId)
+        .select("id");
+      if (error || !data?.length) throw error || new Error("no rows");
     } catch {
-      toast.error("Erro ao salvar configuração");
+      toast.error("Erro ao salvar configuração dos widgets");
     } finally {
       setSavingWidgetConfig(false);
     }
@@ -400,8 +409,10 @@ export const KPIDashboardTab = ({
     
     // Patterns for "receita" (actual cash received, money in)
     const receitaPatterns = [
-      'receita', 'recebido', 'recebimento', 'entrada', 'caixa', 
-      'dinheiro', 'pagamento recebido', 'pago', 'baixado'
+      'receita', 'recebido', 'recebimento', 'entrada', 'caixa',
+      'dinheiro', 'pagamento recebido', 'pago', 'baixado',
+      // Cash Collected (dinheiro efetivamente recebido) — não é faturamento
+      'cash', 'collected', 'colleted', 'cash collected', 'cash colleted'
     ];
     
     // Check for receita first (more specific pattern like "dinheiro que entrou")
@@ -505,6 +516,17 @@ export const KPIDashboardTab = ({
     return allMainGoalKpis.length > 0 ? allMainGoalKpis : monetaryKpis;
   };
 
+  // Gerentes (setor Liderança) não entram no rateio da meta nem herdam meta do escopo
+  const leadershipSectorIds = sectors
+    .filter((s) => (s.name || "").toLowerCase().includes("lideran"))
+    .map((s) => s.id);
+  const isLeaderSp = (sp?: { sector_id?: string | null }) =>
+    !!sp?.sector_id && leadershipSectorIds.includes(sp.sector_id);
+  const activeSellersCount = Math.max(
+    salespeople.filter((sp) => sp.is_active && !isLeaderSp(sp)).length,
+    1
+  );
+
   // Helper function to get targets based on current filter (unit, team, sector, or salesperson)
   const getFilteredTargetsForKpi = (kpiId: string): Record<string, number> => {
     // Find the KPI to check its scope and unit_id
@@ -542,18 +564,78 @@ export const KPIDashboardTab = ({
       );
     }
     
+    // Vendedor sem meta própria: gerente não herda; demais herdam do escopo
+    // mais próximo (time → unidade) dividido pelos vendedores ativos não-gerentes
+    if (relevantTargets.length === 0 && selectedSalesperson !== "all") {
+      const selectedSp = salespeople.find(sp => sp.id === selectedSalesperson);
+      if (isLeaderSp(selectedSp)) {
+        return { Meta: 0 };
+      }
+      const divideScope = (targets: MonthlyTarget[], count: number): Record<string, number> => {
+        const divided: Record<string, number> = {};
+        targets.forEach(mt => {
+          divided[mt.level_name] = mt.target_value / Math.max(count, 1);
+        });
+        return divided;
+      };
+      if (selectedSp?.team_id) {
+        const teamTargets = allMonthlyTargets.filter(
+          mt => mt.kpi_id === kpiId && mt.team_id === selectedSp.team_id && mt.salesperson_id === null
+        );
+        if (teamTargets.length > 0) {
+          const teamSellers = salespeople.filter(
+            sp => sp.is_active && sp.team_id === selectedSp.team_id && !isLeaderSp(sp)
+          ).length;
+          return divideScope(teamTargets, teamSellers);
+        }
+      }
+      if (selectedSp?.unit_id) {
+        const unitTargets = allMonthlyTargets.filter(
+          mt => mt.kpi_id === kpiId && mt.unit_id === selectedSp.unit_id && mt.team_id === null && mt.salesperson_id === null
+        );
+        if (unitTargets.length > 0) {
+          const unitSellers = salespeople.filter(
+            sp => sp.is_active && sp.unit_id === selectedSp.unit_id && !isLeaderSp(sp)
+          ).length;
+          return divideScope(unitTargets, unitSellers);
+        }
+      }
+    }
+
+    // Visão da empresa (sem filtro de vendedor/time/unidade): a meta da empresa é o
+    // ROLLUP = soma das metas por vendedor. Ex: Luana 30k + Victoria 17,5k + Ana 17,5k = 65k.
+    // Tem precedência sobre uma meta-geral antiga de empresa, pra refletir o que está
+    // cadastrado por vendedora. (Não vale pra KPI com escopo de unidade.)
+    if (
+      relevantTargets.length === 0 &&
+      selectedSalesperson === "all" &&
+      selectedTeam === "all" &&
+      selectedUnit === "all" &&
+      !unitScoped
+    ) {
+      const spTargets = allMonthlyTargets.filter(
+        mt => mt.kpi_id === kpiId && mt.salesperson_id !== null
+      );
+      if (spTargets.length > 0) {
+        const sumByLevel: Record<string, number> = {};
+        spTargets.forEach(mt => {
+          sumByLevel[mt.level_name] = (sumByLevel[mt.level_name] || 0) + mt.target_value;
+        });
+        return sumByLevel;
+      }
+    }
+
     if (relevantTargets.length === 0) {
       // Try company-level targets first
       relevantTargets = allMonthlyTargets.filter(
         mt => mt.kpi_id === kpiId && mt.unit_id === null && mt.team_id === null && mt.salesperson_id === null
       );
-      
-      // When filtering by salesperson and falling back to company target, divide by active salespeople count
+
+      // When filtering by salesperson and falling back to company target, divide by active sellers (non-leaders)
       if (relevantTargets.length > 0 && selectedSalesperson !== "all") {
-        const activeSalespeopleCount = Math.max(salespeople.filter(sp => sp.is_active).length, 1);
         const dividedResult: Record<string, number> = {};
         relevantTargets.forEach(mt => {
-          dividedResult[mt.level_name] = mt.target_value / activeSalespeopleCount;
+          dividedResult[mt.level_name] = mt.target_value / activeSellersCount;
         });
         return dividedResult;
       }
@@ -609,10 +691,12 @@ export const KPIDashboardTab = ({
       return filteredTargets["Meta"] ?? Object.values(filteredTargets)[0];
     }
     const baseTarget = kpi.effective_target ?? kpi.target_value;
-    // When filtering by salesperson and no specific target found, divide by active salespeople
+    // When filtering by salesperson and no specific target found, divide by active sellers
+    // (gerentes do setor Liderança não têm meta nem entram no divisor)
     if (selectedSalesperson !== "all") {
-      const activeSalespeopleCount = Math.max(salespeople.filter(sp => sp.is_active).length, 1);
-      return baseTarget / activeSalespeopleCount;
+      const selectedSp = salespeople.find(sp => sp.id === selectedSalesperson);
+      if (isLeaderSp(selectedSp)) return 0;
+      return baseTarget / activeSellersCount;
     }
     return baseTarget;
   };
@@ -1093,13 +1177,11 @@ export const KPIDashboardTab = ({
     });
 
     const sortedDates = Object.keys(groupedByDate).sort();
-    if (sortedDates.length === 0) return { data: [], targetLevels: [], kpiType: "monetary" };
 
-    let targetLevelsMap: Record<string, number> = {};
-    
+    // Total mensal por nível de meta (Meta, Super Meta, etc.)
+    const targetLevelsMap: Record<string, number> = {};
     targetKpis.forEach(kpi => {
       const filteredTargets = getFilteredTargetsForKpi(kpi.id);
-      
       if (Object.keys(filteredTargets).length > 0) {
         Object.entries(filteredTargets).forEach(([levelName, value]) => {
           targetLevelsMap[levelName] = (targetLevelsMap[levelName] || 0) + value;
@@ -1115,25 +1197,39 @@ export const KPIDashboardTab = ({
     });
 
     const targetLevelNames = Object.keys(targetLevelsMap);
-    const totalDays = sortedDates.length;
     const kpiType = targetKpis[0]?.kpi_type ?? (mainGoalKpis[0]?.kpi_type ?? "monetary");
 
-    let cumulativeValue = 0;
-    const chartData = sortedDates.map((date, index) => {
-      cumulativeValue += groupedByDate[date];
-      const dayProgress = (index + 1) / totalDays;
+    if (targetLevelNames.length === 0 && sortedDates.length === 0) {
+      return { data: [], targetLevels: [], kpiType };
+    }
 
+    // Mês INTEIRO no eixo X (dia 1 até o último dia). A META é projeção linear acumulada
+    // (target * dia / diasDoMês). O REALIZADO é acumulado só ATÉ HOJE — depois de hoje fica
+    // vazio, pra dar pra comparar se o realizado (verde) está acima da meta (azul) no período.
+    const now = new Date();
+    const selStart = parseDateLocal(dateRange.start);
+    const selMonth = selStart.getMonth();
+    const selYear = selStart.getFullYear();
+    const daysInMonth = new Date(selYear, selMonth + 1, 0).getDate();
+    const isCurrentMonth = selYear === now.getFullYear() && selMonth === now.getMonth();
+    const isPastMonth = selYear < now.getFullYear() || (selYear === now.getFullYear() && selMonth < now.getMonth());
+    const todayDay = isCurrentMonth ? now.getDate() : (isPastMonth ? daysInMonth : 0);
+    const pad = (n: number) => String(n).padStart(2, "0");
+
+    let cumulative = 0;
+    const chartData: Record<string, any>[] = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${selYear}-${pad(selMonth + 1)}-${pad(day)}`;
+      cumulative += groupedByDate[dateStr] || 0;
       const dataPoint: Record<string, any> = {
-        date: format(new Date(date), "dd/MM", { locale: ptBR }),
-        realizado: cumulativeValue,
+        date: `${pad(day)}/${pad(selMonth + 1)}`,
+        realizado: day <= todayDay ? cumulative : null,
       };
-
       targetLevelNames.forEach(levelName => {
-        dataPoint[levelName] = targetLevelsMap[levelName] * dayProgress;
+        dataPoint[levelName] = (targetLevelsMap[levelName] * day) / daysInMonth;
       });
-
-      return dataPoint;
-    });
+      chartData.push(dataPoint);
+    }
 
     return { data: chartData, targetLevels: targetLevelNames, kpiType };
   };
@@ -1278,6 +1374,14 @@ export const KPIDashboardTab = ({
     const proposalsKpi = findKpiByPattern(['proposta', 'propostas', 'orçamento', 'orcamento', 'cotação', 'cotacao']);
     const salesKpi = findKpiByPattern(['venda', 'vendas', 'fechamento', 'fechamentos', 'qtd venda', 'quantidade venda']);
     const revenueKpi = kpis.find(k => k.kpi_type === 'monetary');
+    // Ticket médio deve sair do FATURAMENTO (valor faturado), não de "Cash Collected"/receita.
+    // Quando a empresa tem os dois KPIs monetários, prefere o de faturamento; senão cai no 1º monetário.
+    const monetaryGroups = groupMonetaryKpisByCategory(kpis);
+    const faturamentoKpi = monetaryGroups.faturamento[0] || monetaryGroups.other[0] || revenueKpi;
+    // Base da conversão: "Contatos realizados" (topo de funil real) quando existir.
+    const contatosRealizadosKpi =
+      kpis.find(k => { const n = k.name.toLowerCase(); return n.includes('contato') && n.includes('realizad'); })
+      || findKpiByPattern(['contatos', 'contato']);
 
     // Calculate totals for each found KPI
     const getKpiTotal = (kpi: KPI | undefined | null) => {
@@ -1294,6 +1398,8 @@ export const KPIDashboardTab = ({
     const totalProposals = getKpiTotal(proposalsKpi);
     const totalSales = getKpiTotal(salesKpi);
     const totalRevenue = getKpiTotal(revenueKpi);
+    const totalFaturamento = getKpiTotal(faturamentoKpi);
+    const totalContatosRealizados = getKpiTotal(contatosRealizadosKpi);
 
     // Build conversion stages dynamically based on available data
     // Priority order: Leads → Atendimentos → Visitas → Calls Agendadas → Calls com Pitch → Propostas → Vendas
@@ -1343,10 +1449,13 @@ export const KPIDashboardTab = ({
       }
     }
 
-    // Calculate overall conversion: use Calls com Pitch as base if available, otherwise first stage
-    const conversionBase = pitchKpi && totalPitch > 0
-      ? { name: 'Calls c/ Pitch', value: totalPitch }
-      : conversionStages[0];
+    // Taxa de conversão = vendas realizadas / contatos realizados quando a empresa tem esse KPI.
+    // Senão mantém o comportamento antigo (Calls c/ Pitch → 1ª etapa do funil).
+    const conversionBase = contatosRealizadosKpi && totalContatosRealizados > 0
+      ? { name: contatosRealizadosKpi.name, value: totalContatosRealizados }
+      : pitchKpi && totalPitch > 0
+        ? { name: 'Calls c/ Pitch', value: totalPitch }
+        : conversionStages[0];
     const overallConversion = conversionBase && conversionBase.value > 0 && totalSales > 0
       ? (totalSales / conversionBase.value) * 100
       : 0;
@@ -1356,8 +1465,8 @@ export const KPIDashboardTab = ({
     const proposalToSale = totalProposals > 0 ? (totalSales / totalProposals) * 100 : 0;
     const leadToSale = totalLeads > 0 ? (totalSales / totalLeads) * 100 : 0;
 
-    // Calculate average ticket
-    const avgTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
+    // Ticket médio = faturamento / vendas (usa faturamento, nunca cash collected)
+    const avgTicket = totalSales > 0 ? totalFaturamento / totalSales : 0;
 
     // Calculate average daily sales
     const periodStart = new Date(dateRange.start);
@@ -1564,25 +1673,22 @@ export const KPIDashboardTab = ({
                     </div>
                     <Switch
                       checked={widgetConfig[widget.id as WidgetId] !== false}
+                      disabled={savingWidgetConfig}
                       onCheckedChange={(checked) => {
-                        const newConfig = { ...widgetConfig, [widget.id]: checked };
-                        setWidgetConfig(newConfig);
+                        // salva na hora — sem depender do botão no rodapé
+                        saveWidgetConfig({ ...widgetConfig, [widget.id]: checked });
                       }}
                     />
                   </div>
                 ))}
               </div>
-              <div className="mt-4 pt-4 border-t flex gap-2">
-                <Button
-                  className="flex-1"
-                  onClick={() => saveWidgetConfig(widgetConfig)}
-                  disabled={savingWidgetConfig}
-                >
-                  {savingWidgetConfig ? "Salvando..." : "Salvar Configuração"}
-                </Button>
-                <Button variant="outline" onClick={() => {
+              <div className="mt-4 pt-4 border-t flex items-center gap-2">
+                <p className="flex-1 text-xs text-muted-foreground">
+                  {savingWidgetConfig ? "Salvando..." : "As alterações são salvas automaticamente."}
+                </p>
+                <Button variant="outline" disabled={savingWidgetConfig} onClick={() => {
                   const all = Object.fromEntries(KPI_WIDGETS.map(w => [w.id, true])) as Record<WidgetId, boolean>;
-                  setWidgetConfig(all);
+                  saveWidgetConfig(all);
                 }}>
                   Mostrar Tudo
                 </Button>
@@ -2126,9 +2232,33 @@ export const KPIDashboardTab = ({
         selectedSector={selectedSector}
         selectedSalesperson={selectedSalesperson}
         sectorTeams={sectorTeams}
+        leadershipSectorIds={sectors
+          .filter((s) => (s.name || "").toLowerCase().includes("lideran"))
+          .map((s) => s.id)}
         isClientView={isSalespersonView}
         currentSalespersonRankPosition={isSalespersonView ? getMyRankingPosition : undefined}
       />)}
+
+      {/* Unit Ranking — empresas com mais de uma unidade */}
+      {!isSalespersonView && units.filter((u) => u.is_active).length > 1 && (
+        <UnitRankingCard
+          units={units}
+          salespeople={salespeople.map((sp) => ({
+            id: sp.id,
+            unit_id: sp.unit_id,
+            team_id: sp.team_id,
+          }))}
+          teamUnits={teamUnits}
+          entries={entries.map((e) => ({
+            kpi_id: e.kpi_id,
+            salesperson_id: e.salesperson_id,
+            unit_id: e.unit_id,
+            value: e.value,
+          }))}
+          kpis={kpis}
+          allMonthlyTargets={allMonthlyTargets}
+        />
+      )}
 
       {/* Salespeople Comparison Table */}
       {showWidget("salespeople_table") && !isSalespersonView && (hasMultipleMainGoalsForCharts ? (
@@ -2211,7 +2341,9 @@ export const KPIDashboardTab = ({
       )}
 
       {/* Monthly Sales Chart */}
-      {showWidget("monthly_chart") && hasMultipleMainGoalsForCharts ? (
+      {/* Desligado = some de verdade (antes o "senão" do ternário renderizava
+          a versão single mesmo com o widget desmarcado) */}
+      {showWidget("monthly_chart") && (hasMultipleMainGoalsForCharts ? (
         mainGoalKpisForCharts.map((kpi) => (
           <MonthlySalesChart
             key={`monthly-${kpi.id}`}
@@ -2250,11 +2382,11 @@ export const KPIDashboardTab = ({
           selectedSalesperson={selectedSalesperson}
           isClientView={isSalespersonView}
         />
-      )}
+      ))}
 
 
-      {/* Term Vision Card - QTR/YTD/MAT */}
-      {showWidget("term_vision") && hasMultipleMainGoalsForCharts ? (
+      {/* Term Vision Card - QTR/YTD/MAT (Visão de Curto, Médio e Longo Prazo) */}
+      {showWidget("term_vision") && (hasMultipleMainGoalsForCharts ? (
         mainGoalKpisForCharts.map((kpi) => (
           <ProjectTermVisionCard
             key={`term-${kpi.id}`}
@@ -2277,7 +2409,7 @@ export const KPIDashboardTab = ({
           selectedTeam={selectedTeam}
           selectedSector={selectedSector}
         />
-      )}
+      ))}
 
       {/* Sales Comparison Chart - Before vs After UNV */}
       {showWidget("before_after") && <SalesComparisonChart 
@@ -2623,7 +2755,8 @@ export const KPIDashboardTab = ({
         );
       })()}
 
-      {/* Sales Funnel Chart - Always show */}
+      {/* Sales Funnel Chart */}
+      {showWidget("sales_funnel") && (
       <Card className="relative overflow-hidden border-0 shadow-2xl bg-gradient-to-br from-card via-card to-card">
         {/* Decorative background layers */}
         <div className="absolute inset-0 bg-gradient-to-br from-violet-600/[0.04] via-fuchsia-500/[0.02] to-purple-600/[0.05] dark:from-violet-700/20 dark:via-fuchsia-600/10 dark:to-purple-800/15" />
@@ -2754,9 +2887,10 @@ export const KPIDashboardTab = ({
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* Target vs Realized Chart - per KPI when multiple main goals */}
-      {hasMultipleMainGoalsForCharts ? (
+      {showWidget("target_vs_realized") && (hasMultipleMainGoalsForCharts ? (
         <div className="space-y-4">
           {mainGoalKpisForCharts.map((kpi) => {
             const kpiTvR = getTargetVsRealizedData(kpi.id);
@@ -2785,9 +2919,9 @@ export const KPIDashboardTab = ({
                         <YAxis tickFormatter={(value) => kpiTvR.kpiType === "monetary" ? new Intl.NumberFormat("pt-BR", { notation: "compact", compactDisplay: "short" }).format(value) : value.toLocaleString("pt-BR")} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
                         <Tooltip formatter={(value: number, name: string) => [formatValue(value, kpiTvR.kpiType || "monetary"), name === "realizado" ? "Realizado" : name]} />
                         <Legend />
-                        <Line type="monotone" dataKey="realizado" name="Realizado" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ fill: "hsl(var(--primary))", r: 3, stroke: "#fff", strokeWidth: 2 }} />
+                        <Line type="monotone" dataKey="realizado" name="Realizado" stroke="#22c55e" strokeWidth={3} connectNulls={false} dot={{ fill: "#22c55e", r: 3, stroke: "#fff", strokeWidth: 2 }} />
                         {kpiTvR.targetLevels.map((levelName, index) => (
-                          <Line key={levelName} type="monotone" dataKey={levelName} name={levelName} stroke={targetLevelColors[index % targetLevelColors.length]} strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                          <Line key={levelName} type="monotone" dataKey={levelName} name={levelName} stroke={["#3b82f6", "#60a5fa", "#1d4ed8"][index % 3]} strokeWidth={2} strokeDasharray="5 5" dot={false} />
                         ))}
                       </LineChart>
                     </ResponsiveContainer>
@@ -2850,14 +2984,14 @@ export const KPIDashboardTab = ({
                     ]}
                   />
                   <Legend />
-                  <Line type="monotone" dataKey="realizado" name="Realizado" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ fill: "hsl(var(--primary))", r: 3, stroke: "#fff", strokeWidth: 2 }} />
+                  <Line type="monotone" dataKey="realizado" name="Realizado" stroke="#22c55e" strokeWidth={3} connectNulls={false} dot={{ fill: "#22c55e", r: 3, stroke: "#fff", strokeWidth: 2 }} />
                   {targetVsRealized.targetLevels.map((levelName, index) => (
                     <Line 
                       key={levelName}
                       type="monotone" 
                       dataKey={levelName} 
                       name={levelName}
-                      stroke={targetLevelColors[index % targetLevelColors.length]} 
+                      stroke={["#3b82f6", "#60a5fa", "#1d4ed8"][index % 3]} 
                       strokeWidth={2}
                       strokeDasharray="5 5"
                       dot={false}
@@ -2874,10 +3008,10 @@ export const KPIDashboardTab = ({
             )}
           </CardContent>
         </Card>
-      )}
+      ))}
 
       {/* Charts Row - Daily Evolution + Ranking */}
-      {hasMultipleMainGoalsForCharts ? (
+      {showWidget("daily_evolution") && (hasMultipleMainGoalsForCharts ? (
         <div className="space-y-4">
           {mainGoalKpisForCharts.map((kpi) => {
             const kpiDailyData = getDailyChartData(kpi.id);
@@ -3055,7 +3189,7 @@ export const KPIDashboardTab = ({
           </CardContent>
         </Card>
         </div>
-      )}
+      ))}
 
       {/* Detailed KPI Table */}
       <Card className="relative overflow-hidden border-0 shadow-xl">
@@ -3128,8 +3262,8 @@ export const KPIDashboardTab = ({
         </CardContent>
       </Card>
 
-      {/* Sales Heatmap Charts */}
-      {hasMultipleMainGoalsForCharts ? (
+      {/* Sales Heatmap Charts — Vendas por Dia da Semana / do Mês */}
+      {showWidget("sales_heatmap") && (hasMultipleMainGoalsForCharts ? (
         mainGoalKpisForCharts.filter(k => k.kpi_type === "monetary").map((kpi) => (
           <SalesHeatmapCharts
             key={`heatmap-${kpi.id}`}
@@ -3151,7 +3285,7 @@ export const KPIDashboardTab = ({
           selectedTeam={selectedTeam}
           selectedSector={selectedSector}
         />
-      )}
+      ))}
 
       {/* Endomarketing Campaigns Widget */}
       {showWidget("endomarketing") && projectId && (

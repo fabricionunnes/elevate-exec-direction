@@ -129,8 +129,13 @@ export const ManagerV2 = {
   },
 
   async connect(target: MgrAction, payload: { webhookUrl?: string; subscribe?: string[]; immediate?: boolean; phone?: string }) {
+    // Manager V2 (stevo.chat) espera os eventos no campo `events` como string separada
+    // por vírgula. Mandar `subscribe` (array) grava eventString vazio → a Stevo não
+    // entrega nenhuma mensagem no webhook (bug que deixou o inbox mudo). Usar `events`.
+    const events = (payload.subscribe ?? ['Message', 'Connected', 'Disconnected', 'QR']).join(',');
     return callManagerV2(target.baseUrl, target.apiKey, 'POST', '/instance/connect', {
       webhookUrl: payload.webhookUrl ?? '',
+      events,
       subscribe: payload.subscribe ?? ['Message', 'Connected', 'Disconnected', 'QR'],
       immediate: payload.immediate ?? true,
       phone: payload.phone ?? '',

@@ -101,6 +101,11 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const [totalGoals, setTotalGoals] = useState({ meta: 0, super: 0, hiper: 0 });
   const [filterStartDate, setFilterStartDate] = useState<Date>(startOfMonth(new Date()));
   const [filterEndDate, setFilterEndDate] = useState<Date>(endOfMonth(new Date()));
+  const [callStats, setCallStats] = useState({ total: 0, discador: 0, avulsa: 0, atendidas: 0 });
+  const [dialerCostBrl, setDialerCostBrl] = useState(0);
+  // Reuniões/vendas atribuídas AO DISCADOR (não o CRM todo) — pra CAC e custos por reunião
+  const [dialerOutcomes, setDialerOutcomes] = useState({ scheduled: 0, realized: 0, sales: 0 });
+  const [callsByCloser, setCallsByCloser] = useState<Record<string, { total: number; atendidas: number }>>({});
 
   // Get date range based on filter
   const getDateRange = () => {
@@ -123,6 +128,58 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         return { start: startOfMonth(now), end: endOfMonth(now) };
     }
   };
+
+  // Ligações (discador + avulsa) no período/closer selecionado
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { start, end } = getDateRange();
+      const base = () => {
+        let q = supabase.from("crm_calls").select("*", { count: "exact", head: true })
+          .is("tenant_id", null) // só ligações da UNV, não dos clientes
+          .gte("created_at", start.toISOString()).lte("created_at", end.toISOString());
+        if (selectedCloser !== "all") q = q.eq("agent_staff_id", selectedCloser);
+        return q;
+      };
+      const [tot, disc, avul, ans, byAgent] = await Promise.all([
+        base(),
+        base().not("campaign_id", "is", null),
+        base().is("campaign_id", null),
+        base().eq("answered_by", "human"),
+        supabase.rpc("crm_calls_by_agent", { p_start: start.toISOString(), p_end: end.toISOString() }),
+      ]);
+      if (!active) return;
+      setCallStats({ total: tot.count || 0, discador: disc.count || 0, avulsa: avul.count || 0, atendidas: ans.count || 0 });
+      // Custo do discador (gasto Twilio) no período, em BRL — pra CAC e custo por reunião
+      try {
+        const days = Math.min(370, Math.max(1, Math.ceil((Date.now() - start.getTime()) / 86400000) + 1));
+        const { data: usage } = await supabase.functions.invoke("dialer-usage", { body: { days } });
+        if (active && usage) {
+          const recs = (usage as any).records || [];
+          const sinceStr = start.toISOString().slice(0, 10);
+          const untilStr = end.toISOString().slice(0, 10);
+          const spend = recs.length
+            ? recs.filter((r: any) => r.date >= sinceStr && r.date <= untilStr).reduce((a: number, r: any) => a + (r.spend || 0), 0)
+            : ((usage as any).total || 0);
+          const rate = (usage as any).brlRate || 0;
+          const brl = (usage as any).currency === "USD" ? spend * rate : spend;
+          setDialerCostBrl(brl);
+        }
+      } catch { /* sem custo */ }
+      // Reuniões/vendas atribuídas ao discador no período (agendou/realizada/venda das ligações)
+      try {
+        const { data: oc } = await (supabase as any).rpc("dialer_outcome_metrics", { p_since: start.toISOString(), p_until: end.toISOString() });
+        const r: any = Array.isArray(oc) ? oc[0] : oc;
+        if (active && r) setDialerOutcomes({ scheduled: r.meetings_scheduled || 0, realized: r.meetings_realized || 0, sales: r.sales_won || 0 });
+        else if (active) setDialerOutcomes({ scheduled: 0, realized: 0, sales: 0 });
+      } catch { /* sem outcomes */ }
+      const map: Record<string, { total: number; atendidas: number }> = {};
+      ((byAgent.data as any[]) || []).forEach((r) => { map[r.agent_staff_id] = { total: Number(r.total) || 0, atendidas: Number(r.atendidas) || 0 }; });
+      setCallsByCloser(map);
+    })();
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFilter, customDateFrom, customDateTo, selectedCloser]);
 
   useEffect(() => {
     loadData();
@@ -158,13 +215,17 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
 
       const { data: allActiveStaff } = await supabase
         .from("onboarding_staff")
-        .select("id, name, role")
+        .select("id, name, role, is_crm_closer")
         .eq("is_active", true);
 
-      const allowedCloserRoles = new Set(["closer", "head_comercial"]);
+      // head_comercial NÃO entra na base do ranking (não é closer individual). Só aparece
+      // se tiver venda/reunião no período, via a expansão abaixo.
+      const allowedCloserRoles = new Set(["closer"]);
       const filteredCloserStaff = (allActiveStaff || []).filter(staff => {
         const role = String((staff as any).role ?? "").toLowerCase();
-        return crmStaffIds.has(staff.id) && allowedCloserRoles.has(role);
+        if (role === "head_comercial") return false;
+        // Flag manual "closer no CRM" entra direto; senão precisa do role + acesso ao CRM.
+        return (staff as any).is_crm_closer || (crmStaffIds.has(staff.id) && allowedCloserRoles.has(role));
       });
       // Base list (closers/head_comercial). Será expandido abaixo com qualquer staff
       // que tenha tido agendamento/realização de reunião ou venda no período,
@@ -297,9 +358,25 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
               hiper: g.hiper_meta_value || 0,
             });
           });
-          totalMeta = goalValues.reduce((sum, g) => sum + (g.meta_value || 0), 0);
-          totalSuper = goalValues.reduce((sum, g) => sum + (g.super_meta_value || 0), 0);
-          totalHiper = goalValues.reduce((sum, g) => sum + (g.hiper_meta_value || 0), 0);
+          // Head Comercial e staff INATIVO NÃO entram na meta do time:
+          // - head: a meta dela JÁ é a soma dos closers (somar de novo = double-count).
+          // - inativo: quem saiu/foi desativado não conta no total do mês.
+          // Busca o cargo/ativo direto (allActiveStaff não traz inativos, e era por isso
+          // que a head inativa escapava e dobrava a meta).
+          const goalStaffIds = goalValues.map((g) => g.staff_id);
+          const { data: goalStaffRows } = await supabase
+            .from("onboarding_staff")
+            .select("id, role, is_active")
+            .in("id", goalStaffIds);
+          const excludeIds = new Set(
+            (goalStaffRows || [])
+              .filter((s: any) => String(s.role ?? "").toLowerCase() === "head_comercial" || s.is_active === false)
+              .map((s: any) => s.id),
+          );
+          const teamGoals = goalValues.filter((g) => !excludeIds.has(g.staff_id));
+          totalMeta = teamGoals.reduce((sum, g) => sum + (g.meta_value || 0), 0);
+          totalSuper = teamGoals.reduce((sum, g) => sum + (g.super_meta_value || 0), 0);
+          totalHiper = teamGoals.reduce((sum, g) => sum + (g.hiper_meta_value || 0), 0);
         }
       }
       setStaffGoalsMap(goalsMap);
@@ -476,7 +553,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         conversion: closerCompleted > 0 ? (closerSales.length / closerCompleted) * 100 : 0,
         ticketMedio: closerSales.length > 0 ? closerRevenue / closerSales.length : 0,
       };
-    });
+    }).sort((a, b) => b.revenue - a.revenue); // ranking por receita (1º = maior; troféu vai pro topo)
 
     // Sales records (filtered)
     const salesRecords: SaleRecord[] = salesData.map(s => ({
@@ -609,28 +686,30 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const getProgressColor = (pct: number) =>
     pct >= 100 ? "from-emerald-400 to-emerald-600" : pct >= 70 ? "from-amber-400 to-amber-600" : "from-rose-400 to-rose-600";
 
-  // 3D Card wrapper
-  const GlowCard = ({ children, className = "", gradient = "from-slate-800/50 to-slate-900/50", glowColor = "shadow-primary/10" }: { children: React.ReactNode; className?: string; gradient?: string; glowColor?: string }) => (
-    <div className={cn(
-      "relative rounded-2xl border border-white/10 backdrop-blur-sm overflow-hidden",
-      "transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1",
-      "shadow-lg hover:shadow-xl",
-      glowColor,
-      className
-    )}
-    style={{ background: "linear-gradient(145deg, hsl(var(--card)) 0%, hsl(var(--card)/0.8) 100%)" }}
-    >
+  // Card limpo (sem glow/escala) — visual profissional e sóbrio
+  const GlowCard = ({ children, className = "" }: { children: React.ReactNode; className?: string; gradient?: string; glowColor?: string }) => (
+    <div className={cn("relative rounded-lg border border-border/60 bg-card overflow-hidden transition-colors hover:border-border", className)}>
       {children}
     </div>
   );
 
-  const kpiCards = [
-    { label: "Receita", value: formatCurrency(metrics.receita), icon: DollarSign, gradient: "from-emerald-500 to-teal-400", glow: "shadow-emerald-500/25", textColor: "text-emerald-400" },
-    { label: "Meta", value: formatCurrency(metrics.metaReceita), icon: Target, gradient: "from-blue-500 to-indigo-400", glow: "shadow-blue-500/25", textColor: "text-blue-400" },
-    { label: "Faltam", value: formatCurrency(metrics.faltaReceita), icon: TrendingUp, gradient: "from-rose-500 to-pink-400", glow: "shadow-rose-500/25", textColor: "text-rose-400" },
-    { label: "Forecast", value: formatCurrency(metrics.forecast), icon: Target, gradient: "from-cyan-500 to-sky-400", glow: "shadow-cyan-500/25", textColor: "text-cyan-400" },
-    { label: "Em Negociação", value: formatCurrency(metrics.emNegociacao), icon: Users, gradient: "from-amber-500 to-orange-400", glow: "shadow-amber-500/25", textColor: "text-amber-400" },
-  ];
+  // Cor por grupo (categoria) — separa/une os cards e dá leitura semântica
+  const TONE = { green: "#34d399", blue: "#60a5fa", violet: "#a78bfa", amber: "#fbbf24" };
+  const Section = ({ tone, label, children, cols }: { tone: string; label: string; children: React.ReactNode; cols?: string }) => (
+    <div className="rounded-xl border p-4" style={{ borderColor: `${tone}2e`, background: `${tone}0d` }}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="h-2 w-2 rounded-full" style={{ background: tone }} />
+        <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: tone }}>{label}</span>
+      </div>
+      <div className={cn("grid gap-3", cols || "grid-cols-2 sm:grid-cols-3")}>{children}</div>
+    </div>
+  );
+  const Metric = ({ tone, label, value, color }: { tone: string; label: string; value: string | number; color?: string }) => (
+    <div className="rounded-lg border bg-card p-4" style={{ borderColor: `${tone}26` }}>
+      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
+      <p className="text-lg font-semibold mt-1.5 tabular-nums" style={color ? { color } : undefined}>{value}</p>
+    </div>
+  );
 
   return (
     <>
@@ -639,7 +718,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       {/* ── Filtros ── */}
       <div className="flex flex-wrap items-center gap-3">
         <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilterType)}>
-          <SelectTrigger className="w-[130px] h-9 rounded-xl text-xs border-white/10 bg-card/80 backdrop-blur-sm">
+          <SelectTrigger className="w-[130px] h-9 rounded-xl text-xs border-border ">
             <SelectValue placeholder="Período" />
           </SelectTrigger>
           <SelectContent>
@@ -655,7 +734,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           <div className="flex items-center gap-2">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn("h-9 w-[120px] justify-start text-left text-xs rounded-xl border-white/10", !customDateFrom && "text-muted-foreground")}>
+                <Button variant="outline" size="sm" className={cn("h-9 w-[120px] justify-start text-left text-xs rounded-xl border-border", !customDateFrom && "text-muted-foreground")}>
                   <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
                   {customDateFrom ? format(customDateFrom, "dd/MM/yy") : "De"}
                 </Button>
@@ -665,7 +744,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
             <span className="text-xs text-muted-foreground">até</span>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn("h-9 w-[120px] justify-start text-left text-xs rounded-xl border-white/10", !customDateTo && "text-muted-foreground")}>
+                <Button variant="outline" size="sm" className={cn("h-9 w-[120px] justify-start text-left text-xs rounded-xl border-border", !customDateTo && "text-muted-foreground")}>
                   <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
                   {customDateTo ? format(customDateTo, "dd/MM/yy") : "Até"}
                 </Button>
@@ -677,7 +756,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         
         {!isCloserUser && (
           <Select value={selectedCloser} onValueChange={setSelectedCloser}>
-            <SelectTrigger className="w-[160px] h-9 rounded-xl text-xs border-white/10 bg-card/80 backdrop-blur-sm">
+            <SelectTrigger className="w-[160px] h-9 rounded-xl text-xs border-border ">
               <SelectValue placeholder="Closer" />
             </SelectTrigger>
             <SelectContent>
@@ -688,7 +767,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         )}
 
         <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-          <SelectTrigger className="w-[160px] h-9 rounded-xl text-xs border-white/10 bg-card/80 backdrop-blur-sm">
+          <SelectTrigger className="w-[160px] h-9 rounded-xl text-xs border-border ">
             <SelectValue placeholder="Produto" />
           </SelectTrigger>
           <SelectContent>
@@ -703,7 +782,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
               ? `${format(customDateFrom, "dd/MM")} - ${format(customDateTo, "dd/MM/yyyy")}`
               : format(getDateRange().start, "MMMM 'de' yyyy", { locale: ptBR })}
           </Badge>
-          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="h-9 text-xs rounded-xl border-white/10 bg-card/80">
+          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="h-9 text-xs rounded-xl border-border bg-card/80">
             <Upload className="h-3.5 w-3.5 mr-1.5" />
             Importar
           </Button>
@@ -712,108 +791,81 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
 
       {/* ── Ranking dos Closers (Top 3) ── */}
       {closers.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {closers.slice(0, 3).map((closer, index) => {
-            const medals = ["🥇", "🥈", "🥉"];
-            const gradients = [
-              "from-amber-500/20 via-yellow-500/10 to-amber-600/20",
-              "from-slate-400/20 via-gray-300/10 to-slate-500/20",
-              "from-orange-500/20 via-amber-500/10 to-orange-600/20",
-            ];
-            const glows = ["shadow-amber-500/20", "shadow-slate-400/20", "shadow-orange-500/20"];
-            const borderColors = ["border-amber-500/30", "border-slate-400/30", "border-orange-500/30"];
-            return (
-              <GlowCard key={closer.id} glowColor={glows[index]} className={borderColors[index]}>
-                <div className={`absolute inset-0 bg-gradient-to-br ${gradients[index]} opacity-60`} />
-                <div className="relative p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl drop-shadow-lg">{medals[index]}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm truncate">{closer.name}</p>
-                      <p className="text-xl font-black text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]">{formatCurrency(closer.revenue)}</p>
-                    </div>
-                    <div className="text-right space-y-0.5">
-                      <p className="text-[11px] text-muted-foreground">TM: <span className="text-foreground font-semibold">{formatCurrency(closer.ticketMedio)}</span></p>
-                      <p className="text-[11px] text-muted-foreground">Conv: <span className="text-foreground font-semibold">{closer.conversion.toFixed(1)}%</span></p>
-                    </div>
-                  </div>
-                </div>
-              </GlowCard>
-            );
-          })}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {closers.slice(0, 3).map((closer, index) => (
+            <div key={closer.id} className="rounded-lg border bg-card p-4" style={index === 0 ? { borderColor: "#f5b50a55", borderLeft: "3px solid #f5b50a", background: "#f5b50a0d" } : { borderColor: "hsl(var(--border))" }}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md text-xs font-semibold shrink-0" style={index === 0 ? { background: "#f5b50a22", color: "#f5b50a" } : { background: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))" }}>{index + 1}</span>
+                <p className="text-sm font-medium truncate">{closer.name}</p>
+                {index === 0 && <Trophy className="h-3.5 w-3.5 ml-auto shrink-0" style={{ color: "#f5b50a" }} />}
+              </div>
+              <p className="text-2xl font-semibold tracking-tight tabular-nums">{formatCurrency(closer.revenue)}</p>
+              <div className="flex items-center gap-4 mt-2 text-[11px] text-muted-foreground">
+                <span>TM <span className="text-foreground font-medium">{formatCurrency(closer.ticketMedio)}</span></span>
+                <span>Conv <span className="text-foreground font-medium">{closer.conversion.toFixed(1)}%</span></span>
+                <span>Lig <span className="text-foreground font-medium">{callsByCloser[closer.id]?.total || 0}</span></span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* ── KPIs Principais ── */}
-      <div className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 shadow-lg shadow-emerald-500/30" />
-          Resultados
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {kpiCards.map((item, idx) => (
-            <GlowCard key={idx} glowColor={item.glow}>
-              <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-[0.06]`} />
-              <div className="relative p-4">
-                <div className={`p-2 rounded-xl bg-gradient-to-br ${item.gradient} w-fit mb-3 shadow-lg`}>
-                  <item.icon className="h-4 w-4 text-white" />
-                </div>
-                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider mb-1">{item.label}</p>
-                <p className={cn("text-xl font-black tracking-tight", item.textColor)}>{item.value}</p>
-              </div>
-            </GlowCard>
-          ))}
+      {/* ── Resultados (verde) ── */}
+      <Section tone={TONE.green} label="Resultados" cols="grid-cols-1 sm:grid-cols-3">
+        <div className="rounded-lg border bg-card p-4" style={{ borderColor: `${TONE.green}33` }}>
+          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Receita</p>
+          <p className="text-2xl font-semibold mt-1 tabular-nums" style={{ color: TONE.green }}>{formatCurrency(metrics.receita)}</p>
+          <div className="h-1.5 bg-muted rounded-full mt-2.5 overflow-hidden"><div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, metaPercent)}%`, background: TONE.green }} /></div>
+          <p className="text-[10px] text-muted-foreground mt-1">{metaPercent.toFixed(0)}% da meta</p>
         </div>
-      </div>
+        <Metric tone={TONE.green} label="Meta do mês" value={formatCurrency(metrics.metaReceita)} />
+        <Metric tone={TONE.green} label="Faltam" value={formatCurrency(metrics.faltaReceita)} color={metrics.faltaReceita > 0 ? "#fbbf24" : TONE.green} />
+      </Section>
 
-      {/* ── Performance ── */}
-      <div className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-gradient-to-r from-violet-400 to-purple-400 shadow-lg shadow-violet-500/30" />
-          Performance
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            { label: "% Meta", value: `${metaPercent.toFixed(1)}%`, gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/20", textColor: metaPercent >= 100 ? "text-emerald-400" : metaPercent >= 70 ? "text-amber-400" : "text-rose-400" },
-            { label: "Conversão", value: `${metrics.conversao.toFixed(1)}%`, gradient: "from-cyan-500 to-blue-500", glow: "shadow-cyan-500/20", textColor: "text-cyan-400" },
-            { label: "Qtd Vendas", value: String(metrics.vendas), gradient: "from-violet-500 to-purple-500", glow: "shadow-violet-500/20", textColor: "text-violet-400" },
-            { label: "Ticket Médio", value: formatCurrency(metrics.ticketMedio), gradient: "from-amber-500 to-orange-500", glow: "shadow-amber-500/20", textColor: "text-amber-400" },
-            { label: "Projeção", value: formatCurrency(metrics.projecaoReceita), gradient: "from-sky-500 to-blue-500", glow: "shadow-sky-500/20", textColor: "text-sky-400" },
-            { label: "% Projetado", value: `${metrics.projecaoPercent.toFixed(0)}%`, gradient: "from-indigo-500 to-blue-500", glow: "shadow-indigo-500/20", textColor: "text-indigo-400" },
-          ].map((item, idx) => (
-            <GlowCard key={idx} glowColor={item.glow}>
-              <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-[0.06]`} />
-              <div className="relative p-4">
-                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-1">{item.label}</p>
-                <p className={cn("text-lg font-black", item.textColor)}>{item.value}</p>
-              </div>
-            </GlowCard>
-          ))}
-        </div>
-      </div>
+      {/* ── Pipeline futuro (azul) ── */}
+      <Section tone={TONE.blue} label="Pipeline futuro" cols="grid-cols-2">
+        <Metric tone={TONE.blue} label="Forecast" value={formatCurrency(metrics.forecast)} color={TONE.blue} />
+        <Metric tone={TONE.blue} label="Em negociação" value={formatCurrency(metrics.emNegociacao)} color={TONE.blue} />
+      </Section>
+
+      {/* ── Performance (roxo) ── */}
+      <Section tone={TONE.violet} label="Performance" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+        <Metric tone={TONE.violet} label="% Meta" value={`${metaPercent.toFixed(1)}%`} color={metaPercent >= 100 ? "#34d399" : metaPercent >= 70 ? "#fbbf24" : "#f87171"} />
+        <Metric tone={TONE.violet} label="Conversão" value={`${metrics.conversao.toFixed(1)}%`} />
+        <Metric tone={TONE.violet} label="Qtd Vendas" value={metrics.vendas} />
+        <Metric tone={TONE.violet} label="Ticket Médio" value={formatCurrency(metrics.ticketMedio)} />
+        <Metric tone={TONE.violet} label="Projeção" value={formatCurrency(metrics.projecaoReceita)} />
+        <Metric tone={TONE.violet} label="% Projetado" value={`${metrics.projecaoPercent.toFixed(0)}%`} />
+      </Section>
+
+      {/* ── Discador — reuniões e custos (âmbar) — só do discador ── */}
+      <Section tone={TONE.amber} label="Discador — Reuniões e Custos" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+        <Metric tone={TONE.amber} label="Reuniões Realizadas" value={dialerOutcomes.realized} color="#34d399" />
+        <Metric tone={TONE.amber} label="Reuniões Agendadas" value={dialerOutcomes.scheduled} color={TONE.blue} />
+        <Metric tone={TONE.amber} label="CAC" value={dialerOutcomes.sales > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / dialerOutcomes.sales) : "—"} color="#f87171" />
+        <Metric tone={TONE.amber} label="Custo / Reunião Realizada" value={dialerOutcomes.realized > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / dialerOutcomes.realized) : "—"} />
+        <Metric tone={TONE.amber} label="Custo / Reunião Agendada" value={dialerOutcomes.scheduled > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / dialerOutcomes.scheduled) : "—"} />
+      </Section>
 
       {/* ── Metas (Meta / Super / Hiper) ── */}
       <GlowCard glowColor="shadow-primary/10">
         <div className="relative p-5 space-y-5">
-          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 shadow-lg shadow-amber-500/30" />
-            Atingimento de Metas
-          </h3>
+          <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Atingimento de Metas</h3>
           {[
-            { label: "Meta", pct: metaPercent, value: metrics.metaReceita, remaining: metrics.faltaReceita, gradient: "from-emerald-400 to-emerald-600", glow: "shadow-emerald-500/40" },
-            { label: "Super Meta", pct: superPercent, value: metrics.superMeta, remaining: metrics.faltaSuper, gradient: "from-amber-400 to-amber-600", glow: "shadow-amber-500/40" },
-            { label: "Hiper Meta", pct: hiperPercent, value: metrics.hiperMeta, remaining: metrics.faltaHiper, gradient: "from-sky-400 to-sky-600", glow: "shadow-sky-500/40" },
+            { label: "Meta", pct: metaPercent, value: metrics.metaReceita, remaining: metrics.faltaReceita, color: "#10b981" },
+            { label: "Super Meta", pct: superPercent, value: metrics.superMeta, remaining: metrics.faltaSuper, color: "#f59e0b" },
+            { label: "Hiper Meta", pct: hiperPercent, value: metrics.hiperMeta, remaining: metrics.faltaHiper, color: "#0ea5e9" },
           ].map((goal, idx) => (
             <div key={idx}>
-              <div className="flex items-center justify-between text-sm mb-2">
-                <span className="font-semibold">{goal.label} <span className="text-muted-foreground text-xs">({formatCurrency(goal.value)})</span></span>
+              <div className="flex items-center justify-between text-sm mb-1.5">
+                <span className="font-medium">{goal.label} <span className="text-muted-foreground text-xs">({formatCurrency(goal.value)})</span></span>
                 <div className="flex items-center gap-3 text-xs">
                   <span className="text-muted-foreground">Falta: {formatCurrency(goal.remaining)}</span>
-                  <span className="font-black text-foreground">{goal.pct.toFixed(0)}%</span>
+                  <span className="font-semibold text-foreground tabular-nums">{goal.pct.toFixed(0)}%</span>
                 </div>
               </div>
-              <div className="h-3 bg-muted/50 rounded-full overflow-hidden">
-                <div className={cn("h-full rounded-full bg-gradient-to-r transition-all duration-1000", goal.gradient, goal.glow)} style={{ width: `${Math.min(100, goal.pct)}%`, boxShadow: `0 0 12px rgba(0,0,0,0.2)` }} />
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, goal.pct)}%`, backgroundColor: goal.color }} />
               </div>
             </div>
           ))}
@@ -821,67 +873,50 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       </GlowCard>
 
       {/* ── Meta Diária ── */}
-      <GlowCard glowColor="shadow-primary/15" className="border-primary/20">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-primary/5 opacity-50" />
-        <div className="relative p-5">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/30">
-                <CalendarDays className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <div>
-                <h3 className="text-sm font-black">Meta Diária</h3>
-                <p className="text-xs text-muted-foreground">{dailyGoal.businessDaysLeft} dia{dailyGoal.businessDaysLeft !== 1 ? "s" : ""} úte{dailyGoal.businessDaysLeft !== 1 ? "is" : "il"} restante{dailyGoal.businessDaysLeft !== 1 ? "s" : ""}</p>
-              </div>
+      <div className="rounded-lg border border-border/60 bg-card p-5">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-muted">
+              <CalendarDays className="h-5 w-5 text-foreground" />
             </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 flex-1">
-              {[
-                { label: "Meta do Mês", value: formatCurrency(dailyGoal.monthlyTarget), gradient: "from-blue-500/10 to-indigo-500/10", textColor: "text-blue-400" },
-                { label: "Realizado", value: formatCurrency(dailyGoal.achieved), gradient: "from-emerald-500/10 to-teal-500/10", textColor: "text-emerald-400" },
-                { label: "Falta", value: formatCurrency(dailyGoal.remaining), gradient: "from-rose-500/10 to-pink-500/10", textColor: "text-rose-400" },
-                { label: "Vender/Dia", value: formatCurrency(dailyGoal.dailyTarget), gradient: "from-amber-500/10 to-orange-500/10", textColor: "text-amber-400" },
-              ].map((item, idx) => (
-                <div key={idx} className={cn("text-center rounded-xl p-3 bg-gradient-to-br border border-white/5", item.gradient)}>
-                  <p className="text-[10px] text-muted-foreground mb-0.5 uppercase tracking-wider">{item.label}</p>
-                  <p className={cn("font-black text-sm", item.textColor)}>{item.value}</p>
-                </div>
-              ))}
+            <div>
+              <h3 className="text-sm font-semibold">Meta Diária</h3>
+              <p className="text-xs text-muted-foreground">{dailyGoal.businessDaysLeft} dia{dailyGoal.businessDaysLeft !== 1 ? "s" : ""} úte{dailyGoal.businessDaysLeft !== 1 ? "is" : "il"} restante{dailyGoal.businessDaysLeft !== 1 ? "s" : ""}</p>
             </div>
           </div>
-          <div className="mt-4">
-            <div className="flex justify-between text-[11px] text-muted-foreground mb-1.5">
-              <span>Progresso mensal</span>
-              <span className="font-black text-foreground">{dailyGoal.monthlyTarget > 0 ? Math.round((dailyGoal.achieved / dailyGoal.monthlyTarget) * 100) : 0}%</span>
-            </div>
-            <div className="h-3 bg-muted/50 rounded-full overflow-hidden">
-              <div className={cn("h-full rounded-full bg-gradient-to-r transition-all duration-1000", getProgressColor(dailyGoal.monthlyTarget > 0 ? (dailyGoal.achieved / dailyGoal.monthlyTarget) * 100 : 0))} style={{ width: `${Math.min(100, dailyGoal.monthlyTarget > 0 ? (dailyGoal.achieved / dailyGoal.monthlyTarget) * 100 : 0)}%` }} />
-            </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 flex-1">
+            {[
+              { label: "Meta do Mês", value: formatCurrency(dailyGoal.monthlyTarget) },
+              { label: "Realizado", value: formatCurrency(dailyGoal.achieved) },
+              { label: "Falta", value: formatCurrency(dailyGoal.remaining) },
+              { label: "Vender/Dia", value: formatCurrency(dailyGoal.dailyTarget) },
+            ].map((item, idx) => (
+              <div key={idx} className="rounded-md p-3 bg-muted/40 border border-border/50">
+                <p className="text-[10px] text-muted-foreground mb-0.5 uppercase tracking-wide">{item.label}</p>
+                <p className="font-semibold text-sm text-foreground tabular-nums">{item.value}</p>
+              </div>
+            ))}
           </div>
         </div>
-      </GlowCard>
-
-      {/* ── Reuniões ── */}
-      <div className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-gradient-to-r from-sky-400 to-blue-400 shadow-lg shadow-sky-500/30" />
-          Reuniões
-        </h3>
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { label: "Agendadas", value: callsMetrics.agendadas, gradient: "from-sky-500 to-blue-500", glow: "shadow-sky-500/25", textColor: "text-sky-400" },
-            { label: "Realizadas", value: callsMetrics.realizadas, gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/25", textColor: "text-emerald-400" },
-            { label: "No Show", value: `${callsMetrics.noShowPercent.toFixed(0)}%`, gradient: "from-rose-500 to-pink-500", glow: "shadow-rose-500/25", textColor: "text-rose-400" },
-          ].map((item, idx) => (
-            <GlowCard key={idx} glowColor={item.glow}>
-              <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-[0.06]`} />
-              <div className="relative p-5 text-center">
-                <p className="text-[11px] text-muted-foreground mb-2 uppercase tracking-wider">{item.label}</p>
-                <p className={cn("text-3xl font-black", item.textColor)}>{item.value}</p>
-              </div>
-            </GlowCard>
-          ))}
+        <div className="mt-4">
+          <div className="flex justify-between text-[11px] text-muted-foreground mb-1.5">
+            <span>Progresso mensal</span>
+            <span className="font-semibold text-foreground tabular-nums">{dailyGoal.monthlyTarget > 0 ? Math.round((dailyGoal.achieved / dailyGoal.monthlyTarget) * 100) : 0}%</span>
+          </div>
+          {(() => { const pct = dailyGoal.monthlyTarget > 0 ? (dailyGoal.achieved / dailyGoal.monthlyTarget) * 100 : 0; const c = pct >= 100 ? "#10b981" : pct >= 70 ? "#f59e0b" : "#f43f5e"; return (
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, pct)}%`, backgroundColor: c }} />
+            </div>
+          ); })()}
         </div>
       </div>
+
+      {/* ── Reuniões (azul) ── */}
+      <Section tone={TONE.blue} label="Reuniões" cols="grid-cols-3">
+        <Metric tone={TONE.blue} label="Agendadas" value={callsMetrics.agendadas} color={TONE.blue} />
+        <Metric tone={TONE.blue} label="Realizadas" value={callsMetrics.realizadas} color="#34d399" />
+        <Metric tone={TONE.blue} label="No Show" value={`${callsMetrics.noShowPercent.toFixed(0)}%`} color={callsMetrics.noShowPercent > 30 ? "#f87171" : undefined} />
+      </Section>
 
       {/* ── Term Vision Chart ── */}
       <TermVisionChart />
@@ -891,9 +926,9 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         {/* Receita por Produto */}
         <GlowCard glowColor="shadow-emerald-500/10">
           <div className="p-5">
-            <h3 className="text-sm font-bold flex items-center gap-2 mb-4">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/25">
-                <DollarSign className="h-3.5 w-3.5 text-white" />
+            <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
+              <div className="p-1.5 rounded-md bg-muted">
+                <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
               Receita por Produto
             </h3>
@@ -918,21 +953,21 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         {/* Projeções Meta */}
         <GlowCard glowColor="shadow-amber-500/10">
           <div className="p-5 space-y-5">
-            <h3 className="text-sm font-bold flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg shadow-amber-500/25">
-                <Target className="h-3.5 w-3.5 text-white" />
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <div className="p-1.5 rounded-md bg-muted">
+                <Target className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
               Projeções vs Meta
             </h3>
             {[
-              { label: "Meta", pct: metaPercent, gradient: "from-emerald-400 to-emerald-600" },
-              { label: "Super Meta", pct: superPercent, gradient: "from-amber-400 to-amber-600" },
-              { label: "Hiper Meta", pct: hiperPercent, gradient: "from-sky-400 to-sky-600" },
+              { label: "Meta", pct: metaPercent, color: "#10b981" },
+              { label: "Super Meta", pct: superPercent, color: "#f59e0b" },
+              { label: "Hiper Meta", pct: hiperPercent, color: "#0ea5e9" },
             ].map((item, idx) => (
               <div key={idx}>
-                <div className="flex justify-between text-xs mb-1.5"><span className="font-medium">{item.label}</span><span className="font-black">{item.pct.toFixed(0)}%</span></div>
-                <div className="h-2.5 bg-muted/50 rounded-full overflow-hidden">
-                  <div className={cn("h-full rounded-full bg-gradient-to-r transition-all duration-700", item.gradient)} style={{ width: `${Math.min(100, item.pct)}%` }} />
+                <div className="flex justify-between text-xs mb-1.5"><span className="font-medium">{item.label}</span><span className="font-semibold tabular-nums">{item.pct.toFixed(0)}%</span></div>
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, item.pct)}%`, backgroundColor: item.color }} />
                 </div>
               </div>
             ))}
@@ -943,9 +978,9 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       {/* ── Evolução de Receita ── */}
       <GlowCard glowColor="shadow-emerald-500/10">
         <div className="p-5">
-          <h3 className="text-sm font-bold flex items-center gap-2 mb-3">
-            <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/25">
-              <TrendingUp className="h-3.5 w-3.5 text-white" />
+          <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+            <div className="p-1.5 rounded-md bg-muted">
+              <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
             </div>
             Evolução de Receita
           </h3>
@@ -981,9 +1016,9 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       {dailyRevenueData.length > 0 && closers.length > 0 && (
         <GlowCard glowColor="shadow-sky-500/10">
           <div className="p-5">
-            <h3 className="text-sm font-bold flex items-center gap-2 mb-3">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-sky-500 to-blue-500 shadow-lg shadow-sky-500/25">
-                <TrendingUp className="h-3.5 w-3.5 text-white" />
+            <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+              <div className="p-1.5 rounded-md bg-muted">
+                <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
               Acumulado Diário por Closer
             </h3>
@@ -1007,9 +1042,9 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       {/* ── Tabela: Desempenho dos Closers ── */}
       <GlowCard glowColor="shadow-amber-500/10">
         <div className="p-5 pb-0">
-          <h3 className="text-sm font-bold flex items-center gap-2 mb-3">
-            <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg shadow-amber-500/25">
-              <Trophy className="h-3.5 w-3.5 text-white" />
+          <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+            <div className="p-1.5 rounded-md bg-muted">
+              <Trophy className="h-3.5 w-3.5 text-muted-foreground" />
             </div>
             Desempenho dos Closers
           </h3>
@@ -1017,7 +1052,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="text-xs border-white/5">
+              <TableRow className="text-xs border-border/50">
                 <TableHead>Closer</TableHead>
                 <TableHead className="text-center">Agend.</TableHead>
                 <TableHead className="text-center">Realiz.</TableHead>
@@ -1030,14 +1065,14 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
             </TableHeader>
             <TableBody>
               {closers.map(closer => (
-                <TableRow key={closer.id} className="text-sm border-white/5 hover:bg-white/[0.02]">
+                <TableRow key={closer.id} className="text-sm border-border/50 hover:bg-muted/40">
                   <TableCell className="font-semibold">{closer.name}</TableCell>
                   <TableCell className="text-center">{closer.callsScheduled}</TableCell>
                   <TableCell className="text-center">{closer.callsCompleted}</TableCell>
                   <TableCell className="text-center font-semibold">{closer.salesQty}</TableCell>
-                  <TableCell className="text-right font-bold text-emerald-400">{formatCurrency(closer.revenue)}</TableCell>
+                  <TableCell className="text-right font-semibold text-foreground">{formatCurrency(closer.revenue)}</TableCell>
                   <TableCell className="text-center">
-                    <Badge className={cn("text-[11px] font-bold border-0", closer.metaPercent >= 100 ? "bg-emerald-500/20 text-emerald-400" : closer.metaPercent >= 70 ? "bg-amber-500/20 text-amber-400" : "bg-rose-500/20 text-rose-400")}>
+                    <Badge className={cn("text-[11px] font-semibold border-0", closer.metaPercent >= 100 ? "bg-emerald-500/20 text-emerald-400" : closer.metaPercent >= 70 ? "bg-amber-500/20 text-amber-400" : "bg-rose-500/20 text-rose-400")}>
                       {closer.metaPercent.toFixed(1)}%
                     </Badge>
                   </TableCell>
@@ -1046,12 +1081,12 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                 </TableRow>
               ))}
               {closers.length > 0 && (
-                <TableRow className="font-bold text-sm bg-white/[0.02] border-white/5">
+                <TableRow className="font-semibold text-sm bg-muted/30 border-border/50">
                   <TableCell>Total</TableCell>
                   <TableCell className="text-center">{closers.reduce((s, c) => s + c.callsScheduled, 0)}</TableCell>
                   <TableCell className="text-center">{closers.reduce((s, c) => s + c.callsCompleted, 0)}</TableCell>
                   <TableCell className="text-center">{closers.reduce((s, c) => s + c.salesQty, 0)}</TableCell>
-                  <TableCell className="text-right text-emerald-400">{formatCurrency(closers.reduce((s, c) => s + c.revenue, 0))}</TableCell>
+                  <TableCell className="text-right text-foreground">{formatCurrency(closers.reduce((s, c) => s + c.revenue, 0))}</TableCell>
                   <TableCell className="text-center">{metaPercent.toFixed(1)}%</TableCell>
                   <TableCell className="text-center">{metrics.conversao.toFixed(1)}%</TableCell>
                   <TableCell className="text-right">{formatCurrency(metrics.ticketMedio)}</TableCell>
@@ -1067,19 +1102,19 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         <GlowCard glowColor="shadow-cyan-500/10">
           <div className="p-5 pb-0">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-gradient-to-br from-cyan-500 to-sky-500 shadow-lg shadow-cyan-500/25">
-                  <Target className="h-3.5 w-3.5 text-white" />
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <div className="p-1.5 rounded-md bg-muted">
+                  <Target className="h-3.5 w-3.5 text-muted-foreground" />
                 </div>
                 Forecast
               </h3>
-              <Badge className="bg-gradient-to-r from-cyan-500/20 to-sky-500/20 text-cyan-400 border-0 text-xs font-bold">{formatCurrency(metrics.forecast)}</Badge>
+              <Badge className="bg-muted text-foreground border-0 text-xs font-semibold">{formatCurrency(metrics.forecast)}</Badge>
             </div>
           </div>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="text-xs border-white/5">
+                <TableRow className="text-xs border-border/50">
                   <TableHead>Closer</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Status</TableHead>
@@ -1089,12 +1124,12 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
               </TableHeader>
               <TableBody>
                 {forecasts.map(f => (
-                  <TableRow key={f.id} className="text-sm border-white/5 hover:bg-white/[0.02]">
+                  <TableRow key={f.id} className="text-sm border-border/50 hover:bg-muted/40">
                     <TableCell>{f.closer}</TableCell>
                     <TableCell>{f.client}</TableCell>
                     <TableCell><Badge className="text-[11px] bg-sky-500/20 text-sky-400 border-0">{f.status}</Badge></TableCell>
                     <TableCell>{f.product}</TableCell>
-                    <TableCell className="text-right font-bold text-emerald-400">{formatCurrency(f.value)}</TableCell>
+                    <TableCell className="text-right font-semibold text-foreground">{formatCurrency(f.value)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -1107,19 +1142,19 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       <GlowCard glowColor="shadow-emerald-500/10">
         <div className="p-5 pb-0">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/25">
-                <DollarSign className="h-3.5 w-3.5 text-white" />
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <div className="p-1.5 rounded-md bg-muted">
+                <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
               Vendas no Período
             </h3>
-            <Badge className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border-0 text-xs font-bold">{sales.length} vendas</Badge>
+            <Badge className="bg-muted text-foreground border-0 text-xs font-semibold">{sales.length} vendas</Badge>
           </div>
         </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="text-xs border-white/5">
+              <TableRow className="text-xs border-border/50">
                 <TableHead>Dia</TableHead>
                 <TableHead>Funil</TableHead>
                 <TableHead>Closer</TableHead>
@@ -1136,14 +1171,14 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                 </TableRow>
               ) : (
                 sales.map(sale => (
-                  <TableRow key={sale.id} className="text-sm border-white/5 hover:bg-white/[0.02]">
+                  <TableRow key={sale.id} className="text-sm border-border/50 hover:bg-muted/40">
                     <TableCell>{sale.saleDate}</TableCell>
                     <TableCell>{sale.pipeline}</TableCell>
                     <TableCell>{sale.closer}</TableCell>
                     <TableCell>{sale.sdr}</TableCell>
                     <TableCell>{sale.company}</TableCell>
                     <TableCell>{sale.product}</TableCell>
-                    <TableCell className="text-right font-bold text-emerald-400">{formatCurrency(sale.revenue)}</TableCell>
+                    <TableCell className="text-right font-semibold text-foreground">{formatCurrency(sale.revenue)}</TableCell>
                   </TableRow>
                 ))
               )}

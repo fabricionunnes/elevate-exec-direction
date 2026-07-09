@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,9 +23,12 @@ import {
 } from "recharts";
 import { format, startOfMonth, endOfMonth, getDaysInMonth, getDate, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Phone, Users, Calendar as CalendarIcon, AlertTriangle, CheckCircle, XCircle, TrendingUp, Upload, ChevronDown } from "lucide-react";
+import { Phone, Users, Calendar as CalendarIcon, AlertTriangle, CheckCircle, XCircle, TrendingUp, Upload, ChevronDown, Loader2 } from "lucide-react";
 import { ImportPreSalesDialog } from "@/components/crm/ImportPreSalesDialog";
 import { MeetingDetailCards, MeetingEventDetail } from "@/components/crm/MeetingDetailCards";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { trackMeetingEvent, getCurrentStaffId } from "@/components/crm/LeadMeetingActions";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +45,7 @@ interface SDRMetrics {
   qualified: number;
   meetings: number;
   noShowPercent: number;
+  semDesfecho: number;
 }
 
 interface SaleBySDR {
@@ -70,6 +74,8 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
   const [selectedPipeline, setSelectedPipeline] = useState<string>("all");
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [leadListType, setLeadListType] = useState<"scheduled" | "realized" | "no_show" | "sem_desfecho" | null>(null);
+  const [markingKey, setMarkingKey] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
@@ -86,6 +92,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     cancelamentos: 0,
     reagendamentos: 0,
     noShow: 0,
+    semDesfecho: 0,
     metaPercent: 0,
     metaAgendamentos: 122,
     metaReunioes: 99,
@@ -308,6 +315,20 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       const meetingEventsRealized = uniqueByLead.filter(e => e.event_type === "realized").length;
       const meetingEventsNoShow = uniqueByLead.filter(e => e.event_type === "no_show").length;
 
+      // Reuniões agendadas SEM DESFECHO: lead foi agendado mas nunca virou realizada/no-show/fora do ICP
+      const leadEventTypes = new Map<string, Set<string>>();
+      uniqueAttributedMeetingEvents.forEach((e: any) => {
+        if (!e.lead_id) return;
+        if (!leadEventTypes.has(e.lead_id)) leadEventTypes.set(e.lead_id, new Set());
+        leadEventTypes.get(e.lead_id)!.add(e.event_type);
+      });
+      let meetingEventsSemDesfecho = 0;
+      leadEventTypes.forEach((types) => {
+        if (types.has("scheduled") && !types.has("realized") && !types.has("no_show") && !types.has("out_of_icp")) {
+          meetingEventsSemDesfecho++;
+        }
+      });
+
       const eventDetails: MeetingEventDetail[] = uniqueAttributedMeetingEvents
         .filter(e => ["scheduled", "realized", "no_show", "out_of_icp"].includes(e.event_type))
         .map(e => ({
@@ -354,6 +375,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         cancelamentos: totalCancelled,
         reagendamentos: totalRescheduled,
         noShow: totalNoShow,
+        semDesfecho: meetingEventsSemDesfecho,
         metaPercent: metaAgendamentos > 0 ? (totalScheduled / metaAgendamentos) * 100 : 0,
         metaAgendamentos,
         metaReunioes,
@@ -381,6 +403,20 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         const sdrEventsRealized = sdrMeetingEvents.filter(e => e.event_type === "realized").length;
         const sdrEventsNoShow = sdrMeetingEvents.filter(e => e.event_type === "no_show").length;
 
+        // Agendadas sem desfecho deste SDR
+        const sdrLeadEventTypes = new Map<string, Set<string>>();
+        sdrMeetingEvents.forEach((e: any) => {
+          if (!e.lead_id) return;
+          if (!sdrLeadEventTypes.has(e.lead_id)) sdrLeadEventTypes.set(e.lead_id, new Set());
+          sdrLeadEventTypes.get(e.lead_id)!.add(e.event_type);
+        });
+        let sdrSemDesfecho = 0;
+        sdrLeadEventTypes.forEach((types) => {
+          if (types.has("scheduled") && !types.has("realized") && !types.has("no_show") && !types.has("out_of_icp")) {
+            sdrSemDesfecho++;
+          }
+        });
+
         const approaches = sdrActivities.reduce((sum, a) => sum + (a.approaches || 0), 0);
         const connections = sdrActivities.reduce((sum, a) => sum + (a.connections || 0), 0);
         const scheduled = sdrActivities.reduce((sum, a) => sum + (a.scheduled || 0), 0);
@@ -405,6 +441,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
           qualified,
           meetings,
           noShowPercent: noShowPct,
+          semDesfecho: sdrSemDesfecho,
         };
       });
       setSDRs(sdrMetricsList);
@@ -541,6 +578,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     const qualificacoes = filteredSdrs.reduce((sum, sdr) => sum + sdr.qualified, 0);
     const cancelamentos = filteredSdrs.reduce((sum, sdr) => sum + sdr.cancelled, 0);
     const reagendamentos = filteredSdrs.reduce((sum, sdr) => sum + sdr.rescheduled, 0);
+    const semDesfecho = filteredSdrs.reduce((sum, sdr) => sum + (sdr.semDesfecho || 0), 0);
     const showUpPercent = agendamentos > 0 ? (reunioes / agendamentos) * 100 : 0;
     const noShowPercent = agendamentos > 0 ? (noShow / agendamentos) * 100 : 0;
 
@@ -549,6 +587,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       agendamentos,
       reunioes,
       noShow,
+      semDesfecho,
       qualificacoes,
       cancelamentos,
       reagendamentos,
@@ -560,18 +599,119 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     };
   })();
 
-  // 3D Card wrapper
-  const GlowCard = ({ children, className = "", glowColor = "shadow-primary/10" }: { children: React.ReactNode; className?: string; glowColor?: string }) => (
-    <div className={cn(
-      "relative rounded-2xl border border-white/10 backdrop-blur-sm overflow-hidden",
-      "transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1",
-      "shadow-lg hover:shadow-xl",
-      glowColor,
-      className
-    )}
-    style={{ background: "linear-gradient(145deg, hsl(var(--card)) 0%, hsl(var(--card)/0.8) 100%)" }}
-    >
+  // Leads agendados SEM DESFECHO (agendados que nunca viraram realizada/no-show/fora do ICP)
+  const semDesfechoLeads = (() => {
+    const source = selectedSDR !== "all"
+      ? meetingEventDetails.filter(e => e.attributed_sdr_id === selectedSDR)
+      : meetingEventDetails;
+    const byLead = new Map<string, { lead_id: string; lead_name: string; lead_company?: string; types: Set<string>; scheduledDate?: string }>();
+    source.forEach((e) => {
+      if (!e.lead_id) return;
+      let r = byLead.get(e.lead_id);
+      if (!r) {
+        r = { lead_id: e.lead_id, lead_name: e.lead_name, lead_company: e.lead_company, types: new Set<string>() };
+        byLead.set(e.lead_id, r);
+      }
+      r.types.add(e.event_type);
+      if (e.event_type === "scheduled") r.scheduledDate = e.event_date;
+    });
+    return Array.from(byLead.values())
+      .filter(r => r.types.has("scheduled") && !r.types.has("realized") && !r.types.has("no_show") && !r.types.has("out_of_icp"))
+      .sort((a, b) => (a.scheduledDate || "").localeCompare(b.scheduledDate || ""));
+  })();
+
+  // Leads por trás de cada card (agendadas/realizadas/no-show)
+  const leadsForType = (type: "scheduled" | "realized" | "no_show" | "sem_desfecho") => {
+    if (type === "sem_desfecho") return semDesfechoLeads;
+    const source = selectedSDR !== "all"
+      ? meetingEventDetails.filter(e => e.attributed_sdr_id === selectedSDR)
+      : meetingEventDetails;
+    const byLead = new Map<string, { lead_id: string; lead_name: string; lead_company?: string; types: Set<string>; scheduledDate?: string }>();
+    source.forEach((e) => {
+      if (!e.lead_id || e.event_type !== type) return;
+      if (!byLead.has(e.lead_id)) {
+        byLead.set(e.lead_id, { lead_id: e.lead_id, lead_name: e.lead_name, lead_company: e.lead_company, types: new Set([type]), scheduledDate: e.event_date });
+      }
+    });
+    return Array.from(byLead.values());
+  };
+  const LEAD_LIST_TITLE: Record<string, string> = {
+    scheduled: "Reuniões agendadas",
+    realized: "Reuniões realizadas",
+    no_show: "No-shows",
+    sem_desfecho: "Reuniões agendadas sem desfecho",
+  };
+  const dialogLeads = leadListType ? leadsForType(leadListType) : [];
+
+  const handleMarkOutcome = async (leadId: string, eventType: "realized" | "no_show" | "out_of_icp") => {
+    setMarkingKey(`${leadId}:${eventType}`);
+    try {
+      const staffId = await getCurrentStaffId();
+      if (!staffId) {
+        toast.error("Não foi possível identificar seu usuário no sistema.");
+        return;
+      }
+      const { data: lead } = await supabase
+        .from("crm_leads")
+        .select("pipeline_id, stage_id, owner_staff_id")
+        .eq("id", leadId)
+        .single();
+      if (!lead?.pipeline_id || !lead?.stage_id) {
+        toast.error("Lead sem pipeline/etapa — não dá pra marcar por aqui.");
+        return;
+      }
+      const ok = await trackMeetingEvent(
+        leadId,
+        lead.pipeline_id,
+        lead.stage_id,
+        eventType,
+        lead.owner_staff_id || staffId,
+        staffId
+      );
+      if (!ok) {
+        toast.error("Não foi possível marcar (talvez já esteja marcado).");
+        return;
+      }
+      toast.success(
+        eventType === "realized" ? "Reunião marcada como realizada."
+          : eventType === "no_show" ? "Reunião marcada como no-show."
+          : "Lead marcado como fora do ICP."
+      );
+      await loadData();
+    } catch (err: any) {
+      console.error("Erro ao marcar desfecho:", err);
+      toast.error(err?.message || "Erro ao marcar desfecho.");
+    } finally {
+      setMarkingKey(null);
+    }
+  };
+
+  // Card limpo (sem glow/escala) — visual profissional
+  const GlowCard = ({ children, className = "" }: { children: React.ReactNode; className?: string; glowColor?: string }) => (
+    <div className={cn("relative rounded-lg border border-border/60 bg-card overflow-hidden transition-colors hover:border-border", className)}>
       {children}
+    </div>
+  );
+
+  // Cor por grupo (categoria) — separa/une os cards e dá leitura semântica
+  const TONE = { green: "#34d399", blue: "#60a5fa", violet: "#a78bfa", amber: "#fbbf24" };
+  const Section = ({ tone, label, children, cols }: { tone: string; label: string; children: React.ReactNode; cols?: string }) => (
+    <div className="rounded-xl border p-4" style={{ borderColor: `${tone}2e`, background: `${tone}0d` }}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="h-2 w-2 rounded-full" style={{ background: tone }} />
+        <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: tone }}>{label}</span>
+      </div>
+      <div className={cn("grid gap-3", cols || "grid-cols-2 sm:grid-cols-3")}>{children}</div>
+    </div>
+  );
+  const Metric = ({ tone, label, value, color, big, onClick }: { tone: string; label: string; value: string | number; color?: string; big?: boolean; onClick?: () => void }) => (
+    <div
+      className={cn("rounded-lg border bg-card p-4", onClick && "cursor-pointer hover:bg-muted/40 transition-colors")}
+      style={{ borderColor: `${tone}26` }}
+      onClick={onClick}
+    >
+      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{label}{onClick ? " ›" : ""}</p>
+      <p className={cn("font-semibold mt-1.5 tabular-nums", big ? "text-2xl" : "text-lg")} style={color ? { color } : undefined}>{value}</p>
     </div>
   );
 
@@ -582,7 +722,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       <div className="flex flex-wrap items-center gap-3">
         <Popover open={dateOpen} onOpenChange={setDateOpen}>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 gap-2 rounded-xl text-xs border-white/10 bg-card/80 backdrop-blur-sm">
+            <Button variant="outline" size="sm" className="h-9 gap-2 rounded-xl text-xs border-border ">
               <CalendarIcon className="h-3.5 w-3.5" />
               {dateRange?.from ? (
                 dateRange.to ? (
@@ -599,7 +739,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         
         {!isSDRUser && (
           <Select value={selectedSDR} onValueChange={setSelectedSDR}>
-            <SelectTrigger className="w-[160px] h-9 rounded-xl text-xs border-white/10 bg-card/80 backdrop-blur-sm">
+            <SelectTrigger className="w-[160px] h-9 rounded-xl text-xs border-border ">
               <SelectValue placeholder="SDR / SS" />
             </SelectTrigger>
             <SelectContent>
@@ -610,7 +750,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         )}
 
         <Select value={selectedPipeline} onValueChange={setSelectedPipeline}>
-          <SelectTrigger className="w-[160px] h-9 rounded-xl text-xs border-white/10 bg-card/80 backdrop-blur-sm">
+          <SelectTrigger className="w-[160px] h-9 rounded-xl text-xs border-border ">
             <SelectValue placeholder="Funil" />
           </SelectTrigger>
           <SelectContent>
@@ -620,132 +760,69 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         </Select>
 
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="h-9 text-xs rounded-xl border-white/10 bg-card/80">
+          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="h-9 text-xs rounded-xl border-border bg-card/80">
             <Upload className="h-3.5 w-3.5 mr-1.5" />
             Importar
           </Button>
           {dateRange?.from && dateRange?.to && (
-            <Badge className="text-xs bg-gradient-to-r from-primary/20 to-primary/10 text-primary border-primary/20">
+            <Badge className="text-xs bg-muted text-foreground border-border">
               {format(dateRange.from, "dd/MM", { locale: ptBR })} - {format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
             </Badge>
           )}
         </div>
       </div>
 
-      {/* ── Destaques (Reuniões / Show Up / No Show) ── */}
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: "Reuniões", value: String(visibleMetrics.reunioes), icon: Phone, gradient: "from-sky-500 to-blue-500", glow: "shadow-sky-500/25", textColor: "text-sky-400" },
-          { label: "Show Up", value: `${visibleMetrics.showUpPercent.toFixed(0)}%`, icon: CheckCircle, gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/25", textColor: "text-emerald-400" },
-          { label: "No Show", value: `${visibleMetrics.noShowPercent.toFixed(0)}%`, icon: XCircle, gradient: "from-rose-500 to-pink-500", glow: "shadow-rose-500/25", textColor: "text-rose-400" },
-        ].map((item, idx) => (
-          <GlowCard key={idx} glowColor={item.glow}>
-            <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-[0.06]`} />
-            <div className="relative p-5 text-center">
-              <div className={`mx-auto w-11 h-11 rounded-xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-3 shadow-lg`}>
-                <item.icon className="h-5 w-5 text-white" />
-              </div>
-              <p className={cn("text-3xl font-black", item.textColor)}>{item.value}</p>
-              <p className="text-[11px] text-muted-foreground mt-1 uppercase tracking-wider">{item.label}</p>
-            </div>
-          </GlowCard>
-        ))}
-      </div>
+      {/* ── Destaques (azul) ── */}
+      <Section tone={TONE.blue} label="Destaques" cols="grid-cols-3">
+        <Metric tone={TONE.blue} label="Reuniões" value={visibleMetrics.reunioes} color={TONE.blue} big />
+        <Metric tone={TONE.blue} label="Show Up" value={`${visibleMetrics.showUpPercent.toFixed(0)}%`} color="#34d399" big />
+        <Metric tone={TONE.blue} label="No Show" value={`${visibleMetrics.noShowPercent.toFixed(0)}%`} color={visibleMetrics.noShowPercent > 30 ? "#f87171" : undefined} big />
+      </Section>
 
       {/* ── Detalhamento de Reuniões ── */}
-      <div className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-gradient-to-r from-emerald-400 to-sky-400 shadow-lg shadow-emerald-500/30" />
-          Detalhamento das Reuniões
-        </h3>
+      <div className="space-y-2.5">
+        <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Detalhamento das Reuniões</h3>
         <MeetingDetailCards events={selectedSDR !== "all" ? meetingEventDetails.filter(e => e.attributed_sdr_id === selectedSDR) : meetingEventDetails} />
       </div>
 
-      {/* ── KPIs de Atividade ── */}
-      <div className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-gradient-to-r from-sky-400 to-blue-400 shadow-lg shadow-sky-500/30" />
-          Atividades
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-          {[
-            { label: "Agendamentos", value: visibleMetrics.agendamentos, gradient: "from-sky-500 to-blue-500", glow: "shadow-sky-500/20", textColor: "text-sky-400" },
-            { label: "Reuniões", value: visibleMetrics.reunioes, gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/20", textColor: "text-emerald-400" },
-            { label: "Qualificações", value: visibleMetrics.qualificacoes, gradient: "from-violet-500 to-purple-500", glow: "shadow-violet-500/20", textColor: "text-violet-400" },
-            { label: "Cancelamentos", value: visibleMetrics.cancelamentos, gradient: "from-amber-500 to-orange-500", glow: "shadow-amber-500/20", textColor: "text-amber-400" },
-            { label: "Reagendamentos", value: visibleMetrics.reagendamentos, gradient: "from-cyan-500 to-teal-500", glow: "shadow-cyan-500/20", textColor: "text-cyan-400" },
-            { label: "No Show", value: visibleMetrics.noShow, gradient: "from-rose-500 to-pink-500", glow: "shadow-rose-500/20", textColor: "text-rose-400" },
-            { label: "% da Meta", value: `${visibleMetrics.metaPercent.toFixed(1)}%`, gradient: visibleMetrics.metaPercent >= 100 ? "from-emerald-500 to-teal-500" : "from-amber-500 to-orange-500", glow: visibleMetrics.metaPercent >= 100 ? "shadow-emerald-500/20" : "shadow-amber-500/20", textColor: visibleMetrics.metaPercent >= 100 ? "text-emerald-400" : "text-amber-400" },
-          ].map((item, idx) => (
-            <GlowCard key={idx} glowColor={item.glow}>
-              <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-[0.06]`} />
-              <div className="relative p-3">
-                <p className="text-[10px] text-muted-foreground mb-0.5 uppercase tracking-wider">{item.label}</p>
-                <p className={cn("text-xl font-black", item.textColor)}>{item.value}</p>
-              </div>
-            </GlowCard>
-          ))}
-        </div>
-      </div>
+      {/* ── Atividades (âmbar) ── */}
+      <Section tone={TONE.amber} label="Atividades" cols="grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
+        <Metric tone={TONE.amber} label="Agendamentos" value={visibleMetrics.agendamentos} color={TONE.amber} onClick={leadsForType("scheduled").length > 0 ? () => setLeadListType("scheduled") : undefined} />
+        <Metric tone={TONE.amber} label="Reuniões" value={visibleMetrics.reunioes} onClick={leadsForType("realized").length > 0 ? () => setLeadListType("realized") : undefined} />
+        <Metric tone={TONE.amber} label="Qualificações" value={visibleMetrics.qualificacoes} />
+        <Metric tone={TONE.amber} label="Cancelamentos" value={visibleMetrics.cancelamentos} />
+        <Metric tone={TONE.amber} label="Reagendamentos" value={visibleMetrics.reagendamentos} />
+        <Metric tone={TONE.amber} label="No Show" value={visibleMetrics.noShow} color={visibleMetrics.noShow > 0 ? "#f87171" : undefined} onClick={leadsForType("no_show").length > 0 ? () => setLeadListType("no_show") : undefined} />
+        <Metric tone={TONE.amber} label="Sem Desfecho" value={visibleMetrics.semDesfecho} color={visibleMetrics.semDesfecho > 0 ? "#fb923c" : undefined} onClick={semDesfechoLeads.length > 0 ? () => setLeadListType("sem_desfecho") : undefined} />
+        <Metric tone={TONE.amber} label="% da Meta" value={`${visibleMetrics.metaPercent.toFixed(1)}%`} color={visibleMetrics.metaPercent >= 100 ? "#34d399" : "#fbbf24"} />
+      </Section>
 
-      {/* ── Metas & Projeção ── */}
-      <div className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-gradient-to-r from-indigo-400 to-violet-400 shadow-lg shadow-indigo-500/30" />
-          Metas & Projeção
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            { label: "Meta Agend.", value: String(metrics.metaAgendamentos), gradient: "from-blue-500 to-indigo-500", glow: "shadow-blue-500/20", textColor: "text-blue-400" },
-            { label: "Meta Reuniões", value: String(metrics.metaReunioes), gradient: "from-indigo-500 to-violet-500", glow: "shadow-indigo-500/20", textColor: "text-indigo-400" },
-            { label: "% Meta Agend.", value: `${metrics.metaAgendamentosPercent.toFixed(0)}%`, gradient: metrics.metaAgendamentosPercent >= 100 ? "from-emerald-500 to-teal-500" : "from-amber-500 to-orange-500", glow: "shadow-emerald-500/20", textColor: metrics.metaAgendamentosPercent >= 100 ? "text-emerald-400" : "text-amber-400" },
-            { label: "% Meta Reuniões", value: `${metrics.metaReunioesPercent.toFixed(0)}%`, gradient: metrics.metaReunioesPercent >= 100 ? "from-emerald-500 to-teal-500" : "from-amber-500 to-orange-500", glow: "shadow-emerald-500/20", textColor: metrics.metaReunioesPercent >= 100 ? "text-emerald-400" : "text-amber-400" },
-            { label: "Projeção", value: formatNumber(metrics.projecao, 0), gradient: "from-cyan-500 to-sky-500", glow: "shadow-cyan-500/20", textColor: "text-cyan-400" },
-            { label: "% Projetado", value: `${metrics.projecaoPercent.toFixed(0)}%`, gradient: metrics.projecaoPercent >= 100 ? "from-emerald-500 to-teal-500" : "from-sky-500 to-blue-500", glow: "shadow-sky-500/20", textColor: metrics.projecaoPercent >= 100 ? "text-emerald-400" : "text-sky-400" },
-          ].map((item, idx) => (
-            <GlowCard key={idx} glowColor={item.glow}>
-              <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-[0.06]`} />
-              <div className="relative p-3">
-                <p className="text-[10px] text-muted-foreground mb-0.5 uppercase tracking-wider">{item.label}</p>
-                <p className={cn("text-lg font-black", item.textColor)}>{item.value}</p>
-              </div>
-            </GlowCard>
-          ))}
-        </div>
-      </div>
+      {/* ── Metas & Projeção (verde) ── */}
+      <Section tone={TONE.green} label="Metas & Projeção" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+        <Metric tone={TONE.green} label="Meta Agend." value={metrics.metaAgendamentos} />
+        <Metric tone={TONE.green} label="Meta Reuniões" value={metrics.metaReunioes} />
+        <Metric tone={TONE.green} label="% Meta Agend." value={`${metrics.metaAgendamentosPercent.toFixed(0)}%`} color={metrics.metaAgendamentosPercent >= 100 ? "#34d399" : "#fbbf24"} />
+        <Metric tone={TONE.green} label="% Meta Reuniões" value={`${metrics.metaReunioesPercent.toFixed(0)}%`} color={metrics.metaReunioesPercent >= 100 ? "#34d399" : "#fbbf24"} />
+        <Metric tone={TONE.green} label="Projeção" value={formatNumber(metrics.projecao, 0)} color={TONE.green} />
+        <Metric tone={TONE.green} label="% Projetado" value={`${metrics.projecaoPercent.toFixed(0)}%`} color={metrics.projecaoPercent >= 100 ? "#34d399" : "#fbbf24"} />
+      </Section>
 
-      {/* ── Funil de Abordagem ── */}
-      <div className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-gradient-to-r from-violet-400 to-purple-400 shadow-lg shadow-violet-500/30" />
-          Funil de Abordagem
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            { label: "Abordagens", value: formatNumber(approachMetrics.abordagens), gradient: "from-violet-500 to-purple-500", glow: "shadow-violet-500/20", textColor: "text-violet-400" },
-            { label: "Conexões", value: formatNumber(approachMetrics.conexoes), gradient: "from-blue-500 to-indigo-500", glow: "shadow-blue-500/20", textColor: "text-blue-400" },
-            { label: "% Conv. Abord.", value: `${approachMetrics.conversaoAbord.toFixed(1)}%`, gradient: "from-cyan-500 to-sky-500", glow: "shadow-cyan-500/20", textColor: "text-cyan-400" },
-            { label: "% Conv. Agend.", value: `${approachMetrics.conversaoAgend.toFixed(1)}%`, gradient: "from-sky-500 to-blue-500", glow: "shadow-sky-500/20", textColor: "text-sky-400" },
-            { label: "% Conv. Vendas", value: `${approachMetrics.conversaoVendas.toFixed(1)}%`, gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/20", textColor: "text-emerald-400" },
-            { label: "Diária Reuniões", value: approachMetrics.diariaReunioes.toFixed(1), gradient: "from-amber-500 to-orange-500", glow: "shadow-amber-500/20", textColor: "text-amber-400" },
-          ].map((item, idx) => (
-            <GlowCard key={idx} glowColor={item.glow}>
-              <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-[0.06]`} />
-              <div className="relative p-3">
-                <p className="text-[10px] text-muted-foreground mb-0.5 uppercase tracking-wider">{item.label}</p>
-                <p className={cn("text-lg font-black", item.textColor)}>{item.value}</p>
-              </div>
-            </GlowCard>
-          ))}
-        </div>
-      </div>
+      {/* ── Funil de Abordagem (roxo) ── */}
+      <Section tone={TONE.violet} label="Funil de Abordagem" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+        <Metric tone={TONE.violet} label="Abordagens" value={formatNumber(approachMetrics.abordagens)} color={TONE.violet} />
+        <Metric tone={TONE.violet} label="Conexões" value={formatNumber(approachMetrics.conexoes)} />
+        <Metric tone={TONE.violet} label="% Conv. Abord." value={`${approachMetrics.conversaoAbord.toFixed(1)}%`} />
+        <Metric tone={TONE.violet} label="% Conv. Agend." value={`${approachMetrics.conversaoAgend.toFixed(1)}%`} />
+        <Metric tone={TONE.violet} label="% Conv. Vendas" value={`${approachMetrics.conversaoVendas.toFixed(1)}%`} color="#34d399" />
+        <Metric tone={TONE.violet} label="Diária Reuniões" value={approachMetrics.diariaReunioes.toFixed(1)} />
+      </Section>
 
       {/* ── Tabela SDRs ── */}
       <GlowCard glowColor="shadow-violet-500/10">
         <div className="p-5 pb-0">
-          <h3 className="text-sm font-bold flex items-center gap-2 mb-3">
-            <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 shadow-lg shadow-violet-500/25">
-              <Users className="h-3.5 w-3.5 text-white" />
+          <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+            <div className="p-1.5 rounded-md bg-muted">
+              <Users className="h-3.5 w-3.5 text-muted-foreground" />
             </div>
             Desempenho dos SDRs
           </h3>
@@ -753,7 +830,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="text-xs border-white/5">
+              <TableRow className="text-xs border-border/50">
                 <TableHead>SDR</TableHead>
                 <TableHead className="text-center">Abord.</TableHead>
                 <TableHead className="text-center">Conexões</TableHead>
@@ -769,7 +846,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
             </TableHeader>
             <TableBody>
               {filteredSdrs.map(sdr => (
-                <TableRow key={sdr.id} className="text-sm border-white/5 hover:bg-white/[0.02]">
+                <TableRow key={sdr.id} className="text-sm border-border/50 hover:bg-muted/40">
                   <TableCell className="font-semibold">{sdr.name}</TableCell>
                   <TableCell className="text-center">{formatNumber(sdr.approaches)}</TableCell>
                   <TableCell className="text-center">{sdr.connections}</TableCell>
@@ -777,18 +854,18 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
                   <TableCell className="text-center">{sdr.callsScheduled}</TableCell>
                   <TableCell className="text-center">{sdr.cancelled}</TableCell>
                   <TableCell className="text-center">{sdr.rescheduled}</TableCell>
-                  <TableCell className="text-center font-bold text-rose-400">{sdr.noShow}</TableCell>
+                  <TableCell className="text-center font-semibold text-rose-400">{sdr.noShow}</TableCell>
                   <TableCell className="text-center">{sdr.qualified}</TableCell>
-                  <TableCell className="text-center font-bold text-emerald-400">{sdr.meetings}</TableCell>
+                  <TableCell className="text-center font-semibold text-emerald-400">{sdr.meetings}</TableCell>
                   <TableCell className="text-center">
-                    <Badge className={cn("text-[11px] font-bold border-0", getNoShowBg(sdr.noShowPercent), getNoShowColor(sdr.noShowPercent))}>
+                    <Badge className={cn("text-[11px] font-semibold border-0", getNoShowBg(sdr.noShowPercent), getNoShowColor(sdr.noShowPercent))}>
                       {sdr.noShowPercent.toFixed(1)}%
                     </Badge>
                   </TableCell>
                 </TableRow>
               ))}
               {filteredSdrs.length > 1 && (
-                <TableRow className="font-bold text-sm bg-white/[0.02] border-white/5">
+                <TableRow className="font-semibold text-sm bg-muted/30 border-border/50">
                   <TableCell>Total</TableCell>
                   <TableCell className="text-center">{formatNumber(filteredSdrs.reduce((s, c) => s + c.approaches, 0))}</TableCell>
                   <TableCell className="text-center">{filteredSdrs.reduce((s, c) => s + c.connections, 0)}</TableCell>
@@ -812,9 +889,9 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         {/* Reuniões por Dia */}
         <GlowCard glowColor="shadow-emerald-500/10">
           <div className="p-5">
-            <h3 className="text-sm font-bold flex items-center gap-2 mb-3">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/25">
-                <TrendingUp className="h-3.5 w-3.5 text-white" />
+            <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+              <div className="p-1.5 rounded-md bg-muted">
+                <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
               Reuniões por Dia
             </h3>
@@ -837,9 +914,9 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         {/* No Show */}
         <GlowCard glowColor="shadow-rose-500/10">
           <div className="p-5">
-            <h3 className="text-sm font-bold flex items-center gap-2 mb-3">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-rose-500 to-pink-500 shadow-lg shadow-rose-500/25">
-                <AlertTriangle className="h-3.5 w-3.5 text-white" />
+            <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+              <div className="p-1.5 rounded-md bg-muted">
+                <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
               Evolução No Show
             </h3>
@@ -862,9 +939,9 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       {/* Agendadas vs Realizadas */}
       <GlowCard glowColor="shadow-sky-500/10">
         <div className="p-5">
-          <h3 className="text-sm font-bold flex items-center gap-2 mb-3">
-            <div className="p-1.5 rounded-lg bg-gradient-to-br from-sky-500 to-blue-500 shadow-lg shadow-sky-500/25">
-              <Phone className="h-3.5 w-3.5 text-white" />
+          <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+            <div className="p-1.5 rounded-md bg-muted">
+              <Phone className="h-3.5 w-3.5 text-muted-foreground" />
             </div>
             Agendadas vs Realizadas
           </h3>
@@ -885,46 +962,32 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         </div>
       </GlowCard>
 
-      {/* ── Vendas (Resumo) ── */}
-      <div className="space-y-3">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 shadow-lg shadow-emerald-500/30" />
-          Vendas Geradas
-        </h3>
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { label: "Faturamento", value: formatCurrency(salesSummary.faturamento), gradient: "from-sky-500 to-blue-500", glow: "shadow-sky-500/25", textColor: "text-sky-400" },
-            { label: "Receita", value: formatCurrency(salesSummary.receita), gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/25", textColor: "text-emerald-400" },
-            { label: "Quantidade", value: String(salesSummary.quantidade), gradient: "from-violet-500 to-purple-500", glow: "shadow-violet-500/25", textColor: "text-violet-400" },
-          ].map((item, idx) => (
-            <GlowCard key={idx} glowColor={item.glow}>
-              <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-[0.06]`} />
-              <div className="relative p-5 text-center">
-                <p className="text-[11px] text-muted-foreground mb-2 uppercase tracking-wider">{item.label}</p>
-                <p className={cn("text-xl font-black", item.textColor)}>{item.value}</p>
-              </div>
-            </GlowCard>
-          ))}
-        </div>
+      {/* ── Vendas Geradas (verde) ── */}
+      <div className="space-y-2.5">
+        <Section tone={TONE.green} label="Vendas Geradas" cols="grid-cols-3">
+          <Metric tone={TONE.green} label="Faturamento" value={formatCurrency(salesSummary.faturamento)} color={TONE.green} />
+          <Metric tone={TONE.green} label="Receita" value={formatCurrency(salesSummary.receita)} color={TONE.green} />
+          <Metric tone={TONE.green} label="Quantidade" value={salesSummary.quantidade} />
+        </Section>
       </div>
 
       {/* ── Tabela de Vendas ── */}
       <GlowCard glowColor="shadow-amber-500/10">
         <div className="p-5 pb-0">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg shadow-amber-500/25">
-                <Users className="h-3.5 w-3.5 text-white" />
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <div className="p-1.5 rounded-md bg-muted">
+                <Users className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
               Vendas por SDR
             </h3>
-            <Badge className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-400 border-0 text-xs font-bold">{filteredSales.length} vendas</Badge>
+            <Badge className="bg-muted text-foreground border-0 text-xs font-semibold">{filteredSales.length} vendas</Badge>
           </div>
         </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="text-xs border-white/5">
+              <TableRow className="text-xs border-border/50">
                 <TableHead>Funil</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Serviço</TableHead>
@@ -941,13 +1004,13 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
                 </TableRow>
               ) : (
                 filteredSales.map(sale => (
-                  <TableRow key={sale.id} className="text-sm border-white/5 hover:bg-white/[0.02]">
+                  <TableRow key={sale.id} className="text-sm border-border/50 hover:bg-muted/40">
                     <TableCell>{sale.pipeline}</TableCell>
                     <TableCell>{sale.client}</TableCell>
                     <TableCell>{sale.service}</TableCell>
                     <TableCell>{sale.sdr}</TableCell>
                     <TableCell className="text-right">{formatCurrency(sale.billing)}</TableCell>
-                    <TableCell className="text-right font-bold text-emerald-400">{formatCurrency(sale.revenue)}</TableCell>
+                    <TableCell className="text-right font-semibold text-foreground">{formatCurrency(sale.revenue)}</TableCell>
                     <TableCell>{sale.closer}</TableCell>
                   </TableRow>
                 ))
@@ -962,6 +1025,72 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         onOpenChange={setImportDialogOpen}
         onSuccess={() => window.location.reload()}
       />
+
+      <Dialog open={leadListType !== null} onOpenChange={(o) => { if (!o) setLeadListType(null); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{leadListType ? LEAD_LIST_TITLE[leadListType] : ""}</DialogTitle>
+            <DialogDescription>
+              {leadListType === "sem_desfecho"
+                ? "Foram agendadas mas ninguém marcou o resultado. Marque cada uma pra contar certo no mês, ou abra o negócio."
+                : "Clique em \"Abrir negócio\" pra tratar o lead. Abre em nova aba."}
+            </DialogDescription>
+          </DialogHeader>
+          {dialogLeads.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">Nenhum lead aqui.</p>
+          ) : (
+            <div className="space-y-2">
+              {dialogLeads.map((l) => (
+                <div key={l.lead_id} className="flex items-center gap-3 rounded-lg border p-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{l.lead_name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {l.lead_company ? `${l.lead_company} · ` : ""}
+                      {l.scheduledDate ? format(new Date(l.scheduledDate), "dd/MM/yy") : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {leadListType === "sem_desfecho" && (
+                      <>
+                        <Button
+                          variant="outline" size="sm"
+                          className="h-8 gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                          disabled={!!markingKey}
+                          onClick={() => handleMarkOutcome(l.lead_id, "realized")}
+                        >
+                          {markingKey === `${l.lead_id}:realized` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                          Realizada
+                        </Button>
+                        <Button
+                          variant="outline" size="sm"
+                          className="h-8 gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          disabled={!!markingKey}
+                          onClick={() => handleMarkOutcome(l.lead_id, "no_show")}
+                        >
+                          {markingKey === `${l.lead_id}:no_show` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />}
+                          No-show
+                        </Button>
+                        <Button
+                          variant="ghost" size="sm"
+                          className="h-8 gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                          disabled={!!markingKey}
+                          onClick={() => handleMarkOutcome(l.lead_id, "out_of_icp")}
+                          title="Fora do ICP"
+                        >
+                          {markingKey === `${l.lead_id}:out_of_icp` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+                        </Button>
+                      </>
+                    )}
+                    <Button asChild variant="outline" size="sm" className="h-8">
+                      <a href={`#/crm/leads/${l.lead_id}`} target="_blank" rel="noreferrer">Abrir negócio</a>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

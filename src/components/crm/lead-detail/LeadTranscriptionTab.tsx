@@ -12,6 +12,8 @@ import { TranscriptionsList } from "@/components/crm/transcriptions/Transcriptio
 import { RealtimeTranscription } from "@/components/crm/transcriptions/RealtimeTranscription";
 import { useCRMContext } from "@/pages/crm/CRMLayout";
 import ReactMarkdown from "react-markdown";
+import { buildAndStoreProposal } from "./proposal/buildProposal";
+import { autofillLeadFromTranscription } from "./proposal/autofillLead";
 
 interface LeadTranscriptionTabProps {
   leadId: string;
@@ -97,6 +99,35 @@ export const LeadTranscriptionTab = ({
         toast.success("Transcrição salva e briefing gerado!");
       } else {
         throw new Error("Briefing não retornado");
+      }
+
+      // 4. Preenche os campos do CRM (produto, valor, forma de pagamento, segmento, dor...) com o que
+      // foi dito na reunião — só os campos VAZIOS, sem sobrescrever o que já estava preenchido.
+      try {
+        const filled = await autofillLeadFromTranscription({ leadId, leadName, companyName, transcription: transcription.trim() });
+        if (filled.length) {
+          onBriefingGenerated(); // recarrega o lead pra refletir no Negócio
+          toast.success(`Negócio preenchido: ${filled.join(", ")}`);
+        }
+      } catch (afErr) {
+        console.error("Erro no autopreenchimento:", afErr);
+      }
+
+      // 5. Gera a proposta personalizada (PDF) a partir da transcrição + serviço do Negócio.
+      // Best-effort: se falhar, não quebra o fluxo do briefing.
+      try {
+        toast.loading("Gerando proposta...", { id: "proposal-gen" });
+        await buildAndStoreProposal({
+          leadId,
+          leadName,
+          companyName,
+          transcription: transcription.trim(),
+          transcriptionId: savedTranscription?.id,
+        });
+        toast.success("Proposta gerada — veja na aba Proposta", { id: "proposal-gen" });
+      } catch (propErr) {
+        console.error("Erro ao gerar proposta:", propErr);
+        toast.error("Briefing ok, mas falhou ao gerar a proposta. Tente em Proposta › Gerar proposta.", { id: "proposal-gen" });
       }
     } catch (error) {
       console.error("Error generating briefing:", error);

@@ -6,6 +6,40 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// Remove sufixo /manager e barras finais da base URL
+function normalizeBaseUrl(input: string | null | undefined): string {
+  return (input || "").replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
+}
+
+// Detecta Stevo Manager V2 (*.stevo.chat) — usa endpoint /send/text
+function isManagerV2Url(input?: string | null): boolean {
+  try {
+    return new URL(input || "").hostname.endsWith(".stevo.chat");
+  } catch {
+    return false;
+  }
+}
+
+// Headers que funcionam nos diferentes installs Evolution/STEVO
+function buildEvolutionHeaders(apiKey: string) {
+  return {
+    "Content-Type": "application/json",
+    apikey: apiKey,
+    Authorization: `Bearer ${apiKey}`,
+    "x-api-key": apiKey,
+  };
+}
+
+// Formata telefone BR com DDD: (31) 98493-5274
+function formatBrPhone(raw: string | null | undefined): string {
+  let d = (raw || "").replace(/\D/g, "");
+  if (!d) return "";
+  if (d.startsWith("55") && d.length >= 12) d = d.slice(2);
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return raw || "";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -23,7 +57,7 @@ Deno.serve(async (req) => {
       .from("crm_activities")
       .select(`
         id, title, type, scheduled_at, lead_id, responsible_staff_id,
-        lead:crm_leads!crm_activities_lead_id_fkey(name)
+        lead:crm_leads!crm_activities_lead_id_fkey(name, phone)
       `)
       .eq("status", "pending")
       .is("notified_at", null)
@@ -77,6 +111,14 @@ Deno.serve(async (req) => {
     for (const activity of dueActivities) {
       if (!activity.responsible_staff_id) continue;
 
+      // Não notificar usuários inativos
+      const { data: respStaff } = await supabase
+        .from("onboarding_staff")
+        .select("phone, name, is_active")
+        .eq("id", activity.responsible_staff_id)
+        .maybeSingle();
+      if (!respStaff || respStaff.is_active === false) continue;
+
       const leadName = (activity.lead as any)?.name || "Lead";
       const label = typeLabel[activity.type] || "Atividade";
       let shouldMarkAsNotified = false;
@@ -103,13 +145,7 @@ Deno.serve(async (req) => {
       // 2) Send WhatsApp notification to responsible staff
       if (whatsappInstance) {
         try {
-          const { data: staff } = await supabase
-            .from("onboarding_staff")
-            .select("phone, name")
-            .eq("id", activity.responsible_staff_id)
-            .maybeSingle();
-
-          let phone = staff?.phone?.replace(/\D/g, "") || "";
+          let phone = respStaff.phone?.replace(/\D/g, "") || "";
           // Normalize: ensure Brazilian country code (55) is present
           if (phone && !phone.startsWith("55") && (phone.length === 10 || phone.length === 11)) {
             phone = "55" + phone;
@@ -122,31 +158,54 @@ Deno.serve(async (req) => {
               scheduledText = `\n*Agendado para:* ${date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" })}`;
             }
 
+            const leadPhoneFmt = formatBrPhone((activity.lead as any)?.phone);
+            const phoneText = leadPhoneFmt ? `\n*Telefone:* ${leadPhoneFmt}` : "";
+
             const leadUrl = `https://unvholdings.com.br/#/crm/leads/${activity.lead_id}`;
             const message =
               `📋 *Atividade do CRM pendente!*\n\n` +
               `*Tipo:* ${label}\n` +
               `*Título:* ${activity.title}\n` +
               `*Lead:* ${leadName}` +
+              phoneText +
               scheduledText +
               `\n\n🔗 Acesse o lead: ${leadUrl}`;
 
-            const sendUrl = `${whatsappInstance.api_url}/message/sendText/${whatsappInstance.instance_name}`;
+            // Provider-aware: Stevo Manager V2 usa /send/text (sem instância no path);
+            // Evolution padrão usa /message/sendText/{instanceName}
+            const baseUrl = normalizeBaseUrl(whatsappInstance.api_url);
+            const isV2 = isManagerV2Url(whatsappInstance.api_url);
+            const sendUrl = isV2
+              ? `${baseUrl}/send/text`
+              : `${baseUrl}/message/sendText/${whatsappInstance.instance_name}`;
+
             const resp = await fetch(sendUrl, {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                apikey: whatsappInstance.api_key,
-              },
+              headers: buildEvolutionHeaders(whatsappInstance.api_key),
               body: JSON.stringify({ number: phone, text: message }),
             });
 
+            const respText = await resp.text();
+
+            // Hardening: só considerar enviado se o servidor confirmar. HTTP 200 com
+            // corpo de erro (falha "soft") NÃO marca como notificado -> o cron tenta
+            // de novo na próxima rodada (5 min), em vez de perder a notificação.
+            let sendFailed = !resp.ok;
             if (resp.ok) {
-              await resp.text();
-              console.log(`[crm-activity-notifications] WhatsApp sent to ${phone} for activity ${activity.id}`);
+              try {
+                const j = JSON.parse(respText);
+                if (j && (j.error || j.status === "error" || j.success === false || j.message === "error")) {
+                  sendFailed = true;
+                }
+              } catch {
+                // corpo não-JSON: confia no HTTP ok
+              }
+            }
+
+            if (!sendFailed) {
+              console.log(`[crm-activity-notifications] WhatsApp sent to ${phone} (v2=${isV2}) for activity ${activity.id}`);
             } else {
-              const errText = await resp.text();
-              console.error(`[crm-activity-notifications] WhatsApp send failed: ${errText}`);
+              console.error(`[crm-activity-notifications] WhatsApp send failed (${resp.status}) url=${sendUrl}: ${respText.slice(0, 300)}`);
               shouldMarkAsNotified = false;
             }
           } else {

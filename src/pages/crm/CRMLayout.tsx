@@ -39,19 +39,24 @@ import {
   BarChart3,
   Phone,
   ChevronDown,
+  Contact,
+  Download,
 } from "lucide-react";
 import logoUnv from "@/assets/logo-unv-nexus.png";
 import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
 import { CRMNotificationsBell } from "@/components/crm/CRMNotificationsBell";
+import { CallDockProvider } from "@/components/crm/call/CallDockProvider";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const CRM_ROLES = ["master", "admin", "head_comercial", "closer", "sdr", "social_setter", "bdr"];
 
-interface CRMContextType {
+export interface CRMContextType {
   staffRole: string | null;
   staffName: string | null;
   staffId: string | null;
+  tenantId: string | null;
   isAdmin: boolean;
+  canSettings: boolean;
   isMaster: boolean;
   selectedOrigin: string | null;
   setSelectedOrigin: (id: string | null) => void;
@@ -59,7 +64,7 @@ interface CRMContextType {
   setSelectedPipeline: (id: string | null) => void;
 }
 
-const CRMContext = createContext<CRMContextType | null>(null);
+export const CRMContext = createContext<CRMContextType | null>(null);
 
 export const useCRMContext = () => {
   const context = useContext(CRMContext);
@@ -72,6 +77,7 @@ const baseNavTabs = [
   { title: "Negócios", href: "/crm/pipeline", icon: Kanban },
   { title: "Contatos", href: "/crm/leads", icon: Users },
   { title: "Atividades", href: "/crm/activities", icon: ListTodo },
+  { title: "Discador", href: "/crm/dialer", icon: Phone },
   { title: "Atendimento", href: "/crm/inbox", icon: MessageSquare, badge: true },
   { title: "Transcrições", href: "/crm/transcriptions", icon: FileText },
   { title: "Contratos", href: "/contratos", icon: ClipboardList },
@@ -81,6 +87,7 @@ const baseNavTabs = [
   { title: "Aplicações", href: "/crm/applications", icon: BarChart3 },
   { title: "Nota Fiscal", href: "/onboarding-tasks/nota-fiscal", icon: FileText },
   { title: "Escritório", href: "/crm/office", icon: Building2 },
+  { title: "UNV Office", href: "/onboarding-tasks/unv-office", icon: Building2 },
 ];
 
 const getNavTabs = (role: string | null) => {
@@ -90,6 +97,7 @@ const getNavTabs = (role: string | null) => {
   }
   if (role === "master" || role === "admin" || role === "head_comercial") {
     tabs.push({ title: "Resumo Calls", href: "/crm/call-summary", icon: Phone });
+    tabs.push({ title: "UNV Profile", href: "/unv-profile", icon: Contact });
   }
   return tabs;
 };
@@ -100,6 +108,7 @@ const MAIN_TAB_HREFS = [
   "/crm/pipeline",
   "/crm/leads",
   "/crm/activities",
+  "/crm/dialer",
   "/crm/inbox",
 ];
 
@@ -109,6 +118,8 @@ export const CRMLayout = () => {
   const [staffRole, setStaffRole] = useState<string | null>(null);
   const [staffName, setStaffName] = useState<string | null>(null);
   const [staffId, setStaffId] = useState<string | null>(null);
+  const [tenantId, setTenantId] = useState<string | null>(null);
+  const [dialerOnly, setDialerOnly] = useState(false);
   const [staffAvatarUrl, setStaffAvatarUrl] = useState<string | null>(null);
   const [selectedOrigin, setSelectedOrigin] = useState<string | null>(null);
   const [selectedPipeline, setSelectedPipeline] = useState<string | null>(null);
@@ -131,10 +142,14 @@ export const CRMLayout = () => {
 
         const { data: staff, error: staffError } = await supabase
           .from("onboarding_staff")
-          .select("id, role, name, avatar_url")
+          .select("id, role, name, avatar_url, tenant_id, dialer_only")
           .eq("user_id", user.id)
           .eq("is_active", true)
           .maybeSingle();
+
+        // Tenant do usuário (cliente do discador). NULL = staff UNV/owner.
+        setTenantId(staff?.tenant_id ?? null);
+        setDialerOnly(!!(staff as any)?.dialer_only);
 
         if (!staff) {
           navigate("/onboarding-tasks");
@@ -185,6 +200,13 @@ export const CRMLayout = () => {
     checkAccess();
   }, [navigate]);
 
+  // Cliente "só discador": trava em /crm/dialer.
+  useEffect(() => {
+    if (dialerOnly && hasAccess && !location.pathname.startsWith("/crm/dialer")) {
+      navigate("/crm/dialer", { replace: true });
+    }
+  }, [dialerOnly, hasAccess, location.pathname, navigate]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -196,9 +218,15 @@ export const CRMLayout = () => {
   if (!hasAccess) return null;
 
   const isAdmin = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
+  // Configurações do CRM: master/admin e head comercial (gerencia funis,
+  // metas, automações e distribuição do próprio time).
+  const canSettings = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
   const isMaster = staffRole === "master";
   const initials = staffName?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "U";
-  const navTabs = getNavTabs(staffRole);
+  // Cliente "só discador": vê apenas a aba Discador.
+  const navTabs = dialerOnly
+    ? [{ title: "Discador", href: "/crm/dialer", icon: Phone }]
+    : getNavTabs(staffRole);
 
   const isTabActive = (href: string) => {
     if (href === "/crm/reports") {
@@ -220,7 +248,9 @@ export const CRMLayout = () => {
       staffRole,
       staffName,
       staffId,
+      tenantId,
       isAdmin,
+      canSettings,
       isMaster,
       selectedOrigin,
       setSelectedOrigin,
@@ -229,7 +259,7 @@ export const CRMLayout = () => {
     }}>
       <div
         className={cn(
-          "bg-background flex flex-col",
+          "crm-app bg-background flex flex-col",
           lockViewportHeight ? "h-dvh overflow-hidden" : "min-h-screen",
         )}
       >
@@ -274,7 +304,7 @@ export const CRMLayout = () => {
                         </Link>
                       );
                     })}
-                    {isAdmin && (
+                    {canSettings && (
                       <Link
                         to="/crm/settings"
                         onClick={() => setMobileMenuOpen(false)}
@@ -323,7 +353,8 @@ export const CRMLayout = () => {
                 );
               })}
 
-              {/* Mais dropdown */}
+              {/* Mais dropdown — escondido para cliente "só discador" */}
+              {!dialerOnly && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -351,7 +382,32 @@ export const CRMLayout = () => {
                       </DropdownMenuItem>
                     );
                   })}
-                  {isAdmin && (
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <a
+                      href="https://unv-closer-install.pages.dev/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4 text-muted-foreground" />
+                      Baixar Closer Copilot
+                    </a>
+                  </DropdownMenuItem>
+                  {canSettings && (
+                    <DropdownMenuItem asChild>
+                      <a
+                        href="https://unv-closer-gestor.pages.dev/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2"
+                      >
+                        <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                        Painel do Gestor (Copilot)
+                      </a>
+                    </DropdownMenuItem>
+                  )}
+                  {canSettings && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
@@ -380,6 +436,7 @@ export const CRMLayout = () => {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
+              )}
             </nav>
 
             {/* Right Actions */}
@@ -416,7 +473,7 @@ export const CRMLayout = () => {
                       Conta
                     </Link>
                   </DropdownMenuItem>
-                  {isAdmin && (
+                  {canSettings && (
                     <DropdownMenuItem asChild>
                       <Link to="/crm/settings" className="flex items-center gap-2">
                         <Settings className="h-4 w-4" />
@@ -499,7 +556,9 @@ export const CRMLayout = () => {
             "flex-1 min-h-0",
              lockViewportHeight ? "overflow-hidden" : "overflow-auto"
           )}>
-            <Outlet context={{ staffRole, isAdmin, staffId }} />
+            <CallDockProvider staffId={staffId} tenantId={tenantId}>
+              <Outlet context={{ staffRole, isAdmin, canSettings, staffId }} />
+            </CallDockProvider>
           </main>
         </div>
       </div>

@@ -1,17 +1,22 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
-  Building2, Globe, Phone, MapPin, User, Briefcase, Instagram,
+  Building2, Globe, Phone, PhoneCall, MapPin, User, Briefcase, Instagram,
   RefreshCw, Thermometer, Target, AlertTriangle, TrendingUp,
   Calendar, Clock, CheckCircle, XCircle, Tag, StickyNote,
+  Pencil, Check, ExternalLink,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import type { LeadSummaryData } from "./useLeadSummary";
+import { useCallDock } from "@/components/crm/call/CallDockProvider";
 
 interface Props {
   data: LeadSummaryData | null;
@@ -29,6 +34,7 @@ export const LeadSummaryOverview = ({ data, loading, onRegenerate }: Props) => {
   );
 
   const { ai, lead, journey, meetings, activities } = data;
+  const { startCall } = useCallDock();
   const tempIcon = ai?.temperature === "hot" ? "🔥" : ai?.temperature === "warm" ? "🌤️" : "❄️";
   const tempLabel = ai?.temperature === "hot" ? "Quente" : ai?.temperature === "warm" ? "Morno" : "Frio";
   const tempColor = ai?.temperature === "hot"
@@ -96,9 +102,10 @@ export const LeadSummaryOverview = ({ data, loading, onRegenerate }: Props) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <InfoCard icon={Building2} label="Empresa" value={lead.company || lead.name} />
             <InfoCard icon={Briefcase} label="Segmento" value={lead.segment} />
-            {lead.trade_name && <InfoCard icon={Instagram} label="Instagram" value={`@${lead.trade_name.replace('@', '')}`} link={`https://instagram.com/${lead.trade_name.replace('@', '')}`} />}
+            <InstagramCard leadId={lead.id} initialHandle={lead.instagram || lead.trade_name} />
+            <PartnerCard leadId={lead.id} manualValue={lead.has_partner} aiValue={ai?.qualification?.has_partner} />
             <InfoCard icon={Globe} label="Website" value={lead.email} />
-            <InfoCard icon={Phone} label="Telefone" value={lead.phone} link={lead.phone ? `tel:${lead.phone}` : undefined} />
+            <InfoCard icon={Phone} label="Telefone" value={lead.phone} onCall={lead.phone ? () => startCall({ id: lead.id, name: lead.company || lead.name, phone: lead.phone }) : undefined} />
             <InfoCard icon={MapPin} label="Localização" value={[lead.city, lead.state].filter(Boolean).join("/")} />
             <InfoCard icon={Briefcase} label="Porte" value={lead.employee_count} />
             <InfoCard icon={User} label="Responsável" value={lead.name} />
@@ -119,6 +126,64 @@ export const LeadSummaryOverview = ({ data, loading, onRegenerate }: Props) => {
           <p className="text-sm text-foreground leading-relaxed">{ai?.company_summary || "Não foi possível gerar o resumo."}</p>
         </CardContent>
       </Card>
+
+      {/* Section 2.1: Qualificação (playbook) — extraída de WhatsApp, ligações e notas */}
+      {ai?.qualification && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-primary" />
+              Qualificação do Lead
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Extraída automaticamente das conversas de WhatsApp, ligações do discador e observações.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                { key: "budget", label: "Budget (disponibilidade pra investir)" },
+                { key: "revenue", label: "Faturamento" },
+                { key: "niche", label: "Nicho" },
+                { key: "pains", label: "Dores" },
+                { key: "desires", label: "Desejos" },
+                { key: "urgency", label: "Urgência" },
+                { key: "company_context", label: "Contexto da empresa" },
+                { key: "previous_attempts", label: "Já tentou algo pra resolver" },
+              ].map(({ key, label }) => {
+                const q = ai.qualification?.[key];
+                const sourceLabel: Record<string, string> = {
+                  whatsapp: "WhatsApp", ligacao: "Ligação", nota: "Nota", reuniao: "Reunião", scanner: "Scanner",
+                };
+                return (
+                  <div key={key} className="rounded-lg border border-border/60 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">{label}</p>
+                      {q?.source && (
+                        <Badge variant="secondary" className="text-[9px] h-4 px-1.5 shrink-0">
+                          {sourceLabel[q.source] || q.source}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className={cn("text-sm mt-1 leading-relaxed", q?.value ? "text-foreground" : "text-muted-foreground/60 italic")}>
+                      {q?.value || "Não descoberto ainda"}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+            {Array.isArray(ai.qualification?.missing) && ai.qualification.missing.length > 0 && (
+              <div className="rounded-lg border border-amber-300/50 dark:border-amber-700/40 bg-amber-50/60 dark:bg-amber-950/20 p-3">
+                <p className="text-[10px] uppercase tracking-wide font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                  <AlertTriangle className="h-3 w-3" />
+                  Falta descobrir
+                </p>
+                <p className="text-sm mt-1 text-foreground">{ai.qualification.missing.join(" · ")}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Section 3: Journey */}
       <Card>
@@ -329,7 +394,144 @@ export const LeadSummaryOverview = ({ data, loading, onRegenerate }: Props) => {
   );
 };
 
-function InfoCard({ icon: Icon, label, value, link }: { icon: any; label: string; value: string | null | undefined; link?: string }) {
+/** Campo Sócio: valor manual manda; sem manual, usa o que a IA extraiu das
+ * conversas (badge "IA"). Botões Sim/Não pra confirmar/corrigir na mão. */
+function PartnerCard({ leadId, manualValue, aiValue }: {
+  leadId: string;
+  manualValue: boolean | null | undefined;
+  aiValue?: { value?: boolean | null; detail?: string | null } | null;
+}) {
+  const [manual, setManual] = useState<boolean | null>(manualValue ?? null);
+  const [saving, setSaving] = useState(false);
+  const aiDetected = typeof aiValue?.value === "boolean" ? aiValue.value : null;
+  const effective = manual !== null ? manual : aiDetected;
+  const fromAI = manual === null && aiDetected !== null;
+
+  const save = async (v: boolean) => {
+    const next = manual === v ? null : v; // clicar de novo limpa (volta pra IA/—)
+    setSaving(true);
+    const { error } = await supabase.from("crm_leads").update({ has_partner: next }).eq("id", leadId);
+    setSaving(false);
+    if (error) {
+      toast.error("Erro ao salvar");
+      return;
+    }
+    setManual(next);
+  };
+
+  return (
+    <div className={cn("rounded-lg border p-2.5", effective === null && "bg-muted/20")}>
+      <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+        <User className="h-3 w-3" /> Sócio
+        {fromAI && (
+          <Badge variant="secondary" className="text-[8px] h-3.5 px-1 ml-1" title="Detectado pela IA nas conversas — confirme com os botões">
+            IA
+          </Badge>
+        )}
+        <span className="ml-auto flex items-center gap-0.5">
+          <button
+            onClick={() => save(true)}
+            disabled={saving}
+            className={cn(
+              "px-1.5 py-0.5 rounded text-[10px] font-medium border transition-colors",
+              manual === true
+                ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/40"
+                : "text-muted-foreground/60 border-transparent hover:text-foreground hover:border-border"
+            )}
+          >
+            Sim
+          </button>
+          <button
+            onClick={() => save(false)}
+            disabled={saving}
+            className={cn(
+              "px-1.5 py-0.5 rounded text-[10px] font-medium border transition-colors",
+              manual === false
+                ? "bg-red-500/15 text-red-600 border-red-500/40"
+                : "text-muted-foreground/60 border-transparent hover:text-foreground hover:border-border"
+            )}
+          >
+            Não
+          </button>
+        </span>
+      </p>
+      <p className={cn("text-xs mt-0.5 leading-relaxed whitespace-normal break-words", effective === null ? "text-muted-foreground/60" : "font-medium")}>
+        {effective === null ? "—" : effective ? `Tem sócio${aiValue?.detail ? ` — ${aiValue.detail}` : ""}` : "Não tem sócio"}
+      </p>
+    </div>
+  );
+}
+
+/** Campo Instagram: sempre visível, editável no lápis e clicável (abre o perfil). */
+function InstagramCard({ leadId, initialHandle }: { leadId: string; initialHandle: string | null | undefined }) {
+  const clean = (v: string | null | undefined) => (v || "").trim().replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/\/.*$/, "");
+  const [handle, setHandle] = useState(clean(initialHandle));
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(handle);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    const next = clean(draft);
+    setSaving(true);
+    const { error } = await supabase.from("crm_leads").update({ instagram: next || null }).eq("id", leadId);
+    setSaving(false);
+    if (error) {
+      toast.error("Erro ao salvar o Instagram");
+      return;
+    }
+    setHandle(next);
+    setEditing(false);
+    if (next) toast.success("Instagram salvo");
+  };
+
+  return (
+    <div className={cn("rounded-lg border p-2.5", !handle && !editing && "bg-muted/20")}>
+      <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+        <Instagram className="h-3 w-3" /> Instagram
+        {!editing && (
+          <button
+            onClick={() => { setDraft(handle); setEditing(true); }}
+            className="ml-auto text-muted-foreground/60 hover:text-foreground"
+            title="Editar Instagram"
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
+        )}
+      </p>
+      {editing ? (
+        <div className="flex items-center gap-1 mt-1">
+          <span className="text-xs text-muted-foreground">@</span>
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
+            placeholder="perfil"
+            className="flex-1 min-w-0 h-6 text-xs bg-background border border-input rounded px-1.5 outline-none focus:ring-1 focus:ring-ring"
+          />
+          <button onClick={save} disabled={saving} className="shrink-0 text-emerald-600 hover:text-emerald-500" title="Salvar">
+            <Check className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ) : handle ? (
+        <a
+          href={`https://instagram.com/${handle}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-primary hover:underline mt-0.5 flex items-center gap-1 truncate"
+          title={`Abrir instagram.com/${handle}`}
+        >
+          <span className="truncate">@{handle}</span>
+          <ExternalLink className="h-3 w-3 shrink-0" />
+        </a>
+      ) : (
+        <p className="text-xs text-muted-foreground/60 mt-0.5">—</p>
+      )}
+    </div>
+  );
+}
+
+function InfoCard({ icon: Icon, label, value, link, onCall }: { icon: any; label: string; value: string | null | undefined; link?: string; onCall?: () => void }) {
   if (!value) return (
     <div className="rounded-lg border p-2.5 bg-muted/20">
       <p className="text-[10px] text-muted-foreground">{label}</p>
@@ -341,7 +543,14 @@ function InfoCard({ icon: Icon, label, value, link }: { icon: any; label: string
       <p className="text-[10px] text-muted-foreground flex items-center gap-1">
         <Icon className="h-3 w-3" /> {label}
       </p>
-      {link ? (
+      {onCall ? (
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="text-xs font-medium truncate flex-1">{value}</span>
+          <button onClick={onCall} title="Ligar agora" className="shrink-0 inline-flex items-center gap-1 rounded-md bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25 px-1.5 py-0.5 text-[11px] font-medium">
+            <PhoneCall className="h-3 w-3" /> Ligar
+          </button>
+        </div>
+      ) : link ? (
         <a href={link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-0.5 block truncate">
           {value}
         </a>

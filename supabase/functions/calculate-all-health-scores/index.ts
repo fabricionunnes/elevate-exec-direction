@@ -15,11 +15,11 @@ interface HealthScoreWeights {
 }
 
 const DEFAULT_WEIGHTS: HealthScoreWeights = {
-  satisfaction_weight: 20,
-  goals_weight: 30, // Increased weight for goals
-  commercial_weight: 15,
-  engagement_weight: 20, // Increased weight for engagement
-  support_weight: 10,
+  satisfaction_weight: 15,
+  goals_weight: 35, // RESULTADO é o que mais pesa
+  commercial_weight: 10,
+  engagement_weight: 30, // engajamento real: WhatsApp (2 grupos) + reuniões + entrega
+  support_weight: 5,
   trend_weight: 5,
 };
 
@@ -163,6 +163,17 @@ interface ScoreDetails {
   daysSinceLastAccess: number;
   clientActivityCount: number;
   clientActivityBonus: number;
+  // WhatsApp (grupos de gestão + vendedores, via client_whatsapp_signals)
+  whatsappMsgs7d: number;
+  whatsappRag: string | null;
+  whatsappBonus: number;
+  daysSinceLastWhatsapp: number;
+  // Entrega da UNV (relatório do que foi feito)
+  documentedMeetings: number;
+  internalTasksDone30d: number;
+  deliveryBonus: number;
+  // Piso por resultado (batendo meta não fica vermelho)
+  resultFloor: number;
 }
 
 async function calculateProjectHealthScore(
@@ -196,6 +207,14 @@ async function calculateProjectHealthScore(
     daysSinceLastAccess: 60,
     clientActivityCount: 0,
     clientActivityBonus: 0,
+    whatsappMsgs7d: 0,
+    whatsappRag: null,
+    whatsappBonus: 0,
+    daysSinceLastWhatsapp: 999,
+    documentedMeetings: 0,
+    internalTasksDone30d: 0,
+    deliveryBonus: 0,
+    resultFloor: 0,
   };
 
   // Get weights for this project
@@ -331,26 +350,26 @@ async function calculateProjectHealthScore(
             goalsScore = (projectionPercent / 50) * 30;
           }
         } else {
-          // Has goals but NO KPI ENTRIES this month
+          // Tem meta mas NENHUM lançamento de KPI no mês: falta de dado,
+          // não falta de resultado — nota baixa-média, sem massacrar
           details.hasKpiEntries = false;
-          goalsScore = 10; // Very low score
-          details.noKpiEntriesPenalty = 40;
+          goalsScore = 35;
+          details.noKpiEntriesPenalty = 15;
         }
       } else {
-        // Has KPIs but target is 0
+        // Tem KPI mas meta 0 = cadastro incompleto → neutro (problema
+        // interno de cadastro, tratado no Painel Saúde do Cadastro)
         details.hasGoalsConfigured = false;
-        goalsScore = 20;
-        details.noGoalPenalty = 30;
+        goalsScore = 50;
       }
     } else {
-      // NO GOALS CONFIGURED AT ALL
+      // Sem KPI configurado: tenta o fallback abaixo; se nada, neutro
       details.hasGoalsConfigured = false;
       goalsScore = 15;
-      details.noGoalPenalty = 35;
     }
   } else {
     // No company linked
-    goalsScore = 25;
+    goalsScore = 50;
   }
   
   // Fallback to legacy monthly_goals if still low
@@ -367,6 +386,7 @@ async function calculateProjectHealthScore(
       const goalsWithTargets = goalsData.filter((g: any) => g.sales_target && g.sales_target > 0);
       if (goalsWithTargets.length > 0) {
         details.hasGoalsConfigured = true;
+        details.hasKpiEntries = goalsWithTargets.some((g: any) => (g.sales_result || 0) > 0);
         const avgAchievement =
           goalsWithTargets.reduce((sum: number, g: any) => {
             const achievement = ((g.sales_result || 0) / g.sales_target) * 100;
@@ -376,6 +396,12 @@ async function calculateProjectHealthScore(
         details.goalProjection = avgAchievement;
       }
     }
+  }
+
+  // Sem meta em lugar nenhum (nem KPI nem legado): NEUTRO — falta de
+  // cadastro não é falta de resultado
+  if (!details.hasGoalsConfigured && goalsScore < 50) {
+    goalsScore = 50;
   }
 
   // 3. COMMERCIAL SCORE
@@ -419,6 +445,13 @@ async function calculateProjectHealthScore(
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   if (tasks && tasks.length > 0) {
+    // ENTREGA DA UNV: ações internas concluídas nos últimos 30 dias (o
+    // "relatório do que foi feito" — trabalho entregue conta a favor)
+    details.internalTasksDone30d = tasks.filter(
+      (t: any) => t.is_internal && t.status === "completed" && t.completed_at && new Date(t.completed_at) >= thirtyDaysAgo
+    ).length;
+    details.deliveryBonus = Math.min(12, details.internalTasksDone30d * 2);
+
     // Filter out internal tasks for engagement calculation
     const clientTasks = tasks.filter((t: any) => !t.is_internal);
     const totalTasks = clientTasks.length || 1;
@@ -460,27 +493,73 @@ async function calculateProjectHealthScore(
     }
   }
 
-  // Get meetings data
+  // Reuniões dos últimos 30 dias. ATENÇÃO: a tabela NÃO tem coluna "status"
+  // (a versão antiga selecionava "status", a query falhava silenciosamente e
+  // o bônus de reunião NUNCA contava). Realizada = data no passado e sem no-show.
   const { data: meetings } = await supabase
     .from("onboarding_meeting_notes")
-    .select("meeting_date, status")
+    .select("meeting_date, is_no_show, is_internal, transcript, notes, live_notes")
     .eq("project_id", projectId)
     .gte("meeting_date", thirtyDaysAgo.toISOString());
 
   if (meetings && meetings.length > 0) {
-    const completedMeetings = meetings.filter((m: any) => m.status === "completed" || m.status === "concluída");
-    details.meetingsCount = completedMeetings.length;
-    
-    // Bonus for meetings: +5 points per meeting in last 30 days (max +15)
-    details.meetingBonus = Math.min(15, completedMeetings.length * 5);
-    
-    // Days since last meeting
-    if (completedMeetings.length > 0) {
-      const lastMeetingDate = completedMeetings
+    const heldMeetings = meetings.filter(
+      (m: any) => !m.is_no_show && m.meeting_date && new Date(m.meeting_date) <= today
+    );
+    const clientMeetings = heldMeetings.filter((m: any) => !m.is_internal);
+    details.meetingsCount = clientMeetings.length;
+
+    // Reunião com o cliente: +6 cada (max +18)
+    details.meetingBonus = Math.min(18, clientMeetings.length * 6);
+
+    // Reunião DOCUMENTADA (transcrição ou ata/notas = trabalho feito e
+    // registrado): +3 cada (max +12)
+    const documented = heldMeetings.filter(
+      (m: any) =>
+        (m.transcript && String(m.transcript).length > 200) ||
+        (m.notes && String(m.notes).length > 80) ||
+        (m.live_notes && String(m.live_notes).length > 80)
+    );
+    details.documentedMeetings = documented.length;
+    details.meetingBonus += Math.min(12, documented.length * 3);
+
+    // Days since last meeting (qualquer reunião realizada, inclusive interna)
+    if (heldMeetings.length > 0) {
+      const lastMeetingDate = heldMeetings
         .map((m: any) => new Date(m.meeting_date))
         .sort((a: Date, b: Date) => b.getTime() - a.getTime())[0];
-      
+
       details.daysSinceLastMeeting = Math.floor((today.getTime() - lastMeetingDate.getTime()) / (1000 * 60 * 60 * 24));
+    }
+  }
+
+  // ENGAJAMENTO NO WHATSAPP — grupos de gestão E de vendedores (o sinal
+  // client_whatsapp_signals soma TODOS os grupos da empresa, atualizado
+  // diariamente a partir do sistema do Marcelo)
+  if (companyId) {
+    const { data: wa } = await supabase
+      .from("client_whatsapp_signals")
+      .select("msgs_7d, last_message_at, rag")
+      .eq("company_id", companyId)
+      .single();
+
+    if (wa) {
+      details.whatsappMsgs7d = wa.msgs_7d || 0;
+      details.whatsappRag = wa.rag;
+      if (wa.last_message_at) {
+        details.daysSinceLastWhatsapp = Math.floor(
+          (today.getTime() - new Date(wa.last_message_at).getTime()) / (1000 * 60 * 60 * 24)
+        );
+      }
+      // Grupo ativo = cliente engajado com a UNV no dia a dia
+      if (wa.rag === "green") details.whatsappBonus = 22;
+      else if (wa.rag === "yellow") details.whatsappBonus = 10;
+      else if (wa.rag === "red") details.whatsappBonus = 0;
+      else details.whatsappBonus = 8; // sem grupo mapeado: neutro leve, não pune
+      // Volume de conversa: +1 a cada 10 msgs na semana (max +8)
+      details.whatsappBonus += Math.min(8, Math.floor((wa.msgs_7d || 0) / 10));
+    } else {
+      details.whatsappBonus = 8; // sem sinal ainda: neutro leve
     }
   }
 
@@ -545,18 +624,35 @@ async function calculateProjectHealthScore(
     details.clientActivityBonus += Math.min(10, highValueActions * 2);
   }
 
-  // Apply engagement bonuses and penalties
-  engagementScore = engagementScore - details.overduePenalty + details.completedTasksBonus + details.meetingBonus + details.clientAccessBonus + details.clientActivityBonus;
+  // Apply engagement bonuses and penalties (overdue mais suave: max -15)
+  details.overduePenalty = Math.min(15, details.overduePenalty);
+  engagementScore =
+    engagementScore -
+    details.overduePenalty +
+    details.completedTasksBonus +
+    details.meetingBonus +
+    details.clientAccessBonus +
+    details.clientActivityBonus +
+    details.whatsappBonus +
+    details.deliveryBonus;
   engagementScore = Math.min(100, Math.max(0, engagementScore));
 
-  // Inactivity penalty based on days since last task
-  if (details.daysSinceLastTask >= 30) {
+  // Inatividade MULTI-SINAL: só penaliza se NADA aconteceu — nem tarefa,
+  // nem reunião, nem mensagem nos grupos de WhatsApp, nem acesso ao portal.
+  // (antes olhava só tarefa: cliente ativo em reunião/grupo levava -25 injusto)
+  const daysSinceAnyActivity = Math.min(
+    details.daysSinceLastTask,
+    details.daysSinceLastMeeting,
+    details.daysSinceLastWhatsapp,
+    details.daysSinceLastAccess
+  );
+  if (daysSinceAnyActivity >= 30) {
     details.inactivityPenalty = 25;
-  } else if (details.daysSinceLastTask >= 21) {
+  } else if (daysSinceAnyActivity >= 21) {
     details.inactivityPenalty = 18;
-  } else if (details.daysSinceLastTask >= 14) {
+  } else if (daysSinceAnyActivity >= 14) {
     details.inactivityPenalty = 12;
-  } else if (details.daysSinceLastTask >= 7) {
+  } else if (daysSinceAnyActivity >= 7) {
     details.inactivityPenalty = 6;
   }
 
@@ -621,14 +717,26 @@ async function calculateProjectHealthScore(
     totalScore = Math.min(100, totalScore + 10);
   }
 
-  // PENALTY: No goals configured (-15 points applied through low goalsScore already)
-  // PENALTY: No KPI entries this month (-10 additional)
+  // PENALTY: No KPI entries this month (-5 — falta de dado, não de resultado)
   if (details.hasGoalsConfigured && !details.hasKpiEntries) {
-    totalScore = Math.max(0, totalScore - 10);
+    totalScore = Math.max(0, totalScore - 5);
   }
 
   // PENALTY: Global inactivity
   totalScore = Math.max(0, totalScore - details.inactivityPenalty);
+
+  // ── RESULTADO MANDA ──────────────────────────────────────────────────
+  // Cliente com meta e projetando bater NUNCA fica vermelho: quem entrega
+  // resultado é saudável por definição, mesmo com cadastro/portal fracos.
+  if (details.hasGoalsConfigured && details.hasKpiEntries) {
+    if (details.goalProjection >= 100 && totalScore < 75) {
+      details.resultFloor = 75 - totalScore;
+      totalScore = 75;
+    } else if (details.goalProjection >= 80 && totalScore < 62) {
+      details.resultFloor = 62 - totalScore;
+      totalScore = 62;
+    }
+  }
 
   // Check for recent renewal (within last 30 days) - DOUBLE the score
   if (companyId) {
@@ -744,8 +852,13 @@ async function calculateProjectHealthScore(
       overdue_tasks_count: details.overdueTasksCount,
       completed_tasks_recent: details.completedTasksRecent,
       meetings_count_30d: details.meetingsCount,
+      documented_meetings_30d: details.documentedMeetings,
+      internal_tasks_done_30d: details.internalTasksDone30d,
+      whatsapp_msgs_7d: details.whatsappMsgs7d,
+      whatsapp_rag: details.whatsappRag,
       days_since_last_task: details.daysSinceLastTask,
       days_since_last_meeting: details.daysSinceLastMeeting,
+      days_since_last_whatsapp: details.daysSinceLastWhatsapp,
       penalties: {
         inactivity: details.inactivityPenalty,
         no_goal: details.noGoalPenalty,
@@ -758,6 +871,9 @@ async function calculateProjectHealthScore(
         completed_tasks: details.completedTasksBonus,
         projection: details.projectionBonus,
         renewal: details.renewalBonus,
+        whatsapp: details.whatsappBonus,
+        delivery: details.deliveryBonus,
+        result_floor: details.resultFloor,
       },
     },
   };

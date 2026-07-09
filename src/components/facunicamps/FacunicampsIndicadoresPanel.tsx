@@ -123,6 +123,24 @@ type ActiveView = "mes-atual" | "historico" | "comparar";
 const CANCELLED_TYPES = ["CANCELADO", "TRANSFERIDO"];
 const EXCLUDED_SELLERS = ["SECRETARIA", "ALUNO"];
 
+// Filtros próprios de cada período no modo Comparar.
+// Campo vazio = herda o filtro geral do painel de filtros.
+type PeriodExtraFilters = {
+  modalidade: string[];
+  vendedor: string[];
+  formaIngresso: string[];
+  excluirVendedor: string[];
+  cancelados: "incluir" | "excluir";
+};
+
+const EMPTY_PERIOD_FILTERS: PeriodExtraFilters = {
+  modalidade: [],
+  vendedor: [],
+  formaIngresso: [],
+  excluirVendedor: [],
+  cancelados: "incluir",
+};
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function fmtBRL(value: number) {
@@ -630,6 +648,107 @@ function MultiSearchableSelect({
   );
 }
 
+// ─── Per-period filter controls (Comparar view) ──────────────────────────────
+
+function PeriodFilterControls({
+  pf,
+  onChange,
+  accent,
+  modalidades,
+  vendedores,
+  formasIngresso,
+}: {
+  pf: PeriodExtraFilters;
+  onChange: (pf: PeriodExtraFilters) => void;
+  accent: "blue" | "purple";
+  modalidades: string[];
+  vendedores: string[];
+  formasIngresso: string[];
+}) {
+  const hasAny =
+    pf.modalidade.length > 0 ||
+    pf.vendedor.length > 0 ||
+    pf.formaIngresso.length > 0 ||
+    pf.excluirVendedor.length > 0 ||
+    pf.cancelados === "excluir";
+  const activeBtn = accent === "blue" ? "bg-blue-500 text-white" : "bg-purple-500 text-white";
+  return (
+    <div className="space-y-1.5 pt-2 border-t border-border/60">
+      <p className="text-[10px] text-muted-foreground/80 leading-tight">Filtros do período (vazio = usa os filtros gerais)</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+        <div>
+          <p className="text-[10px] text-muted-foreground mb-1">Modalidade</p>
+          <MultiSearchableSelect
+            values={pf.modalidade}
+            onValuesChange={(v) => onChange({ ...pf, modalidade: v })}
+            placeholder="Filtro geral"
+            emptyLabel="Usar filtro geral"
+            options={modalidades.map((m) => ({ label: m, value: m }))}
+          />
+        </div>
+        <div>
+          <p className="text-[10px] text-muted-foreground mb-1">Vendedor</p>
+          <MultiSearchableSelect
+            values={pf.vendedor}
+            onValuesChange={(v) => onChange({ ...pf, vendedor: v })}
+            placeholder="Filtro geral"
+            emptyLabel="Usar filtro geral"
+            options={vendedores.map((v) => ({ label: v, value: v }))}
+          />
+        </div>
+        <div>
+          <p className="text-[10px] text-muted-foreground mb-1">Forma de Ingresso</p>
+          <MultiSearchableSelect
+            values={pf.formaIngresso}
+            onValuesChange={(v) => onChange({ ...pf, formaIngresso: v })}
+            placeholder="Filtro geral"
+            emptyLabel="Usar filtro geral"
+            options={formasIngresso.map((f) => ({ label: f, value: f }))}
+          />
+        </div>
+        <div>
+          <p className="text-[10px] text-muted-foreground mb-1">Excluir Vendedor</p>
+          <MultiSearchableSelect
+            values={pf.excluirVendedor}
+            onValuesChange={(v) => onChange({ ...pf, excluirVendedor: v })}
+            placeholder="Filtro geral"
+            emptyLabel="Usar filtro geral"
+            options={vendedores.map((v) => ({ label: v, value: v }))}
+          />
+        </div>
+      </div>
+      <div>
+        <p className="text-[10px] text-muted-foreground mb-1">Cancelados / Transferidos</p>
+        <div className="flex rounded-md overflow-hidden border border-border w-fit">
+          <button
+            type="button"
+            onClick={() => onChange({ ...pf, cancelados: "incluir" })}
+            className={`px-3 py-1 text-[11px] font-medium transition-colors ${pf.cancelados === "incluir" ? activeBtn : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
+          >
+            Incluir
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange({ ...pf, cancelados: "excluir" })}
+            className={`px-3 py-1 text-[11px] font-medium transition-colors ${pf.cancelados === "excluir" ? activeBtn : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
+          >
+            Excluir
+          </button>
+        </div>
+      </div>
+      {hasAny && (
+        <button
+          type="button"
+          onClick={() => onChange({ ...EMPTY_PERIOD_FILTERS })}
+          className="text-[10px] text-muted-foreground underline hover:text-foreground"
+        >
+          Limpar filtros do período
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Term Vision Card (identical to ProjectTermVisionCard but uses spreadsheet data) ──
 
 interface TermVisionProps {
@@ -957,6 +1076,8 @@ export function FacunicampsIndicadoresPanel() {
   const [compareTo1, setCompareTo1] = useState("");
   const [compareFrom2, setCompareFrom2] = useState("");
   const [compareTo2, setCompareTo2] = useState("");
+  const [periodFilters1, setPeriodFilters1] = useState<PeriodExtraFilters>(EMPTY_PERIOD_FILTERS);
+  const [periodFilters2, setPeriodFilters2] = useState<PeriodExtraFilters>(EMPTY_PERIOD_FILTERS);
 
   // Show cancelled toggle (default false = cancelados ocultos)
   const [showCancelled, setShowCancelled] = useState(false);
@@ -1378,8 +1499,21 @@ export function FacunicampsIndicadoresPanel() {
     return result;
   }, [activeSales]);
 
-  const getPeriodStats = (from: string, to: string) => {
-    const rows = activeSales.filter((m) => {
+  const getPeriodStats = (from: string, to: string, pf: PeriodExtraFilters) => {
+    // Filtros próprios do período substituem os gerais campo a campo; vazio herda o geral
+    const effModalidade = pf.modalidade.length > 0 ? pf.modalidade : filterModalidade;
+    const effVendedor = pf.vendedor.length > 0 ? pf.vendedor : filterVendedorAtivo;
+    const effForma = pf.formaIngresso.length > 0 ? pf.formaIngresso : filterFormaIngresso;
+    const effExcluir = pf.excluirVendedor.length > 0 ? pf.excluirVendedor : filterVendedorDesligado;
+    let base = matriculas;
+    if (effModalidade.length > 0) base = base.filter((m) => effModalidade.includes(m.modalidade ?? ""));
+    if (effVendedor.length > 0) base = base.filter((m) => effVendedor.includes(m.vendedor ?? ""));
+    if (effForma.length > 0) base = base.filter((m) => effForma.includes(m.forma_ingresso ?? ""));
+    if (effExcluir.length > 0) base = base.filter((m) => !effExcluir.includes(m.vendedor ?? ""));
+    if (filterDateFrom) base = base.filter((m) => m.data_venda != null && m.data_venda >= filterDateFrom);
+    if (filterDateTo) base = base.filter((m) => m.data_venda != null && m.data_venda <= filterDateTo);
+    if (pf.cancelados === "excluir") base = base.filter((m) => !isCancelled(m));
+    const rows = base.filter((m) => {
       if (!m.data_venda) return false;
       if (from && m.data_venda < from) return false;
       if (to && m.data_venda > to) return false;
@@ -1403,8 +1537,8 @@ export function FacunicampsIndicadoresPanel() {
     return { count, valorTotal, ticketMedio, topCursos, topVendedores };
   };
 
-  const period1Stats = compareFrom1 && compareTo1 ? getPeriodStats(compareFrom1, compareTo1) : null;
-  const period2Stats = compareFrom2 && compareTo2 ? getPeriodStats(compareFrom2, compareTo2) : null;
+  const period1Stats = compareFrom1 && compareTo1 ? getPeriodStats(compareFrom1, compareTo1, periodFilters1) : null;
+  const period2Stats = compareFrom2 && compareTo2 ? getPeriodStats(compareFrom2, compareTo2, periodFilters2) : null;
 
   // ── Current month table data (sortable + searchable) ──────────────────────
 
@@ -1485,7 +1619,12 @@ export function FacunicampsIndicadoresPanel() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-3 sm:space-y-4 overflow-x-hidden">
+    // Painel desenhado pra fundo escuro — escopo `dark` força os tokens do tema
+    // e o fundo escuro independente do tema claro/escuro do Nexus
+    <div
+      className="dark space-y-3 sm:space-y-4 overflow-x-hidden rounded-2xl p-2 sm:p-3"
+      style={{ background: "linear-gradient(160deg, #0a1122 0%, #0e1930 100%)" }}
+    >
       {/* Header */}
       <div className="rounded-xl p-3 sm:p-4 space-y-2" style={{ background: "#0D2B5E" }}>
         {/* Row 1: brand + month selectors + actions */}
@@ -1654,7 +1793,7 @@ export function FacunicampsIndicadoresPanel() {
           </div>
           {/* Cancelled info — always included */}
           <div className="flex items-center gap-2 pt-1 border-t border-border">
-            <span className="text-xs text-amber-400/70">⚠ Cancelados e transferidos são sempre contabilizados nas métricas.</span>
+            <span className="text-xs text-amber-400/70">⚠ Cancelados e transferidos são sempre contabilizados nas métricas. Na aba Comparar, cada período tem filtros próprios e permite excluí-los.</span>
           </div>
           <div className="flex justify-between items-center">
             <Button size="sm" variant="ghost" className="text-xs" onClick={() => {
@@ -2216,31 +2355,39 @@ export function FacunicampsIndicadoresPanel() {
               <p className="text-[10px] sm:text-xs font-bold text-blue-400 uppercase tracking-widest">Período 1</p>
               <div className="space-y-1.5">
                 <div>
-                  <p className="text-[10px] text-white/50 mb-1">De</p>
+                  <p className="text-[10px] text-muted-foreground mb-1">De</p>
                   <input
                     type="date"
-                    className="w-full rounded-md border border-white/20 bg-white/10 px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-                    style={{ colorScheme: "dark", minHeight: 34 }}
+                    className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    style={{ minHeight: 34 }}
                     value={compareFrom1}
                     onChange={(e) => setCompareFrom1(e.target.value)}
                   />
                 </div>
                 <div>
-                  <p className="text-[10px] text-white/50 mb-1">Até</p>
+                  <p className="text-[10px] text-muted-foreground mb-1">Até</p>
                   <input
                     type="date"
-                    className="w-full rounded-md border border-white/20 bg-white/10 px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-                    style={{ colorScheme: "dark", minHeight: 34 }}
+                    className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    style={{ minHeight: 34 }}
                     value={compareTo1}
                     onChange={(e) => setCompareTo1(e.target.value)}
                   />
                 </div>
               </div>
               {compareFrom1 && compareTo1 && (
-                <p className="text-[10px] text-blue-300/70 leading-tight">
+                <p className="text-[10px] text-blue-600/80 dark:text-blue-300/70 leading-tight">
                   {format(parseISO(compareFrom1), "dd/MM/yy")} → {format(parseISO(compareTo1), "dd/MM/yy")}
                 </p>
               )}
+              <PeriodFilterControls
+                pf={periodFilters1}
+                onChange={setPeriodFilters1}
+                accent="blue"
+                modalidades={uniqueModalidades}
+                vendedores={uniqueVendedores}
+                formasIngresso={uniqueFormasIngresso}
+              />
             </div>
 
             {/* Período 2 */}
@@ -2248,31 +2395,39 @@ export function FacunicampsIndicadoresPanel() {
               <p className="text-[10px] sm:text-xs font-bold text-purple-400 uppercase tracking-widest">Período 2</p>
               <div className="space-y-1.5">
                 <div>
-                  <p className="text-[10px] text-white/50 mb-1">De</p>
+                  <p className="text-[10px] text-muted-foreground mb-1">De</p>
                   <input
                     type="date"
-                    className="w-full rounded-md border border-white/20 bg-white/10 px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-400"
-                    style={{ colorScheme: "dark", minHeight: 34 }}
+                    className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-purple-400"
+                    style={{ minHeight: 34 }}
                     value={compareFrom2}
                     onChange={(e) => setCompareFrom2(e.target.value)}
                   />
                 </div>
                 <div>
-                  <p className="text-[10px] text-white/50 mb-1">Até</p>
+                  <p className="text-[10px] text-muted-foreground mb-1">Até</p>
                   <input
                     type="date"
-                    className="w-full rounded-md border border-white/20 bg-white/10 px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-400"
-                    style={{ colorScheme: "dark", minHeight: 34 }}
+                    className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-purple-400"
+                    style={{ minHeight: 34 }}
                     value={compareTo2}
                     onChange={(e) => setCompareTo2(e.target.value)}
                   />
                 </div>
               </div>
               {compareFrom2 && compareTo2 && (
-                <p className="text-[10px] text-purple-300/70 leading-tight">
+                <p className="text-[10px] text-purple-600/80 dark:text-purple-300/70 leading-tight">
                   {format(parseISO(compareFrom2), "dd/MM/yy")} → {format(parseISO(compareTo2), "dd/MM/yy")}
                 </p>
               )}
+              <PeriodFilterControls
+                pf={periodFilters2}
+                onChange={setPeriodFilters2}
+                accent="purple"
+                modalidades={uniqueModalidades}
+                vendedores={uniqueVendedores}
+                formasIngresso={uniqueFormasIngresso}
+              />
             </div>
           </div>
 
@@ -2343,6 +2498,12 @@ export function FacunicampsIndicadoresPanel() {
                     <div className="px-3 sm:px-5 py-3 border-b border-blue-500/20">
                       <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-0.5">Período 1</p>
                       <p className="text-sm font-semibold text-white">{compareFrom1 && compareTo1 ? `${format(parseISO(compareFrom1), "dd/MM/yy")} → ${format(parseISO(compareTo1), "dd/MM/yy")}` : "—"}</p>
+                      {periodFilters1.cancelados === "excluir" && (
+                        <p className="text-[10px] text-amber-300/80 mt-0.5">sem cancelados/transferidos</p>
+                      )}
+                      {(periodFilters1.modalidade.length > 0 || periodFilters1.vendedor.length > 0 || periodFilters1.formaIngresso.length > 0 || periodFilters1.excluirVendedor.length > 0) && (
+                        <p className="text-[10px] text-blue-300/70 mt-0.5">filtros próprios ativos</p>
+                      )}
                     </div>
                     <div className="px-3 sm:px-5 py-3 space-y-3">
                       <CompareMetric label="Qtde. Vendas" value={period1Stats.count} other={period2Stats.count} />
@@ -2374,6 +2535,12 @@ export function FacunicampsIndicadoresPanel() {
                     <div className="px-3 sm:px-5 py-3 border-b border-purple-500/20">
                       <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-0.5">Período 2</p>
                       <p className="text-sm font-semibold text-white">{compareFrom2 && compareTo2 ? `${format(parseISO(compareFrom2), "dd/MM/yy")} → ${format(parseISO(compareTo2), "dd/MM/yy")}` : "—"}</p>
+                      {periodFilters2.cancelados === "excluir" && (
+                        <p className="text-[10px] text-amber-300/80 mt-0.5">sem cancelados/transferidos</p>
+                      )}
+                      {(periodFilters2.modalidade.length > 0 || periodFilters2.vendedor.length > 0 || periodFilters2.formaIngresso.length > 0 || periodFilters2.excluirVendedor.length > 0) && (
+                        <p className="text-[10px] text-purple-300/70 mt-0.5">filtros próprios ativos</p>
+                      )}
                     </div>
                     <div className="px-3 sm:px-5 py-3 space-y-3">
                       <CompareMetric label="Qtde. Vendas" value={period2Stats.count} other={period1Stats.count} />
@@ -2443,9 +2610,9 @@ export function FacunicampsIndicadoresPanel() {
               </div>
             );
           })() : (
-            <div className="rounded-xl border border-white/10 bg-white/5 p-10 text-center">
-              <p className="text-white/40 text-sm">Defina o intervalo de datas dos dois períodos para comparar</p>
-              <p className="text-white/20 text-xs mt-1">Ex: Período 1 = 01/03/2026 → 31/03/2026 · Período 2 = 01/04/2026 → 30/04/2026</p>
+            <div className="rounded-xl border border-border/60 bg-muted/30 p-10 text-center">
+              <p className="text-muted-foreground text-sm">Defina o intervalo de datas dos dois períodos para comparar</p>
+              <p className="text-muted-foreground/60 text-xs mt-1">Ex: Período 1 = 01/03/2026 → 31/03/2026 · Período 2 = 01/04/2026 → 30/04/2026</p>
             </div>
           )}
         </div>

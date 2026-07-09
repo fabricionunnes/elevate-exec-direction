@@ -20,6 +20,16 @@ interface SalesHeatmapChartsProps {
 interface EntryRow {
   entry_date: string;
   value: number;
+  salesperson_id: string | null;
+  unit_id: string | null;
+  team_id: string | null;
+}
+
+interface SalespersonRow {
+  id: string;
+  unit_id: string | null;
+  team_id: string | null;
+  sector_id: string | null;
 }
 
 const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -63,7 +73,8 @@ export const SalesHeatmapCharts = ({
   titleSuffix,
 }: SalesHeatmapChartsProps) => {
   const [loading, setLoading] = useState(true);
-  const [entries, setEntries] = useState<EntryRow[]>([]);
+  const [allEntries, setAllEntries] = useState<EntryRow[]>([]);
+  const [salespeopleMap, setSalespeopleMap] = useState<Record<string, SalespersonRow>>({});
 
   useEffect(() => {
     const fetchEntries = async () => {
@@ -75,7 +86,7 @@ export const SalesHeatmapCharts = ({
 
         let query = supabase
           .from("kpi_entries")
-          .select("entry_date, value")
+          .select("entry_date, value, salesperson_id, unit_id, team_id")
           .eq("company_id", companyId)
           .gte("entry_date", format(startDate, "yyyy-MM-dd"))
           .lte("entry_date", format(endDate, "yyyy-MM-dd"));
@@ -86,26 +97,49 @@ export const SalesHeatmapCharts = ({
         if (selectedSalesperson && selectedSalesperson !== "all") {
           query = query.eq("salesperson_id", selectedSalesperson);
         }
-        if (selectedUnit && selectedUnit !== "all") {
-          query = query.eq("unit_id", selectedUnit);
-        }
-        if (selectedTeam && selectedTeam !== "all") {
-          query = query.eq("team_id", selectedTeam);
-        }
 
-        const { data, error } = await query;
+        const [{ data, error }, { data: spData }] = await Promise.all([
+          query,
+          supabase
+            .from("company_salespeople")
+            .select("id, unit_id, team_id, sector_id")
+            .eq("company_id", companyId),
+        ]);
         if (error) throw error;
-        setEntries((data || []) as EntryRow[]);
+        const map: Record<string, SalespersonRow> = {};
+        (spData || []).forEach((sp: SalespersonRow) => {
+          map[sp.id] = sp;
+        });
+        setSalespeopleMap(map);
+        setAllEntries((data || []) as EntryRow[]);
       } catch (err) {
         console.error("Error fetching heatmap data:", err);
-        setEntries([]);
+        setAllEntries([]);
       } finally {
         setLoading(false);
       }
     };
 
     if (companyId) fetchEntries();
-  }, [companyId, kpiIds, selectedSalesperson, selectedUnit, selectedTeam, selectedSector]);
+  }, [companyId, kpiIds, selectedSalesperson]);
+
+  // Filtro de unidade/time/setor resolvido pelo cadastro do vendedor:
+  // lançamentos antigos não gravavam unit_id/team_id na entry
+  const entries = useMemo(() => {
+    return allEntries.filter((e) => {
+      const sp = e.salesperson_id ? salespeopleMap[e.salesperson_id] : undefined;
+      if (selectedUnit && selectedUnit !== "all") {
+        if (e.unit_id !== selectedUnit && sp?.unit_id !== selectedUnit) return false;
+      }
+      if (selectedTeam && selectedTeam !== "all") {
+        if (e.team_id !== selectedTeam && sp?.team_id !== selectedTeam) return false;
+      }
+      if (selectedSector && selectedSector !== "all") {
+        if (sp?.sector_id !== selectedSector) return false;
+      }
+      return true;
+    });
+  }, [allEntries, salespeopleMap, selectedUnit, selectedTeam, selectedSector]);
 
   // Day of week aggregation
   const weekdayData = useMemo(() => {
