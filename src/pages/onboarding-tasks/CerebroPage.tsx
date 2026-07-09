@@ -25,12 +25,13 @@ interface BrainData {
   termometro?: "seguro" | "atencao" | "risco_alto";
   termometro_motivo?: string;
   relacionamento?: string;
-  promessas?: { quem?: string; o_que?: string; status?: string; evidencia?: string }[];
-  riscos?: { sinal?: string; evidencia?: string; gravidade?: string }[];
-  proximas_acoes?: { acao?: string; motivo?: string; urgencia?: string }[];
-  vitorias_recentes?: string[];
-  dores_atuais?: string[];
-  citacoes_chave?: string[];
+  // shapes variam entre gerações da IA — tratar tudo como any e renderizar via txt()/asArr()
+  promessas?: any[];
+  riscos?: any[];
+  proximas_acoes?: any[];
+  vitorias_recentes?: any[];
+  dores_atuais?: any[];
+  citacoes_chave?: any[];
 }
 interface BrainRow {
   project_id: string;
@@ -52,9 +53,20 @@ type TermoKey = keyof typeof TERMO;
 
 const termoOf = (b: BrainData): TermoKey =>
   (b.termometro && b.termometro in TERMO ? b.termometro : "atencao") as TermoKey;
-const brokenPromises = (b: BrainData) => (b.promessas || []).filter((p) => (p.status || "").toLowerCase().includes("venc")).length;
-const highRisks = (b: BrainData) => (b.riscos || []).filter((r) => (r.gravidade || "").toLowerCase() === "alta").length;
-const urgentActions = (b: BrainData) => (b.proximas_acoes || []).filter((a) => (a.urgencia || "").toLowerCase() === "hoje").length;
+// A IA varia o shape (string OU objeto) — nunca renderizar valor cru.
+const asArr = (v: unknown): any[] => (Array.isArray(v) ? v : []);
+const txt = (v: unknown): string => {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "object") {
+    const o = v as Record<string, any>;
+    return o.frase || o.texto || o.o_que || o.sinal || o.acao || o.descricao || JSON.stringify(o);
+  }
+  return String(v);
+};
+const brokenPromises = (b: BrainData) => asArr(b.promessas).filter((p) => txt(p?.status).toLowerCase().includes("venc")).length;
+const highRisks = (b: BrainData) => asArr(b.riscos).filter((r) => txt(r?.gravidade).toLowerCase() === "alta").length;
+const urgentActions = (b: BrainData) => asArr(b.proximas_acoes).filter((a) => txt(a?.urgencia).toLowerCase() === "hoje").length;
 const isStale = (r: BrainRow) => Date.now() - new Date(r.generated_at).getTime() > 24 * 3600 * 1000;
 const brl = (v: number) => `R$ ${Math.round(v).toLocaleString("pt-BR")}`;
 
@@ -302,8 +314,15 @@ export default function CerebroPage() {
     load();
   };
 
-  const freshness = (r: BrainRow) =>
-    formatDistanceToNow(parseISO(r.generated_at), { addSuffix: true, locale: ptBR });
+  const freshness = (r: BrainRow) => {
+    try {
+      const d = parseISO(r.generated_at);
+      if (isNaN(d.getTime())) return "—";
+      return formatDistanceToNow(d, { addSuffix: true, locale: ptBR });
+    } catch {
+      return "—";
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -426,7 +445,7 @@ export default function CerebroPage() {
                       <p className="font-semibold text-sm leading-tight">{r.company_name}</p>
                       <Badge variant="outline" className={cn("shrink-0 text-[10px]", TERMO[termo].cls)}>{TERMO[termo].label}</Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{r.brain.momento || "—"}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{txt(r.brain.momento) || "—"}</p>
                     <div className="flex flex-wrap gap-1.5 text-[10px]">
                       {brokenPromises(r.brain) > 0 && <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30">{brokenPromises(r.brain)} promessa(s) vencida(s)</Badge>}
                       {highRisks(r.brain) > 0 && <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30">{highRisks(r.brain)} risco(s) alto(s)</Badge>}
@@ -486,75 +505,90 @@ export default function CerebroPage() {
                 {selected.brain.momento && (
                   <div className="rounded-lg bg-muted/50 p-3">
                     <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Momento</p>
-                    <p>{selected.brain.momento}</p>
-                    {selected.brain.termometro_motivo && <p className="text-xs text-muted-foreground mt-2"><strong>Termômetro:</strong> {selected.brain.termometro_motivo}</p>}
+                    <p>{txt(selected.brain.momento)}</p>
+                    {selected.brain.termometro_motivo && <p className="text-xs text-muted-foreground mt-2"><strong>Termômetro:</strong> {txt(selected.brain.termometro_motivo)}</p>}
                   </div>
                 )}
 
-                {(selected.brain.promessas?.length || 0) > 0 && (
+                {asArr(selected.brain.promessas).length > 0 && (
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1"><Handshake className="h-3.5 w-3.5" /> Promessas</p>
                     <div className="space-y-1.5">
-                      {selected.brain.promessas!.map((p, i) => (
+                      {asArr(selected.brain.promessas).map((p, i) => (
                         <div key={i} className="rounded-md border p-2 text-xs">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="font-medium">{p.o_que}</span>
-                            <Badge variant="outline" className={cn("text-[9px] shrink-0", (p.status || "").includes("venc") ? "bg-red-500/10 text-red-600 border-red-500/30" : "bg-muted")}>{p.status || "—"} · {p.quem || "?"}</Badge>
+                            <span className="font-medium">{txt(p?.o_que) || txt(p)}</span>
+                            <Badge variant="outline" className={cn("text-[9px] shrink-0", txt(p?.status).includes("venc") ? "bg-red-500/10 text-red-600 border-red-500/30" : "bg-muted")}>{txt(p?.status) || "—"} · {txt(p?.quem) || "?"}</Badge>
                           </div>
-                          {p.evidencia && <p className="text-muted-foreground mt-1">{p.evidencia}</p>}
+                          {p?.evidencia && <p className="text-muted-foreground mt-1">{txt(p.evidencia)}</p>}
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {(selected.brain.riscos?.length || 0) > 0 && (
+                {asArr(selected.brain.riscos).length > 0 && (
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5" /> Riscos</p>
                     <div className="space-y-1.5">
-                      {selected.brain.riscos!.map((r, i) => (
-                        <div key={i} className={cn("rounded-md border p-2 text-xs", (r.gravidade || "") === "alta" && "border-red-500/40 bg-red-500/5")}>
-                          <p className="font-medium">{r.sinal}</p>
-                          {r.evidencia && <p className="text-muted-foreground mt-1">{r.evidencia}</p>}
+                      {asArr(selected.brain.riscos).map((r, i) => (
+                        <div key={i} className={cn("rounded-md border p-2 text-xs", txt(r?.gravidade) === "alta" && "border-red-500/40 bg-red-500/5")}>
+                          <p className="font-medium">{txt(r?.sinal) || txt(r)}</p>
+                          {r?.evidencia && <p className="text-muted-foreground mt-1">{txt(r.evidencia)}</p>}
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {(selected.brain.proximas_acoes?.length || 0) > 0 && (
+                {asArr(selected.brain.proximas_acoes).length > 0 && (
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1"><Target className="h-3.5 w-3.5" /> Próximas ações</p>
                     <div className="space-y-1.5">
-                      {selected.brain.proximas_acoes!.map((a, i) => (
+                      {asArr(selected.brain.proximas_acoes).map((a, i) => (
                         <div key={i} className="rounded-md border p-2 text-xs">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="font-medium">{a.acao}</span>
-                            {a.urgencia && <Badge variant="outline" className={cn("text-[9px] shrink-0", a.urgencia === "hoje" ? "bg-red-500/10 text-red-600 border-red-500/30" : "bg-muted")}>{a.urgencia}</Badge>}
+                            <span className="font-medium">{txt(a?.acao) || txt(a)}</span>
+                            {a?.urgencia && <Badge variant="outline" className={cn("text-[9px] shrink-0", txt(a.urgencia) === "hoje" ? "bg-red-500/10 text-red-600 border-red-500/30" : "bg-muted")}>{txt(a.urgencia)}</Badge>}
                           </div>
-                          {a.motivo && <p className="text-muted-foreground mt-1">{a.motivo}</p>}
+                          {a?.motivo && <p className="text-muted-foreground mt-1">{txt(a.motivo)}</p>}
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {(selected.brain.vitorias_recentes?.length || 0) > 0 && (
+                {asArr(selected.brain.vitorias_recentes).length > 0 && (
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground uppercase mb-1 flex items-center gap-1"><Trophy className="h-3.5 w-3.5" /> Vitórias recentes</p>
-                    <ul className="list-disc pl-4 text-xs space-y-0.5">{selected.brain.vitorias_recentes!.map((v, i) => <li key={i}>{v}</li>)}</ul>
+                    <ul className="list-disc pl-4 text-xs space-y-0.5">{asArr(selected.brain.vitorias_recentes).map((v, i) => <li key={i}>{txt(v)}</li>)}</ul>
                   </div>
                 )}
-                {(selected.brain.dores_atuais?.length || 0) > 0 && (
+                {asArr(selected.brain.dores_atuais).length > 0 && (
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground uppercase mb-1 flex items-center gap-1"><Frown className="h-3.5 w-3.5" /> Dores atuais</p>
-                    <ul className="list-disc pl-4 text-xs space-y-0.5">{selected.brain.dores_atuais!.map((v, i) => <li key={i}>{v}</li>)}</ul>
+                    <ul className="list-disc pl-4 text-xs space-y-0.5">{asArr(selected.brain.dores_atuais).map((v, i) => <li key={i}>{txt(v)}</li>)}</ul>
                   </div>
                 )}
-                {(selected.brain.citacoes_chave?.length || 0) > 0 && (
+                {asArr(selected.brain.citacoes_chave).length > 0 && (
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground uppercase mb-1 flex items-center gap-1"><Quote className="h-3.5 w-3.5" /> Citações-chave</p>
-                    <div className="space-y-1">{selected.brain.citacoes_chave!.map((c, i) => <p key={i} className="text-xs italic text-muted-foreground border-l-2 pl-2">"{c}"</p>)}</div>
+                    <div className="space-y-2">
+                      {asArr(selected.brain.citacoes_chave).map((c, i) => {
+                        const isObj = c && typeof c === "object";
+                        return (
+                          <div key={i} className="border-l-2 pl-2">
+                            <p className="text-xs italic text-muted-foreground">"{txt(c)}"</p>
+                            {isObj && (c.quem || c.quando) && (
+                              <p className="text-[10px] text-muted-foreground/80 mt-0.5">— {txt(c.quem)}{c.quando ? ` · ${txt(c.quando)}` : ""}</p>
+                            )}
+                            {isObj && c.leitura && (
+                              <p className="text-[10px] text-muted-foreground mt-0.5"><strong>Leitura:</strong> {txt(c.leitura)}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
