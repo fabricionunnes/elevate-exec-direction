@@ -117,7 +117,11 @@ export default function ProfileJobApplicationPage() {
       if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage.from("resumes").getPublicUrl(fileName);
 
+      // Gera o id no cliente: o anônimo pode INSERIR mas não LER de volta (RLS),
+      // e precisamos do id pra disparar a análise de aderência automática.
+      const candidateId = crypto.randomUUID();
       const { error: insertError } = await supabase.from("profile_candidates").insert({
+        id: candidateId,
         tenant_id: job.tenant_id,
         job_id: job.id,
         full_name: fullName.trim(),
@@ -132,6 +136,13 @@ export default function ProfileJobApplicationPage() {
         source: "public",
       });
       if (insertError) throw insertError;
+
+      // Análise de aderência AUTOMÁTICA na inscrição (currículo + LinkedIn + vaga).
+      // Fire-and-forget: não bloqueia o candidato; se falhar, o RH ainda tem o
+      // botão "Analisar com IA" no pipeline.
+      supabase.functions
+        .invoke("profile-candidate-analyze", { body: { candidateId } })
+        .catch(() => { /* análise manual segue disponível */ });
 
       setSubmitted(true);
       confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
