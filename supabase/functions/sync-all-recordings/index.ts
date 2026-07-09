@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       .from("onboarding_meeting_notes")
       .select(`
         id, meeting_title, meeting_date, subject, recording_link, transcript, transcript_job_id, is_finalized,
-        notes, project_id, meeting_link, google_event_id, calendar_owner_id, staff_id,
+        notes, project_id, meeting_link, google_event_id, calendar_owner_id, staff_id, transcript_source_file_id,
         project:project_id (id, status, consultant_id)
       `)
       .gte("meeting_date", sixtyDaysAgo)
@@ -279,8 +279,17 @@ Deno.serve(async (req) => {
       return { done: false, text: null };
     };
 
-    // Cada arquivo do Drive só casa com uma reunião
+    // Cada arquivo do Drive só casa com uma reunião — INCLUSIVE entre execuções.
+    // (Bug histórico: o Set começava vazio a cada run e o mesmo arquivo era dado
+    // a reuniões de OUTROS clientes em runs seguintes — transcrição contaminada.)
     const usedFileIds = new Set<string>();
+    for (const m of meetingsData || []) {
+      const rl = (m as { recording_link?: string }).recording_link || "";
+      const idMatch = rl.match(/\/file\/d\/([^/?#]+)/);
+      if (idMatch) usedFileIds.add(idMatch[1]);
+      const tsrc = (m as { transcript_source_file_id?: string }).transcript_source_file_id;
+      if (tsrc) usedFileIds.add(tsrc);
+    }
     const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     // Janela válida: arquivo do Meet é criado no FIM da gravação — nunca antes da reunião começar
     const inWindow = (f: DriveFile, meetingDate: Date): boolean => {
@@ -313,6 +322,29 @@ Deno.serve(async (req) => {
       return owner;
     };
 
+    // Proximidade GLOBAL: o arquivo pertence à reunião mais próxima dele no tempo,
+    // entre TODAS as reuniões da janela (qualquer projeto). Impede uma reunião de
+    // "roubar" a gravação de outro cliente só porque foi processada antes.
+    const allMeetingTimes = (meetingsData || []).map((m) => ({
+      id: m.id as string,
+      time: new Date(m.meeting_date as string).getTime(),
+    }));
+    const closestMeetingCache = new Map<string, string | null>();
+    const closestMeetingTo = (f: DriveFile): string | null => {
+      if (closestMeetingCache.has(f.id)) return closestMeetingCache.get(f.id)!;
+      const fTime = new Date(f.createdTime).getTime();
+      let bestId: string | null = null;
+      let bestDiff = Infinity;
+      for (const { id, time } of allMeetingTimes) {
+        const diff = fTime - time;
+        if (diff < -5 * 60 * 1000 || diff > 12 * 3600 * 1000) continue;
+        const abs = Math.abs(diff);
+        if (abs < bestDiff) { bestDiff = abs; bestId = id; }
+      }
+      closestMeetingCache.set(f.id, bestId);
+      return bestId;
+    };
+
     const pickByProximity = (files: DriveFile[], meetingDate: Date, meetingId: string): DriveFile | null => {
       let best: DriveFile | null = null;
       let bestDiff = Infinity;
@@ -320,6 +352,9 @@ Deno.serve(async (req) => {
         if (usedFileIds.has(f.id)) continue;
         const owner = fileOwner(f);
         if (owner && owner !== meetingId) continue;
+        // sem match de título: só aceita o arquivo se ESTA reunião for a mais
+        // próxima dele no tempo entre todas — senão ele é de outra reunião
+        if (!owner && closestMeetingTo(f) !== meetingId) continue;
         if (!inWindow(f, meetingDate)) continue;
         const diff = Math.abs(new Date(f.createdTime).getTime() - meetingDate.getTime());
         if (diff < bestDiff) { bestDiff = diff; best = f; }
@@ -474,6 +509,8 @@ Deno.serve(async (req) => {
         if (transcriptText || clearJobId) {
           const updates: Record<string, unknown> = {};
           if (transcriptText) updates.transcript = transcriptText;
+          if (transcriptText && transcriptFile) updates.transcript_source_file_id = transcriptFile.id;
+          if (transcriptText && !transcriptFile && recordingFile) updates.transcript_source_file_id = recordingFile.id;
           if (clearJobId) updates.transcript_job_id = null;
           await supabase
             .from("onboarding_meeting_notes")
