@@ -198,7 +198,7 @@ export async function generateProposalPDF({ proposal, leadName, companyName, ser
   metaItem("Preparado para", `${cliente}${detalhe ? "\n" + detalhe : ""}`, M, metaY);
   metaItem("Apresentado por", "Fabrício Nunes\nUNV Holdings", col2, metaY);
   metaItem("Data", hoje, M, metaY + 26);
-  metaItem("Validade da proposta", "15 dias", col2, metaY + 26);
+  metaItem("Validade da proposta", "2 dias", col2, metaY + 26);
 
   setColor([120, 140, 170]); doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
   doc.text("NOVA LIMA · MG — ESTRUTURAÇÃO COMERCIAL PARA PMES", W / 2, H - 12, { align: "center", charSpace: 1 });
