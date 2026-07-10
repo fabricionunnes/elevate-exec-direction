@@ -131,9 +131,50 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
   // Meeting event details for cards
   const [meetingEventDetails, setMeetingEventDetails] = useState<MeetingEventDetail[]>([]);
 
+  // Métricas operacionais (ligações, WhatsApp, perdas, deadline) — agregadas via RPC
+  const [opsMetrics, setOpsMetrics] = useState({
+    ligacoesRealizadas: 0,
+    ligacoesAtendidas: 0,
+    whatsappPessoas: 0,
+    leadsPerdidosSemResposta: 0,
+    deadlineDias: null as number | null,
+  });
+  const [opsLoading, setOpsLoading] = useState(true);
+
   useEffect(() => {
     loadPipelines();
   }, []);
+
+  // Métricas operacionais respondem a período, SDR e funil (agregação no servidor)
+  useEffect(() => {
+    if (!dateRange?.from || !dateRange?.to) return;
+    let alive = true;
+    const loadOpsMetrics = async () => {
+      setOpsLoading(true);
+      const { data, error } = await supabase.rpc("get_presales_operational_metrics", {
+        p_start: dateRange.from!.toISOString(),
+        p_end: dateRange.to!.toISOString(),
+        p_sdr: selectedSDR !== "all" ? selectedSDR : null,
+        p_pipeline: selectedPipeline !== "all" ? selectedPipeline : null,
+      });
+      if (!alive) return;
+      const row = Array.isArray(data) ? data[0] : null;
+      if (error || !row) {
+        setOpsMetrics({ ligacoesRealizadas: 0, ligacoesAtendidas: 0, whatsappPessoas: 0, leadsPerdidosSemResposta: 0, deadlineDias: null });
+      } else {
+        setOpsMetrics({
+          ligacoesRealizadas: Number(row.ligacoes_realizadas) || 0,
+          ligacoesAtendidas: Number(row.ligacoes_atendidas) || 0,
+          whatsappPessoas: Number(row.whatsapp_pessoas) || 0,
+          leadsPerdidosSemResposta: Number(row.leads_perdidos_sem_resposta) || 0,
+          deadlineDias: row.deadline_dias != null ? Number(row.deadline_dias) : null,
+        });
+      }
+      setOpsLoading(false);
+    };
+    loadOpsMetrics();
+    return () => { alive = false; };
+  }, [dateRange?.from?.getTime(), dateRange?.to?.getTime(), selectedSDR, selectedPipeline]);
 
   // Load data when date range is complete (both from and to selected)
   useEffect(() => {
@@ -784,6 +825,38 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Detalhamento das Reuniões</h3>
         <MeetingDetailCards events={selectedSDR !== "all" ? meetingEventDetails.filter(e => e.attributed_sdr_id === selectedSDR) : meetingEventDetails} />
       </div>
+
+      {/* ── Operação (roxo) — ligações, WhatsApp, perdas, ciclo ── */}
+      <Section tone={TONE.violet} label="Operação" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+        <Metric
+          tone={TONE.violet}
+          label="Ligações realizadas"
+          value={opsLoading ? "…" : formatNumber(opsMetrics.ligacoesRealizadas, 0)}
+          color={TONE.violet}
+        />
+        <Metric
+          tone={TONE.violet}
+          label="Atendidas (>50s)"
+          value={opsLoading ? "…" : formatNumber(opsMetrics.ligacoesAtendidas, 0)}
+          color="#34d399"
+        />
+        <Metric
+          tone={TONE.violet}
+          label="Contatos WhatsApp"
+          value={opsLoading ? "…" : formatNumber(opsMetrics.whatsappPessoas, 0)}
+        />
+        <Metric
+          tone={TONE.violet}
+          label="Perdidos s/ resposta"
+          value={opsLoading ? "…" : formatNumber(opsMetrics.leadsPerdidosSemResposta, 0)}
+          color={opsMetrics.leadsPerdidosSemResposta > 0 ? "#f87171" : undefined}
+        />
+        <Metric
+          tone={TONE.violet}
+          label="Deadline fechamento"
+          value={opsLoading ? "…" : opsMetrics.deadlineDias != null ? `${opsMetrics.deadlineDias.toFixed(1)} dias` : "—"}
+        />
+      </Section>
 
       {/* ── Atividades (âmbar) ── */}
       <Section tone={TONE.amber} label="Atividades" cols="grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
