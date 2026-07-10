@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CheckCircle2, Calendar, User, DollarSign, Percent, Hash, AlertCircle, Building2, Users, Layers } from "lucide-react";
 import { toDateString } from "@/lib/dateUtils";
+import { isHoliday } from "@/lib/businessDays";
 import { SalespersonDailyGoalCard } from "@/components/onboarding-tasks/kpis/SalespersonDailyGoalCard";
 
 interface KPI {
@@ -80,6 +81,83 @@ export default function KPIEntryPage() {
   const [loading, setLoading] = useState(!!codeFromUrl); // Start loading if code is in URL
   const [existingEntries, setExistingEntries] = useState<Record<string, number>>({});
   const [autoAuthAttempted, setAutoAuthAttempted] = useState(false);
+  // Meta diária individual por KPI: (meta do mês do vendedor - realizado no mês) / dias úteis restantes
+  const [dailyMeta, setDailyMeta] = useState<Record<string, { daily: number; monthly: number }>>({});
+
+  useEffect(() => {
+    if (!salesperson || !companyId || kpis.length === 0) { setDailyMeta({}); return; }
+    let alive = true;
+    (async () => {
+      try {
+        const monthYear = entryDate.slice(0, 7);
+        // diária só faz sentido pro mês corrente
+        if (monthYear !== toDateString(new Date()).slice(0, 7)) { if (alive) setDailyMeta({}); return; }
+        const [yy, mm] = monthYear.split("-").map(Number);
+        const monthStart = `${monthYear}-01`;
+        const monthEnd = `${monthYear}-${String(new Date(yy, mm, 0).getDate()).padStart(2, "0")}`;
+        const kpiIds = kpis.map((k) => k.id);
+
+        const [settingsRes, targetsRes, entriesRes] = await Promise.all([
+          supabase.from("company_daily_goal_settings")
+            .select("include_saturday, include_sunday, include_holidays")
+            .eq("company_id", companyId).maybeSingle(),
+          supabase.from("kpi_monthly_targets")
+            .select("kpi_id, target_value, level_name, level_order")
+            .eq("company_id", companyId).eq("month_year", monthYear)
+            .eq("salesperson_id", salesperson.id).in("kpi_id", kpiIds),
+          supabase.from("kpi_entries")
+            .select("kpi_id, value, entry_date")
+            .eq("company_id", companyId).eq("salesperson_id", salesperson.id)
+            .gte("entry_date", monthStart).lte("entry_date", monthEnd).in("kpi_id", kpiIds),
+        ]);
+
+        // dias úteis restantes a partir de hoje (mesma regra do card "Sua Meta Diária")
+        const s = settingsRes.data;
+        const incSat = s?.include_saturday ?? false;
+        const incSun = s?.include_sunday ?? false;
+        const incHol = s?.include_holidays ?? false;
+        const now = new Date();
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        let remaining = 0;
+        for (let d = now.getDate(); d <= lastDay; d++) {
+          const date = new Date(now.getFullYear(), now.getMonth(), d);
+          const dow = date.getDay();
+          if (dow === 6 && !incSat) continue;
+          if (dow === 0 && !incSun) continue;
+          if (!incHol && isHoliday(date)) continue;
+          remaining++;
+        }
+        remaining = Math.max(remaining, 1);
+
+        // meta individual por KPI: nível "Meta" preferido; senão o de menor level_order
+        const byKpi = new Map<string, any[]>();
+        (targetsRes.data || []).forEach((t: any) => {
+          if (!byKpi.has(t.kpi_id)) byKpi.set(t.kpi_id, []);
+          byKpi.get(t.kpi_id)!.push(t);
+        });
+        // realizado no mês EXCLUINDO o dia do lançamento — o valor digitado representa esse dia
+        const realized = new Map<string, number>();
+        (entriesRes.data || []).forEach((e: any) => {
+          if (e.entry_date === entryDate) return;
+          realized.set(e.kpi_id, (realized.get(e.kpi_id) || 0) + Number(e.value || 0));
+        });
+
+        const out: Record<string, { daily: number; monthly: number }> = {};
+        byKpi.forEach((list, kpiId) => {
+          const meta = list.find((t) => t.level_name === "Meta")
+            ?? [...list].sort((a, b) => (a.level_order ?? 99) - (b.level_order ?? 99))[0];
+          const monthly = Number(meta?.target_value || 0);
+          if (monthly <= 0) return;
+          const rest = Math.max(monthly - (realized.get(kpiId) || 0), 0);
+          out[kpiId] = { daily: rest / remaining, monthly };
+        });
+        if (alive) setDailyMeta(out);
+      } catch {
+        if (alive) setDailyMeta({});
+      }
+    })();
+    return () => { alive = false; };
+  }, [salesperson?.id, companyId, kpis, entryDate]);
 
   useEffect(() => {
     if (codeFromUrl && companyId && !autoAuthAttempted) {
@@ -607,13 +685,34 @@ export default function KPIEntryPage() {
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Meta: {kpi.kpi_type === "monetary" 
+                    Meta: {kpi.kpi_type === "monetary"
                       ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(kpi.target_value)
                       : kpi.kpi_type === "percentage"
                       ? `${kpi.target_value}%`
                       : kpi.target_value.toLocaleString("pt-BR")
                     } ({kpi.periodicity === "daily" ? "diária" : kpi.periodicity === "weekly" ? "semanal" : "mensal"})
+                    {dailyMeta[kpi.id] && (
+                      <> · <span className="text-foreground font-medium">Sua diária: {kpi.kpi_type === "monetary"
+                        ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(dailyMeta[kpi.id].daily)
+                        : Math.ceil(dailyMeta[kpi.id].daily).toLocaleString("pt-BR")}</span></>
+                    )}
                   </p>
+                  {/* Feedback ao digitar: quanto passou ou faltou da meta diária */}
+                  {dailyMeta[kpi.id] && (values[kpi.id] || 0) > 0 && (() => {
+                    const diff = (values[kpi.id] || 0) - dailyMeta[kpi.id].daily;
+                    const fmtDiff = (v: number) => kpi.kpi_type === "monetary"
+                      ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(v)
+                      : Math.round(v).toLocaleString("pt-BR");
+                    return diff >= 0 ? (
+                      <p className="text-xs font-semibold text-emerald-500">
+                        Meta diária batida{diff > 0 ? ` — ultrapassou em ${fmtDiff(diff)}` : ""}!
+                      </p>
+                    ) : (
+                      <p className="text-xs font-semibold text-amber-500">
+                        Faltam {fmtDiff(-diff)} pra sua meta diária
+                      </p>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
