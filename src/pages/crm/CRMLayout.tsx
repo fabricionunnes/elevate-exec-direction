@@ -41,6 +41,7 @@ import {
   ChevronDown,
   Contact,
   Download,
+  BookOpen,
 } from "lucide-react";
 import logoUnv from "@/assets/logo-unv-nexus.png";
 import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
@@ -90,8 +91,16 @@ const baseNavTabs = [
   { title: "UNV Office", href: "/onboarding-tasks/unv-office", icon: Building2 },
 ];
 
-const getNavTabs = (role: string | null) => {
+const getNavTabs = (role: string | null, isUnvStaff: boolean) => {
   const tabs = [...baseNavTabs];
+  // Manual de Processos: só staff UNV (tenant nulo). Vai pro topo do "Mais",
+  // acessível a todo o comercial (closer, sdr, bdr, social setter, head).
+  if (isUnvStaff) {
+    const at = tabs.findIndex((t) => t.href === "/crm/transcriptions");
+    const processos = { title: "Processos", href: "/processos", icon: BookOpen };
+    if (at >= 0) tabs.splice(at, 0, processos);
+    else tabs.push(processos);
+  }
   if (role === "master" || role === "head_comercial") {
     tabs.push({ title: "Head Comercial", href: "/crm/head", icon: BarChart3 });
   }
@@ -226,7 +235,7 @@ export const CRMLayout = () => {
   // Cliente "só discador": vê apenas a aba Discador.
   const navTabs = dialerOnly
     ? [{ title: "Discador", href: "/crm/dialer", icon: Phone }]
-    : getNavTabs(staffRole);
+    : getNavTabs(staffRole, tenantId === null);
 
   const isTabActive = (href: string) => {
     if (href === "/crm/reports") {
