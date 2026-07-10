@@ -44,6 +44,7 @@ import { NorthStarMetricCard } from "./NorthStarMetricCard";
 import { SalesHeatmapCharts } from "./SalesHeatmapCharts";
 import { UnitRankingCard } from "./UnitRankingCard";
 import { PeriodComparisonCard } from "./PeriodComparisonCard";
+import { SalespersonFlagsPanel } from "./SalespersonFlagsPanel";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface KPI {
@@ -2754,6 +2755,13 @@ export const KPIDashboardTab = ({
           </div>
         );
       })()}
+
+      {/* Flags de performance do time: <70% da meta do mês anterior = Red · 70–100% = Yellow · >100% = Green */}
+      <SalespersonFlagsPanel
+        companyId={companyId}
+        salespersonId={salespersonId}
+        isSalespersonView={isSalespersonView}
+      />
 
       {/* Sales Funnel Chart */}
       {showWidget("sales_funnel") && (
