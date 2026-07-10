@@ -39450,7 +39450,19 @@ export type Database = {
           whatsapp_pessoas: number
           leads_perdidos_sem_resposta: number
           deadline_dias: number | null
+          qualificacoes: number
+          cancelamentos: number
+          reagendamentos: number
         }[]
+      }
+      set_presales_target: {
+        Args: {
+          p_month: number
+          p_year: number
+          p_target_type: string
+          p_value: number
+        }
+        Returns: undefined
       }
       get_product_contract_stats: {
         Args: never

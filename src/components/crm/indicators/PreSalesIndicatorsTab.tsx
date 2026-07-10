@@ -26,7 +26,9 @@ import { ptBR } from "date-fns/locale";
 import { Phone, Users, Calendar as CalendarIcon, AlertTriangle, CheckCircle, XCircle, TrendingUp, Upload, ChevronDown, Loader2 } from "lucide-react";
 import { ImportPreSalesDialog } from "@/components/crm/ImportPreSalesDialog";
 import { MeetingDetailCards, MeetingEventDetail } from "@/components/crm/MeetingDetailCards";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { trackMeetingEvent, getCurrentStaffId } from "@/components/crm/LeadMeetingActions";
 import { DateRange } from "react-day-picker";
@@ -138,8 +140,48 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     whatsappPessoas: 0,
     leadsPerdidosSemResposta: 0,
     deadlineDias: null as number | null,
+    qualificacoes: 0,
+    cancelamentos: 0,
+    reagendamentos: 0,
   });
   const [opsLoading, setOpsLoading] = useState(true);
+
+  // Cadastro de metas (crm_sales_targets)
+  const [metaDialogOpen, setMetaDialogOpen] = useState(false);
+  const [metaCallsInput, setMetaCallsInput] = useState("");
+  const [metaMeetingsInput, setMetaMeetingsInput] = useState("");
+  const [savingMeta, setSavingMeta] = useState(false);
+
+  const openMetaDialog = () => {
+    setMetaCallsInput(String(metrics.metaAgendamentos ?? ""));
+    setMetaMeetingsInput(String(metrics.metaReunioes ?? ""));
+    setMetaDialogOpen(true);
+  };
+
+  const saveMetas = async () => {
+    const now = new Date();
+    const calls = Number(metaCallsInput);
+    const meetings = Number(metaMeetingsInput);
+    if (!Number.isFinite(calls) || !Number.isFinite(meetings) || calls < 0 || meetings < 0) {
+      toast.error("Informe metas válidas");
+      return;
+    }
+    setSavingMeta(true);
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+    const [{ error: e1 }, { error: e2 }] = await Promise.all([
+      supabase.rpc("set_presales_target", { p_month: month, p_year: year, p_target_type: "calls", p_value: calls }),
+      supabase.rpc("set_presales_target", { p_month: month, p_year: year, p_target_type: "meetings", p_value: meetings }),
+    ]);
+    setSavingMeta(false);
+    if (e1 || e2) {
+      toast.error("Erro ao salvar metas: " + (e1?.message || e2?.message));
+      return;
+    }
+    toast.success("Metas atualizadas");
+    setMetaDialogOpen(false);
+    loadData();
+  };
 
   useEffect(() => {
     loadPipelines();
@@ -160,7 +202,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       if (!alive) return;
       const row = Array.isArray(data) ? data[0] : null;
       if (error || !row) {
-        setOpsMetrics({ ligacoesRealizadas: 0, ligacoesAtendidas: 0, whatsappPessoas: 0, leadsPerdidosSemResposta: 0, deadlineDias: null });
+        setOpsMetrics({ ligacoesRealizadas: 0, ligacoesAtendidas: 0, whatsappPessoas: 0, leadsPerdidosSemResposta: 0, deadlineDias: null, qualificacoes: 0, cancelamentos: 0, reagendamentos: 0 });
       } else {
         setOpsMetrics({
           ligacoesRealizadas: Number(row.ligacoes_realizadas) || 0,
@@ -168,6 +210,9 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
           whatsappPessoas: Number(row.whatsapp_pessoas) || 0,
           leadsPerdidosSemResposta: Number(row.leads_perdidos_sem_resposta) || 0,
           deadlineDias: row.deadline_dias != null ? Number(row.deadline_dias) : null,
+          qualificacoes: Number(row.qualificacoes) || 0,
+          cancelamentos: Number(row.cancelamentos) || 0,
+          reagendamentos: Number(row.reagendamentos) || 0,
         });
       }
       setOpsLoading(false);
@@ -862,9 +907,9 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       <Section tone={TONE.amber} label="Atividades" cols="grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
         <Metric tone={TONE.amber} label="Agendamentos" value={visibleMetrics.agendamentos} color={TONE.amber} onClick={leadsForType("scheduled").length > 0 ? () => setLeadListType("scheduled") : undefined} />
         <Metric tone={TONE.amber} label="Reuniões" value={visibleMetrics.reunioes} onClick={leadsForType("realized").length > 0 ? () => setLeadListType("realized") : undefined} />
-        <Metric tone={TONE.amber} label="Qualificações" value={visibleMetrics.qualificacoes} />
-        <Metric tone={TONE.amber} label="Cancelamentos" value={visibleMetrics.cancelamentos} />
-        <Metric tone={TONE.amber} label="Reagendamentos" value={visibleMetrics.reagendamentos} />
+        <Metric tone={TONE.amber} label="Qualificações" value={opsLoading ? "…" : opsMetrics.qualificacoes} />
+        <Metric tone={TONE.amber} label="Cancelamentos" value={opsLoading ? "…" : opsMetrics.cancelamentos} color={opsMetrics.cancelamentos > 0 ? "#f87171" : undefined} />
+        <Metric tone={TONE.amber} label="Reagendamentos" value={opsLoading ? "…" : opsMetrics.reagendamentos} />
         <Metric tone={TONE.amber} label="No Show" value={visibleMetrics.noShow} color={visibleMetrics.noShow > 0 ? "#f87171" : undefined} onClick={leadsForType("no_show").length > 0 ? () => setLeadListType("no_show") : undefined} />
         <Metric tone={TONE.amber} label="Sem Desfecho" value={visibleMetrics.semDesfecho} color={visibleMetrics.semDesfecho > 0 ? "#fb923c" : undefined} onClick={semDesfechoLeads.length > 0 ? () => setLeadListType("sem_desfecho") : undefined} />
         <Metric tone={TONE.amber} label="% da Meta" value={`${visibleMetrics.metaPercent.toFixed(1)}%`} color={visibleMetrics.metaPercent >= 100 ? "#34d399" : "#fbbf24"} />
@@ -872,23 +917,34 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
 
       {/* ── Metas & Projeção (verde) ── */}
       <Section tone={TONE.green} label="Metas & Projeção" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-        <Metric tone={TONE.green} label="Meta Agend." value={metrics.metaAgendamentos} />
-        <Metric tone={TONE.green} label="Meta Reuniões" value={metrics.metaReunioes} />
+        <Metric tone={TONE.green} label={isAdmin ? "Meta Agend. (editar)" : "Meta Agend."} value={metrics.metaAgendamentos} onClick={isAdmin ? openMetaDialog : undefined} />
+        <Metric tone={TONE.green} label={isAdmin ? "Meta Reuniões (editar)" : "Meta Reuniões"} value={metrics.metaReunioes} onClick={isAdmin ? openMetaDialog : undefined} />
         <Metric tone={TONE.green} label="% Meta Agend." value={`${metrics.metaAgendamentosPercent.toFixed(0)}%`} color={metrics.metaAgendamentosPercent >= 100 ? "#34d399" : "#fbbf24"} />
         <Metric tone={TONE.green} label="% Meta Reuniões" value={`${metrics.metaReunioesPercent.toFixed(0)}%`} color={metrics.metaReunioesPercent >= 100 ? "#34d399" : "#fbbf24"} />
         <Metric tone={TONE.green} label="Projeção" value={formatNumber(metrics.projecao, 0)} color={TONE.green} />
         <Metric tone={TONE.green} label="% Projetado" value={`${metrics.projecaoPercent.toFixed(0)}%`} color={metrics.projecaoPercent >= 100 ? "#34d399" : "#fbbf24"} />
       </Section>
 
-      {/* ── Funil de Abordagem (roxo) ── */}
-      <Section tone={TONE.violet} label="Funil de Abordagem" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-        <Metric tone={TONE.violet} label="Abordagens" value={formatNumber(approachMetrics.abordagens)} color={TONE.violet} />
-        <Metric tone={TONE.violet} label="Conexões" value={formatNumber(approachMetrics.conexoes)} />
-        <Metric tone={TONE.violet} label="% Conv. Abord." value={`${approachMetrics.conversaoAbord.toFixed(1)}%`} />
-        <Metric tone={TONE.violet} label="% Conv. Agend." value={`${approachMetrics.conversaoAgend.toFixed(1)}%`} />
-        <Metric tone={TONE.violet} label="% Conv. Vendas" value={`${approachMetrics.conversaoVendas.toFixed(1)}%`} color="#34d399" />
-        <Metric tone={TONE.violet} label="Diária Reuniões" value={approachMetrics.diariaReunioes.toFixed(1)} />
-      </Section>
+      {/* ── Funil de Abordagem (roxo) — fontes reais (ligações → conexões → agendamentos → vendas) ── */}
+      {(() => {
+        const abordagens = opsMetrics.ligacoesRealizadas;
+        const conexoes = opsMetrics.ligacoesAtendidas;
+        const agendamentos = visibleMetrics.agendamentos;
+        const vendas = salesSummary.quantidade;
+        const convAbord = abordagens > 0 ? (conexoes / abordagens) * 100 : 0;
+        const convAgend = conexoes > 0 ? (agendamentos / conexoes) * 100 : 0;
+        const convVendas = agendamentos > 0 ? (vendas / agendamentos) * 100 : 0;
+        return (
+          <Section tone={TONE.violet} label="Funil de Abordagem" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+            <Metric tone={TONE.violet} label="Abordagens (ligações)" value={opsLoading ? "…" : formatNumber(abordagens)} color={TONE.violet} />
+            <Metric tone={TONE.violet} label="Conexões (atendidas)" value={opsLoading ? "…" : formatNumber(conexoes)} />
+            <Metric tone={TONE.violet} label="Agendamentos" value={agendamentos} />
+            <Metric tone={TONE.violet} label="% Conv. Abord." value={`${convAbord.toFixed(1)}%`} />
+            <Metric tone={TONE.violet} label="% Conv. Agend." value={`${convAgend.toFixed(1)}%`} />
+            <Metric tone={TONE.violet} label="% Conv. Vendas" value={`${convVendas.toFixed(1)}%`} color="#34d399" />
+          </Section>
+        );
+      })()}
 
       {/* ── Tabela SDRs ── */}
       <GlowCard glowColor="shadow-violet-500/10">
@@ -1162,6 +1218,32 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
               ))}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Cadastro de metas de pré-vendas ── */}
+      <Dialog open={metaDialogOpen} onOpenChange={setMetaDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Metas de pré-vendas</DialogTitle>
+            <DialogDescription>
+              Meta do time para {format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Meta de agendamentos</Label>
+              <Input type="number" min={0} value={metaCallsInput} onChange={(e) => setMetaCallsInput(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Meta de reuniões</Label>
+              <Input type="number" min={0} value={metaMeetingsInput} onChange={(e) => setMetaMeetingsInput(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMetaDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={saveMetas} disabled={savingMeta}>{savingMeta ? "Salvando..." : "Salvar"}</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

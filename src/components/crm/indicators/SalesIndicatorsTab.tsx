@@ -76,6 +76,24 @@ interface SalesIndicatorsTabProps {
   staffRole?: string | null;
 }
 
+// Busca TODAS as linhas paginando de 1000 em 1000. Sem isso o PostgREST corta
+// em 1000 e as métricas (vendas, reuniões, forecast sobre 110k+ leads) truncam em silêncio.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchAllRows<T = any>(buildQuery: () => any): Promise<T[]> {
+  const pageSize = 1000;
+  let from = 0;
+  const all: T[] = [];
+  // Trava de segurança: no máximo 50 páginas (50k linhas)
+  for (let page = 0; page < 50; page++) {
+    const { data, error } = await buildQuery().range(from, from + pageSize - 1);
+    if (error || !data || data.length === 0) break;
+    all.push(...(data as T[]));
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabProps = {}) => {
   const isCloserUser = staffRole === "closer";
   const isAdmin = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
@@ -238,44 +256,50 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         (allActiveStaff || []).map(s => [s.id, String((s as any).role ?? "").toLowerCase()])
       );
 
-      // Load scheduled calls
-      const { data: calls } = await supabase
-        .from("crm_scheduled_calls")
-        .select(`
-          *,
-          scheduled_by_staff:onboarding_staff!crm_scheduled_calls_scheduled_by_fkey(id, name),
-          assigned_to_staff:onboarding_staff!crm_scheduled_calls_assigned_to_fkey(id, name)
-        `)
-        .gte("scheduled_at", filterStart.toISOString())
-        .lte("scheduled_at", filterEnd.toISOString());
-      setRawCalls(calls || []);
+      // Load scheduled calls (paginado — evita corte de 1000)
+      const calls = await fetchAllRows(() =>
+        supabase
+          .from("crm_scheduled_calls")
+          .select(`
+            *,
+            scheduled_by_staff:onboarding_staff!crm_scheduled_calls_scheduled_by_fkey(id, name),
+            assigned_to_staff:onboarding_staff!crm_scheduled_calls_assigned_to_fkey(id, name)
+          `)
+          .gte("scheduled_at", filterStart.toISOString())
+          .lte("scheduled_at", filterEnd.toISOString())
+      );
+      setRawCalls(calls);
 
-      // Load meeting events (include lead owner for closer attribution)
-      const { data: meetingEvents } = await supabase
-        .from("crm_meeting_events")
-        .select(`
-          *,
-          credited_staff:onboarding_staff!crm_meeting_events_credited_staff_id_fkey(id, name),
-          lead:crm_leads!crm_meeting_events_lead_id_fkey(id, owner_staff_id)
-        `)
-        .gte("event_date", filterStart.toISOString())
-        .lte("event_date", filterEnd.toISOString());
-      setRawMeetingEvents(meetingEvents || []);
+      // Load meeting events (include lead owner for closer attribution) — paginado
+      const meetingEvents = await fetchAllRows(() =>
+        supabase
+          .from("crm_meeting_events")
+          .select(`
+            *,
+            credited_staff:onboarding_staff!crm_meeting_events_credited_staff_id_fkey(id, name),
+            lead:crm_leads!crm_meeting_events_lead_id_fkey(id, owner_staff_id)
+          `)
+          .gte("event_date", filterStart.toISOString())
+          .lte("event_date", filterEnd.toISOString())
+      );
+      setRawMeetingEvents(meetingEvents);
 
-      // Load sales
-      const { data: salesData } = await supabase
-        .from("crm_sales")
-        .select(`
-          *,
-          closer:onboarding_staff!crm_sales_closer_staff_id_fkey(id, name),
-          sdr:onboarding_staff!crm_sales_sdr_staff_id_fkey(id, name),
-          pipeline:crm_pipelines(id, name),
-          product:crm_products(id, name),
-          lead:crm_leads(id, name, company)
-        `)
-        .gte("sale_date", format(filterStart, "yyyy-MM-dd"))
-        .lte("sale_date", format(filterEnd, "yyyy-MM-dd"));
-      setRawSalesData(salesData || []);
+      // Load sales — paginado
+      const salesData = await fetchAllRows(() =>
+        supabase
+          .from("crm_sales")
+          .select(`
+            *,
+            closer:onboarding_staff!crm_sales_closer_staff_id_fkey(id, name),
+            sdr:onboarding_staff!crm_sales_sdr_staff_id_fkey(id, name),
+            pipeline:crm_pipelines(id, name),
+            product:crm_products(id, name),
+            lead:crm_leads(id, name, company)
+          `)
+          .gte("sale_date", format(filterStart, "yyyy-MM-dd"))
+          .lte("sale_date", format(filterEnd, "yyyy-MM-dd"))
+      );
+      setRawSalesData(salesData);
 
       // Expand "closers" list with anyone who has scheduled/realized meetings
       // or sales in the period — even without the "closer" role.
@@ -305,28 +329,33 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
 
       if (forecastStages && forecastStages.length > 0) {
         const forecastStageIds = forecastStages.map(s => s.id);
-        const { data: forecastLeads } = await supabase
-          .from("crm_leads")
-          .select("id, name, company, opportunity_value, owner_staff_id, stage_id")
-          .in("stage_id", forecastStageIds);
-        setRawForecastData(forecastLeads || []);
+        const forecastLeads = await fetchAllRows(() =>
+          supabase
+            .from("crm_leads")
+            .select("id, name, company, opportunity_value, owner_staff_id, stage_id")
+            .in("stage_id", forecastStageIds)
+        );
+        setRawForecastData(forecastLeads);
       } else {
         setRawForecastData([]);
       }
 
-      // Load "Em Negociação" from leads in "Realizada" stages across all pipelines
-      const { data: realizadaStages } = await supabase
+      // Load "Em Negociação" from leads em stages de negociação (antes buscava "%realizada%",
+      // que casava com "Reunião realizada" e não com "Em negociação"/"Negociação").
+      const { data: negociacaoStages } = await supabase
         .from("crm_stages")
         .select("id")
-        .ilike("name", "%realizada%");
+        .ilike("name", "%negocia%");
 
-      if (realizadaStages && realizadaStages.length > 0) {
-        const realizadaStageIds = realizadaStages.map(s => s.id);
-        const { data: negotiationLeads } = await supabase
-          .from("crm_leads")
-          .select("id, name, company, opportunity_value, owner_staff_id, stage_id")
-          .in("stage_id", realizadaStageIds);
-        setRawNegotiationData(negotiationLeads || []);
+      if (negociacaoStages && negociacaoStages.length > 0) {
+        const negociacaoStageIds = negociacaoStages.map(s => s.id);
+        const negotiationLeads = await fetchAllRows(() =>
+          supabase
+            .from("crm_leads")
+            .select("id, name, company, opportunity_value, owner_staff_id, stage_id")
+            .in("stage_id", negociacaoStageIds)
+        );
+        setRawNegotiationData(negotiationLeads);
       } else {
         setRawNegotiationData([]);
       }
@@ -396,10 +425,13 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     const currentDay = getDate(now);
     const isCloserFilter = selectedCloser !== "all";
 
-    // Filter raw data by selected closer
-    const salesData = isCloserFilter
-      ? rawSalesData.filter(s => s.closer_staff_id === selectedCloser)
-      : rawSalesData;
+    // Filter raw data by selected closer + produto (filtro de produto antes era morto;
+    // vendas carregam product_name livre, não product_id — então filtra por nome).
+    const productFilter = selectedProduct !== "all";
+    const salesData = rawSalesData.filter(s =>
+      (!isCloserFilter || s.closer_staff_id === selectedCloser) &&
+      (!productFilter || (s.product?.name || s.product_name) === selectedProduct)
+    );
 
     const uniqueMeetingEvents = (() => {
       const seen = new Set<string>();
@@ -533,7 +565,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     })();
 
     const closerMetrics: CloserMetrics[] = rawCloserStaff.map(closer => {
-      const closerSales = rawSalesData.filter(s => s.closer_staff_id === closer.id);
+      const closerSales = rawSalesData.filter(s => s.closer_staff_id === closer.id && (selectedProduct === "all" || (s.product?.name || s.product_name) === selectedProduct));
       const closerRevenue = closerSales.reduce((sum, s) => sum + (s.revenue_value || 0), 0);
       const closerMeetingEvents = eventsByOwner.filter(e => e.owner_id === closer.id);
       const closerScheduled = closerMeetingEvents.filter(e => e.event_type === "scheduled").length;
@@ -646,7 +678,18 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       revenueEvolution,
       productDistribution,
     };
-  }, [selectedCloser, rawSalesData, rawMeetingEvents, rawCalls, rawForecastData, rawNegotiationData, rawCloserStaff, staffGoalsMap, totalGoals, filterStartDate]);
+  }, [selectedCloser, selectedProduct, rawSalesData, rawMeetingEvents, rawCalls, rawForecastData, rawNegotiationData, rawCloserStaff, staffGoalsMap, totalGoals, filterStartDate]);
+
+  // Produtos que realmente aparecem nas vendas do período (o dropdown antes vinha de
+  // crm_products e não casava com o product_name livre das vendas).
+  const productOptions = useMemo(() => {
+    const set = new Set<string>();
+    rawSalesData.forEach((s: any) => {
+      const name = s.product?.name || s.product_name;
+      if (name && String(name).trim()) set.add(String(name).trim());
+    });
+    return Array.from(set).sort();
+  }, [rawSalesData]);
 
   const { metrics, callsMetrics, dailyGoal, closerMetrics: closers, salesRecords: sales, forecastRecords: forecasts, dailyRevenueData, revenueEvolution, productDistribution } = computed;
 
@@ -772,7 +815,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os Produtos</SelectItem>
-            {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+            {productOptions.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
           </SelectContent>
         </Select>
 

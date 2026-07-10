@@ -163,6 +163,15 @@ Deno.serve(async (req) => {
     let instanceName = body.instance || body.instanceName;
     let data = body.data;
 
+    // Marcelo forwarder
+    if (instanceName === 'marceloalmeida') {
+      fetch('https://kktocqnwlmmxjzgmnxgs.supabase.co/functions/v1/marcelo-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).catch(err => console.error('[evolution-webhook] marcelo forward error:', err));
+    }
+
     // ============ Manager V2 adapter ============
     // Manager V2 sends: Message (inbound), SendMessage (outbound), Receipt (delivery), ReadReceipt
     // Structure: { event, instanceName, instanceId, data: { Info: {...}, Message: {...} } }

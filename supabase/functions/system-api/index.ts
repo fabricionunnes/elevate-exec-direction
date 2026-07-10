@@ -783,6 +783,15 @@ serve(async (req) => {
           if (error) throw error;
           return json({ data }, 201);
         },
+        bulk_create_entries: async (c) => {
+          const { entries } = c.body as { entries: Array<{ company_id: string; salesperson_id: string; kpi_id: string; entry_date?: string; value: number; observations?: string; unit_id?: string; team_id?: string; sector_id?: string }> };
+          if (!Array.isArray(entries) || entries.length === 0) return json({ error: "Campo 'entries' obrigatório (array)" }, 400);
+          const today = new Date().toISOString().split("T")[0];
+          const rows = entries.map(e => ({ ...e, entry_date: e.entry_date || today, value: e.value ?? 0 }));
+          const { data, error } = await c.supabase.from("kpi_entries").upsert(rows, { onConflict: "salesperson_id,kpi_id,entry_date" }).select();
+          if (error) throw error;
+          return json({ data, inserted: data?.length ?? 0 }, 201);
+        },
         update_entry: async (c) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
           const { value, observations, entry_date } = c.body;
