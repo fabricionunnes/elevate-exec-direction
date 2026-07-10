@@ -109,8 +109,18 @@ async function buildMetrics(supabase: SupabaseClient, companyId: string, today: 
   const since = daysAgo(today, 7);
 
   const { data: entries } = await supabase
-    .from("kpi_entries").select("kpi_id, entry_date, value")
+    .from("kpi_entries").select("kpi_id, entry_date, value, salesperson_id")
     .eq("company_id", companyId).gte("entry_date", since).lte("entry_date", today);
+
+  // Quem lançou hoje x quem faltou (vendedores ativos da empresa)
+  const { data: people } = await supabase
+    .from("company_salespeople").select("id, name")
+    .eq("company_id", companyId).eq("is_active", true);
+  const launchedToday = new Set(
+    (entries || []).filter((e: any) => e.entry_date === today && e.salesperson_id).map((e: any) => e.salesperson_id),
+  );
+  const lancaram = (people || []).filter((p: any) => launchedToday.has(p.id)).map((p: any) => String(p.name).trim());
+  const faltaram = (people || []).filter((p: any) => !launchedToday.has(p.id)).map((p: any) => String(p.name).trim());
 
   // Soma por KPI: hoje vs média diária dos 7 dias anteriores (exclui hoje).
   const todaySum = new Map<string, number>();
@@ -142,7 +152,7 @@ async function buildMetrics(supabase: SupabaseClient, companyId: string, today: 
       delta_pct: avg > 0 ? Math.round(((tv - avg) / avg) * 100) : null,
     });
   }
-  return { hasToday, rows };
+  return { hasToday, rows, lancaram, faltaram };
 }
 
 async function generateSummary(companyName: string, metrics: any): Promise<string> {
@@ -211,6 +221,7 @@ async function nudgeText(companyName: string): Promise<string> {
   const prompt = `Você é Marcelo Almeida, diretor comercial da UNV, no grupo de gestão do cliente ${companyName} no WhatsApp. Os indicadores de HOJE ainda não foram lançados no sistema. Escreva UMA cobrança curta (2 a 3 frases) pedindo pro time lançar os números do dia.
 
 Regras:
+- Deixe EXPLÍCITO logo no começo que NENHUM indicador foi lançado hoje — zero lançamentos até agora.
 - Agora é ${periodo} — use a saudação certa (ou nenhuma).
 - Tom de diretor comercial: direto, humano, sem emoji, sem markdown, português do Brasil.
 - Diga que com os números você devolve a leitura comercial (o que subiu, o que caiu, onde focar).
@@ -260,6 +271,12 @@ Deno.serve(async (req) => {
         text = await nudgeText(c.name);
       } else {
         text = await generateSummary(c.name, metrics) || await nudgeText(c.name);
+        // Quem lançou / quem faltou: bloco DETERMINÍSTICO (direto do banco) —
+        // a IA nunca escreve nomes, então nunca erra nem inventa.
+        const parts: string[] = [];
+        if (metrics.lancaram.length) parts.push(`Lançaram hoje: ${metrics.lancaram.join(", ")}.`);
+        if (metrics.faltaram.length) parts.push(`Faltou lançar: ${metrics.faltaram.join(", ")}. Bora subir esses números ainda hoje.`);
+        if (parts.length) text += `\n\n${parts.join("\n")}`;
       }
 
       // {dry:true}: só retorna os textos, não envia nada (validação).
