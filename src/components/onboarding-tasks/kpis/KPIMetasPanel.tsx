@@ -17,6 +17,7 @@ import { SectorsTab } from "./SectorsTab";
 import { EndomarketingPanel } from "../endomarketing/EndomarketingPanel";
 import { ClientSalesLinksPanel } from "./ClientSalesLinksPanel";
 import { GamificationPanel } from "../gamification/GamificationPanel";
+import { SalespersonFlagsPanel } from "./SalespersonFlagsPanel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -154,6 +155,13 @@ export const KPIMetasPanel = ({
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* Flags de performance: <70% da meta do mês anterior = Red · 70–100% = Yellow · >100% = Green */}
+      <SalespersonFlagsPanel
+        companyId={companyId}
+        salespersonId={salespersonId}
+        isSalespersonView={isSalespersonView}
+      />
+
       {/* Header with public link */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
