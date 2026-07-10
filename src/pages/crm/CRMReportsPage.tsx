@@ -56,7 +56,8 @@ type DateFilterType = "today" | "week" | "month" | "quarter" | "year" | "custom"
 export const CRMReportsPage = () => {
   const { isAdmin } = useOutletContext<{ staffRole: string; isAdmin: boolean }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") === "traffic" ? "traffic" : "overview";
+  // Tráfego Pago é restrito à gestão — SDR/Closer não acessam nem via URL ?tab=traffic
+  const activeTab = searchParams.get("tab") === "traffic" && isAdmin ? "traffic" : "overview";
   const setActiveTab = (v: string) => {
     const next = new URLSearchParams(searchParams);
     if (v === "overview") next.delete("tab"); else next.set("tab", v);
@@ -348,9 +349,12 @@ export const CRMReportsPage = () => {
           <TabsTrigger value="overview" className="gap-1.5">
             <BarChart3 className="h-3.5 w-3.5" /> Visão Geral
           </TabsTrigger>
-          <TabsTrigger value="traffic" className="gap-1.5">
-            <Megaphone className="h-3.5 w-3.5" /> Tráfego Pago
-          </TabsTrigger>
+          {/* Tráfego Pago: só gestão — SDR e Closer não veem */}
+          {isAdmin && (
+            <TabsTrigger value="traffic" className="gap-1.5">
+              <Megaphone className="h-3.5 w-3.5" /> Tráfego Pago
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="overview" className="mt-5 space-y-4 sm:space-y-6">
@@ -544,9 +548,11 @@ export const CRMReportsPage = () => {
       </div>
         </TabsContent>
 
-        <TabsContent value="traffic" className="mt-5">
-          <CRMTrafficTab isAdmin={isAdmin} />
-        </TabsContent>
+        {isAdmin && (
+          <TabsContent value="traffic" className="mt-5">
+            <CRMTrafficTab isAdmin={isAdmin} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
