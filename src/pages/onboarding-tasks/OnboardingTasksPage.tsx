@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain, Download } from "lucide-react";
 import { GlobalAccessControlPanel } from "@/components/onboarding-tasks/GlobalAccessControlPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -1934,6 +1934,11 @@ const OnboardingTasksPage = () => {
                     <Video className="h-4 w-4 mr-2" />
                     Escritório UNV
                   </DropdownMenuItem>
+                  {/* Baixar extensão Closer Copilot — todo o staff */}
+                  <DropdownMenuItem onClick={() => window.open("https://unv-closer-install.pages.dev/", "_blank", "noopener,noreferrer")}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Baixar Copilot
+                  </DropdownMenuItem>
                   {/* Escritório 3D dos agentes IA — somente master */}
                   {isMaster && (
                     <DropdownMenuItem onClick={() => navigate("/office")}>
@@ -2301,6 +2306,9 @@ const OnboardingTasksPage = () => {
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/copiloto")} className="text-primary focus:text-primary font-semibold">
                   <Sparkles className="h-4 w-4 mr-2" /> Copiloto de Resultados
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.open("https://unv-closer-install.pages.dev/", "_blank", "noopener,noreferrer")}>
+                  <Download className="h-4 w-4 mr-2" /> Baixar Copilot
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/task-manager")}>
                   <LayoutGrid className="h-4 w-4 mr-2" /> Gerenciador
                 </DropdownMenuItem>
@@ -2415,14 +2423,6 @@ const OnboardingTasksPage = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            )}
-
-            {/* ── UNV Start — botão direto ─────────────────── */}
-            {canCreateCompany && (
-              <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60" onClick={() => navigate("/onboarding-tasks/unv-start")}>
-                <Sparkles className="h-4 w-4" />
-                UNV Start
-              </Button>
             )}
 
             {/* ── Engajamento ─────────────────────────────── */}

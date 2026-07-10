@@ -438,17 +438,19 @@ export const LeadCustomFieldsTab = ({
         toast.error("Nenhuma transcrição encontrada. Adicione uma na aba Transcrição.");
         return;
       }
-      const filled = await autofillLeadFromTranscription({
+      const result = await autofillLeadFromTranscription({
         leadId,
         leadName: leadData?.name || "",
         companyName: leadData?.company || null,
         transcription: t.transcription_text,
       });
-      if (filled.length) {
+      if (result.filled.length) {
         onUpdate();
-        toast.success(`Preenchido pela reunião: ${filled.join(", ")}`);
-      } else {
+        toast.success(`Preenchido pela reunião: ${result.filled.join(", ")}`);
+      } else if (result.extractedAny) {
         toast.info("Nada novo pra preencher — os campos já estão preenchidos.");
+      } else {
+        toast.info("A transcrição não menciona os dados que faltam (valor, produto, forma de pagamento...).");
       }
     } catch (e: any) {
       console.error(e);

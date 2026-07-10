@@ -104,7 +104,7 @@ export const LeadTranscriptionTab = ({
       // 4. Preenche os campos do CRM (produto, valor, forma de pagamento, segmento, dor...) com o que
       // foi dito na reunião — só os campos VAZIOS, sem sobrescrever o que já estava preenchido.
       try {
-        const filled = await autofillLeadFromTranscription({ leadId, leadName, companyName, transcription: transcription.trim() });
+        const { filled } = await autofillLeadFromTranscription({ leadId, leadName, companyName, transcription: transcription.trim() });
         if (filled.length) {
           onBriefingGenerated(); // recarrega o lead pra refletir no Negócio
           toast.success(`Negócio preenchido: ${filled.join(", ")}`);

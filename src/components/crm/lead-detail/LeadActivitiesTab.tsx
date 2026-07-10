@@ -279,10 +279,36 @@ export const LeadActivitiesTab = ({
 
         if (error) throw error;
 
-        // Add completed state (stored in localStorage per lead+stage)
+        // Estado de conclusão vem do BANCO (compartilhado entre todos os usuários).
+        // Antes ficava no localStorage — a SDR marcava e ninguém mais via.
+        const itemIds = (data || []).map((i: any) => i.id);
+        let completedIds: string[] = [];
+        if (itemIds.length) {
+          const { data: checks } = await supabase
+            .from("crm_lead_checklist_checks" as never)
+            .select("item_id")
+            .eq("lead_id", leadId)
+            .in("item_id", itemIds);
+          completedIds = ((checks as any[]) || []).map((c) => c.item_id);
+        }
+
+        // Migração: se o banco ainda não tem checks pra esse lead/etapa mas o
+        // localStorage deste navegador tem, sobe os marcados locais pro banco
+        // (aproveita o que a equipe já marcou antes da correção).
         const storageKey = `checklist_${leadId}_${currentStageId}`;
-        const completedIds = JSON.parse(localStorage.getItem(storageKey) || "[]");
-        
+        if (!completedIds.length) {
+          try {
+            const localIds: string[] = JSON.parse(localStorage.getItem(storageKey) || "[]").filter((id: string) => itemIds.includes(id));
+            if (localIds.length) {
+              await supabase.from("crm_lead_checklist_checks" as never).upsert(
+                localIds.map((item_id) => ({ lead_id: leadId, item_id })) as never,
+                { onConflict: "lead_id,item_id", ignoreDuplicates: true } as never,
+              );
+              completedIds = localIds;
+            }
+          } catch { /* localStorage corrompido — ignora */ }
+        }
+
         setChecklistItems((data || []).map((item: any) => ({
           id: item.id,
           title: item.title,
@@ -351,19 +377,38 @@ export const LeadActivitiesTab = ({
   });
 
   const toggleChecklist = (id: string) => {
-    const storageKey = `checklist_${leadId}_${currentStageId}`;
-    
-    setChecklistItems(prev => {
-      const updated = prev.map(item =>
-        item.id === id ? { ...item, completed: !item.completed } : item
-      );
-      
-      // Save to localStorage
-      const completedIds = updated.filter(i => i.completed).map(i => i.id);
-      localStorage.setItem(storageKey, JSON.stringify(completedIds));
-      
-      return updated;
-    });
+    const item = checklistItems.find((i) => i.id === id);
+    const nowCompleted = !(item?.completed);
+
+    // Otimista na UI; persistência no BANCO (compartilhado com toda a equipe).
+    setChecklistItems(prev => prev.map(it =>
+      it.id === id ? { ...it, completed: nowCompleted } : it
+    ));
+
+    void (async () => {
+      try {
+        if (nowCompleted) {
+          const { error } = await supabase
+            .from("crm_lead_checklist_checks" as never)
+            .upsert({ lead_id: leadId, item_id: id } as never, { onConflict: "lead_id,item_id", ignoreDuplicates: true } as never);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("crm_lead_checklist_checks" as never)
+            .delete()
+            .eq("lead_id", leadId)
+            .eq("item_id", id);
+          if (error) throw error;
+        }
+      } catch (e) {
+        console.error("Erro ao salvar checklist:", e);
+        toast.error("Não consegui salvar a marcação — tenta de novo.");
+        // desfaz o otimista
+        setChecklistItems(prev => prev.map(it =>
+          it.id === id ? { ...it, completed: !nowCompleted } : it
+        ));
+      }
+    })();
   };
 
   const currentStage = stages.find(s => s.id === currentStageId);

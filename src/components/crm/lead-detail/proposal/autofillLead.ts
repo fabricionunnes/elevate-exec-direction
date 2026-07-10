@@ -17,11 +17,17 @@ const FIELD_LABEL: Record<string, string> = {
   main_pain: "Dor principal",
 };
 
+export interface AutofillResult {
+  filled: string[];
+  /** a IA extraiu ALGO da transcrição (mesmo que já estivesse preenchido) */
+  extractedAny: boolean;
+}
+
 /**
  * Extrai dados da transcrição (IA) e preenche os campos VAZIOS do lead no CRM.
  * Nunca sobrescreve o que já está preenchido. Retorna os rótulos preenchidos.
  */
-export async function autofillLeadFromTranscription({ leadId, leadName, companyName, transcription }: Args): Promise<string[]> {
+export async function autofillLeadFromTranscription({ leadId, leadName, companyName, transcription }: Args): Promise<AutofillResult> {
   const [{ data: lead }, { data: services }, { data: pms }] = await Promise.all([
     supabase
       .from("crm_leads")
@@ -43,13 +49,24 @@ export async function autofillLeadFromTranscription({ leadId, leadName, companyN
   });
   if (error) throw new Error(error.message || "Falha ao extrair dados");
   const f = (data as any)?.fields;
-  if (!f) return [];
+  if (!f) return { filled: [], extractedAny: false };
 
   const cur = (lead || {}) as any;
   const patch: Record<string, unknown> = {};
+  // Vazio = null/undefined/"" OU zero — inclusive zero como TEXTO ("0.00"),
+  // que é como o numeric do Postgres chega no supabase-js. Sem isso, um lead
+  // com Valor R$ 0,00 era tratado como "já preenchido" e o autofill pulava.
+  const isEmptyVal = (v: unknown): boolean => {
+    if (v === null || v === undefined || v === "") return true;
+    if (typeof v === "number") return v === 0;
+    if (typeof v === "string") {
+      const n = parseFloat(v);
+      return !Number.isNaN(n) && n === 0 && /^[\d.,\s-]+$/.test(v.trim());
+    }
+    return false;
+  };
   const setIfEmpty = (col: string, val: unknown) => {
-    const empty = cur[col] === null || cur[col] === undefined || cur[col] === "" || cur[col] === 0;
-    if (val !== null && val !== undefined && val !== "" && empty) patch[col] = val;
+    if (val !== null && val !== undefined && val !== "" && isEmptyVal(cur[col])) patch[col] = val;
   };
 
   setIfEmpty("product_id", f.product_id);
@@ -65,5 +82,7 @@ export async function autofillLeadFromTranscription({ leadId, leadName, companyN
     const { error: upErr } = await supabase.from("crm_leads").update(patch).eq("id", leadId);
     if (upErr) throw upErr;
   }
-  return keys.map((k) => FIELD_LABEL[k] || k);
+  const extractedAny = [f.product_id, f.opportunity_value, f.payment_method_id, f.segment, f.estimated_revenue, f.employee_count, f.main_pain]
+    .some((v) => v !== null && v !== undefined && v !== "");
+  return { filled: keys.map((k) => FIELD_LABEL[k] || k), extractedAny };
 }
