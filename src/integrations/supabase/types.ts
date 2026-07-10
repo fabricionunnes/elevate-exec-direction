@@ -39437,6 +39437,21 @@ export type Database = {
         Args: { check_user_id: string }
         Returns: string
       }
+      get_presales_operational_metrics: {
+        Args: {
+          p_start: string
+          p_end: string
+          p_sdr?: string | null
+          p_pipeline?: string | null
+        }
+        Returns: {
+          ligacoes_realizadas: number
+          ligacoes_atendidas: number
+          whatsapp_pessoas: number
+          leads_perdidos_sem_resposta: number
+          deadline_dias: number | null
+        }[]
+      }
       get_product_contract_stats: {
         Args: never
         Returns: {
