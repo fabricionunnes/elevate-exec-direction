@@ -282,6 +282,12 @@ Deno.serve(async (req) => {
     const today = brToday();
     const limit = Number(body.limit) || (live ? 100 : 8);
 
+    // Empresas excluídas do resumo diário (pedido do Fabrício — ex.: cliente
+    // ainda não onboardado no lançamento de indicadores). Reativar = remover daqui.
+    const RESUMO_EXCLUDED_COMPANY_IDS = new Set<string>([
+      "4619f391-7279-48f3-a91c-b536ebb4dfd9", // BOATLUX (2026-07-09: time ainda não lança KPIs)
+    ]);
+
     const gestaoGroups = await fetchGestaoGroups();
 
     // Empresas ativas alvo: com grupo de gestão (regra: nunca privado do dono).
@@ -292,6 +298,7 @@ Deno.serve(async (req) => {
     const results: any[] = [];
     let sent = 0;
     for (const c of (companies || [])) {
+      if (RESUMO_EXCLUDED_COMPANY_IDS.has(c.id)) { results.push({ company: c.name, skipped: "excluída por configuração" }); continue; }
       const group = gestaoGroups.get(c.id);
       if (!group) { results.push({ company: c.name, skipped: "sem grupo de gestão" }); continue; }
       if (results.filter((r) => r.processed).length >= limit) break;
