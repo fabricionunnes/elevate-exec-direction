@@ -492,7 +492,7 @@ export default function CerebroPage() {
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>Gerado {freshness(selected)}{selected.consultant_name ? ` · Consultor: ${selected.consultant_name}` : ""}</span>
                   <div className="flex gap-1.5">
-                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => navigate(`/onboarding-tasks/${selected.project_id}`)}>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => window.open(`#/onboarding-tasks/${selected.project_id}`, "_blank")}>
                       <ExternalLink className="h-3 w-3 mr-1" /> Projeto
                     </Button>
                     <Button variant="outline" size="sm" className="h-7 text-xs" disabled={regenerating === selected.project_id} onClick={() => regenerate(selected)}>
