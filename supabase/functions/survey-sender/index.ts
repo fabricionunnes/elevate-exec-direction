@@ -606,41 +606,48 @@ async function sendWhatsApp(
   message: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Get instance info including api_url and api_key
+    // Get instance info including api_url, api_key and provider
     const { data: instance } = await supabase
       .from("whatsapp_instances")
-      .select("id, instance_name, api_url, api_key")
+      .select("id, instance_name, api_url, api_key, provider_type")
       .eq("instance_name", instanceName)
       .eq("status", "connected")
       .single();
 
     if (!instance) return { success: false, error: "Instância não encontrada ou desconectada" };
 
-    // Get Evolution API credentials
-    // Use instance api_url if available (instance may be on a different server), fallback to env
     const EVOLUTION_API_URL = instance.api_url || Deno.env.get("EVOLUTION_API_URL");
-    // Use instance api_key if available (each server has its own Global API Key), fallback to env
     const EVOLUTION_API_KEY = instance.api_key || Deno.env.get("EVOLUTION_API_KEY");
-
     if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY) {
       return { success: false, error: "Evolution API credentials not configured" };
     }
 
     const baseUrl = EVOLUTION_API_URL.replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
 
-    // Call Evolution API directly to send text message
-    const sendUrl = `${baseUrl}/message/sendText/${instance.instance_name}`;
+    // Stevo / Manager V2 usa outro protocolo: POST {base}/send/text (sem nome
+    // da instância na URL). O endpoint legado do Evolution devolve 404 nele —
+    // era isso que quebrava a régua inteira depois da migração pro Stevo.
+    let isV2 = instance.provider_type === "manager_v2";
+    try {
+      if (!isV2) isV2 = new URL(baseUrl).hostname.toLowerCase().endsWith(".stevo.chat");
+    } catch { /* url inválida: segue legado */ }
+
+    const sendUrl = isV2 ? `${baseUrl}/send/text` : `${baseUrl}/message/sendText/${instance.instance_name}`;
+    const headers: Record<string, string> = isV2
+      ? { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY }
+      : {
+          "Content-Type": "application/json",
+          apikey: EVOLUTION_API_KEY,
+          Authorization: `Bearer ${EVOLUTION_API_KEY}`,
+        };
+    const payload = isV2
+      ? { number: phone, text: message, delay: 0 }
+      : { number: phone, text: message };
+
     const response = await fetch(sendUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: EVOLUTION_API_KEY,
-        Authorization: `Bearer ${EVOLUTION_API_KEY}`,
-      },
-      body: JSON.stringify({
-        number: phone,
-        text: message,
-      }),
+      headers,
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
