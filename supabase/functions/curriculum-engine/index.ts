@@ -83,11 +83,12 @@ async function loadBriefing(supabase: SupabaseClient, companyId: string) {
 }
 
 async function generateGrade(supabase: SupabaseClient, projectId: string, force: boolean) {
-  const { data: project } = await supabase
+  const { data: project, error: projErr } = await supabase
     .from("onboarding_projects")
-    .select("id, name, onboarding_company_id, created_at, company:onboarding_companies(name)")
+    .select("id, onboarding_company_id, created_at")
     .eq("id", projectId)
     .maybeSingle();
+  if (projErr) throw new Error(`Erro ao buscar projeto: ${projErr.message}`);
   if (!project) throw new Error("Projeto não encontrado");
   if (!project.onboarding_company_id) throw new Error("Projeto sem empresa vinculada");
 
@@ -144,6 +145,17 @@ Responda APENAS com JSON válido:
   const rawItens: any[] = Array.isArray(ai?.itens) ? ai.itens : [];
   if (!rawItens.length) throw new Error("IA não retornou itens");
 
+  // Guarda contra execução dupla (retry do gateway durante a chamada longa da
+  // IA): se apareceram itens novos desde o início desta execução, outra já
+  // está gravando — aborta em vez de duplicar a grade.
+  const { count: nowCount } = await supabase
+    .from("project_curriculum_items")
+    .select("id", { count: "exact", head: true })
+    .eq("project_id", projectId);
+  if ((nowCount ?? 0) > (existing?.length || 0)) {
+    return { skipped: true, reason: "Geração concorrente detectada — grade já criada por outra execução" };
+  }
+
   // force: limpa pendentes (e as tarefas abertas ligadas), preserva concluídos
   if ((existing?.length || 0) > 0 && force) {
     const pending = (existing || []).filter((e: any) => e.status !== "done");
@@ -199,11 +211,12 @@ Responda APENAS com JSON válido:
 }
 
 async function generateBoletim(supabase: SupabaseClient, projectId: string) {
-  const { data: project } = await supabase
+  const { data: project, error: projErr } = await supabase
     .from("onboarding_projects")
-    .select("id, name, onboarding_company_id, company:onboarding_companies(name)")
+    .select("id, onboarding_company_id")
     .eq("id", projectId)
     .maybeSingle();
+  if (projErr) throw new Error(`Erro ao buscar projeto: ${projErr.message}`);
   if (!project) throw new Error("Projeto não encontrado");
 
   const { data: pillars } = await supabase
