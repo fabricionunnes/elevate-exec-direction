@@ -158,6 +158,8 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
         .select("id, lead_id, last_message_at, instance_id, contact:crm_whatsapp_contacts!inner(id, name, phone)")
         .in("instance_id", instIds)
         .or("phone.like.120363%,phone.like.%@g.us%", { foreignTable: "crm_whatsapp_contacts" })
+        // grupo já vinculado a outro lead não aparece pra vincular de novo
+        .or(`lead_id.is.null,lead_id.eq.${leadId}`)
         .order("last_message_at", { ascending: false, nullsFirst: false })
         .limit(500);
       setGroups(
@@ -771,7 +773,6 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
                 }
                 return list.map((g) => {
                   const linkedHere = g.lead_id === leadId;
-                  const linkedOther = !!g.lead_id && !linkedHere;
                   return (
                     <div key={g.conv_id} className="flex items-center gap-2 px-3 py-2">
                       <Users className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
@@ -781,7 +782,6 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
                           {g.last_message_at
                             ? format(new Date(g.last_message_at), "dd/MM HH:mm", { locale: ptBR })
                             : "sem mensagens"}
-                          {linkedOther && " · vinculado a outro lead"}
                         </p>
                       </div>
                       <Button
