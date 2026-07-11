@@ -225,13 +225,40 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
     }
     return set;
   }, [search, graph]);
+  // Busca SEMÂNTICA (embeddings): acha por significado, não só por letra
+  const [semanticIds, setSemanticIds] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    const term = search.trim();
+    if (term.length < 3 || !isStaff) {
+      setSemanticIds(null);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const { data } = await supabase.functions.invoke("graph-engine", {
+          body: { action: "search", query: term, projectId, limit: 12 },
+        });
+        const hits = ((data as any)?.hits || []) as any[];
+        setSemanticIds(new Set(hits.filter((h) => Number(h.similarity) >= 0.34).map((h) => String(h.node_key))));
+      } catch {
+        setSemanticIds(null);
+      }
+    }, 700);
+    return () => clearTimeout(t);
+  }, [search, projectId, isStaff]);
+
+  const combinedMatched = useMemo(() => {
+    if (!matchedIds && !semanticIds) return null;
+    return new Set<string>([...(matchedIds || []), ...(semanticIds || [])]);
+  }, [matchedIds, semanticIds]);
+
   const matchedRef = useRef<Set<string> | null>(null);
   useEffect(() => {
-    matchedRef.current = matchedIds;
+    matchedRef.current = combinedMatched;
     alphaRef.current = Math.max(alphaRef.current, 0.05);
     // centraliza a câmera nos nós encontrados
-    if (matchedIds && matchedIds.size > 0 && wrapRef.current) {
-      const nodes = simRef.current.nodes.filter((n) => matchedIds.has(n.id));
+    if (combinedMatched && combinedMatched.size > 0 && wrapRef.current) {
+      const nodes = simRef.current.nodes.filter((n) => combinedMatched.has(n.id));
       if (nodes.length) {
         const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
         const minX = Math.min(...xs) - 80, maxX = Math.max(...xs) + 80;
@@ -245,7 +272,7 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
         };
       }
     }
-  }, [matchedIds]);
+  }, [combinedMatched]);
   useEffect(() => { searchRef.current = search; }, [search]);
   useEffect(() => { hiddenRef.current = hiddenKinds; alphaRef.current = Math.max(alphaRef.current, 0.05); }, [hiddenKinds]);
   useEffect(() => { selectedRef.current = selectedId; }, [selectedId]);
@@ -622,9 +649,10 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
                 className="pl-8 h-8 text-sm"
               />
             </div>
-            {matchedIds && (
+            {combinedMatched && (
               <Badge variant="secondary" className="text-[10px]">
-                {matchedIds.size} nó{matchedIds.size !== 1 ? "s" : ""}
+                {combinedMatched.size} nó{combinedMatched.size !== 1 ? "s" : ""}
+                {semanticIds && semanticIds.size > 0 && " · semântica"}
               </Badge>
             )}
             <div className="flex flex-wrap gap-1.5 ml-auto">

@@ -2477,6 +2477,10 @@ const OnboardingTasksPage = () => {
                     <Brain className="h-4 w-4 mr-2" />
                     Cérebro da Carteira
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/grafo")} className="text-primary focus:text-primary font-semibold">
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Grafo Geral
+                  </DropdownMenuItem>
                   {isAdmin && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations-retention")}>
                       <AlertTriangle className="h-4 w-4 mr-2" />

@@ -13,6 +13,10 @@ const corsHeaders = {
 
 const MODEL = "claude-sonnet-4-6";
 const CACHE_HOURS = 12;
+const ACTIVE_STATUSES = [
+  "active", "ativo", "cancellation_requested", "cancellation_signaled",
+  "notice_period", "sinalizou_cancelamento", "cumprindo_aviso",
+];
 
 function json(obj: unknown, status = 200) {
   return new Response(JSON.stringify(obj), {
@@ -40,6 +44,93 @@ function sampleText(s: unknown, budget: number): string {
     parts.push(str.slice(start, start + win));
   }
   return parts.join(" […] ");
+}
+
+const EMBED_MODEL = "text-embedding-3-small";
+
+async function embedTexts(texts: string[]): Promise<number[][]> {
+  const resp = await fetch("https://api.openai.com/v1/embeddings", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ model: EMBED_MODEL, input: texts }),
+  });
+  if (!resp.ok) throw new Error(`OpenAI embeddings ${resp.status}: ${truncate(await resp.text(), 200)}`);
+  const data = await resp.json();
+  return data.data.map((d: any) => d.embedding);
+}
+
+/** Grava o grafo em estrutura real (graph_nodes/graph_edges) com embeddings
+ * pra busca semântica — além do jsonb que alimenta o painel do projeto. */
+async function indexGraph(supabase: SupabaseClient, projectId: string, graph: any) {
+  const nodes: any[] = graph?.nodes || [];
+  const edges: any[] = graph?.edges || [];
+  if (!nodes.length) return { indexed: 0 };
+
+  let embs: (number[] | null)[];
+  try {
+    const texts = nodes.map((n) =>
+      truncate(
+        `${n.label} (${n.kind}). ${n.resumo || ""} ${(n.evidencias || []).map((e: any) => e.trecho).join(" ")}`,
+        900,
+      ),
+    );
+    embs = await embedTexts(texts);
+  } catch (e) {
+    console.error("embeddings falharam — indexa sem vetor:", e);
+    embs = nodes.map(() => null);
+  }
+
+  await supabase.from("graph_nodes").delete().eq("project_id", projectId);
+  await supabase.from("graph_edges").delete().eq("project_id", projectId);
+
+  const now = new Date().toISOString();
+  const rows = nodes.map((n, i) => ({
+    project_id: projectId,
+    node_key: String(n.id),
+    label: truncate(n.label, 200),
+    kind: String(n.kind || "tema"),
+    weight: Math.min(Math.max(Number(n.weight) || 3, 1), 10),
+    resumo: truncate(n.resumo || "", 700),
+    evidencias: Array.isArray(n.evidencias) ? n.evidencias : [],
+    embedding: embs[i] ? JSON.stringify(embs[i]) : null,
+    updated_at: now,
+  }));
+  for (let i = 0; i < rows.length; i += 50) {
+    const { error } = await supabase.from("graph_nodes").insert(rows.slice(i, i + 50));
+    if (error) console.error("graph_nodes insert:", error.message);
+  }
+
+  const seen = new Set<string>();
+  const edgeRows: any[] = [];
+  for (const e of edges) {
+    const key = `${e.source}→${e.target}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    edgeRows.push({
+      project_id: projectId,
+      source_key: String(e.source),
+      target_key: String(e.target),
+      weight: Math.min(Math.max(Number(e.weight) || 1, 1), 10),
+      why: truncate(e.why || "", 300),
+    });
+  }
+  for (let i = 0; i < edgeRows.length; i += 100) {
+    const { error } = await supabase.from("graph_edges").insert(edgeRows.slice(i, i + 100));
+    if (error) console.error("graph_edges insert:", error.message);
+  }
+  return { indexed: rows.length };
+}
+
+async function callerUser(req: Request) {
+  const authHeader = req.headers.get("Authorization") || "";
+  const anon = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: { user } } = await anon.auth.getUser();
+  return user;
 }
 
 async function gatherContext(supabase: SupabaseClient, projectId: string) {
@@ -233,6 +324,11 @@ Português do Brasil.`;
     { project_id: projectId, graph, generated_at: generatedAt },
     { onConflict: "project_id" },
   );
+  try {
+    await indexGraph(supabase, projectId, graph);
+  } catch (e) {
+    console.error("indexGraph falhou:", e);
+  }
   return { graph, generatedAt };
 }
 
@@ -240,13 +336,90 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
     const body = await req.json().catch(() => ({}));
-    const projectId = body.projectId;
-    if (!projectId) return json({ error: "projectId é obrigatório" }, 400);
-
+    const action = body.action || "build";
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // ── Busca semântica (staff; ACL resolvida no RPC pelo papel) ──────────
+    if (action === "search") {
+      const query = String(body.query || "").trim();
+      if (query.length < 3) return json({ hits: [] });
+      const user = await callerUser(req);
+      if (!user) return json({ error: "não autenticado" }, 401);
+      const [emb] = await embedTexts([query]);
+      const { data, error } = await supabase.rpc("graph_semantic_search", {
+        p_embedding: JSON.stringify(emb),
+        p_user: user.id,
+        p_project: body.projectId ?? null,
+        p_limit: body.limit ?? 15,
+      });
+      if (error) throw error;
+      return json({ hits: data || [] });
+    }
+
+    // ── Grafo geral da carteira (master/admin: tudo; consultant: os dele) ─
+    if (action === "global") {
+      const user = await callerUser(req);
+      if (!user) return json({ error: "não autenticado" }, 401);
+      const { data: me } = await supabase
+        .from("onboarding_staff")
+        .select("id, role")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (!me || !["master", "admin", "consultant"].includes(me.role)) {
+        return json({ error: "sem acesso ao grafo geral" }, 403);
+      }
+      let projQuery = supabase
+        .from("onboarding_projects")
+        .select("id, onboarding_company_id, company:onboarding_companies(name)")
+        .in("status", ACTIVE_STATUSES);
+      if (me.role === "consultant") projQuery = projQuery.eq("consultant_id", me.id);
+      const { data: projects } = await projQuery;
+      const projIds = (projects || []).map((p: any) => p.id);
+      if (!projIds.length) return json({ projects: [], nodes: [], edges: [] });
+
+      const { data: nodes } = await supabase
+        .from("graph_nodes")
+        .select("project_id, node_key, label, kind, weight, resumo, evidencias")
+        .in("project_id", projIds)
+        .order("weight", { ascending: false })
+        .limit(1000);
+      const nodeKeys = new Set((nodes || []).map((n: any) => `${n.project_id}:${n.node_key}`));
+      const { data: edges } = await supabase
+        .from("graph_edges")
+        .select("project_id, source_key, target_key, weight, why")
+        .in("project_id", projIds)
+        .limit(2000);
+      const filteredEdges = (edges || []).filter(
+        (e: any) => nodeKeys.has(`${e.project_id}:${e.source_key}`) && nodeKeys.has(`${e.project_id}:${e.target_key}`),
+      );
+      return json({
+        projects: (projects || []).map((p: any) => ({ id: p.id, company: (p.company as any)?.name || "Cliente" })),
+        nodes: nodes || [],
+        edges: filteredEdges,
+      });
+    }
+
+    // ── Reindexa a estrutura real a partir dos jsonb existentes ───────────
+    if (action === "backfill") {
+      const { data: rows } = await supabase.from("project_graph").select("project_id, graph");
+      const results: any[] = [];
+      for (const r of rows || []) {
+        if (!(r.graph as any)?.nodes?.length) continue;
+        try {
+          results.push({ project: r.project_id, ...(await indexGraph(supabase, r.project_id, r.graph)) });
+        } catch (e) {
+          results.push({ project: r.project_id, error: String(e) });
+        }
+      }
+      return json({ results });
+    }
+
+    const projectId = body.projectId;
+    if (!projectId) return json({ error: "projectId é obrigatório" }, 400);
 
     const { data: cached } = await supabase
       .from("project_graph")
