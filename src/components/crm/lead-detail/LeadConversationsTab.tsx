@@ -13,7 +13,9 @@ import {
   Check,
   CheckCheck,
   RefreshCw,
+  Users,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -53,6 +55,7 @@ const normalizePhoneDigits = (phoneRaw: string) => {
   let digits = (phoneRaw || "").replace(/\D/g, "");
   if (!digits) return "";
   if (phoneRaw.includes("@g.us")) return digits;
+  if (digits.startsWith("120363") && digits.length > 15) return digits; // grupo (JID)
   if (!digits.startsWith("55")) digits = `55${digits}`;
   if (digits.length === 12) {
     const ddd = digits.slice(2, 4);
@@ -119,6 +122,58 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
       }
     })();
   }, []);
+
+  // Vincular grupo de WhatsApp ao lead (grupo criado na hora de agendar reunião)
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+  const [groupSearch, setGroupSearch] = useState("");
+  const [groups, setGroups] = useState<
+    { conv_id: string; name: string; lead_id: string | null; last_message_at: string | null }[]
+  >([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
+  const [linkingId, setLinkingId] = useState<string | null>(null);
+
+  const fetchGroups = async () => {
+    setLoadingGroups(true);
+    try {
+      const { data } = await (supabase as any)
+        .from("crm_whatsapp_conversations")
+        .select("id, lead_id, last_message_at, contact:crm_whatsapp_contacts!inner(id, name, phone)")
+        .or("phone.like.120363%,phone.like.%@g.us%", { foreignTable: "crm_whatsapp_contacts" })
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .limit(500);
+      setGroups(
+        ((data || []) as any[]).map((c) => ({
+          conv_id: c.id,
+          name: c.contact?.name || c.contact?.phone || "Grupo",
+          lead_id: c.lead_id,
+          last_message_at: c.last_message_at,
+        }))
+      );
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
+
+  const toggleGroupLink = async (convId: string, currentLeadId: string | null) => {
+    setLinkingId(convId);
+    try {
+      const linking = currentLeadId !== leadId;
+      const { error } = await (supabase as any)
+        .from("crm_whatsapp_conversations")
+        .update({ lead_id: linking ? leadId : null })
+        .eq("id", convId);
+      if (error) throw error;
+      toast.success(linking ? "Grupo vinculado ao lead" : "Grupo desvinculado");
+      setGroups((prev) =>
+        prev.map((g) => (g.conv_id === convId ? { ...g, lead_id: linking ? leadId : null } : g))
+      );
+      await fetchConversations();
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao vincular grupo");
+    } finally {
+      setLinkingId(null);
+    }
+  };
 
   const fetchConversations = useCallback(async () => {
     setLoading(true);
@@ -458,9 +513,23 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Conversas ({conversations.length})
           </span>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={fetchConversations}>
-            <RefreshCw className="h-3 w-3" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              title="Vincular grupo de WhatsApp a este lead"
+              onClick={() => {
+                setGroupDialogOpen(true);
+                fetchGroups();
+              }}
+            >
+              <Users className="h-3 w-3" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={fetchConversations}>
+              <RefreshCw className="h-3 w-3" />
+            </Button>
+          </div>
         </div>
         <ScrollArea className="flex-1 max-h-[140px] md:max-h-none">
           {loading ? (
@@ -607,6 +676,73 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
           </>
         )}
       </div>
+
+      {/* Seletor de grupo do WhatsApp pra vincular ao lead */}
+      <Dialog open={groupDialogOpen} onOpenChange={setGroupDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Vincular grupo ao lead</DialogTitle>
+          </DialogHeader>
+          <Input
+            placeholder="Buscar grupo pelo nome..."
+            value={groupSearch}
+            onChange={(e) => setGroupSearch(e.target.value)}
+          />
+          <div className="max-h-[320px] overflow-y-auto divide-y divide-border rounded-md border border-border">
+            {loadingGroups ? (
+              <div className="p-4 text-center text-xs text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                Carregando grupos...
+              </div>
+            ) : (
+              (() => {
+                const term = groupSearch.trim().toLowerCase();
+                const list = groups.filter((g) => !term || g.name.toLowerCase().includes(term));
+                if (list.length === 0) {
+                  return (
+                    <div className="p-4 text-center text-xs text-muted-foreground">
+                      Nenhum grupo encontrado.
+                    </div>
+                  );
+                }
+                return list.map((g) => {
+                  const linkedHere = g.lead_id === leadId;
+                  const linkedOther = !!g.lead_id && !linkedHere;
+                  return (
+                    <div key={g.conv_id} className="flex items-center gap-2 px-3 py-2">
+                      <Users className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm truncate">{g.name}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {g.last_message_at
+                            ? format(new Date(g.last_message_at), "dd/MM HH:mm", { locale: ptBR })
+                            : "sem mensagens"}
+                          {linkedOther && " · vinculado a outro lead"}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={linkedHere ? "outline" : "default"}
+                        className="h-7 text-xs shrink-0"
+                        disabled={linkingId === g.conv_id}
+                        onClick={() => toggleGroupLink(g.conv_id, g.lead_id)}
+                      >
+                        {linkingId === g.conv_id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : linkedHere ? (
+                          "Desvincular"
+                        ) : (
+                          "Vincular"
+                        )}
+                      </Button>
+                    </div>
+                  );
+                });
+              })()
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

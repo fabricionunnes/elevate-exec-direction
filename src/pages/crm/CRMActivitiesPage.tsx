@@ -90,9 +90,9 @@ export const CRMActivitiesPage = () => {
   const [filterOwner, setFilterOwner] = useState("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
-  // Fluxo pós-conclusão: criar próxima atividade ou finalizar atendimento
-  const [postCompleteLead, setPostCompleteLead] = useState<{ id: string; name: string } | null>(null);
-  const [addActivityLeadId, setAddActivityLeadId] = useState<string | null>(null);
+  // Pós-conclusão: lead nunca fica sem tarefa pendente — concluir abre a criação
+  // da próxima atividade; se o lead não tiver outra pendente, criar é obrigatório.
+  const [nextTask, setNextTask] = useState<{ leadId: string; leadName: string; mandatory: boolean } | null>(null);
 
   // Filter options
   const [origins, setOrigins] = useState<{ id: string; name: string }[]>([]);
@@ -177,8 +177,17 @@ export const CRMActivitiesPage = () => {
       if (error) throw error;
       toast.success("Atividade concluída");
       loadActivities();
-      // Abre o fluxo: criar próxima atividade para o mesmo lead ou finalizar atendimento
-      setPostCompleteLead({ id: activity.lead_id, name: activity.lead?.name || "este lead" });
+      // Abre a criação da próxima atividade — obrigatória se o lead ficou sem pendente
+      const { count } = await supabase
+        .from("crm_activities")
+        .select("id", { count: "exact", head: true })
+        .eq("lead_id", activity.lead_id)
+        .eq("status", "pending");
+      setNextTask({
+        leadId: activity.lead_id,
+        leadName: activity.lead?.name || "este lead",
+        mandatory: (count ?? 0) === 0,
+      });
     } catch (error) {
       console.error("Error completing activity:", error);
       toast.error("Erro ao concluir atividade");
@@ -648,48 +657,24 @@ export const CRMActivitiesPage = () => {
         </div>
       </div>
 
-      {/* Pós-conclusão: criar próxima atividade ou finalizar atendimento */}
-      <Dialog open={!!postCompleteLead} onOpenChange={(o) => !o && setPostCompleteLead(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Atividade concluída</DialogTitle>
-            <DialogDescription>
-              O que você quer fazer com {postCompleteLead?.name} agora?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 pt-1">
-            <Button
-              className="w-full justify-start gap-2"
-              onClick={() => {
-                if (postCompleteLead) setAddActivityLeadId(postCompleteLead.id);
-                setPostCompleteLead(null);
-              }}
-            >
-              <Plus className="h-4 w-4" /> Criar próxima atividade
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-2"
-              onClick={() => setPostCompleteLead(null)}
-            >
-              <CheckCircle className="h-4 w-4" /> Finalizar atendimento
-            </Button>
-            <p className="text-xs text-muted-foreground pt-1">
-              Ao finalizar, o lead fica sem atividade pendente até você criar uma nova
-              manualmente dentro do lead.
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Criação da próxima atividade para o lead recém-concluído */}
-      {addActivityLeadId && (
+      {/* Próxima atividade do lead recém-concluído — sem opção de finalizar:
+          quando o lead ficaria sem tarefa pendente, criar é obrigatório */}
+      {nextTask && (
         <AddActivityDialog
-          open={!!addActivityLeadId}
-          onOpenChange={(o) => !o && setAddActivityLeadId(null)}
-          leadId={addActivityLeadId}
+          open={!!nextTask}
+          onOpenChange={(o) => {
+            if (o) return;
+            if (nextTask.mandatory) {
+              toast.error(
+                `Crie a próxima tarefa de ${nextTask.leadName} — nenhum lead fica sem atividade pendente`
+              );
+              return;
+            }
+            setNextTask(null);
+          }}
+          leadId={nextTask.leadId}
           onSuccess={() => {
-            setAddActivityLeadId(null);
+            setNextTask(null);
             loadActivities();
           }}
         />

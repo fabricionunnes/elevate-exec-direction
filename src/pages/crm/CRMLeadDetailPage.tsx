@@ -64,6 +64,7 @@ import {
   Newspaper,
 } from "lucide-react";
 import { AddLeadNoteDialog } from "@/components/crm/lead-detail/AddLeadNoteDialog";
+import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
 import { LeadSummaryTab } from "@/components/crm/lead-detail/lead-summary/LeadSummaryTab";
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
@@ -480,6 +481,9 @@ export const CRMLeadDetailPage = () => {
     }
   };
 
+  // Lead nunca fica sem tarefa pendente: concluir abre a criação da próxima
+  const [nextTask, setNextTask] = useState<{ mandatory: boolean } | null>(null);
+
   const handleActivityComplete = async (activityId: string) => {
     try {
       const { error } = await supabase
@@ -493,6 +497,14 @@ export const CRMLeadDetailPage = () => {
       if (error) throw error;
       toast.success("Atividade concluída");
       loadLead();
+      if (lead?.id) {
+        const { count } = await supabase
+          .from("crm_activities")
+          .select("id", { count: "exact", head: true })
+          .eq("lead_id", lead.id)
+          .eq("status", "pending");
+        setNextTask({ mandatory: (count ?? 0) === 0 });
+      }
     } catch (error) {
       console.error("Error completing activity:", error);
       toast.error("Erro ao concluir atividade");
@@ -1633,6 +1645,26 @@ export const CRMLeadDetailPage = () => {
           onOpenChange={setConvertDialogOpen}
           lead={lead}
           onSuccess={loadLead}
+        />
+      )}
+
+      {/* Próxima atividade após concluir — obrigatória se o lead ficou sem pendente */}
+      {lead && nextTask && (
+        <AddActivityDialog
+          open={!!nextTask}
+          onOpenChange={(o) => {
+            if (o) return;
+            if (nextTask.mandatory) {
+              toast.error("Crie a próxima tarefa — nenhum lead fica sem atividade pendente");
+              return;
+            }
+            setNextTask(null);
+          }}
+          leadId={lead.id}
+          onSuccess={() => {
+            setNextTask(null);
+            loadLead();
+          }}
         />
       )}
     </div>
