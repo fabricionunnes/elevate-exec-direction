@@ -83,6 +83,12 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
   const [search, setSearch] = useState("");
   const [hiddenKinds, setHiddenKinds] = useState<Set<string>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // pin: clicou num nó, as conexões ficam fixas destacadas até clicar no vazio
+  const [pinnedId, setPinnedId] = useState<string | null>(null);
+  const [meetingHits, setMeetingHits] = useState<
+    { title: string; date: string | null; snippet: string }[]
+  >([]);
+  const [searchingMeetings, setSearchingMeetings] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -96,6 +102,7 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
   const searchRef = useRef("");
   const hiddenRef = useRef<Set<string>>(new Set());
   const selectedRef = useRef<string | null>(null);
+  const pinnedRef = useRef<string | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -223,6 +230,42 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
   useEffect(() => { searchRef.current = search; }, [search]);
   useEffect(() => { hiddenRef.current = hiddenKinds; alphaRef.current = Math.max(alphaRef.current, 0.05); }, [hiddenKinds]);
   useEffect(() => { selectedRef.current = selectedId; }, [selectedId]);
+  useEffect(() => { pinnedRef.current = pinnedId; }, [pinnedId]);
+
+  // Busca nas transcrições: o que foi falado sobre o termo nas reuniões
+  useEffect(() => {
+    const term = search.trim();
+    if (term.length < 3) {
+      setMeetingHits([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      setSearchingMeetings(true);
+      try {
+        const like = `%${term.replace(/[%_]/g, "")}%`;
+        const { data } = await (supabase as any)
+          .from("onboarding_meeting_notes")
+          .select("meeting_title, meeting_date, transcript, notes")
+          .eq("project_id", projectId)
+          .or(`transcript.ilike.${like},notes.ilike.${like}`)
+          .order("meeting_date", { ascending: false })
+          .limit(6);
+        const lower = term.toLowerCase();
+        const hits = ((data || []) as any[]).map((m) => {
+          const text: string = m.transcript || m.notes || "";
+          const idx = text.toLowerCase().indexOf(lower);
+          const start = Math.max(0, idx - 130);
+          const end = Math.min(text.length, idx + term.length + 170);
+          const snippet = (start > 0 ? "…" : "") + text.slice(start, end).trim() + (end < text.length ? "…" : "");
+          return { title: m.meeting_title || "Reunião", date: m.meeting_date, snippet };
+        });
+        setMeetingHits(hits);
+      } finally {
+        setSearchingMeetings(false);
+      }
+    }, 450);
+    return () => clearTimeout(t);
+  }, [search, projectId]);
 
   // (Re)constrói a simulação quando o grafo muda
   useEffect(() => {
@@ -329,7 +372,7 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
       const hover = hoverRef.current;
       const selected = selectedRef.current;
       const matched = matchedRef.current;
-      const focusId = hover || selected;
+      const focusId = hover || selected || pinnedRef.current;
       const focusSet = new Set<string>();
       if (focusId) {
         focusSet.add(focusId);
@@ -371,7 +414,7 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
         ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
         ctx.fillStyle = color;
         ctx.fill();
-        if (n.id === selected) {
+        if (n.id === selected || n.id === pinnedRef.current) {
           ctx.strokeStyle = "#ffffff";
           ctx.lineWidth = 2 / view.scale;
           ctx.stroke();
@@ -443,7 +486,14 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
     const onUp = (ev: MouseEvent) => {
       const drag = dragRef.current;
       const moved = Math.abs(ev.clientX - drag.lastX) + Math.abs(ev.clientY - drag.lastY);
-      if (drag.node && moved < 4) setSelectedId(drag.node.id);
+      if (drag.node && moved < 4) {
+        // clique no nó: fixa as conexões e abre o detalhe
+        setPinnedId(drag.node.id);
+        setSelectedId(drag.node.id);
+      } else if (!drag.node && drag.panning && moved < 4) {
+        // clique no vazio: solta o pin
+        setPinnedId(null);
+      }
       dragRef.current = { node: null, panning: false, lastX: 0, lastY: 0 };
     };
     const onWheel = (ev: WheelEvent) => {
@@ -582,6 +632,24 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
                 })}
             </div>
           </div>
+
+          {search.trim().length >= 3 && (searchingMeetings || meetingHits.length > 0) && (
+            <div className="rounded-lg border border-border divide-y divide-border">
+              <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground bg-muted/30">
+                {searchingMeetings ? "Buscando nas transcrições..." : `Falado nas reuniões (${meetingHits.length})`}
+              </div>
+              {meetingHits.map((h, i) => (
+                <div key={i} className="px-3 py-2">
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <Badge variant="secondary" className="text-[9px] h-4 px-1.5">Reunião</Badge>
+                    <span className="font-medium text-foreground">{h.title}</span>
+                    {h.date && <span className="ml-auto">{format(new Date(h.date), "dd/MM/yy", { locale: ptBR })}</span>}
+                  </div>
+                  <p className="text-xs leading-snug mt-1 text-muted-foreground">{h.snippet}</p>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div ref={wrapRef} className="relative rounded-xl overflow-hidden border border-border">
             <canvas ref={canvasRef} className="block cursor-grab" />

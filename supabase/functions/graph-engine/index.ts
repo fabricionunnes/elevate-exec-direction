@@ -170,13 +170,14 @@ Extraia nós e arestas. Tipos de nó (kind):
 - "evento": marcos (reunião-chave, virada, incidente)
 
 Regras:
-- 20 a 40 nós. Cada nó TEM que ter pelo menos 1 evidência REAL: trecho citável (frase de WhatsApp, transcrição, tarefa, campo do briefing), com fonte e data quando houver. NÃO invente evidência.
+- PRIORIZE os ASSUNTOS DISCUTIDOS NAS REUNIÕES: cada assunto relevante de transcrição/notas vira nó "tema" com o trecho real citado como evidência (fonte "reuniao", com a data da reunião) — é assim que o usuário vai reencontrar o que foi falado.
+- 20 a 35 nós. Cada nó TEM que ter pelo menos 1 evidência REAL: trecho citável (frase de WhatsApp, transcrição, tarefa, campo do briefing), com fonte e data quando houver. NÃO invente evidência.
 - "weight" do nó = relevância 1-10 (quantas vezes aparece / quão central é).
-- Arestas conectam nós relacionados com "why" curto (o mecanismo da relação). Todo nó precisa de pelo menos 1 aresta. 30 a 70 arestas. Máximo 3 evidências por nó.
+- Arestas conectam nós relacionados com "why" curto (o mecanismo da relação). Todo nó precisa de pelo menos 1 aresta. 25 a 60 arestas. Máximo 2 evidências por nó, cada trecho com no máximo 140 caracteres.
 - ids curtos em kebab-case (ex.: "trafego-pago", "caio-vendedor").
 - Fontes válidas: "whatsapp" | "reuniao" | "tarefa" | "briefing" | "grade" | "kpi" | "nps" | "cerebro".
 
-Responda APENAS com JSON válido:
+Responda APENAS com JSON válido, COMPACTO (sem espaços nem quebras de linha desnecessárias — o tamanho da resposta é limitado):
 {
   "nodes": [{ "id": "kebab-id", "label": "Nome curto", "kind": "tema", "weight": 7, "resumo": "1-2 frases sobre o que este nó representa PRA ESTE cliente", "evidencias": [{ "fonte": "whatsapp", "quem": "nome ou null", "quando": "data ISO ou null", "trecho": "citação/trecho real" }] }],
   "edges": [{ "source": "id-a", "target": "id-b", "weight": 3, "why": "por que se conectam" }],
@@ -191,7 +192,7 @@ Português do Brasil.`;
       "anthropic-version": "2023-06-01",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ model: MODEL, max_tokens: 9000, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 15000, messages: [{ role: "user", content: prompt }] }),
   });
   if (!aiResp.ok) throw new Error(`Anthropic ${aiResp.status}: ${truncate(await aiResp.text(), 300)}`);
   const aiData = await aiResp.json();
