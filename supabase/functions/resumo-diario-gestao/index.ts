@@ -171,8 +171,8 @@ async function generateSummary(companyName: string, metrics: any, dayLabel = "ho
     return `- ${r.nome}: ${dayLabel} ${val} (média 7d ${med}, ${d})`;
   }).join("\n");
 
-  const contexto = dayLabel === "ontem"
-    ? `Escreva o RESUMO DO DIA DE ONTEM pra mandar NO GRUPO agora de manhã — fale dos números como resultado de ONTEM (dia já fechado), nunca como "hoje".`
+  const contexto = dayLabel !== "hoje"
+    ? `Escreva o RESUMO do dia já fechado (${dayLabel}) pra mandar NO GRUPO agora de manhã — fale dos números como resultado de ${dayLabel}, nunca como "hoje".`
     : `Escreva o RESUMO DO DIA pra mandar NO GRUPO agora.`;
   const prompt = `Você é Marcelo Almeida, diretor comercial da UNV que acompanha o time do cliente ${companyName} no grupo de gestão do WhatsApp. ${contexto}
 
@@ -184,7 +184,7 @@ Regras de escrita:
 - 5 a 7 linhas no máximo. Comece com uma saudação curta ao time.
 - Traga os números que importam (faturamento, vendas, leads/atendimentos).
 - Destaque 1 ponto de atenção (a maior queda) OU 1 vitória (a maior alta).
-- Termine com 1 ação concreta pra ${dayLabel === "ontem" ? "HOJE (o dia está começando)" : "amanhã"} — de EXECUÇÃO (ex: follow-up nos deals parados, revisar propostas em aberto, priorizar a lista de leads).
+- Termine com 1 ação concreta pra ${dayLabel !== "hoje" ? "HOJE (o dia está começando)" : "amanhã"} — de EXECUÇÃO (ex: follow-up nos deals parados, revisar propostas em aberto, priorizar a lista de leads).
 - NUNCA marque, prometa ou sugira reunião, call ou compromisso com dia/horário — você não tem acesso à agenda de ninguém. Se o dia pediu conversa, no máximo diga que o consultor vai alinhar com o time, sem hora marcada.
 - Não invente número que não está na lista. Não use markdown, só texto corrido/linhas.
 - Varie a construção do texto a cada dia — essa mensagem sai diariamente e não pode parecer repetida.`;
@@ -227,7 +227,7 @@ async function nudgeText(companyName: string, dayLabel = "hoje"): Promise<string
   const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
   if (!ANTHROPIC_API_KEY) return nudgeFallback(companyName);
   const periodo = brDayPeriod();
-  const ref = dayLabel === "ontem" ? "de ONTEM" : "de HOJE";
+  const ref = dayLabel === "hoje" ? "de HOJE" : (dayLabel === "ontem" ? "de ONTEM" : "do SÁBADO");
   const prompt = `Você é Marcelo Almeida, diretor comercial da UNV, no grupo de gestão do cliente ${companyName} no WhatsApp. Os indicadores ${ref} não foram lançados no sistema. Escreva UMA cobrança curta (2 a 3 frases) pedindo pro time lançar os números ${ref}.
 
 Regras:
@@ -291,8 +291,11 @@ Deno.serve(async (req) => {
     const live = body.live === true;
     const morning = body.morning === true;
     // Modo matinal fala do dia ANTERIOR; noturno fala do dia atual.
-    const today = morning ? daysAgo(brToday(), 1) : brToday();
-    const dayLabel = morning ? "ontem" : "hoje";
+    // Na SEGUNDA o matinal fala do SÁBADO (D-2) — domingo a loja não opera
+    // e o resultado de sábado não pode ficar sem leitura.
+    const isMonday = new Date(brToday() + "T12:00:00").getDay() === 1;
+    const today = morning ? daysAgo(brToday(), isMonday ? 2 : 1) : brToday();
+    const dayLabel = morning ? (isMonday ? "no sábado" : "ontem") : "hoje";
     const limit = Number(body.limit) || (live ? 100 : 8);
 
     // Empresas excluídas do resumo diário (pedido do Fabrício — ex.: cliente
@@ -329,7 +332,7 @@ Deno.serve(async (req) => {
         const parts: string[] = [];
         if (metrics.lancaram.length) parts.push(`Lançaram ${dayLabel}: ${metrics.lancaram.join(", ")}.`);
         if (metrics.faltaram.length) parts.push(morning
-          ? `Faltou lançar ontem: ${metrics.faltaram.join(", ")}. Sobe esses números retroativos ainda hoje cedo.`
+          ? `Faltou lançar ${dayLabel}: ${metrics.faltaram.join(", ")}. Sobe esses números retroativos ainda hoje cedo.`
           : `Faltou lançar: ${metrics.faltaram.join(", ")}. Bora subir esses números ainda hoje.`);
         if (parts.length) text += `\n\n${parts.join("\n")}`;
       }
