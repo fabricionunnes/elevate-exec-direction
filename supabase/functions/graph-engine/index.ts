@@ -138,7 +138,7 @@ async function gatherContext(supabase: SupabaseClient, projectId: string) {
       data: m.meeting_date,
       no_show: m.is_no_show,
       notas: truncate(m.notes, 700),
-      transcricao: truncate(m.transcript, 2000),
+      transcricao: truncate(m.transcript, 1400),
     })),
     tarefas: (tasks || []).map((t: any) => ({ t: t.title, s: t.status, vence: t.due_date })),
     grade_curricular: (grade || []).map((g: any) => ({
@@ -170,9 +170,9 @@ Extraia nós e arestas. Tipos de nó (kind):
 - "evento": marcos (reunião-chave, virada, incidente)
 
 Regras:
-- 20 a 50 nós. Cada nó TEM que ter pelo menos 1 evidência REAL: trecho citável (frase de WhatsApp, transcrição, tarefa, campo do briefing), com fonte e data quando houver. NÃO invente evidência.
+- 20 a 40 nós. Cada nó TEM que ter pelo menos 1 evidência REAL: trecho citável (frase de WhatsApp, transcrição, tarefa, campo do briefing), com fonte e data quando houver. NÃO invente evidência.
 - "weight" do nó = relevância 1-10 (quantas vezes aparece / quão central é).
-- Arestas conectam nós relacionados com "why" curto (o mecanismo da relação). Todo nó precisa de pelo menos 1 aresta. 30 a 90 arestas.
+- Arestas conectam nós relacionados com "why" curto (o mecanismo da relação). Todo nó precisa de pelo menos 1 aresta. 30 a 70 arestas. Máximo 3 evidências por nó.
 - ids curtos em kebab-case (ex.: "trafego-pago", "caio-vendedor").
 - Fontes válidas: "whatsapp" | "reuniao" | "tarefa" | "briefing" | "grade" | "kpi" | "nps" | "cerebro".
 
@@ -191,7 +191,7 @@ Português do Brasil.`;
       "anthropic-version": "2023-06-01",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ model: MODEL, max_tokens: 14000, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 9000, messages: [{ role: "user", content: prompt }] }),
   });
   if (!aiResp.ok) throw new Error(`Anthropic ${aiResp.status}: ${truncate(await aiResp.text(), 300)}`);
   const aiData = await aiResp.json();
@@ -227,19 +227,39 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    if (!body.force) {
-      const { data: cached } = await supabase
-        .from("project_graph")
-        .select("graph, generated_at")
-        .eq("project_id", projectId)
-        .maybeSingle();
-      if (cached?.generated_at) {
-        const ageH = (Date.now() - new Date(cached.generated_at).getTime()) / 3600000;
-        if (ageH < CACHE_HOURS) return json({ ...cached, cached: true });
-      }
+    const { data: cached } = await supabase
+      .from("project_graph")
+      .select("graph, generated_at")
+      .eq("project_id", projectId)
+      .maybeSingle();
+
+    // build em andamento (marcador building) nos últimos 5 min → não duplica
+    if (cached?.graph && (cached.graph as any).building) {
+      const ageMin = (Date.now() - new Date(cached.generated_at).getTime()) / 60000;
+      if (ageMin < 5) return json({ building: true });
     }
 
-    return json(await buildGraph(supabase, projectId));
+    if (!body.force && cached?.generated_at && !(cached.graph as any)?.building) {
+      const ageH = (Date.now() - new Date(cached.generated_at).getTime()) / 3600000;
+      if (ageH < CACHE_HOURS) return json({ ...cached, cached: true });
+    }
+
+    // marca como "gerando" e processa em background — o painel acompanha na tabela
+    await supabase.from("project_graph").upsert(
+      { project_id: projectId, graph: { building: true }, generated_at: new Date().toISOString() },
+      { onConflict: "project_id" },
+    );
+    const work = buildGraph(supabase, projectId).catch(async (e) => {
+      console.error("graph build failed:", e);
+      await supabase.from("project_graph").upsert(
+        { project_id: projectId, graph: { building: false, error: String(e?.message || e) }, generated_at: new Date().toISOString() },
+        { onConflict: "project_id" },
+      );
+    });
+    // @ts-ignore EdgeRuntime existe no Supabase Edge
+    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(work);
+    else await work;
+    return json({ building: true });
   } catch (error) {
     console.error("graph-engine error:", error);
     return json({ error: error instanceof Error ? error.message : String(error) }, 500);

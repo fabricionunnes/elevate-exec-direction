@@ -93,6 +93,46 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
   const hiddenRef = useRef<Set<string>>(new Set());
   const selectedRef = useRef<string | null>(null);
 
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
+  // A geração roda em background na edge function; o painel acompanha a tabela.
+  const startPolling = useCallback(() => {
+    stopPolling();
+    const startedAt = Date.now();
+    pollRef.current = setInterval(async () => {
+      if (Date.now() - startedAt > 5 * 60 * 1000) {
+        stopPolling();
+        setBuilding(false);
+        toast.error("A geração demorou demais — tente de novo");
+        return;
+      }
+      const { data } = await (supabase as any)
+        .from("project_graph")
+        .select("graph, generated_at")
+        .eq("project_id", projectId)
+        .maybeSingle();
+      const g = data?.graph as any;
+      if (g && !g.building) {
+        stopPolling();
+        setBuilding(false);
+        if (g.error) {
+          toast.error(`Erro ao gerar grafo: ${g.error}`);
+          return;
+        }
+        setGraph(g as GraphData);
+        setGeneratedAt(data.generated_at);
+        toast.success("Grafo pronto");
+      }
+    }, 5000);
+  }, [projectId, stopPolling]);
+
   // Carrega o grafo salvo (sem disparar IA)
   const load = useCallback(async () => {
     setLoading(true);
@@ -102,16 +142,23 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
         .select("graph, generated_at")
         .eq("project_id", projectId)
         .maybeSingle();
-      if (data?.graph) {
-        setGraph(data.graph as GraphData);
+      const g = data?.graph as any;
+      if (g?.building) {
+        setBuilding(true);
+        startPolling();
+      } else if (g && !g.error && Array.isArray(g.nodes)) {
+        setGraph(g as GraphData);
         setGeneratedAt(data.generated_at);
       }
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, startPolling]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    return stopPolling;
+  }, [load, stopPolling]);
 
   const build = async (force: boolean) => {
     setBuilding(true);
@@ -128,12 +175,17 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
         throw new Error(msg);
       }
       if ((data as any)?.error) throw new Error((data as any).error);
+      if ((data as any)?.building) {
+        // gerando em background — acompanha na tabela
+        startPolling();
+        return;
+      }
       setGraph((data as any).graph as GraphData);
       setGeneratedAt((data as any).generatedAt || (data as any).generated_at || new Date().toISOString());
+      setBuilding(false);
       toast.success("Grafo atualizado");
     } catch (e: any) {
       toast.error(e?.message || "Erro ao gerar grafo");
-    } finally {
       setBuilding(false);
     }
   };
@@ -452,7 +504,13 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
         </div>
       </div>
 
-      {!graph ? (
+      {!graph && building ? (
+        <div className="border border-border rounded-xl py-16 text-center text-sm text-muted-foreground">
+          <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin text-primary" />
+          <p className="font-medium text-foreground">A IA está montando o grafo...</p>
+          <p className="mt-1">Conectando conversas, reuniões, tarefas e briefing — leva 1 a 2 minutos.</p>
+        </div>
+      ) : !graph ? (
         <div className="border border-border rounded-xl py-16 text-center text-sm text-muted-foreground">
           <Network className="h-10 w-10 mx-auto mb-3 opacity-40" />
           <p>Este projeto ainda não tem grafo.</p>
