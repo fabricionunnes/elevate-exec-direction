@@ -70,6 +70,10 @@ const FONTE_LABEL: Record<string, string> = {
 
 const kindColor = (kind: string) => KIND_META[kind]?.color || "#94a3b8";
 
+// Posições persistem entre remontagens do painel (a página do projeto
+// re-renderiza com frequência) — senão o grafo "flutua" eternamente.
+const posCache = new Map<string, { x: number; y: number }>();
+
 export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
   const isStaff = userRole !== "client";
   const [graph, setGraph] = useState<GraphData | null>(null);
@@ -225,21 +229,25 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
     if (!graph?.nodes?.length) return;
     const W = wrapRef.current?.clientWidth || 900;
     const H = 560;
+    let cacheHits = 0;
     const nodes: SimNode[] = graph.nodes.map((n, i) => {
+      const cached = posCache.get(`${projectId}:${n.id}`);
+      if (cached) cacheHits++;
       const angle = (i / graph.nodes.length) * Math.PI * 2;
-      const rad = 120 + Math.random() * 160;
+      const rad = 120 + ((i * 7919) % 160); // determinístico, sem salto a cada remontagem
       return {
         ...n,
-        x: W / 2 + Math.cos(angle) * rad,
-        y: H / 2 + Math.sin(angle) * rad,
+        x: cached?.x ?? W / 2 + Math.cos(angle) * rad,
+        y: cached?.y ?? H / 2 + Math.sin(angle) * rad,
         vx: 0, vy: 0,
         r: 6 + Math.min(Math.max(n.weight || 3, 1), 10) * 1.5,
       };
     });
     simRef.current = { nodes, byId: new Map(nodes.map((n) => [n.id, n])) };
     viewRef.current = { x: 0, y: 0, scale: 1 };
-    alphaRef.current = 1;
-  }, [graph]);
+    // remontou com layout já assentado → não reaquece
+    alphaRef.current = cacheHits >= nodes.length * 0.8 ? 0.02 : 1;
+  }, [graph, projectId]);
 
   // Loop: física + render
   useEffect(() => {
@@ -303,7 +311,10 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
             n.x += n.vx; n.y += n.vy;
           }
         }
-        alphaRef.current = Math.max(alpha * 0.995, dragRef.current.node ? 0.3 : 0.004);
+        alphaRef.current = Math.max(alpha * 0.99, dragRef.current.node ? 0.3 : 0.004);
+        if (alphaRef.current <= 0.006) {
+          for (const n of simRef.current.nodes) posCache.set(`${projectId}:${n.id}`, { x: n.x, y: n.y });
+        }
       }
 
       // ── render ──
@@ -459,7 +470,7 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
       window.removeEventListener("mouseup", onUp);
       canvas.removeEventListener("wheel", onWheel);
     };
-  }, [graph, neighbors]);
+  }, [graph, neighbors, projectId]);
 
   const selected = selectedId ? graph?.nodes.find((n) => n.id === selectedId) || null : null;
   const selectedNeighbors = selectedId ? neighbors.get(selectedId) || [] : [];
