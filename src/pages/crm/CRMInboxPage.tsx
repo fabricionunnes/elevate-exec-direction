@@ -395,10 +395,11 @@ export const CRMInboxPage = () => {
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || sending) return;
     
+    const isInstagram = selectedConversation.channel === "instagram";
     const isOfficialAPI = !!selectedConversation.official_instance_id && !selectedConversation.instance_id;
     const isEvolutionAPI = !!selectedConversation.instance_id;
     
-    if (!isOfficialAPI && !isEvolutionAPI) {
+    if (!isInstagram && !isOfficialAPI && !isEvolutionAPI) {
       toast.error("Conversa sem dispositivo associado");
       return;
     }
@@ -407,7 +408,29 @@ export const CRMInboxPage = () => {
     setNewMessage(""); // Clear immediately for better UX
 
     try {
-      if (isOfficialAPI) {
+      if (isInstagram) {
+        // DM do Instagram via edge instagram-send (Send API da Meta, janela de 24h)
+        const { data, error } = await supabase.functions.invoke("instagram-send", {
+          body: {
+            conversationId: selectedConversation.id,
+            message: messageToSend,
+            staffId,
+          },
+        });
+        if (error) {
+          let msg = error.message;
+          try {
+            const body = await (error as any).context?.json?.();
+            if (body?.error) msg = body.error;
+          } catch { /* mantém a mensagem genérica */ }
+          throw new Error(msg);
+        }
+        if (data?.error) throw new Error(data.error);
+
+        await refetchMessages();
+        scrollToBottom();
+        toast.success("Mensagem enviada!");
+      } else if (isOfficialAPI) {
         // Send via Official WhatsApp API
         const { data, error } = await supabase.functions.invoke('whatsapp-official-api', {
           body: {
@@ -467,6 +490,11 @@ export const CRMInboxPage = () => {
   const handleSendMedia = async (file: File, type: "image" | "video" | "audio" | "document") => {
     if (!selectedConversation) return;
     
+    if (selectedConversation.channel === "instagram") {
+      toast.error("Envio de mídia pelo Instagram ainda não é suportado — só texto");
+      return;
+    }
+
     const isOfficialAPI = !!selectedConversation.official_instance_id && !selectedConversation.instance_id;
     const isEvolutionAPI = !!selectedConversation.instance_id;
     
