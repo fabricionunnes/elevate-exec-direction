@@ -142,10 +142,11 @@ export const CRMInboxPage = () => {
     // Channel filter
     if (channelFilter !== "all" && conv.channel !== channelFilter) return false;
 
-    // Master has access to all
-    if (staffRole === "master") return true;
-    // If still loading access, don't filter yet - will re-render when loaded
-    if (loadingAccess) return false;
+    // Master também respeita a visibilidade global (Dispositivos > coluna Atendimento):
+    // pra ele, as listas allowed* já vêm preenchidas com TODAS as instâncias visíveis,
+    // então NÃO pode haver return true antecipado aqui — senão o filtro nunca roda.
+    // Enquanto carrega o acesso, master vê tudo (evita piscada); os demais, nada.
+    if (loadingAccess) return staffRole === "master";
 
     // Instagram conversations - check IG instance access
     if (conv.channel === "instagram") {
@@ -161,7 +162,7 @@ export const CRMInboxPage = () => {
     // Orphan conversations (no instance_id and no official_instance_id):
     // only admin/master can see them — regular staff must NOT see unassigned conversations
     if (!conv.instance_id && !conv.official_instance_id) {
-      return staffRole === "admin";
+      return staffRole === "admin" || staffRole === "master";
     }
     
     // Check if user has access to this Evolution instance
