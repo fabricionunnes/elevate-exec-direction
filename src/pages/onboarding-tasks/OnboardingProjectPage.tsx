@@ -55,7 +55,8 @@ import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
 import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
 import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBriefingPanel";
 import { CurriculumPanel } from "@/components/onboarding-tasks/CurriculumPanel";
-import { GraduationCap } from "lucide-react";
+import { ProjectGraphPanel } from "@/components/onboarding-tasks/ProjectGraphPanel";
+import { GraduationCap, Network } from "lucide-react";
 import { ClientBrainPanel } from "@/components/onboarding-tasks/ClientBrainPanel";
 import { AdsBriefingSection } from "@/components/social/strategy/AdsBriefingSection";
 import { StrategicDiagnosticModule } from "@/components/client-diagnostic/StrategicDiagnosticModule";
@@ -1597,6 +1598,7 @@ const OnboardingProjectPage = () => {
                   ]),
                   <TabsTrigger key="briefing" value="briefing"><Building2 className="h-3.5 w-3.5 shrink-0" />Briefing</TabsTrigger>,
                   <TabsTrigger key="curriculum" value="curriculum"><GraduationCap className="h-3.5 w-3.5 shrink-0" />Grade</TabsTrigger>,
+                  <TabsTrigger key="graph" value="graph"><Network className="h-3.5 w-3.5 shrink-0" />Grafo</TabsTrigger>,
                   <TabsTrigger key="diagnostic" value="diagnostic"><Sparkles className="h-3.5 w-3.5 shrink-0" />Diagnóstico</TabsTrigger>,
                   <TabsTrigger key="tasks" value="tasks"><CheckCircle2 className="h-3.5 w-3.5 shrink-0" />Jornada</TabsTrigger>,
                   <TabsTrigger key="ai-coach" value="ai-coach"><Sparkles className="h-3.5 w-3.5 shrink-0" />IA</TabsTrigger>,
@@ -1898,6 +1900,10 @@ const OnboardingProjectPage = () => {
 
           <TabsContent value="curriculum">
             <CurriculumPanel projectId={projectId!} userRole={currentUserRole} />
+          </TabsContent>
+
+          <TabsContent value="graph">
+            <ProjectGraphPanel projectId={projectId!} userRole={currentUserRole} />
           </TabsContent>
 
           <TabsContent value="diagnostic">
