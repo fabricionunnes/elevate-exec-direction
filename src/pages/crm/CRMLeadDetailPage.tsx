@@ -61,6 +61,7 @@ import {
   History,
   Sparkles,
   MessagesSquare,
+  Newspaper,
 } from "lucide-react";
 import { AddLeadNoteDialog } from "@/components/crm/lead-detail/AddLeadNoteDialog";
 import { LeadSummaryTab } from "@/components/crm/lead-detail/lead-summary/LeadSummaryTab";
@@ -83,6 +84,7 @@ import {
 import { LeadContractDataTab } from "@/components/crm/lead-detail/LeadContractDataTab";
 import { useMetaAdNames } from "@/components/crm/useMetaAdNames";
 import { LeadProposalTab } from "@/components/crm/lead-detail/LeadProposalTab";
+import { CustomFollowupTab } from "@/components/crm/lead-detail/CustomFollowupTab";
 import { LeadConversationsTab } from "@/components/crm/lead-detail/LeadConversationsTab";
 import { LeadFormAnswersTab } from "@/components/crm/lead-detail/LeadFormAnswersTab";
 import { LeadScannerTab } from "@/components/crm/lead-detail/LeadScannerTab";
@@ -1292,6 +1294,7 @@ export const CRMLeadDetailPage = () => {
           <TabsList className="h-auto p-0 bg-transparent rounded-none flex flex-wrap w-full justify-start gap-y-0">
             {[
               { value: "summary", label: "Resumo", icon: Sparkles, color: "text-purple-500" },
+              { value: "custom_followup", label: "Follow up personalizado", icon: Newspaper, color: "text-orange-500" },
               { value: "activities", label: "Atividades", icon: Activity, color: "text-blue-500" },
               { value: "conversations", label: "Conversas", icon: MessagesSquare, color: "text-emerald-500" },
               { value: "contact", label: "Contato", icon: User, color: "text-violet-500" },
@@ -1320,6 +1323,10 @@ export const CRMLeadDetailPage = () => {
 
         <TabsContent value="summary" className="flex-1 mt-0 overflow-hidden">
           <LeadSummaryTab leadId={lead.id} leadName={lead.name} />
+        </TabsContent>
+
+        <TabsContent value="custom_followup" className="flex-1 mt-0 overflow-hidden">
+          <CustomFollowupTab leadId={lead.id} leadName={lead.name} leadPhone={lead.phone} />
         </TabsContent>
 
         <TabsContent value="activities" className="flex-1 mt-0 overflow-hidden">
