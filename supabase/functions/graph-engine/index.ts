@@ -146,7 +146,7 @@ async function gatherContext(supabase: SupabaseClient, projectId: string) {
       titulo: m.meeting_title,
       data: m.meeting_date,
       no_show: m.is_no_show,
-      notas: truncate(m.notes, 700),
+      notas: sampleText(m.notes, 3000), // notas às vezes carregam a transcrição inteira
       transcricao: sampleText(m.transcript, 4000),
     })),
     tarefas: (tasks || []).map((t: any) => ({ t: t.title, s: t.status, vence: t.due_date })),
