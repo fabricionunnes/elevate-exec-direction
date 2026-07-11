@@ -1,8 +1,5 @@
-import { useState, lazy, Suspense } from "react";
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
-
-// Card 3D das flags do time (three.js) — lazy pra não pesar o bundle do CRM
-const CRMTeamFlags3D = lazy(() => import("@/components/crm/CRMTeamFlags3D"));
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SalesIndicatorsTab } from "@/components/crm/indicators/SalesIndicatorsTab";
@@ -93,12 +90,6 @@ export const CRMIndicatorsPage = () => {
 
         <div className="flex-1 overflow-auto">
           <TabsContent value="sales" className="m-0 h-full">
-            {/* Flags do time (3D): performance vs meta dos 3 últimos meses fechados */}
-            <div className="p-4 pb-0">
-              <Suspense fallback={null}>
-                <CRMTeamFlags3D />
-              </Suspense>
-            </div>
             <SalesIndicatorsTab staffId={staffId} staffRole={staffRole} />
           </TabsContent>
           <TabsContent value="presales" className="m-0 h-full">
