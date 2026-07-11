@@ -55,6 +55,7 @@ import {
   FileAudio,
   ClipboardList,
   ScanLine,
+  Radar,
   Video,
   ScrollText,
   FolderOpen,
@@ -89,6 +90,7 @@ import { CustomFollowupTab } from "@/components/crm/lead-detail/CustomFollowupTa
 import { LeadConversationsTab } from "@/components/crm/lead-detail/LeadConversationsTab";
 import { LeadFormAnswersTab } from "@/components/crm/lead-detail/LeadFormAnswersTab";
 import { LeadScannerTab } from "@/components/crm/lead-detail/LeadScannerTab";
+import { LeadMaturityTab } from "@/components/crm/lead-detail/LeadMaturityTab";
 import { LeadMeetingsPanel } from "@/components/crm/lead-detail/LeadMeetingsPanel";
 import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
 import { SendContractButton } from "@/components/crm/SendContractButton";
@@ -1316,6 +1318,7 @@ export const CRMLeadDetailPage = () => {
               { value: "proposal", label: "Proposta", icon: FileSignature, color: "text-blue-500" },
               { value: "form_answers", label: "Respostas", icon: ClipboardList, color: "text-cyan-500" },
               { value: "scanner", label: "Scanner UNV", icon: ScanLine, color: "text-fuchsia-500" },
+              { value: "maturity", label: "Maturidade", icon: Radar, color: "text-green-500" },
               { value: "meetings", label: "Reuniões", icon: Video, color: "text-indigo-500" },
               { value: "contract_data", label: "Dados Contratuais", icon: ScrollText, color: "text-orange-500" },
               { value: "files", label: "Arquivos", icon: FolderOpen, color: "text-teal-500" },
@@ -1379,6 +1382,10 @@ export const CRMLeadDetailPage = () => {
 
         <TabsContent value="scanner" className="flex-1 mt-0 overflow-auto">
           <LeadScannerTab leadId={lead.id} />
+        </TabsContent>
+
+        <TabsContent value="maturity" className="flex-1 mt-0 overflow-auto">
+          <LeadMaturityTab leadId={lead.id} />
         </TabsContent>
 
         <TabsContent value="contact" className="flex-1 mt-0 overflow-auto">
