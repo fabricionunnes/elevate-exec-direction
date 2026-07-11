@@ -332,6 +332,7 @@ Deno.serve(async (req) => {
     // ainda não onboardado no lançamento de indicadores). Reativar = remover daqui.
     const RESUMO_EXCLUDED_COMPANY_IDS = new Set<string>([
       "4619f391-7279-48f3-a91c-b536ebb4dfd9", // BOATLUX (2026-07-09: time ainda não lança KPIs)
+      "24adcb77-8601-4761-b47c-225a4351422c", // M&L CONTABILIDADE (2026-07-13: pedido do Fabrício)
     ]);
 
     const gestaoGroups = await fetchGestaoGroups();
