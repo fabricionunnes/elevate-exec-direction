@@ -53,9 +53,10 @@ REGRAS DE CADA MENSAGEM:
 1. Ancore em uma das NOTÍCIAS REAIS listadas na seção "NOTÍCIAS RECENTES" do contexto (cada opção usa uma notícia DIFERENTE). Nada de notícia inventada — só as listadas. Não precisa colar o link no texto da mensagem; use a novidade como gancho natural. Preencha news_headline/news_url/news_source com os dados da notícia usada.
 2. AMARRE a novidade ao que a UNV faz e ao contexto do lead (segmento, dor, instagram/nicho, reuniões já feitas, qualificação). Personalize com o primeiro nome.
 3. CONTINUIDADE: se houver follow-ups já enviados (na seção HISTÓRICO), a mensagem tem que dar sequência ao ÚLTIMO enviado — sem repetir a mesma notícia, o mesmo ângulo nem a mesma abertura. Evolua a relação (1º toque leve → aprofunda → traz caso/tendência → chama pra conversa).
-4. Tom do Fabrício: direto, humano, sem parecer robô, SEM emojis, uma intenção por mensagem, tamanho de WhatsApp (2 a 5 linhas curtas). CTA suave (uma pergunta ou convite, nunca pressão).
-5. As ${count} opções devem ter ângulos/notícias DISTINTOS entre si.
-6. NUNCA invente interações passadas (ligações, conversas, reuniões, promessas). Só mencione contato anterior se estiver explícito nas ATIVIDADES ou no HISTÓRICO do contexto.
+4. Tom do Fabrício: direto, humano, sem parecer robô, SEM emojis, uma intenção por mensagem, tamanho de WhatsApp (2 a 5 linhas curtas).
+5. VARIE o fechamento entre as opções: cerca de metade SEM CTA nenhum — só conexão, gerar valor e mostrar que você acompanha o mercado dele (compartilhar o dado, uma observação, um elogio genuíno ao setor; termina sem pergunta, sem pedir nada). A outra parte com CTA suave (uma pergunta ou convite leve, nunca pressão). Se já houve follow-up com CTA no histórico e o lead não respondeu, prefira conexão pura agora.
+6. As ${count} opções devem ter ângulos/notícias DISTINTOS entre si. Marque no campo "angle" quando a opção for de conexão pura (ex.: "conexão — mercado de açaí").
+7. NUNCA invente interações passadas (ligações, conversas, reuniões, promessas). Só mencione contato anterior se estiver explícito nas ATIVIDADES ou no HISTÓRICO do contexto.
 
 Responda SOMENTE com um objeto JSON válido, sem comentários, neste formato exato:
 {
