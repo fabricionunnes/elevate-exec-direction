@@ -64,8 +64,11 @@ export const InstagramSection = ({ onBack }: InstagramSectionProps) => {
 
     setIsConnecting(true);
     try {
-      // Use origin as redirect URI - callback will be handled by checking URL params
-      const redirectUri = window.location.origin;
+      // Path explícito — a raiz (origin puro) esbarra no match estrito de
+      // redirect URI da Meta ("URL bloqueada"). Este caminho precisa estar em
+      // Valid OAuth Redirect URIs do app. O OAuthRedirectHandler já roteia o
+      // ?code deste path pro callback do hash router.
+      const redirectUri = `${window.location.origin}/auth/instagram/callback`;
 
       const { data, error } = await supabase.functions.invoke("instagram-oauth", {
         body: {
