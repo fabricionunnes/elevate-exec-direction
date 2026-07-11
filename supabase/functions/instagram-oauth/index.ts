@@ -35,10 +35,13 @@ Deno.serve(async (req) => {
         throw new Error("staffId and redirectUri are required");
       }
 
-      // Instagram Business/Creator scopes (only standard-access permissions)
+      // Instagram Business/Creator scopes — inclui mensagens (DMs) pro inbox do CRM
       const scopes = [
         "instagram_basic",
         "instagram_manage_comments",
+        "instagram_manage_messages",
+        "pages_messaging",
+        "pages_manage_metadata",
         "pages_show_list",
         "pages_read_engagement",
         "business_management"
@@ -162,14 +165,20 @@ Deno.serve(async (req) => {
       for (const account of instagramAccounts) {
         const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
+        // BUGFIX: as colunas reais de instagram_instances são instagram_account_id,
+        // instagram_username, page_id/page_name e status aceita só active/disconnected/expired.
+        // O código antigo gravava instagram_user_id/username/facebook_page_id/status=connected
+        // → upsert falhava silenciosamente e nenhuma instância era salva.
         const upsertData: any = {
-            instagram_user_id: account.instagram_user_id,
-            username: account.username,
+            instagram_account_id: account.instagram_user_id,
+            instagram_username: account.username,
+            instance_name: account.username ? `@${account.username}` : account.facebook_page_name,
             profile_picture_url: account.profile_picture_url,
             access_token: account.access_token,
             token_expires_at: expiresAt.toISOString(),
-            facebook_page_id: account.facebook_page_id,
-            status: "connected",
+            page_id: account.facebook_page_id,
+            page_name: account.facebook_page_name,
+            status: "active",
             connected_by: staffId,
         };
 
@@ -180,9 +189,9 @@ Deno.serve(async (req) => {
 
         const { data: instance, error: upsertError } = await supabase
           .from("instagram_instances")
-          .upsert(upsertData, { 
-            onConflict: "instagram_user_id",
-            ignoreDuplicates: false 
+          .upsert(upsertData, {
+            onConflict: "instagram_account_id",
+            ignoreDuplicates: false
           })
           .select()
           .single();
@@ -190,6 +199,19 @@ Deno.serve(async (req) => {
         if (upsertError) {
           console.error("Error saving instance:", upsertError);
           continue;
+        }
+
+        // Assina o app nos webhooks da página (campo messages) — sem isso a Meta
+        // não entrega as DMs no instagram-webhook.
+        try {
+          const subUrl = new URL(`https://graph.facebook.com/v19.0/${account.facebook_page_id}/subscribed_apps`);
+          subUrl.searchParams.set("subscribed_fields", "messages");
+          subUrl.searchParams.set("access_token", account.access_token);
+          const subResp = await fetch(subUrl.toString(), { method: "POST" });
+          const subData = await subResp.json();
+          console.log("Page webhook subscription:", JSON.stringify(subData));
+        } catch (subErr) {
+          console.error("Failed to subscribe page to webhooks:", subErr);
         }
 
         // Grant access to the staff member who connected

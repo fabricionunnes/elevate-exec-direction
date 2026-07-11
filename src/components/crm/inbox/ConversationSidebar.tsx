@@ -79,6 +79,11 @@ export function ConversationSidebar({
     return !normalized || ["sou eu", "eu", "me"].includes(normalized);
   };
 
+  // Conversas do Instagram vivem em instagram_conversations (mesmas colunas usadas
+  // aqui: lead_id, assigned_to, status) — sem isso os updates iam pra tabela errada.
+  const isInstagram = (conversation as any).channel === "instagram";
+  const conversationTable = (isInstagram ? "instagram_conversations" : "crm_whatsapp_conversations") as "crm_whatsapp_conversations";
+
   // Linked leads based on phone / direct conversation link
   const { leads: linkedLeads, loading: loadingLinkedLeads, refetch: refetchLinkedLeads } = useLinkedLeads({
     phone: conversation.contact?.phone,
@@ -139,7 +144,7 @@ export function ConversationSidebar({
 
         if (!inheritedLeadId) {
           const { data: inheritedConversation, error } = await supabase
-            .from("crm_whatsapp_conversations")
+            .from(conversationTable)
             .select("lead_id")
             .eq("contact_id", conversation.contact.id)
             .not("lead_id", "is", null)
@@ -161,13 +166,13 @@ export function ConversationSidebar({
         const updates = await Promise.all([
           shouldLinkConversation
             ? supabase
-                .from("crm_whatsapp_conversations")
+                .from(conversationTable)
                 .update({ lead_id: inheritedLeadId })
                 .eq("id", conversation.id)
             : Promise.resolve({ error: null }),
           shouldRenameContact
             ? supabase
-                .from("crm_whatsapp_contacts")
+                .from((isInstagram ? "instagram_contacts" : "crm_whatsapp_contacts") as "crm_whatsapp_contacts")
                 .update({ name: resolvedLead!.name })
                 .eq("id", conversation.contact.id)
             : Promise.resolve({ error: null }),
@@ -201,7 +206,7 @@ export function ConversationSidebar({
     setLoading(true);
     try {
       const { error } = await supabase
-        .from("crm_whatsapp_conversations")
+        .from(conversationTable)
         .update({ assigned_to: staffIdToAssign })
         .eq("id", conversation.id);
 
@@ -407,7 +412,7 @@ export function ConversationSidebar({
       // Link conversation to lead
       if (lead) {
         await supabase
-          .from("crm_whatsapp_conversations")
+          .from(conversationTable)
           .update({ lead_id: lead.id })
           .eq("id", conversation.id);
 
@@ -440,7 +445,7 @@ export function ConversationSidebar({
     setLoading(true);
     try {
       const { error } = await supabase
-        .from("crm_whatsapp_contacts")
+        .from((isInstagram ? "instagram_contacts" : "crm_whatsapp_contacts") as "crm_whatsapp_contacts")
         .update({ 
           name: contactData.name,
           phone: contactData.phone,
