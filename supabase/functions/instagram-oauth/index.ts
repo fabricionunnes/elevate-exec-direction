@@ -1,3 +1,9 @@
+// OAuth do Instagram pro inbox do CRM — modelo "Instagram API with Instagram Login".
+// O app da Meta usa o caso de uso "API do Instagram" com login DIRETO do Instagram
+// (sem página do Facebook): autorização em instagram.com, tokens em api.instagram.com
+// e chamadas em graph.instagram.com, com escopos instagram_business_*.
+// (O modelo antigo via Facebook Login pedia instagram_manage_* e o app rejeitava
+// com "Invalid Scopes".)
 import { createClient } from "@supabase/supabase-js";
 
 const corsHeaders = {
@@ -5,10 +11,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const IG_APP_ID = Deno.env.get("IG_APP_ID");
+const IG_APP_SECRET = Deno.env.get("IG_APP_SECRET");
 const FACEBOOK_APP_ID = Deno.env.get("FACEBOOK_APP_ID");
 const FACEBOOK_APP_SECRET = Deno.env.get("FACEBOOK_APP_SECRET");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+const IG_SCOPES = [
+  "instagram_business_basic",
+  "instagram_business_manage_messages",
+  "instagram_business_manage_comments",
+].join(",");
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -21,62 +35,49 @@ Deno.serve(async (req) => {
 
     console.log("Instagram OAuth - Action:", action);
 
-    if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
-      throw new Error("Facebook App credentials not configured");
+    if (!IG_APP_ID || !IG_APP_SECRET) {
+      throw new Error("Instagram App credentials not configured (IG_APP_ID/IG_APP_SECRET)");
     }
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // Action: registra o webhook de DMs no app da Meta (equivale a configurar
-    // Webhooks > Instagram > messages no painel developers.facebook.com).
-    // Usa o app access token (APP_ID|APP_SECRET). Idempotente — pode re-rodar.
+    // Action: registra a subscription de DMs no nível do app (webhook).
+    // Tenta no app do Instagram e também no app Facebook pai — idempotente.
     if (action === "setup_webhook") {
       const verifyToken = Deno.env.get("IG_WEBHOOK_VERIFY_TOKEN");
       if (!verifyToken) throw new Error("IG_WEBHOOK_VERIFY_TOKEN não configurado");
 
       const callbackUrl = `${SUPABASE_URL}/functions/v1/instagram-webhook`;
-      const appToken = `${FACEBOOK_APP_ID}|${FACEBOOK_APP_SECRET}`;
+      const results: Record<string, unknown> = {};
 
-      const subUrl = new URL(`https://graph.facebook.com/v19.0/${FACEBOOK_APP_ID}/subscriptions`);
-      subUrl.searchParams.set("object", "instagram");
-      subUrl.searchParams.set("callback_url", callbackUrl);
-      subUrl.searchParams.set("verify_token", verifyToken);
-      subUrl.searchParams.set("fields", "messages");
-      subUrl.searchParams.set("access_token", appToken);
+      const subscribe = async (appId: string, appSecret: string, graphHost: string) => {
+        const subUrl = new URL(`https://${graphHost}/v21.0/${appId}/subscriptions`);
+        subUrl.searchParams.set("object", "instagram");
+        subUrl.searchParams.set("callback_url", callbackUrl);
+        subUrl.searchParams.set("verify_token", verifyToken);
+        subUrl.searchParams.set("fields", "messages");
+        subUrl.searchParams.set("access_token", `${appId}|${appSecret}`);
+        const resp = await fetch(subUrl.toString(), { method: "POST" });
+        return await resp.json();
+      };
 
-      const subResp = await fetch(subUrl.toString(), { method: "POST" });
-      const subData = await subResp.json();
+      results.ig_app = await subscribe(IG_APP_ID, IG_APP_SECRET, "graph.instagram.com");
+      if (FACEBOOK_APP_ID && FACEBOOK_APP_SECRET) {
+        results.fb_app = await subscribe(FACEBOOK_APP_ID, FACEBOOK_APP_SECRET, "graph.facebook.com");
+      }
 
-      // Lê de volta as subscriptions pra confirmar
-      const listUrl = new URL(`https://graph.facebook.com/v19.0/${FACEBOOK_APP_ID}/subscriptions`);
-      listUrl.searchParams.set("access_token", appToken);
-      const listResp = await fetch(listUrl.toString());
-      const listData = await listResp.json();
-
-      return new Response(JSON.stringify({ result: subData, subscriptions: listData, callbackUrl }), {
+      return new Response(JSON.stringify({ results, callbackUrl }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Action: Get authorization URL
+    // Action: Get authorization URL (login direto do Instagram)
     if (action === "auth_url") {
       const { staffId, redirectUri, projectId, returnOrigin, returnPath } = body;
-      
+
       if (!staffId || !redirectUri) {
         throw new Error("staffId and redirectUri are required");
       }
-
-      // Instagram Business/Creator scopes — inclui mensagens (DMs) pro inbox do CRM
-      const scopes = [
-        "instagram_basic",
-        "instagram_manage_comments",
-        "instagram_manage_messages",
-        "pages_messaging",
-        "pages_manage_metadata",
-        "pages_show_list",
-        "pages_read_engagement",
-        "business_management"
-      ].join(",");
 
       const state = JSON.stringify({
         staffId,
@@ -88,10 +89,10 @@ Deno.serve(async (req) => {
       });
       const encodedState = btoa(state);
 
-      const authUrl = new URL("https://www.facebook.com/v19.0/dialog/oauth");
-      authUrl.searchParams.set("client_id", FACEBOOK_APP_ID);
+      const authUrl = new URL("https://www.instagram.com/oauth/authorize");
+      authUrl.searchParams.set("client_id", IG_APP_ID);
       authUrl.searchParams.set("redirect_uri", redirectUri);
-      authUrl.searchParams.set("scope", scopes);
+      authUrl.searchParams.set("scope", IG_SCOPES);
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("state", encodedState);
 
@@ -108,32 +109,36 @@ Deno.serve(async (req) => {
         throw new Error("code, redirectUri and staffId are required");
       }
 
-      console.log("Exchanging code for access token...");
+      console.log("Exchanging code for Instagram access token...");
 
-      // Step 1: Exchange code for short-lived token
-      const tokenUrl = new URL("https://graph.facebook.com/v19.0/oauth/access_token");
-      tokenUrl.searchParams.set("client_id", FACEBOOK_APP_ID);
-      tokenUrl.searchParams.set("client_secret", FACEBOOK_APP_SECRET);
-      tokenUrl.searchParams.set("redirect_uri", redirectUri);
-      tokenUrl.searchParams.set("code", code);
+      // Step 1: code -> short-lived token (api.instagram.com, form-encoded)
+      const form = new URLSearchParams();
+      form.set("client_id", IG_APP_ID);
+      form.set("client_secret", IG_APP_SECRET);
+      form.set("grant_type", "authorization_code");
+      form.set("redirect_uri", redirectUri);
+      form.set("code", code);
 
-      const tokenResponse = await fetch(tokenUrl.toString());
+      const tokenResponse = await fetch("https://api.instagram.com/oauth/access_token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: form.toString(),
+      });
       const tokenData = await tokenResponse.json();
 
-      if (tokenData.error) {
-        console.error("Token exchange error:", tokenData.error);
-        throw new Error(tokenData.error.message || "Token exchange failed");
+      if (tokenData.error_type || tokenData.error) {
+        console.error("Token exchange error:", tokenData);
+        throw new Error(tokenData.error_message || tokenData.error?.message || "Token exchange failed");
       }
 
       const shortLivedToken = tokenData.access_token;
-      console.log("Short-lived token obtained");
+      console.log("Short-lived IG token obtained");
 
-      // Step 2: Exchange for long-lived token
-      const longLivedUrl = new URL("https://graph.facebook.com/v19.0/oauth/access_token");
-      longLivedUrl.searchParams.set("grant_type", "fb_exchange_token");
-      longLivedUrl.searchParams.set("client_id", FACEBOOK_APP_ID);
-      longLivedUrl.searchParams.set("client_secret", FACEBOOK_APP_SECRET);
-      longLivedUrl.searchParams.set("fb_exchange_token", shortLivedToken);
+      // Step 2: short-lived -> long-lived (~60 dias)
+      const longLivedUrl = new URL("https://graph.instagram.com/access_token");
+      longLivedUrl.searchParams.set("grant_type", "ig_exchange_token");
+      longLivedUrl.searchParams.set("client_secret", IG_APP_SECRET);
+      longLivedUrl.searchParams.set("access_token", shortLivedToken);
 
       const longLivedResponse = await fetch(longLivedUrl.toString());
       const longLivedData = await longLivedResponse.json();
@@ -143,125 +148,76 @@ Deno.serve(async (req) => {
         throw new Error(longLivedData.error.message || "Failed to get long-lived token");
       }
 
-      const longLivedToken = longLivedData.access_token;
-      const expiresIn = longLivedData.expires_in || 5184000; // ~60 days default
-      console.log("Long-lived token obtained, expires in:", expiresIn);
+      const accessToken = longLivedData.access_token;
+      const expiresIn = longLivedData.expires_in || 5184000;
+      const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
-      // Step 3: Get connected Instagram Business accounts
-      const accountsUrl = new URL("https://graph.facebook.com/v19.0/me/accounts");
-      accountsUrl.searchParams.set("access_token", longLivedToken);
-      accountsUrl.searchParams.set("fields", "id,name,instagram_business_account{id,username,profile_picture_url,followers_count}");
+      // Step 3: dados da conta conectada
+      const meUrl = new URL("https://graph.instagram.com/v21.0/me");
+      meUrl.searchParams.set("fields", "id,user_id,username,name,profile_picture_url");
+      meUrl.searchParams.set("access_token", accessToken);
+      const meResp = await fetch(meUrl.toString());
+      const me = await meResp.json();
 
-      const accountsResponse = await fetch(accountsUrl.toString());
-      const accountsData = await accountsResponse.json();
-
-      if (accountsData.error) {
-        console.error("Accounts fetch error:", accountsData.error);
-        throw new Error(accountsData.error.message || "Failed to fetch accounts");
+      if (me.error) {
+        console.error("Profile fetch error:", me.error);
+        throw new Error(me.error.message || "Failed to fetch Instagram profile");
       }
 
-      const instagramAccounts: any[] = [];
+      // id = app-scoped; user_id = Instagram professional account ID (o que os
+      // webhooks usam em entry.id). Guardamos o que os webhooks entregam.
+      const igAccountId = String(me.user_id || me.id);
 
-      for (const page of accountsData.data || []) {
-        if (page.instagram_business_account) {
-          const igAccount = page.instagram_business_account;
-          
-          // Get page access token for this specific page
-          const pageTokenUrl = new URL(`https://graph.facebook.com/v19.0/${page.id}`);
-          pageTokenUrl.searchParams.set("fields", "access_token");
-          pageTokenUrl.searchParams.set("access_token", longLivedToken);
-          
-          const pageTokenResponse = await fetch(pageTokenUrl.toString());
-          const pageTokenData = await pageTokenResponse.json();
+      const upsertData: any = {
+        instagram_account_id: igAccountId,
+        instagram_username: me.username ?? null,
+        instance_name: me.username ? `@${me.username}` : (me.name ?? "Instagram"),
+        profile_picture_url: me.profile_picture_url ?? null,
+        access_token: accessToken,
+        token_expires_at: expiresAt.toISOString(),
+        page_id: null,
+        page_name: null,
+        status: "active",
+        connected_by: staffId,
+      };
+      if (projectId) upsertData.project_id = projectId;
 
-          instagramAccounts.push({
-            instagram_user_id: igAccount.id,
-            username: igAccount.username,
-            profile_picture_url: igAccount.profile_picture_url,
-            followers_count: igAccount.followers_count,
-            facebook_page_id: page.id,
-            facebook_page_name: page.name,
-            access_token: pageTokenData.access_token || longLivedToken,
-          });
-        }
+      const { data: instance, error: upsertError } = await supabase
+        .from("instagram_instances")
+        .upsert(upsertData, { onConflict: "instagram_account_id", ignoreDuplicates: false })
+        .select()
+        .single();
+
+      if (upsertError) {
+        console.error("Error saving instance:", upsertError);
+        throw new Error("Falha ao salvar a conta conectada");
       }
 
-      if (instagramAccounts.length === 0) {
-        throw new Error("Nenhuma conta Instagram Business conectada foi encontrada. Certifique-se de que sua página do Facebook está conectada a uma conta Instagram Business ou Creator.");
+      // Acesso do staff que conectou
+      await supabase
+        .from("instagram_instance_access")
+        .upsert({
+          instance_id: instance.id,
+          staff_id: staffId,
+          can_view: true,
+          can_reply: true,
+        }, { onConflict: "instance_id,staff_id" });
+
+      // Assina o app nos webhooks DESSA conta (DMs)
+      try {
+        const subUrl = new URL(`https://graph.instagram.com/v21.0/${me.id}/subscribed_apps`);
+        subUrl.searchParams.set("subscribed_fields", "messages");
+        subUrl.searchParams.set("access_token", accessToken);
+        const subResp = await fetch(subUrl.toString(), { method: "POST" });
+        console.log("Account webhook subscription:", JSON.stringify(await subResp.json()));
+      } catch (subErr) {
+        console.error("Failed to subscribe account to webhooks:", subErr);
       }
 
-      // Step 4: Save accounts to database
-      const savedInstances: any[] = [];
-
-      for (const account of instagramAccounts) {
-        const expiresAt = new Date(Date.now() + expiresIn * 1000);
-
-        // BUGFIX: as colunas reais de instagram_instances são instagram_account_id,
-        // instagram_username, page_id/page_name e status aceita só active/disconnected/expired.
-        // O código antigo gravava instagram_user_id/username/facebook_page_id/status=connected
-        // → upsert falhava silenciosamente e nenhuma instância era salva.
-        const upsertData: any = {
-            instagram_account_id: account.instagram_user_id,
-            instagram_username: account.username,
-            instance_name: account.username ? `@${account.username}` : account.facebook_page_name,
-            profile_picture_url: account.profile_picture_url,
-            access_token: account.access_token,
-            token_expires_at: expiresAt.toISOString(),
-            page_id: account.facebook_page_id,
-            page_name: account.facebook_page_name,
-            status: "active",
-            connected_by: staffId,
-        };
-
-        // If projectId was provided (from Client CRM), link the instance to that project
-        if (projectId) {
-          upsertData.project_id = projectId;
-        }
-
-        const { data: instance, error: upsertError } = await supabase
-          .from("instagram_instances")
-          .upsert(upsertData, {
-            onConflict: "instagram_account_id",
-            ignoreDuplicates: false
-          })
-          .select()
-          .single();
-
-        if (upsertError) {
-          console.error("Error saving instance:", upsertError);
-          continue;
-        }
-
-        // Assina o app nos webhooks da página (campo messages) — sem isso a Meta
-        // não entrega as DMs no instagram-webhook.
-        try {
-          const subUrl = new URL(`https://graph.facebook.com/v19.0/${account.facebook_page_id}/subscribed_apps`);
-          subUrl.searchParams.set("subscribed_fields", "messages");
-          subUrl.searchParams.set("access_token", account.access_token);
-          const subResp = await fetch(subUrl.toString(), { method: "POST" });
-          const subData = await subResp.json();
-          console.log("Page webhook subscription:", JSON.stringify(subData));
-        } catch (subErr) {
-          console.error("Failed to subscribe page to webhooks:", subErr);
-        }
-
-        // Grant access to the staff member who connected
-        await supabase
-          .from("instagram_instance_access")
-          .upsert({
-            instance_id: instance.id,
-            staff_id: staffId,
-            can_view: true,
-            can_reply: true,
-          }, { onConflict: "instance_id,staff_id" });
-
-        savedInstances.push(instance);
-      }
-
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         success: true,
-        instances: savedInstances,
-        count: savedInstances.length
+        instances: [instance],
+        count: 1,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -270,12 +226,8 @@ Deno.serve(async (req) => {
     // Action: List connected instances
     if (action === "list") {
       const { staffId } = body;
+      if (!staffId) throw new Error("staffId is required");
 
-      if (!staffId) {
-        throw new Error("staffId is required");
-      }
-
-      // Get instances the staff has access to
       const { data: instances, error } = await supabase
         .from("instagram_instances")
         .select(`
@@ -288,9 +240,7 @@ Deno.serve(async (req) => {
         .eq("instagram_instance_access.staff_id", staffId)
         .eq("instagram_instance_access.can_view", true);
 
-      if (error) {
-        throw new Error("Failed to fetch instances");
-      }
+      if (error) throw new Error("Failed to fetch instances");
 
       return new Response(JSON.stringify({ instances: instances || [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -300,12 +250,8 @@ Deno.serve(async (req) => {
     // Action: Disconnect an instance
     if (action === "disconnect") {
       const { instanceId, staffId } = body;
+      if (!instanceId || !staffId) throw new Error("instanceId and staffId are required");
 
-      if (!instanceId || !staffId) {
-        throw new Error("instanceId and staffId are required");
-      }
-
-      // Verify staff has access
       const { data: access } = await supabase
         .from("instagram_instance_access")
         .select("*")
@@ -313,32 +259,24 @@ Deno.serve(async (req) => {
         .eq("staff_id", staffId)
         .single();
 
-      if (!access) {
-        throw new Error("Access denied");
-      }
+      if (!access) throw new Error("Access denied");
 
-      // Update instance status
       const { error: updateError } = await supabase
         .from("instagram_instances")
         .update({ status: "disconnected" })
         .eq("id", instanceId);
 
-      if (updateError) {
-        throw new Error("Failed to disconnect instance");
-      }
+      if (updateError) throw new Error("Failed to disconnect instance");
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Action: Refresh token
+    // Action: Refresh token (long-lived IG token: ig_refresh_token)
     if (action === "refresh") {
       const { instanceId } = body;
-
-      if (!instanceId) {
-        throw new Error("instanceId is required");
-      }
+      if (!instanceId) throw new Error("instanceId is required");
 
       const { data: instance, error: fetchError } = await supabase
         .from("instagram_instances")
@@ -346,16 +284,11 @@ Deno.serve(async (req) => {
         .eq("id", instanceId)
         .single();
 
-      if (fetchError || !instance) {
-        throw new Error("Instance not found");
-      }
+      if (fetchError || !instance) throw new Error("Instance not found");
 
-      // Refresh the long-lived token
-      const refreshUrl = new URL("https://graph.facebook.com/v19.0/oauth/access_token");
-      refreshUrl.searchParams.set("grant_type", "fb_exchange_token");
-      refreshUrl.searchParams.set("client_id", FACEBOOK_APP_ID);
-      refreshUrl.searchParams.set("client_secret", FACEBOOK_APP_SECRET);
-      refreshUrl.searchParams.set("fb_exchange_token", instance.access_token);
+      const refreshUrl = new URL("https://graph.instagram.com/refresh_access_token");
+      refreshUrl.searchParams.set("grant_type", "ig_refresh_token");
+      refreshUrl.searchParams.set("access_token", instance.access_token);
 
       const refreshResponse = await fetch(refreshUrl.toString());
       const refreshData = await refreshResponse.json();
@@ -375,9 +308,7 @@ Deno.serve(async (req) => {
         })
         .eq("id", instanceId);
 
-      if (updateError) {
-        throw new Error("Failed to update token");
-      }
+      if (updateError) throw new Error("Failed to update token");
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
