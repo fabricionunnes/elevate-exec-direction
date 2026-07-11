@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Html } from "@react-three/drei";
+import { OrbitControls, Html, RoundedBox } from "@react-three/drei";
 import * as THREE from "three";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,7 @@ interface FlagRow {
   metric: "vendas" | "agendamentos";
 }
 
-const COLOR: Record<string, string> = { red: "#ef4444", yellow: "#f59e0b", green: "#10b981", none: "#475569" };
+const COLOR: Record<string, string> = { red: "#ef4444", yellow: "#f59e0b", green: "#10b981", none: "#334155" };
 const CLS: Record<string, string> = {
   red: "bg-red-500/15 text-red-600 border-red-500/30",
   yellow: "bg-amber-500/15 text-amber-600 border-amber-500/30",
@@ -38,113 +38,153 @@ const monthShort = (my: string) => {
   return `${nomes[Number(m) - 1] || m}/${y.slice(2)}`;
 };
 
-// Barra 3D de um mês de uma pessoa: altura = % da meta (cap 160), cor = flag.
-function FlagBar({ x, z, row, delayIdx }: { x: number; z: number; row: FlagRow | undefined; delayIdx: number }) {
+const SPACING = 1.7;
+const H_SCALE = 26; // pct/H_SCALE = altura da barra
+const CAP = 150;
+
+// Barra 3D (pessoa × mês). Detalhes do hover vão pra faixa fixa FORA do canvas
+// (nada de tooltip dentro do 3D — cortava nas bordas).
+function FlagBar({ x, z, row, delayIdx, isFront, onHover, dimmed }: {
+  x: number; z: number; row: FlagRow | undefined; delayIdx: number; isFront: boolean;
+  onHover: (r: FlagRow | null) => void; dimmed: boolean;
+}) {
   const mesh = useRef<THREE.Mesh>(null);
+  const glow = useRef<THREE.Mesh>(null);
   const [hover, setHover] = useState(false);
-  const pct = row?.pct != null ? Math.max(Number(row.pct), 2) : 0;
-  const targetH = row && row.flag !== "none" ? Math.min(pct, 160) / 26 : 0.12;
+  const pct = row?.pct != null ? Math.max(Number(row.pct), 3) : 0;
+  const hasFlag = !!row && row.flag !== "none";
+  const targetH = hasFlag ? Math.min(pct, CAP) / H_SCALE : 0.1;
   const color = COLOR[row?.flag || "none"];
 
   useFrame(({ clock }) => {
     if (!mesh.current) return;
     const t = clock.getElapsedTime();
-    // anima o crescimento na entrada (escalonado por barra)
-    const grow = Math.min(Math.max(t * 1.4 - delayIdx * 0.06, 0), 1);
-    const h = 0.12 + (targetH - 0.12) * (1 - Math.pow(1 - grow, 3));
+    const grow = Math.min(Math.max(t * 1.3 - delayIdx * 0.07, 0), 1);
+    const h = 0.1 + (targetH - 0.1) * (1 - Math.pow(1 - grow, 3));
     mesh.current.scale.y = h;
     mesh.current.position.y = h / 2;
     const mat = mesh.current.material as THREE.MeshStandardMaterial;
-    mat.emissiveIntensity = hover ? 0.85 : row?.flag === "red" ? 0.4 + Math.sin(t * 3) * 0.15 : 0.22;
+    const basePulse = row?.flag === "red" ? 0.42 + Math.sin(t * 3) * 0.14 : 0.3;
+    mat.emissiveIntensity = hover ? 1 : basePulse;
+    mat.opacity = dimmed ? 0.18 : hasFlag ? 0.96 : 0.3;
+    if (glow.current) {
+      glow.current.scale.setScalar(hover ? 1.35 : 1);
+      (glow.current.material as THREE.MeshBasicMaterial).opacity = dimmed ? 0.04 : hover ? 0.4 : 0.16;
+    }
   });
 
   return (
     <group position={[x, 0, z]}>
-      <mesh
-        ref={mesh}
-        onPointerOver={(e) => { e.stopPropagation(); setHover(true); document.body.style.cursor = "pointer"; }}
-        onPointerOut={() => { setHover(false); document.body.style.cursor = "default"; }}
-      >
-        <boxGeometry args={[0.85, 1, 0.85]} />
-        <meshStandardMaterial color={color} emissive={color} roughness={0.3} metalness={0.3} transparent opacity={row?.flag === "none" ? 0.35 : 0.95} />
+      {/* halo no chão */}
+      <mesh ref={glow} position={[0, 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.72, 32]} />
+        <meshBasicMaterial color={color} transparent opacity={0.16} />
       </mesh>
-      {hover && row && (
-        <Html position={[0, targetH + 0.9, 0]} center distanceFactor={13} style={{ pointerEvents: "none" }}>
-          <div className="rounded-lg bg-slate-900/95 border border-slate-700 px-3 py-2 text-white shadow-xl whitespace-nowrap">
-            <p className="text-xs font-bold">{row.staff_name} · {monthShort(row.ref_month)}</p>
-            <p className="text-[10px] text-slate-300">
-              {row.flag === "none"
-                ? "sem meta configurada"
-                : `${row.pct}% — ${fmtVal(row.achieved, row.metric)} de ${fmtVal(row.target_value, row.metric)} (${row.metric})`}
-            </p>
-          </div>
+      <RoundedBox
+        ref={mesh as any}
+        args={[0.82, 1, 0.82]}
+        radius={0.09}
+        smoothness={3}
+        onPointerOver={(e) => { e.stopPropagation(); setHover(true); if (row) onHover(row); document.body.style.cursor = "pointer"; }}
+        onPointerOut={() => { setHover(false); onHover(null); document.body.style.cursor = "default"; }}
+      >
+        <meshStandardMaterial color={color} emissive={color} roughness={0.25} metalness={0.35} transparent />
+      </RoundedBox>
+      {/* % fixo no topo — só na fileira da frente (mês vigente) pra não poluir */}
+      {isFront && hasFlag && !dimmed && (
+        <Html position={[0, targetH + 0.55, 0]} center distanceFactor={12} style={{ pointerEvents: "none" }} zIndexRange={[10, 0]}>
+          <span className="text-[11px] font-extrabold drop-shadow" style={{ color }}>{Math.round(Number(row!.pct))}%</span>
         </Html>
       )}
     </group>
   );
 }
 
-function Scene({ people, months, byKey }: {
+function GoalLine({ width }: { width: number }) {
+  const y = 100 / H_SCALE;
+  return (
+    <group>
+      {/* linha fina da meta atravessando o palco */}
+      <mesh position={[width / 2, y, 1.7]}>
+        <boxGeometry args={[width + 4.5, 0.025, 0.025]} />
+        <meshBasicMaterial color="#10b981" transparent opacity={0.85} />
+      </mesh>
+      <mesh position={[width / 2, y, 1.7]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[width + 4.5, 5.6]} />
+        <meshBasicMaterial color="#10b981" transparent opacity={0.035} side={THREE.DoubleSide} />
+      </mesh>
+      <Html position={[width + 2.55, y + 0.05, 1.7]} center distanceFactor={15} style={{ pointerEvents: "none" }} zIndexRange={[10, 0]}>
+        <span className="text-[10px] font-bold tracking-widest text-emerald-400 whitespace-nowrap">META 100%</span>
+      </Html>
+    </group>
+  );
+}
+
+function Scene({ people, months, byKey, onHover, hoveredId }: {
   people: { id: string; name: string; papel: string }[];
   months: string[];
   byKey: Map<string, FlagRow>;
+  onHover: (r: FlagRow | null) => void;
+  hoveredId: string | null;
 }) {
-  const spacing = 1.6;
-  const width = (people.length - 1) * spacing;
-  // linha de 100% da meta (referência)
-  const goalY = 100 / 26;
+  const width = (people.length - 1) * SPACING;
   return (
     <>
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[8, 14, 6]} intensity={0.9} />
-      <pointLight position={[-10, 6, -4]} intensity={0.45} color="#818cf8" />
-      <gridHelper args={[Math.max(width + 6, 12), 16, "#1e293b", "#131c31"]} position={[width / 2, 0, 1.6]} />
+      <ambientLight intensity={0.55} />
+      <directionalLight position={[8, 16, 7]} intensity={1.0} />
+      <pointLight position={[-9, 7, -3]} intensity={0.5} color="#6366f1" />
+      <pointLight position={[width + 9, 5, 6]} intensity={0.35} color="#0ea5e9" />
+      <fog attach="fog" args={["#070b16", 26, 46]} />
 
-      {/* plano da meta (100%) — quem fura o plano bateu a meta */}
-      <mesh position={[width / 2, goalY, 1.6]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[Math.max(width + 5, 11), 7.5]} />
-        <meshBasicMaterial color="#10b981" transparent opacity={0.07} side={THREE.DoubleSide} />
+      {/* palco */}
+      <gridHelper args={[Math.max(width + 9, 14), 18, "#1c2942", "#0f1626"]} position={[width / 2, 0, 1.7]} />
+      <mesh position={[width / 2, 0.002, 1.7]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[Math.max(width / 2 + 4, 7), 48]} />
+        <meshBasicMaterial color="#0e1730" transparent opacity={0.55} />
       </mesh>
-      <Html position={[width + 2.4, goalY, 1.6]} center distanceFactor={18} style={{ pointerEvents: "none" }}>
-        <span className="text-[10px] font-bold text-emerald-400/80 whitespace-nowrap">META 100%</span>
-      </Html>
+
+      <GoalLine width={width} />
 
       {people.map((p, i) =>
         months.map((m, j) => (
           <FlagBar
             key={`${p.id}-${m}`}
-            x={i * spacing}
-            z={(months.length - 1 - j) * 1.6} // mês mais recente na frente
+            x={i * SPACING}
+            z={(months.length - 1 - j) * 1.7}
             row={byKey.get(`${p.id}|${m}`)}
             delayIdx={i * months.length + j}
+            isFront={j === 0}
+            onHover={onHover}
+            dimmed={hoveredId != null && hoveredId !== p.id}
           />
         )),
       )}
 
-      {/* nomes embaixo de cada coluna */}
+      {/* nomes na frente do palco */}
       {people.map((p, i) => (
-        <Html key={p.id} position={[i * spacing, -0.15, months.length * 1.6 + 0.6]} center distanceFactor={16} style={{ pointerEvents: "none" }}>
-          <div className="text-center whitespace-nowrap">
-            <p className="text-[10px] font-bold text-slate-200">{p.name.split(" ")[0]}</p>
-            <p className="text-[8px] text-slate-400 uppercase">{PAPEL_LABEL[p.papel]}</p>
+        <Html key={p.id} position={[i * SPACING, 0.02, months.length * 1.7 + 0.75]} center distanceFactor={14} style={{ pointerEvents: "none" }} zIndexRange={[10, 0]}>
+          <div className={cn("text-center whitespace-nowrap transition-opacity", hoveredId != null && hoveredId !== p.id && "opacity-30")}>
+            <p className="text-[11px] font-bold text-slate-100 leading-tight">{p.name.split(" ")[0]}</p>
+            <p className="text-[8px] tracking-widest text-slate-400 uppercase">{PAPEL_LABEL[p.papel]}</p>
           </div>
         </Html>
       ))}
-      {/* rótulos dos meses na lateral esquerda */}
+      {/* meses na lateral */}
       {months.map((m, j) => (
-        <Html key={m} position={[-1.7, 0.15, (months.length - 1 - j) * 1.6]} center distanceFactor={16} style={{ pointerEvents: "none" }}>
-          <span className={cn("text-[9px] font-semibold whitespace-nowrap", j === 0 ? "text-slate-100" : "text-slate-400")}>{monthShort(m)}</span>
+        <Html key={m} position={[-1.9, 0.15, (months.length - 1 - j) * 1.7]} center distanceFactor={15} style={{ pointerEvents: "none" }} zIndexRange={[10, 0]}>
+          <span className={cn("text-[9px] font-semibold whitespace-nowrap", j === 0 ? "text-slate-100" : "text-slate-500")}>{monthShort(m)}</span>
         </Html>
       ))}
 
       <OrbitControls
         enablePan={false}
-        minDistance={6}
-        maxDistance={30}
-        maxPolarAngle={Math.PI / 2.1}
-        target={new THREE.Vector3(width / 2, 1.6, 1.6)}
+        minDistance={7}
+        maxDistance={26}
+        minPolarAngle={Math.PI / 5}
+        maxPolarAngle={Math.PI / 2.25}
+        target={new THREE.Vector3(width / 2, 1.5, 1.4)}
         autoRotate
-        autoRotateSpeed={0.6}
+        autoRotateSpeed={0.45}
       />
     </>
   );
@@ -152,10 +192,11 @@ function Scene({ people, months, byKey }: {
 
 /** Flags do time comercial interno (closers, head e SDRs) nos 3 últimos meses
  * fechados — <70% red · 70–100% yellow · >100% green — com visão 3D:
- * altura da barra = % da meta; o plano verde marca os 100%. */
+ * altura = % da meta; a linha verde marca os 100%. */
 export const CRMTeamFlags3D = () => {
   const [rows, setRows] = useState<FlagRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hovered, setHovered] = useState<FlagRow | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -169,7 +210,6 @@ export const CRMTeamFlags3D = () => {
   const people = useMemo(() => {
     const seen = new Map<string, { id: string; name: string; papel: string }>();
     rows.forEach((r) => { if (!seen.has(r.staff_id)) seen.set(r.staff_id, { id: r.staff_id, name: r.staff_name, papel: r.papel }); });
-    // só quem tem alguma flag real em algum mês
     const withFlag = new Set(rows.filter((r) => r.flag !== "none").map((r) => r.staff_id));
     const rank: Record<string, number> = { head: 0, closer: 1, sdr: 2 };
     return Array.from(seen.values())
@@ -220,19 +260,48 @@ export const CRMTeamFlags3D = () => {
       <CardContent className="p-0">
         <div className="grid lg:grid-cols-[1fr_290px]">
           {/* 3D */}
-          <div className="h-[360px]" style={{ background: "radial-gradient(ellipse at 50% 0%, #111b36 0%, #080c18 75%)" }}>
+          <div className="relative h-[420px]" style={{ background: "radial-gradient(ellipse at 50% -10%, #14204080 0%, transparent 55%), linear-gradient(180deg, #0b1224 0%, #070b16 100%)" }}>
             <Suspense fallback={<div className="h-full flex items-center justify-center text-slate-400 text-sm">Montando visão 3D...</div>}>
-              <Canvas camera={{ position: [people.length * 0.8, 7, 13], fov: 46 }}>
-                <Scene people={people} months={months} byKey={byKey} />
+              <Canvas camera={{ position: [people.length * 0.85, 6.5, 14.5], fov: 44 }}>
+                <Scene people={people} months={months} byKey={byKey} onHover={setHovered} hoveredId={hovered?.staff_id ?? null} />
               </Canvas>
             </Suspense>
+            {/* Faixa de detalhes FIXA (fora do 3D — nunca corta) */}
+            <div className={cn(
+              "absolute left-3 top-3 rounded-lg border border-slate-700/70 bg-slate-900/90 backdrop-blur px-3.5 py-2.5 shadow-xl transition-all duration-150",
+              hovered ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1 pointer-events-none",
+            )}>
+              {hovered && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: COLOR[hovered.flag] }} />
+                    <p className="text-sm font-bold text-white">{hovered.staff_name}</p>
+                    <span className="text-[10px] uppercase tracking-wide text-slate-400">{PAPEL_LABEL[hovered.papel]} · {monthShort(hovered.ref_month)}</span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-1 tabular-nums">
+                    <span className="font-bold" style={{ color: COLOR[hovered.flag] }}>{hovered.pct}%</span>
+                    {" — "}{fmtVal(hovered.achieved, hovered.metric)} de {fmtVal(hovered.target_value, hovered.metric)}
+                    <span className="text-slate-400"> · {hovered.metric}</span>
+                  </p>
+                </>
+              )}
+            </div>
+            {/* dica de interação */}
+            <div className="absolute right-3 bottom-2.5 text-[10px] text-slate-500 pointer-events-none">
+              arraste pra girar · role pra zoom · passe o mouse nas barras
+            </div>
           </div>
           {/* Resumo por pessoa */}
-          <div className="border-t lg:border-t-0 lg:border-l divide-y max-h-[360px] overflow-y-auto">
+          <div className="border-t lg:border-t-0 lg:border-l divide-y max-h-[420px] overflow-y-auto">
             {people.map((p) => {
               const cur = byKey.get(`${p.id}|${latest}`);
               return (
-                <div key={p.id} className="px-3 py-2.5 flex items-center gap-2">
+                <div
+                  key={p.id}
+                  className={cn("px-3 py-2.5 flex items-center gap-2 transition-colors", hovered?.staff_id === p.id && "bg-muted/60")}
+                  onMouseEnter={() => { const r = byKey.get(`${p.id}|${latest}`); if (r) setHovered(r); }}
+                  onMouseLeave={() => setHovered(null)}
+                >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{p.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
