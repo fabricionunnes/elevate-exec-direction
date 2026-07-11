@@ -320,8 +320,10 @@ Deno.serve(async (req) => {
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("Instagram OAuth error:", error);
+    // 200 + {error}: o front checa data.error; com 400 o invoke esconde o corpo
+    // e a tela mostrava só "non-2xx" sem a causa real.
     return new Response(JSON.stringify({ error: errorMessage }), {
-      status: 400,
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
