@@ -62,6 +62,22 @@ const normalizePhoneDigits = (phoneRaw: string) => {
   return digits;
 };
 
+// Todas as formas que o mesmo número pode estar salvo: com/sem 55 e com/sem o
+// nono dígito (o WhatsApp costuma gravar SEM o 9; o lead costuma vir COM).
+const phoneVariants = (phoneRaw: string): string[] => {
+  const d = (phoneRaw || "").replace(/\D/g, "");
+  if (!d) return [];
+  const out = new Set<string>([d]);
+  const with55 = d.startsWith("55") && d.length >= 12 ? d : `55${d}`;
+  out.add(with55);
+  if (with55.length === 13 && with55[4] === "9") {
+    out.add(with55.slice(0, 4) + with55.slice(5)); // sem o nono dígito
+  } else if (with55.length === 12) {
+    out.add(with55.slice(0, 4) + "9" + with55.slice(4)); // com o nono dígito
+  }
+  return [...out];
+};
+
 export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => {
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,8 +157,8 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
 
       // 2) Also pull WhatsApp conversations that match the lead phone but aren't linked yet
       if (leadPhone) {
-        const normalized = normalizePhoneDigits(leadPhone);
-        if (normalized) {
+        const variants = phoneVariants(leadPhone);
+        if (variants.length > 0) {
           const { data: phoneConvs } = await (supabase as any)
             .from("crm_whatsapp_conversations")
             .select(`
@@ -151,7 +167,7 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
               instance:whatsapp_instances(id, instance_name, display_name, status),
               official_instance:whatsapp_official_instances(id, display_name, phone_number)
             `)
-            .or(`phone.eq.${normalized},phone.eq.${leadPhone.replace(/\D/g, "")}`, { foreignTable: "crm_whatsapp_contacts" })
+            .or(variants.map((v) => `phone.eq.${v}`).join(","), { foreignTable: "crm_whatsapp_contacts" })
             .is("lead_id", null);
 
           for (const c of phoneConvs || []) {
