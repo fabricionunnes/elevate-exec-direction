@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -62,6 +63,8 @@ interface WhatsAppInstance {
   is_default: boolean;
   api_url: string | null;
   api_key: string | null;
+  /** aparece nas conversas do Atendimento (config global) */
+  show_in_inbox?: boolean;
 }
 
 interface Sector {
@@ -258,6 +261,23 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
       toast.error(error.message || "Erro ao excluir dispositivo");
     }
   };
+  // Visibilidade global no Atendimento: desligou, a instância (e as conversas
+  // dela) some do inbox pra TODO MUNDO. Não afeta envio nem automações.
+  const toggleInboxVisibility = async (instance: WhatsAppInstance) => {
+    const next = !(instance.show_in_inbox ?? true);
+    setInstances((prev) => prev.map((i) => (i.id === instance.id ? { ...i, show_in_inbox: next } : i)));
+    const { error } = await supabase
+      .from("whatsapp_instances")
+      .update({ show_in_inbox: next } as never)
+      .eq("id", instance.id);
+    if (error) {
+      setInstances((prev) => prev.map((i) => (i.id === instance.id ? { ...i, show_in_inbox: !next } : i)));
+      toast.error("Erro ao salvar visibilidade");
+    } else {
+      toast.success(next ? "Visível no Atendimento" : "Oculto do Atendimento");
+    }
+  };
+
   const handleSetDefault = async (instance: WhatsAppInstance) => {
     try {
       const { error } = await supabase
@@ -363,6 +383,7 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
                 <TableHead>NOME DISPOSITIVO</TableHead>
                 <TableHead>STATUS</TableHead>
                 <TableHead className="text-center">PADRÃO</TableHead>
+                <TableHead className="text-center">ATENDIMENTO</TableHead>
                 <TableHead>SETORES</TableHead>
                 <TableHead>USUÁRIOS NESSE DISPOSITIVO</TableHead>
                 <TableHead></TableHead>
@@ -403,6 +424,13 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
                         }`}
                       />
                     </Button>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Switch
+                      checked={instance.show_in_inbox ?? true}
+                      onCheckedChange={() => toggleInboxVisibility(instance)}
+                      title={(instance.show_in_inbox ?? true) ? "Visível no Atendimento — clique pra ocultar" : "Oculto do Atendimento — clique pra mostrar"}
+                    />
                   </TableCell>
                   <TableCell>{getSectorName(instance.sector_id)}</TableCell>
                   <TableCell>

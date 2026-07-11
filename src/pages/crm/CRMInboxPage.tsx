@@ -211,28 +211,23 @@ export const CRMInboxPage = () => {
       try {
         console.log('[Inbox] Fetching allowed instances for staffId:', staffId, 'role:', staffRole);
         
-        // Master has access to all instances
-        if (staffRole === "master") {
-          // Evolution API instances
-          const { data: allEvolutionInstances } = await supabase
-            .from("whatsapp_instances")
-            .select("id");
-          const evolutionIds = (allEvolutionInstances || []).map((i: any) => i.id);
-          setAllowedInstanceIds(evolutionIds);
-          
-          // Official API instances
-          const { data: allOfficialInstances } = await supabase
-            .from("whatsapp_official_instances")
-            .select("id");
-          const officialIds = (allOfficialInstances || []).map((i: any) => i.id);
-          setAllowedOfficialInstanceIds(officialIds);
+        // Visibilidade GLOBAL do Atendimento: só instâncias marcadas como
+        // "Visível no Atendimento" (config Dispositivos) aparecem — pra todos,
+        // inclusive master. O acesso por usuário continua valendo por cima.
+        const [{ data: visEvo }, { data: visOff }, { data: visIg }] = await Promise.all([
+          supabase.from("whatsapp_instances").select("id").eq("show_in_inbox", true),
+          supabase.from("whatsapp_official_instances").select("id").eq("show_in_inbox", true),
+          supabase.from("instagram_instances").select("id").eq("show_in_inbox", true),
+        ]);
+        const visEvoIds = (visEvo || []).map((i: any) => i.id);
+        const visOffIds = (visOff || []).map((i: any) => i.id);
+        const visIgIds = (visIg || []).map((i: any) => i.id);
 
-          // Instagram instances - master sees all
-          const { data: allIgInstances } = await supabase
-            .from("instagram_instances")
-            .select("id");
-          const igIds = (allIgInstances || []).map((i: any) => i.id);
-          setAllowedIgInstanceIds(igIds);
+        // Master has access to all (visible) instances
+        if (staffRole === "master") {
+          setAllowedInstanceIds(visEvoIds);
+          setAllowedOfficialInstanceIds(visOffIds);
+          setAllowedIgInstanceIds(visIgIds);
         } else {
           // Get Evolution API instances this user has explicit access to
           const { data: evolutionAccessData, error: evolutionError } = await supabase
@@ -240,27 +235,27 @@ export const CRMInboxPage = () => {
             .select("instance_id")
             .eq("staff_id", staffId)
             .eq("can_view", true);
-          
+
           if (evolutionError) {
             console.error('[Inbox] Error fetching Evolution access:', evolutionError);
           }
-          
+
           const evolutionIds = (evolutionAccessData || []).map((a: any) => a.instance_id);
-          setAllowedInstanceIds(evolutionIds);
-          
+          setAllowedInstanceIds(evolutionIds.filter((id: string) => visEvoIds.includes(id)));
+
           // Get Official API instances this user has explicit access to
           const { data: officialAccessData, error: officialError } = await supabase
             .from("whatsapp_official_instance_access")
             .select("instance_id")
             .eq("staff_id", staffId)
             .eq("can_view", true);
-          
+
           if (officialError) {
             console.error('[Inbox] Error fetching Official API access:', officialError);
           }
-          
+
           const officialIds = (officialAccessData || []).map((a: any) => a.instance_id);
-          setAllowedOfficialInstanceIds(officialIds);
+          setAllowedOfficialInstanceIds(officialIds.filter((id: string) => visOffIds.includes(id)));
 
           // Get Instagram instances this user has explicit access to
           const { data: igAccessData } = await supabase
@@ -268,9 +263,9 @@ export const CRMInboxPage = () => {
             .select("instance_id")
             .eq("staff_id", staffId)
             .eq("can_view", true);
-          
+
           const igIds = (igAccessData || []).map((a: any) => a.instance_id);
-          setAllowedIgInstanceIds(igIds);
+          setAllowedIgInstanceIds(igIds.filter((id: string) => visIgIds.includes(id)));
         }
       } catch (error) {
         console.error("Error fetching allowed instances:", error);
@@ -398,11 +393,11 @@ export const CRMInboxPage = () => {
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || sending) return;
-
+    
     const isOfficialAPI = !!selectedConversation.official_instance_id && !selectedConversation.instance_id;
     const isEvolutionAPI = !!selectedConversation.instance_id;
-
-    if (!isInstagramConversation && !isOfficialAPI && !isEvolutionAPI) {
+    
+    if (!isOfficialAPI && !isEvolutionAPI) {
       toast.error("Conversa sem dispositivo associado");
       return;
     }
@@ -411,24 +406,6 @@ export const CRMInboxPage = () => {
     setNewMessage(""); // Clear immediately for better UX
 
     try {
-      if (isInstagramConversation) {
-        // Send via Instagram (Meta Send API)
-        const { data, error } = await supabase.functions.invoke("instagram-send", {
-          body: {
-            conversationId: selectedConversation.id,
-            message: messageToSend,
-            staffId,
-          },
-        });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
-
-        await refetchMessages();
-        scrollToBottom();
-        toast.success("Mensagem enviada!");
-        return;
-      }
-
       if (isOfficialAPI) {
         // Send via Official WhatsApp API
         const { data, error } = await supabase.functions.invoke('whatsapp-official-api', {
@@ -488,15 +465,10 @@ export const CRMInboxPage = () => {
 
   const handleSendMedia = async (file: File, type: "image" | "video" | "audio" | "document") => {
     if (!selectedConversation) return;
-
-    if (isInstagramConversation) {
-      toast.error("Envio de mídia pelo Instagram ainda não é suportado — use texto");
-      return;
-    }
-
+    
     const isOfficialAPI = !!selectedConversation.official_instance_id && !selectedConversation.instance_id;
     const isEvolutionAPI = !!selectedConversation.instance_id;
-
+    
     if (!isOfficialAPI && !isEvolutionAPI) {
       toast.error("Conversa sem dispositivo associado");
       return;
