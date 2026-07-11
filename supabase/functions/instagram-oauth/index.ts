@@ -27,6 +27,37 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
+    // Action: registra o webhook de DMs no app da Meta (equivale a configurar
+    // Webhooks > Instagram > messages no painel developers.facebook.com).
+    // Usa o app access token (APP_ID|APP_SECRET). Idempotente — pode re-rodar.
+    if (action === "setup_webhook") {
+      const verifyToken = Deno.env.get("IG_WEBHOOK_VERIFY_TOKEN");
+      if (!verifyToken) throw new Error("IG_WEBHOOK_VERIFY_TOKEN não configurado");
+
+      const callbackUrl = `${SUPABASE_URL}/functions/v1/instagram-webhook`;
+      const appToken = `${FACEBOOK_APP_ID}|${FACEBOOK_APP_SECRET}`;
+
+      const subUrl = new URL(`https://graph.facebook.com/v19.0/${FACEBOOK_APP_ID}/subscriptions`);
+      subUrl.searchParams.set("object", "instagram");
+      subUrl.searchParams.set("callback_url", callbackUrl);
+      subUrl.searchParams.set("verify_token", verifyToken);
+      subUrl.searchParams.set("fields", "messages");
+      subUrl.searchParams.set("access_token", appToken);
+
+      const subResp = await fetch(subUrl.toString(), { method: "POST" });
+      const subData = await subResp.json();
+
+      // Lê de volta as subscriptions pra confirmar
+      const listUrl = new URL(`https://graph.facebook.com/v19.0/${FACEBOOK_APP_ID}/subscriptions`);
+      listUrl.searchParams.set("access_token", appToken);
+      const listResp = await fetch(listUrl.toString());
+      const listData = await listResp.json();
+
+      return new Response(JSON.stringify({ result: subData, subscriptions: listData, callbackUrl }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Action: Get authorization URL
     if (action === "auth_url") {
       const { staffId, redirectUri, projectId, returnOrigin, returnPath } = body;
