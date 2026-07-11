@@ -143,6 +143,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     qualificacoes: 0,
     cancelamentos: 0,
     reagendamentos: 0,
+    primeiroContatoMin: null as number | null,
   });
   const [opsLoading, setOpsLoading] = useState(true);
 
@@ -151,6 +152,14 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
   const [metaCallsInput, setMetaCallsInput] = useState("");
   const [metaMeetingsInput, setMetaMeetingsInput] = useState("");
   const [savingMeta, setSavingMeta] = useState(false);
+
+  // Formata minutos em min / h / dias (pra tempo de primeiro contato)
+  const formatDuration = (min: number | null): string => {
+    if (min == null) return "—";
+    if (min < 60) return `${Math.round(min)} min`;
+    if (min < 60 * 48) return `${(min / 60).toFixed(1)}h`;
+    return `${(min / 1440).toFixed(1)} dias`;
+  };
 
   const openMetaDialog = () => {
     setMetaCallsInput(String(metrics.metaAgendamentos ?? ""));
@@ -202,7 +211,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       if (!alive) return;
       const row = Array.isArray(data) ? data[0] : null;
       if (error || !row) {
-        setOpsMetrics({ ligacoesRealizadas: 0, ligacoesAtendidas: 0, whatsappPessoas: 0, leadsPerdidosSemResposta: 0, deadlineDias: null, qualificacoes: 0, cancelamentos: 0, reagendamentos: 0 });
+        setOpsMetrics({ ligacoesRealizadas: 0, ligacoesAtendidas: 0, whatsappPessoas: 0, leadsPerdidosSemResposta: 0, deadlineDias: null, qualificacoes: 0, cancelamentos: 0, reagendamentos: 0, primeiroContatoMin: null });
       } else {
         setOpsMetrics({
           ligacoesRealizadas: Number(row.ligacoes_realizadas) || 0,
@@ -213,6 +222,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
           qualificacoes: Number(row.qualificacoes) || 0,
           cancelamentos: Number(row.cancelamentos) || 0,
           reagendamentos: Number(row.reagendamentos) || 0,
+          primeiroContatoMin: row.primeiro_contato_min != null ? Number(row.primeiro_contato_min) : null,
         });
       }
       setOpsLoading(false);
@@ -872,7 +882,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       </div>
 
       {/* ── Operação (roxo) — ligações, WhatsApp, perdas, ciclo ── */}
-      <Section tone={TONE.violet} label="Operação" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+      <Section tone={TONE.violet} label="Operação" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         <Metric
           tone={TONE.violet}
           label="Ligações realizadas"
@@ -900,6 +910,12 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
           tone={TONE.violet}
           label="Deadline fechamento"
           value={opsLoading ? "…" : opsMetrics.deadlineDias != null ? `${opsMetrics.deadlineDias.toFixed(1)} dias` : "—"}
+        />
+        <Metric
+          tone={TONE.violet}
+          label="Tempo 1º contato"
+          value={opsLoading ? "…" : formatDuration(opsMetrics.primeiroContatoMin)}
+          color={opsMetrics.primeiroContatoMin != null && opsMetrics.primeiroContatoMin > 15 ? "#f87171" : "#34d399"}
         />
       </Section>
 
