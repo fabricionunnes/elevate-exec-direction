@@ -1,5 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { useOutletContext } from "react-router-dom";
+
+// Card 3D das flags do time (three.js) — lazy pra não pesar o bundle do CRM
+const CRMTeamFlags3D = lazy(() => import("@/components/crm/CRMTeamFlags3D"));
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -421,6 +424,10 @@ export const CRMReportsPage = () => {
         </Card>
       </div>
 
+      {/* ── Flags do Time (3D) — performance vs meta dos 3 últimos meses ── */}
+      <Suspense fallback={null}>
+        <CRMTeamFlags3D />
+      </Suspense>
 
       {/* Charts */}
       <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
