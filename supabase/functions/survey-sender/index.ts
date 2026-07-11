@@ -124,6 +124,9 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
   const now = new Date();
   let sent = 0;
 
+  // Pesquisa vai SEMPRE no grupo de gestão da empresa (nunca no privado)
+  const gestaoGroups = await fetchGestaoGroups();
+
   // Group projects by company to avoid sending multiple NPS to the same company
   const companyMap = new Map<string, { companyId: string; companyName: string; phone: string; projectId: string }>();
   for (const project of projects) {
@@ -147,9 +150,11 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
       }
     }
 
-    const phone = cleanPhone(company.phone);
+    // Destino: grupo de gestão; no modo teste, cai pro telefone da empresa se não houver grupo
+    const group = gestaoGroups.get(company.id);
+    const phone = group?.jid || (isTest ? cleanPhone(company.phone) : "");
     if (!phone) {
-      console.log(`Company ${company.name} (${company.id}) has no valid phone: ${company.phone}`);
+      console.log(`Company ${company.name} (${company.id}) skipped: sem grupo de gestão`);
       continue;
     }
     // Keep only the first project per company
@@ -353,8 +358,9 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
       .single();
 
     if (!company) { console.log("Test CSAT: company not found"); return 0; }
-    const phone = cleanPhone(company.phone);
-    if (!phone) { console.log(`Test CSAT: no valid phone for ${company.name}`); return 0; }
+    const testGroups = await fetchGestaoGroups();
+    const phone = testGroups.get(company.id)?.jid || cleanPhone(company.phone);
+    if (!phone) { console.log(`Test CSAT: sem grupo de gestão nem telefone para ${company.name}`); return 0; }
 
     // Get projects for this company (try both foreign keys)
     let { data: projects } = await supabase
@@ -483,6 +489,8 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
   if (!surveys || surveys.length === 0) return 0;
 
   let sent = 0;
+  // Pesquisa vai SEMPRE no grupo de gestão da empresa
+  const gestaoGroups = await fetchGestaoGroups();
 
   for (const survey of surveys) {
     const meeting = (survey as any).onboarding_meeting_notes;
@@ -505,8 +513,12 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
     const company = (project as any).onboarding_companies;
     if (!company) continue;
 
-    const phone = cleanPhone(company.phone);
-    if (!phone) continue;
+    const group = gestaoGroups.get(company.id);
+    if (!group) {
+      console.log(`CSAT: ${company.name} sem grupo de gestão — pulando`);
+      continue;
+    }
+    const phone = group.jid;
 
     const { data: existingLogs } = await supabase
       .from("survey_send_log")
@@ -587,6 +599,32 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
   }
 
   return sent;
+}
+
+/** Grupo de gestão por company_id (projeto Marcelo, cross-account, só leitura).
+ * Mesma regra do resumo-diario-gestao: pesquisa vai SEMPRE no grupo de gestão. */
+async function fetchGestaoGroups(): Promise<Map<string, { jid: string; name: string }>> {
+  const MARCELO_URL = Deno.env.get("MARCELO_SUPABASE_URL") || "";
+  const MARCELO_KEY = Deno.env.get("MARCELO_SERVICE_KEY") || "";
+  const out = new Map<string, { jid: string; name: string }>();
+  if (!MARCELO_URL || !MARCELO_KEY) return out;
+  const mh = { apikey: MARCELO_KEY, Authorization: `Bearer ${MARCELO_KEY}` };
+  const r = await fetch(`${MARCELO_URL}/rest/v1/marcelo_groups?select=company_id,group_jid,group_name,group_type`, { headers: mh });
+  if (!r.ok) return out;
+  const groups = await r.json();
+  for (const g of groups || []) {
+    if (!g.company_id || !g.group_jid) continue;
+    const name = String(g.group_name || "");
+    const type = String(g.group_type || "").toLowerCase();
+    const isBoard = /unv\s*board/i.test(name);
+    const isVend = /vend/i.test(type) || /vend/i.test(name);
+    const isGestao = /gest/i.test(type) || (!isBoard && !isVend);
+    if (!isGestao) continue;
+    const prev = out.get(g.company_id);
+    const strong = /gest/i.test(type) || /gest/i.test(name);
+    if (!prev || strong) out.set(g.company_id, { jid: g.group_jid, name });
+  }
+  return out;
 }
 
 async function getInstanceName(supabase: any, configInstance: string | null): Promise<string | null> {
