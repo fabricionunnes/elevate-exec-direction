@@ -226,7 +226,26 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
     return set;
   }, [search, graph]);
   const matchedRef = useRef<Set<string> | null>(null);
-  useEffect(() => { matchedRef.current = matchedIds; alphaRef.current = Math.max(alphaRef.current, 0.05); }, [matchedIds]);
+  useEffect(() => {
+    matchedRef.current = matchedIds;
+    alphaRef.current = Math.max(alphaRef.current, 0.05);
+    // centraliza a câmera nos nós encontrados
+    if (matchedIds && matchedIds.size > 0 && wrapRef.current) {
+      const nodes = simRef.current.nodes.filter((n) => matchedIds.has(n.id));
+      if (nodes.length) {
+        const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
+        const minX = Math.min(...xs) - 80, maxX = Math.max(...xs) + 80;
+        const minY = Math.min(...ys) - 80, maxY = Math.max(...ys) + 80;
+        const W = wrapRef.current.clientWidth, H = 560;
+        const scale = Math.min(Math.max(Math.min(W / (maxX - minX), H / (maxY - minY)), 0.5), 1.6);
+        viewRef.current = {
+          scale,
+          x: W / 2 - ((minX + maxX) / 2) * scale,
+          y: H / 2 - ((minY + maxY) / 2) * scale,
+        };
+      }
+    }
+  }, [matchedIds]);
   useEffect(() => { searchRef.current = search; }, [search]);
   useEffect(() => { hiddenRef.current = hiddenKinds; alphaRef.current = Math.max(alphaRef.current, 0.05); }, [hiddenKinds]);
   useEffect(() => { selectedRef.current = selectedId; }, [selectedId]);
@@ -406,14 +425,19 @@ export const ProjectGraphPanel = ({ projectId, userRole }: Props) => {
         ctx.globalAlpha = dim ? 0.15 : 1;
         if ((isFocus || isMatch) && !dim) {
           ctx.beginPath();
-          ctx.arc(n.x, n.y, n.r + 6, 0, Math.PI * 2);
-          ctx.fillStyle = color + "33";
+          ctx.arc(n.x, n.y, n.r + (isMatch ? 12 : 6), 0, Math.PI * 2);
+          ctx.fillStyle = color + (isMatch ? "44" : "33");
           ctx.fill();
         }
         ctx.beginPath();
         ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
         ctx.fillStyle = color;
         ctx.fill();
+        if (isMatch && !dim) {
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 2.5 / view.scale;
+          ctx.stroke();
+        }
         if (n.id === selected || n.id === pinnedRef.current) {
           ctx.strokeStyle = "#ffffff";
           ctx.lineWidth = 2 / view.scale;

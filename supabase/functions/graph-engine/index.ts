@@ -126,7 +126,7 @@ async function gatherContext(supabase: SupabaseClient, projectId: string) {
         const jids = groups.map((g: any) => `"${g.group_jid}"`).join(",");
         const typeByJid = new Map(groups.map((g: any) => [g.group_jid, g.group_type || g.group_name]));
         const mRes = await fetch(
-          `${MARCELO_URL}/rest/v1/marcelo_group_messages?select=group_jid,sender_name,message_text,msg_timestamp&group_jid=in.(${jids})&msg_timestamp=gte.${d30}&order=msg_timestamp.desc&limit=300`,
+          `${MARCELO_URL}/rest/v1/marcelo_group_messages?select=group_jid,sender_name,message_text,msg_timestamp&group_jid=in.(${jids})&msg_timestamp=gte.${d30}&order=msg_timestamp.desc&limit=450`,
           { headers: mh },
         );
         const msgs = mRes.ok ? await mRes.json() : [];
@@ -153,8 +153,8 @@ async function gatherContext(supabase: SupabaseClient, projectId: string) {
       titulo: m.meeting_title,
       data: m.meeting_date,
       no_show: m.is_no_show,
-      notas: sampleText(m.notes, 8000), // notas às vezes carregam a transcrição inteira
-      transcricao: sampleText(m.transcript, 9000),
+      notas: sampleText(m.notes, 12000), // notas às vezes carregam a transcrição inteira
+      transcricao: sampleText(m.transcript, 12000),
     })),
     tarefas: (tasks || []).map((t: any) => ({ t: t.title, s: t.status, vence: t.due_date })),
     grade_curricular: (grade || []).map((g: any) => ({
@@ -186,11 +186,14 @@ Extraia nós e arestas. Tipos de nó (kind):
 - "evento": marcos (reunião-chave, virada, incidente)
 
 Regras:
-- COBERTURA DE REUNIÕES É OBRIGATÓRIA: cada reunião com transcrição/notas gera PELO MENOS 1 nó com o assunto principal dela (mais nós se tratou de assuntos distintos), MESMO que o assunto não seja comercial — ex.: agentes de IA, tecnologia, operações, pessoas. Se a reunião não virar nó, o usuário não reencontra o que foi falado nela.
-- Cada assunto de reunião vira nó "tema" com o trecho real citado como evidência (fonte "reuniao", com a data da reunião).
-- 25 a 45 nós. Cada nó TEM que ter pelo menos 1 evidência REAL: trecho citável (frase de WhatsApp, transcrição, tarefa, campo do briefing), com fonte e data quando houver. NÃO invente evidência.
+- O grafo é o REGISTRO COMPLETO da empresa: quem pesquisar qualquer assunto já tratado TEM que encontrar um nó. Cubra TODAS as fontes:
+  · REUNIÕES: cada reunião gera 2 a 5 nós com os assuntos distintos que tratou (mesmo não-comerciais: IA, tecnologia, operações, pessoas), com trecho real citado (fonte "reuniao" + data).
+  · GRUPOS DE WHATSAPP (gestão e vendedores): cada assunto recorrente ou decisão falada nos grupos vira nó com a frase citada (fonte "whatsapp", quem falou, data).
+  · TAREFAS: agrupe as tarefas por assunto e crie nós dos assuntos (fonte "tarefa").
+  · BRIEFING: dores, metas, estrutura e contexto do briefing viram nós (fonte "briefing").
+- 50 a 80 nós. Cada nó TEM que ter pelo menos 1 evidência REAL: trecho citável (frase de WhatsApp, transcrição, tarefa, campo do briefing), com fonte e data quando houver. NÃO invente evidência.
 - "weight" do nó = relevância 1-10 (quantas vezes aparece / quão central é).
-- Arestas conectam nós relacionados com "why" curto (o mecanismo da relação). Todo nó precisa de pelo menos 1 aresta. 25 a 60 arestas. Máximo 2 evidências por nó, cada trecho com no máximo 140 caracteres.
+- Arestas conectam nós relacionados com "why" curto (o mecanismo da relação). Todo nó precisa de pelo menos 1 aresta. 60 a 140 arestas. Máximo 2 evidências por nó, cada trecho com no máximo 120 caracteres.
 - ids curtos em kebab-case (ex.: "trafego-pago", "caio-vendedor").
 - Fontes válidas: "whatsapp" | "reuniao" | "tarefa" | "briefing" | "grade" | "kpi" | "nps" | "cerebro".
 
@@ -209,7 +212,7 @@ Português do Brasil.`;
       "anthropic-version": "2023-06-01",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ model: MODEL, max_tokens: 15000, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 22000, messages: [{ role: "user", content: prompt }] }),
   });
   if (!aiResp.ok) throw new Error(`Anthropic ${aiResp.status}: ${truncate(await aiResp.text(), 300)}`);
   const aiData = await aiResp.json();
