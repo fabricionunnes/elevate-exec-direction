@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
       .select(`
         id, instance_id, contact_id,
         contact:instagram_contacts(id, instagram_user_id),
-        instance:instagram_instances(id, access_token, page_id, status)
+        instance:instagram_instances(id, access_token, instagram_account_id, status)
       `)
       .eq("id", conversationId)
       .single();
@@ -42,8 +42,8 @@ Deno.serve(async (req) => {
     if (!instance || instance.status !== "active") throw new Error("Conta do Instagram desconectada — reconecte nas configurações");
     if (!contact?.instagram_user_id) throw new Error("Contato sem Instagram ID");
 
-    // Send API (mensagem dentro da janela de 24h de resposta)
-    const sendUrl = new URL(`https://graph.facebook.com/v19.0/${instance.page_id}/messages`);
+    // Send API do Instagram Login (graph.instagram.com), janela de 24h de resposta
+    const sendUrl = new URL(`https://graph.instagram.com/v21.0/${instance.instagram_account_id}/messages`);
     sendUrl.searchParams.set("access_token", instance.access_token);
 
     const sendResp = await fetch(sendUrl.toString(), {

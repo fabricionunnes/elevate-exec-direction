@@ -11,24 +11,35 @@ import { createClient } from "@supabase/supabase-js";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const VERIFY_TOKEN = Deno.env.get("IG_WEBHOOK_VERIFY_TOKEN") ?? "";
-const APP_SECRET = Deno.env.get("FACEBOOK_APP_SECRET") ?? "";
+// A entrega pode vir assinada pelo app Facebook pai OU pelo app do Instagram
+// (Instagram Login) — aceita qualquer um dos dois secrets.
+const APP_SECRETS = [
+  Deno.env.get("FACEBOOK_APP_SECRET") ?? "",
+  Deno.env.get("IG_APP_SECRET") ?? "",
+].filter(Boolean);
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-async function validSignature(body: string, signatureHeader: string | null): Promise<boolean> {
-  if (!APP_SECRET) return true; // sem secret configurado não dá pra validar
-  if (!signatureHeader?.startsWith("sha256=")) return false;
-  const expected = signatureHeader.slice("sha256=".length);
+async function hmacHex(secret: string, body: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(APP_SECRET),
+    new TextEncoder().encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
   );
   const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
-  const hex = [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("");
-  return hex === expected;
+  return [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function validSignature(body: string, signatureHeader: string | null): Promise<boolean> {
+  if (APP_SECRETS.length === 0) return true; // sem secret configurado não dá pra validar
+  if (!signatureHeader?.startsWith("sha256=")) return false;
+  const expected = signatureHeader.slice("sha256=".length);
+  for (const secret of APP_SECRETS) {
+    if ((await hmacHex(secret, body)) === expected) return true;
+  }
+  return false;
 }
 
 type MessagingEvent = {
@@ -45,7 +56,8 @@ type MessagingEvent = {
 
 async function fetchProfile(igsid: string, accessToken: string) {
   try {
-    const url = new URL(`https://graph.facebook.com/v19.0/${igsid}`);
+    // Instagram Login: perfil do usuário da DM via graph.instagram.com
+    const url = new URL(`https://graph.instagram.com/v21.0/${igsid}`);
     url.searchParams.set("fields", "name,username,profile_pic");
     url.searchParams.set("access_token", accessToken);
     const resp = await fetch(url.toString());
