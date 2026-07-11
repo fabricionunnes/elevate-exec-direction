@@ -881,10 +881,10 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         <Metric tone={TONE.violet} label="% Projetado" value={`${metrics.projecaoPercent.toFixed(0)}%`} />
       </Section>
 
-      {/* ── Discador — reuniões e custos (âmbar) — só do discador ── */}
-      <Section tone={TONE.amber} label="Discador — Reuniões e Custos" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-        <Metric tone={TONE.amber} label="Reuniões Realizadas" value={dialerOutcomes.realized} color="#34d399" />
-        <Metric tone={TONE.amber} label="Reuniões Agendadas" value={dialerOutcomes.scheduled} color={TONE.blue} />
+      {/* ── Discador — reuniões e custos (âmbar) — SÓ do discador, não o total ── */}
+      <Section tone={TONE.amber} label="Discador — Reuniões e Custos (só via discador)" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+        <Metric tone={TONE.amber} label="Realizadas (via discador)" value={dialerOutcomes.realized} color="#34d399" />
+        <Metric tone={TONE.amber} label="Agendadas (via discador)" value={dialerOutcomes.scheduled} color={TONE.blue} />
         <Metric tone={TONE.amber} label="CAC" value={dialerOutcomes.sales > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / dialerOutcomes.sales) : "—"} color="#f87171" />
         <Metric tone={TONE.amber} label="Custo / Reunião Realizada" value={dialerOutcomes.realized > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / dialerOutcomes.realized) : "—"} />
         <Metric tone={TONE.amber} label="Custo / Reunião Agendada" value={dialerOutcomes.scheduled > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / dialerOutcomes.scheduled) : "—"} />
@@ -954,8 +954,8 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         </div>
       </div>
 
-      {/* ── Reuniões (azul) ── */}
-      <Section tone={TONE.blue} label="Reuniões" cols="grid-cols-3">
+      {/* ── Reuniões (azul) — TOTAL real (todas as origens) ── */}
+      <Section tone={TONE.blue} label="Reuniões (total — todas as origens)" cols="grid-cols-3">
         <Metric tone={TONE.blue} label="Agendadas" value={callsMetrics.agendadas} color={TONE.blue} />
         <Metric tone={TONE.blue} label="Realizadas" value={callsMetrics.realizadas} color="#34d399" />
         <Metric tone={TONE.blue} label="No Show" value={`${callsMetrics.noShowPercent.toFixed(0)}%`} color={callsMetrics.noShowPercent > 30 ? "#f87171" : undefined} />
