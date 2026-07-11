@@ -394,7 +394,7 @@ export const CRMLayout = () => {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <a
-                      href="https://unv-closer-install.pages.dev/"
+                      href="https://chromewebstore.google.com/detail/fcpcpmfnfkcjhdbmcgcolhjalmahhmhg"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2"
