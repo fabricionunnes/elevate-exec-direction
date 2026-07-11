@@ -13,6 +13,8 @@ interface FlagRow {
   target_value: number | null;
   achieved: number | null;
   kpi_name: string | null;
+  /** meta herdada (meta da empresa ÷ vendedores ativos) — sem meta individual configurada */
+  inherited?: boolean;
 }
 
 const DOT: Record<string, string> = {
@@ -151,7 +153,7 @@ export const SalespersonFlagsPanel = ({
                           className="inline-flex items-center gap-1.5"
                           title={
                             r && flag !== "none"
-                              ? `${r.kpi_name || "Meta"}: ${brl(Number(r.achieved || 0))} de ${brl(Number(r.target_value || 0))}`
+                              ? `${r.kpi_name || "Meta"}: ${brl(Number(r.achieved || 0))} de ${brl(Number(r.target_value || 0))}${r.inherited ? " · meta rateada da empresa (configure a meta individual em Metas & KPIs)" : ""}`
                               : "sem meta nesse mês"
                           }
                         >
