@@ -185,22 +185,30 @@ Deno.serve(async (req) => {
     }
 
     const usedAngles = history.map(h => h.news_headline || h.angle).filter(Boolean).slice(-6);
-    const newsFocus = [
-      lead.segment ? `o segmento "${lead.segment}" no Brasil` : "vendas e crescimento de PMEs no Brasil",
-      "gestão comercial / processo de vendas",
-      "IA aplicada a vendas",
-      "economia que afeta PME no Brasil (juros, crédito, tributos, custos)",
-    ].join("; ");
+    // Sinais do nicho: muitos leads não têm "segment" preenchido — o nicho pode
+    // estar na empresa, nome fantasia, instagram ou notas. A fase 1 DEDUZ.
+    const nicheSignals = [
+      lead.company ? `empresa: ${lead.company}` : null,
+      lead.trade_name ? `nome fantasia: ${lead.trade_name}` : null,
+      lead.segment ? `segmento cadastrado: ${lead.segment}` : null,
+      lead.instagram ? `instagram: ${lead.instagram}` : null,
+      lead.main_pain ? `principal dor: ${lead.main_pain}` : null,
+      lead.notes ? `notas: ${String(lead.notes).slice(0, 200)}` : null,
+    ].filter(Boolean).join(" | ");
 
     let newsList: any[] = [];
     try {
       const newsMessages: any[] = [{
         role: "user",
-        content: `Busque na web notícias RECENTES (últimos 60 dias, Brasil) sobre: ${newsFocus}.` +
+        content: `DADOS DO LEAD (para identificar o nicho dele): ${nicheSignals || "(sem dados de nicho)"}\n\n` +
+          `PASSO 1: deduza o nicho/mercado do lead a partir dos dados acima (ex.: instagram "acai2000" → mercado de açaí/alimentação; nome da empresa também revela o setor). Se não houver nenhum sinal, considere PME em geral.\n` +
+          `PASSO 2: busque na web notícias RECENTES (últimos 60 dias, Brasil):\n` +
+          `- PELO MENOS 2 notícias específicas do NICHO do lead (mercado, consumo, crescimento do setor);\n` +
+          `- complete com: gestão comercial/processo de vendas; IA aplicada a vendas; economia que afeta PME (juros, crédito, tributos).` +
           (usedAngles.length ? `\nNÃO repita estes temas já usados: ${usedAngles.join(" | ")}.` : "") +
           `\nFaça no máximo 3 buscas. Depois responda SOMENTE com JSON válido:\n` +
-          `{"news":[{"headline":"...","url":"...","source":"...","date":"...","summary":"1 a 2 frases"}]}\n` +
-          `Liste de 4 a 6 notícias, cada uma de um tema diferente. Só notícias que você realmente encontrou na busca.`,
+          `{"niche":"nicho deduzido","news":[{"headline":"...","url":"...","source":"...","date":"...","summary":"1 a 2 frases","topic":"nicho|geral"}]}\n` +
+          `Liste de 4 a 6 notícias. Só notícias que você realmente encontrou na busca.`,
       }];
       for (let iter = 0; iter < 5; iter++) {
         const data = await callAnthropic({
@@ -223,6 +231,7 @@ Deno.serve(async (req) => {
           .map((b: any) => b.text).join("\n").trim();
         const parsed = extractJson(textOut);
         newsList = Array.isArray(parsed.news) ? parsed.news.filter((n: any) => n?.headline) : [];
+        if (parsed.niche) ctx.push(`\nNicho identificado do lead: ${parsed.niche}`);
         break;
       }
     } catch (e: any) {
@@ -236,9 +245,10 @@ Deno.serve(async (req) => {
 
     ctx.push("\n=== NOTÍCIAS RECENTES (reais, da busca — use uma DIFERENTE por opção) ===");
     newsList.forEach((n, i) => {
-      ctx.push(`${i + 1}. ${n.headline} [fonte: ${n.source || "—"}${n.date ? `, ${n.date}` : ""}] ${n.url || ""}`);
+      ctx.push(`${i + 1}. ${n.topic === "nicho" ? "[DO NICHO DO LEAD] " : ""}${n.headline} [fonte: ${n.source || "—"}${n.date ? `, ${n.date}` : ""}] ${n.url || ""}`);
       if (n.summary) ctx.push(`   resumo: ${n.summary}`);
     });
+    ctx.push(`\nPRIORIDADE: as notícias marcadas [DO NICHO DO LEAD] vêm primeiro — as primeiras opções devem usá-las, falando a língua do negócio dele. As genéricas de PME completam as demais.`);
     ctx.push(`\nGere ${count} opções agora.`);
 
     // 6) FASE 2 — escreve as opções (Sonnet, SEM ferramentas — rápido)
