@@ -54,6 +54,8 @@ import { TaskDetailsDialog } from "@/components/onboarding-tasks/TaskDetailsDial
 import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
 import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
 import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBriefingPanel";
+import { CurriculumPanel } from "@/components/onboarding-tasks/CurriculumPanel";
+import { GraduationCap } from "lucide-react";
 import { ClientBrainPanel } from "@/components/onboarding-tasks/ClientBrainPanel";
 import { AdsBriefingSection } from "@/components/social/strategy/AdsBriefingSection";
 import { StrategicDiagnosticModule } from "@/components/client-diagnostic/StrategicDiagnosticModule";
@@ -1594,6 +1596,7 @@ const OnboardingProjectPage = () => {
                     <TabsTrigger key="kpis" value="kpis"><BarChart3 className="h-3.5 w-3.5 shrink-0" />KPIs</TabsTrigger>
                   ]),
                   <TabsTrigger key="briefing" value="briefing"><Building2 className="h-3.5 w-3.5 shrink-0" />Briefing</TabsTrigger>,
+                  <TabsTrigger key="curriculum" value="curriculum"><GraduationCap className="h-3.5 w-3.5 shrink-0" />Grade</TabsTrigger>,
                   <TabsTrigger key="diagnostic" value="diagnostic"><Sparkles className="h-3.5 w-3.5 shrink-0" />Diagnóstico</TabsTrigger>,
                   <TabsTrigger key="tasks" value="tasks"><CheckCircle2 className="h-3.5 w-3.5 shrink-0" />Jornada</TabsTrigger>,
                   <TabsTrigger key="ai-coach" value="ai-coach"><Sparkles className="h-3.5 w-3.5 shrink-0" />IA</TabsTrigger>,
@@ -1891,6 +1894,10 @@ const OnboardingProjectPage = () => {
             <div className="mt-6">
               <AdsBriefingSection projectId={projectId!} />
             </div>
+          </TabsContent>
+
+          <TabsContent value="curriculum">
+            <CurriculumPanel projectId={projectId!} userRole={currentUserRole} />
           </TabsContent>
 
           <TabsContent value="diagnostic">
