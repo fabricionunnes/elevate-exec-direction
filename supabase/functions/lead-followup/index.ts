@@ -57,6 +57,7 @@ REGRAS DE CADA MENSAGEM:
 5. VARIE o fechamento entre as opções: cerca de metade SEM CTA nenhum — só conexão, gerar valor e mostrar que você acompanha o mercado dele (compartilhar o dado, uma observação, um elogio genuíno ao setor; termina sem pergunta, sem pedir nada). A outra parte com CTA suave (uma pergunta ou convite leve, nunca pressão). Se já houve follow-up com CTA no histórico e o lead não respondeu, prefira conexão pura agora.
 6. As ${count} opções devem ter ângulos/notícias DISTINTOS entre si. Marque no campo "angle" quando a opção for de conexão pura (ex.: "conexão — mercado de açaí").
 7. NUNCA invente interações passadas (ligações, conversas, reuniões, promessas). Só mencione contato anterior se estiver explícito nas ATIVIDADES ou no HISTÓRICO do contexto.
+8. PROIBIDO usar travessão ou hífen como conector no meio da frase ("—", "–" ou " - "). Isso denuncia texto de IA. Reescreva com vírgula, ponto final ou dois pontos, como uma pessoa digitando no WhatsApp.
 
 Responda SOMENTE com um objeto JSON válido, sem comentários, neste formato exato:
 {
@@ -269,6 +270,13 @@ Deno.serve(async (req) => {
         .map((b: any) => b.text).join("\n").trim();
       const parsed = extractJson(textOut);
       options = (Array.isArray(parsed.options) ? parsed.options : []).filter((o: any) => o?.message);
+      // rede de segurança: travessão/hífen conector denuncia IA — troca por vírgula
+      // (preserva hífen de palavra composta, ex. "e-commerce", "pós-venda")
+      const cleanDashes = (s: string) => s
+        .replace(/\s*[—–]\s*/g, ", ")
+        .replace(/\s+-\s+/g, ", ")
+        .replace(/,\s*,/g, ",");
+      options = options.map((o: any) => ({ ...o, message: cleanDashes(String(o.message)) }));
     } catch (e: any) {
       return json({ error: "ia_request_failed", detail: e?.message || "Falha ao gerar as mensagens." }, 200);
     }
