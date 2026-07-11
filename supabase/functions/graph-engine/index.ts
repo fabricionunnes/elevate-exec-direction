@@ -26,6 +26,15 @@ function truncate(s: unknown, n: number): string {
   return str.length > n ? str.slice(0, n) + "…" : str;
 }
 
+/** Amostra começo + meio + fim — o assunto pode estar em qualquer parte da reunião. */
+function sampleText(s: unknown, n: number): string {
+  const str = String(s ?? "");
+  if (str.length <= n) return str;
+  const a = Math.floor(n * 0.45), b = Math.floor(n * 0.3), c = n - a - b;
+  const mid = Math.floor(str.length / 2 - b / 2);
+  return `${str.slice(0, a)} […] ${str.slice(mid, mid + b)} […] ${str.slice(str.length - c)}`;
+}
+
 async function gatherContext(supabase: SupabaseClient, projectId: string) {
   const { data: project } = await supabase
     .from("onboarding_projects")
@@ -58,7 +67,7 @@ async function gatherContext(supabase: SupabaseClient, projectId: string) {
     .eq("project_id", projectId)
     .gte("meeting_date", d90)
     .order("meeting_date", { ascending: false })
-    .limit(8);
+    .limit(10);
 
   const { data: tasks } = await supabase
     .from("onboarding_tasks")
@@ -138,7 +147,7 @@ async function gatherContext(supabase: SupabaseClient, projectId: string) {
       data: m.meeting_date,
       no_show: m.is_no_show,
       notas: truncate(m.notes, 700),
-      transcricao: truncate(m.transcript, 1400),
+      transcricao: sampleText(m.transcript, 4000),
     })),
     tarefas: (tasks || []).map((t: any) => ({ t: t.title, s: t.status, vence: t.due_date })),
     grade_curricular: (grade || []).map((g: any) => ({
@@ -170,8 +179,9 @@ Extraia nós e arestas. Tipos de nó (kind):
 - "evento": marcos (reunião-chave, virada, incidente)
 
 Regras:
-- PRIORIZE os ASSUNTOS DISCUTIDOS NAS REUNIÕES: cada assunto relevante de transcrição/notas vira nó "tema" com o trecho real citado como evidência (fonte "reuniao", com a data da reunião) — é assim que o usuário vai reencontrar o que foi falado.
-- 20 a 35 nós. Cada nó TEM que ter pelo menos 1 evidência REAL: trecho citável (frase de WhatsApp, transcrição, tarefa, campo do briefing), com fonte e data quando houver. NÃO invente evidência.
+- COBERTURA DE REUNIÕES É OBRIGATÓRIA: cada reunião com transcrição/notas gera PELO MENOS 1 nó com o assunto principal dela (mais nós se tratou de assuntos distintos), MESMO que o assunto não seja comercial — ex.: agentes de IA, tecnologia, operações, pessoas. Se a reunião não virar nó, o usuário não reencontra o que foi falado nela.
+- Cada assunto de reunião vira nó "tema" com o trecho real citado como evidência (fonte "reuniao", com a data da reunião).
+- 25 a 45 nós. Cada nó TEM que ter pelo menos 1 evidência REAL: trecho citável (frase de WhatsApp, transcrição, tarefa, campo do briefing), com fonte e data quando houver. NÃO invente evidência.
 - "weight" do nó = relevância 1-10 (quantas vezes aparece / quão central é).
 - Arestas conectam nós relacionados com "why" curto (o mecanismo da relação). Todo nó precisa de pelo menos 1 aresta. 25 a 60 arestas. Máximo 2 evidências por nó, cada trecho com no máximo 140 caracteres.
 - ids curtos em kebab-case (ex.: "trafego-pago", "caio-vendedor").
