@@ -119,10 +119,9 @@ export function Header() {
     cat.items.some(item => location.pathname === item.href)
   );
 
-  // Manual interno: aparece pra quem já tem sessão (o guard da rota barra quem não é staff)
-  const navItems = isLoggedIn
-    ? [...navigation, { name: "Processos", href: "/processos" }]
-    : navigation;
+  // Manual de Processos é interno — NÃO fica no site público. Staff acessa pelo
+  // CRM (menu "Mais") e pelo hub /onboarding-tasks.
+  const navItems = navigation;
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/30">
