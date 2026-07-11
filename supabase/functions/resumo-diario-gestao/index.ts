@@ -30,6 +30,29 @@ const MORNING_COMPANY_IDS = new Set<string>([
   "990298cd-b689-4975-bde5-329e4bbc2916", // Loja Mix Brasil
 ]);
 
+function easterDate(year: number): Date {
+  const a = year % 19, b = Math.floor(year / 100), c = year % 100;
+  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
+/** Feriado nacional brasileiro? Recebe "YYYY-MM-DD" (data BRT). */
+function isBrazilHoliday(dateStr: string): boolean {
+  const [y, mo, da] = dateStr.split("-").map(Number);
+  const fixed = ["01-01", "04-21", "05-01", "09-07", "10-12", "11-02", "11-15", "11-20", "12-25"];
+  const mmdd = `${String(mo).padStart(2, "0")}-${String(da).padStart(2, "0")}`;
+  if (fixed.includes(mmdd)) return true;
+  const easter = easterDate(y);
+  const key = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const offset = (n: number) => { const d = new Date(easter); d.setDate(d.getDate() + n); return key(d); };
+  // Carnaval (seg/ter), Sexta-feira Santa, Corpus Christi
+  return [offset(-48), offset(-47), offset(-2), offset(60)].includes(dateStr);
+}
+
 function daysAgo(iso: string, n: number): string {
   const d = new Date(iso + "T12:00:00");
   d.setDate(d.getDate() - n);
@@ -290,6 +313,13 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const live = body.live === true;
     const morning = body.morning === true;
+    // Feriado nacional: ninguém está operando — nenhum resumo sai (nem noturno
+    // nem matinal). Dry-run continua funcionando pra teste.
+    if (!body.dry && isBrazilHoliday(brToday())) {
+      return new Response(JSON.stringify({ ok: true, skipped: "feriado nacional", today: brToday() }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     // Modo matinal fala do dia ANTERIOR; noturno fala do dia atual.
     // Na SEGUNDA o matinal fala do SÁBADO (D-2) — domingo a loja não opera
     // e o resultado de sábado não pode ficar sem leitura.
