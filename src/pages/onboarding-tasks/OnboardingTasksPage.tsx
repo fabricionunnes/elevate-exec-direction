@@ -1935,7 +1935,7 @@ const OnboardingTasksPage = () => {
                     Escritório UNV
                   </DropdownMenuItem>
                   {/* Baixar extensão Closer Copilot — todo o staff */}
-                  <DropdownMenuItem onClick={() => window.open("https://chromewebstore.google.com/detail/fcpcpmfnfkcjhdbmcgcolhjalmahhmhg", "_blank", "noopener,noreferrer")}>
+                  <DropdownMenuItem onClick={() => window.open("https://unv-closer-install.pages.dev/", "_blank", "noopener,noreferrer")}>
                     <Download className="h-4 w-4 mr-2" />
                     Baixar Copilot
                   </DropdownMenuItem>
@@ -2306,7 +2306,7 @@ const OnboardingTasksPage = () => {
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/copiloto")} className="text-primary focus:text-primary font-semibold">
                   <Sparkles className="h-4 w-4 mr-2" /> Copiloto de Resultados
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => window.open("https://chromewebstore.google.com/detail/fcpcpmfnfkcjhdbmcgcolhjalmahhmhg", "_blank", "noopener,noreferrer")}>
+                <DropdownMenuItem onClick={() => window.open("https://unv-closer-install.pages.dev/", "_blank", "noopener,noreferrer")}>
                   <Download className="h-4 w-4 mr-2" /> Baixar Copilot
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/task-manager")}>
