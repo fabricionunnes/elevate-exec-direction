@@ -132,12 +132,31 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [linkingId, setLinkingId] = useState<string | null>(null);
 
+  const [authorizedInstIds, setAuthorizedInstIds] = useState<string[]>([]);
+  const [syncingGroups, setSyncingGroups] = useState(false);
+
   const fetchGroups = async () => {
     setLoadingGroups(true);
     try {
+      // Só grupos de instâncias autorizadas: visíveis no Atendimento
+      // (Dispositivos > coluna Atendimento); não-master ainda cruza com o acesso dele.
+      const { data: vis } = await (supabase as any)
+        .from("whatsapp_instances")
+        .select("id")
+        .eq("show_in_inbox", true);
+      let instIds = ((vis || []) as any[]).map((i) => i.id);
+      if (!isMaster && allowedWaInstanceIds !== null) {
+        instIds = instIds.filter((id) => allowedWaInstanceIds.includes(id));
+      }
+      setAuthorizedInstIds(instIds);
+      if (instIds.length === 0) {
+        setGroups([]);
+        return;
+      }
       const { data } = await (supabase as any)
         .from("crm_whatsapp_conversations")
-        .select("id, lead_id, last_message_at, contact:crm_whatsapp_contacts!inner(id, name, phone)")
+        .select("id, lead_id, last_message_at, instance_id, contact:crm_whatsapp_contacts!inner(id, name, phone)")
+        .in("instance_id", instIds)
         .or("phone.like.120363%,phone.like.%@g.us%", { foreignTable: "crm_whatsapp_contacts" })
         .order("last_message_at", { ascending: false, nullsFirst: false })
         .limit(500);
@@ -151,6 +170,31 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
       );
     } finally {
       setLoadingGroups(false);
+    }
+  };
+
+  // Importa do WhatsApp os grupos das instâncias autorizadas (cria as conversas
+  // que ainda não existem — necessário pra instâncias que nunca receberam
+  // mensagem de grupo pelo webhook).
+  const syncGroupsNow = async () => {
+    if (syncingGroups) return;
+    setSyncingGroups(true);
+    try {
+      let failures = 0;
+      for (const instId of authorizedInstIds) {
+        const { data, error } = await supabase.functions.invoke("evolution-api", {
+          body: { action: "syncGroups", instanceId: instId },
+        });
+        if (error || (data as any)?.error) {
+          failures++;
+          console.error("syncGroups falhou pra instância", instId, error || (data as any)?.error);
+        }
+      }
+      await fetchGroups();
+      if (failures === 0) toast.success("Grupos sincronizados");
+      else toast.warning("Alguns grupos não sincronizaram — veja o console");
+    } finally {
+      setSyncingGroups(false);
     }
   };
 
@@ -683,11 +727,29 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
           <DialogHeader>
             <DialogTitle>Vincular grupo ao lead</DialogTitle>
           </DialogHeader>
-          <Input
-            placeholder="Buscar grupo pelo nome..."
-            value={groupSearch}
-            onChange={(e) => setGroupSearch(e.target.value)}
-          />
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Buscar grupo pelo nome..."
+              value={groupSearch}
+              onChange={(e) => setGroupSearch(e.target.value)}
+              className="flex-1"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 shrink-0"
+              disabled={syncingGroups || authorizedInstIds.length === 0}
+              title="Importar do WhatsApp os grupos das instâncias autorizadas"
+              onClick={syncGroupsNow}
+            >
+              {syncingGroups ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              Sincronizar
+            </Button>
+          </div>
           <div className="max-h-[320px] overflow-y-auto divide-y divide-border rounded-md border border-border">
             {loadingGroups ? (
               <div className="p-4 text-center text-xs text-muted-foreground">
@@ -701,7 +763,9 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
                 if (list.length === 0) {
                   return (
                     <div className="p-4 text-center text-xs text-muted-foreground">
-                      Nenhum grupo encontrado.
+                      {authorizedInstIds.length === 0
+                        ? "Nenhuma instância autorizada no Atendimento (Dispositivos > coluna Atendimento)."
+                        : "Nenhum grupo encontrado. Use o Sincronizar pra importar os grupos do WhatsApp."}
                     </div>
                   );
                 }
