@@ -425,10 +425,15 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     const currentDay = getDate(now);
     const isCloserFilter = selectedCloser !== "all";
 
+    // Vendas de EVENTO (Imersão, Mansão, Palestra, Eventos) não são venda comercial core —
+    // são conversão específica do evento e distorcem ticket médio / qtd. Ficam de fora deste painel.
+    const isEventSale = (s: any) => /imers|evento|mans[ãa]o|palestra/i.test(s.pipeline?.name || "");
+    const commercialRawSales = rawSalesData.filter(s => !isEventSale(s));
+
     // Filter raw data by selected closer + produto (filtro de produto antes era morto;
     // vendas carregam product_name livre, não product_id — então filtra por nome).
     const productFilter = selectedProduct !== "all";
-    const salesData = rawSalesData.filter(s =>
+    const salesData = commercialRawSales.filter(s =>
       (!isCloserFilter || s.closer_staff_id === selectedCloser) &&
       (!productFilter || (s.product?.name || s.product_name) === selectedProduct)
     );
@@ -565,7 +570,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     })();
 
     const closerMetrics: CloserMetrics[] = rawCloserStaff.map(closer => {
-      const closerSales = rawSalesData.filter(s => s.closer_staff_id === closer.id && (selectedProduct === "all" || (s.product?.name || s.product_name) === selectedProduct));
+      const closerSales = commercialRawSales.filter(s => s.closer_staff_id === closer.id && (selectedProduct === "all" || (s.product?.name || s.product_name) === selectedProduct));
       const closerRevenue = closerSales.reduce((sum, s) => sum + (s.revenue_value || 0), 0);
       const closerMeetingEvents = eventsByOwner.filter(e => e.owner_id === closer.id);
       const closerScheduled = closerMeetingEvents.filter(e => e.event_type === "scheduled").length;
@@ -621,7 +626,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     for (let day = 1; day <= currentDay; day++) {
       const dayData: { day: number; [key: string]: number } = { day };
       closerNames.forEach(name => {
-        const closerDayRevenue = rawSalesData
+        const closerDayRevenue = commercialRawSales
           .filter(s => {
             const saleDay = getDate(new Date(s.sale_date));
             return saleDay <= day && s.closer?.name === name;
@@ -685,6 +690,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const productOptions = useMemo(() => {
     const set = new Set<string>();
     rawSalesData.forEach((s: any) => {
+      if (/imers|evento|mans[ãa]o|palestra/i.test(s.pipeline?.name || "")) return; // exclui evento
       const name = s.product?.name || s.product_name;
       if (name && String(name).trim()) set.add(String(name).trim());
     });
