@@ -144,6 +144,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     cancelamentos: 0,
     reagendamentos: 0,
     primeiroContatoMin: null as number | null,
+    taxaContatoPct: null as number | null,
   });
   const [opsLoading, setOpsLoading] = useState(true);
 
@@ -211,7 +212,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       if (!alive) return;
       const row = Array.isArray(data) ? data[0] : null;
       if (error || !row) {
-        setOpsMetrics({ ligacoesRealizadas: 0, ligacoesAtendidas: 0, whatsappPessoas: 0, leadsPerdidosSemResposta: 0, deadlineDias: null, qualificacoes: 0, cancelamentos: 0, reagendamentos: 0, primeiroContatoMin: null });
+        setOpsMetrics({ ligacoesRealizadas: 0, ligacoesAtendidas: 0, whatsappPessoas: 0, leadsPerdidosSemResposta: 0, deadlineDias: null, qualificacoes: 0, cancelamentos: 0, reagendamentos: 0, primeiroContatoMin: null, taxaContatoPct: null });
       } else {
         setOpsMetrics({
           ligacoesRealizadas: Number(row.ligacoes_realizadas) || 0,
@@ -223,6 +224,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
           cancelamentos: Number(row.cancelamentos) || 0,
           reagendamentos: Number(row.reagendamentos) || 0,
           primeiroContatoMin: row.primeiro_contato_min != null ? Number(row.primeiro_contato_min) : null,
+          taxaContatoPct: row.taxa_contato_pct != null ? Number(row.taxa_contato_pct) : null,
         });
       }
       setOpsLoading(false);
@@ -882,7 +884,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       </div>
 
       {/* ── Operação (roxo) — ligações, WhatsApp, perdas, ciclo ── */}
-      <Section tone={TONE.violet} label="Operação" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+      <Section tone={TONE.violet} label="Operação" cols="grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
         <Metric
           tone={TONE.violet}
           label="Ligações realizadas"
@@ -916,6 +918,12 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
           label="Tempo 1º contato"
           value={opsLoading ? "…" : formatDuration(opsMetrics.primeiroContatoMin)}
           color={opsMetrics.primeiroContatoMin != null && opsMetrics.primeiroContatoMin > 15 ? "#f87171" : "#34d399"}
+        />
+        <Metric
+          tone={TONE.violet}
+          label="Taxa de contato"
+          value={opsLoading ? "…" : opsMetrics.taxaContatoPct != null ? `${opsMetrics.taxaContatoPct.toFixed(0)}%` : "—"}
+          color={opsMetrics.taxaContatoPct != null ? (opsMetrics.taxaContatoPct >= 80 ? "#34d399" : opsMetrics.taxaContatoPct >= 50 ? "#fbbf24" : "#f87171") : undefined}
         />
       </Section>
 

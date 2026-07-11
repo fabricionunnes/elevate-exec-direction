@@ -39454,6 +39454,7 @@ export type Database = {
           cancelamentos: number
           reagendamentos: number
           primeiro_contato_min: number | null
+          taxa_contato_pct: number | null
         }[]
       }
       set_presales_target: {
