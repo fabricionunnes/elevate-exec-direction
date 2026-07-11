@@ -26,13 +26,20 @@ function truncate(s: unknown, n: number): string {
   return str.length > n ? str.slice(0, n) + "…" : str;
 }
 
-/** Amostra começo + meio + fim — o assunto pode estar em qualquer parte da reunião. */
-function sampleText(s: unknown, n: number): string {
+/** Amostra em janelas distribuídas pelo texto INTEIRO — reuniões longas (80k+)
+ * tratam vários assuntos e qualquer um deles pode estar em qualquer trecho. */
+function sampleText(s: unknown, budget: number): string {
   const str = String(s ?? "");
-  if (str.length <= n) return str;
-  const a = Math.floor(n * 0.45), b = Math.floor(n * 0.3), c = n - a - b;
-  const mid = Math.floor(str.length / 2 - b / 2);
-  return `${str.slice(0, a)} […] ${str.slice(mid, mid + b)} […] ${str.slice(str.length - c)}`;
+  if (str.length <= budget) return str;
+  const win = 1500;
+  const nWin = Math.max(Math.floor(budget / win), 2);
+  const step = (str.length - win) / (nWin - 1);
+  const parts: string[] = [];
+  for (let i = 0; i < nWin; i++) {
+    const start = Math.round(i * step);
+    parts.push(str.slice(start, start + win));
+  }
+  return parts.join(" […] ");
 }
 
 async function gatherContext(supabase: SupabaseClient, projectId: string) {
@@ -146,8 +153,8 @@ async function gatherContext(supabase: SupabaseClient, projectId: string) {
       titulo: m.meeting_title,
       data: m.meeting_date,
       no_show: m.is_no_show,
-      notas: sampleText(m.notes, 3000), // notas às vezes carregam a transcrição inteira
-      transcricao: sampleText(m.transcript, 4000),
+      notas: sampleText(m.notes, 8000), // notas às vezes carregam a transcrição inteira
+      transcricao: sampleText(m.transcript, 9000),
     })),
     tarefas: (tasks || []).map((t: any) => ({ t: t.title, s: t.status, vence: t.due_date })),
     grade_curricular: (grade || []).map((g: any) => ({
