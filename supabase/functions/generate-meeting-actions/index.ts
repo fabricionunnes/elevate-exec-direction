@@ -65,6 +65,20 @@ Deno.serve(async (req) => {
     const consultantName = project?.consultant?.name || "Consultor";
     const segment = project?.company?.segment || "";
 
+    // Time da empresa: âncora pra detectar transcrição anexada no cliente errado
+    // (caso real: reunião da Terra Passos transcrita dentro da Vitale gerou
+    // tarefas de outra empresa no projeto). A IA confere nomes/segmento.
+    let teamNames = "";
+    if (project?.company?.id) {
+      const { data: sellers } = await supabase
+        .from("company_salespeople")
+        .select("name")
+        .eq("company_id", project.company.id)
+        .eq("is_active", true)
+        .limit(20);
+      teamNames = (sellers || []).map((s: any) => s.name).join(", ");
+    }
+
     // Build prompt for AI
     const systemPrompt = `Você é um assistente especializado em análise de reuniões de consultoria comercial.
 Sua tarefa é extrair ações concretas e práticas da transcrição de uma reunião.
@@ -78,8 +92,12 @@ REGRAS:
 
 EMPRESA: ${companyName}
 SEGMENTO: ${segment}
+TIME DE VENDAS DA EMPRESA: ${teamNames || "não cadastrado"}
 CONSULTOR RESPONSÁVEL: ${consultantName}
-DATA DA REUNIÃO: ${meeting.meeting_date}`;
+DATA DA REUNIÃO: ${meeting.meeting_date}
+
+VERIFICAÇÃO DE PERTENCIMENTO (obrigatória antes de extrair ações):
+Confira se a transcrição realmente pertence a ${companyName}. Sinais de que NÃO pertence: as pessoas citadas não batem com o time cadastrado acima, o segmento do negócio discutido é claramente outro (ex.: fala de dentistas numa empresa de estética), ou o nome de outra empresa aparece como dona da reunião. Se concluir que a reunião é de OUTRA empresa, NÃO extraia ações — retorne exatamente: {"mismatch": true, "motivo": "1 frase explicando"}.`;
 
     const userPrompt = `Analise a seguinte transcrição/notas da reunião e extraia as ações a serem realizadas:
 

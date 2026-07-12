@@ -269,6 +269,13 @@ export const GenerateTasksDialog = ({
         throw new Error(data.error);
       }
 
+      // Trava anti-contaminação: a IA detectou que a reunião é de OUTRA empresa
+      if (data?.mismatch) {
+        throw new Error(
+          `Esta reunião parece ser de OUTRA empresa — nenhuma tarefa foi criada. ${data.motivo || ""} Confira o projeto/gravação da reunião.`,
+        );
+      }
+
       if (!data?.actions || data.actions.length === 0) {
         throw new Error("Nenhuma ação identificada na reunião");
       }
