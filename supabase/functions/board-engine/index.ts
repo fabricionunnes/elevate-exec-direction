@@ -1138,7 +1138,7 @@ async function npsCron(supabase: any) {
       .from("onboarding_companies").select("name").eq("id", m.company_id).single();
 
     const months = Math.round(cycle / 30);
-    const link = `${PUBLIC_DOMAIN}/#/nps?project=${encodeURIComponent(m.project_id)}`;
+    const link = `${PUBLIC_DOMAIN}/nps?project=${encodeURIComponent(m.project_id)}`;
     const firstName = (m.owner_name || "").split(" ")[0];
     const message =
       `${firstName ? firstName + ", " : ""}hoje completa ${months} ${months === 1 ? "mês" : "meses"} de UNV Board da ${company?.name || "sua empresa"}.\n\n` +
