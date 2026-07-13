@@ -35,6 +35,20 @@ function normalizeTime(t: string): string {
   return `${h}:${m}`;
 }
 
+/** Stevo/Manager V2 usa outro protocolo — o endpoint legado devolve 404. */
+function isV2Instance(inst: { provider_type?: string | null; api_url?: string | null }): boolean {
+  if (inst.provider_type === "manager_v2") return true;
+  try {
+    return new URL(String(inst.api_url || "")).hostname.toLowerCase().endsWith(".stevo.chat");
+  } catch {
+    return false;
+  }
+}
+
+function apiBase(u: string): string {
+  return u.replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
+}
+
 function parseTimeToMinutes(t: string): number {
   const [h, m] = normalizeTime(t).split(":").map(Number);
   return h * 60 + m;
@@ -245,7 +259,7 @@ Deno.serve(async (req) => {
         }
 
         const { data: lead } = await supabase
-          .from("crm_leads").select("id, name, phone, company, owner_staff_id")
+          .from("crm_leads").select("id, name, phone, company, owner_staff_id, stage_id")
           .eq("id", enr.lead_id).maybeSingle();
         if (!lead) {
           await supabase.from("crm_cadence_enrollments").update({ status: "failed", stopped_reason: "lead_not_found" }).eq("id", enr.id);
@@ -264,22 +278,22 @@ Deno.serve(async (req) => {
         }
 
         // Resolver instância
-        let instance: { id: string; instance_name: string; api_url: string; api_key: string } | null = null;
+        let instance: { id: string; instance_name: string; api_url: string; api_key: string; provider_type?: string | null } | null = null;
         if (step.instance_mode === "fixed" && step.whatsapp_instance_id) {
           const { data: inst } = await supabase.from("whatsapp_instances")
-            .select("id, instance_name, api_url, api_key").eq("id", step.whatsapp_instance_id).maybeSingle();
+            .select("id, instance_name, api_url, api_key, provider_type").eq("id", step.whatsapp_instance_id).maybeSingle();
           instance = inst as any;
         } else if (step.instance_mode === "from_owner" && lead.owner_staff_id) {
           const { data: staff } = await supabase.from("onboarding_staff")
             .select("default_whatsapp_instance_id").eq("id", lead.owner_staff_id).maybeSingle();
           if (staff?.default_whatsapp_instance_id) {
             const { data: inst } = await supabase.from("whatsapp_instances")
-              .select("id, instance_name, api_url, api_key").eq("id", staff.default_whatsapp_instance_id).maybeSingle();
+              .select("id, instance_name, api_url, api_key, provider_type").eq("id", staff.default_whatsapp_instance_id).maybeSingle();
             instance = inst as any;
           } else {
             const { data: access } = await supabase
               .from("whatsapp_instance_access")
-              .select("instance_id, whatsapp_instances(id, instance_name, api_url, api_key)")
+              .select("instance_id, whatsapp_instances(id, instance_name, api_url, api_key, provider_type)")
               .eq("staff_id", lead.owner_staff_id).limit(1).maybeSingle();
             instance = (access as any)?.whatsapp_instances || null;
           }
@@ -329,27 +343,44 @@ Deno.serve(async (req) => {
         let resp: Response;
         let messageContent = "";
 
+        const v2 = isV2Instance(instance);
+        const baseUrl = apiBase(instance.api_url);
+        const hdrs = { "Content-Type": "application/json", apikey: instance.api_key };
+
         if (mediaType === "text") {
           messageContent = renderTemplate(step.message_template, vars);
-          resp = await fetch(`${instance.api_url}/message/sendText/${instance.instance_name}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", apikey: instance.api_key },
-            body: JSON.stringify({ number: phone, text: messageContent }),
-          });
+          resp = v2
+            ? await fetch(`${baseUrl}/send/text`, {
+                method: "POST", headers: hdrs,
+                body: JSON.stringify({ number: phone, text: messageContent, delay: 0 }),
+              })
+            : await fetch(`${baseUrl}/message/sendText/${instance.instance_name}`, {
+                method: "POST", headers: hdrs,
+                body: JSON.stringify({ number: phone, text: messageContent }),
+              });
         } else {
           // Mídia: image/video/document/audio
           const caption = renderTemplate(step.media_caption || step.message_template || "", vars);
           messageContent = caption ? `[${mediaType}] ${caption}` : `[${mediaType}]`;
-          if (mediaType === "audio") {
-            resp = await fetch(`${instance.api_url}/message/sendWhatsAppAudio/${instance.instance_name}`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", apikey: instance.api_key },
+          if (v2) {
+            resp = await fetch(`${baseUrl}/send/media`, {
+              method: "POST", headers: hdrs,
+              body: JSON.stringify({
+                number: phone,
+                mediatype: mediaType, // image | video | document | audio
+                media: step.media_url,
+                caption,
+                fileName: step.media_filename || "",
+              }),
+            });
+          } else if (mediaType === "audio") {
+            resp = await fetch(`${baseUrl}/message/sendWhatsAppAudio/${instance.instance_name}`, {
+              method: "POST", headers: hdrs,
               body: JSON.stringify({ number: phone, audio: step.media_url }),
             });
           } else {
-            resp = await fetch(`${instance.api_url}/message/sendMedia/${instance.instance_name}`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", apikey: instance.api_key },
+            resp = await fetch(`${baseUrl}/message/sendMedia/${instance.instance_name}`, {
+              method: "POST", headers: hdrs,
               body: JSON.stringify({
                 number: phone,
                 mediatype: mediaType, // image | video | document
@@ -369,6 +400,36 @@ Deno.serve(async (req) => {
             status: "sent", sent_at: now.toISOString(),
           });
           sent++;
+
+          // Regra do funil: recebeu a PRIMEIRA mensagem da cadência → lead sobe
+          // pra etapa seguinte. O trigger de mudança de etapa para o enrollment
+          // (stop_on_stage_change); reativamos em seguida pra cadência continuar
+          // os próximos steps normalmente.
+          if (enr.current_step_index === 0 && (lead as any).stage_id) {
+            try {
+              const { data: curStage } = await supabase.from("crm_stages")
+                .select("pipeline_id, sort_order").eq("id", (lead as any).stage_id).maybeSingle();
+              if (curStage) {
+                const { data: nextStage } = await supabase.from("crm_stages")
+                  .select("id, name")
+                  .eq("pipeline_id", curStage.pipeline_id)
+                  .gt("sort_order", curStage.sort_order)
+                  .is("final_type", null)
+                  .order("sort_order", { ascending: true })
+                  .limit(1).maybeSingle();
+                if (nextStage) {
+                  await supabase.from("crm_leads").update({ stage_id: nextStage.id }).eq("id", enr.lead_id);
+                  await supabase.from("crm_cadence_enrollments")
+                    .update({ status: "active", stopped_reason: null })
+                    .eq("id", enr.id).eq("status", "stopped");
+                  console.log(`[cadence-dispatcher] lead ${enr.lead_id} movido pra etapa ${nextStage.name} após 1ª mensagem`);
+                }
+              }
+            } catch (e) {
+              console.error("[cadence-dispatcher] falha ao mover etapa pós 1ª mensagem:", e);
+            }
+          }
+
           await advanceEnrollment(supabase, enr.id, enr.current_step_index, steps, now);
         } else {
           const errText = await resp.text();
