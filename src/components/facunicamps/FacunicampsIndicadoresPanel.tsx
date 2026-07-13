@@ -1016,6 +1016,138 @@ function ThreeDBar(props: Record<string, unknown>) {
   );
 }
 
+// ─── 3D Pie chart ─────────────────────────────────────────────────────────────
+
+const PIE3D_PALETTE = ["#22c55e", "#3b82f6", "#a855f7", "#f97316", "#eab308", "#06b6d4", "#ec4899", "#84cc16", "#8b5cf6", "#14b8a6", "#f59e0b", "#60a5fa"];
+
+function shadeHex(hex: string, factor: number) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, Math.round(((n >> 16) & 255) * factor));
+  const g = Math.min(255, Math.round(((n >> 8) & 255) * factor));
+  const b = Math.min(255, Math.round((n & 255) * factor));
+  return `rgb(${r},${g},${b})`;
+}
+
+function pie3dColor(name: string, index: number) {
+  const upper = name.toUpperCase();
+  if (upper.includes("CANCELADO")) return "#ef4444";
+  if (upper.includes("TRANSFERIDO")) return "#64748b";
+  return PIE3D_PALETTE[index % PIE3D_PALETTE.length];
+}
+
+export function ThreeDPieChart({ data }: { data: { name: string; value: number }[] }) {
+  const [active, setActive] = useState<number | null>(null);
+  const total = data.reduce((s, d) => s + d.value, 0);
+
+  const cx = 190, cy = 118, rx = 148, ry = 80, depth = 26;
+
+  const slices = useMemo(() => {
+    let acc = -Math.PI / 2;
+    return data.map((d, i) => {
+      const start = acc;
+      const angle = total > 0 ? (d.value / total) * Math.PI * 2 : 0;
+      acc += angle;
+      return { ...d, start, end: acc, mid: start + angle / 2, pct: total > 0 ? d.value / total : 0, color: pie3dColor(d.name, i) };
+    });
+  }, [data, total]);
+
+  if (total === 0) return <p className="text-white/40 text-sm">Sem dados no período selecionado</p>;
+
+  const pt = (a: number, dx = 0, dy = 0) =>
+    `${(cx + dx + rx * Math.cos(a)).toFixed(2)},${(cy + dy + ry * Math.sin(a)).toFixed(2)}`;
+
+  // Explode offset for the hovered slice
+  const offset = (s: { mid: number }, i: number): [number, number] =>
+    active === i ? [Math.cos(s.mid) * 10, Math.sin(s.mid) * 6] : [0, 0];
+
+  const topPath = (s: { start: number; end: number; pct: number }, dx: number, dy: number) => {
+    const largeArc = s.end - s.start > Math.PI ? 1 : 0;
+    return `M${cx + dx},${cy + dy} L${pt(s.start, dx, dy)} A${rx},${ry} 0 ${largeArc} 1 ${pt(s.end, dx, dy)} Z`;
+  };
+
+  // Side wall: contiguous arc runs on the front half (sin > 0), extruded down by `depth`
+  const wallPaths = (s: { start: number; end: number }, dx: number, dy: number) => {
+    const runs: number[][] = [];
+    const steps = Math.max(2, Math.ceil((s.end - s.start) / 0.05));
+    let run: number[] = [];
+    for (let i = 0; i <= steps; i++) {
+      const a = s.start + ((s.end - s.start) * i) / steps;
+      if (Math.sin(a) > 0.0001) run.push(a);
+      else { if (run.length > 1) runs.push(run); run = []; }
+    }
+    if (run.length > 1) runs.push(run);
+    return runs.map((angles) => {
+      const topPts = angles.map((a) => pt(a, dx, dy));
+      const botPts = [...angles].reverse().map((a) => pt(a, dx, dy + depth));
+      return `M${topPts.join(" L")} L${botPts.join(" L")} Z`;
+    });
+  };
+
+  const fullPie = slices.length === 1;
+
+  return (
+    <div className="flex flex-col md:flex-row items-center gap-4">
+      <svg viewBox="0 0 380 250" className="w-full max-w-[380px] shrink-0" role="img" aria-label="Gráfico de pizza 3D por forma de ingresso">
+        {/* Walls (back-to-front is irrelevant: front-half walls never overlap) */}
+        {slices.map((s, i) => {
+          const [dx, dy] = offset(s, i);
+          return fullPie ? (
+            <path key={`w${i}`} d={`M${pt(0.0001, dx, dy)} A${rx},${ry} 0 0 1 ${pt(Math.PI - 0.0001, dx, dy)} L${pt(Math.PI - 0.0001, dx, dy + depth)} A${rx},${ry} 0 0 0 ${pt(0.0001, dx, dy + depth)} Z`} fill={shadeHex(s.color, 0.55)} />
+          ) : (
+            wallPaths(s, dx, dy).map((d, j) => <path key={`w${i}-${j}`} d={d} fill={shadeHex(s.color, 0.55)} />)
+          );
+        })}
+        {/* Top faces */}
+        {slices.map((s, i) => {
+          const [dx, dy] = offset(s, i);
+          return (
+            <g key={`t${i}`} onMouseEnter={() => setActive(i)} onMouseLeave={() => setActive(null)} style={{ cursor: "pointer", transition: "opacity 0.15s" }} opacity={active === null || active === i ? 1 : 0.55}>
+              {fullPie ? (
+                <ellipse cx={cx + dx} cy={cy + dy} rx={rx} ry={ry} fill={s.color} stroke="#0f172a" strokeWidth={1.5} />
+              ) : (
+                <path d={topPath(s, dx, dy)} fill={s.color} stroke="#0f172a" strokeWidth={1.5} />
+              )}
+              <title>{`${s.name}: ${s.value} (${(s.pct * 100).toFixed(1)}%)`}</title>
+            </g>
+          );
+        })}
+        {/* Percentage labels */}
+        {slices.map((s, i) => {
+          if (s.pct < 0.05) return null;
+          const [dx, dy] = offset(s, i);
+          const lx = cx + dx + rx * 0.62 * Math.cos(s.mid);
+          const ly = cy + dy + ry * 0.62 * Math.sin(s.mid);
+          return (
+            <text key={`l${i}`} x={lx} y={ly} textAnchor="middle" dominantBaseline="central" style={{ fontSize: 13, fontWeight: 700, fill: "#fff", pointerEvents: "none", paintOrder: "stroke", stroke: "rgba(15,23,42,0.6)", strokeWidth: 3 }}>
+              {(s.pct * 100).toFixed(0)}%
+            </text>
+          );
+        })}
+      </svg>
+      {/* Legend */}
+      <div className="flex-1 w-full space-y-1.5">
+        {slices.map((s, i) => (
+          <div
+            key={i}
+            onMouseEnter={() => setActive(i)}
+            onMouseLeave={() => setActive(null)}
+            className={`flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition-colors cursor-default ${active === i ? "bg-white/10" : ""}`}
+          >
+            <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: s.color }} />
+            <span className="text-xs text-white/80 truncate flex-1">{s.name}</span>
+            <span className="text-xs font-bold text-white tabular-nums">{s.value}</span>
+            <span className="text-xs text-white/50 tabular-nums w-12 text-right">{(s.pct * 100).toFixed(1)}%</span>
+          </div>
+        ))}
+        <div className="flex items-center gap-2.5 px-2.5 pt-2 border-t border-white/10">
+          <span className="text-xs text-white/50 flex-1">Total</span>
+          <span className="text-xs font-bold text-white tabular-nums">{total}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Dark Chart Card wrapper ──────────────────────────────────────────────────
 
 function DarkChartCard({ title, accentColor = "#8b5cf6", children }: {
@@ -1341,6 +1473,19 @@ export function FacunicampsIndicadoresPanel() {
   };
 
   const cmCursosRanking = useMemo(() => buildCursosRanking(currentMonthSales), [currentMonthSales]);
+
+  // ── Formas de ingresso distribution (3D pie) ──────────────────────────────
+
+  const cmFormasIngresso = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const m of currentMonthSales) {
+      const f = (m.forma_ingresso ?? "NÃO INFORMADO").toUpperCase().trim() || "NÃO INFORMADO";
+      map.set(f, (map.get(f) ?? 0) + 1);
+    }
+    return [...map.entries()]
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [currentMonthSales]);
 
   // ── Historical monthly aggregation ────────────────────────────────────────
 
@@ -1997,6 +2142,11 @@ export function FacunicampsIndicadoresPanel() {
                 </div>
               </div>
             )}
+          </DarkChartCard>
+
+          {/* Formas de Ingresso — 3D pie */}
+          <DarkChartCard title="Formas de Ingresso (mês)" accentColor="#06b6d4">
+            <ThreeDPieChart data={cmFormasIngresso} />
           </DarkChartCard>
 
           {/* Rankings */}

@@ -54,7 +54,7 @@ import {
   Bell,
   Link2,
   FileText,
-  Shuffle
+  Shuffle,
   Pencil,
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
