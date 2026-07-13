@@ -190,22 +190,16 @@ Deno.serve(async (req) => {
 
     // Send internal notifications to staff with receivables access
     try {
-      // Get master/admin staff
-      const { data: masterStaff } = await supabase
+      // Confirmação de pagamento é notificação SÓ do Fabrício (dono).
+      // Admins (Carol, Eva, Yasmim) e permissão de recebíveis NÃO recebem.
+      const { data: ownerStaff } = await supabase
         .from("onboarding_staff")
         .select("id")
         .eq("is_active", true)
-        .in("role", ["master", "admin"]);
-
-      // Get staff with fin_receivables_view permission
-      const { data: permStaff } = await supabase
-        .from("staff_financial_permissions")
-        .select("staff_id")
-        .eq("permission_key", "fin_receivables_view");
+        .eq("role", "master");
 
       const staffIds = new Set<string>();
-      (masterStaff || []).forEach((s: any) => staffIds.add(s.id));
-      (permStaff || []).forEach((s: any) => staffIds.add(s.staff_id));
+      (ownerStaff || []).forEach((s: any) => staffIds.add(s.id));
 
       if (staffIds.size > 0) {
         const title = `💰 Pagamento confirmado: ${companyName}`;
