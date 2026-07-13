@@ -1476,16 +1476,19 @@ export function FacunicampsIndicadoresPanel() {
 
   // ── Formas de ingresso distribution (3D pie) ──────────────────────────────
 
-  const cmFormasIngresso = useMemo(() => {
+  const buildFormasIngresso = (rows: Matricula[]) => {
     const map = new Map<string, number>();
-    for (const m of currentMonthSales) {
+    for (const m of rows) {
       const f = (m.forma_ingresso ?? "NÃO INFORMADO").toUpperCase().trim() || "NÃO INFORMADO";
       map.set(f, (map.get(f) ?? 0) + 1);
     }
     return [...map.entries()]
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
-  }, [currentMonthSales]);
+  };
+
+  const cmFormasIngresso = useMemo(() => buildFormasIngresso(currentMonthSales), [currentMonthSales]);
+  const histFormasIngresso = useMemo(() => buildFormasIngresso(activeSales), [activeSales]);
 
   // ── Historical monthly aggregation ────────────────────────────────────────
 
@@ -2432,6 +2435,11 @@ export function FacunicampsIndicadoresPanel() {
               <RankingBarChart title={`Ranking Cursos — Top ${rankingLimit}`} data={histCursosRanking} limit={rankingLimit} />
             </div>
           </div>
+
+          {/* Formas de Ingresso — 3D pie (período completo) */}
+          <DarkChartCard title="Formas de Ingresso (período)" accentColor="#06b6d4">
+            <ThreeDPieChart data={histFormasIngresso} />
+          </DarkChartCard>
 
           {/* Funil de Vendas */}
           <DarkChartCard title="Funil de Vendas" accentColor="#3b82f6">
