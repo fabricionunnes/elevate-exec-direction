@@ -55,6 +55,7 @@ import {
   Link2,
   FileText,
   Shuffle
+  Pencil,
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
 import { StageChecklistDialog } from "@/components/crm/StageChecklistDialog";
@@ -184,6 +185,10 @@ export const CRMSettingsPage = () => {
   const [newReasonName, setNewReasonName] = useState("");
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#3B82F6");
+  const [editTagOpen, setEditTagOpen] = useState(false);
+  const [editingTag, setEditingTag] = useState<CRMTag | null>(null);
+  const [editTagName, setEditTagName] = useState("");
+  const [editTagColor, setEditTagColor] = useState("#3B82F6");
   const [newOriginGroupName, setNewOriginGroupName] = useState("");
   const [newOriginGroupIcon, setNewOriginGroupIcon] = useState("target");
   const [newOriginName, setNewOriginName] = useState("");
@@ -740,6 +745,33 @@ export const CRMSettingsPage = () => {
       loadData();
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar tag");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openEditTag = (tag: CRMTag) => {
+    setEditingTag(tag);
+    setEditTagName(tag.name);
+    setEditTagColor(tag.color || "#3B82F6");
+    setEditTagOpen(true);
+  };
+
+  const handleUpdateTag = async () => {
+    if (!editingTag || !editTagName.trim()) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("crm_tags")
+        .update({ name: editTagName.trim(), color: editTagColor })
+        .eq("id", editingTag.id);
+      if (error) throw error;
+      toast.success("Tag atualizada");
+      setEditTagOpen(false);
+      setEditingTag(null);
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao atualizar tag");
     } finally {
       setSaving(false);
     }
@@ -2139,7 +2171,15 @@ export const CRMSettingsPage = () => {
                   >
                     {tag.name}
                     <button
-                      className="ml-2 hover:text-destructive"
+                      className="ml-2 hover:text-primary"
+                      title="Editar tag"
+                      onClick={() => openEditTag(tag)}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                    <button
+                      className="ml-1 hover:text-destructive"
+                      title="Excluir tag"
                       onClick={() => setDeleteDialog({ type: "tag", id: tag.id, name: tag.name })}
                     >
                       ×
@@ -2149,6 +2189,31 @@ export const CRMSettingsPage = () => {
               </div>
             </CardContent>
           </Card>
+
+          <Dialog open={editTagOpen} onOpenChange={setEditTagOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Editar Tag</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>Nome</Label>
+                  <Input value={editTagName} onChange={(e) => setEditTagName(e.target.value)} placeholder="Nome da tag" />
+                </div>
+                <div>
+                  <Label>Cor</Label>
+                  <div className="flex gap-2">
+                    <Input type="color" value={editTagColor} onChange={(e) => setEditTagColor(e.target.value)} className="w-16 h-10 p-1" />
+                    <Input value={editTagColor} onChange={(e) => setEditTagColor(e.target.value)} className="flex-1" />
+                  </div>
+                </div>
+                <Button onClick={handleUpdateTag} disabled={saving} className="w-full">
+                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Salvar alterações
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* Abas exclusivas de master/admin (head comercial não acessa) */}
