@@ -183,6 +183,11 @@ const CRMMeetingsPage = () => {
       const filtered = allActivities
         .filter(a => a.lead_id && realMeetingLeadIds.has(a.lead_id))
         .map(a => {
+          // Evento de reunião é por LEAD, não por reunião: uma reunião FUTURA
+          // (ex.: remarcada depois de um no-show) não pode herdar o status da
+          // anterior — senão aparece "Cancelada" sem estar.
+          const isFuture = a.scheduled_at && new Date(a.scheduled_at) > new Date();
+          if (isFuture) return a;
           const eventType = a.lead_id ? meetingEventsByLead.get(a.lead_id) : null;
           if (eventType === "realized") {
             return { ...a, status: "completed" };
