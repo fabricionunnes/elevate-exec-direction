@@ -88,6 +88,7 @@ import { useMetaAdNames } from "@/components/crm/useMetaAdNames";
 import { LeadProposalTab } from "@/components/crm/lead-detail/LeadProposalTab";
 import { CustomFollowupTab } from "@/components/crm/lead-detail/CustomFollowupTab";
 import { LeadConversationsTab } from "@/components/crm/lead-detail/LeadConversationsTab";
+import { NexusClientIntelPanel } from "@/components/crm/lead-detail/NexusClientIntelPanel";
 import { LeadFormAnswersTab } from "@/components/crm/lead-detail/LeadFormAnswersTab";
 import { LeadScannerTab } from "@/components/crm/lead-detail/LeadScannerTab";
 import { LeadMaturityTab } from "@/components/crm/lead-detail/LeadMaturityTab";
@@ -1308,6 +1309,7 @@ export const CRMLeadDetailPage = () => {
           <TabsList className="h-auto p-0 bg-transparent rounded-none flex flex-wrap w-full justify-start gap-y-0">
             {[
               { value: "summary", label: "Resumo", icon: Sparkles, color: "text-purple-500" },
+              { value: "nexus_client", label: "Cliente UNV", icon: Building2, color: "text-amber-500" },
               { value: "custom_followup", label: "Follow up personalizado", icon: Newspaper, color: "text-orange-500" },
               { value: "activities", label: "Atividades", icon: Activity, color: "text-blue-500" },
               { value: "conversations", label: "Conversas", icon: MessagesSquare, color: "text-emerald-500" },
@@ -1395,6 +1397,10 @@ export const CRMLeadDetailPage = () => {
             leadData={lead}
             onUpdate={loadLead}
           />
+        </TabsContent>
+
+        <TabsContent value="nexus_client" className="flex-1 mt-0 overflow-auto">
+          <NexusClientIntelPanel leadId={lead.id} />
         </TabsContent>
 
         <TabsContent value="company" className="flex-1 mt-0 overflow-auto">
