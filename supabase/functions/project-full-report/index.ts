@@ -107,10 +107,12 @@ Deno.serve(async (req) => {
 
     // ROI atribuído do UNV Board: resultados reportados pelo cliente nas execuções.
     // Entra no contexto da narrativa — a IA soma, destaca e compara com o investimento.
-    async function boardRoiCtx(client: any, projId: string): Promise<string> {
+    async function boardRoiCtx(client: any, projId: string | string[]): Promise<string> {
       try {
-        const { data: bMember } = await client
-          .from("unv_board_members").select("id").eq("project_id", projId).maybeSingle();
+        const projIds = Array.isArray(projId) ? projId : [projId];
+        const { data: bMembers } = await client
+          .from("unv_board_members").select("id").in("project_id", projIds).limit(1);
+        const bMember = bMembers?.[0];
         if (!bMember) return "";
         const { data: bResults } = await client
           .from("unv_board_results")
@@ -130,7 +132,7 @@ Deno.serve(async (req) => {
     // ---- cache diário: mesmo projeto + período + tipo no mesmo dia = mesmo relatório ----
     // (economia de tokens quando outro usuário — ou o envio automático — pede de novo)
     const dayBRT = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
-    const cacheKey = `${project_id}:${kind}:${since || "all"}:${until || "-"}:${dayBRT}`;
+    const cacheKey = `co:${project_id}:${kind}:${since || "all"}:${until || "-"}:${dayBRT}`;
     if (!body.force) {
       const { data: hit } = await sb.from("project_report_cache").select("payload").eq("cache_key", cacheKey).maybeSingle();
       if (hit?.payload) return json({ ...hit.payload, cached: true });
@@ -143,6 +145,17 @@ Deno.serve(async (req) => {
     if (pe || !proj) return json({ error: "projeto não encontrado" }, 404);
     const company: any = proj.onboarding_company || {};
     const companyId = proj.onboarding_company_id;
+
+    // O relatório é da EMPRESA: consolida TODOS os projetos ativos dela (cliente
+    // com 2 projetos recebia relatório de um só e "sem reuniões" era mentira).
+    const { data: siblings } = await sb.from("onboarding_projects")
+      .select("id, product_name")
+      .eq("onboarding_company_id", companyId).eq("status", "active");
+    const allProjects = (siblings || []).some((x: any) => x.id === proj.id)
+      ? (siblings || [])
+      : [{ id: proj.id, product_name: proj.product_name }, ...(siblings || [])];
+    const projectIds = allProjects.map((x: any) => x.id);
+    const productLabel = [...new Set(allProjects.map((x: any) => x.product_name).filter(Boolean))].join(" + ") || proj.product_name;
 
     // consultor / CS
     const staffIds = [proj.consultant_id, proj.cs_id].filter(Boolean);
@@ -159,13 +172,13 @@ Deno.serve(async (req) => {
     // ---- reuniões ----
     let mQ = sb.from("onboarding_meeting_notes")
       .select("meeting_title, meeting_date, subject, notes, transcript, is_no_show, is_internal")
-      .eq("project_id", project_id).order("meeting_date", { ascending: true });
+      .in("project_id", projectIds).order("meeting_date", { ascending: true });
     mQ = lte(gte(mQ, "meeting_date"), "meeting_date");
     const { data: mRows } = await mQ;
     const meetings = (mRows || []).filter((m: any) => !m.is_no_show && !m.is_internal);
 
     // ---- ações (tarefas concluídas) ----
-    let tQ = sb.from("onboarding_tasks").select("title, status, created_at, completed_at, tags, description, observations").eq("project_id", project_id);
+    let tQ = sb.from("onboarding_tasks").select("title, status, created_at, completed_at, tags, description, observations").in("project_id", projectIds);
     const { data: tRows } = await tQ;
     // filtro de período em código: a data efetiva é completed_at, com fallback em created_at
     const inPeriod = (t: any) => {
@@ -230,7 +243,7 @@ Deno.serve(async (req) => {
 
     // ---- contexto p/ IA ----
     const ctx = [
-      `EMPRESA: ${company.name || "-"} | Segmento: ${company.segment || "-"} | Serviço UNV: ${proj.product_name || "-"}`,
+      `EMPRESA: ${company.name || "-"} | Segmento: ${company.segment || "-"} | Serviço UNV: ${productLabel || "-"}`,
       `Consultor: ${consultant || "-"} | CS: ${cs || "-"} | Início: ${proj.contract_start_date || proj.created_at?.slice(0, 10) || "-"} | NPS: ${proj.current_nps ?? "-"}`,
       `\nREUNIÕES (${meetings.length}):`,
       ...meetings.map((m: any) => `- ${(m.meeting_date || "").slice(0, 10)} | ${m.meeting_title || m.subject || "Reunião"} | ${(m.notes || m.transcript || "").replace(/\s+/g, " ").slice(0, 700)}`),
@@ -242,7 +255,7 @@ Deno.serve(async (req) => {
       `\nRESULTADOS (KPI):`,
       `Faturamento total no período: R$ ${fatTotal.toLocaleString("pt-BR")} | Vendas: ${vendasTotal}`,
       `Faturamento mês a mês: ${fatSerie.map((s) => `${brMonth(s.mes)}=R$${Math.round(s.valor).toLocaleString("pt-BR")}`).join(", ") || "sem lançamentos"}`,
-      await boardRoiCtx(sb, project_id),
+      await boardRoiCtx(sb, projectIds),
       `\nCONVERSAS DOS GRUPOS DE WHATSAPP:${groupSamples || " (sem grupos vinculados)"}`,
     ].join("\n");
 
@@ -278,7 +291,7 @@ Deno.serve(async (req) => {
       generatedAt: new Date().toISOString(),
       period: { since: since || null, until: until || null },
       company: { name: company.name, segment: company.segment },
-      project: { product: proj.product_name, status: proj.status, start: proj.contract_start_date || proj.created_at?.slice(0, 10), nps: proj.current_nps, consultant, cs, contractValue: proj.contract_value },
+      project: { product: productLabel, status: proj.status, start: proj.contract_start_date || proj.created_at?.slice(0, 10), nps: proj.current_nps, consultant, cs, contractValue: proj.contract_value },
       meetings: meetings.map((m: any) => ({ date: (m.meeting_date || "").slice(0, 10), title: m.meeting_title || m.subject || "Reunião", hasNotes: !!(m.notes || m.transcript) })),
       meetingsCount: meetings.length,
       actions: { total: done.length, open: openCount, byMonth: actionsByMonth, list: done.map((t: any) => ({ date: (t.completed_at || t.created_at || "").slice(0, 10), title: t.title })) },
