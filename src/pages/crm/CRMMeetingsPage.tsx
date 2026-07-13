@@ -46,6 +46,8 @@ interface MeetingActivity {
     owner_staff_id: string | null;
   } | null;
   responsible_staff?: { id: string; name: string } | null;
+  isGoogle?: boolean;
+  meeting_link?: string | null;
 }
 
 interface StaffOption { id: string; name: string; }
@@ -196,7 +198,60 @@ const CRMMeetingsPage = () => {
           }
           return a;
         });
-      setMeetings(filtered);
+
+      // Reuniões agendadas DIRETO no Google Calendar (sem registro no CRM):
+      // sem este merge, reunião marcada só na agenda não aparece nesta página.
+      let merged: MeetingActivity[] = filtered;
+      try {
+        const { data: g } = await supabase.functions.invoke("google-calendar?action=events", { body: {} });
+        if (g?.events?.length) {
+          const from = dateRange.from ? new Date(dateRange.from) : null;
+          const to = dateRange.to ? new Date(dateRange.to) : null;
+          if (to) to.setHours(23, 59, 59, 999);
+          const googleRows = (g.events as any[])
+            .filter((ev) => ev.start && (ev.isOrganizer || ev.isAttendee))
+            .filter((ev) => {
+              const d = new Date(ev.start);
+              if (from && d < from) return false;
+              if (to && d > to) return false;
+              return true;
+            })
+            // dedupe: já existe atividade do CRM começando a ±15min do evento
+            .filter((ev) =>
+              !filtered.some(
+                (a) =>
+                  a.scheduled_at &&
+                  Math.abs(new Date(a.scheduled_at).getTime() - new Date(ev.start).getTime()) < 15 * 60 * 1000,
+              ),
+            )
+            .map(
+              (ev) =>
+                ({
+                  id: `google:${ev.id}`,
+                  type: "meeting",
+                  title: ev.title || "(Sem título)",
+                  description: ev.description || null,
+                  scheduled_at: ev.start,
+                  completed_at: null,
+                  created_at: ev.start,
+                  lead_id: null,
+                  responsible_staff_id: null,
+                  recording_url: null,
+                  notes: null,
+                  lead: null,
+                  responsible_staff: null,
+                  status: "pending",
+                  isGoogle: true,
+                  meeting_link: ev.meetingLink || ev.calendarLink || null,
+                }) as unknown as MeetingActivity,
+            );
+          merged = [...filtered, ...googleRows].sort(
+            (a, b) => new Date(a.scheduled_at || 0).getTime() - new Date(b.scheduled_at || 0).getTime(),
+          );
+        }
+      } catch { /* agenda não conectada: segue só com o CRM */ }
+
+      setMeetings(merged);
       setSelectedIds(new Set());
     } catch (err) {
       console.error("Error fetching meetings:", err);
@@ -401,10 +456,11 @@ const CRMMeetingsPage = () => {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === meetings.length) {
+    const selectable = meetings.filter(m => !m.isGoogle);
+    if (selectedIds.size === selectable.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(meetings.map(m => m.id)));
+      setSelectedIds(new Set(selectable.map(m => m.id)));
     }
   };
 
@@ -609,7 +665,7 @@ const CRMMeetingsPage = () => {
             >
               <CardContent className="py-3 flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-3 min-w-0">
-                  {canDelete && (
+                  {canDelete && !meeting.isGoogle && (
                     <Checkbox
                       checked={selectedIds.has(meeting.id)}
                       onCheckedChange={() => toggleSelect(meeting.id)}
@@ -618,7 +674,13 @@ const CRMMeetingsPage = () => {
                   )}
                   <div
                     className="flex items-center gap-3 min-w-0 flex-1"
-                    onClick={() => { setSelectedMeeting(meeting); setBriefing(meeting.description || ""); setRecordingUrl((meeting as any).recording_url || ""); }}
+                    onClick={() => {
+                      if (meeting.isGoogle) {
+                        if (meeting.meeting_link) window.open(meeting.meeting_link, "_blank");
+                        return;
+                      }
+                      setSelectedMeeting(meeting); setBriefing(meeting.description || ""); setRecordingUrl((meeting as any).recording_url || "");
+                    }}
                   >
                     <div className={cn(
                       "rounded-full p-2 shrink-0",
@@ -659,8 +721,12 @@ const CRMMeetingsPage = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {getStatusBadge(meeting.status)}
-                  {canDelete && (
+                  {meeting.isGoogle ? (
+                    <Badge variant="outline" className="text-[10px]">Agenda Google</Badge>
+                  ) : (
+                    getStatusBadge(meeting.status)
+                  )}
+                  {canDelete && !meeting.isGoogle && (
                     <Button
                       variant="ghost"
                       size="icon"
