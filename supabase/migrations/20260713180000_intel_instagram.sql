@@ -1,0 +1,3 @@
+-- get_lead_company_intel passa a devolver o Instagram da empresa, exibido
+-- como atalho clicável no cabeçalho da aba Cliente UNV.
+-- (corpo idêntico ao aplicado ao vivo — company jsonb ganha 'instagram')

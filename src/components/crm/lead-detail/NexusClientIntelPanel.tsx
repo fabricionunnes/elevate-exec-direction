@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, Crown, ExternalLink, Heart, Loader2, Star, TrendingUp } from "lucide-react";
+import { Building2, Crown, ExternalLink, Heart, Instagram, Loader2, Star, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -94,6 +94,21 @@ export const NexusClientIntelPanel = ({ leadId }: Props) => {
           <Badge variant="outline" className="text-[10px]">{intel.company.segment}</Badge>
         )}
         {termo && <Badge variant="outline" className={cn("text-[10px]", termo.cls)}>{termo.label}</Badge>}
+        {intel.company?.instagram && (() => {
+          const raw = String(intel.company.instagram).trim();
+          const url = raw.startsWith("http") ? raw : `https://instagram.com/${raw.replace(/^@/, "")}`;
+          const handle = raw.replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/\/$/, "").replace(/^@?/, "@");
+          return (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1.5 border-pink-500/40 text-pink-600 hover:bg-pink-500/5"
+              onClick={() => window.open(url, "_blank", "noopener")}
+            >
+              <Instagram className="h-3.5 w-3.5" /> {handle}
+            </Button>
+          );
+        })()}
         {projetoPrincipal?.id && (
           <Button
             variant="outline"
