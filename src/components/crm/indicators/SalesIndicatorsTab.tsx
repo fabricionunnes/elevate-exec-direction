@@ -425,7 +425,16 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const computed = useMemo(() => {
     const now = new Date();
     const daysInMonth = getDaysInMonth(filterStartDate);
-    const currentDay = getDate(now);
+    // Dia limite dos gráficos diários DEVE respeitar o filtro. A x-axis é do
+    // mês inicial: se o fim efetivo (min entre fim do filtro e hoje) já passou
+    // desse mês, mostra o mês inteiro; se está no próprio mês, para no dia dele;
+    // período totalmente futuro fica zerado.
+    const periodFuture = filterStartDate > endOfMonth(now);
+    const effectiveEnd = filterEndDate < now ? filterEndDate : now;
+    const sameMonthAsStart =
+      effectiveEnd.getMonth() === filterStartDate.getMonth() &&
+      effectiveEnd.getFullYear() === filterStartDate.getFullYear();
+    const currentDay = periodFuture ? 0 : (sameMonthAsStart ? getDate(effectiveEnd) : daysInMonth);
     const isCloserFilter = selectedCloser !== "all";
 
     // Vendas de EVENTO (Imersão, Mansão, Palestra, Eventos) não são venda comercial core —
@@ -686,7 +695,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       revenueEvolution,
       productDistribution,
     };
-  }, [selectedCloser, selectedProduct, rawSalesData, rawMeetingEvents, rawCalls, rawForecastData, rawNegotiationData, rawCloserStaff, staffGoalsMap, totalGoals, filterStartDate]);
+  }, [selectedCloser, selectedProduct, rawSalesData, rawMeetingEvents, rawCalls, rawForecastData, rawNegotiationData, rawCloserStaff, staffGoalsMap, totalGoals, filterStartDate, filterEndDate]);
 
   // Produtos que realmente aparecem nas vendas do período (o dropdown antes vinha de
   // crm_products e não casava com o product_name livre das vendas).
