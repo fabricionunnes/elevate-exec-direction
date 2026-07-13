@@ -21,7 +21,7 @@ import {
   Legend,
   Cell,
 } from "recharts";
-import { format, startOfMonth, endOfMonth, getDaysInMonth, getDate, differenceInDays } from "date-fns";
+import { format, startOfMonth, endOfMonth, getDaysInMonth, getDate, differenceInDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Phone, Users, Calendar as CalendarIcon, AlertTriangle, CheckCircle, XCircle, TrendingUp, Upload, ChevronDown, Loader2 } from "lucide-react";
 import { ImportPreSalesDialog } from "@/components/crm/ImportPreSalesDialog";
@@ -255,8 +255,10 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     
     setLoading(true);
     try {
-      const periodStart = dateRange.from;
-      const periodEnd = dateRange.to;
+      // O date picker devolve o "to" à meia-noite (00:00); sem normalizar,
+      // filtrar um único dia perde todas as reuniões do próprio dia.
+      const periodStart = startOfDay(dateRange.from);
+      const periodEnd = endOfDay(dateRange.to);
       const totalDaysInPeriod = differenceInDays(periodEnd, periodStart) + 1;
       const now = new Date();
       const daysElapsed = Math.min(differenceInDays(now, periodStart) + 1, totalDaysInPeriod);
