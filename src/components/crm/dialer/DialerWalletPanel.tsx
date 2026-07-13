@@ -64,17 +64,26 @@ export function DialerWalletPanel({ tenantId }: { tenantId: string | null }) {
 
   useEffect(() => { load(); return () => { if (pollRef.current) clearInterval(pollRef.current); }; /* eslint-disable-next-line */ }, []);
 
-  const recharge = async () => {
+  const recharge = async (openPayment = false) => {
     if (!tenantId) return toast.error("Carteira é por cliente.");
     const val = Number(amount);
     if (!val || val < 5) return toast.error("Valor mínimo: R$ 5,00");
+    // abre a aba já (antes do await) pra o navegador não bloquear o popup
+    const win = openPayment ? window.open("", "_blank", "noopener") : null;
     setGenerating(true);
     setPix(null);
     try {
       const { data, error } = await supabase.functions.invoke("dialer-recharge", { body: { tenantId, amount: val, cpfCnpj: cpf || undefined } });
       if (error || data?.error) throw new Error(data?.error || error?.message);
       setPix({ payload: data.pixPayload, image: data.pixQrCodeImage, url: data.invoiceUrl });
-      toast.success("Cobrança gerada. Pague o PIX para creditar.");
+      if (openPayment && data.invoiceUrl) {
+        if (win) win.location.href = data.invoiceUrl;
+        else window.open(data.invoiceUrl, "_blank", "noopener");
+        toast.success("Página de pagamento aberta. Credita automático ao pagar.");
+      } else {
+        if (win) win.close();
+        toast.success("Cobrança gerada. Pague o PIX para creditar.");
+      }
       // poll do saldo até creditar
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = setInterval(async () => {
@@ -86,6 +95,7 @@ export function DialerWalletPanel({ tenantId }: { tenantId: string | null }) {
         }
       }, 5000);
     } catch (e: any) {
+      if (win) win.close();
       toast.error(e?.message || "Erro ao gerar recarga");
     } finally {
       setGenerating(false);
@@ -199,9 +209,15 @@ export function DialerWalletPanel({ tenantId }: { tenantId: string | null }) {
             <div className="space-y-3">
               <div><Label>Valor (R$)</Label><Input type="number" min={5} step={10} value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
               <div><Label>CPF/CNPJ (só na 1ª recarga)</Label><Input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="Necessário se ainda não houver cadastro Asaas" /></div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setRechargeOpen(false)}>Cancelar</Button>
-                <Button onClick={recharge} disabled={generating}>{generating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Gerar PIX</Button>
+              <div className="flex flex-col gap-2 pt-1">
+                <Button className="gap-2" onClick={() => recharge(true)} disabled={generating}>
+                  {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />} Ir para o pagamento
+                </Button>
+                <div className="flex justify-between gap-2">
+                  <Button variant="ghost" onClick={() => setRechargeOpen(false)}>Cancelar</Button>
+                  <Button variant="outline" onClick={() => recharge(false)} disabled={generating}>Gerar PIX aqui</Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground text-center">Na página de pagamento dá pra pagar por PIX, cartão ou boleto. Credita automático ao confirmar.</p>
               </div>
             </div>
           ) : (
@@ -212,7 +228,11 @@ export function DialerWalletPanel({ tenantId }: { tenantId: string | null }) {
                   <Copy className="h-4 w-4" /> Copiar código PIX (copia e cola)
                 </Button>
               )}
-              {pix.url && <a href={pix.url} target="_blank" rel="noopener noreferrer" className="block text-sm text-primary hover:underline"><ExternalLink className="h-3 w-3 inline mr-1" /> Abrir fatura</a>}
+              {pix.url && (
+                <Button variant="outline" className="gap-2 w-full" onClick={() => window.open(pix.url!, "_blank", "noopener")}>
+                  <ExternalLink className="h-4 w-4" /> Ir para o pagamento (PIX, cartão ou boleto)
+                </Button>
+              )}
               <p className="text-xs text-muted-foreground flex items-center justify-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Aguardando pagamento — credita automático ao pagar.</p>
             </div>
           )}
