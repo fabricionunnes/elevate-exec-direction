@@ -352,7 +352,7 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
     segmento: project.company?.segment,
     produto_contratado: project.product_name,
     status_projeto: project.status,
-    inicio_contrato: project.contract_start ?? project.created_at,
+    inicio_contrato: project.contract_start_date ?? project.contract_start ?? project.created_at,
     saude: health,
     resultado_mes: kpiResumo,
     nps_recentes: (nps || []).map((n: any) => ({ nota: n.score, feedback: truncate(n.feedback, 300), quando: n.created_at })),
