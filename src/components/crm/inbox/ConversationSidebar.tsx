@@ -142,6 +142,22 @@ export function ConversationSidebar({
       try {
         let inheritedLeadId = conversation.lead_id;
 
+        // Só vincula por "lead casado" quando o lead REALMENTE bate com a identidade
+        // desta conversa (telefone). O hook useLinkedLeads é assíncrono: ao trocar de
+        // conversa, `linkedLeads` ainda pode ser o da conversa anterior por um render —
+        // usar linkedLeads[0] cru colava o lead da conversa anterior na atual (bug que
+        // jogava todo lead do Instagram no mesmo negócio). Instagram usa @username no
+        // lugar de telefone, então nunca casa por identidade: só herda de outra conversa
+        // do MESMO contato já vinculada.
+        const onlyDigits = (v?: string | null) => (v || "").replace(/\D/g, "");
+        const convDigits = onlyDigits(conversation.contact?.phone);
+        const identityMatchedLead = (!isInstagram && convDigits.length >= 8)
+          ? linkedLeads.find((lead) => {
+              const leadDigits = onlyDigits(lead.phone);
+              return leadDigits.length >= 8 && leadDigits.slice(-8) === convDigits.slice(-8);
+            })
+          : undefined;
+
         if (!inheritedLeadId) {
           const { data: inheritedConversation, error } = await supabase
             .from(conversationTable)
@@ -154,10 +170,10 @@ export function ConversationSidebar({
             .maybeSingle();
 
           if (error) throw error;
-          inheritedLeadId = inheritedConversation?.lead_id || linkedLeads[0]?.id || null;
+          inheritedLeadId = inheritedConversation?.lead_id || identityMatchedLead?.id || null;
         }
 
-        const resolvedLead = linkedLeads.find((lead) => lead.id === (conversation.lead_id || inheritedLeadId)) || linkedLeads[0];
+        const resolvedLead = linkedLeads.find((lead) => lead.id === (conversation.lead_id || inheritedLeadId)) || identityMatchedLead;
         const shouldLinkConversation = !conversation.lead_id && !!inheritedLeadId;
         const shouldRenameContact = !!resolvedLead && isGenericContactName(conversation.contact?.name) && resolvedLead.name !== conversation.contact?.name;
 
