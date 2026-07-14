@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, MessageSquare, CalendarClock, ClipboardCheck, Star, FileText, Trophy, Bell } from "lucide-react";
 
@@ -21,7 +22,7 @@ const AUTOMATIONS: {
     key: "resumo_diario",
     label: "Resumo diário de indicadores",
     description: "Leitura comercial do dia no grupo de gestão — ou cobrança nominal quando o time não lançou os números.",
-    schedule: "19h30 · seg–sex (exceto feriados)",
+    schedule: "seg–sex (exceto feriados)",
     sender: "Fabrício",
     icon: MessageSquare,
   },
@@ -81,6 +82,7 @@ interface Props {
 
 export function CompanyAutomationsPanel({ companyId }: Props) {
   const [settings, setSettings] = useState<Record<string, boolean>>({});
+  const [variants, setVariants] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
 
@@ -88,14 +90,16 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
     const load = async () => {
       const { data, error } = await (supabase as any)
         .from("company_automation_settings")
-        .select("automation_key, enabled")
+        .select("automation_key, enabled, variant")
         .eq("company_id", companyId);
       if (error) {
         toast.error("Erro ao carregar configurações de automação");
       } else {
         const map: Record<string, boolean> = {};
-        (data || []).forEach((r: any) => { map[r.automation_key] = r.enabled; });
+        const vmap: Record<string, string | null> = {};
+        (data || []).forEach((r: any) => { map[r.automation_key] = r.enabled; vmap[r.automation_key] = r.variant; });
         setSettings(map);
+        setVariants(vmap);
       }
       setLoading(false);
     };
@@ -120,6 +124,28 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
     } else {
       const a = AUTOMATIONS.find((x) => x.key === key);
       toast.success(`${a?.label || key} ${next ? "ativada" : "desativada"} — vale a partir do próximo envio.`);
+    }
+    setSaving(null);
+  };
+
+  const setRegime = async (regime: "noturno" | "matinal") => {
+    setSaving("resumo_diario_regime");
+    const prev = variants["resumo_diario"];
+    const value = regime === "matinal" ? "matinal" : null;
+    setVariants((v) => ({ ...v, resumo_diario: value }));
+    const { error } = await (supabase as any)
+      .from("company_automation_settings")
+      .upsert(
+        { company_id: companyId, automation_key: "resumo_diario", enabled: isOn("resumo_diario"), variant: value, updated_at: new Date().toISOString() },
+        { onConflict: "company_id,automation_key" },
+      );
+    if (error) {
+      setVariants((v) => ({ ...v, resumo_diario: prev }));
+      toast.error("Não foi possível salvar o horário. Tente de novo.");
+    } else {
+      toast.success(regime === "matinal"
+        ? "Resumo passa a sair às 11h, seg–sáb, falando do dia anterior (segunda cobre o sábado)."
+        : "Resumo volta pras 19h30, seg–sex, falando do dia atual.");
     }
     setSaving(null);
   };
@@ -161,6 +187,24 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{a.schedule}</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">{a.description}</p>
+                  {a.key === "resumo_diario" && on && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Horário:</span>
+                      <Select
+                        value={variants["resumo_diario"] === "matinal" ? "matinal" : "noturno"}
+                        onValueChange={(v) => setRegime(v as "noturno" | "matinal")}
+                        disabled={saving === "resumo_diario_regime"}
+                      >
+                        <SelectTrigger className="h-8 w-auto min-w-[260px] text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="noturno">19h30 · fala do dia atual (seg–sex)</SelectItem>
+                          <SelectItem value="matinal">11h da manhã · fala do dia anterior (seg–sáb)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               </div>
               <Switch

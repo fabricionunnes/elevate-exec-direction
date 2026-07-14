@@ -24,12 +24,6 @@ function brToday(): string {
   const br = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
   return `${br.getFullYear()}-${String(br.getMonth() + 1).padStart(2, "0")}-${String(br.getDate()).padStart(2, "0")}`;
 }
-// Empresas com resumo MATINAL (10h, seg-sáb) sobre o dia ANTERIOR — saem do
-// disparo noturno das 19h30. Cron próprio chama com {live:true, morning:true}.
-const MORNING_COMPANY_IDS = new Set<string>([
-  "990298cd-b689-4975-bde5-329e4bbc2916", // Loja Mix Brasil
-]);
-
 function easterDate(year: number): Date {
   const a = year % 19, b = Math.floor(year / 100), c = year % 100;
   const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
@@ -332,9 +326,13 @@ Deno.serve(async (req) => {
     // (company_automation_settings). Sem linha na tabela = ligado.
     const { data: casRows } = await supabase
       .from("company_automation_settings")
-      .select("company_id")
-      .eq("automation_key", "resumo_diario").eq("enabled", false);
-    const RESUMO_EXCLUDED_COMPANY_IDS = new Set<string>((casRows || []).map((r: any) => r.company_id));
+      .select("company_id, enabled, variant")
+      .eq("automation_key", "resumo_diario");
+    const RESUMO_EXCLUDED_COMPANY_IDS = new Set<string>(
+      (casRows || []).filter((r: any) => r.enabled === false).map((r: any) => r.company_id));
+    // Regime matinal (11h, dia anterior) configurado no painel da empresa
+    const MORNING_COMPANY_IDS = new Set<string>(
+      (casRows || []).filter((r: any) => r.variant === "matinal").map((r: any) => r.company_id));
 
     const gestaoGroups = await fetchGestaoGroups();
 
