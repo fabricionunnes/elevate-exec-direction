@@ -1,14 +1,14 @@
-name: Backup diário do banco → Google Drive
+name: Backup diario do banco -> Google Drive
 
-# Faz pg_dump completo do Nexus e envia pra pasta do Google Drive do Fabrício.
-# Roda todo dia às 21h de Brasília. Retenção de 30 dias na pasta.
+# Faz pg_dump completo do Nexus e envia pra pasta do  Google Drive do Fabricio.
+# Roda todo dia as 21h de Brasilia. Retencao de 30 dias na pasta.
 #
-# Secrets necessários no repositório (Settings → Secrets → Actions):
-#   NEXUS_BACKUP_DB_URL       — string de conexão do Postgres (role só-leitura)
-#   BACKUP_DRIVE_ACCESS_URL   — URL da edge function drive-access-token
-#   BACKUP_SHARED_SECRET      — segredo compartilhado com a edge function
-#   BACKUP_ANON_KEY           — anon key do Supabase (Authorization da edge)
-#   BACKUP_DRIVE_FOLDER_ID    — id da pasta do Drive
+# Secrets necessarios no repositorio (Settings  Secrets  Actions):
+#   NEXUS_BACKUP_DB_URL        string de conexao do Postgres (role so-leitura)
+#   BACKUP_DRIVE_ACCESS_URL    URL da edge function drive-access-token
+#   BACKUP_SHARED_SECRET       segredo compartilhado com a edge function
+#   BACKUP_ANON_KEY            anon key do Supabase (Authorization da edge)
+#   BACKUP_DRIVE_FOLDER_ID     id da pasta do Drive
 
 on:
   schedule:
@@ -24,11 +24,11 @@ jobs:
     steps:
       - name: Instalar cliente Postgres 17
         run: |
-          sudo install -d /usr/share/postgresql-common/pgdg
-          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
-          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get -qq update
           sudo apt-get -qq install -y postgresql-client-17
+          /usr/lib/postgresql/17/bin/pg_dump --version
 
       - name: pg_dump (schema public completo, formato custom comprimido)
         env:
@@ -36,7 +36,7 @@ jobs:
         run: |
           FILE="backup-unv-nexus-$(TZ=America/Sao_Paulo date +%Y-%m-%d-%H%M).dump"
           echo "FILE=$FILE" >> "$GITHUB_ENV"
-          pg_dump "$DB_URL" \
+          /usr/lib/postgresql/17/bin/pg_dump "$DB_URL" \
             --format=custom \
             --compress=6 \
             --schema=public \
@@ -45,7 +45,7 @@ jobs:
             --file="$FILE"
           ls -lh "$FILE"
 
-      - name: Enviar pro Google Drive + retenção
+      - name: Enviar pro  Google Drive + retencao
         env:
           DRIVE_ACCESS_URL: ${{ secrets.BACKUP_DRIVE_ACCESS_URL }}
           SHARED_SECRET: ${{ secrets.BACKUP_SHARED_SECRET }}
@@ -76,7 +76,7 @@ jobs:
           size = os.path.getsize(fname)
           print(f'Enviando {fname} ({size/1024/1024:.1f} MB)')
 
-          # 2. sessão de upload resumable
+          # 2. sessao de upload resumable
           meta = {'name': fname, 'parents': [folder], 'mimeType': 'application/octet-stream'}
           _, hdrs = api(
               'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true',
@@ -99,14 +99,14 @@ jobs:
                   try:
                       resp = opener.open(req)
                       if resp.status in (200, 201):
-                          print('Upload concluído, file id:', json.loads(resp.read()).get('id'))
+                          print('Upload concluido, file id:', json.loads(resp.read()).get('id'))
                   except urllib.error.HTTPError as e:
                       if e.code != 308:
                           raise
                   sent += len(blob)
                   print(f'  {sent/1024/1024:.0f}/{size/1024/1024:.0f} MB')
 
-          # 4. retenção: backups com mais de RETENTION_DAYS vão pra lixeira
+          # 4. retencao: backups com mais de RETENTION_DAYS vao pra lixeira
           days = int(os.environ.get('RETENTION_DAYS', '30'))
           cutoff = (datetime.datetime.utcnow() - datetime.timedelta(days=days)).strftime('%Y-%m-%dT%H:%M:%S')
           q = urllib.parse.quote(
@@ -115,6 +115,6 @@ jobs:
           old, _ = api(f'https://www.googleapis.com/drive/v3/files?q={q}&fields=files(id,name)&pageSize=100&supportsAllDrives=true&includeItemsFromAllDrives=true')
           for fo in old.get('files', []):
               api(f"https://www.googleapis.com/drive/v3/files/{fo['id']}?supportsAllDrives=true", 'PATCH', {'trashed': True})
-              print('Removido (retenção):', fo['name'])
-          print(f'Retenção: {len(old.get("files", []))} arquivo(s) antigos removidos')
+              print('Removido (retencao):', fo['name'])
+          print(f'Retencao: {len(old.get("files", []))} arquivo(s) antigos removidos')
           PYEOF
