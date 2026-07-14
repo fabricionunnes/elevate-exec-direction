@@ -188,8 +188,8 @@ const formatCompact = (v: number) => {
 };
 
 const NEGOTIATION_STAGES = [
-  "forecast", "realizada", "realizada / em negociação", "fup",
-  "reunião realizada", "agendada", "agendou reunião",
+  "forecast", "realiz", "fup",
+  "agendada", "agendou reunião",
 ];
 
 const HEAD_STATUS_OPTIONS = [
@@ -511,10 +511,13 @@ export default function CRMHeadComercialPage() {
         setDynamicForecastLeads([]);
       }
 
+      // Leads em negociação = etapas de reunião realizada / realizada (masc. e
+      // fem.) E forecast, de TODOS os funis. O "%realizada%" antigo perdia
+      // "Realizado" (masculino) e não incluía forecast.
       const { data: realizadaStages } = await supabase
         .from("crm_stages")
         .select("id")
-        .ilike("name", "%realizada%");
+        .or("name.ilike.%realiz%,name.ilike.%forecast%");
 
       if (realizadaStages && realizadaStages.length > 0) {
         const stageIds = realizadaStages.map(s => s.id);
