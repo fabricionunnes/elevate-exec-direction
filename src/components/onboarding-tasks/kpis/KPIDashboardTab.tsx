@@ -1407,7 +1407,11 @@ export const KPIDashboardTab = ({
     const conversionStages: Array<{ name: string; value: number; kpiName: string | undefined }> = [];
     
     if (leadsKpi && totalLeads > 0) {
-      conversionStages.push({ name: 'Leads', value: totalLeads, kpiName: leadsKpi.name });
+      // Quando o topo do funil é um KPI de "contatos", mostra o nome real
+      // (ex.: "Contatos realizados") em vez do rótulo genérico "Leads" — assim
+      // a linha de conversão fica coerente com a Conversão Geral.
+      const topLabel = /contato/i.test(leadsKpi.name) ? leadsKpi.name.replace(/\s+/g, " ").trim() : "Leads";
+      conversionStages.push({ name: topLabel, value: totalLeads, kpiName: leadsKpi.name });
     }
     if (serviceKpi && totalServices > 0) {
       conversionStages.push({ name: 'Atendimentos', value: totalServices, kpiName: serviceKpi.name });
