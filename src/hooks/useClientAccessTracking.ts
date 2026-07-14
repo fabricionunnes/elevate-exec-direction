@@ -54,11 +54,25 @@ export const useClientAccessTracking = (options: AccessTrackingOptions | null) =
           sessionIdRef.current = data.id;
           startTimeRef.current = new Date();
           setSessionId(data.id);
+          heartbeat(); // marca presença imediatamente
         }
       } catch (error) {
         console.warn("Error in access tracking:", error);
       }
     };
+
+    // Heartbeat: prova de presença real. "Online" = last_seen_at recente.
+    const heartbeat = () => {
+      if (!sessionIdRef.current) return;
+      supabase
+        .from("client_access_logs" as any)
+        .update({ last_seen_at: new Date().toISOString(), is_active: true })
+        .eq("id", sessionIdRef.current)
+        .then(() => {});
+    };
+    const heartbeatTimer = setInterval(() => {
+      if (document.visibilityState === "visible") heartbeat();
+    }, 60_000);
 
     createAccessLog();
 
@@ -97,6 +111,7 @@ export const useClientAccessTracking = (options: AccessTrackingOptions | null) =
 
     return () => {
       isMounted.current = false;
+      clearInterval(heartbeatTimer);
       window.removeEventListener("beforeunload", handleBeforeUnload);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
 

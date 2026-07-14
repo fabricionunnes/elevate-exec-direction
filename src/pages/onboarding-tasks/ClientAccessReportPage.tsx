@@ -64,6 +64,7 @@ interface AccessLog {
   logout_at: string | null;
   session_duration_minutes: number | null;
   is_active: boolean;
+  last_seen_at: string | null;
   created_at: string;
 }
 
@@ -398,6 +399,12 @@ const ClientAccessReportPage = () => {
     return company?.name || "-";
   };
 
+  // "Online agora" = heartbeat nos últimos 3 min (is_active ficava preso em true).
+  const isOnline = (log: AccessLog) => {
+    if (!log.last_seen_at) return false;
+    return Date.now() - new Date(log.last_seen_at).getTime() < 3 * 60 * 1000;
+  };
+
   const filteredLogs = accessLogs.filter(log => {
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
@@ -423,7 +430,7 @@ const ClientAccessReportPage = () => {
       .map(g => ({
         ...g,
         users: new Set(g.logs.map(l => l.user_id)).size,
-        online: g.logs.some(l => l.is_active),
+        online: g.logs.some(l => isOnline(l)),
         lastAccess: g.logs.reduce((max, l) => (l.login_at > max ? l.login_at : max), g.logs[0].login_at),
       }))
       .sort((a, b) => (b.lastAccess > a.lastAccess ? 1 : -1));
@@ -756,7 +763,7 @@ const ClientAccessReportPage = () => {
                                     </p>
                                   )}
                                 </div>
-                                {log.is_active ? (
+                                {isOnline(log) ? (
                                   <Badge variant="default" className="bg-green-500 hover:bg-green-600">
                                     <span className="relative flex h-2 w-2 mr-1">
                                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
