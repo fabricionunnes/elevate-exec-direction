@@ -83,6 +83,8 @@ interface Props {
 export function CompanyAutomationsPanel({ companyId }: Props) {
   const [settings, setSettings] = useState<Record<string, boolean>>({});
   const [variants, setVariants] = useState<Record<string, string | null>>({});
+  const [instances, setInstances] = useState<Record<string, string | null>>({});
+  const [availableInstances, setAvailableInstances] = useState<{ name: string; connected: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
 
@@ -90,17 +92,24 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
     const load = async () => {
       const { data, error } = await (supabase as any)
         .from("company_automation_settings")
-        .select("automation_key, enabled, variant")
+        .select("automation_key, enabled, variant, instance_name")
         .eq("company_id", companyId);
       if (error) {
         toast.error("Erro ao carregar configurações de automação");
       } else {
         const map: Record<string, boolean> = {};
         const vmap: Record<string, string | null> = {};
-        (data || []).forEach((r: any) => { map[r.automation_key] = r.enabled; vmap[r.automation_key] = r.variant; });
+        const imap: Record<string, string | null> = {};
+        (data || []).forEach((r: any) => { map[r.automation_key] = r.enabled; vmap[r.automation_key] = r.variant; imap[r.automation_key] = r.instance_name; });
         setSettings(map);
         setVariants(vmap);
+        setInstances(imap);
       }
+      const { data: insts } = await (supabase as any)
+        .from("whatsapp_instances")
+        .select("instance_name, status")
+        .order("instance_name");
+      setAvailableInstances((insts || []).map((i: any) => ({ name: i.instance_name, connected: i.status === "connected" })));
       setLoading(false);
     };
     load();
@@ -115,7 +124,7 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
     const { error } = await (supabase as any)
       .from("company_automation_settings")
       .upsert(
-        { company_id: companyId, automation_key: key, enabled: next, updated_at: new Date().toISOString() },
+        { company_id: companyId, automation_key: key, enabled: next, variant: variants[key] ?? null, instance_name: instances[key] ?? null, updated_at: new Date().toISOString() },
         { onConflict: "company_id,automation_key" },
       );
     if (error) {
@@ -136,7 +145,7 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
     const { error } = await (supabase as any)
       .from("company_automation_settings")
       .upsert(
-        { company_id: companyId, automation_key: "resumo_diario", enabled: isOn("resumo_diario"), variant: value, updated_at: new Date().toISOString() },
+        { company_id: companyId, automation_key: "resumo_diario", enabled: isOn("resumo_diario"), variant: value, instance_name: instances["resumo_diario"] ?? null, updated_at: new Date().toISOString() },
         { onConflict: "company_id,automation_key" },
       );
     if (error) {
@@ -146,6 +155,26 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
       toast.success(regime === "matinal"
         ? "Resumo passa a sair às 11h, seg–sáb, falando do dia anterior (segunda cobre o sábado)."
         : "Resumo volta pras 19h30, seg–sex, falando do dia atual.");
+    }
+    setSaving(null);
+  };
+
+  const setInstance = async (key: string, name: string) => {
+    setSaving(`${key}_inst`);
+    const prev = instances[key];
+    const value = name === "__default__" ? null : name;
+    setInstances((m) => ({ ...m, [key]: value }));
+    const { error } = await (supabase as any)
+      .from("company_automation_settings")
+      .upsert(
+        { company_id: companyId, automation_key: key, enabled: isOn(key), variant: variants[key] ?? null, instance_name: value, updated_at: new Date().toISOString() },
+        { onConflict: "company_id,automation_key" },
+      );
+    if (error) {
+      setInstances((m) => ({ ...m, [key]: prev }));
+      toast.error("Não foi possível salvar a instância. Tente de novo.");
+    } else {
+      toast.success(value ? `Envio pelo número "${value}" a partir do próximo disparo.` : "Envio volta pro número padrão.");
     }
     setSaving(null);
   };
@@ -187,6 +216,28 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{a.schedule}</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">{a.description}</p>
+                  {on && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Número:</span>
+                      <Select
+                        value={instances[a.key] || "__default__"}
+                        onValueChange={(v) => setInstance(a.key, v)}
+                        disabled={saving === `${a.key}_inst`}
+                      >
+                        <SelectTrigger className="h-8 w-auto min-w-[220px] text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__default__">Padrão ({a.sender})</SelectItem>
+                          {availableInstances.map((i) => (
+                            <SelectItem key={i.name} value={i.name} disabled={!i.connected}>
+                              {i.name}{i.connected ? "" : " (desconectada)"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   {a.key === "resumo_diario" && on && (
                     <div className="mt-2 flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">Horário:</span>

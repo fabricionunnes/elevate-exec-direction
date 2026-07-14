@@ -18,6 +18,14 @@ async function disabledCompanies(supabase: any, key: string): Promise<Set<string
   return new Set((data || []).map((r: any) => r.company_id));
 }
 
+// Instância de envio por empresa escolhida no painel (Map company_id → instance_name)
+async function instanceOverrides(supabase: any, key: string): Promise<Map<string, string>> {
+  const { data } = await supabase
+    .from("company_automation_settings")
+    .select("company_id, instance_name").eq("automation_key", key).not("instance_name", "is", null);
+  return new Map((data || []).map((r: any) => [r.company_id, r.instance_name]));
+}
+
 
 
 Deno.serve(async (req) => {
@@ -137,6 +145,7 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
   // Pesquisa vai SEMPRE no grupo de gestão da empresa (nunca no privado)
   const gestaoGroups = await fetchGestaoGroups();
   const npsOff = await disabledCompanies(supabase, "nps");
+  const npsInst = await instanceOverrides(supabase, "nps");
 
   // Group projects by company to avoid sending multiple NPS to the same company
   const companyMap = new Map<string, { companyId: string; companyName: string; phone: string; projectId: string }>();
@@ -299,7 +308,7 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
       .replace(/\{link\}/g, npsLink);
 
     // Send via WhatsApp
-    const instanceName = await getInstanceName(supabase, config.whatsapp_instance_name);
+    const instanceName = await getInstanceName(supabase, npsInst.get(companyId) || config.whatsapp_instance_name);
     if (!instanceName) {
       console.error("NPS: nenhuma instância WhatsApp configurada — configure em Régua de Pesquisa");
       await supabase.from("survey_send_log").insert({
@@ -507,6 +516,7 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
   // Pesquisa vai SEMPRE no grupo de gestão da empresa
   const gestaoGroups = await fetchGestaoGroups();
   const csatOff = await disabledCompanies(supabase, "csat");
+  const csatInst = await instanceOverrides(supabase, "csat");
 
   for (const survey of surveys) {
     const meeting = (survey as any).onboarding_meeting_notes;
@@ -582,7 +592,7 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
       .replace(/\{assunto_reuniao\}/g, meetingSubject)
       .replace(/\{data_reuniao\}/g, meetingDate);
 
-    const instanceName = await getInstanceName(supabase, config.whatsapp_instance_name);
+    const instanceName = await getInstanceName(supabase, csatInst.get(company.id) || config.whatsapp_instance_name);
     if (!instanceName) {
       console.error("CSAT: nenhuma instância WhatsApp configurada — configure em Régua de Pesquisa");
       await supabase.from("survey_send_log").insert({

@@ -56,14 +56,22 @@ const brl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigi
 
 /** Envia texto pela instância fabricionunnes (mesma do client-brain). number pode
  * ser telefone (preview) ou group_jid @g.us (grupo de gestão). */
-async function sendWhatsApp(supabase: SupabaseClient, number: string, text: string): Promise<boolean> {
+async function sendWhatsApp(supabase: SupabaseClient, number: string, text: string, preferInstance?: string | null): Promise<boolean> {
   try {
     let { data: inst } = await supabase
       .from("whatsapp_instances")
       .select("instance_name, api_url, api_key, status, provider_type")
-      .eq("instance_name", "fabricionunnes")
+      .eq("instance_name", preferInstance || "fabricionunnes")
       .eq("status", "connected")
       .maybeSingle();
+    if (!inst && preferInstance) {
+      // instância escolhida no painel caiu/desconectou: volta pro padrão
+      const { data: def } = await supabase
+        .from("whatsapp_instances")
+        .select("instance_name, api_url, api_key, status, provider_type")
+        .eq("instance_name", "fabricionunnes").eq("status", "connected").maybeSingle();
+      inst = def;
+    }
     if (!inst) {
       const { data: fb } = await supabase
         .from("whatsapp_instances")
@@ -326,13 +334,16 @@ Deno.serve(async (req) => {
     // (company_automation_settings). Sem linha na tabela = ligado.
     const { data: casRows } = await supabase
       .from("company_automation_settings")
-      .select("company_id, enabled, variant")
+      .select("company_id, enabled, variant, instance_name")
       .eq("automation_key", "resumo_diario");
     const RESUMO_EXCLUDED_COMPANY_IDS = new Set<string>(
       (casRows || []).filter((r: any) => r.enabled === false).map((r: any) => r.company_id));
     // Regime matinal (11h, dia anterior) configurado no painel da empresa
     const MORNING_COMPANY_IDS = new Set<string>(
       (casRows || []).filter((r: any) => r.variant === "matinal").map((r: any) => r.company_id));
+    // Instância de envio escolhida no painel (null = padrão fabricionunnes)
+    const RESUMO_INSTANCE = new Map<string, string>(
+      (casRows || []).filter((r: any) => r.instance_name).map((r: any) => [r.company_id, r.instance_name]));
 
     const gestaoGroups = await fetchGestaoGroups();
 
@@ -382,7 +393,7 @@ Deno.serve(async (req) => {
 
       const target = live ? group.jid : ALERT_PHONE;
       const payload = live ? text : `*[PREVIEW · ${c.name} · grupo: ${group.name}]*\n\n${text}`;
-      const ok = await sendWhatsApp(supabase, target, payload);
+      const ok = await sendWhatsApp(supabase, target, payload, live ? RESUMO_INSTANCE.get(c.id) : null);
       if (ok) sent++;
       results.push({ company: c.name, processed: true, has_data: !!metrics?.hasToday, sent_to: live ? "grupo_gestao" : "fabricio_preview", ok });
     }
