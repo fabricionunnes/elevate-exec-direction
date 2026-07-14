@@ -55,7 +55,8 @@ import { AddressFields } from "@/components/ui/address-fields";
 import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
 import { CompanyDataView } from "@/components/company/CompanyDataView";
-import { Database, BarChart3 } from "lucide-react";
+import { Database, BarChart3, Zap } from "lucide-react";
+import { CompanyAutomationsPanel } from "@/components/onboarding-tasks/CompanyAutomationsPanel";
 import { FacunicampsIndicadoresPanel } from "@/components/facunicamps/FacunicampsIndicadoresPanel";
 
 
@@ -708,6 +709,13 @@ const OnboardingCompanyDetailPage = () => {
                     <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     <span className="hidden sm:inline">Dados</span>
                     <span className="sm:hidden">Dados</span>
+                  </TabsTrigger>
+                )}
+                {!isNew && isMasterOrAdmin && (
+                  <TabsTrigger value="automacoes" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                    <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Automações</span>
+                    <span className="sm:hidden">Auto</span>
                   </TabsTrigger>
                 )}
                 {!isNew && companyId === FACUNICAMPS_ID && (
@@ -1470,6 +1478,12 @@ const OnboardingCompanyDetailPage = () => {
                   csId={form.cs_id}
                   consultantId={form.consultant_id}
                 />
+              </TabsContent>
+            )}
+
+            {!isNew && isMasterOrAdmin && companyId && (
+              <TabsContent value="automacoes">
+                <CompanyAutomationsPanel companyId={companyId} />
               </TabsContent>
             )}
 

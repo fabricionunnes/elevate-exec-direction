@@ -328,12 +328,13 @@ Deno.serve(async (req) => {
     const dayLabel = morning ? (isMonday ? "no sábado" : "ontem") : "hoje";
     const limit = Number(body.limit) || (live ? 100 : 8);
 
-    // Empresas excluídas do resumo diário (pedido do Fabrício — ex.: cliente
-    // ainda não onboardado no lançamento de indicadores). Reativar = remover daqui.
-    const RESUMO_EXCLUDED_COMPANY_IDS = new Set<string>([
-      "4619f391-7279-48f3-a91c-b536ebb4dfd9", // BOATLUX (2026-07-09: time ainda não lança KPIs)
-      "24adcb77-8601-4761-b47c-225a4351422c", // M&L CONTABILIDADE (2026-07-13: pedido do Fabrício)
-    ]);
+    // Liga/desliga por empresa: painel "Automações" nos detalhes da empresa
+    // (company_automation_settings). Sem linha na tabela = ligado.
+    const { data: casRows } = await supabase
+      .from("company_automation_settings")
+      .select("company_id")
+      .eq("automation_key", "resumo_diario").eq("enabled", false);
+    const RESUMO_EXCLUDED_COMPANY_IDS = new Set<string>((casRows || []).map((r: any) => r.company_id));
 
     const gestaoGroups = await fetchGestaoGroups();
 
@@ -345,7 +346,7 @@ Deno.serve(async (req) => {
     const results: any[] = [];
     let sent = 0;
     for (const c of (companies || [])) {
-      if (RESUMO_EXCLUDED_COMPANY_IDS.has(c.id)) { results.push({ company: c.name, skipped: "excluída por configuração" }); continue; }
+      if (RESUMO_EXCLUDED_COMPANY_IDS.has(c.id)) { results.push({ company: c.name, skipped: "desligada no painel de automações" }); continue; }
       // Empresas matinais só saem no run morning; as demais só no noturno.
       if (morning !== MORNING_COMPANY_IDS.has(c.id)) { results.push({ company: c.name, skipped: morning ? "não é matinal" : "resumo matinal próprio (10h)" }); continue; }
       const group = gestaoGroups.get(c.id);

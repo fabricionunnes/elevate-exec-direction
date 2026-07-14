@@ -10,6 +10,16 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const PUBLIC_DOMAIN = "https://unvholdings.com.br";
 
+// Painel de automações por empresa: Set de company_id com a chave DESLIGADA
+async function disabledCompanies(supabase: any, key: string): Promise<Set<string>> {
+  const { data } = await supabase
+    .from("company_automation_settings")
+    .select("company_id").eq("automation_key", key).eq("enabled", false);
+  return new Set((data || []).map((r: any) => r.company_id));
+}
+
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -126,6 +136,7 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
 
   // Pesquisa vai SEMPRE no grupo de gestão da empresa (nunca no privado)
   const gestaoGroups = await fetchGestaoGroups();
+  const npsOff = await disabledCompanies(supabase, "nps");
 
   // Group projects by company to avoid sending multiple NPS to the same company
   const companyMap = new Map<string, { companyId: string; companyName: string; phone: string; projectId: string }>();
@@ -150,6 +161,10 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
       }
     }
 
+    if (npsOff.has(company.id)) {
+      console.log(`NPS: ${company.name} desligada no painel de automações — pulando`);
+      continue;
+    }
     // Destino: grupo de gestão; no modo teste, cai pro telefone da empresa se não houver grupo
     const group = gestaoGroups.get(company.id);
     const phone = group?.jid || (isTest ? cleanPhone(company.phone) : "");
@@ -491,6 +506,7 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
   let sent = 0;
   // Pesquisa vai SEMPRE no grupo de gestão da empresa
   const gestaoGroups = await fetchGestaoGroups();
+  const csatOff = await disabledCompanies(supabase, "csat");
 
   for (const survey of surveys) {
     const meeting = (survey as any).onboarding_meeting_notes;
@@ -513,6 +529,10 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
     const company = (project as any).onboarding_companies;
     if (!company) continue;
 
+    if (csatOff.has(company.id)) {
+      console.log(`CSAT: ${company.name} desligada no painel de automações — pulando`);
+      continue;
+    }
     const group = gestaoGroups.get(company.id);
     if (!group) {
       console.log(`CSAT: ${company.name} sem grupo de gestão — pulando`);
