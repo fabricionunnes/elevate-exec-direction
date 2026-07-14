@@ -42,6 +42,7 @@ import {
   Contact,
   Download,
   BookOpen,
+  Bot,
 } from "lucide-react";
 import logoUnv from "@/assets/logo-unv-nexus.png";
 import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
@@ -105,6 +106,7 @@ const getNavTabs = (role: string | null, isUnvStaff: boolean) => {
     tabs.push({ title: "Head Comercial", href: "/crm/head", icon: BarChart3 });
   }
   if (role === "master" || role === "admin" || role === "head_comercial") {
+    tabs.push({ title: "Agentes IA", href: "/crm/agents", icon: Bot });
     tabs.push({ title: "Resumo Calls", href: "/crm/call-summary", icon: Phone });
     tabs.push({ title: "UNV Profile", href: "/unv-profile", icon: Contact });
   }

@@ -321,6 +321,7 @@ const CRMApiPage = lazy(() => import("./pages/crm/CRMApiPage"));
 const CRMTrafficApiPage = lazy(() => import("./pages/crm/CRMTrafficApiPage"));
 const CRMForecastPage = lazy(() => import("./pages/crm/CRMForecastPage"));
 const CRMCadencesPage = lazy(() => import("./pages/crm/CRMCadencesPage"));
+const CRMAgentsPage = lazy(() => import("./pages/crm/CRMAgentsPage"));
 const CRMApplicationsPage = lazy(() => import("./pages/crm/CRMApplicationsPage"));
 
 // Social Pipeline
@@ -635,6 +636,7 @@ const AppShell = () => {
               <Route path="trafego-pago/api" element={<CRMTrafficApiPage />} />
               <Route path="forecast" element={<CRMForecastPage />} />
               <Route path="cadences" element={<CRMCadencesPage />} />
+              <Route path="agents" element={<CRMAgentsPage />} />
               <Route path="applications" element={<CRMApplicationsPage />} />
             </Route>
             

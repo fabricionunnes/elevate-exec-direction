@@ -1,0 +1,346 @@
+import { useEffect, useState, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import type { AIAgent } from "@/pages/crm/CRMAgentsPage";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { Loader2, Radio, MessageSquare, Instagram } from "lucide-react";
+import { AgentKnowledgeManager } from "./AgentKnowledgeManager";
+
+interface Props {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  agent: AIAgent | null;
+  staffId: string | null;
+  tenantId: string | null;
+  onSaved: () => void;
+}
+
+const MODELS = [
+  { value: "claude-sonnet-5", label: "Claude Sonnet 5 (recomendado)" },
+  { value: "claude-opus-4-8", label: "Claude Opus 4.8 (mais inteligente)" },
+  { value: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 (mais rápido)" },
+];
+
+interface InstanceOpt { channel: string; id: string; label: string; sub: string; status?: string | null; }
+
+const emptyForm = {
+  name: "", description: "", objective: "", instructions: "", tone: "",
+  greeting: "", model: "claude-sonnet-5", temperature: 0.4, reply_mode: "copilot",
+  handoff_keywords: "", max_messages: "",
+};
+
+export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId, onSaved }: Props) {
+  const [tab, setTab] = useState("config");
+  const [saving, setSaving] = useState(false);
+  const [agentId, setAgentId] = useState<string | null>(null);
+  const [form, setForm] = useState({ ...emptyForm });
+
+  // opções
+  const [instances, setInstances] = useState<InstanceOpt[]>([]);
+  const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
+  // vínculos
+  const [selectedChannels, setSelectedChannels] = useState<Set<string>>(new Set()); // key = channel:id
+  const [pipelineModes, setPipelineModes] = useState<Record<string, string>>({}); // pipeline_id -> off|auto|copilot
+
+  const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
+
+  // Carrega opções de instâncias e funis uma vez
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const [wa, waOff, ig, pi] = await Promise.all([
+        supabase.from("whatsapp_instances").select("id, instance_name, display_name, phone_number, status"),
+        supabase.from("whatsapp_official_instances").select("id, display_name, phone_number"),
+        supabase.from("instagram_instances").select("id, instance_name, instagram_username, page_name, status"),
+        supabase.from("crm_pipelines").select("id, name").order("name"),
+      ]);
+      const opts: InstanceOpt[] = [];
+      (wa.data || []).forEach((i: any) => opts.push({ channel: "whatsapp", id: i.id, label: i.display_name || i.instance_name, sub: i.phone_number || "", status: i.status }));
+      (waOff.data || []).forEach((i: any) => opts.push({ channel: "whatsapp_official", id: i.id, label: i.display_name || "WhatsApp Oficial", sub: i.phone_number || "" }));
+      (ig.data || []).forEach((i: any) => opts.push({ channel: "instagram", id: i.id, label: i.page_name || i.instagram_username || i.instance_name, sub: i.instagram_username ? `@${i.instagram_username}` : "", status: i.status }));
+      setInstances(opts);
+      setPipelines((pi.data || []) as any);
+    })();
+  }, [open]);
+
+  // Inicializa o form ao abrir
+  useEffect(() => {
+    if (!open) return;
+    if (agent) {
+      setAgentId(agent.id);
+      setForm({
+        name: agent.name || "", description: agent.description || "", objective: agent.objective || "",
+        instructions: agent.instructions || "", tone: agent.tone || "", greeting: agent.greeting || "",
+        model: agent.model || "claude-sonnet-5", temperature: agent.temperature ?? 0.4,
+        reply_mode: agent.reply_mode || "copilot",
+        handoff_keywords: (agent.handoff_keywords || []).join(", "),
+        max_messages: agent.max_messages != null ? String(agent.max_messages) : "",
+      });
+    } else {
+      setAgentId(null);
+      setForm({ ...emptyForm });
+      setSelectedChannels(new Set());
+      setPipelineModes({});
+    }
+    setTab("config");
+  }, [open, agent]);
+
+  // Carrega vínculos quando há agentId
+  const loadBindings = useCallback(async (id: string) => {
+    const [ch, pi] = await Promise.all([
+      supabase.from("crm_ai_agent_channels").select("channel, instance_id").eq("agent_id", id),
+      supabase.from("crm_ai_agent_pipelines").select("pipeline_id, reply_mode").eq("agent_id", id),
+    ]);
+    setSelectedChannels(new Set((ch.data || []).map((r: any) => `${r.channel}:${r.instance_id}`)));
+    const modes: Record<string, string> = {};
+    (pi.data || []).forEach((r: any) => { modes[r.pipeline_id] = r.reply_mode; });
+    setPipelineModes(modes);
+  }, []);
+
+  useEffect(() => {
+    if (open && agentId) loadBindings(agentId);
+  }, [open, agentId, loadBindings]);
+
+  const saveConfig = async () => {
+    if (!form.name.trim()) { toast.error("Dê um nome ao agente"); return; }
+    setSaving(true);
+    const payload: any = {
+      name: form.name.trim(),
+      description: form.description || null,
+      objective: form.objective || null,
+      instructions: form.instructions || null,
+      tone: form.tone || null,
+      greeting: form.greeting || null,
+      model: form.model,
+      temperature: form.temperature,
+      reply_mode: form.reply_mode,
+      handoff_keywords: form.handoff_keywords.trim()
+        ? form.handoff_keywords.split(",").map((s) => s.trim()).filter(Boolean) : null,
+      max_messages: form.max_messages.trim() ? parseInt(form.max_messages, 10) : null,
+      updated_at: new Date().toISOString(),
+    };
+    try {
+      if (agentId) {
+        const { error } = await supabase.from("crm_ai_agents").update(payload).eq("id", agentId);
+        if (error) throw error;
+        toast.success("Configuração salva");
+      } else {
+        payload.created_by = staffId;
+        payload.tenant_id = tenantId;
+        const { data, error } = await supabase.from("crm_ai_agents").insert(payload).select("id").single();
+        if (error) throw error;
+        setAgentId(data.id);
+        toast.success("Agente criado. Agora vincule instâncias, funis e conhecimento.");
+      }
+      onSaved();
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao salvar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleChannel = async (opt: InstanceOpt) => {
+    if (!agentId) { toast.error("Salve a configuração primeiro"); return; }
+    const key = `${opt.channel}:${opt.id}`;
+    const next = new Set(selectedChannels);
+    if (next.has(key)) {
+      next.delete(key);
+      setSelectedChannels(next);
+      await supabase.from("crm_ai_agent_channels").delete()
+        .eq("agent_id", agentId).eq("channel", opt.channel).eq("instance_id", opt.id);
+    } else {
+      next.add(key);
+      setSelectedChannels(next);
+      await supabase.from("crm_ai_agent_channels").insert({ agent_id: agentId, channel: opt.channel, instance_id: opt.id });
+    }
+  };
+
+  const setPipelineMode = async (pipelineId: string, mode: string) => {
+    if (!agentId) { toast.error("Salve a configuração primeiro"); return; }
+    setPipelineModes((m) => ({ ...m, [pipelineId]: mode }));
+    if (mode === "off") {
+      await supabase.from("crm_ai_agent_pipelines").delete().eq("agent_id", agentId).eq("pipeline_id", pipelineId);
+    } else {
+      await supabase.from("crm_ai_agent_pipelines")
+        .upsert({ agent_id: agentId, pipeline_id: pipelineId, reply_mode: mode }, { onConflict: "agent_id,pipeline_id" });
+    }
+  };
+
+  const channelIcon = (ch: string) => ch === "instagram"
+    ? <Instagram className="h-3.5 w-3.5" />
+    : <MessageSquare className="h-3.5 w-3.5" />;
+
+  const needsSave = !agentId;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>{agent ? "Editar agente" : "Novo agente"}</DialogTitle>
+          <DialogDescription>Configure o cérebro do agente e onde ele atua.</DialogDescription>
+        </DialogHeader>
+
+        <Tabs value={tab} onValueChange={setTab} className="flex-1 overflow-hidden flex flex-col">
+          <TabsList className="grid grid-cols-4 shrink-0">
+            <TabsTrigger value="config">Configuração</TabsTrigger>
+            <TabsTrigger value="channels">Canais</TabsTrigger>
+            <TabsTrigger value="pipelines">Funis</TabsTrigger>
+            <TabsTrigger value="knowledge">Conhecimento</TabsTrigger>
+          </TabsList>
+
+          <div className="flex-1 overflow-y-auto pr-1 mt-3">
+            {/* CONFIG */}
+            <TabsContent value="config" className="space-y-4 mt-0">
+              <div className="grid gap-2">
+                <Label>Nome *</Label>
+                <Input value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder="Ex: SDR Instagram" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Descrição curta</Label>
+                <Input value={form.description} onChange={(e) => set({ description: e.target.value })} placeholder="Aparece no card do agente" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Objetivo</Label>
+                <Textarea rows={2} value={form.objective} onChange={(e) => set({ objective: e.target.value })} placeholder="O que esse agente precisa alcançar? Ex: qualificar o lead e agendar reunião." />
+              </div>
+              <div className="grid gap-2">
+                <Label>Instruções / persona (cérebro do agente)</Label>
+                <Textarea rows={6} value={form.instructions} onChange={(e) => set({ instructions: e.target.value })} placeholder="Como ele fala, o que pode e não pode fazer, passo a passo do atendimento, regras..." />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <Label>Tom de voz</Label>
+                  <Input value={form.tone} onChange={(e) => set({ tone: e.target.value })} placeholder="Direto, humano, sem emojis" />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Modelo</Label>
+                  <Select value={form.model} onValueChange={(v) => set({ model: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{MODELS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label>Mensagem de abertura (opcional)</Label>
+                <Textarea rows={2} value={form.greeting} onChange={(e) => set({ greeting: e.target.value })} placeholder="Primeira mensagem quando o agente assume a conversa" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <Label>Modo padrão</Label>
+                  <Select value={form.reply_mode} onValueChange={(v) => set({ reply_mode: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="copilot">Copiloto (humano aprova)</SelectItem>
+                      <SelectItem value="auto">Auto-atende</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Criatividade ({form.temperature.toFixed(1)})</Label>
+                  <input type="range" min={0} max={1} step={0.1} value={form.temperature}
+                    onChange={(e) => set({ temperature: parseFloat(e.target.value) })} className="w-full" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <Label>Palavras que devolvem pro humano</Label>
+                  <Input value={form.handoff_keywords} onChange={(e) => set({ handoff_keywords: e.target.value })} placeholder="falar com humano, atendente, reclamação" />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Máx. mensagens por conversa</Label>
+                  <Input type="number" value={form.max_messages} onChange={(e) => set({ max_messages: e.target.value })} placeholder="deixe vazio p/ ilimitado" />
+                </div>
+              </div>
+              <div className="flex justify-end pt-1">
+                <Button onClick={saveConfig} disabled={saving}>
+                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {agentId ? "Salvar configuração" : "Criar agente"}
+                </Button>
+              </div>
+            </TabsContent>
+
+            {/* CHANNELS */}
+            <TabsContent value="channels" className="space-y-3 mt-0">
+              {needsSave ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">Salve a configuração primeiro para vincular instâncias.</p>
+              ) : instances.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma instância disponível.</p>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1"><Radio className="h-3 w-3" /> Marque em quais instâncias esse agente atua.</p>
+                  {instances.map((opt) => {
+                    const key = `${opt.channel}:${opt.id}`;
+                    const active = selectedChannels.has(key);
+                    return (
+                      <div key={key} className="flex items-center justify-between rounded-md border p-2.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {channelIcon(opt.channel)}
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{opt.label}</div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {opt.channel === "instagram" ? "Instagram" : opt.channel === "whatsapp_official" ? "WhatsApp Oficial" : "WhatsApp"}
+                              {opt.sub ? ` · ${opt.sub}` : ""}
+                              {opt.status ? ` · ${opt.status === "connected" ? "conectado" : opt.status}` : ""}
+                            </div>
+                          </div>
+                        </div>
+                        <Switch checked={active} onCheckedChange={() => toggleChannel(opt)} />
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </TabsContent>
+
+            {/* PIPELINES */}
+            <TabsContent value="pipelines" className="space-y-3 mt-0">
+              {needsSave ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">Salve a configuração primeiro para vincular funis.</p>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    Escolha o modo por funil. <Badge variant="outline" className="text-[10px]">Auto</Badge> responde sozinho,
+                    <Badge variant="outline" className="text-[10px]">Copiloto</Badge> sugere, <Badge variant="outline" className="text-[10px]">Desligado</Badge> não atua.
+                  </p>
+                  {pipelines.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between rounded-md border p-2.5">
+                      <span className="text-sm font-medium truncate">{p.name}</span>
+                      <Select value={pipelineModes[p.id] || "off"} onValueChange={(v) => setPipelineMode(p.id, v)}>
+                        <SelectTrigger className="w-36 h-8"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="off">Desligado</SelectItem>
+                          <SelectItem value="auto">Auto-atende</SelectItem>
+                          <SelectItem value="copilot">Copiloto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))}
+                </>
+              )}
+            </TabsContent>
+
+            {/* KNOWLEDGE */}
+            <TabsContent value="knowledge" className="mt-0">
+              {needsSave ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">Salve a configuração primeiro para adicionar conhecimento.</p>
+              ) : (
+                <AgentKnowledgeManager agentId={agentId!} staffId={staffId} />
+              )}
+            </TabsContent>
+          </div>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
