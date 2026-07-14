@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { notifyCrmActivityViaWhatsApp } from "@/lib/crm/notifyActivityWhatsApp";
 import {
@@ -32,6 +32,9 @@ const ACTIVITY_TYPES = [
   { value: "other", label: "Outro" },
 ];
 
+// Papéis que podem atribuir a tarefa a outro usuário
+const ASSIGN_ROLES = ["master", "admin", "head_comercial"];
+
 export const AddActivityDialog = ({ open, onOpenChange, leadId, onSuccess }: AddActivityDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -40,6 +43,40 @@ export const AddActivityDialog = ({ open, onOpenChange, leadId, onSuccess }: Add
     description: "",
     scheduled_at: "",
   });
+
+  // Responsável pela atividade (admin/master/head podem escolher outro usuário)
+  const [myStaffId, setMyStaffId] = useState<string | null>(null);
+  const [canAssign, setCanAssign] = useState(false);
+  const [staffOptions, setStaffOptions] = useState<{ id: string; name: string }[]>([]);
+  const [responsibleId, setResponsibleId] = useState<string>("");
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: staff } = await supabase
+        .from("onboarding_staff")
+        .select("id, role")
+        .eq("user_id", user?.id)
+        .single();
+      if (!active || !staff) return;
+      setMyStaffId(staff.id);
+      setResponsibleId(staff.id);
+      const allowed = ASSIGN_ROLES.includes(staff.role);
+      setCanAssign(allowed);
+      if (allowed) {
+        const { data: list } = await supabase
+          .from("onboarding_staff")
+          .select("id, name")
+          .eq("is_active", true)
+          .in("role", ["master", "admin", "head_comercial", "closer", "sdr"])
+          .order("name");
+        if (active) setStaffOptions(list || []);
+      }
+    })();
+    return () => { active = false; };
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,12 +87,7 @@ export const AddActivityDialog = ({ open, onOpenChange, leadId, onSuccess }: Add
 
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data: staff } = await supabase
-        .from("onboarding_staff")
-        .select("id")
-        .eq("user_id", user?.id)
-        .single();
+      const assignedTo = (canAssign && responsibleId) ? responsibleId : myStaffId;
 
       // Interpreta input "datetime-local" como horário de Brasília (-03:00),
       // independente do fuso do navegador. Ex: "2026-04-28T09:15" → "2026-04-28T09:15:00-03:00"
@@ -69,15 +101,15 @@ export const AddActivityDialog = ({ open, onOpenChange, leadId, onSuccess }: Add
           title: formData.title,
           description: formData.description || null,
           scheduled_at: scheduledIso,
-          responsible_staff_id: staff?.id,
-          created_by: staff?.id,
+          responsible_staff_id: assignedTo,
+          created_by: myStaffId,
           status: "pending",
         });
 
       if (error) throw error;
 
-      // Send WhatsApp notification to responsible staff
-      if (staff?.id) {
+      // Notifica no WhatsApp o responsável pela atividade
+      if (assignedTo) {
         const { data: leadData } = await supabase
           .from("crm_leads")
           .select("name")
@@ -85,7 +117,7 @@ export const AddActivityDialog = ({ open, onOpenChange, leadId, onSuccess }: Add
           .maybeSingle();
 
         notifyCrmActivityViaWhatsApp({
-          staffId: staff.id,
+          staffId: assignedTo,
           leadId,
           leadName: leadData?.name || "Lead",
           activityTitle: formData.title,
@@ -121,6 +153,21 @@ export const AddActivityDialog = ({ open, onOpenChange, leadId, onSuccess }: Add
               </SelectContent>
             </Select>
           </div>
+          {canAssign && (
+            <div>
+              <Label>Responsável</Label>
+              <Select value={responsibleId} onValueChange={setResponsibleId}>
+                <SelectTrigger><SelectValue placeholder="Selecionar responsável" /></SelectTrigger>
+                <SelectContent>
+                  {staffOptions.map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.id === myStaffId ? `${s.name} (você)` : s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div>
             <Label>Título *</Label>
             <Input value={formData.title} onChange={(e) => setFormData(p => ({ ...p, title: e.target.value }))} />
