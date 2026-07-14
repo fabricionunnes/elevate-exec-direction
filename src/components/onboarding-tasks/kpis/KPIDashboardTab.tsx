@@ -1026,7 +1026,8 @@ export const KPIDashboardTab = ({
       const baseTarget = getEffectiveTargetForKpi(kpi);
       let monthlyTarget = baseTarget;
       if (kpi.periodicity === "daily") {
-        monthlyTarget = baseTarget * daysInMonth;
+        // Meta diária x dias UTEIS do mes (respeita marcacao de fim de semana/feriado)
+        monthlyTarget = baseTarget * (totalWorkingDays > 0 ? totalWorkingDays : daysInMonth);
       } else if (kpi.periodicity === "weekly") {
         monthlyTarget = baseTarget * Math.ceil(daysInMonth / 7);
       }
@@ -2242,6 +2243,7 @@ export const KPIDashboardTab = ({
           .map((s) => s.id)}
         isClientView={isSalespersonView}
         currentSalespersonRankPosition={isSalespersonView ? getMyRankingPosition : undefined}
+        onSettingsChange={setDaySettings}
       />)}
 
       {/* Unit Ranking — empresas com mais de uma unidade */}

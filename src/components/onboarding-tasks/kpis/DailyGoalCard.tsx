@@ -65,6 +65,7 @@ interface DailyGoalCardProps {
   leadershipSectorIds?: string[];
   isClientView?: boolean;
   currentSalespersonRankPosition?: (kpiId: string) => number | null;
+  onSettingsChange?: (s: { includeSaturday: boolean; includeSunday: boolean; includeHolidays: boolean }) => void;
 }
 
 function getRemainingDaysInMonth(
@@ -110,6 +111,7 @@ export const DailyGoalCard = ({
   leadershipSectorIds = [],
   isClientView = false,
   currentSalespersonRankPosition,
+  onSettingsChange,
 }: DailyGoalCardProps) => {
   const [includeSaturday, setIncludeSaturday] = useState(false);
   const [includeSunday, setIncludeSunday] = useState(false);
@@ -155,14 +157,17 @@ export const DailyGoalCard = ({
   const handleSaturdayChange = (v: boolean) => {
     setIncludeSaturday(v);
     saveSettings(v, includeSunday, includeHolidays);
+    onSettingsChange?.({ includeSaturday: v, includeSunday, includeHolidays });
   };
   const handleSundayChange = (v: boolean) => {
     setIncludeSunday(v);
     saveSettings(includeSaturday, v, includeHolidays);
+    onSettingsChange?.({ includeSaturday, includeSunday: v, includeHolidays });
   };
   const handleHolidaysChange = (v: boolean) => {
     setIncludeHolidays(v);
     saveSettings(includeSaturday, includeSunday, v);
+    onSettingsChange?.({ includeSaturday, includeSunday, includeHolidays: v });
   };
 
   const mainGoalKpis = useMemo(() => kpis.filter((k) => k.is_main_goal), [kpis]);
