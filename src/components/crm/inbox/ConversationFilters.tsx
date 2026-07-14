@@ -85,6 +85,7 @@ interface Origin {
   id: string;
   name: string;
   group_id: string | null;
+  pipeline_id?: string | null;
 }
 
 interface Stage {
@@ -154,24 +155,24 @@ export function ConversationFilters({
       setOriginGroups(groupsData as OriginGroup[]);
     }
 
-    // Fetch origins (pipelines)
+    // Fetch origins (funis) com pipeline_id pra ligar às etapas
     const { data: originsData } = await supabase
       .from("crm_origins")
-      .select("id, name, group_id")
+      .select("id, name, group_id, pipeline_id")
       .eq("is_active", true);
     
     if (originsData) {
       setOrigins(originsData as Origin[]);
     }
 
-    // Fetch stages from crm_pipelines (which actually stores stages)
+    // Etapas REAIS ficam em crm_stages (crm_pipelines guarda os funis).
     const { data: stagesData } = await supabase
-      .from("crm_pipelines")
-      .select("id, name")
-      .eq("is_active", true);
+      .from("crm_stages")
+      .select("id, name, pipeline_id, sort_order")
+      .order("sort_order", { ascending: true });
     
     if (stagesData) {
-      setStages(stagesData.map((s: any) => ({ id: s.id, name: s.name, pipeline_id: "" })));
+      setStages(stagesData.map((s: any) => ({ id: s.id, name: s.name, pipeline_id: s.pipeline_id })));
     }
 
     // Fetch WhatsApp instances (Evolution API)
@@ -472,7 +473,7 @@ export function ConversationFilters({
               {/* Negócio nas origens */}
               <div className="space-y-1">
                 <Label className="text-sm text-muted-foreground">Negócio nas origens</Label>
-                <Select value={filters.dealOrigin} onValueChange={(v) => updateFilter("dealOrigin", v)}>
+                <Select value={filters.dealOrigin} onValueChange={(v) => { updateFilter("dealOrigin", v); if (filters.dealStage) updateFilter("dealStage", ""); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
@@ -489,12 +490,17 @@ export function ConversationFilters({
                 <Label className="text-sm text-muted-foreground">Negócio nas etapas</Label>
                 <Select value={filters.dealStage} onValueChange={(v) => updateFilter("dealStage", v)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione..." />
+                    <SelectValue placeholder={filters.dealOrigin ? "Selecione..." : "Escolha o funil primeiro"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {stages.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
+                    {(() => {
+                      const selectedOrigin = origins.find((o) => o.id === filters.dealOrigin);
+                      const pid = selectedOrigin?.pipeline_id;
+                      const visible = pid ? stages.filter((s) => s.pipeline_id === pid) : stages;
+                      return visible.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ));
+                    })()}
                   </SelectContent>
                 </Select>
               </div>
