@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -361,6 +361,15 @@ const ClientAccessReportPage = () => {
     setExpandedSessions(newExpanded);
   };
 
+  const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set());
+  const toggleCompany = (key: string) => {
+    setExpandedCompanies(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
   const formatDuration = (minutes: number | null) => {
     if (!minutes || minutes === 0) return "-";
     if (minutes < 60) return `${minutes}min`;
@@ -399,6 +408,26 @@ const ClientAccessReportPage = () => {
       companyName.toLowerCase().includes(search)
     );
   });
+
+  // Agrupa os acessos por empresa (nível 1); dentro, os acessos por usuário.
+  const groupedByCompany = useMemo(() => {
+    const map = new Map<string, { key: string; companyId: string | null; companyName: string; logs: AccessLog[] }>();
+    for (const log of filteredLogs) {
+      const key = log.company_id || "sem-empresa";
+      if (!map.has(key)) {
+        map.set(key, { key, companyId: log.company_id, companyName: getCompanyName(log.company_id), logs: [] });
+      }
+      map.get(key)!.logs.push(log);
+    }
+    return Array.from(map.values())
+      .map(g => ({
+        ...g,
+        users: new Set(g.logs.map(l => l.user_id)).size,
+        online: g.logs.some(l => l.is_active),
+        lastAccess: g.logs.reduce((max, l) => (l.login_at > max ? l.login_at : max), g.logs[0].login_at),
+      }))
+      .sort((a, b) => (b.lastAccess > a.lastAccess ? 1 : -1));
+  }, [filteredLogs, companies]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -677,7 +706,9 @@ const ClientAccessReportPage = () => {
                     Nenhum registro encontrado
                   </p>
                 ) : (
-                  filteredLogs.map(log => {
+                  groupedByCompany.map(group => {
+                    const companyExpanded = expandedCompanies.has(group.key);
+                    const renderSession = (log: AccessLog) => {
                     const isExpanded = expandedSessions.has(log.id);
                     const activities = activityLogs.get(log.id) || [];
                     const isLoadingActivities = loadingActivities.has(log.id);
@@ -789,6 +820,59 @@ const ClientAccessReportPage = () => {
                                   ))}
                                 </div>
                               )}
+                            </div>
+                          </CollapsibleContent>
+                        </div>
+                      </Collapsible>
+                    );
+                    };
+
+                    return (
+                      <Collapsible key={group.key} open={companyExpanded} onOpenChange={() => toggleCompany(group.key)}>
+                        <div className="border rounded-lg overflow-hidden">
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" className="w-full p-3 h-auto flex items-center justify-between hover:bg-muted/50">
+                              <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <Building2 className="h-5 w-5 text-primary" />
+                                </div>
+                                <div className="text-left">
+                                  <p className="font-semibold text-sm">{group.companyName}</p>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <User className="h-3 w-3" />
+                                    {group.users} usuário{group.users !== 1 ? "s" : ""}
+                                    <span className="mx-1">•</span>
+                                    {group.logs.length} acesso{group.logs.length !== 1 ? "s" : ""}
+                                    <span className="mx-1">•</span>
+                                    <Calendar className="h-3 w-3" />
+                                    último {format(new Date(group.lastAccess), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                {group.online && (
+                                  <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+                                    <span className="relative flex h-2 w-2 mr-1">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                                    </span>
+                                    Online
+                                  </Badge>
+                                )}
+                                {companyExpanded ? (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </div>
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="border-t bg-muted/10 p-2 space-y-2">
+                              {group.logs
+                                .slice()
+                                .sort((a, b) => (b.login_at > a.login_at ? 1 : -1))
+                                .map(log => renderSession(log))}
                             </div>
                           </CollapsibleContent>
                         </div>
