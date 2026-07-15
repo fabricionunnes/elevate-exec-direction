@@ -179,6 +179,108 @@ Deno.serve(async (req) => {
       return j({ ok: true, tool: body0.tool, result });
     }
 
+    // ---------- Follow-up automático (cron): reativa leads que pararam de responder ----------
+    if (body0.action === "followups") {
+      const results: string[] = [];
+      const { data: agents } = await supabase.from("crm_ai_agents")
+        .select("*").eq("is_active", true).eq("followup_enabled", true);
+      for (const agent of (agents || [])) {
+        // horário de atendimento vale pro follow-up também
+        if (agent.work_hours_enabled) {
+          const brNow = new Date(Date.now() - 3 * 3600000);
+          const h = brNow.getUTCHours(); const dow = brNow.getUTCDay();
+          const days: number[] | null = agent.work_days || null;
+          if ((days && days.length && !days.includes(dow)) || h < (agent.work_hour_start ?? 8) || h >= (agent.work_hour_end ?? 20)) continue;
+        }
+        const afterMin = Math.max(15, agent.followup_after_minutes || 60);
+        const maxAtt = Math.max(1, agent.followup_max_attempts || 2);
+        const { data: bindings } = await supabase.from("crm_ai_agent_channels")
+          .select("channel, instance_id").eq("agent_id", agent.id);
+        for (const b of (bindings || [])) {
+          const isBIG = b.channel === "instagram";
+          const convTable = isBIG ? "instagram_conversations" : "crm_whatsapp_conversations";
+          const msgTable = isBIG ? "instagram_messages" : "crm_whatsapp_messages";
+          const tsCol = isBIG ? "timestamp" : "created_at";
+          const { data: convs } = await supabase.from(convTable)
+            .select(isBIG
+              ? "id, instance_id, lead_id, contact:instagram_contacts(name, username)"
+              : "id, instance_id, lead_id, contact:crm_whatsapp_contacts(name, phone)")
+            .eq("instance_id", b.instance_id)
+            .lt("last_message_at", new Date(Date.now() - afterMin * 60000).toISOString())
+            .gt("last_message_at", new Date(Date.now() - 7 * 86400000).toISOString())
+            .order("last_message_at", { ascending: false }).limit(30);
+          for (const cv of (convs || [])) {
+            if (results.length >= 10) break; // no máx 10 follow-ups por rodada
+            // WhatsApp: nunca em grupo
+            if (!isBIG) {
+              const ph = String((cv as any).contact?.phone || "");
+              if (ph.includes("@") || ph.includes("-") || ph.replace(/\D/g, "").length > 15) continue;
+            }
+            // agente desligado nesta conversa?
+            const { data: ov } = await supabase.from("crm_ai_agent_conversation_overrides")
+              .select("enabled, reply_mode").eq("conversation_id", cv.id).eq("channel", b.channel).maybeSingle();
+            if (ov && ov.enabled === false) continue;
+            // follow-up só em modo auto (override > funil > padrão)
+            let fmode = agent.reply_mode || "copilot";
+            if (ov?.reply_mode) fmode = ov.reply_mode;
+            else if (cv.lead_id) {
+              const { data: lead } = await supabase.from("crm_leads").select("pipeline_id").eq("id", cv.lead_id).maybeSingle();
+              if (lead?.pipeline_id) {
+                const { data: bind } = await supabase.from("crm_ai_agent_pipelines")
+                  .select("reply_mode").eq("agent_id", agent.id).eq("pipeline_id", lead.pipeline_id).maybeSingle();
+                if (bind?.reply_mode) fmode = bind.reply_mode;
+              }
+            }
+            if (fmode !== "auto") continue;
+            // histórico: precisa terminar em outbound (lead sumiu) e ter tido inbound antes
+            const { data: hist } = await supabase.from(msgTable)
+              .select(`direction, content, ${tsCol}`).eq("conversation_id", cv.id)
+              .order(tsCol, { ascending: true }).limit(40);
+            const hm = (hist || []).filter((m: any) => (m.content || "").trim().length > 0);
+            if (hm.length < 2) continue;
+            if (hm[hm.length - 1].direction !== "outbound") continue;
+            let trailing = 0;
+            for (let i = hm.length - 1; i >= 0 && hm[i].direction === "outbound"; i--) trailing++;
+            if (trailing >= hm.length) continue; // nunca teve resposta do lead
+            if (trailing - 1 >= maxAtt) continue; // já esgotou as tentativas
+            // monta prompt de reativação
+            const leadNm = (cv as any).contact?.name || (cv as any).contact?.username || "o lead";
+            const histTxt = hm.slice(-14).map((m: any) => `${m.direction === "inbound" ? leadNm : "Você"}: ${m.content}`).join("\n");
+            const fuSystem = [
+              agent.instructions || "Você é um atendente comercial.",
+              agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
+              `\n\nO lead parou de responder. Escreva UMA mensagem CURTA de follow-up (1-2 frases) retomando a conversa de forma leve e humana, sem pressão e sem repetir perguntas já respondidas. Referencie o assunto em aberto. Não use markdown. Nunca revele que é uma IA.`,
+            ].join("");
+            const aiR = await fetch("https://api.anthropic.com/v1/messages", {
+              method: "POST",
+              headers: { "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+              body: JSON.stringify({ model: agent.model || "claude-sonnet-5", system: fuSystem, max_tokens: 300,
+                messages: [{ role: "user", content: `Histórico:\n${histTxt}\n\nEscreva o follow-up agora.` }] }),
+            });
+            if (!aiR.ok) continue;
+            const aiD = await aiR.json();
+            const fuTexts = (Array.isArray(aiD?.content) ? aiD.content : []).filter((x: any) => x?.type === "text").map((x: any) => String(x.text));
+            const fuReply = [...new Set(fuTexts)].join("").trim();
+            if (!fuReply) continue;
+            if (body0.dry_run) { results.push(`[dry] ${b.channel}/${cv.id}: ${fuReply.slice(0, 80)}`); continue; }
+            if (isBIG) {
+              const { error: se } = await supabase.functions.invoke("instagram-send", {
+                body: { conversationId: cv.id, message: fuReply, staffId: null } });
+              if (se) continue;
+            } else {
+              const ph = String((cv as any).contact?.phone || "").replace(/\D/g, "");
+              const sent = await sendWhatsAppText(supabase, (cv as any).instance_id, ph, fuReply);
+              if (!sent.ok) continue;
+              await supabase.from("crm_whatsapp_conversations").update({
+                last_message: fuReply.substring(0, 255), last_message_at: new Date().toISOString() }).eq("id", cv.id);
+            }
+            results.push(`${b.channel}/${cv.id}: enviado`);
+          }
+        }
+      }
+      return j({ ok: true, followups: results.length, detail: results });
+    }
+
     if (channel !== "instagram" && channel !== "whatsapp") return j({ ok: false, skip: "canal não suportado" });
     if (!conversation_id) return j({ ok: false, error: "conversation_id obrigatório" }, 400);
     const isIG = channel === "instagram";
@@ -304,6 +406,21 @@ Deno.serve(async (req) => {
       msgs = (history || []).map((m: any) => ({ direction: m.direction, content: m.content || "", ts: m.created_at }));
     }
     msgs = msgs.filter((m) => m.content.trim().length > 0);
+    // Higieniza histórico já poluído: (a) colapsa "texto+texto" dentro da mesma
+    // mensagem; (b) remove cópia consecutiva idêntica (eco gravado em dobro).
+    const unhalve = (t: string) => {
+      const s2 = t.trim();
+      if (s2.length >= 20 && s2.length % 2 === 0) {
+        const half = s2.length / 2;
+        const a = s2.slice(0, half).trim(), b = s2.slice(half).trim();
+        if (a === b) return a;
+      }
+      const nl = s2.indexOf("\n" + s2.slice(0, 40));
+      if (nl > 0 && s2.slice(nl + 1).trim() === s2.slice(0, nl).trim()) return s2.slice(0, nl).trim();
+      return s2;
+    };
+    msgs = msgs.map((m) => ({ ...m, content: unhalve(m.content) }));
+    msgs = msgs.filter((m, i) => !(i > 0 && msgs[i - 1].direction === m.direction && msgs[i - 1].content === m.content));
     if (msgs.length === 0) return { ok: true, skip: "sem conteúdo textual" };
     if (msgs[msgs.length - 1].direction !== "inbound") return { ok: true, skip: "última mensagem não é do lead" };
 
@@ -344,7 +461,7 @@ Deno.serve(async (req) => {
       knowledge ? `\n\nBASE DE CONHECIMENTO (use quando relevante, não invente):${knowledge}` : "",
       `\n\nData/hora atual (Brasília): ${nowBR}.`,
       tools.length ? `\nVocê TEM ferramentas de agenda/funil. Para agendar: consulte horários com consultar_horarios, ofereça 2-3 opções, e SÓ agende com agendar_reuniao após o lead confirmar um horário.` : "",
-      `\n\nVocê está respondendo uma conversa de ${channelLabel} com ${leadName}. Responda como mensagem: curta, humana, sem markdown, sem títulos, uma ideia por mensagem. Nunca revele que é uma IA. Se não souber algo, seja honesto e ofereça encaminhar para uma pessoa.`,
+      `\n\nVocê está respondendo uma conversa de ${channelLabel} com ${leadName}. Responda como mensagem: curta, humana, sem markdown, sem títulos, uma ideia por mensagem. NUNCA repita uma pergunta que o lead já respondeu — antes de perguntar, confira o histórico. Escreva a resposta UMA única vez, sem repetir o texto. Nunca revele que é uma IA. Se não souber algo, seja honesto e ofereça encaminhar para uma pessoa.`,
     ].join("");
 
     // Alternância user/assistant exigida pela API (mescla consecutivas, começa em user)
@@ -404,7 +521,9 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      reply = content.filter((b: any) => b?.type === "text").map((b: any) => b.text).join("").trim();
+      const texts = content.filter((b: any) => b?.type === "text").map((b: any) => String(b.text));
+      reply = [...new Set(texts)].join("").trim();
+      reply = unhalve(reply);
       break;
     }
     if (!reply) return { ok: true, skip: "resposta vazia da IA", tool_calls: toolCalls };
@@ -422,10 +541,9 @@ Deno.serve(async (req) => {
         const phone = String(conv.contact?.phone || "").replace(/\D/g, "");
         const sent = await sendWhatsAppText(supabase, conv.instance_id, phone, reply);
         if (!sent.ok) return { ok: false, error: "falha ao enviar WhatsApp", detail: sent.error };
-        // registra a mensagem outbound e atualiza a conversa
-        await supabase.from("crm_whatsapp_messages").insert({
-          conversation_id, content: reply, type: "text", direction: "outbound", status: "sent", sent_by: null,
-        });
+        // NÃO insere a mensagem aqui: o eco do webhook do Stevo já grava o outbound
+        // (com remote_id). Gravar dos dois lados duplicava o histórico e o modelo
+        // passava a IMITAR o padrão, gerando o texto 2x dentro da própria resposta.
         await supabase.from("crm_whatsapp_conversations").update({
           last_message: reply.substring(0, 255), last_message_at: new Date().toISOString(),
         }).eq("id", conversation_id);

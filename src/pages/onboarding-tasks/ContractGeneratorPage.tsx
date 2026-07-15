@@ -12,11 +12,12 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw, Copy, Pencil, Send, Loader2, Clock, ExternalLink, Check, XCircle, Trash2, Search, ChevronLeft, ChevronRight, Settings } from "lucide-react";
+import { ArrowLeft, FileText, Download, CheckCircle2, Home, History, Eye, Calendar, DollarSign, RefreshCw, Copy, Pencil, Send, Loader2, Clock, ExternalLink, Check, XCircle, Trash2, Search, ChevronLeft, ChevronRight, Settings , Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import { mergePdfBlobs } from "@/lib/pdf/mergePdfs";
 import ContractForm, { type ContractFormData } from "@/components/contract-generator/ContractForm";
 import ContractPreview from "@/components/contract-generator/ContractPreview";
 import ClausesEditor, { getDefaultEditableClauses, getEditableClausesWithSavedTemplate, type EditableClause } from "@/components/contract-generator/ClausesEditor";
@@ -141,6 +142,46 @@ export default function ContractGeneratorPage() {
   
   // ZapSign integration states
   const [isSendingToZapSign, setIsSendingToZapSign] = useState(false);
+  // Anexos (PDF) que entram no MESMO envelope de assinatura, mesclados ao contrato
+  const [signatureAttachments, setSignatureAttachments] = useState<File[]>([]);
+
+  const addSignatureAttachments = (files: FileList | null) => {
+    if (!files) return;
+    const pdfs = Array.from(files).filter((f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
+    if (pdfs.length !== files.length) toast.error("Só PDFs podem ser assinados junto ao contrato");
+    if (pdfs.some((f) => f.size > 15 * 1024 * 1024)) { toast.error("Anexo acima de 15MB"); return; }
+    setSignatureAttachments((prev) => [...prev, ...pdfs]);
+  };
+
+  // Bloco de anexos pro envelope (usado no pós-geração e no histórico)
+  const renderAttachmentPicker = () => (
+    <div className="space-y-1.5">
+      <label className="text-xs font-medium flex items-center gap-1.5">
+        <Paperclip className="h-3.5 w-3.5" /> Anexos assinados junto (opcional, PDF)
+      </label>
+      <input
+        type="file"
+        accept="application/pdf,.pdf"
+        multiple
+        className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-md file:border file:border-input file:bg-background file:px-2.5 file:py-1 file:text-xs hover:file:bg-muted"
+        onChange={(e) => { addSignatureAttachments(e.target.files); e.target.value = ""; }}
+      />
+      {signatureAttachments.length > 0 && (
+        <ul className="space-y-1">
+          {signatureAttachments.map((f, i) => (
+            <li key={`${f.name}-${i}`} className="flex items-center justify-between text-xs bg-muted/50 rounded px-2 py-1">
+              <span className="truncate">{f.name} <span className="text-muted-foreground">({(f.size / 1024).toFixed(0)} KB)</span></span>
+              <button type="button" className="text-destructive ml-2" onClick={() => setSignatureAttachments((prev) => prev.filter((_, x) => x !== i))}>
+                remover
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="text-[11px] text-muted-foreground">O anexo vira páginas extras do mesmo documento — o cliente assina tudo de uma vez.</p>
+    </div>
+  );
+
   const [zapSignSent, setZapSignSent] = useState(false);
   const [lastGeneratedPdfUrl, setLastGeneratedPdfUrl] = useState<string | null>(null);
   const [historyZapSignSent, setHistoryZapSignSent] = useState(false);
@@ -599,6 +640,7 @@ export default function ContractGeneratorPage() {
     setIsGenerating(true);
     setZapSignSent(false);
     setLastSavedContractId(null);
+    setSignatureAttachments([]);
 
     // Track if this is an edit (before saveContract clears the state)
     const isEditMode = !!editingContractId;
@@ -660,6 +702,11 @@ export default function ContractGeneratorPage() {
         pdfBlob = await pdfRes.blob();
       }
 
+      // Anexos assinados junto: mescla ao contrato num único PDF
+      if (signatureAttachments.length) {
+        pdfBlob = await mergePdfBlobs(pdfBlob, signatureAttachments);
+      }
+
       // Build FormData for create-envelope
       const session = (await supabase.auth.getSession()).data.session;
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -706,6 +753,7 @@ export default function ContractGeneratorPage() {
       }
 
       setZapSignSent(true);
+      setSignatureAttachments([]);
       toast.success("Contrato enviado para assinatura!");
     } catch (error: any) {
       console.error("Erro ao enviar para assinatura:", error);
@@ -733,7 +781,12 @@ export default function ContractGeneratorPage() {
       // Fetch PDF blob
       const pdfRes = await fetch(selectedContract.pdf_url);
       if (!pdfRes.ok) throw new Error(`Erro ao baixar PDF: HTTP ${pdfRes.status}`);
-      const pdfBlob = await pdfRes.blob();
+      let pdfBlob: Blob = await pdfRes.blob();
+
+      // Anexos assinados junto: mescla ao contrato num único PDF
+      if (signatureAttachments.length) {
+        pdfBlob = await mergePdfBlobs(pdfBlob, signatureAttachments);
+      }
 
       const session = (await supabase.auth.getSession()).data.session;
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -787,6 +840,7 @@ export default function ContractGeneratorPage() {
       );
 
       setHistoryZapSignSent(true);
+      setSignatureAttachments([]);
       // Refresh signature status from internal system
       await checkSignatureStatus(createData.data?.envelope_id);
       await loadContracts();
@@ -1585,6 +1639,8 @@ export default function ContractGeneratorPage() {
                     <p><strong>Contratante:</strong> {formData.clientEmail || "e-mail não informado"}</p>
                   </div>
                   
+                  {renderAttachmentPicker()}
+
                   <Button
                     onClick={handleSendToEnvelope}
                     disabled={isSendingToZapSign || !formData.clientEmail}
@@ -1884,6 +1940,8 @@ export default function ContractGeneratorPage() {
                           <p><strong>Contratante:</strong> {selectedContract.client_email || "E-mail não informado"}</p>
                         </div>
                         
+                        {renderAttachmentPicker()}
+
                         <Button
                           onClick={handleSendToEnvelopeFromHistory}
                           disabled={isSendingToZapSign || !selectedContract.client_email}

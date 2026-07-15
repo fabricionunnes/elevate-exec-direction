@@ -43,6 +43,7 @@ const emptyForm = {
   response_delay_seconds: 0,
   work_hours_enabled: false, work_hour_start: 8, work_hour_end: 20,
   work_days: [] as number[],
+  followup_enabled: false, followup_after_minutes: 60, followup_max_attempts: 2,
 };
 
 export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId, onSaved }: Props) {
@@ -106,6 +107,9 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
         work_hour_start: agent.work_hour_start ?? 8,
         work_hour_end: agent.work_hour_end ?? 20,
         work_days: agent.work_days || [],
+        followup_enabled: !!agent.followup_enabled,
+        followup_after_minutes: agent.followup_after_minutes ?? 60,
+        followup_max_attempts: agent.followup_max_attempts ?? 2,
       });
     } else {
       setAgentId(null);
@@ -159,6 +163,9 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
       work_hour_start: form.work_hour_start,
       work_hour_end: form.work_hour_end,
       work_days: form.work_days.length ? form.work_days : null,
+      followup_enabled: form.followup_enabled,
+      followup_after_minutes: form.followup_after_minutes,
+      followup_max_attempts: form.followup_max_attempts,
       updated_at: new Date().toISOString(),
     };
     try {
@@ -373,6 +380,48 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
                       <p className="text-xs text-destructive">O fim precisa ser maior que o início.</p>
                     )}
                   </>
+                )}
+              </div>
+
+              <div className="rounded-md border p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm">Follow-up automático</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Se o lead parar de responder, o agente manda uma mensagem curta reativando a conversa.
+                      Só em funis no modo auto-atende e dentro do horário de atendimento.
+                    </p>
+                  </div>
+                  <Switch checked={form.followup_enabled} onCheckedChange={(v) => set({ followup_enabled: v })} />
+                </div>
+                {form.followup_enabled && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-2">
+                      <Label className="text-xs">Reativar após</Label>
+                      <Select value={String(form.followup_after_minutes)} onValueChange={(v) => set({ followup_after_minutes: parseInt(v, 10) })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="30">30 minutos</SelectItem>
+                          <SelectItem value="60">1 hora</SelectItem>
+                          <SelectItem value="120">2 horas</SelectItem>
+                          <SelectItem value="240">4 horas</SelectItem>
+                          <SelectItem value="480">8 horas</SelectItem>
+                          <SelectItem value="1440">24 horas</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label className="text-xs">Máx. de tentativas</Label>
+                      <Select value={String(form.followup_max_attempts)} onValueChange={(v) => set({ followup_max_attempts: parseInt(v, 10) })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1</SelectItem>
+                          <SelectItem value="2">2</SelectItem>
+                          <SelectItem value="3">3</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 )}
               </div>
               <div className="flex justify-end pt-1">
