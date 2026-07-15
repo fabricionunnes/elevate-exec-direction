@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Copy, ArrowLeft, Download, CheckCircle2, Clock, Eye, XCircle, AlertCircle, Link2, Loader2 } from "lucide-react";
+import { Copy, ArrowLeft, Download, CheckCircle2, Clock, Eye, XCircle, AlertCircle, Link2, Loader2, Pencil } from "lucide-react";
+import { EnvelopeEditDialog } from "./EnvelopeEditDialog";
 import type { Envelope, Signer, AuditEvent, SignerStatus, AuditEventType } from "@/types/signatures";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -40,6 +41,7 @@ const AUDIT_LABELS: Record<AuditEventType, string> = {
   declined: "Recusou",
   expired: "Expirado",
   cancelled: "Cancelado",
+  document_modified: "Documento editado",
 };
 
 export function EnvelopeDetail({ envelopeId, onBack }: Props) {
@@ -49,27 +51,28 @@ export function EnvelopeDetail({ envelopeId, onBack }: Props) {
   const [loading, setLoading] = useState(true);
   const [copyingLink, setCopyingLink] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchAll = async () => {
-      setLoading(true);
-      try {
-        const [{ data: env }, { data: sgs }, { data: audit }] = await Promise.all([
-          supabase.from("envelopes").select("*").eq("id", envelopeId).maybeSingle(),
-          supabase.from("signers").select("*").eq("envelope_id", envelopeId).order("order_index"),
-          supabase.from("audit_events").select("*").eq("envelope_id", envelopeId).order("created_at"),
-        ]);
-        setEnvelope(env as Envelope);
-        setSigners((sgs as Signer[]) ?? []);
-        setAuditEvents((audit as AuditEvent[]) ?? []);
-      } catch (err) {
-        console.error(err);
-        toast.error("Erro ao carregar detalhes");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAll();
-  }, [envelopeId]);
+  const [editOpen, setEditOpen] = useState(false);
+
+  const fetchAll = async () => {
+    setLoading(true);
+    try {
+      const [{ data: env }, { data: sgs }, { data: audit }] = await Promise.all([
+        supabase.from("envelopes").select("*").eq("id", envelopeId).maybeSingle(),
+        supabase.from("signers").select("*").eq("envelope_id", envelopeId).order("order_index"),
+        supabase.from("audit_events").select("*").eq("envelope_id", envelopeId).order("created_at"),
+      ]);
+      setEnvelope(env as Envelope);
+      setSigners((sgs as Signer[]) ?? []);
+      setAuditEvents((audit as AuditEvent[]) ?? []);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao carregar detalhes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchAll(); }, [envelopeId]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text).then(() => toast.success(`${label} copiado`));
@@ -140,11 +143,18 @@ export function EnvelopeDetail({ envelopeId, onBack }: Props) {
                 Criado em {format(new Date(envelope.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
               </p>
             </div>
-            {envelope.status === "completed" && (
-              <Button size="sm" onClick={handleDownloadFinal}>
-                <Download className="h-4 w-4 mr-1" /> PDF Final
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {!["completed", "cancelled"].includes(envelope.status) && !signers.some((s) => s.status === "signed") && (
+                <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
+                  <Pencil className="h-4 w-4 mr-1" /> Editar
+                </Button>
+              )}
+              {envelope.status === "completed" && (
+                <Button size="sm" onClick={handleDownloadFinal}>
+                  <Download className="h-4 w-4 mr-1" /> PDF Final
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -258,6 +268,16 @@ export function EnvelopeDetail({ envelopeId, onBack }: Props) {
           </div>
         </CardContent>
       </Card>
+
+      {envelope && (
+        <EnvelopeEditDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          envelope={envelope}
+          signers={signers}
+          onSaved={fetchAll}
+        />
+      )}
     </div>
   );
 }
