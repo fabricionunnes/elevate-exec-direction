@@ -25,6 +25,7 @@ interface Props {
   leadId: string;
   leadPhone?: string | null;
   leadName?: string | null;
+  leadInstagram?: string | null;
 }
 
 type Channel = "whatsapp" | "whatsapp_official" | "instagram";
@@ -81,7 +82,7 @@ const phoneVariants = (phoneRaw: string): string[] => {
   return [...out];
 };
 
-export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => {
+export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagram }: Props) => {
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -292,25 +293,51 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
         }
       }
 
-      // 3) Instagram conversations linked to lead
-      const { data: igConvs } = await (supabase as any)
-        .from("instagram_conversations")
-        .select(`
+      // 3) Conversas de Instagram: vinculadas ao lead E as do @ do lead (mesmo que
+      // estejam penduradas no lead auto-criado pelo funil — dedup por id).
+      // ATENÇÃO: o embed usa os nomes reais das colunas de instagram_instances
+      // (instance_name/instagram_username/page_name) — nomes errados fazem o
+      // PostgREST devolver erro e NENHUMA conversa de IG aparecer.
+      const igSelect = `
           *,
           contact:instagram_contacts(id, name, username, profile_picture_url),
-          instance:instagram_instances(id, account_name, username)
-        `)
+          instance:instagram_instances(id, instance_name, instagram_username, page_name)
+        `;
+      const { data: igLinked } = await (supabase as any)
+        .from("instagram_conversations")
+        .select(igSelect)
         .eq("lead_id", leadId)
         .order("last_message_at", { ascending: false, nullsFirst: false });
 
-      for (const c of igConvs || []) {
+      let igByHandle: any[] = [];
+      const handle = (leadInstagram || "").replace(/^@/, "").trim();
+      if (handle) {
+        const { data: cts } = await (supabase as any)
+          .from("instagram_contacts")
+          .select("id")
+          .ilike("username", handle);
+        const ctIds = (cts || []).map((c: any) => c.id);
+        if (ctIds.length) {
+          const { data } = await (supabase as any)
+            .from("instagram_conversations")
+            .select(igSelect)
+            .in("contact_id", ctIds)
+            .order("last_message_at", { ascending: false, nullsFirst: false });
+          igByHandle = data || [];
+        }
+      }
+
+      const igSeen = new Set<string>();
+      for (const c of [...(igLinked || []), ...igByHandle]) {
+        if (igSeen.has(c.id) || all.some((x) => x.id === c.id)) continue;
+        igSeen.add(c.id);
         const contact: any = c.contact;
         const inst: any = (c as any).instance;
         all.push({
           id: c.id,
           channel: "instagram",
           instance_id: c.instance_id,
-          instance_label: inst?.account_name || inst?.username || "Instagram",
+          instance_label: inst?.page_name || inst?.instagram_username || inst?.instance_name || "Instagram",
           contact_label: contact?.name || contact?.username || "Contato",
           last_message: c.last_message,
           last_message_at: c.last_message_at,
@@ -344,7 +371,7 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName }: Props) => 
     } finally {
       setLoading(false);
     }
-  }, [leadId, leadPhone, activeId, isMaster, allowedWaInstanceIds]);
+  }, [leadId, leadPhone, leadInstagram, activeId, isMaster, allowedWaInstanceIds]);
 
   useEffect(() => {
     fetchConversations();
