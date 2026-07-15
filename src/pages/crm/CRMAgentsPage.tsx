@@ -27,6 +27,12 @@ export interface AIAgent {
   is_active: boolean;
   handoff_keywords: string[] | null;
   max_messages: number | null;
+  scheduling_enabled?: boolean;
+  scheduling_staff_ids?: string[] | null;
+  schedule_hour_start?: number;
+  schedule_hour_end?: number;
+  meeting_duration_minutes?: number;
+  can_move_stage?: boolean;
   created_at: string;
 }
 

@@ -27,7 +27,9 @@ import {
   User,
   ArrowRightLeft,
   Briefcase,
+  Bot,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { WhatsAppConversation } from "@/hooks/useWhatsAppConversations";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -60,6 +62,11 @@ export function ConversationSidebar({
   onAssignmentChanged
 }: ConversationSidebarProps) {
   const { staffId } = useCRMContext();
+
+  // Agente de IA vinculado à instância desta conversa + override liga/desliga
+  const [convAgent, setConvAgent] = useState<{ id: string; name: string } | null>(null);
+  const [agentEnabled, setAgentEnabled] = useState(true);
+  const [savingAgentToggle, setSavingAgentToggle] = useState(false);
   const [showAddDealDialog, setShowAddDealDialog] = useState(false);
   const [showChangePipelineDialog, setShowChangePipelineDialog] = useState(false);
   const [selectedLeadForPipelineChange, setSelectedLeadForPipelineChange] = useState<any>(null);
@@ -83,6 +90,59 @@ export function ConversationSidebar({
   // aqui: lead_id, assigned_to, status) — sem isso os updates iam pra tabela errada.
   const isInstagram = (conversation as any).channel === "instagram";
   const conversationTable = (isInstagram ? "instagram_conversations" : "crm_whatsapp_conversations") as "crm_whatsapp_conversations";
+  const agentChannel = isInstagram ? "instagram" : "whatsapp";
+  const agentInstanceId = isInstagram
+    ? (conversation as any).instagram_instance_id
+    : conversation.instance_id;
+
+  // Carrega o agente de IA ativo desta instância + estado do override da conversa
+  useEffect(() => {
+    let active = true;
+    setConvAgent(null);
+    setAgentEnabled(true);
+    if (!agentInstanceId) return;
+    (async () => {
+      const { data: chRows } = await (supabase as any)
+        .from("crm_ai_agent_channels")
+        .select("agent:crm_ai_agents(id, name, is_active)")
+        .eq("channel", agentChannel)
+        .eq("instance_id", agentInstanceId);
+      const agents = (chRows || []).map((r: any) => r.agent).filter((a: any) => a?.is_active);
+      if (!active || agents.length === 0) return;
+      setConvAgent({ id: agents[0].id, name: agents[0].name });
+      const { data: ov } = await (supabase as any)
+        .from("crm_ai_agent_conversation_overrides")
+        .select("enabled")
+        .eq("conversation_id", conversation.id)
+        .eq("channel", agentChannel)
+        .maybeSingle();
+      if (active && ov) setAgentEnabled(ov.enabled !== false);
+    })();
+    return () => { active = false; };
+  }, [conversation.id, agentChannel, agentInstanceId]);
+
+  const handleToggleAgent = async (value: boolean) => {
+    if (!convAgent) return;
+    setSavingAgentToggle(true);
+    setAgentEnabled(value);
+    const { error } = await (supabase as any)
+      .from("crm_ai_agent_conversation_overrides")
+      .upsert({
+        conversation_id: conversation.id,
+        channel: agentChannel,
+        agent_id: convAgent.id,
+        enabled: value,
+        updated_by: staffId,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "conversation_id,channel" });
+    setSavingAgentToggle(false);
+    if (error) {
+      setAgentEnabled(!value);
+      toast.error("Erro ao alterar o agente nesta conversa");
+    } else {
+      toast.success(value ? "Agente ligado nesta conversa" : "Agente desligado nesta conversa");
+    }
+  };
 
   // Linked leads based on phone / direct conversation link
   const { leads: linkedLeads, loading: loadingLinkedLeads, refetch: refetchLinkedLeads } = useLinkedLeads({
@@ -664,6 +724,22 @@ export function ConversationSidebar({
           </Button>
         </div>
       </div>
+
+      {/* Agente IA: liga/desliga só nesta conversa */}
+      {convAgent && (
+        <div className="p-4 border-b border-border flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Bot className={`h-4 w-4 shrink-0 ${agentEnabled ? "text-primary" : "text-muted-foreground"}`} />
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{convAgent.name}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {agentEnabled ? "Respondendo esta conversa" : "Desligado nesta conversa"}
+              </p>
+            </div>
+          </div>
+          <Switch checked={agentEnabled} onCheckedChange={handleToggleAgent} disabled={savingAgentToggle} />
+        </div>
+      )}
 
       {/* Assignment Section */}
       <Collapsible open={assignedOpen} onOpenChange={setAssignedOpen}>

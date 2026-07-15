@@ -37,6 +37,9 @@ const emptyForm = {
   name: "", description: "", objective: "", instructions: "", tone: "",
   greeting: "", model: "claude-sonnet-5", temperature: 0.4, reply_mode: "copilot",
   handoff_keywords: "", max_messages: "",
+  scheduling_enabled: false, scheduling_staff_ids: [] as string[],
+  schedule_hour_start: 8, schedule_hour_end: 19,
+  meeting_duration_minutes: 60, can_move_stage: false,
 };
 
 export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId, onSaved }: Props) {
@@ -48,6 +51,7 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
   // opções
   const [instances, setInstances] = useState<InstanceOpt[]>([]);
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
+  const [staffList, setStaffList] = useState<{ id: string; name: string; role: string }[]>([]);
   // vínculos
   const [selectedChannels, setSelectedChannels] = useState<Set<string>>(new Set()); // key = channel:id
   const [pipelineModes, setPipelineModes] = useState<Record<string, string>>({}); // pipeline_id -> off|auto|copilot
@@ -58,11 +62,13 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
   useEffect(() => {
     if (!open) return;
     (async () => {
-      const [wa, waOff, ig, pi] = await Promise.all([
+      const [wa, waOff, ig, pi, st] = await Promise.all([
         supabase.from("whatsapp_instances").select("id, instance_name, display_name, phone_number, status"),
         supabase.from("whatsapp_official_instances").select("id, display_name, phone_number"),
         supabase.from("instagram_instances").select("id, instance_name, instagram_username, page_name, status"),
         supabase.from("crm_pipelines").select("id, name").order("name"),
+        supabase.from("onboarding_staff").select("id, name, role").eq("is_active", true)
+          .in("role", ["master", "admin", "head_comercial", "closer", "sdr"]).order("name"),
       ]);
       const opts: InstanceOpt[] = [];
       (wa.data || []).forEach((i: any) => opts.push({ channel: "whatsapp", id: i.id, label: i.display_name || i.instance_name, sub: i.phone_number || "", status: i.status }));
@@ -70,6 +76,7 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
       (ig.data || []).forEach((i: any) => opts.push({ channel: "instagram", id: i.id, label: i.page_name || i.instagram_username || i.instance_name, sub: i.instagram_username ? `@${i.instagram_username}` : "", status: i.status }));
       setInstances(opts);
       setPipelines((pi.data || []) as any);
+      setStaffList((st.data || []) as any);
     })();
   }, [open]);
 
@@ -85,6 +92,12 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
         reply_mode: agent.reply_mode || "copilot",
         handoff_keywords: (agent.handoff_keywords || []).join(", "),
         max_messages: agent.max_messages != null ? String(agent.max_messages) : "",
+        scheduling_enabled: !!agent.scheduling_enabled,
+        scheduling_staff_ids: agent.scheduling_staff_ids || [],
+        schedule_hour_start: agent.schedule_hour_start ?? 8,
+        schedule_hour_end: agent.schedule_hour_end ?? 19,
+        meeting_duration_minutes: agent.meeting_duration_minutes ?? 60,
+        can_move_stage: !!agent.can_move_stage,
       });
     } else {
       setAgentId(null);
@@ -127,6 +140,12 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
       handoff_keywords: form.handoff_keywords.trim()
         ? form.handoff_keywords.split(",").map((s) => s.trim()).filter(Boolean) : null,
       max_messages: form.max_messages.trim() ? parseInt(form.max_messages, 10) : null,
+      scheduling_enabled: form.scheduling_enabled,
+      scheduling_staff_ids: form.scheduling_staff_ids.length ? form.scheduling_staff_ids : null,
+      schedule_hour_start: form.schedule_hour_start,
+      schedule_hour_end: form.schedule_hour_end,
+      meeting_duration_minutes: form.meeting_duration_minutes,
+      can_move_stage: form.can_move_stage,
       updated_at: new Date().toISOString(),
     };
     try {
@@ -192,10 +211,11 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab} className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="grid grid-cols-4 shrink-0">
+          <TabsList className="grid grid-cols-5 shrink-0">
             <TabsTrigger value="config">Configuração</TabsTrigger>
             <TabsTrigger value="channels">Canais</TabsTrigger>
             <TabsTrigger value="pipelines">Funis</TabsTrigger>
+            <TabsTrigger value="agenda">Agenda</TabsTrigger>
             <TabsTrigger value="knowledge">Conhecimento</TabsTrigger>
           </TabsList>
 
@@ -328,6 +348,108 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
                   ))}
                 </>
               )}
+            </TabsContent>
+
+            {/* AGENDA / FERRAMENTAS */}
+            <TabsContent value="agenda" className="space-y-4 mt-0">
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <div>
+                  <Label className="text-sm">Agendamento na agenda do closer</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    O agente consulta horários livres e agenda reuniões (Google Calendar) direto na conversa.
+                  </p>
+                </div>
+                <Switch
+                  checked={form.scheduling_enabled}
+                  onCheckedChange={(v) => set({ scheduling_enabled: v })}
+                />
+              </div>
+
+              {form.scheduling_enabled && (
+                <>
+                  <div className="grid gap-2">
+                    <Label>Closers que ele pode agendar</Label>
+                    <p className="text-xs text-muted-foreground -mt-1">
+                      A agenda consultada/usada é a do(s) closer(s) marcado(s). Precisa ter Google Calendar conectado.
+                    </p>
+                    <div className="rounded-md border divide-y max-h-52 overflow-y-auto">
+                      {staffList.map((s) => {
+                        const on = form.scheduling_staff_ids.includes(s.id);
+                        return (
+                          <label key={s.id} className="flex items-center justify-between p-2.5 cursor-pointer hover:bg-muted/50">
+                            <span className="text-sm">{s.name} <span className="text-xs text-muted-foreground">({s.role})</span></span>
+                            <Switch
+                              checked={on}
+                              onCheckedChange={(v) => set({
+                                scheduling_staff_ids: v
+                                  ? [...form.scheduling_staff_ids, s.id]
+                                  : form.scheduling_staff_ids.filter((id) => id !== s.id),
+                              })}
+                            />
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="grid gap-2">
+                      <Label>Horário mínimo</Label>
+                      <Select value={String(form.schedule_hour_start)} onValueChange={(v) => set({ schedule_hour_start: parseInt(v, 10) })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 17 }, (_, i) => i + 6).map((h) => (
+                            <SelectItem key={h} value={String(h)}>{String(h).padStart(2, "0")}:00</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Horário máximo</Label>
+                      <Select value={String(form.schedule_hour_end)} onValueChange={(v) => set({ schedule_hour_end: parseInt(v, 10) })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 17 }, (_, i) => i + 7).map((h) => (
+                            <SelectItem key={h} value={String(h)}>{String(h).padStart(2, "0")}:00</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Duração (min)</Label>
+                      <Select value={String(form.meeting_duration_minutes)} onValueChange={(v) => set({ meeting_duration_minutes: parseInt(v, 10) })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {[30, 45, 60, 90].map((d) => <SelectItem key={d} value={String(d)}>{d} min</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {form.schedule_hour_end <= form.schedule_hour_start && (
+                    <p className="text-xs text-destructive">O horário máximo precisa ser maior que o mínimo.</p>
+                  )}
+                </>
+              )}
+
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <div>
+                  <Label className="text-sm">Mover lead de etapa</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Permite ao agente mover o negócio no funil (ex: ao qualificar ou agendar).
+                  </p>
+                </div>
+                <Switch
+                  checked={form.can_move_stage}
+                  onCheckedChange={(v) => set({ can_move_stage: v })}
+                />
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <Button onClick={saveConfig} disabled={saving || (form.scheduling_enabled && form.schedule_hour_end <= form.schedule_hour_start)}>
+                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Salvar agenda
+                </Button>
+              </div>
             </TabsContent>
 
             {/* KNOWLEDGE */}

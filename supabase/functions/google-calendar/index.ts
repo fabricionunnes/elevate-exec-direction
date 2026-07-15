@@ -222,22 +222,30 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace(/bearer\s+/i, "").trim();
 
-    // Validate JWT using getClaims (required when verify_jwt=false)
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-    });
+    let user: { id: string };
+    if (token === supabaseServiceKey) {
+      // Chamada interna de outra edge function (ex: crm-agent-respond) com service
+      // role. Essas chamadas sempre passam target_user_id explícito nas actions de
+      // agenda (freebusy/create-event), então o user.id não é usado como fallback.
+      user = { id: "system" };
+    } else {
+      // Validate JWT using getClaims (required when verify_jwt=false)
+      const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: `Bearer ${token}` } },
+      });
 
-    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+      const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
 
-    if (claimsError || !claimsData?.claims?.sub) {
-      console.error("JWT validation error:", claimsError);
-      return new Response(
-        JSON.stringify({ error: "Invalid token" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      if (claimsError || !claimsData?.claims?.sub) {
+        console.error("JWT validation error:", claimsError);
+        return new Response(
+          JSON.stringify({ error: "Invalid token" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      user = { id: claimsData.claims.sub };
     }
-
-    const user = { id: claimsData.claims.sub };
 
     // Use admin client for DB operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
