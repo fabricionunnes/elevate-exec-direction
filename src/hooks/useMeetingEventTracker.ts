@@ -15,6 +15,12 @@ interface MeetingEventParams {
 // Stage name patterns for detection
 const SCHEDULED_PATTERNS = [/agendad[ao]/i, /reagendamento/i, /reunião\s*agendada/i, /meeting\s*scheduled/i];
 const REALIZED_PATTERNS = [/realizad[ao]/i, /reunião\s*realizad/i, /meeting\s*held/i, /meeting\s*completed/i];
+// Etapas que indicam que a reunião NÃO aconteceu (no-show / fora do ICP / FUI).
+// Ao entrar numa delas, o evento 'realized' anterior é removido para não inflar
+// a contagem de reuniões realizadas do closer.
+const NO_MEETING_PATTERNS = [/\bfui\b/i, /no.?show/i, /faltou/i, /n[ãa]o\s*compareceu/i, /fora.*icp/i, /out.*icp/i];
+export const isNoMeetingStage = (stageName: string): boolean =>
+  NO_MEETING_PATTERNS.some((p) => p.test(stageName));
 
 export const isScheduledStage = (stageName: string): boolean => {
   return SCHEDULED_PATTERNS.some(pattern => pattern.test(stageName));
@@ -236,6 +242,18 @@ export const trackMeetingEventOnStageChange = async (
     console.log("[MeetingTracker] Scheduled event result:", result);
   }
   
+  // Entrou numa etapa que anula a reunião (no-show/FUI/fora do ICP) → remove os
+  // eventos 'realized' do lead (a reunião marcada como realizada não vale mais).
+  if (isNoMeetingStage(newStageName)) {
+    const { error: delErr } = await supabase
+      .from("crm_meeting_events")
+      .delete()
+      .eq("lead_id", leadId)
+      .eq("event_type", "realized");
+    if (delErr) console.error("[MeetingTracker] erro ao remover realized:", delErr);
+    else console.log("[MeetingTracker] realized removido (etapa não-reunião):", newStageName);
+  }
+
   // Check if entering a "realized" stage
   if (isRealizedStage(newStageName)) {
     console.log("[MeetingTracker] Tracking realized event...");
