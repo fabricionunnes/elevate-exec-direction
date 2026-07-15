@@ -35,6 +35,50 @@ async function sendWhatsAppText(supabase: any, instanceId: string, phone: string
   return { ok: true };
 }
 
+// ---------- Horário de atendimento ----------
+// work_schedule (grade semanal): { "0": [["08:00","12:00"],["20:00","08:00"]], ... }
+// chave = dia da semana (0=domingo, fuso Brasília); faixa com fim < início vira a
+// madrugada e TERMINA no dia seguinte (ex: seg 20:00→08:00 cobre ter 00:00-08:00).
+function agentScheduleActive(agent: any): boolean {
+  if (!agent.work_hours_enabled) return true; // sem janela = 24h
+  const br = new Date(Date.now() - 3 * 3600000);
+  const dow = br.getUTCDay();
+  const mins = br.getUTCHours() * 60 + br.getUTCMinutes();
+  const sched = agent.work_schedule;
+  if (sched && typeof sched === "object") {
+    const toMin = (v: string) => {
+      const [h, m] = String(v).split(":").map((x) => parseInt(x, 10));
+      return (h || 0) * 60 + (m || 0);
+    };
+    const check = (dayKey: number, spillover: boolean): boolean => {
+      const ivs = (sched as any)[String(dayKey)];
+      if (!Array.isArray(ivs)) return false;
+      for (const iv of ivs) {
+        if (!Array.isArray(iv) || iv.length < 2) continue;
+        const a = toMin(iv[0]), b = toMin(iv[1]);
+        if (a === b) continue;
+        if (spillover) {
+          // madrugada herdada do dia anterior (faixa que virou a noite)
+          if (b < a && mins < b) return true;
+        } else if (b > a) {
+          if (mins >= a && mins < b) return true;
+        } else {
+          // vira a noite: hoje cobre da hora inicial até 23:59
+          if (mins >= a) return true;
+        }
+      }
+      return false;
+    };
+    return check(dow, false) || check((dow + 6) % 7, true);
+  }
+  // legado: janela única + dias
+  const days: number[] | null = agent.work_days || null;
+  const inDay = !days || days.length === 0 || days.includes(dow);
+  const h = br.getUTCHours();
+  const hs = agent.work_hour_start ?? 8, he = agent.work_hour_end ?? 20;
+  return inDay && h >= hs && h < he;
+}
+
 // ---------- Ferramentas do agente (agenda + funil) ----------
 function buildTools(agent: any, hasLead: boolean): any[] {
   const tools: any[] = [];
@@ -186,12 +230,7 @@ Deno.serve(async (req) => {
         .select("*").eq("is_active", true).eq("followup_enabled", true);
       for (const agent of (agents || [])) {
         // horário de atendimento vale pro follow-up também
-        if (agent.work_hours_enabled) {
-          const brNow = new Date(Date.now() - 3 * 3600000);
-          const h = brNow.getUTCHours(); const dow = brNow.getUTCDay();
-          const days: number[] | null = agent.work_days || null;
-          if ((days && days.length && !days.includes(dow)) || h < (agent.work_hour_start ?? 8) || h >= (agent.work_hour_end ?? 20)) continue;
-        }
+        if (!agentScheduleActive(agent)) continue;
         const afterMin = Math.max(15, agent.followup_after_minutes || 60);
         const maxAtt = Math.max(1, agent.followup_max_attempts || 2);
         const { data: bindings } = await supabase.from("crm_ai_agent_channels")
@@ -338,15 +377,8 @@ Deno.serve(async (req) => {
     if (mode === "off") return j({ ok: true, skip: "modo desligado para este funil" });
 
     // Horário de atendimento do agente (Brasília). Fora da janela → não responde.
-    if (agent.work_hours_enabled && !dry_run) {
-      const brNow = new Date(Date.now() - 3 * 3600000);
-      const h = brNow.getUTCHours();
-      const dow = brNow.getUTCDay(); // 0=domingo
-      const days: number[] | null = agent.work_days || null;
-      const inDay = !days || days.length === 0 || days.includes(dow);
-      const hs = agent.work_hour_start ?? 8, he = agent.work_hour_end ?? 20;
-      const inHour = h >= hs && h < he;
-      if (!inDay || !inHour) return j({ ok: true, skip: `fora do horário de atendimento (${hs}h-${he}h)` });
+    if (!dry_run && !agentScheduleActive(agent)) {
+      return j({ ok: true, skip: "fora do horário de atendimento" });
     }
 
     // Tempo de resposta: adia o processamento e responde só à ÚLTIMA mensagem da

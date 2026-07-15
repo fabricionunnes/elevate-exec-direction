@@ -38,6 +38,7 @@ export interface AIAgent {
   work_hour_start?: number;
   work_hour_end?: number;
   work_days?: number[] | null;
+  work_schedule?: Record<string, [string, string][]> | null;
   followup_enabled?: boolean;
   followup_after_minutes?: number;
   followup_max_attempts?: number;

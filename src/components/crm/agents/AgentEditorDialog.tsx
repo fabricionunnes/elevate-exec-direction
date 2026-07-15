@@ -33,6 +33,17 @@ const MODELS = [
 
 interface InstanceOpt { channel: string; id: string; label: string; sub: string; status?: string | null; }
 
+const DAY_LABELS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+// Converte a config antiga (janela única + dias) pra grade semanal
+function legacyToSchedule(days: number[] | null, hs: number, he: number): Record<string, [string, string][]> {
+  const iv: [string, string] = [`${String(hs).padStart(2, "0")}:00`, `${String(he).padStart(2, "0")}:00`];
+  const activeDays = days && days.length ? days : [0, 1, 2, 3, 4, 5, 6];
+  const out: Record<string, [string, string][]> = {};
+  activeDays.forEach((d) => { out[String(d)] = [iv]; });
+  return out;
+}
+
 const emptyForm = {
   name: "", description: "", objective: "", instructions: "", tone: "",
   greeting: "", model: "claude-sonnet-5", temperature: 0.4, reply_mode: "copilot",
@@ -43,6 +54,7 @@ const emptyForm = {
   response_delay_seconds: 0,
   work_hours_enabled: false, work_hour_start: 8, work_hour_end: 20,
   work_days: [] as number[],
+  work_schedule: {} as Record<string, [string, string][]>,
   followup_enabled: false, followup_after_minutes: 60, followup_max_attempts: 2,
 };
 
@@ -104,6 +116,8 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
         can_move_stage: !!agent.can_move_stage,
         response_delay_seconds: agent.response_delay_seconds ?? 0,
         work_hours_enabled: !!agent.work_hours_enabled,
+        work_schedule: (agent as any).work_schedule
+          || legacyToSchedule(agent.work_days || null, agent.work_hour_start ?? 8, agent.work_hour_end ?? 20),
         work_hour_start: agent.work_hour_start ?? 8,
         work_hour_end: agent.work_hour_end ?? 20,
         work_days: agent.work_days || [],
@@ -163,6 +177,7 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
       work_hour_start: form.work_hour_start,
       work_hour_end: form.work_hour_end,
       work_days: form.work_days.length ? form.work_days : null,
+      work_schedule: Object.keys(form.work_schedule).length ? form.work_schedule : null,
       followup_enabled: form.followup_enabled,
       followup_after_minutes: form.followup_after_minutes,
       followup_max_attempts: form.followup_max_attempts,
@@ -333,53 +348,65 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
                   <Switch checked={form.work_hours_enabled} onCheckedChange={(v) => set({ work_hours_enabled: v })} />
                 </div>
                 {form.work_hours_enabled && (
-                  <>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="grid gap-2">
-                        <Label className="text-xs">Início</Label>
-                        <Select value={String(form.work_hour_start)} onValueChange={(v) => set({ work_hour_start: parseInt(v, 10) })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {Array.from({ length: 24 }, (_, h) => (
-                              <SelectItem key={h} value={String(h)}>{String(h).padStart(2, "0")}:00</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid gap-2">
-                        <Label className="text-xs">Fim</Label>
-                        <Select value={String(form.work_hour_end)} onValueChange={(v) => set({ work_hour_end: parseInt(v, 10) })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {Array.from({ length: 24 }, (_, i) => i + 1).map((h) => (
-                              <SelectItem key={h} value={String(h)}>{String(h).padStart(2, "0")}:00</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="grid gap-1.5">
-                      <Label className="text-xs">Dias da semana (nenhum marcado = todos)</Label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d, i) => {
-                          const on = form.work_days.includes(i);
-                          return (
-                            <button
-                              key={i}
-                              type="button"
-                              onClick={() => set({ work_days: on ? form.work_days.filter((x) => x !== i) : [...form.work_days, i] })}
-                              className={`px-2.5 py-1 rounded-md text-xs border transition-colors ${on ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground hover:bg-muted"}`}
-                            >
-                              {d}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    {form.work_hour_end <= form.work_hour_start && (
-                      <p className="text-xs text-destructive">O fim precisa ser maior que o início.</p>
-                    )}
-                  </>
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-muted-foreground">
+                      Cada dia pode ter várias faixas. Faixa com fim menor que o início vira a madrugada
+                      e termina no dia seguinte (ex: 20:00 → 08:00). Dia sem faixa = não atende.
+                    </p>
+                    {DAY_LABELS.map((label, day) => {
+                      const key = String(day);
+                      const ivs = form.work_schedule[key] || [];
+                      const setDay = (next: [string, string][]) => {
+                        const ws = { ...form.work_schedule };
+                        if (next.length) ws[key] = next; else delete ws[key];
+                        set({ work_schedule: ws });
+                      };
+                      return (
+                        <div key={day} className="rounded border px-2.5 py-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`text-xs font-medium w-20 ${ivs.length ? "" : "text-muted-foreground"}`}>{label}</span>
+                            <div className="flex items-center gap-1.5">
+                              <button type="button" className="text-[11px] text-primary hover:underline"
+                                onClick={() => setDay([...ivs, ["08:00", "18:00"]])}>+ faixa</button>
+                              {ivs.length > 0 && (
+                                <button type="button" className="text-[11px] text-muted-foreground hover:underline"
+                                  onClick={() => {
+                                    const ws: Record<string, [string, string][]> = {};
+                                    for (let d = 0; d < 7; d++) ws[String(d)] = ivs.map((iv) => [...iv] as [string, string]);
+                                    set({ work_schedule: ws });
+                                  }}>copiar p/ todos</button>
+                              )}
+                            </div>
+                          </div>
+                          {ivs.length === 0 ? (
+                            <p className="text-[11px] text-muted-foreground mt-1">Não atende</p>
+                          ) : (
+                            <div className="mt-1.5 space-y-1.5">
+                              {ivs.map((iv, i) => {
+                                const overnight = iv[1] < iv[0];
+                                return (
+                                  <div key={i} className="flex items-center gap-1.5 flex-wrap">
+                                    <input type="time" value={iv[0]}
+                                      className="h-7 rounded border bg-background px-1.5 text-xs"
+                                      onChange={(e) => { const nx = ivs.map((x, xi) => xi === i ? [e.target.value, x[1]] as [string, string] : x); setDay(nx); }} />
+                                    <span className="text-xs text-muted-foreground">até</span>
+                                    <input type="time" value={iv[1]}
+                                      className="h-7 rounded border bg-background px-1.5 text-xs"
+                                      onChange={(e) => { const nx = ivs.map((x, xi) => xi === i ? [x[0], e.target.value] as [string, string] : x); setDay(nx); }} />
+                                    {overnight && (
+                                      <span className="text-[10px] rounded bg-muted px-1.5 py-0.5 text-muted-foreground">vira a madrugada → termina {DAY_LABELS[(day + 1) % 7]}</span>
+                                    )}
+                                    <button type="button" className="text-[11px] text-destructive hover:underline"
+                                      onClick={() => setDay(ivs.filter((_, xi) => xi !== i))}>remover</button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
 
