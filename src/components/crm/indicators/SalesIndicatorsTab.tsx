@@ -571,7 +571,9 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       const seen = new Set<string>();
       const list: any[] = [];
       rawMeetingEvents.forEach((ev: any) => {
-        const ownerId = ev.lead?.owner_staff_id;
+        // owner_staff_id = responsável NO MOMENTO do evento (snapshot). Trocar o
+        // dono do lead depois NÃO move a reunião realizada de closer.
+        const ownerId = ev.owner_staff_id || ev.lead?.owner_staff_id;
         if (!ownerId) return;
         const key = `${ev.lead_id}-${ev.event_type}-${ownerId}`;
         if (seen.has(key)) return;

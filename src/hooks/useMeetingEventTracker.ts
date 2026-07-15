@@ -61,6 +61,19 @@ const getSchedulerFromLead = async (leadId: string): Promise<string | null> => {
 };
 
 /**
+ * Snapshot do RESPONSÁVEL do lead no momento do evento. O dashboard credita a
+ * reunião a este snapshot — trocar o dono do lead depois não muda o histórico.
+ */
+const getOwnerFromLead = async (leadId: string): Promise<string | null> => {
+  const { data } = await supabase
+    .from("crm_leads")
+    .select("owner_staff_id")
+    .eq("id", leadId)
+    .maybeSingle();
+  return data?.owner_staff_id || null;
+};
+
+/**
  * Track when a lead enters a "scheduled" stage
  * - Records who scheduled the meeting
  * - Creates a "scheduled" event for that staff member
@@ -85,7 +98,8 @@ export const trackScheduledEvent = async (params: MeetingEventParams): Promise<b
       })
       .eq("id", leadId);
     
-    // Create the scheduled event
+    // Create the scheduled event (com snapshot do responsável da época)
+    const ownerAtEvent = await getOwnerFromLead(leadId);
     const { error } = await supabase
       .from("crm_meeting_events")
       .insert({
@@ -94,6 +108,7 @@ export const trackScheduledEvent = async (params: MeetingEventParams): Promise<b
         event_type: 'scheduled',
         credited_staff_id: triggeredByStaffId,
         triggered_by_staff_id: triggeredByStaffId,
+        owner_staff_id: ownerAtEvent,
         stage_id: stageId,
         event_date: new Date().toISOString()
       });
@@ -136,11 +151,15 @@ export const trackRealizedEvent = async (params: MeetingEventParams): Promise<bo
       event_type: 'realized';
       credited_staff_id: string;
       triggered_by_staff_id: string;
+      owner_staff_id: string | null;
       stage_id: string;
       event_date: string;
     }> = [];
     
     const eventDate = new Date().toISOString();
+    // Snapshot do responsável no momento da realização — o crédito da reunião
+    // realizada é DESTE momento, mesmo que o dono do lead mude depois.
+    const ownerAtEvent = await getOwnerFromLead(leadId);
     
     // Credit the person who moved the card to "realized"
     eventsToInsert.push({
@@ -149,6 +168,7 @@ export const trackRealizedEvent = async (params: MeetingEventParams): Promise<bo
       event_type: 'realized',
       credited_staff_id: triggeredByStaffId,
       triggered_by_staff_id: triggeredByStaffId,
+      owner_staff_id: ownerAtEvent,
       stage_id: stageId,
       event_date: eventDate
     });
@@ -161,6 +181,7 @@ export const trackRealizedEvent = async (params: MeetingEventParams): Promise<bo
         event_type: 'realized',
         credited_staff_id: schedulerStaffId,
         triggered_by_staff_id: triggeredByStaffId,
+        owner_staff_id: ownerAtEvent,
         stage_id: stageId,
         event_date: eventDate
       });
