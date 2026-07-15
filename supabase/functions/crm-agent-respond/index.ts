@@ -92,7 +92,7 @@ function buildTools(agent: any, hasLead: boolean): any[] {
         required: ["data"],
       },
     });
-    if (hasLead) {
+    {
       tools.push({
         name: "agendar_reuniao",
         description: "Agenda a reunião na agenda do closer no horário confirmado pelo lead. SÓ use depois que o lead confirmar explicitamente um horário que você ofereceu via consultar_horarios.",
@@ -163,6 +163,26 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
       const { data: staff } = await supabase.from("onboarding_staff").select("id, name, user_id").eq("id", staffId).maybeSingle();
       if (!staff?.user_id) return "Erro: closer sem agenda conectada.";
       const dur = agent.meeting_duration_minutes || 60;
+      // Conflito: confirma que o horário AINDA está livre antes de criar o evento.
+      // Se ocupou, devolve os horários reais pra IA reoferecer com base na agenda.
+      try {
+        const fbR = await fetch(`${SUPABASE_URL}/functions/v1/google-calendar?action=freebusy`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${SERVICE_ROLE}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ target_user_id: staff.user_id, date: m[1], duration_minutes: dur }),
+        });
+        const fbD = await fbR.json();
+        if (fbR.ok && Array.isArray(fbD.availableSlots)) {
+          const want = `${m[2]}:${m[3]}`;
+          const okSlots = fbD.availableSlots.filter((sl: string) => {
+            const hh = parseInt(sl.split(":")[0], 10);
+            return hh >= hs && hh < he;
+          });
+          if (!okSlots.includes(want)) {
+            return `Erro: o horário ${want} não está mais disponível em ${m[1]}. Horários livres: ${okSlots.join(", ") || "nenhum"}. Ofereça esses ao lead.`;
+          }
+        }
+      } catch { /* se o freebusy falhar, segue e tenta criar */ }
       const startISO = `${m[1]}T${m[2]}:${m[3]}:00-03:00`;
       const endDate = new Date(new Date(startISO).getTime() + dur * 60000);
       // fim no mesmo fuso -03:00
@@ -492,7 +512,7 @@ Deno.serve(async (req) => {
       agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
       knowledge ? `\n\nBASE DE CONHECIMENTO (use quando relevante, não invente):${knowledge}` : "",
       `\n\nData/hora atual (Brasília): ${nowBR}.`,
-      tools.length ? `\nVocê TEM ferramentas de agenda/funil. Para agendar: consulte horários com consultar_horarios, ofereça 2-3 opções, e SÓ agende com agendar_reuniao após o lead confirmar um horário.` : "",
+      tools.length ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou.` : "",
       `\n\nVocê está respondendo uma conversa de ${channelLabel} com ${leadName}. Responda como mensagem: curta, humana, sem markdown, sem títulos, uma ideia por mensagem. NUNCA repita uma pergunta que o lead já respondeu — antes de perguntar, confira o histórico. Escreva a resposta UMA única vez, sem repetir o texto. Nunca revele que é uma IA. Se não souber algo, seja honesto e ofereça encaminhar para uma pessoa.`,
     ].join("");
 
@@ -558,7 +578,16 @@ Deno.serve(async (req) => {
       reply = unhalve(reply);
       break;
     }
-    if (!reply) return { ok: true, skip: "resposta vazia da IA", tool_calls: toolCalls };
+    const logRun = async (outcome: string, err?: string) => {
+      try {
+        await supabase.from("crm_ai_agent_runs").insert({
+          agent_id: agent.id, channel, conversation_id, mode, outcome,
+          reply: reply ? reply.slice(0, 2000) : null,
+          tool_calls: toolCalls.length ? toolCalls : null, error: err || null,
+        });
+      } catch { /* telemetria nunca derruba o fluxo */ }
+    };
+    if (!reply) { await logRun("empty_reply"); return { ok: true, skip: "resposta vazia da IA", tool_calls: toolCalls }; }
 
     if (dry_run) return { ok: true, dry_run: true, mode, agent: agent.name, reply, tool_calls: toolCalls };
 
@@ -572,7 +601,7 @@ Deno.serve(async (req) => {
       } else {
         const phone = String(conv.contact?.phone || "").replace(/\D/g, "");
         const sent = await sendWhatsAppText(supabase, conv.instance_id, phone, reply);
-        if (!sent.ok) return { ok: false, error: "falha ao enviar WhatsApp", detail: sent.error };
+        if (!sent.ok) { await logRun("send_failed", sent.error); return { ok: false, error: "falha ao enviar WhatsApp", detail: sent.error }; }
         // NÃO insere a mensagem aqui: o eco do webhook do Stevo já grava o outbound
         // (com remote_id). Gravar dos dois lados duplicava o histórico e o modelo
         // passava a IMITAR o padrão, gerando o texto 2x dentro da própria resposta.
@@ -580,11 +609,13 @@ Deno.serve(async (req) => {
           last_message: reply.substring(0, 255), last_message_at: new Date().toISOString(),
         }).eq("id", conversation_id);
       }
+      await logRun("sent");
       return { ok: true, mode: "auto", sent: true, agent: agent.name, tool_calls: toolCalls };
     } else {
       await supabase.from("crm_ai_suggested_replies").insert({
         agent_id: agent.id, channel, conversation_id, content: reply, status: "pending",
       });
+      await logRun("suggested");
       return { ok: true, mode: "copilot", suggested: true, agent: agent.name, tool_calls: toolCalls };
     }
     } // fim processConversation
