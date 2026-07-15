@@ -299,7 +299,7 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
     if (!ruleToSend) continue;
 
     // Generate NPS link using hash route format for WhatsApp compatibility
-    const npsLink = `${PUBLIC_DOMAIN}/?public=nps&project=${encodeURIComponent(projectId)}`;
+    const npsLink = `${PUBLIC_DOMAIN}/nps?project=${encodeURIComponent(projectId)}`;
 
     // Replace template variables
     const message = ruleToSend.message_template
@@ -439,7 +439,7 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
         .maybeSingle();
 
       if (existingSurvey) {
-        csatLink = `${PUBLIC_DOMAIN}/?public=csat&token=${existingSurvey.access_token}`;
+        csatLink = `${PUBLIC_DOMAIN}/csat?token=${existingSurvey.access_token}`;
         csatSurveyId = existingSurvey.id;
       } else {
         // Create a csat_survey for this meeting
@@ -450,10 +450,10 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
           .single();
 
         if (newSurvey) {
-          csatLink = `${PUBLIC_DOMAIN}/?public=csat&token=${newSurvey.access_token}`;
+          csatLink = `${PUBLIC_DOMAIN}/csat?token=${newSurvey.access_token}`;
           csatSurveyId = newSurvey.id;
         } else {
-          csatLink = `${PUBLIC_DOMAIN}/?public=csat&test=true`;
+          csatLink = `${PUBLIC_DOMAIN}/csat?test=true`;
         }
       }
     } else {
@@ -579,7 +579,7 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
     if (ruleIndex >= rules.length) continue;
     const ruleToSend = rules[ruleIndex];
 
-    const csatLink = `${PUBLIC_DOMAIN}/?public=csat&token=${survey.access_token}`;
+    const csatLink = `${PUBLIC_DOMAIN}/csat?token=${survey.access_token}`;
     const meetingSubject = meeting.subject || meeting.meeting_title || "Reunião";
     const meetingDate = meeting.meeting_date
       ? formatDateBR(meeting.meeting_date)
