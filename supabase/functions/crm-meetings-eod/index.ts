@@ -52,21 +52,28 @@ const FABRICIO_PHONE = "5531989840003";
 // deno-lint-ignore no-explicit-any
 async function sendWhatsApp(supabase: any, phone: string, message: string): Promise<{ ok: boolean; error?: string }> {
   try {
+    // Esta mensagem é oficial: SEMPRE sai do número do Fabrício ou do Marcelo,
+    // nunca de uma instância de vendedor. Respeita a config só se ela apontar pra
+    // uma instância permitida; senão força fabricionunnes → marceloalmeida.
+    const ALLOWED = ["fabricionunnes", "marceloalmeida"];
     const { data: config } = await supabase
       .from("whatsapp_default_config")
       .select("setting_value")
       .eq("setting_key", "default_instance")
       .maybeSingle();
-    const instanceName = config?.setting_value;
-    if (!instanceName) return { ok: false, error: "sem instância padrão" };
+    const configured = config?.setting_value;
+    const preferred = ALLOWED.includes(configured) ? configured : "fabricionunnes";
+    const order = [preferred, ...ALLOWED.filter((n) => n !== preferred)];
 
-    const { data: instance } = await supabase
+    const { data: allowedInstances } = await supabase
       .from("whatsapp_instances")
-      .select("id, instance_name, provider_type, api_url, api_key")
-      .eq("instance_name", instanceName)
-      .eq("status", "connected")
-      .single();
-    if (!instance) return { ok: false, error: `instância ${instanceName} não conectada` };
+      .select("id, instance_name, provider_type, api_url, api_key, status")
+      .in("instance_name", ALLOWED)
+      .eq("status", "connected");
+    const instance = order
+      .map((name) => (allowedInstances || []).find((i: any) => i.instance_name === name))
+      .find(Boolean);
+    if (!instance) return { ok: false, error: "nenhuma instância oficial (Fabrício/Marcelo) conectada" };
 
     const apiUrl = (instance.api_url || Deno.env.get("EVOLUTION_API_URL") || "").replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
     const apiKey = instance.api_key || Deno.env.get("EVOLUTION_API_KEY");
