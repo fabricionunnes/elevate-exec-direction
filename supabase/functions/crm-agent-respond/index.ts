@@ -342,6 +342,16 @@ Deno.serve(async (req) => {
               }
             }
             if (fmode !== "auto") continue;
+            // Já agendou? Lead com reunião FUTURA não pode receber follow-up de
+            // reativação (senão o agente pede pra agendar de novo, como já ocorreu).
+            if (cv.lead_id) {
+              const { data: futureMtgs } = await supabase.from("crm_activities")
+                .select("status").eq("lead_id", cv.lead_id).eq("type", "meeting")
+                .gte("scheduled_at", new Date().toISOString()).limit(5);
+              const hasFuture = (futureMtgs || []).some((m: any) =>
+                !["cancelled", "canceled", "no_show"].includes(String(m.status || "").toLowerCase()));
+              if (hasFuture) continue;
+            }
             // histórico: precisa terminar em outbound (lead sumiu) e ter tido inbound antes
             const { data: hist } = await supabase.from(msgTable)
               .select(`direction, content, ${tsCol}`).eq("conversation_id", cv.id)
