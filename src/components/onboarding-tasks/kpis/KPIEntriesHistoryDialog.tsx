@@ -382,7 +382,7 @@ export const KPIEntriesHistoryDialog = ({
                             <div>{formatDateLocal(entry.entry_date, "dd/MM/yyyy")}</div>
                             {entry.created_at && (
                               <div className="text-[11px] font-normal text-muted-foreground">
-                                lançado às {new Date(entry.created_at).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })}
+                                lançado dia {new Date(entry.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit" })} às {new Date(entry.created_at).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })}
                               </div>
                             )}
                           </TableCell>
