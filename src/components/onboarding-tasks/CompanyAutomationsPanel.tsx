@@ -22,7 +22,7 @@ const AUTOMATIONS: {
     key: "resumo_diario",
     label: "Resumo diário de indicadores",
     description: "Leitura comercial do dia no grupo de gestão — ou cobrança nominal quando o time não lançou os números.",
-    schedule: "seg–sex (exceto feriados)",
+    schedule: "horário configurável · exceto feriados",
     sender: "Fabrício",
     icon: MessageSquare,
   },
@@ -83,6 +83,7 @@ interface Props {
 export function CompanyAutomationsPanel({ companyId }: Props) {
   const [settings, setSettings] = useState<Record<string, boolean>>({});
   const [variants, setVariants] = useState<Record<string, string | null>>({});
+  const [sendTimes, setSendTimes] = useState<Record<string, string | null>>({});
   const [instances, setInstances] = useState<Record<string, string | null>>({});
   const [availableInstances, setAvailableInstances] = useState<{ name: string; connected: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,7 +93,7 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
     const load = async () => {
       const { data, error } = await (supabase as any)
         .from("company_automation_settings")
-        .select("automation_key, enabled, variant, instance_name")
+        .select("automation_key, enabled, variant, instance_name, send_time")
         .eq("company_id", companyId);
       if (error) {
         toast.error("Erro ao carregar configurações de automação");
@@ -100,10 +101,12 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
         const map: Record<string, boolean> = {};
         const vmap: Record<string, string | null> = {};
         const imap: Record<string, string | null> = {};
-        (data || []).forEach((r: any) => { map[r.automation_key] = r.enabled; vmap[r.automation_key] = r.variant; imap[r.automation_key] = r.instance_name; });
+        const tmap: Record<string, string | null> = {};
+        (data || []).forEach((r: any) => { map[r.automation_key] = r.enabled; vmap[r.automation_key] = r.variant; imap[r.automation_key] = r.instance_name; tmap[r.automation_key] = r.send_time; });
         setSettings(map);
         setVariants(vmap);
         setInstances(imap);
+        setSendTimes(tmap);
       }
       const { data: insts } = await (supabase as any)
         .from("whatsapp_instances")
@@ -124,7 +127,7 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
     const { error } = await (supabase as any)
       .from("company_automation_settings")
       .upsert(
-        { company_id: companyId, automation_key: key, enabled: next, variant: variants[key] ?? null, instance_name: instances[key] ?? null, updated_at: new Date().toISOString() },
+        { company_id: companyId, automation_key: key, enabled: next, variant: variants[key] ?? null, instance_name: instances[key] ?? null, send_time: sendTimes[key] ?? null, updated_at: new Date().toISOString() },
         { onConflict: "company_id,automation_key" },
       );
     if (error) {
@@ -137,24 +140,36 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
     setSaving(null);
   };
 
-  const setRegime = async (regime: "noturno" | "matinal") => {
-    setSaving("resumo_diario_regime");
-    const prev = variants["resumo_diario"];
-    const value = regime === "matinal" ? "matinal" : null;
-    setVariants((v) => ({ ...v, resumo_diario: value }));
+  // Slots de 30 em 30 min (06:00–21:30), alinhados ao cron que roda a cada 30 min.
+  const TIME_SLOTS = Array.from({ length: 32 }, (_, i) => {
+    const h = 6 + Math.floor(i / 2);
+    const m = i % 2 === 0 ? "00" : "30";
+    return `${String(h).padStart(2, "0")}:${m}`;
+  });
+  // < 14h fala do dia anterior (seg–sáb); >= 14h fala do dia atual (seg–sex).
+  const regimeOf = (t: string) => (Number(t.split(":")[0]) < 14
+    ? "Fala do dia anterior · seg–sáb"
+    : "Fala do dia atual · seg–sex");
+
+  const setSendTime = async (time: string) => {
+    setSaving("resumo_diario_time");
+    const prevT = sendTimes["resumo_diario"];
+    const prevV = variants["resumo_diario"];
+    const variant = Number(time.split(":")[0]) < 14 ? "matinal" : null;
+    setSendTimes((v) => ({ ...v, resumo_diario: time }));
+    setVariants((v) => ({ ...v, resumo_diario: variant }));
     const { error } = await (supabase as any)
       .from("company_automation_settings")
       .upsert(
-        { company_id: companyId, automation_key: "resumo_diario", enabled: isOn("resumo_diario"), variant: value, instance_name: instances["resumo_diario"] ?? null, updated_at: new Date().toISOString() },
+        { company_id: companyId, automation_key: "resumo_diario", enabled: isOn("resumo_diario"), variant, send_time: time, instance_name: instances["resumo_diario"] ?? null, updated_at: new Date().toISOString() },
         { onConflict: "company_id,automation_key" },
       );
     if (error) {
-      setVariants((v) => ({ ...v, resumo_diario: prev }));
+      setSendTimes((v) => ({ ...v, resumo_diario: prevT }));
+      setVariants((v) => ({ ...v, resumo_diario: prevV }));
       toast.error("Não foi possível salvar o horário. Tente de novo.");
     } else {
-      toast.success(regime === "matinal"
-        ? "Resumo passa a sair às 11h, seg–sáb, falando do dia anterior (segunda cobre o sábado)."
-        : "Resumo volta pras 19h30, seg–sex, falando do dia atual.");
+      toast.success(`Resumo passa a sair às ${time} (Brasília). ${regimeOf(time)}.`);
     }
     setSaving(null);
   };
@@ -238,24 +253,29 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
                       </Select>
                     </div>
                   )}
-                  {a.key === "resumo_diario" && on && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Horário:</span>
-                      <Select
-                        value={variants["resumo_diario"] === "matinal" ? "matinal" : "noturno"}
-                        onValueChange={(v) => setRegime(v as "noturno" | "matinal")}
-                        disabled={saving === "resumo_diario_regime"}
-                      >
-                        <SelectTrigger className="h-8 w-auto min-w-[260px] text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="noturno">19h30 · fala do dia atual (seg–sex)</SelectItem>
-                          <SelectItem value="matinal">11h da manhã · fala do dia anterior (seg–sáb)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+                  {a.key === "resumo_diario" && on && (() => {
+                    const t = sendTimes["resumo_diario"] || "19:30";
+                    return (
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Horário (Brasília):</span>
+                        <Select
+                          value={t}
+                          onValueChange={(v) => setSendTime(v)}
+                          disabled={saving === "resumo_diario_time"}
+                        >
+                          <SelectTrigger className="h-8 w-auto min-w-[110px] text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-64">
+                            {TIME_SLOTS.map((slot) => (
+                              <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{regimeOf(t)}</Badge>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
               <Switch
