@@ -19,13 +19,37 @@ async function sendWhatsAppText(supabase: any, instanceId: string, phone: string
     .select("id, instance_name, api_url, api_key, provider_type, status")
     .eq("id", instanceId).maybeSingle();
   if (!instance) return { ok: false, error: "instância não encontrada" };
-  if (instance.status !== "connected") return { ok: false, error: `instância ${instance.instance_name} desconectada` };
   const apiUrl = instance.api_url || Deno.env.get("EVOLUTION_API_URL");
   const apiKey = instance.api_key || Deno.env.get("EVOLUTION_API_KEY");
   if (!apiUrl || !apiKey) return { ok: false, error: "instância sem api_url/api_key" };
   const baseUrl = String(apiUrl).replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
   let isV2 = instance.provider_type === "manager_v2";
   try { if (!isV2) isV2 = new URL(baseUrl).hostname.toLowerCase().endsWith(".stevo.chat"); } catch { /* noop */ }
+
+  // O webhook do Stevo baixa o status='disconnected' em eventos transitórios
+  // (Disconnected/QR de reconexão de socket) mesmo com o telefone conectado.
+  // Então NÃO confiamos cegamente no status do banco: se ele diz desconectado,
+  // conferimos o status REAL no Stevo e, se estiver conectado, autocorrigimos.
+  if (instance.status !== "connected") {
+    let reallyConnected = false;
+    if (isV2) {
+      try {
+        const r = await fetch(`${baseUrl}/instance/status`, { headers: { "Content-Type": "application/json", apikey: apiKey } });
+        if (r.ok) {
+          const d = await r.json();
+          const p = d?.data ?? d;
+          // Stevo retorna { data: { Connected: true, LoggedIn: true } } (maiúsculas)
+          const flag = (o: any) => o?.connected ?? o?.Connected ?? o?.loggedIn ?? o?.LoggedIn;
+          const state = String(p?.state ?? p?.status ?? p?.State ?? p?.Status ?? d?.state ?? d?.status ?? "").toLowerCase();
+          reallyConnected = flag(p) === true || flag(d) === true
+            || ["open", "connected", "online", "loggedin", "logged_in"].includes(state);
+        }
+      } catch { /* se a checagem falhar, mantém como desconectado */ }
+    }
+    if (!reallyConnected) return { ok: false, error: `instância ${instance.instance_name} desconectada` };
+    // autocorrige o banco pra não bloquear os próximos envios / o indicador do inbox
+    await supabase.from("whatsapp_instances").update({ status: "connected" }).eq("id", instanceId);
+  }
   const sendUrl = isV2 ? `${baseUrl}/send/text` : `${baseUrl}/message/sendText/${instance.instance_name}`;
   const headers: Record<string, string> = isV2
     ? { "Content-Type": "application/json", apikey: apiKey }
