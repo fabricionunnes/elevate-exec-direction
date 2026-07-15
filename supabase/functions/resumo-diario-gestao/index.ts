@@ -308,102 +308,144 @@ async function monthlyFlagsBlock(supabase: SupabaseClient, companyId: string): P
   }
 }
 
+// ── horário de Brasília: slot atual (HH:MM arredondado p/ :00 ou :30) e dia da semana ──
+function brNowSlot(): string {
+  const br = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  let h = br.getHours();
+  const min = br.getMinutes();
+  let m = 0;
+  if (min >= 15 && min < 45) m = 30;
+  else if (min >= 45) { m = 0; h = (h + 1) % 24; }
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+function brDow(): number {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })).getDay();
+}
+function hourNum(hhmm: string): number {
+  const [h, m] = (hhmm || "19:30").split(":").map(Number);
+  return h + (m || 0) / 60;
+}
+
+// Monta e (opcionalmente) envia o resumo de UMA empresa. Usado tanto pelo modo
+// agendado (por horário) quanto pelos modos manuais (live/preview/dry).
+async function processCompany(
+  supabase: SupabaseClient,
+  c: { id: string; name: string },
+  opts: { morning: boolean; live: boolean; dry: boolean; instance: string | null; group: { jid: string; name: string }; flags?: boolean },
+): Promise<any> {
+  const { morning, live, dry, instance, group, flags } = opts;
+  const isMonday = new Date(brToday() + "T12:00:00").getDay() === 1;
+  const today = morning ? daysAgo(brToday(), isMonday ? 2 : 1) : brToday();
+  const dayLabel = morning ? (isMonday ? "no sábado" : "ontem") : "hoje";
+
+  const metrics = await buildMetrics(supabase, c.id, today);
+  let text: string;
+  if (!metrics || !metrics.hasToday || metrics.rows.length === 0) {
+    text = await nudgeText(c.name, dayLabel);
+  } else {
+    text = await generateSummary(c.name, metrics, dayLabel) || await nudgeText(c.name, dayLabel);
+    const parts: string[] = [];
+    if (metrics.lancaram.length) parts.push(`Lançaram ${dayLabel}: ${metrics.lancaram.join(", ")}.`);
+    if (metrics.faltaram.length) parts.push(morning
+      ? `Faltou lançar ${dayLabel}: ${metrics.faltaram.join(", ")}. Sobe esses números retroativos ainda hoje cedo.`
+      : `Faltou lançar: ${metrics.faltaram.join(", ")}. Bora subir esses números ainda hoje.`);
+    if (parts.length) text += `\n\n${parts.join("\n")}`;
+  }
+  if (today.endsWith("-01") || flags) {
+    const fb = await monthlyFlagsBlock(supabase, c.id);
+    if (fb) text = `${text}\n${fb}`;
+  }
+  if (dry) return { processed: true, has_data: !!metrics?.hasToday, morning, today, preview: text };
+  const target = live ? group.jid : ALERT_PHONE;
+  const payload = live ? text : `*[PREVIEW · ${c.name} · grupo: ${group.name}]*\n\n${text}`;
+  const ok = await sendWhatsApp(supabase, target, payload, live ? instance : null);
+  return { processed: true, has_data: !!metrics?.hasToday, sent_to: live ? "grupo_gestao" : "fabricio_preview", ok };
+}
+
+const json = (b: any, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const body = await req.json().catch(() => ({}));
-    const live = body.live === true;
-    const morning = body.morning === true;
-    // Feriado nacional: ninguém está operando — nenhum resumo sai (nem noturno
-    // nem matinal). Dry-run continua funcionando pra teste.
-    if (!body.dry && isBrazilHoliday(brToday())) {
-      return new Response(JSON.stringify({ ok: true, skipped: "feriado nacional", today: brToday() }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    // Modo matinal fala do dia ANTERIOR; noturno fala do dia atual.
-    // Na SEGUNDA o matinal fala do SÁBADO (D-2) — domingo a loja não opera
-    // e o resultado de sábado não pode ficar sem leitura.
-    const isMonday = new Date(brToday() + "T12:00:00").getDay() === 1;
-    const today = morning ? daysAgo(brToday(), isMonday ? 2 : 1) : brToday();
-    const dayLabel = morning ? (isMonday ? "no sábado" : "ontem") : "hoje";
-    const limit = Number(body.limit) || (live ? 100 : 8);
 
-    // Liga/desliga por empresa: painel "Automações" nos detalhes da empresa
-    // (company_automation_settings). Sem linha na tabela = ligado.
+    // Config por empresa (painel Automações). send_time manda; matinal (<14h) fala
+    // do dia anterior e roda seg-sáb, noturno (>=14h) fala do dia atual e roda seg-sex.
     const { data: casRows } = await supabase
       .from("company_automation_settings")
-      .select("company_id, enabled, variant, instance_name")
+      .select("company_id, enabled, variant, instance_name, send_time")
       .eq("automation_key", "resumo_diario");
-    const RESUMO_EXCLUDED_COMPANY_IDS = new Set<string>(
-      (casRows || []).filter((r: any) => r.enabled === false).map((r: any) => r.company_id));
-    // Regime matinal (11h, dia anterior) configurado no painel da empresa
-    const MORNING_COMPANY_IDS = new Set<string>(
-      (casRows || []).filter((r: any) => r.variant === "matinal").map((r: any) => r.company_id));
-    // Instância de envio escolhida no painel (null = padrão fabricionunnes)
-    const RESUMO_INSTANCE = new Map<string, string>(
-      (casRows || []).filter((r: any) => r.instance_name).map((r: any) => [r.company_id, r.instance_name]));
+    type Cfg = { enabled: boolean; sendTime: string; instance: string | null; morning: boolean };
+    const cfg = new Map<string, Cfg>();
+    for (const r of (casRows || [])) {
+      const sendTime = (r as any).send_time || ((r as any).variant === "matinal" ? "11:00" : "19:30");
+      cfg.set((r as any).company_id, {
+        enabled: (r as any).enabled !== false,
+        sendTime,
+        instance: (r as any).instance_name || null,
+        morning: hourNum(sendTime) < 14,
+      });
+    }
+    const defCfg = (): Cfg => ({ enabled: true, sendTime: "19:30", instance: null, morning: false });
 
     const gestaoGroups = await fetchGestaoGroups();
+    const dateBR = brToday();
+    const holiday = isBrazilHoliday(dateBR);
 
-    // Empresas ativas alvo: com grupo de gestão (regra: nunca privado do dono).
     let companyQuery = supabase.from("onboarding_companies").select("id, name").eq("status", "active");
     if (body.companyId) companyQuery = companyQuery.eq("id", body.companyId);
     const { data: companies } = await companyQuery;
 
     const results: any[] = [];
     let sent = 0;
+
+    // ── MODO AGENDADO (cron de 30/30 min): envia quem está no horário agora ──
+    if (body.scheduled === true) {
+      if (holiday) return json({ ok: true, mode: "scheduled", skipped: "feriado nacional", dateBR });
+      const slot = brNowSlot();
+      const dow = brDow();
+      const { data: sentRows } = await supabase.from("company_resumo_sent").select("company_id").eq("sent_date", dateBR);
+      const already = new Set((sentRows || []).map((r: any) => r.company_id));
+
+      for (const c of (companies || [])) {
+        const s = cfg.get(c.id) || defCfg();
+        if (!s.enabled) continue;
+        if (s.sendTime !== slot) continue;
+        const okDay = s.morning ? (dow >= 1 && dow <= 6) : (dow >= 1 && dow <= 5);
+        if (!okDay) { results.push({ company: c.name, skipped: "fora do dia da semana", morning: s.morning, dow }); continue; }
+        if (already.has(c.id)) { results.push({ company: c.name, skipped: "já enviado hoje" }); continue; }
+        const group = gestaoGroups.get(c.id);
+        if (!group) { results.push({ company: c.name, skipped: "sem grupo de gestão" }); continue; }
+        // claim (dedup atômico): marca antes de enviar; se o envio falhar, libera.
+        const { error: claimErr } = await supabase.from("company_resumo_sent").insert({ company_id: c.id, sent_date: dateBR });
+        if (claimErr) { results.push({ company: c.name, skipped: "claim duplicado" }); continue; }
+        const r = await processCompany(supabase, c, { morning: s.morning, live: true, dry: false, instance: s.instance, group });
+        if (r.ok) sent++;
+        else await supabase.from("company_resumo_sent").delete().eq("company_id", c.id).eq("sent_date", dateBR);
+        results.push({ company: c.name, sendTime: s.sendTime, ...r });
+      }
+      return json({ ok: true, mode: "scheduled", slot, dow, sent, results });
+    }
+
+    // ── MODOS MANUAIS (live / morning / companyId / dry) ──
+    if (!body.dry && holiday) return json({ ok: true, skipped: "feriado nacional", dateBR });
+    const live = body.live === true;
+    const forceMorning = body.morning === true;
+    const limit = Number(body.limit) || (live ? 100 : 8);
     for (const c of (companies || [])) {
-      if (RESUMO_EXCLUDED_COMPANY_IDS.has(c.id)) { results.push({ company: c.name, skipped: "desligada no painel de automações" }); continue; }
-      // Empresas matinais só saem no run morning; as demais só no noturno.
-      if (morning !== MORNING_COMPANY_IDS.has(c.id)) { results.push({ company: c.name, skipped: morning ? "não é matinal" : "resumo matinal próprio (10h)" }); continue; }
+      const s = cfg.get(c.id) || defCfg();
+      if (!s.enabled) { results.push({ company: c.name, skipped: "desligada no painel" }); continue; }
+      if (forceMorning !== s.morning) { results.push({ company: c.name, skipped: forceMorning ? "não é matinal" : "matinal próprio" }); continue; }
       const group = gestaoGroups.get(c.id);
       if (!group) { results.push({ company: c.name, skipped: "sem grupo de gestão" }); continue; }
       if (results.filter((r) => r.processed).length >= limit) break;
-
-      const metrics = await buildMetrics(supabase, c.id, today);
-      let text: string;
-      if (!metrics || !metrics.hasToday || metrics.rows.length === 0) {
-        text = await nudgeText(c.name, dayLabel);
-      } else {
-        text = await generateSummary(c.name, metrics, dayLabel) || await nudgeText(c.name, dayLabel);
-        // Quem lançou / quem faltou: bloco DETERMINÍSTICO (direto do banco) —
-        // a IA nunca escreve nomes, então nunca erra nem inventa.
-        const parts: string[] = [];
-        if (metrics.lancaram.length) parts.push(`Lançaram ${dayLabel}: ${metrics.lancaram.join(", ")}.`);
-        if (metrics.faltaram.length) parts.push(morning
-          ? `Faltou lançar ${dayLabel}: ${metrics.faltaram.join(", ")}. Sobe esses números retroativos ainda hoje cedo.`
-          : `Faltou lançar: ${metrics.faltaram.join(", ")}. Bora subir esses números ainda hoje.`);
-        if (parts.length) text += `\n\n${parts.join("\n")}`;
-      }
-
-      // Dia 1º (ou {flags:true} pra testar): anexa o fechamento do mês com as
-      // flags do time — ritual mensal de cobrança no grupo de gestão.
-      if (today.endsWith("-01") || body.flags === true) {
-        const fb = await monthlyFlagsBlock(supabase, c.id);
-        if (fb) text = `${text}\n${fb}`;
-      }
-
-      // {dry:true}: só retorna os textos, não envia nada (validação).
-      if (body.dry) {
-        results.push({ company: c.name, processed: true, has_data: !!metrics?.hasToday, preview: text });
-        continue;
-      }
-
-      const target = live ? group.jid : ALERT_PHONE;
-      const payload = live ? text : `*[PREVIEW · ${c.name} · grupo: ${group.name}]*\n\n${text}`;
-      const ok = await sendWhatsApp(supabase, target, payload, live ? RESUMO_INSTANCE.get(c.id) : null);
-      if (ok) sent++;
-      results.push({ company: c.name, processed: true, has_data: !!metrics?.hasToday, sent_to: live ? "grupo_gestao" : "fabricio_preview", ok });
+      const r = await processCompany(supabase, c, { morning: s.morning, live, dry: body.dry === true, instance: s.instance, group, flags: body.flags === true });
+      if (r.ok) sent++;
+      results.push({ company: c.name, ...r });
     }
-
-    return new Response(JSON.stringify({ ok: true, mode: live ? "live" : "preview", today, sent, results }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ ok: true, mode: live ? "live" : "preview", sent, results });
   } catch (error: any) {
-    return new Response(JSON.stringify({ ok: false, error: error?.message || String(error) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ ok: false, error: error?.message || String(error) }, 500);
   }
 });
