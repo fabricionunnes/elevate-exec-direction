@@ -57,6 +57,7 @@ import {
   ChevronLeft,
   Info,
   Instagram,
+  Bot,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -83,6 +84,8 @@ export const CRMInboxPage = () => {
   const { staffId, staffName, isAdmin, staffRole } = useCRMContext();
   const [selectedConversation, setSelectedConversation] = useState<WhatsAppConversation | null>(null);
   const [newMessage, setNewMessage] = useState("");
+  // Sugestão pendente do agente (modo copiloto): card acima do composer
+  const [aiSuggestion, setAiSuggestion] = useState<{ id: string; content: string; agent: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram">("all");
@@ -360,6 +363,39 @@ export const CRMInboxPage = () => {
       fetchConversationById();
     }
   }, [conversationIdFromUrl, conversations, selectedConversation, loadingConversations]);
+
+  // Busca sugestão pendente do agente pra conversa aberta (+ realtime)
+  useEffect(() => {
+    let active = true;
+    setAiSuggestion(null);
+    const convId = selectedConversation?.id;
+    if (!convId) return;
+    const channelName = selectedConversation?.channel === "instagram" ? "instagram" : "whatsapp";
+    const fetchSuggestion = async () => {
+      const { data } = await (supabase as any)
+        .from("crm_ai_suggested_replies")
+        .select("id, content, agent:crm_ai_agents(name)")
+        .eq("conversation_id", convId)
+        .eq("channel", channelName)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(1).maybeSingle();
+      if (active) setAiSuggestion(data ? { id: data.id, content: data.content, agent: data.agent?.name || "Agente IA" } : null);
+    };
+    fetchSuggestion();
+    const rt = supabase
+      .channel(`ai-suggestions-${convId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "crm_ai_suggested_replies", filter: `conversation_id=eq.${convId}` }, fetchSuggestion)
+      .subscribe();
+    return () => { active = false; supabase.removeChannel(rt); };
+  }, [selectedConversation?.id, selectedConversation?.channel]);
+
+  const resolveSuggestion = async (id: string, status: "used" | "dismissed") => {
+    setAiSuggestion(null);
+    await (supabase as any).from("crm_ai_suggested_replies")
+      .update({ status, acted_at: new Date().toISOString(), acted_by: staffId })
+      .eq("id", id);
+  };
 
   // Mark as read when selecting conversation
   useEffect(() => {
@@ -1066,6 +1102,30 @@ export const CRMInboxPage = () => {
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
+
+          {/* Sugestão do agente (copiloto) */}
+          {aiSuggestion && (
+            <div className="border-t border-border bg-primary/5 px-3 py-2.5">
+              <div className="max-w-3xl mx-auto">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Bot className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-[11px] font-medium text-primary">Sugestão · {aiSuggestion.agent}</span>
+                </div>
+                <p className="text-sm whitespace-pre-wrap mb-2">{aiSuggestion.content}</p>
+                <div className="flex gap-2">
+                  <Button size="sm" className="h-7 text-xs" onClick={() => {
+                    setNewMessage(aiSuggestion.content);
+                    resolveSuggestion(aiSuggestion.id, "used");
+                  }}>
+                    Usar sugestão
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => resolveSuggestion(aiSuggestion.id, "dismissed")}>
+                    Descartar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Message Input */}
           <div className="border-t border-border p-2 sm:p-3 bg-card">
