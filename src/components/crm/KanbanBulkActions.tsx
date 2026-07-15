@@ -106,8 +106,32 @@ export const KanbanBulkActions = ({
     }
   }, [selectedLeads.length, currentPipelineId]);
 
+  // Em massa não dá pra abrir um dialog por lead: se a etapa destino é de reunião
+  // agendada, cria automaticamente a tarefa "Próximo contato" (dia útil seguinte,
+  // responsável = dono do lead) pra nenhum lead ficar sem follow-up.
+  const ensureNextContactTasks = async (leadIds: string[], stageId: string) => {
+    try {
+      const { data: st } = await supabase.from("crm_stages").select("name").eq("id", stageId).maybeSingle();
+      if (!st || !/agendad/i.test(st.name)) return;
+      const { data: leads } = await supabase.from("crm_leads")
+        .select("id, owner_staff_id, closer_staff_id, sdr_staff_id").in("id", leadIds);
+      const due = new Date();
+      due.setDate(due.getDate() + (due.getDay() === 5 ? 3 : due.getDay() === 6 ? 2 : 1));
+      due.setHours(9, 0, 0, 0);
+      const rows = (leads || []).map((l: any) => ({
+        lead_id: l.id, type: "followup", title: "Próximo contato (reunião agendada)",
+        scheduled_at: due.toISOString(), status: "pending",
+        responsible_staff_id: l.owner_staff_id || l.closer_staff_id || l.sdr_staff_id || null,
+      }));
+      if (rows.length) await supabase.from("crm_activities").insert(rows);
+    } catch (e) {
+      console.error("ensureNextContactTasks:", e);
+    }
+  };
+
   const handleBulkMove = async () => {
     if (!moveToStage || selectedLeads.length === 0) return;
+    // (a garantia de tarefa pra etapa 'agendad' é aplicada após o move — ver ensureNextContactTasks)
     
     setLoading(true);
     try {
@@ -124,6 +148,8 @@ export const KanbanBulkActions = ({
           await createStageActivities(leadId, moveToStage);
         }
       }
+
+      await ensureNextContactTasks(selectedLeads, moveToStage);
 
       toast.success(`${selectedLeads.length} leads movidos com sucesso`);
       setMoveToStage("");
@@ -184,6 +210,8 @@ export const KanbanBulkActions = ({
           await createStageActivities(leadId, targetStageId);
         }
       }
+
+      await ensureNextContactTasks(selectedLeads, targetStageId);
 
       toast.success(`${selectedLeads.length} leads movidos para outro funil`);
       setMoveToPipeline("");

@@ -467,6 +467,12 @@ export const CRMLeadDetailPage = () => {
       
       // Track meeting events (scheduled/realized) for CRM metrics
       const targetStage = stages.find(s => s.id === stageId);
+
+      // Etapa de reunião agendada: obriga criar a tarefa do próximo contato
+      if (targetStage && /agendad/i.test(targetStage.name)) {
+        setNextTask({ mandatory: true });
+        toast.info("Reunião agendada — crie a tarefa do próximo contato.");
+      }
       if (staffId && lead.pipeline_id && targetStage) {
         await trackMeetingEventOnStageChange(
           lead.id,

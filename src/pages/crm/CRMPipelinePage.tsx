@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { AddLeadDialog } from "@/components/crm/AddLeadDialog";
 import { ImportLeadsDialog } from "@/components/crm/ImportLeadsDialog";
 import { createStageActivities } from "@/hooks/useStageActions";
+import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
 import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
 import { trackMeetingEventOnStageChange } from "@/hooks/useMeetingEventTracker";
 import { CRMFiltersBar, CRMFilters } from "@/components/crm/CRMFiltersBar";
@@ -115,6 +116,8 @@ export const CRMPipelinePage = () => {
   const [negotiationData, setNegotiationData] = useState<any[]>([]);
 
   // Stage move dialog state
+  // Tarefa obrigatória de próximo contato ao mover pra etapa de reunião agendada
+  const [forcedTaskLeadId, setForcedTaskLeadId] = useState<string | null>(null);
   const [stageMoveDialog, setStageMoveDialog] = useState<{
     open: boolean;
     leadId: string;
@@ -525,6 +528,11 @@ export const CRMPipelinePage = () => {
       }
       
       await createStageActivities(stageMoveDialog.leadId, stageMoveDialog.targetStageId);
+
+      // Etapa de reunião agendada: obriga criar a tarefa do próximo contato
+      if (/agendad/i.test(stageMoveDialog.targetStageName || "")) {
+        setForcedTaskLeadId(stageMoveDialog.leadId);
+      }
       
       // Track meeting events (scheduled/realized) for CRM metrics
       if (staffId && selectedPipeline) {
@@ -917,6 +925,19 @@ export const CRMPipelinePage = () => {
         selectedOriginId={selectedOrigin}
         defaultPipelineId={selectedPipeline}
       />
+
+      {/* Tarefa OBRIGATÓRIA de próximo contato (lead movido pra reunião agendada) */}
+      {forcedTaskLeadId && (
+        <AddActivityDialog
+          open={!!forcedTaskLeadId}
+          onOpenChange={(o) => {
+            if (o) return;
+            toast.error("Crie a tarefa do próximo contato — reunião agendada não fica sem follow-up");
+          }}
+          leadId={forcedTaskLeadId}
+          onSuccess={() => setForcedTaskLeadId(null)}
+        />
+      )}
     </div>
   );
 };
