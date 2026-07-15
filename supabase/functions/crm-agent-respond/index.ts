@@ -235,6 +235,61 @@ Deno.serve(async (req) => {
     }
     if (mode === "off") return j({ ok: true, skip: "modo desligado para este funil" });
 
+    // Horário de atendimento do agente (Brasília). Fora da janela → não responde.
+    if (agent.work_hours_enabled && !dry_run) {
+      const brNow = new Date(Date.now() - 3 * 3600000);
+      const h = brNow.getUTCHours();
+      const dow = brNow.getUTCDay(); // 0=domingo
+      const days: number[] | null = agent.work_days || null;
+      const inDay = !days || days.length === 0 || days.includes(dow);
+      const hs = agent.work_hour_start ?? 8, he = agent.work_hour_end ?? 20;
+      const inHour = h >= hs && h < he;
+      if (!inDay || !inHour) return j({ ok: true, skip: `fora do horário de atendimento (${hs}h-${he}h)` });
+    }
+
+    // Tempo de resposta: adia o processamento e responde só à ÚLTIMA mensagem da
+    // rajada (cada mensagem dispara um run; após o sleep, só o run da mensagem
+    // mais recente segue — os outros veem inbound mais novo e desistem).
+    const delaySec = Number(agent.response_delay_seconds || 0);
+    const triggerTs: string | null = body0.message_ts || null;
+    if (delaySec > 0 && !dry_run) {
+      // deno-lint-ignore no-explicit-any
+      (globalThis as any).EdgeRuntime?.waitUntil?.((async () => {
+        await new Promise((r) => setTimeout(r, Math.min(delaySec, 300) * 1000));
+        try {
+          // re-checa o estado da conversa depois da espera
+          const msgTable = isIG ? "instagram_messages" : "crm_whatsapp_messages";
+          const tsCol = isIG ? "timestamp" : "created_at";
+          const { data: latest } = await supabase.from(msgTable)
+            .select(`direction, ${tsCol}`)
+            .eq("conversation_id", conversation_id)
+            .order(tsCol, { ascending: false }).limit(1).maybeSingle();
+          if (!latest || latest.direction !== "inbound") return; // já respondida
+          if (triggerTs && new Date((latest as any)[tsCol]).getTime() > new Date(triggerTs).getTime() + 500) {
+            return; // chegou mensagem mais nova: o run dela responde
+          }
+          const result = await processConversation();
+          console.log("deferred result:", JSON.stringify(result).slice(0, 300));
+          if ((result as any)?.error) {
+            await supabase.from("crm_ai_suggested_replies").insert({
+              channel: "debug", conversation_id, content: "deferred result erro: " + JSON.stringify(result).slice(0, 400), status: "debug",
+            });
+          }
+        } catch (e) {
+          console.error("deferred error", e);
+          await supabase.from("crm_ai_suggested_replies").insert({
+            channel: "debug", conversation_id, content: "deferred EXCECAO: " + String((e as Error)?.stack || e).slice(0, 500), status: "debug",
+          }).then(() => {}, () => {});
+        }
+      })());
+      return j({ ok: true, deferred: true, delay_seconds: delaySec, agent: agent.name });
+    }
+
+    const inline = await processConversation();
+    return j(inline);
+
+    // ---------------- processamento (histórico → IA → envio/sugestão) ----------------
+    async function processConversation(): Promise<Record<string, unknown>> {
     // 4) Histórico
     let msgs: { direction: string; content: string; ts: string }[] = [];
     if (isIG) {
@@ -249,21 +304,21 @@ Deno.serve(async (req) => {
       msgs = (history || []).map((m: any) => ({ direction: m.direction, content: m.content || "", ts: m.created_at }));
     }
     msgs = msgs.filter((m) => m.content.trim().length > 0);
-    if (msgs.length === 0) return j({ ok: true, skip: "sem conteúdo textual" });
-    if (msgs[msgs.length - 1].direction !== "inbound") return j({ ok: true, skip: "última mensagem não é do lead" });
+    if (msgs.length === 0) return { ok: true, skip: "sem conteúdo textual" };
+    if (msgs[msgs.length - 1].direction !== "inbound") return { ok: true, skip: "última mensagem não é do lead" };
 
     // Anti-rajada: agente respondeu há <12s → não dispara de novo
     const lastOut = [...msgs].reverse().find((m) => m.direction === "outbound");
     if (lastOut && Date.now() - new Date(lastOut.ts).getTime() < 12000) {
-      return j({ ok: true, skip: "resposta recente do agente (debounce)" });
+      return { ok: true, skip: "resposta recente do agente (debounce)" };
     }
 
     // 5) Guardrails
     const outboundCount = msgs.filter((m) => m.direction === "outbound").length;
-    if (agent.max_messages && outboundCount >= agent.max_messages) return j({ ok: true, skip: "limite de mensagens atingido" });
+    if (agent.max_messages && outboundCount >= agent.max_messages) return { ok: true, skip: "limite de mensagens atingido" };
     const lastInbound = msgs[msgs.length - 1].content.toLowerCase();
     const handoff = (agent.handoff_keywords || []).some((k: string) => k && lastInbound.includes(k.toLowerCase()));
-    if (handoff) return j({ ok: true, skip: "handoff acionado por palavra-chave" });
+    if (handoff) return { ok: true, skip: "handoff acionado por palavra-chave" };
 
     // 6) Base de conhecimento
     const { data: kn } = await supabase.from("crm_ai_agent_knowledge")
@@ -302,7 +357,7 @@ Deno.serve(async (req) => {
       else apiMessages.push({ role, content: m.content });
     }
     if (apiMessages.length === 0 || apiMessages[apiMessages.length - 1].role !== "user") {
-      return j({ ok: true, skip: "sem turno do lead para responder" });
+      return { ok: true, skip: "sem turno do lead para responder" };
     }
 
     // 8) Loop de IA com tool_use (máx 5 iterações)
@@ -324,7 +379,7 @@ Deno.serve(async (req) => {
       if (!aiResp.ok) {
         const errTxt = await aiResp.text();
         console.error("Anthropic error", aiResp.status, errTxt);
-        return j({ ok: false, error: `IA falhou: ${aiResp.status}`, detail: errTxt.slice(0, 400) }, 200);
+        return { ok: false, error: `IA falhou: ${aiResp.status}`, detail: errTxt.slice(0, 400) };
       }
       const aiData = await aiResp.json();
       const content = Array.isArray(aiData?.content) ? aiData.content : [];
@@ -352,9 +407,9 @@ Deno.serve(async (req) => {
       reply = content.filter((b: any) => b?.type === "text").map((b: any) => b.text).join("").trim();
       break;
     }
-    if (!reply) return j({ ok: true, skip: "resposta vazia da IA", tool_calls: toolCalls });
+    if (!reply) return { ok: true, skip: "resposta vazia da IA", tool_calls: toolCalls };
 
-    if (dry_run) return j({ ok: true, dry_run: true, mode, agent: agent.name, reply, tool_calls: toolCalls });
+    if (dry_run) return { ok: true, dry_run: true, mode, agent: agent.name, reply, tool_calls: toolCalls };
 
     // 9) Envia (auto) ou guarda sugestão (copiloto)
     if (mode === "auto") {
@@ -362,11 +417,11 @@ Deno.serve(async (req) => {
         const { error: sendErr } = await supabase.functions.invoke("instagram-send", {
           body: { conversationId: conversation_id, message: reply, staffId: null },
         });
-        if (sendErr) return j({ ok: false, error: "falha ao enviar DM", detail: String(sendErr) }, 200);
+        if (sendErr) return { ok: false, error: "falha ao enviar DM", detail: String(sendErr) };
       } else {
         const phone = String(conv.contact?.phone || "").replace(/\D/g, "");
         const sent = await sendWhatsAppText(supabase, conv.instance_id, phone, reply);
-        if (!sent.ok) return j({ ok: false, error: "falha ao enviar WhatsApp", detail: sent.error }, 200);
+        if (!sent.ok) return { ok: false, error: "falha ao enviar WhatsApp", detail: sent.error };
         // registra a mensagem outbound e atualiza a conversa
         await supabase.from("crm_whatsapp_messages").insert({
           conversation_id, content: reply, type: "text", direction: "outbound", status: "sent", sent_by: null,
@@ -375,13 +430,14 @@ Deno.serve(async (req) => {
           last_message: reply.substring(0, 255), last_message_at: new Date().toISOString(),
         }).eq("id", conversation_id);
       }
-      return j({ ok: true, mode: "auto", sent: true, agent: agent.name, tool_calls: toolCalls });
+      return { ok: true, mode: "auto", sent: true, agent: agent.name, tool_calls: toolCalls };
     } else {
       await supabase.from("crm_ai_suggested_replies").insert({
         agent_id: agent.id, channel, conversation_id, content: reply, status: "pending",
       });
-      return j({ ok: true, mode: "copilot", suggested: true, agent: agent.name, tool_calls: toolCalls });
+      return { ok: true, mode: "copilot", suggested: true, agent: agent.name, tool_calls: toolCalls };
     }
+    } // fim processConversation
   } catch (e) {
     console.error("crm-agent-respond error", e);
     return j({ ok: false, error: String((e as Error).message || e) }, 500);

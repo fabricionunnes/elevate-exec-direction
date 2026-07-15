@@ -33,6 +33,11 @@ export interface AIAgent {
   schedule_hour_end?: number;
   meeting_duration_minutes?: number;
   can_move_stage?: boolean;
+  response_delay_seconds?: number;
+  work_hours_enabled?: boolean;
+  work_hour_start?: number;
+  work_hour_end?: number;
+  work_days?: number[] | null;
   created_at: string;
 }
 

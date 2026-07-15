@@ -40,6 +40,9 @@ const emptyForm = {
   scheduling_enabled: false, scheduling_staff_ids: [] as string[],
   schedule_hour_start: 8, schedule_hour_end: 19,
   meeting_duration_minutes: 60, can_move_stage: false,
+  response_delay_seconds: 0,
+  work_hours_enabled: false, work_hour_start: 8, work_hour_end: 20,
+  work_days: [] as number[],
 };
 
 export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId, onSaved }: Props) {
@@ -98,6 +101,11 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
         schedule_hour_end: agent.schedule_hour_end ?? 19,
         meeting_duration_minutes: agent.meeting_duration_minutes ?? 60,
         can_move_stage: !!agent.can_move_stage,
+        response_delay_seconds: agent.response_delay_seconds ?? 0,
+        work_hours_enabled: !!agent.work_hours_enabled,
+        work_hour_start: agent.work_hour_start ?? 8,
+        work_hour_end: agent.work_hour_end ?? 20,
+        work_days: agent.work_days || [],
       });
     } else {
       setAgentId(null);
@@ -146,6 +154,11 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
       schedule_hour_end: form.schedule_hour_end,
       meeting_duration_minutes: form.meeting_duration_minutes,
       can_move_stage: form.can_move_stage,
+      response_delay_seconds: form.response_delay_seconds,
+      work_hours_enabled: form.work_hours_enabled,
+      work_hour_start: form.work_hour_start,
+      work_hour_end: form.work_hour_end,
+      work_days: form.work_days.length ? form.work_days : null,
       updated_at: new Date().toISOString(),
     };
     try {
@@ -281,6 +294,86 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
                   <Label>Máx. mensagens por conversa</Label>
                   <Input type="number" value={form.max_messages} onChange={(e) => set({ max_messages: e.target.value })} placeholder="deixe vazio p/ ilimitado" />
                 </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Tempo de resposta</Label>
+                <p className="text-xs text-muted-foreground -mt-1">
+                  Quanto o agente espera antes de responder. Se o lead mandar várias mensagens seguidas, ele responde uma vez só, à conversa toda.
+                </p>
+                <Select value={String(form.response_delay_seconds)} onValueChange={(v) => set({ response_delay_seconds: parseInt(v, 10) })}>
+                  <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Imediato</SelectItem>
+                    <SelectItem value="15">15 segundos</SelectItem>
+                    <SelectItem value="30">30 segundos</SelectItem>
+                    <SelectItem value="60">1 minuto</SelectItem>
+                    <SelectItem value="120">2 minutos</SelectItem>
+                    <SelectItem value="180">3 minutos</SelectItem>
+                    <SelectItem value="300">5 minutos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="rounded-md border p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm">Horário de atendimento</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Fora da janela o agente não responde. Desligado = atende 24h.
+                    </p>
+                  </div>
+                  <Switch checked={form.work_hours_enabled} onCheckedChange={(v) => set({ work_hours_enabled: v })} />
+                </div>
+                {form.work_hours_enabled && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="grid gap-2">
+                        <Label className="text-xs">Início</Label>
+                        <Select value={String(form.work_hour_start)} onValueChange={(v) => set({ work_hour_start: parseInt(v, 10) })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 24 }, (_, h) => (
+                              <SelectItem key={h} value={String(h)}>{String(h).padStart(2, "0")}:00</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label className="text-xs">Fim</Label>
+                        <Select value={String(form.work_hour_end)} onValueChange={(v) => set({ work_hour_end: parseInt(v, 10) })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 24 }, (_, i) => i + 1).map((h) => (
+                              <SelectItem key={h} value={String(h)}>{String(h).padStart(2, "0")}:00</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label className="text-xs">Dias da semana (nenhum marcado = todos)</Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d, i) => {
+                          const on = form.work_days.includes(i);
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => set({ work_days: on ? form.work_days.filter((x) => x !== i) : [...form.work_days, i] })}
+                              className={`px-2.5 py-1 rounded-md text-xs border transition-colors ${on ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                            >
+                              {d}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {form.work_hour_end <= form.work_hour_start && (
+                      <p className="text-xs text-destructive">O fim precisa ser maior que o início.</p>
+                    )}
+                  </>
+                )}
               </div>
               <div className="flex justify-end pt-1">
                 <Button onClick={saveConfig} disabled={saving}>
