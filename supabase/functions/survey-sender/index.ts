@@ -305,7 +305,8 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
     const message = ruleToSend.message_template
       .replace(/\{nome\}/g, companyName || "")
       .replace(/\{empresa\}/g, companyName || "")
-      .replace(/\{link\}/g, npsLink);
+      .replace(/\{link\}/g, npsLink)
+      .replace(/\\n/g, "\n");
 
     // Send via WhatsApp
     const instanceName = await getInstanceName(supabase, npsInst.get(companyId) || config.whatsapp_instance_name);
@@ -468,7 +469,8 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
       .replace(/\{empresa\}/g, company.name || "")
       .replace(/\{link\}/g, csatLink)
       .replace(/\{assunto_reuniao\}/g, meetingSubject)
-      .replace(/\{data_reuniao\}/g, meetingDate);
+      .replace(/\{data_reuniao\}/g, meetingDate)
+      .replace(/\\n/g, "\n");
 
     const instanceName = await getInstanceName(supabase, config.whatsapp_instance_name);
     if (!instanceName) {
@@ -559,6 +561,18 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
       .limit(1);
 
     const lastLog = existingLogs?.[0];
+
+    // Guarda de data: CSAT só faz sentido logo após a reunião. Reunião no FUTURO
+    // nunca recebe (dado inconsistente); e 1ª tentativa de reunião com +2 dias é
+    // velha demais — expira pra não poluir o grupo com pesquisa antiga/errada.
+    const mt = meeting.meeting_date ? new Date(meeting.meeting_date).getTime() : 0;
+    const nowMs = now.getTime();
+    if (mt && (mt > nowMs || (!lastLog && mt < nowMs - 2 * 86400000))) {
+      console.log(`CSAT: pulando survey ${survey.id} — reunião ${meeting.meeting_date} fora da janela (futura ou 1ª tentativa >2d)`);
+      await supabase.from("csat_surveys").update({ status: "expired" }).eq("id", survey.id);
+      continue;
+    }
+
     let attemptNumber = 1;
 
     if (lastLog) {
@@ -590,7 +604,8 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
       .replace(/\{empresa\}/g, company.name || "")
       .replace(/\{link\}/g, csatLink)
       .replace(/\{assunto_reuniao\}/g, meetingSubject)
-      .replace(/\{data_reuniao\}/g, meetingDate);
+      .replace(/\{data_reuniao\}/g, meetingDate)
+      .replace(/\\n/g, "\n");
 
     const instanceName = await getInstanceName(supabase, csatInst.get(company.id) || config.whatsapp_instance_name);
     if (!instanceName) {
