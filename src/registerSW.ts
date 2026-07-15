@@ -65,7 +65,7 @@ export function registerServiceWorker() {
         try {
           const cacheKeys = await caches.keys();
           const hasOldCache = cacheKeys.some(
-            (k) => k.startsWith('unv-nexus-') && k !== 'unv-nexus-v3'
+            (k) => k.startsWith('unv-nexus-') && k !== 'unv-nexus-v4'
           );
           if (hasOldCache) {
             await Promise.all(cacheKeys.map((k) => caches.delete(k)));
