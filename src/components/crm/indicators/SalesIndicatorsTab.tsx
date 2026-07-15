@@ -437,10 +437,9 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     const currentDay = periodFuture ? 0 : (sameMonthAsStart ? getDate(effectiveEnd) : daysInMonth);
     const isCloserFilter = selectedCloser !== "all";
 
-    // Vendas de EVENTO (Imersão, Mansão, Palestra, Eventos) não são venda comercial core —
-    // são conversão específica do evento e distorcem ticket médio / qtd. Ficam de fora deste painel.
-    const isEventSale = (s: any) => /imers|evento|mans[ãa]o|palestra/i.test(s.pipeline?.name || "");
-    const commercialRawSales = rawSalesData.filter(s => !isEventSale(s));
+    // Todas as vendas contam, INCLUSIVE as de evento (Mansão, Imersão, Palestra,
+    // Eventos) — decisão do Fabrício: faturamento de evento entra no dashboard.
+    const commercialRawSales = rawSalesData;
 
     // Filter raw data by selected closer + produto (filtro de produto antes era morto;
     // vendas carregam product_name livre, não product_id — então filtra por nome).
@@ -704,7 +703,6 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const productOptions = useMemo(() => {
     const set = new Set<string>();
     rawSalesData.forEach((s: any) => {
-      if (/imers|evento|mans[ãa]o|palestra/i.test(s.pipeline?.name || "")) return; // exclui evento
       const name = s.product?.name || s.product_name;
       if (name && String(name).trim()) set.add(String(name).trim());
     });
