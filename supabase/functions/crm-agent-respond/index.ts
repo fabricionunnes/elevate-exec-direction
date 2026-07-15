@@ -188,10 +188,25 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
       const endDate = new Date(new Date(startISO).getTime() + dur * 60000);
       // fim no mesmo fuso -03:00
       const endISO = new Date(endDate.getTime() - 3 * 3600000).toISOString().slice(0, 19) + "-03:00";
+      // Descrição do evento: mesmo padrão do agendamento manual do CRM (link do lead)
+      let description = "Agendado pelo agente de IA do CRM Comercial.";
+      let leadRow: any = null;
+      if (leadId) {
+        const { data: lr } = await supabase.from("crm_leads")
+          .select("id, name, phone, company, pipeline_id").eq("id", leadId).maybeSingle();
+        leadRow = lr;
+        if (lr) {
+          description = [
+            `Lead: ${lr.name}${lr.company ? ` (${lr.company})` : ""}${lr.phone ? ` · ${lr.phone}` : ""}`,
+            "Agendado pelo agente de IA do CRM Comercial.",
+            `📋 Link do lead no CRM: https://unvholdings.com.br/#/crm/leads/${lr.id}`,
+          ].join("\n\n");
+        }
+      }
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/google-calendar?action=create-event`, {
         method: "POST",
         headers: { Authorization: `Bearer ${SERVICE_ROLE}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ title, startDateTime: startISO, endDateTime: endISO, target_user_id: staff.user_id }),
+        body: JSON.stringify({ title, description, startDateTime: startISO, endDateTime: endISO, target_user_id: staff.user_id }),
       });
       const ev = await resp.json();
       if (!resp.ok || ev.error) return `Erro ao agendar: ${ev.error || resp.status}`;
@@ -205,6 +220,17 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
           google_calendar_event_id: ev.event?.id || null,
           google_calendar_user_id: staff.user_id,
         });
+        // Marca o agendamento no funil: move pra etapa 'Agendado' se o funil tiver uma
+        if (leadRow?.pipeline_id) {
+          const { data: stages } = await supabase.from("crm_stages")
+            .select("id, name").eq("pipeline_id", leadRow.pipeline_id);
+          const agendado = (stages || []).find((st: any) => st.name.toLowerCase().includes("agendad"));
+          if (agendado) {
+            await supabase.from("crm_leads")
+              .update({ stage_id: agendado.id, stage_entered_at: new Date().toISOString() })
+              .eq("id", leadId);
+          }
+        }
       }
       const link = ev.event?.meetingLink ? ` Link da reunião: ${ev.event.meetingLink}` : "";
       return `Reunião agendada com ${staff.name} em ${m[1]} às ${m[2]}:${m[3]}.${link}`;
