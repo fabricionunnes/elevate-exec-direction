@@ -28,7 +28,7 @@ export function registerServiceWorker() {
     return;
   }
 
-  window.addEventListener('load', async () => {
+  const doRegister = async () => {
     try {
       const registration = await navigator.serviceWorker.register('/sw.js', {
         updateViaCache: 'none',
@@ -81,5 +81,15 @@ export function registerServiceWorker() {
     } catch (error) {
       console.error('[SW] Falha ao registrar:', error);
     }
-  });
+  };
+
+  // O registro precisa acontecer mesmo que o evento `load` JÁ tenha disparado.
+  // Como registerServiceWorker() roda depois de um bootstrap assíncrono, a página
+  // frequentemente já está 'complete' aqui — nesse caso o listener de 'load'
+  // nunca dispararia e o SW nunca registraria (PWA deixa de ser instalável).
+  if (document.readyState === 'complete') {
+    void doRegister();
+  } else {
+    window.addEventListener('load', () => void doRegister());
+  }
 }
