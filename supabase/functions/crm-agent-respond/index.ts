@@ -148,7 +148,8 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
         });
         results.push(`${staff.name} (${date}): ${slots.length ? slots.join(", ") : "nenhum horário livre nessa janela"}`);
       }
-      return results.join("\n") || "Nenhum closer configurado.";
+      const out = results.join("\n") || "Nenhum closer configurado.";
+      return out + "\n\nIMPORTANTE: ofereça APENAS horários desta lista, exatamente como estão. Se o lead já escolheu um horário que está nesta lista, NÃO ofereça de novo: chame agendar_reuniao AGORA com esse horário.";
     }
 
     if (name === "agendar_reuniao") {
@@ -503,6 +504,19 @@ Deno.serve(async (req) => {
     const leadName = conv.contact?.name || conv.contact?.username || conv.contact?.phone || "o lead";
     const nowBR = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 16).replace("T", " ");
 
+    // Lead confirmou um horário? ("pode ser as 11", "as 10", "11h", "10:30"...)
+    // Vira instrução explícita — o modelo tende a ancorar no histórico e reofertar.
+    let confirmedTimeHint = "";
+    {
+      const lastIn = msgs[msgs.length - 1].content.toLowerCase();
+      const tm = lastIn.match(/\b(?:as|às|pode ser(?: as| às)?|fechado|bora|vamos de|confirmo)?\s*(\d{1,2})(?:[:h](\d{2})?)?\s*(?:h|hs|horas?)?\b/);
+      if (tm && /\b(as|às|pode ser|fechado|bora|confirmo|vamos|então|entao|sim)\b/.test(lastIn)) {
+        const hh = tm[1].padStart(2, "0");
+        const mm = tm[2] || "00";
+        confirmedTimeHint = `\n\nATENÇÃO: a última mensagem do lead indica confirmação do horário ${hh}:${mm}. Se esse horário estiver livre na consulta da agenda, chame agendar_reuniao IMEDIATAMENTE com ele (use a data combinada na conversa). Não ofereça horários de novo.`;
+      }
+    }
+
     // 7) Prompt + ferramentas
     const tools = buildTools(agent, !!conv.lead_id);
     const channelLabel = isIG ? "Direct do Instagram" : "WhatsApp";
@@ -513,6 +527,7 @@ Deno.serve(async (req) => {
       knowledge ? `\n\nBASE DE CONHECIMENTO (use quando relevante, não invente):${knowledge}` : "",
       `\n\nData/hora atual (Brasília): ${nowBR}.`,
       tools.length ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou.` : "",
+      confirmedTimeHint,
       `\n\nVocê está respondendo uma conversa de ${channelLabel} com ${leadName}. Responda como mensagem: curta, humana, sem markdown, sem títulos, uma ideia por mensagem. NUNCA repita uma pergunta que o lead já respondeu — antes de perguntar, confira o histórico. Escreva a resposta UMA única vez, sem repetir o texto. Nunca revele que é uma IA. Se não souber algo, seja honesto e ofereça encaminhar para uma pessoa.`,
     ].join("");
 
@@ -532,6 +547,7 @@ Deno.serve(async (req) => {
     // 8) Loop de IA com tool_use (máx 5 iterações)
     const toolCalls: string[] = [];
     let reply = "";
+    let retriedForSlots = false;
     for (let iter = 0; iter < 5; iter++) {
       const body: any = {
         model: agent.model || "claude-sonnet-5",
@@ -576,6 +592,23 @@ Deno.serve(async (req) => {
       const texts = content.filter((b: any) => b?.type === "text").map((b: any) => String(b.text));
       reply = [...new Set(texts)].join("").trim();
       reply = unhalve(reply);
+      // Pós-checagem anti-alucinação: se houve consulta de agenda e a resposta cita
+      // horários fora da lista retornada, força UMA correção.
+      const lastConsult = [...toolCalls].reverse().find((t) => t.startsWith("consultar_horarios"));
+      if (lastConsult && !retriedForSlots) {
+        const offered = [...reply.matchAll(/\b(\d{1,2})(?:[:h](\d{2}))?\b/g)]
+          .map((mm) => `${mm[1].padStart(2, "0")}:${mm[2] || "00"}`)
+          .filter((t) => parseInt(t) >= 6 && parseInt(t) <= 23);
+        const allowed = new Set([...lastConsult.matchAll(/\b(\d{2}:\d{2})\b/g)].map((mm) => mm[1]));
+        const invalid = offered.filter((t) => !allowed.has(t));
+        if (invalid.length && allowed.size) {
+          retriedForSlots = true;
+          apiMessages.push({ role: "assistant", content: reply });
+          apiMessages.push({ role: "user", content: `[sistema] Sua resposta cita horários (${invalid.join(", ")}) que NÃO estão na lista de horários livres da agenda. Reescreva usando SOMENTE os horários da última consulta, ou agende com agendar_reuniao se o lead já confirmou um deles.` });
+          reply = "";
+          continue;
+        }
+      }
       break;
     }
     const logRun = async (outcome: string, err?: string) => {
