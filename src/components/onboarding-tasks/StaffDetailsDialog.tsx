@@ -18,6 +18,7 @@ interface StaffFull {
   cpf?: string | null;
   rg?: string | null;
   birth_date?: string | null;
+  hire_date?: string | null;
   cep?: string | null;
   street?: string | null;
   address_number?: string | null;
@@ -44,7 +45,7 @@ interface Props {
 }
 
 const FIELDS: (keyof StaffFull)[] = [
-  "name", "email", "phone", "cpf", "rg", "birth_date",
+  "name", "email", "phone", "cpf", "rg", "birth_date", "hire_date",
   "cep", "street", "address_number", "complement", "neighborhood", "city", "state",
   "bank_name", "bank_agency", "bank_account", "bank_account_type", "pix_key",
   "cnpj", "company_name", "trade_name", "municipal_registration",
@@ -142,6 +143,12 @@ export function StaffDetailsDialog({ open, onOpenChange, staffId, onSaved }: Pro
                   type="date"
                   value={data.birth_date || ""}
                   onChange={(v) => update("birth_date", v)}
+                />
+                <Field
+                  label="Data de Admissão (entrada na empresa)"
+                  type="date"
+                  value={data.hire_date || ""}
+                  onChange={(v) => update("hire_date", v)}
                 />
               </div>
             </TabsContent>
