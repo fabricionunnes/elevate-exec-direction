@@ -1625,7 +1625,29 @@ export const KPIDashboardTab = ({
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 kpi3d">
+      <style>{`
+        /* Profundidade 3D aplicada a TODOS os cards do dashboard, sem trocar as cores do tema */
+        .kpi3d [class*="bg-muted"].rounded-full{ box-shadow: inset 0 1px 2px rgba(0,0,0,.16); }
+        .kpi3d [class*="bg-muted"].rounded-full > .rounded-full{
+          box-shadow: 0 3px 6px -2px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.32);
+          position:relative;
+        }
+        .kpi3d [class*="bg-muted"].rounded-full > .rounded-full:not([class*="gradient"]){
+          background-image: linear-gradient(180deg, rgba(255,255,255,.24), rgba(0,0,0,.14));
+        }
+        /* cards ganham relevo (sombra em camadas + brilho no topo), tema preservado */
+        .kpi3d [class*="bg-card"]{
+          box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 14px 30px -18px rgba(0,0,0,.38);
+        }
+        :root[data-theme="dark"] .kpi3d [class*="bg-card"], .dark .kpi3d [class*="bg-card"]{
+          box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 18px 36px -18px rgba(0,0,0,.6);
+        }
+        /* colunas/barras de gráfico (recharts) com leve profundidade */
+        .kpi3d .recharts-bar-rectangle path, .kpi3d .recharts-rectangle path{
+          filter: drop-shadow(0 4px 5px rgba(0,0,0,.22));
+        }
+      `}</style>
       {/* Filters */}
       <Card className="border-border/50 shadow-sm overflow-hidden relative">
         {/* Cabeçalho clicável para colapsar */}
