@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { KPIDashboardTab } from "@/components/onboarding-tasks/kpis/KPIDashboardTab";
 import { endOfMonth, format, startOfMonth, subMonths, isSameMonth, isAfter } from "date-fns";
+import { isHoliday } from "@/lib/businessDays";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { 
@@ -191,11 +192,12 @@ const OnboardingResultsPage = () => {
         ? format(now, "yyyy-MM-dd")
         : format(endOfMonth(selectedMonthDate), "yyyy-MM-dd");
       
-      const [companiesRes, staffRes, servicesRes, projectsRes] = await Promise.all([
+      const [companiesRes, staffRes, servicesRes, projectsRes, daySettingsRes] = await Promise.all([
         supabase.from("onboarding_companies").select("id, name, segment, cs_id, consultant_id, status, is_simulator, goal_not_required").eq("status", "active").order("name"),
         supabase.from("onboarding_staff").select("id, name, role").eq("is_active", true).order("name"),
         supabase.from("onboarding_services").select("id, name").order("name"),
         supabase.from("onboarding_projects").select("id, product_id, product_name, onboarding_company_id, status").eq("status", "active"),
+        supabase.from("company_daily_goal_settings").select("company_id, include_saturday, include_sunday, include_holidays"),
       ]);
       
       // Filter out simulator companies and goal_not_required companies from the results
@@ -208,6 +210,36 @@ const OnboardingResultsPage = () => {
       
       // Build set of real company IDs (non-simulators) for filtering
       const realCompanyIds = new Set(realCompanies.map(c => c.id));
+
+      // Configuração de dias úteis por empresa (fim de semana/feriado) — MESMA base
+      // do dashboard (KPIDashboardTab), pra a projeção da lista bater com a de dentro.
+      const daySettingsByCompany = new Map<string, { sat: boolean; sun: boolean; hol: boolean }>();
+      (daySettingsRes.data || []).forEach((d: any) => daySettingsByCompany.set(d.company_id, {
+        sat: !!d.include_saturday, sun: !!d.include_sunday, hol: !!d.include_holidays,
+      }));
+      const isWorkingDayFor = (date: Date, st: { sat: boolean; sun: boolean; hol: boolean }) => {
+        const dow = date.getDay();
+        if (dow === 6 && !st.sat) return false;
+        if (dow === 0 && !st.sun) return false;
+        if (!st.hol && isHoliday(date)) return false;
+        return true;
+      };
+      const countWorkingDaysFor = (st: { sat: boolean; sun: boolean; hol: boolean }, upToDay?: number) => {
+        const last = upToDay ?? daysInMonth;
+        let c = 0;
+        for (let d = 1; d <= last; d++) if (isWorkingDayFor(new Date(periodYear, periodMonth - 1, d), st)) c++;
+        return c;
+      };
+      // Progresso do tempo por empresa = dias úteis decorridos / dias úteis do mês.
+      // (mês passado = 100%). elapsed exclui hoje, como no dashboard.
+      const timeProgressFor = (companyId: string): number => {
+        const st = daySettingsByCompany.get(companyId) || { sat: false, sun: false, hol: false };
+        const total = countWorkingDaysFor(st);
+        if (total <= 0) return 0;
+        if (!isCurrentMonth) return 1;
+        const elapsed = countWorkingDaysFor(st, now.getDate() - 1);
+        return elapsed / total;
+      };
       
       // Fetch companies with KPI marked as "Meta Principal" (is_main_goal)
       // IMPORTANT: Only fetch company-level KPIs (scope = 'company' or null) for projection
@@ -272,6 +304,28 @@ const OnboardingResultsPage = () => {
         }
       });
       
+      // Metas POR VENDEDOR do mês (o dashboard soma essas — é a "Meta do Mês" real).
+      // Preferimos essa soma sobre a meta company-level solta; sem isso a lista pegava
+      // um target diferente do dashboard e a projeção não batia.
+      const { data: spTargetsRows } = await supabase
+        .from("kpi_monthly_targets")
+        .select("kpi_id, target_value, level_order")
+        .eq("month_year", selectedMonth)
+        .not("salesperson_id", "is", null)
+        .gt("target_value", 0);
+      // Soma no MENOR level_order (nível base "Meta") por KPI.
+      const spLowestLevel = new Map<string, number>();
+      (spTargetsRows || []).forEach((t: any) => {
+        const lo = t.level_order ?? 1;
+        const cur = spLowestLevel.get(t.kpi_id);
+        if (cur === undefined || lo < cur) spLowestLevel.set(t.kpi_id, lo);
+      });
+      const spTargetSumByKpi = new Map<string, number>();
+      (spTargetsRows || []).forEach((t: any) => {
+        if ((t.level_order ?? 1) !== spLowestLevel.get(t.kpi_id)) return;
+        spTargetSumByKpi.set(t.kpi_id, (spTargetSumByKpi.get(t.kpi_id) || 0) + Number(t.target_value));
+      });
+
       // Also fetch ALL monthly targets for this month (including salesperson/unit/team level)
       // to determine which companies have ANY goals configured
       const { data: allMonthlyTargets } = await supabase
@@ -373,8 +427,8 @@ const OnboardingResultsPage = () => {
         // Skip if this KPI is not in the projection set
         if (!kpisForProjection.has(entry.kpi_id)) return;
         
-        // Get target: first from monthly targets, then from KPI default
-        const monthlyTarget = targetMap.get(entry.kpi_id);
+        // Get target: metas por vendedor (soma) > company-level do mês > default do KPI
+        const monthlyTarget = spTargetSumByKpi.get(entry.kpi_id) ?? targetMap.get(entry.kpi_id);
         const kpiInfo = kpiPeriodicityMap.get(entry.kpi_id);
         const defaultTarget = kpiInfo?.target || entry.company_kpis?.target_value || 0;
         const periodicity = kpiInfo?.periodicity || entry.company_kpis?.periodicity || "monthly";
@@ -420,10 +474,11 @@ const OnboardingResultsPage = () => {
           totalTarget += target;
         });
         
-        // Calculate projection with time elapsed (same formula as dashboard)
-        // projectionPercent = ((totalRealized / totalTarget) / timeElapsedPercent) * 100
-        if (totalTarget > 0 && timeElapsedPercent > 0) {
-          const projectionPercent = Math.round(((totalRealized / totalTarget) / timeElapsedPercent) * 100);
+        // Projeção com dias ÚTEIS por empresa (igual ao dashboard):
+        // projeção = ((realizado / meta) / progresso_do_tempo) * 100
+        const tp = timeProgressFor(companyId);
+        if (totalTarget > 0 && tp > 0) {
+          const projectionPercent = Math.round(((totalRealized / totalTarget) / tp) * 100);
           projectionsMap.set(companyId, projectionPercent);
         }
       });
