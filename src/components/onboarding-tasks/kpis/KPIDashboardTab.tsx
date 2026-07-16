@@ -42,6 +42,7 @@ import { DailyGoalCard } from "./DailyGoalCard";
 import { ProjectTermVisionCard } from "./ProjectTermVisionCard";
 import { NorthStarMetricCard } from "./NorthStarMetricCard";
 import { SalesHeatmapCharts } from "./SalesHeatmapCharts";
+import { RankingPodium } from "./RankingPodium";
 import { UnitRankingCard } from "./UnitRankingCard";
 import { PeriodComparisonCard } from "./PeriodComparisonCard";
 import { SalespersonFlagsPanel } from "./SalespersonFlagsPanel";
@@ -3181,20 +3182,10 @@ export const KPIDashboardTab = ({
                 );
               })()
             ) : rankingData.length > 0 && rankingData.some(r => r.total > 0) ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={rankingData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
-                  <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <YAxis dataKey="name" type="category" width={100} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    formatter={(value: number) => [
-                      selectedKpiData ? formatValue(value, selectedKpiData.kpi_type) : value.toLocaleString("pt-BR"),
-                      "Total"
-                    ]}
-                  />
-                  <Bar dataKey="total" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <RankingPodium
+                data={rankingData}
+                formatValue={(v) => selectedKpiData ? formatValue(v, selectedKpiData.kpi_type) : v.toLocaleString("pt-BR")}
+              />
             ) : (
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
                 Nenhum dado para o período selecionado
