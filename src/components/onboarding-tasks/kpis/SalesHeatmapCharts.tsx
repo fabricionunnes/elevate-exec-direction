@@ -205,16 +205,18 @@ export const SalesHeatmapCharts = ({
                 </span>
               </div>
             )}
-            <div className="flex items-end gap-2 h-[150px] pt-2">
+            <div className="flex items-end gap-2 pt-2">
               {weekdayData.map((d) => {
                 const h = d.maxAvg > 0 ? Math.max(4, (d.avg / d.maxAvg) * 100) : 4;
                 const isTop = bestWeekday?.top.label === d.label && d.avg > 0;
                 const pal = d.avg === 0 ? VIOLET_SOFT : isTop ? EMERALD : EMERALD_SOFT;
                 return (
-                  <div key={d.label} className="flex-1 flex flex-col items-center justify-end gap-1.5 h-full">
+                  <div key={d.label} className="flex-1 flex flex-col items-center gap-1.5">
                     <span className="text-[11px] font-bold text-foreground">{d.avg > 0 ? formatCurrency(d.avg) : "—"}</span>
-                    <div className="shm3d-col-wrap" style={{ height: `${h}%` }}>
-                      <div className="shm3d-col" style={{ ...varsOf(pal), height: "100%", opacity: d.avg === 0 ? 0.35 : 1 }} />
+                    <div className="w-full flex items-end" style={{ height: 118 }}>
+                      <div className="shm3d-col-wrap" style={{ height: `${h}%` }}>
+                        <div className="shm3d-col" style={{ ...varsOf(pal), height: "100%", opacity: d.avg === 0 ? 0.35 : 1 }} />
+                      </div>
                     </div>
                     <span className={`text-[11px] font-medium ${isTop ? "text-foreground" : "text-muted-foreground"}`}>{d.label}</span>
                   </div>
@@ -267,16 +269,20 @@ export const SalesHeatmapCharts = ({
             {/* Semana do mês — colunas 3D */}
             <div>
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-bold mb-2.5">Por semana do mês</p>
-              <div className="flex items-end gap-2.5 h-[130px]">
+              <div className="flex items-end gap-2.5">
                 {monthPattern.weeks.map((v, i) => {
                   const h = Math.max(4, (v / monthPattern.weekMax) * 100);
                   const isPeak = i === monthPattern.peakWeek && v > 0;
                   return (
-                    <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1.5 h-full">
-                      {isPeak && <span className="text-[8.5px] font-extrabold uppercase tracking-wide text-amber-950 bg-amber-400 rounded px-1.5 py-[1px]">Pico</span>}
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                      <div className="h-[15px] flex items-end">
+                        {isPeak && <span className="text-[8.5px] font-extrabold uppercase tracking-wide text-amber-950 bg-amber-400 rounded px-1.5 py-[1px]">Pico</span>}
+                      </div>
                       <span className="text-[10.5px] font-bold text-foreground tabular-nums">{formatCurrency(v)}</span>
-                      <div className="shm3d-col-wrap" style={{ height: `${h}%` }}>
-                        <div className="shm3d-col" style={{ ...varsOf(isPeak ? AMBER : VIOLET_SOFT), height: "100%" }} />
+                      <div className="w-full flex items-end" style={{ height: 104 }}>
+                        <div className="shm3d-col-wrap" style={{ height: `${h}%` }}>
+                          <div className="shm3d-col" style={{ ...varsOf(isPeak ? AMBER : VIOLET_SOFT), height: "100%" }} />
+                        </div>
                       </div>
                       <span className={`text-[10px] font-medium ${isPeak ? "text-foreground" : "text-muted-foreground"}`}>{WEEK_LABELS[i]}</span>
                     </div>
