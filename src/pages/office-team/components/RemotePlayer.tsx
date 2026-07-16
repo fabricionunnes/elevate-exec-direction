@@ -43,7 +43,10 @@ export default function RemotePlayer({ player }: { player: RemotePlayerState }) 
     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2
     g.rotation.y += angleDiff * Math.min(1, 12 * delta)
 
-    const walking = player.moving || dist > 0.08
+    // 'moving' só vale com broadcast fresco (<2.5s) — broadcast final perdido
+    // deixava o boneco andando parado pra sempre
+    const fresh = Date.now() - (player.lastPosAt ?? 0) < 2500
+    const walking = (player.moving && fresh) || dist > 0.08
     if (walking !== isWalking) setIsWalking(walking)
   })
 

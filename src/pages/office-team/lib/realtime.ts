@@ -130,7 +130,15 @@ export class TeamRealtime {
           let position: [number, number, number] = existing?.position ?? [meta.x ?? 0, 0, meta.z ?? 0.5]
           let rotation = existing?.rotation ?? meta.rot ?? 0
           let sitting = existing?.sitting ?? meta.sit ?? false
-          if (existing && !existing.moving && typeof meta.x === 'number' && typeof meta.z === 'number') {
+          // 'moving' preso: se o último broadcast 'pos' tem >3s, o jogador NÃO
+          // está mais andando (o broadcast final se perdeu). Sem isso, o boneco
+          // ficava "andando" eterno no lugar errado — fora da reconciliação,
+          // fora da sala certa (áudio mudo) e fora da grade da reunião.
+          const posStale = !existing?.lastPosAt || Date.now() - existing.lastPosAt > 3_000
+          if (existing && existing.moving && posStale) {
+            existing.moving = false
+          }
+          if (existing && (!existing.moving || posStale) && typeof meta.x === 'number' && typeof meta.z === 'number') {
             const drift = Math.hypot(existing.position[0] - meta.x, existing.position[2] - meta.z)
             if (drift > 1.5) {
               position = [meta.x, 0, meta.z]

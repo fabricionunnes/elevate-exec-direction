@@ -42,6 +42,10 @@ export interface RemotePlayerState extends TeamProfile {
   position: [number, number, number]
   rotation: number
   moving: boolean
+  /** timestamp do último broadcast 'pos' recebido — detecta 'moving' preso
+   * (broadcast final perdido deixava o boneco andando pra sempre no lugar
+   * errado, invisível pra reconciliação do presence) */
+  lastPosAt?: number
   sitting: boolean
   inCall: boolean
   micOn: boolean
@@ -342,6 +346,7 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     existing.rotation = rot
     existing.moving = moving
     existing.sitting = sitting
+    existing.lastPosAt = Date.now()
     if (satChanged) {
       // sentar/levantar é raro e muda UI (balões do café) → notifica na hora
       set((p) => ({ remotePlayers: { ...p.remotePlayers } }))

@@ -379,7 +379,9 @@ export default function TeamOfficePage() {
     const iv = setInterval(() => {
       const st = useTeamStore.getState()
       const peersInCall = Object.values(st.remotePlayers).filter((p) => p.inCall).length
-      setCallHeavy(st.recording.on || (st.call.joined && peersInCall >= 2))
+      // st.recordings é POR SALA (v3.32) — qualquer gravação ativa conta
+      const recordingOn = Object.keys(st.recordings).length > 0
+      setCallHeavy(recordingOn || (st.call.joined && peersInCall >= 2))
     }, 2000)
     return () => clearInterval(iv)
   }, [])
