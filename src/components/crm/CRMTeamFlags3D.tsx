@@ -193,18 +193,26 @@ function Scene({ people, months, byKey, onHover, hoveredId }: {
 /** Flags do time comercial interno (closers, head e SDRs) nos 3 últimos meses
  * fechados — <70% red · 70–100% yellow · >100% green — com visão 3D:
  * altura = % da meta; a linha verde marca os 100%. */
-export const CRMTeamFlags3D = () => {
-  const [rows, setRows] = useState<FlagRow[]>([]);
+/** selfStaffId: quando setado, mostra SÓ a flag dessa pessoa (dashboard do
+ * closer/SDR). Se ela não tem flag, o componente não renderiza (fica em branco). */
+export const CRMTeamFlags3D = ({ selfStaffId }: { selfStaffId?: string | null } = {}) => {
+  const [allRows, setAllRows] = useState<FlagRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [hovered, setHovered] = useState<FlagRow | null>(null);
 
   useEffect(() => {
     (async () => {
       const { data, error } = await (supabase.rpc as any)("get_crm_staff_flags");
-      if (!error && Array.isArray(data)) setRows(data as FlagRow[]);
+      if (!error && Array.isArray(data)) setAllRows(data as FlagRow[]);
       setLoading(false);
     })();
   }, []);
+
+  // Escopo por pessoa: o closer/SDR só vê a própria flag.
+  const rows = useMemo(
+    () => (selfStaffId ? allRows.filter((r) => r.staff_id === selfStaffId) : allRows),
+    [allRows, selfStaffId]
+  );
 
   const months = useMemo(() => Array.from(new Set(rows.map((r) => r.ref_month))).sort().reverse(), [rows]);
   const people = useMemo(() => {

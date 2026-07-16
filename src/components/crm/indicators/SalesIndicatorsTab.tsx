@@ -1008,7 +1008,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
 
       {/* ── Flags do time (3D): performance vs meta dos 3 últimos meses fechados ── */}
       <Suspense fallback={null}>
-        <CRMTeamFlags3D />
+        <CRMTeamFlags3D selfStaffId={isCloserUser ? staffId : undefined} />
       </Suspense>
 
       {/* ── Metas (Meta / Super / Hiper) ── */}
@@ -1083,7 +1083,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       </Section>
 
       {/* ── Term Vision Chart ── */}
-      <TermVisionChart />
+      <TermVisionChart closerStaffId={isCloserUser ? staffId : undefined} />
 
       {/* ── Gráficos ── */}
       <div className="grid md:grid-cols-2 gap-4">

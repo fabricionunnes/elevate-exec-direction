@@ -57,7 +57,7 @@ interface ProductivityData {
 type DateFilterType = "today" | "week" | "month" | "quarter" | "year" | "custom";
 
 export const CRMReportsPage = () => {
-  const { isAdmin } = useOutletContext<{ staffRole: string; isAdmin: boolean }>();
+  const { isAdmin, staffId } = useOutletContext<{ staffRole: string; isAdmin: boolean; staffId: string | null }>();
   const [searchParams, setSearchParams] = useSearchParams();
   // Tráfego Pago é restrito à gestão — SDR/Closer não acessam nem via URL ?tab=traffic
   const activeTab = searchParams.get("tab") === "traffic" && isAdmin ? "traffic" : "overview";
@@ -426,7 +426,8 @@ export const CRMReportsPage = () => {
 
       {/* ── Flags do Time (3D) — performance vs meta dos 3 últimos meses ── */}
       <Suspense fallback={null}>
-        <CRMTeamFlags3D />
+        {/* Gestão vê o time todo; closer/SDR só a própria flag (branco se não tem) */}
+        <CRMTeamFlags3D selfStaffId={isAdmin ? undefined : staffId} />
       </Suspense>
 
       {/* Charts */}

@@ -27,9 +27,11 @@ interface ChartDataPoint {
 
 interface TermVisionChartProps {
   className?: string;
+  /** quando setado, mostra só as vendas desse closer (dashboard do closer) */
+  closerStaffId?: string | null;
 }
 
-export const TermVisionChart = ({ className }: TermVisionChartProps) => {
+export const TermVisionChart = ({ className, closerStaffId }: TermVisionChartProps) => {
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [kpis, setKpis] = useState({
@@ -44,7 +46,8 @@ export const TermVisionChart = ({ className }: TermVisionChartProps) => {
 
   useEffect(() => {
     loadData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [closerStaffId]);
 
   const loadData = async () => {
     setLoading(true);
@@ -64,12 +67,13 @@ export const TermVisionChart = ({ className }: TermVisionChartProps) => {
       let hasMore = true;
       
       while (hasMore) {
-        const { data: salesData, error } = await supabase
+        let query = supabase
           .from("crm_sales")
           .select("sale_date, revenue_value, billing_value")
           .gte("sale_date", format(startDate, "yyyy-MM-dd"))
-          .lte("sale_date", format(endDate, "yyyy-MM-dd"))
-          .range(from, from + pageSize - 1);
+          .lte("sale_date", format(endDate, "yyyy-MM-dd"));
+        if (closerStaffId) query = query.eq("closer_staff_id", closerStaffId);
+        const { data: salesData, error } = await query.range(from, from + pageSize - 1);
         
         if (error) {
           console.error("Error fetching sales data:", error);
