@@ -662,8 +662,7 @@ function MultiSelectFilter({ placeholder, options, selected, onChange }: MultiSe
             </Button>
           )}
         </div>
-        <ScrollArea className="max-h-60">
-          <div className="p-1">
+        <div className="max-h-64 overflow-y-auto p-1">
             {options.length === 0 && (
               <div className="px-3 py-4 text-sm text-muted-foreground text-center">Nenhuma opção</div>
             )}
@@ -682,8 +681,7 @@ function MultiSelectFilter({ placeholder, options, selected, onChange }: MultiSe
                 </button>
               );
             })}
-          </div>
-        </ScrollArea>
+        </div>
       </PopoverContent>
     </Popover>
   );
