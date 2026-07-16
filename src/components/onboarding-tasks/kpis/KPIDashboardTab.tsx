@@ -1627,25 +1627,38 @@ export const KPIDashboardTab = ({
   return (
     <div className="space-y-6 kpi3d">
       <style>{`
-        /* Profundidade 3D aplicada a TODOS os cards do dashboard, sem trocar as cores do tema */
-        .kpi3d [class*="bg-muted"].rounded-full{ box-shadow: inset 0 1px 2px rgba(0,0,0,.16); }
+        /* Relevo 3D em TODOS os cards do dashboard — cores do tema preservadas */
+        /* Trilho da barra: canal escavado */
+        .kpi3d [class*="bg-muted"].rounded-full{
+          min-height:16px;
+          box-shadow: inset 0 2px 5px rgba(0,0,0,.28), inset 0 -1px 0 rgba(255,255,255,.05);
+        }
+        /* Preenchimento: pílula 3D com brilho no topo e sombra embaixo */
         .kpi3d [class*="bg-muted"].rounded-full > .rounded-full{
-          box-shadow: 0 3px 6px -2px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.32);
-          position:relative;
+          min-height:16px; position:relative;
+          box-shadow: 0 5px 10px -2px rgba(0,0,0,.42), inset 0 2px 0 rgba(255,255,255,.55), inset 0 -4px 7px rgba(0,0,0,.28);
         }
         .kpi3d [class*="bg-muted"].rounded-full > .rounded-full:not([class*="gradient"]){
-          background-image: linear-gradient(180deg, rgba(255,255,255,.24), rgba(0,0,0,.14));
+          background-image: linear-gradient(180deg, rgba(255,255,255,.48), rgba(255,255,255,0) 46%, rgba(0,0,0,.30));
         }
-        /* cards ganham relevo (sombra em camadas + brilho no topo), tema preservado */
+        /* Não mexe no marcador fino (linha do progresso do tempo) */
+        .kpi3d [class*="bg-muted"].rounded-full > .w-0\.5{
+          min-height:0; box-shadow:none; background-image:none;
+        }
+        /* Cards: relevo visível — sheen no topo + sombra em camadas */
         .kpi3d [class*="bg-card"]{
-          box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 14px 30px -18px rgba(0,0,0,.38);
+          background-image: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0) 130px);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 22px 44px -22px rgba(40,25,70,.5), 0 3px 8px -3px rgba(0,0,0,.16);
+          border-color: rgba(120,90,220,.14);
         }
         :root[data-theme="dark"] .kpi3d [class*="bg-card"], .dark .kpi3d [class*="bg-card"]{
-          box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 18px 36px -18px rgba(0,0,0,.6);
+          background-image: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0) 130px);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.09), 0 26px 52px -22px rgba(0,0,0,.75);
+          border-color: rgba(160,140,255,.16);
         }
-        /* colunas/barras de gráfico (recharts) com leve profundidade */
+        /* Gráficos recharts com profundidade */
         .kpi3d .recharts-bar-rectangle path, .kpi3d .recharts-rectangle path{
-          filter: drop-shadow(0 4px 5px rgba(0,0,0,.22));
+          filter: drop-shadow(0 6px 7px rgba(0,0,0,.32));
         }
       `}</style>
       {/* Filters */}
