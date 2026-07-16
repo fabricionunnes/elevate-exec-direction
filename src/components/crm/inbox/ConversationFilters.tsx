@@ -6,6 +6,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -22,6 +24,7 @@ import {
   ChevronDown,
   HelpCircle,
   CalendarIcon,
+  Check,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -50,8 +53,8 @@ export interface ConversationFiltersData {
   dealStatus: string;
   dealOwner: string;
   dealGroup: string;
-  dealOrigin: string;
-  dealStage: string;
+  dealOrigin: string[];
+  dealStage: string[];
   // Contatos
   tags: string[];
   // Canais
@@ -231,8 +234,8 @@ export function ConversationFilters({
       dealStatus: "",
       dealOwner: "",
       dealGroup: "",
-      dealOrigin: "",
-      dealStage: "",
+      dealOrigin: [],
+      dealStage: [],
       tags: [],
       instanceId: "",
     });
@@ -470,39 +473,48 @@ export function ConversationFilters({
                 </Select>
               </div>
 
-              {/* Negócio nas origens */}
+              {/* Negócio nas origens (funis) — múltipla seleção */}
               <div className="space-y-1">
                 <Label className="text-sm text-muted-foreground">Negócio nas origens</Label>
-                <Select value={filters.dealOrigin} onValueChange={(v) => { updateFilter("dealOrigin", v); if (filters.dealStage) updateFilter("dealStage", ""); }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {origins.map((o) => (
-                      <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MultiSelectFilter
+                  placeholder="Selecione um ou mais funis"
+                  options={origins.map((o) => ({ id: o.id, name: o.name }))}
+                  selected={filters.dealOrigin}
+                  onChange={(next) => {
+                    // ao mudar os funis, remove etapas que não pertencem mais a nenhum funil selecionado
+                    const pids = new Set(
+                      origins.filter((o) => next.includes(o.id)).map((o) => o.pipeline_id).filter(Boolean) as string[]
+                    );
+                    const keptStages = next.length
+                      ? filters.dealStage.filter((sid) => {
+                          const st = stages.find((s) => s.id === sid);
+                          return st && pids.has(st.pipeline_id);
+                        })
+                      : filters.dealStage;
+                    onFiltersChange({ ...filters, dealOrigin: next, dealStage: keptStages });
+                  }}
+                />
               </div>
 
-              {/* Negócio nas etapas */}
+              {/* Negócio nas etapas — múltipla seleção, filtrada pelos funis escolhidos */}
               <div className="space-y-1">
                 <Label className="text-sm text-muted-foreground">Negócio nas etapas</Label>
-                <Select value={filters.dealStage} onValueChange={(v) => updateFilter("dealStage", v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={filters.dealOrigin ? "Selecione..." : "Escolha o funil primeiro"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(() => {
-                      const selectedOrigin = origins.find((o) => o.id === filters.dealOrigin);
-                      const pid = selectedOrigin?.pipeline_id;
-                      const visible = pid ? stages.filter((s) => s.pipeline_id === pid) : stages;
-                      return visible.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                      ));
-                    })()}
-                  </SelectContent>
-                </Select>
+                {(() => {
+                  const pids = new Set(
+                    origins.filter((o) => filters.dealOrigin.includes(o.id)).map((o) => o.pipeline_id).filter(Boolean) as string[]
+                  );
+                  const visible = filters.dealOrigin.length
+                    ? stages.filter((s) => pids.has(s.pipeline_id))
+                    : stages;
+                  return (
+                    <MultiSelectFilter
+                      placeholder={filters.dealOrigin.length ? "Selecione uma ou mais etapas" : "Todas as etapas (ou escolha funis)"}
+                      options={visible.map((s) => ({ id: s.id, name: s.name }))}
+                      selected={filters.dealStage}
+                      onChange={(next) => updateFilter("dealStage", next)}
+                    />
+                  );
+                })()}
               </div>
             </CollapsibleContent>
           </Collapsible>
@@ -601,6 +613,82 @@ function FilterSwitch({ label, checked, onCheckedChange, hasHelp }: FilterSwitch
   );
 }
 
+interface MultiSelectFilterProps {
+  placeholder: string;
+  options: { id: string; name: string }[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+}
+
+function MultiSelectFilter({ placeholder, options, selected, onChange }: MultiSelectFilterProps) {
+  const [open, setOpen] = useState(false);
+  const toggle = (id: string) => {
+    if (selected.includes(id)) onChange(selected.filter((x) => x !== id));
+    else onChange([...selected, id]);
+  };
+  const selectedNames = options.filter((o) => selected.includes(o.id)).map((o) => o.name);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn(
+            "w-full justify-between font-normal h-auto min-h-10 py-2",
+            selected.length === 0 && "text-muted-foreground"
+          )}
+        >
+          <span className="flex flex-wrap gap-1 items-center text-left">
+            {selected.length === 0 ? (
+              placeholder
+            ) : selectedNames.length <= 2 ? (
+              selectedNames.map((n) => (
+                <Badge key={n} variant="secondary" className="font-normal">{n}</Badge>
+              ))
+            ) : (
+              <Badge variant="secondary" className="font-normal">{selected.length} selecionados</Badge>
+            )}
+          </span>
+          <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[290px] p-0" align="start">
+        <div className="flex items-center justify-between px-3 py-2 border-b">
+          <span className="text-xs text-muted-foreground">
+            {selected.length > 0 ? `${selected.length} selecionado(s)` : "Nenhum selecionado"}
+          </span>
+          {selected.length > 0 && (
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => onChange([])}>
+              Limpar
+            </Button>
+          )}
+        </div>
+        <ScrollArea className="max-h-60">
+          <div className="p-1">
+            {options.length === 0 && (
+              <div className="px-3 py-4 text-sm text-muted-foreground text-center">Nenhuma opção</div>
+            )}
+            {options.map((o) => {
+              const checked = selected.includes(o.id);
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => toggle(o.id)}
+                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted/60 text-sm text-left"
+                >
+                  <Checkbox checked={checked} className="pointer-events-none" />
+                  <span className="flex-1 truncate">{o.name}</span>
+                  {checked && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 interface DatePickerFilterProps {
   value: Date | undefined;
   onChange: (date: Date | undefined) => void;
@@ -662,8 +750,8 @@ export const defaultFilters: ConversationFiltersData = {
   dealStatus: "",
   dealOwner: "",
   dealGroup: "",
-  dealOrigin: "",
-  dealStage: "",
+  dealOrigin: [],
+  dealStage: [],
   tags: [],
   instanceId: "",
 };

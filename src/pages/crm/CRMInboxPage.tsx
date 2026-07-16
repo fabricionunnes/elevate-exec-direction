@@ -631,9 +631,9 @@ export const CRMInboxPage = () => {
     // Deal filters
     if (filters.hasDeal === "with" && !conv.lead_id) return false;
     if (filters.hasDeal === "without" && conv.lead_id) return false;
-    // Filtro por funil (origem) e etapa do negócio vinculado à conversa
-    if (filters.dealOrigin && conv.lead?.origin_id !== filters.dealOrigin) return false;
-    if (filters.dealStage && conv.lead?.stage_id !== filters.dealStage) return false;
+    // Filtro por funil (origem) e etapa do negócio vinculado à conversa — múltipla seleção
+    if (filters.dealOrigin.length && !filters.dealOrigin.includes(conv.lead?.origin_id ?? "")) return false;
+    if (filters.dealStage.length && !filters.dealStage.includes(conv.lead?.stage_id ?? "")) return false;
 
     // Date filter
     if (filters.createdAt) {
