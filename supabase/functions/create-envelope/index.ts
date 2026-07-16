@@ -13,7 +13,8 @@ serve(async (req: Request) => {
     if (authError || !user) return createErrorResponse("Não autorizado", 401);
     const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: staffData } = await supabaseAdmin.from("onboarding_staff").select("role").eq("user_id", user.id).eq("is_active", true).maybeSingle();
-    if (!staffData || !["master", "admin"].includes(staffData.role)) return createErrorResponse("Acesso negado", 403);
+    // closer/head_comercial podem enviar contrato (RLS de envelopes é por dono — cada um só vê os seus)
+    if (!staffData || !["master", "admin", "head_comercial", "closer"].includes(staffData.role)) return createErrorResponse("Acesso negado", 403);
     const contentType = req.headers.get("content-type") ?? "";
     if (!contentType.includes("multipart/form-data")) return createErrorResponse("Content-Type deve ser multipart/form-data", 400);
     const formData = await req.formData();

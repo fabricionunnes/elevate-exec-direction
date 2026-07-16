@@ -16,7 +16,8 @@ serve(async (req: Request) => {
     if (authError || !user) return createErrorResponse("Não autorizado", 401);
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: staff } = await admin.from("onboarding_staff").select("role").eq("user_id", user.id).eq("is_active", true).maybeSingle();
-    if (!staff || !["master", "admin"].includes(staff.role)) return createErrorResponse("Acesso negado", 403);
+    // closer/head_comercial também editam — mas só envelopes PRÓPRIOS (guarda de dono logo abaixo)
+    if (!staff || !["master", "admin", "head_comercial", "closer"].includes(staff.role)) return createErrorResponse("Acesso negado", 403);
 
     const form = await req.formData();
     const envelopeId = String(form.get("envelope_id") ?? "");
