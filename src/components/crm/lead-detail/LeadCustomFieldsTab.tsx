@@ -579,6 +579,7 @@ export const LeadCustomFieldsTab = ({
     // Map system fields to lead data
     const mapping: Record<string, string> = {
       name: "name",
+      created_at: "created_at",
       email: "email",
       phone: "phone",
       company: "company",
@@ -757,6 +758,25 @@ export const LeadCustomFieldsTab = ({
     const isEmpty = !value;
 
     if (hideEmptyFields && isEmpty) return null;
+
+    // Data de entrada do lead no CRM: somente leitura (crm_leads.created_at),
+    // formatada no horário de Brasília. Preenchida automaticamente (inclusive
+    // nos leads criados pelo Instagram).
+    if (field.field_name === "created_at") {
+      const raw = getSystemValue("created_at");
+      const label = raw
+        ? new Date(raw).toLocaleString("pt-BR", {
+            timeZone: "America/Sao_Paulo",
+            day: "2-digit", month: "2-digit", year: "numeric",
+            hour: "2-digit", minute: "2-digit",
+          })
+        : "—";
+      return (
+        <div className="flex items-center h-10 px-3 rounded-md border border-input bg-muted/40 text-sm text-muted-foreground">
+          {label}
+        </div>
+      );
+    }
 
     switch (field.field_type) {
       case "textarea":
