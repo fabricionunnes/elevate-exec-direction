@@ -12,6 +12,36 @@ const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
 
 const j = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
 
+// ---------- Resolução de modo do agente por conversa ----------
+// Regra: se o agente tem QUALQUER funil configurado (aba "Funis" = allowlist),
+// ele só atende leads em funis configurados — os demais funis e conversas sem
+// funil ficam "off". Sem nenhum funil configurado, usa o padrão do agente
+// (modo global, retrocompatível). O override manual da conversa sempre vence.
+async function resolveAgentMode(
+  supabase: any,
+  agent: any,
+  leadId: string | null,
+  override: { enabled?: boolean; reply_mode?: string } | null,
+): Promise<string> {
+  if (override && override.enabled === false) return "off";
+  if (override && (override.reply_mode || override.enabled === true)) {
+    return override.reply_mode || agent.reply_mode || "copilot";
+  }
+  const { data: binds } = await supabase.from("crm_ai_agent_pipelines")
+    .select("pipeline_id, reply_mode").eq("agent_id", agent.id);
+  const bindList = binds || [];
+  // Sem funis configurados => modo global (padrão do agente vale pra todos)
+  if (bindList.length === 0) return agent.reply_mode || "copilot";
+  // Allowlist por funil: precisa estar num funil configurado
+  let leadPid: string | null = null;
+  if (leadId) {
+    const { data: lead } = await supabase.from("crm_leads").select("pipeline_id").eq("id", leadId).maybeSingle();
+    leadPid = lead?.pipeline_id || null;
+  }
+  const bind = leadPid ? bindList.find((b: any) => b.pipeline_id === leadPid) : null;
+  return bind?.reply_mode || "off";
+}
+
 // ---------- Envio WhatsApp (mesmo transporte do survey-sender: Stevo/Manager V2 vs Evolution legado) ----------
 async function sendWhatsAppText(supabase: any, instanceId: string, phone: string, message: string): Promise<{ ok: boolean; error?: string }> {
   const { data: instance } = await supabase
@@ -330,17 +360,8 @@ Deno.serve(async (req) => {
             const { data: ov } = await supabase.from("crm_ai_agent_conversation_overrides")
               .select("enabled, reply_mode").eq("conversation_id", cv.id).eq("channel", b.channel).maybeSingle();
             if (ov && ov.enabled === false) continue;
-            // follow-up só em modo auto (override > funil > padrão)
-            let fmode = agent.reply_mode || "copilot";
-            if (ov?.reply_mode) fmode = ov.reply_mode;
-            else if (cv.lead_id) {
-              const { data: lead } = await supabase.from("crm_leads").select("pipeline_id").eq("id", cv.lead_id).maybeSingle();
-              if (lead?.pipeline_id) {
-                const { data: bind } = await supabase.from("crm_ai_agent_pipelines")
-                  .select("reply_mode").eq("agent_id", agent.id).eq("pipeline_id", lead.pipeline_id).maybeSingle();
-                if (bind?.reply_mode) fmode = bind.reply_mode;
-              }
-            }
+            // follow-up só em modo auto (mesma regra de allowlist por funil)
+            const fmode = await resolveAgentMode(supabase, agent, cv.lead_id, ov);
             if (fmode !== "auto") continue;
             // Já agendou? Lead com reunião FUTURA não pode receber follow-up de
             // reativação (senão o agente pede pra agendar de novo, como já ocorreu).
@@ -439,22 +460,12 @@ Deno.serve(async (req) => {
     agents.sort((a: any, b: any) => (a.created_at < b.created_at ? -1 : 1));
     const agent = agents[0];
 
-    // 3) Modo: override da conversa > funil do lead > padrão do agente
-    let mode = agent.reply_mode || "copilot";
+    // 3) Modo: override da conversa > funil do lead (allowlist) > padrão do agente
     const { data: override } = await supabase
       .from("crm_ai_agent_conversation_overrides")
       .select("enabled, reply_mode").eq("conversation_id", conversation_id).eq("channel", channel).maybeSingle();
     if (override && override.enabled === false) return j({ ok: true, skip: "agente desligado nesta conversa" });
-    if (override?.reply_mode) {
-      mode = override.reply_mode;
-    } else if (conv.lead_id) {
-      const { data: lead } = await supabase.from("crm_leads").select("pipeline_id").eq("id", conv.lead_id).maybeSingle();
-      if (lead?.pipeline_id) {
-        const { data: bind } = await supabase.from("crm_ai_agent_pipelines")
-          .select("reply_mode").eq("agent_id", agent.id).eq("pipeline_id", lead.pipeline_id).maybeSingle();
-        if (bind?.reply_mode) mode = bind.reply_mode;
-      }
-    }
+    const mode = await resolveAgentMode(supabase, agent, conv.lead_id, override);
     if (mode === "off") return j({ ok: true, skip: "modo desligado para este funil" });
 
     // Horário de atendimento do agente (Brasília). Fora da janela → não responde.
