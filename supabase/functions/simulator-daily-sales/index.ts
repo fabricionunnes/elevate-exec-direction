@@ -12,16 +12,21 @@ Deno.serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
   try {
     const body = await req.json().catch(() => ({}));
-    const mode = body.backfill ? "backfill" : "daily";
+    const mode = body.backfill ? "backfill" : body.history ? "history" : "daily";
     const force = !!body.force;
+    const monthsBack = Math.min(Math.max(parseInt(String(body.months ?? 12), 10) || 12, 1), 24);
 
     const br = new Date(Date.now() - 3 * 3600000);
     const y = br.getUTCFullYear(), m = br.getUTCMonth(), todayDay = br.getUTCDate(), dow = br.getUTCDay();
-    // seg-sáb: no modo diário, domingo não lança
     if (mode === "daily" && dow === 0 && !force) return j({ ok: true, skip: "domingo" });
-    const monthStart = `${y}-${pad(m + 1)}-01`;
-    const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-    const isWork = (d: number) => new Date(Date.UTC(y, m, d)).getUTCDay() !== 0; // exclui domingo (seg-sáb)
+
+    // dias úteis (seg-sáb) de um mês qualquer
+    const workDaysOf = (yy: number, mm: number) => {
+      const last = new Date(Date.UTC(yy, mm + 1, 0)).getUTCDate();
+      const days: number[] = [];
+      for (let d = 1; d <= last; d++) if (new Date(Date.UTC(yy, mm, d)).getUTCDay() !== 0) days.push(d);
+      return days;
+    };
 
     const { data: comps } = await supabase.from("onboarding_companies").select("id, name").eq("is_simulator", true);
     const out: any[] = [];
@@ -40,15 +45,12 @@ Deno.serve(async (req) => {
       if (!sps || sps.length === 0) { out.push({ company: c.name, skip: "sem vendedores" }); continue; }
 
       const target = Number(fat.target_value);
-      const ticket = Math.max(1, target / (vendas ? Math.max(1, Number(vendas.target_value) || 60) : 60));
+      const vendasTarget = vendas ? Math.max(1, Number(vendas.target_value) || 60) : 60;
+      const ticket = Math.max(1, target / vendasTarget);
 
-      // dias úteis (seg-sáb) do mês e decorridos (até hoje)
-      let total = 0; const workDays: number[] = [];
-      for (let d = 1; d <= lastDay; d++) { if (isWork(d)) { total++; if (d <= todayDay) workDays.push(d); } }
-
-      // lança um dia específico: distribui `amount` entre os vendedores + KPIs auxiliares
-      const buildRows = (day: number, amount: number) => {
-        const dateISO = `${y}-${pad(m + 1)}-${pad(day)}`;
+      // lança um dia específico (yy/mm/day): distribui `amount` entre os vendedores + KPIs auxiliares
+      const buildRows = (yy: number, mm: number, day: number, amount: number) => {
+        const dateISO = `${yy}-${pad(mm + 1)}-${pad(day)}`;
         const weights = sps.map(() => 0.6 + Math.random() * 0.9);
         const wsum = weights.reduce((a, b) => a + b, 0);
         const rows: any[] = [];
@@ -63,46 +65,99 @@ Deno.serve(async (req) => {
         return rows;
       };
 
-      if (mode === "backfill") {
-        // já tem faturamento no mês?
-        const { count } = await supabase.from("kpi_entries").select("id", { count: "exact", head: true })
-          .eq("kpi_id", fat.id).gte("entry_date", monthStart).lte("entry_date", `${y}-${pad(m + 1)}-${pad(todayDay)}`);
-        if ((count ?? 0) > 0 && !force) { out.push({ company: c.name, skip: "já tem lançamentos no mês (use force p/ refazer)" }); continue; }
-        // distribui overshoot do mês-até-hoje pelos dias úteis decorridos, com variação diária
-        const monthTargetSoFar = target * (workDays.length / total) * OVERSHOOT;
-        const dayW = workDays.map(() => 0.7 + Math.random() * 0.8);
+      // distribui um total pelo conjunto de dias úteis, com variação diária, e insere
+      const spreadMonth = async (yy: number, mm: number, days: number[], monthTotal: number) => {
+        const dayW = days.map(() => 0.7 + Math.random() * 0.8);
         const dwsum = dayW.reduce((a, b) => a + b, 0);
         let inserted = 0;
-        for (let k = 0; k < workDays.length; k++) {
-          const dayAmount = monthTargetSoFar * dayW[k] / dwsum;
-          const rows = buildRows(workDays[k], dayAmount);
+        for (let k = 0; k < days.length; k++) {
+          const rows = buildRows(yy, mm, days[k], monthTotal * dayW[k] / dwsum);
           if (rows.length) { await supabase.from("kpi_entries").insert(rows); inserted += rows.length; }
         }
-        out.push({ company: c.name, mode, dias: workDays.length, meta: target, alvo_mes: Math.round(monthTargetSoFar), linhas: inserted });
+        return inserted;
+      };
+
+      // ─────────────── HISTÓRICO: últimos N meses fechados ───────────────
+      if (mode === "history") {
+        const monthsOut: any[] = [];
+        for (let back = monthsBack; back >= 1; back--) {
+          const dt = new Date(Date.UTC(y, m - back, 1));
+          const yy = dt.getUTCFullYear(), mm = dt.getUTCMonth();
+          const monthKey = `${yy}-${pad(mm + 1)}`;
+          const first = `${monthKey}-01`;
+          const last = `${monthKey}-${pad(new Date(Date.UTC(yy, mm + 1, 0)).getUTCDate())}`;
+
+          // idempotência por mês
+          const { count } = await supabase.from("kpi_entries").select("id", { count: "exact", head: true })
+            .eq("kpi_id", fat.id).gte("entry_date", first).lte("entry_date", last);
+          if ((count ?? 0) > 0 && !force) { monthsOut.push({ mes: monthKey, skip: "já tem lançamentos" }); continue; }
+
+          // curva de crescimento: mês mais antigo ~55% da meta atual, recente ~100%
+          const idx = (monthsBack - back) / Math.max(1, monthsBack - 1); // 0..1 (antigo→recente)
+          const season = 1 + 0.06 * Math.sin((mm / 12) * Math.PI * 2); // leve sazonalidade
+          const monthTarget = Math.round(target * (0.55 + 0.45 * idx) * season);
+          const monthTargetVendas = Math.max(1, Math.round(monthTarget / ticket));
+          // realizado sempre acima da meta do mês (102%–114%)
+          const monthReal = monthTarget * (1.02 + Math.random() * 0.12);
+
+          // grava metas mensais (empresa) — Faturamento + Vendas
+          const targetRows = [
+            { kpi_id: fat.id, company_id: c.id, month_year: monthKey, level_name: "Meta", target_value: monthTarget },
+          ];
+          if (vendas) targetRows.push({ kpi_id: vendas.id, company_id: c.id, month_year: monthKey, level_name: "Meta", target_value: monthTargetVendas });
+          for (const tr of targetRows) {
+            const { count: tc } = await supabase.from("kpi_monthly_targets").select("id", { count: "exact", head: true })
+              .eq("kpi_id", tr.kpi_id).eq("company_id", c.id).eq("month_year", monthKey).is("salesperson_id", null);
+            if ((tc ?? 0) === 0) await supabase.from("kpi_monthly_targets").insert(tr);
+          }
+
+          const days = workDaysOf(yy, mm);
+          const linhas = await spreadMonth(yy, mm, days, monthReal);
+          monthsOut.push({ mes: monthKey, meta: monthTarget, realizado: Math.round(monthReal), pct: Math.round(monthReal / monthTarget * 100) + "%", dias: days.length, linhas });
+        }
+        out.push({ company: c.name, mode, meses: monthsOut });
         continue;
       }
 
-      // ── modo diário: incrementa hoje pra manter a projeção acima da meta ──
+      // ─────────────── BACKFILL: mês corrente até hoje ───────────────
+      if (mode === "backfill") {
+        const monthStart = `${y}-${pad(m + 1)}-01`;
+        const todayISO = `${y}-${pad(m + 1)}-${pad(todayDay)}`;
+        const { count } = await supabase.from("kpi_entries").select("id", { count: "exact", head: true })
+          .eq("kpi_id", fat.id).gte("entry_date", monthStart).lte("entry_date", todayISO);
+        if ((count ?? 0) > 0 && !force) { out.push({ company: c.name, skip: "já tem lançamentos no mês (use force p/ refazer)" }); continue; }
+        const allDays = workDaysOf(y, m);
+        const elapsed = allDays.filter((d) => d <= todayDay);
+        const monthTargetSoFar = target * (elapsed.length / allDays.length) * OVERSHOOT;
+        const linhas = await spreadMonth(y, m, elapsed, monthTargetSoFar);
+        out.push({ company: c.name, mode, dias: elapsed.length, meta: target, alvo_mes: Math.round(monthTargetSoFar), linhas });
+        continue;
+      }
+
+      // ─────────────── DIÁRIO: incrementa hoje mantendo projeção acima da meta ───────────────
       if (dow === 0 && !force) continue;
+      const monthStart = `${y}-${pad(m + 1)}-01`;
+      const todayISO = `${y}-${pad(m + 1)}-${pad(todayDay)}`;
       const { count: todayCount } = await supabase.from("kpi_entries").select("id", { count: "exact", head: true })
-        .eq("kpi_id", fat.id).eq("entry_date", `${y}-${pad(m + 1)}-${pad(todayDay)}`);
+        .eq("kpi_id", fat.id).eq("entry_date", todayISO);
       if ((todayCount ?? 0) > 0 && !force) { out.push({ company: c.name, skip: "hoje já lançado" }); continue; }
 
       const { data: fatEntries } = await supabase.from("kpi_entries").select("value")
-        .eq("kpi_id", fat.id).gte("entry_date", monthStart).lte("entry_date", `${y}-${pad(m + 1)}-${pad(todayDay)}`);
+        .eq("kpi_id", fat.id).gte("entry_date", monthStart).lte("entry_date", todayISO);
       const realized = (fatEntries || []).reduce((s: number, e: any) => s + Number(e.value || 0), 0);
-      const timeProgress = total ? workDays.length / total : 0;
+      const allDays = workDaysOf(y, m);
+      const elapsed = allDays.filter((d) => d <= todayDay);
+      const timeProgress = allDays.length ? elapsed.length / allDays.length : 0;
       const overshootTarget = target * timeProgress * OVERSHOOT;
-      const dailyMin = (target / (total || 1)) * 0.5;
+      const dailyMin = (target / (allDays.length || 1)) * 0.5;
       const todayTotal = Math.max(dailyMin, overshootTarget - realized);
-      const rows = buildRows(todayDay, todayTotal);
+      const rows = buildRows(y, m, todayDay, todayTotal);
       if (rows.length) await supabase.from("kpi_entries").insert(rows);
       const newRealized = realized + todayTotal;
       const proj = timeProgress > 0 ? (newRealized / target) / timeProgress * 100 : 0;
       out.push({ company: c.name, mode, lancado_hoje: Math.round(todayTotal), realizado_mes: Math.round(newRealized), meta: target, projecao: Math.round(proj) + "%" });
     }
 
-    if (body.dry_run) return j({ ok: true, dry_run: true, note: "dry_run não insere no modo daily/backfill — use force pra rodar", result: out });
     return j({ ok: true, mode, result: out });
   } catch (e) {
     console.error("simulator-daily-sales", e);
