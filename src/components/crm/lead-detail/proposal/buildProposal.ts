@@ -113,3 +113,93 @@ export async function buildAndStoreProposal({
   if (insErr) throw insErr;
   return row;
 }
+
+interface ReviseArgs {
+  leadId: string;
+  leadName: string;
+  companyName?: string | null;
+  /** mudanças ditadas pelo vendedor (valor, nome, entregas, qualquer detalhe) */
+  instructions: string;
+  /** proposta base; se omitida, usa a mais recente do lead */
+  baseProposalId?: string | null;
+}
+
+/**
+ * Gera uma NOVA proposta aplicando as mudanças que o vendedor digitou em cima
+ * da proposta mais recente (ou da indicada). IA aplica só o que foi pedido;
+ * o resto permanece igual. Salva PDF novo e registra nova linha.
+ */
+export async function reviseAndStoreProposal({
+  leadId,
+  leadName,
+  companyName,
+  instructions,
+  baseProposalId,
+}: ReviseArgs) {
+  // 1. proposta base (conteúdo JSON persistido)
+  let q = (supabase as any)
+    .from("crm_lead_proposals")
+    .select("id, content, product_id, service_name")
+    .eq("lead_id", leadId)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (baseProposalId) {
+    q = (supabase as any)
+      .from("crm_lead_proposals")
+      .select("id, content, product_id, service_name")
+      .eq("id", baseProposalId)
+      .limit(1);
+  }
+  const { data: baseRows } = await q;
+  const base = baseRows?.[0];
+  if (!base?.content) throw new Error("Nenhuma proposta anterior encontrada para revisar");
+
+  // 2. IA aplica as mudanças
+  const { data, error } = await supabase.functions.invoke("generate-proposal", {
+    body: {
+      baseProposal: base.content,
+      instructions,
+      leadName,
+      companyName,
+      serviceName: base.service_name || "",
+    },
+  });
+  if (error) throw new Error(error.message || "Falha ao revisar a proposta");
+  const proposal: ProposalContent | undefined = (data as any)?.proposal;
+  if (!proposal) throw new Error("Proposta revisada não retornada pela IA");
+
+  // 3. PDF novo
+  const blob = await generateProposalPDF({
+    proposal,
+    leadName,
+    companyName,
+    serviceName: base.service_name || undefined,
+  });
+
+  // 4. upload
+  const stamp = Date.now();
+  const path = `proposals/${leadId}/${stamp}.pdf`;
+  const { error: upErr } = await supabase.storage
+    .from("crm-files")
+    .upload(path, blob, { contentType: "application/pdf", upsert: true });
+  if (upErr) throw upErr;
+  const { data: pub } = supabase.storage.from("crm-files").getPublicUrl(path);
+
+  // 5. registra como nova versão
+  const { data: row, error: insErr } = await (supabase as any)
+    .from("crm_lead_proposals")
+    .insert({
+      lead_id: leadId,
+      product_id: base.product_id || null,
+      service_name: base.service_name || null,
+      title: `Proposta (revisada) — ${companyName || leadName}`,
+      file_url: pub.publicUrl,
+      file_path: path,
+      content: proposal as any,
+      status: "revised",
+    })
+    .select("*")
+    .single();
+  if (insErr) throw insErr;
+  return row;
+}

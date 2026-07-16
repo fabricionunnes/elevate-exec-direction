@@ -38,6 +38,51 @@ Deno.serve(async (req) => {
     const deliverables: string[] = Array.isArray(body.deliverables) ? body.deliverables : [];
     const leadName: string = body.leadName || "";
     const companyName: string = body.companyName || "";
+    // Modo REVISÃO: aplica mudanças ditadas pelo vendedor em cima da proposta atual
+    const baseProposal = body.baseProposal || null;
+    const instructions: string = String(body.instructions || "").trim();
+
+    if (baseProposal && instructions) {
+      const revPrompt = `Você é o diretor comercial da UNV Holdings revisando uma PROPOSTA COMERCIAL já gerada. Abaixo está o JSON da proposta ATUAL e as MUDANÇAS pedidas pelo vendedor.
+
+PROPOSTA ATUAL (JSON):
+${JSON.stringify(baseProposal, null, 2)}
+
+MUDANÇAS PEDIDAS PELO VENDEDOR:
+${truncate(instructions, 3000)}
+
+REGRAS:
+- Aplique EXATAMENTE as mudanças pedidas (valor, nome da empresa, entregas, prazos, texto — o que for).
+- O pedido do vendedor é a FONTE DE VERDADE: se ele disser que o valor é R$X, o valor é R$X.
+- Tudo que o vendedor NÃO pediu pra mudar, mantenha IGUAL (copie do JSON atual).
+- Se uma mudança afetar a coerência de outro trecho (ex.: mudou o serviço → ajuste solucao_intro), ajuste o mínimo necessário.
+- NUNCA invente valores ou fatos que não estão nem na proposta atual nem no pedido.
+- Mantenha o estilo: direto, de dono, consultivo, português do Brasil.
+
+Responda APENAS com o JSON COMPLETO da proposta revisada, no MESMO formato/chaves do JSON atual (sem markdown, sem comentários).`;
+
+      const revResp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ model: MODEL, max_tokens: 3000, messages: [{ role: "user", content: revPrompt }] }),
+      });
+      if (!revResp.ok) throw new Error(`Anthropic ${revResp.status}: ${truncate(await revResp.text(), 300)}`);
+      const revData = await revResp.json();
+      let revRaw = (revData?.content?.[0]?.text || "{}").trim().replace(/^```(json)?/i, "").replace(/```$/i, "").trim();
+      let revised: any;
+      try { revised = JSON.parse(revRaw); } catch { const m = revRaw.match(/\{[\s\S]*\}/); revised = m ? JSON.parse(m[0]) : null; }
+      if (!revised) throw new Error("Não consegui aplicar as mudanças na proposta");
+      const arrR = (k: string) => { if (!Array.isArray(revised[k])) revised[k] = revised[k] ? [revised[k]] : []; };
+      ["diagnostico", "antes_depois", "entregas", "proximos_passos"].forEach(arrR);
+      revised.servico = revised.servico || baseProposal.servico || serviceName || "";
+      return new Response(JSON.stringify({ proposal: revised }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (!transcription.trim()) throw new Error("transcription é obrigatória");
 

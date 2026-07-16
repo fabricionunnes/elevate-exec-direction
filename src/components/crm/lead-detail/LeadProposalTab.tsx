@@ -3,9 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, Download, ExternalLink, Sparkles, Loader2, RefreshCw } from "lucide-react";
+import { FileText, Download, ExternalLink, Sparkles, Loader2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
-import { buildAndStoreProposal } from "./proposal/buildProposal";
+import { Textarea } from "@/components/ui/textarea";
+import { buildAndStoreProposal, reviseAndStoreProposal } from "./proposal/buildProposal";
 
 interface Props {
   leadId: string;
@@ -26,6 +27,8 @@ export function LeadProposalTab({ leadId, leadName, companyName }: Props) {
   const [items, setItems] = useState<Proposal[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [reviseText, setReviseText] = useState("");
+  const [revising, setRevising] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -72,6 +75,26 @@ export function LeadProposalTab({ leadId, leadName, companyName }: Props) {
     }
   };
 
+  const reviseNow = async () => {
+    const instructions = reviseText.trim();
+    if (!instructions) {
+      toast.error("Descreva o que quer mudar na proposta.");
+      return;
+    }
+    setRevising(true);
+    try {
+      await reviseAndStoreProposal({ leadId, leadName, companyName, instructions });
+      toast.success("Nova proposta gerada com as suas mudanças!");
+      setReviseText("");
+      await load();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Erro ao revisar a proposta");
+    } finally {
+      setRevising(false);
+    }
+  };
+
   return (
     <div className="p-4 space-y-4 overflow-auto h-full">
       <div className="flex items-center justify-between gap-3">
@@ -88,6 +111,32 @@ export function LeadProposalTab({ leadId, leadName, companyName }: Props) {
           {generating ? "Gerando..." : "Gerar proposta"}
         </Button>
       </div>
+
+      {!loading && items.length > 0 && (
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+          <p className="text-xs font-medium flex items-center gap-1.5">
+            <Wand2 className="h-3.5 w-3.5 text-violet-500" />
+            Ajustar com IA — descreva o que quer mudar e gere uma nova versão
+          </p>
+          <Textarea
+            value={reviseText}
+            onChange={(e) => setReviseText(e.target.value)}
+            placeholder={'Ex.: o valor correto é R$ 2.500/mês em 12x · o nome da empresa é "Padaria do João" · remover a entrega de tráfego pago · prazo de 6 meses'}
+            rows={3}
+            className="text-sm resize-none bg-background"
+            disabled={revising}
+          />
+          <div className="flex justify-end">
+            <Button size="sm" onClick={reviseNow} disabled={revising || !reviseText.trim()}>
+              {revising ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+              {revising ? "Aplicando mudanças..." : "Gerar nova versão"}
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            As mudanças são aplicadas em cima da proposta mais recente. A anterior continua na lista.
+          </p>
+        </div>
+      )}
 
       {loading ? (
         <Skeleton className="h-28 w-full" />
