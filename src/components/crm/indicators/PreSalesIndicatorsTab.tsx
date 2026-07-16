@@ -544,7 +544,9 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
           semDesfecho: sdrSemDesfecho,
         };
       });
-      setSDRs(sdrMetricsList);
+      // SDR NÃO vê os outros: ranking/gráfico por SDR ficam restritos à própria
+      // linha. Gestão (admin/master/head) segue vendo todos.
+      setSDRs(isSDRUser && staffId ? sdrMetricsList.filter((s) => s.id === staffId) : sdrMetricsList);
 
       // Calculate daily meetings by SDR
       const dailyMeetings: { day: number; [key: string]: number }[] = [];

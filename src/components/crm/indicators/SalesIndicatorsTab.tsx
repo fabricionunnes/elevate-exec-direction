@@ -639,6 +639,12 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       };
     }).sort((a, b) => b.revenue - a.revenue); // ranking por receita (1º = maior; troféu vai pro topo)
 
+    // Closer NÃO vê histórico dos outros vendedores: ranking/pódio/tabela/gráfico
+    // por closer ficam restritos à própria linha. Gestão (admin/master/head) vê todos.
+    const visibleCloserMetrics = isCloserUser && staffId
+      ? closerMetrics.filter(c => c.id === staffId)
+      : closerMetrics;
+
     // Sales records (filtered)
     const salesRecords: SaleRecord[] = salesData.map(s => ({
       id: s.id,
@@ -669,7 +675,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
 
     // Daily revenue accumulation (always per closer for chart)
     const dailyRevenueData: { day: number; [key: string]: number }[] = [];
-    const closerNames = closerMetrics.map(c => c.name);
+    const closerNames = visibleCloserMetrics.map(c => c.name);
     for (let day = 1; day <= currentDay; day++) {
       const dayData: { day: number; [key: string]: number } = { day };
       closerNames.forEach(name => {
@@ -723,7 +729,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       metrics,
       callsMetrics,
       dailyGoal,
-      closerMetrics,
+      closerMetrics: visibleCloserMetrics,
       salesRecords,
       forecastRecords,
       dailyRevenueData,

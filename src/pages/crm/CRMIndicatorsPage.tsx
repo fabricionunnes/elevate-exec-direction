@@ -10,11 +10,16 @@ import { DollarSign, ChevronDown, TrendingUp, Wallet, Megaphone } from "lucide-r
 
 export const CRMIndicatorsPage = () => {
   const { staffRole, staffId } = useOutletContext<{ staffRole: string; isAdmin: boolean; staffId: string | null }>();
-  const [activeTab, setActiveTab] = useState("sales");
-  const [commissionOpen, setCommissionOpen] = useState(false);
-  const [summary, setSummary] = useState<CommissionSummary | null>(null);
   const isMaster = staffRole === "master";
   const isAdmin = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
+  // Closer: só a aba Comercial. SDR/pré-vendas: só a aba Pré vendas. Gestão: tudo.
+  const isCloserUser = staffRole === "closer";
+  const isSdrUser = staffRole === "sdr" || staffRole === "social_setter" || staffRole === "bdr";
+  const showSales = !isSdrUser;      // comercial: todos menos SDR
+  const showPresales = !isCloserUser; // pré-vendas: todos menos closer
+  const [activeTab, setActiveTab] = useState(isSdrUser ? "presales" : "sales");
+  const [commissionOpen, setCommissionOpen] = useState(false);
+  const [summary, setSummary] = useState<CommissionSummary | null>(null);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -64,18 +69,22 @@ export const CRMIndicatorsPage = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
         <div className="border-b border-border bg-card px-4">
           <TabsList className="h-12 bg-transparent">
-            <TabsTrigger 
-              value="sales" 
-              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-6"
-            >
-              Comercial
-            </TabsTrigger>
-            <TabsTrigger 
-              value="presales"
-              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-6"
-            >
-              Pré vendas
-            </TabsTrigger>
+            {showSales && (
+              <TabsTrigger 
+                value="sales" 
+                className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-6"
+              >
+                Comercial
+              </TabsTrigger>
+            )}
+            {showPresales && (
+              <TabsTrigger 
+                value="presales"
+                className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-6"
+              >
+                Pré vendas
+              </TabsTrigger>
+            )}
             {/* Tráfego Pago: só gestão (master/admin/head) — SDR e Closer não veem */}
             {isAdmin && (
               <TabsTrigger
@@ -89,12 +98,16 @@ export const CRMIndicatorsPage = () => {
         </div>
 
         <div className="flex-1 overflow-auto">
-          <TabsContent value="sales" className="m-0 h-full">
-            <SalesIndicatorsTab staffId={staffId} staffRole={staffRole} />
-          </TabsContent>
-          <TabsContent value="presales" className="m-0 h-full">
-            <PreSalesIndicatorsTab staffId={staffId} staffRole={staffRole} />
-          </TabsContent>
+          {showSales && (
+            <TabsContent value="sales" className="m-0 h-full">
+              <SalesIndicatorsTab staffId={staffId} staffRole={staffRole} />
+            </TabsContent>
+          )}
+          {showPresales && (
+            <TabsContent value="presales" className="m-0 h-full">
+              <PreSalesIndicatorsTab staffId={staffId} staffRole={staffRole} />
+            </TabsContent>
+          )}
           {isAdmin && (
             <TabsContent value="traffic" className="m-0 h-full p-4">
               <CRMTrafficTab isAdmin={isAdmin} />
