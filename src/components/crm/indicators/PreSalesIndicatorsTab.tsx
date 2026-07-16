@@ -238,7 +238,9 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     if (dateRange?.from && dateRange?.to) {
       loadData();
     }
-  }, [dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
+    // selectedSDR entra nas deps: o card de reuniões é escopado pela SDR
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateRange?.from?.getTime(), dateRange?.to?.getTime(), selectedSDR]);
 
   const loadPipelines = async () => {
     const { data } = await supabase
@@ -402,9 +404,14 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       const totalRescheduled = (calls || []).filter(c => c.status === "rescheduled").length;
 
       // For TOTAL counts, deduplicate by lead_id + event_type (unique meetings regardless of who gets credit)
+      // Card de cima escopado pela SDR selecionada (SDR só vê as dela; antes
+      // somava as reuniões de TODAS as SDRs, deduplicado por lead).
+      const scopedMeetingEvents = selectedSDR !== "all"
+        ? uniqueAttributedMeetingEvents.filter((e: any) => e.attributed_sdr_id === selectedSDR)
+        : uniqueAttributedMeetingEvents;
       const uniqueByLead = (() => {
         const seen = new Set<string>();
-        return uniqueAttributedMeetingEvents.filter((event) => {
+        return scopedMeetingEvents.filter((event) => {
           const key = `${event.lead_id}-${event.event_type}`;
           if (seen.has(key)) return false;
           seen.add(key);
@@ -417,7 +424,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
 
       // Reuniões agendadas SEM DESFECHO: lead foi agendado mas nunca virou realizada/no-show/fora do ICP
       const leadEventTypes = new Map<string, Set<string>>();
-      uniqueAttributedMeetingEvents.forEach((e: any) => {
+      scopedMeetingEvents.forEach((e: any) => {
         if (!e.lead_id) return;
         if (!leadEventTypes.has(e.lead_id)) leadEventTypes.set(e.lead_id, new Set());
         leadEventTypes.get(e.lead_id)!.add(e.event_type);

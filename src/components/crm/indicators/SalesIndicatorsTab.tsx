@@ -529,20 +529,39 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     const totalSales = salesData.length;
     const ticketMedio = totalSales > 0 ? totalRevenue / totalSales : 0;
 
-    // For totals when not filtering by closer, deduplicate by lead to avoid double-counting
-    const uniqueByLeadEvents = (() => {
-      if (isCloserFilter) return meetingEvents; // Already filtered by credited_staff_id
+    // Reuniões do card de cima:
+    // - Filtrando um closer: conta as reuniões dos LEADS DELE (por dono no momento
+    //   do evento), IGUAL à tabela "Desempenho dos Closers". Antes usava
+    //   credited_staff_id (só o que ele agendou/deu baixa pessoalmente) e divergia
+    //   da tabela — mostrava, ex., 1 agendada em vez das 8 dos leads dele.
+    // - Sem filtro (gestão): total do time, deduplicado por lead.
+    let totalScheduled: number, totalCompleted: number, totalNoShow: number;
+    if (isCloserFilter) {
       const seen = new Set<string>();
-      return meetingEvents.filter((event) => {
+      const ownerEvents = rawMeetingEvents.filter((ev: any) => {
+        const ownerId = ev.owner_staff_id || ev.lead?.owner_staff_id;
+        if (ownerId !== selectedCloser) return false;
+        if (isPipelineFilter && ev.pipeline_id !== selectedPipeline) return false;
+        const key = `${ev.lead_id}-${ev.event_type}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      totalScheduled = ownerEvents.filter((e: any) => e.event_type === "scheduled").length;
+      totalCompleted = ownerEvents.filter((e: any) => e.event_type === "realized").length;
+      totalNoShow = ownerEvents.filter((e: any) => e.event_type === "no_show").length;
+    } else {
+      const seen = new Set<string>();
+      const uniqueByLeadEvents = meetingEvents.filter((event) => {
         const key = `${event.lead_id}-${event.event_type}`;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
       });
-    })();
-    const totalScheduled = uniqueByLeadEvents.filter(e => e.event_type === "scheduled").length;
-    const totalCompleted = uniqueByLeadEvents.filter(e => e.event_type === "realized").length;
-    const totalNoShow = uniqueByLeadEvents.filter(e => e.event_type === "no_show").length;
+      totalScheduled = uniqueByLeadEvents.filter(e => e.event_type === "scheduled").length;
+      totalCompleted = uniqueByLeadEvents.filter(e => e.event_type === "realized").length;
+      totalNoShow = uniqueByLeadEvents.filter(e => e.event_type === "no_show").length;
+    }
 
     const noShowPercent = totalScheduled > 0 ? (totalNoShow / totalScheduled) * 100 : 0;
     const conversion = totalCompleted > 0 ? (totalSales / totalCompleted) * 100 : 0;
