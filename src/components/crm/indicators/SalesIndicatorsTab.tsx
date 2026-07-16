@@ -97,12 +97,38 @@ async function fetchAllRows<T = any>(buildQuery: () => any): Promise<T[]> {
   return all;
 }
 
+function FunnelBarList({ title, data, fmt, color }: { title: string; data: { name: string; value: number }[]; fmt: (v: number) => string; color: string }) {
+  const max = Math.max(1, ...data.map((d) => d.value));
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">{title}</p>
+      {data.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-6 text-center">Sem dados no período</p>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          {data.map((d) => (
+            <div key={d.name} className="grid items-center gap-2" style={{ gridTemplateColumns: "minmax(70px,120px) 1fr auto" }}>
+              <span className="text-xs font-medium text-foreground truncate" title={d.name}>{d.name}</span>
+              <div className="h-5 rounded-md bg-muted overflow-hidden" style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.18)" }}>
+                <div className="h-full rounded-md" style={{ width: `${Math.max(6, (d.value / max) * 100)}%`, background: `linear-gradient(180deg, ${color}, ${color}cc)`, boxShadow: `0 2px 5px -1px ${color}66, inset 0 1px 0 rgba(255,255,255,.4)` }} />
+              </div>
+              <span className="text-xs font-extrabold text-foreground tabular-nums text-right">{fmt(d.value)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabProps = {}) => {
   const isCloserUser = staffRole === "closer";
   const isAdmin = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
   const [loading, setLoading] = useState(true);
   const [selectedCloser, setSelectedCloser] = useState<string>(isCloserUser && staffId ? staffId : "all");
   const [selectedProduct, setSelectedProduct] = useState<string>("all");
+  const [selectedPipeline, setSelectedPipeline] = useState<string>("all");
+  const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   
@@ -287,6 +313,9 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       );
       setRawMeetingEvents(meetingEvents);
 
+      const { data: pipelinesData } = await supabase.from("crm_pipelines").select("id, name").order("name");
+      setPipelines(pipelinesData || []);
+
       // Load sales — paginado
       const salesData = await fetchAllRows(() =>
         supabase
@@ -335,7 +364,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         const forecastLeads = await fetchAllRows(() =>
           supabase
             .from("crm_leads")
-            .select("id, name, company, opportunity_value, owner_staff_id, stage_id")
+            .select("id, name, company, opportunity_value, owner_staff_id, stage_id, pipeline_id")
             .in("stage_id", forecastStageIds)
         );
         setRawForecastData(forecastLeads);
@@ -355,7 +384,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         const negotiationLeads = await fetchAllRows(() =>
           supabase
             .from("crm_leads")
-            .select("id, name, company, opportunity_value, owner_staff_id, stage_id")
+            .select("id, name, company, opportunity_value, owner_staff_id, stage_id, pipeline_id")
             .in("stage_id", negociacaoStageIds)
         );
         setRawNegotiationData(negotiationLeads);
@@ -444,9 +473,11 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     // Filter raw data by selected closer + produto (filtro de produto antes era morto;
     // vendas carregam product_name livre, não product_id — então filtra por nome).
     const productFilter = selectedProduct !== "all";
+    const isPipelineFilter = selectedPipeline !== "all";
     const salesData = commercialRawSales.filter(s =>
       (!isCloserFilter || s.closer_staff_id === selectedCloser) &&
-      (!productFilter || (s.product?.name || s.product_name) === selectedProduct)
+      (!productFilter || (s.product?.name || s.product_name) === selectedProduct) &&
+      (!isPipelineFilter || s.pipeline_id === selectedPipeline)
     );
 
     const uniqueMeetingEvents = (() => {
@@ -460,22 +491,25 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       });
     })();
 
-    // Filter meeting events by credited_staff_id for the selected closer
-    const meetingEvents = isCloserFilter
+    // Filter meeting events by credited_staff_id for the selected closer + funil
+    const meetingEvents = (isCloserFilter
       ? uniqueMeetingEvents.filter(e => e.credited_staff_id === selectedCloser)
-      : uniqueMeetingEvents;
+      : uniqueMeetingEvents
+    ).filter(e => !isPipelineFilter || e.pipeline_id === selectedPipeline);
 
     const calls = isCloserFilter
       ? rawCalls.filter(c => c.assigned_to === selectedCloser)
       : rawCalls;
 
-    const forecastData = isCloserFilter
+    const forecastData = (isCloserFilter
       ? rawForecastData.filter(f => f.owner_staff_id === selectedCloser)
-      : rawForecastData;
+      : rawForecastData
+    ).filter(f => !isPipelineFilter || f.pipeline_id === selectedPipeline);
 
-    const negotiationData = isCloserFilter
+    const negotiationData = (isCloserFilter
       ? rawNegotiationData.filter(f => f.owner_staff_id === selectedCloser)
-      : rawNegotiationData;
+      : rawNegotiationData
+    ).filter(f => !isPipelineFilter || f.pipeline_id === selectedPipeline);
 
     // Goals: use closer-specific or total
     let metaReceita: number, superMeta: number, hiperMeta: number;
@@ -696,7 +730,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       revenueEvolution,
       productDistribution,
     };
-  }, [selectedCloser, selectedProduct, rawSalesData, rawMeetingEvents, rawCalls, rawForecastData, rawNegotiationData, rawCloserStaff, staffGoalsMap, totalGoals, filterStartDate, filterEndDate]);
+  }, [selectedCloser, selectedProduct, selectedPipeline, rawSalesData, rawMeetingEvents, rawCalls, rawForecastData, rawNegotiationData, rawCloserStaff, staffGoalsMap, totalGoals, filterStartDate, filterEndDate]);
 
   // Produtos que realmente aparecem nas vendas do período (o dropdown antes vinha de
   // crm_products e não casava com o product_name livre das vendas).
@@ -708,6 +742,35 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     });
     return Array.from(set).sort();
   }, [rawSalesData]);
+
+  // Agregações POR FUNIL (respeita closer/produto/período; mostra todos os funis)
+  const funnelBreakdown = useMemo(() => {
+    const pipeName: Record<string, string> = {};
+    pipelines.forEach((p) => { pipeName[p.id] = p.name; });
+    const cl = selectedCloser !== "all";
+    const pr = selectedProduct !== "all";
+    const salesMap: Record<string, number> = {};
+    rawSalesData.forEach((s: any) => {
+      if (cl && s.closer_staff_id !== selectedCloser) return;
+      if (pr && (s.product?.name || s.product_name) !== selectedProduct) return;
+      const name = s.pipeline?.name || "Sem funil";
+      salesMap[name] = (salesMap[name] || 0) + (s.revenue_value || 0);
+    });
+    const schedMap: Record<string, number> = {};
+    const realMap: Record<string, number> = {};
+    const seen = new Set<string>();
+    rawMeetingEvents.forEach((ev: any) => {
+      if (cl && ev.credited_staff_id !== selectedCloser) return;
+      const key = `${ev.lead_id}-${ev.event_type}`;
+      if (seen.has(key)) return; seen.add(key);
+      const name = pipeName[ev.pipeline_id] || "Sem funil";
+      if (ev.event_type === "scheduled") schedMap[name] = (schedMap[name] || 0) + 1;
+      else if (ev.event_type === "realized") realMap[name] = (realMap[name] || 0) + 1;
+    });
+    const toArr = (m: Record<string, number>) =>
+      Object.entries(m).map(([name, value]) => ({ name, value })).filter((x) => x.value > 0).sort((a, b) => b.value - a.value);
+    return { sales: toArr(salesMap), scheduled: toArr(schedMap), realized: toArr(realMap) };
+  }, [pipelines, rawSalesData, rawMeetingEvents, selectedCloser, selectedProduct]);
 
   const { metrics, callsMetrics, dailyGoal, closerMetrics: closers, salesRecords: sales, forecastRecords: forecasts, dailyRevenueData, revenueEvolution, productDistribution } = computed;
 
@@ -834,6 +897,16 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           <SelectContent>
             <SelectItem value="all">Todos os Produtos</SelectItem>
             {productOptions.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        <Select value={selectedPipeline} onValueChange={setSelectedPipeline}>
+          <SelectTrigger className="w-[160px] h-9 rounded-xl text-xs border-border ">
+            <SelectValue placeholder="Funil" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os Funis</SelectItem>
+            {pipelines.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
           </SelectContent>
         </Select>
 
@@ -1252,6 +1325,13 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           </Table>
         </div>
       </GlowCard>
+
+      {/* ── Por Funil: vendas, reuniões agendadas e realizadas ── */}
+      <div className="grid gap-4 lg:grid-cols-3 mt-4">
+        <FunnelBarList title="Vendas por Funil" data={funnelBreakdown.sales} fmt={formatCurrency} color="#10b981" />
+        <FunnelBarList title="Reuniões Agendadas por Funil" data={funnelBreakdown.scheduled} fmt={(v) => String(v)} color="#3b82f6" />
+        <FunnelBarList title="Reuniões Realizadas por Funil" data={funnelBreakdown.realized} fmt={(v) => String(v)} color="#8b5cf6" />
+      </div>
     </div>
 
     <ImportSalesDialog
