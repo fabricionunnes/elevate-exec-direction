@@ -178,6 +178,7 @@ export const CRMLeadDetailPage = () => {
   
   const { startCall } = useCallDock();
   const [lead, setLead] = useState<Lead | null>(null);
+  const [phone2, setPhone2] = useState<string | null>(null); // 2º telefone (campo custom "phone2")
   const [notesOpen, setNotesOpen] = useState(false);
   const [adOriginOpen, setAdOriginOpen] = useState(false);
   const adNames = useMetaAdNames();
@@ -276,6 +277,20 @@ export const CRMLeadDetailPage = () => {
 
       if (error) throw error;
       setLead(data);
+
+      // 2º telefone (campo personalizado "phone2") — habilita o botão "Ligar 2"
+      try {
+        const { data: p2 } = await supabase
+          .from("crm_custom_field_values")
+          .select("value, crm_custom_fields!inner(field_name)")
+          .eq("lead_id", id)
+          .eq("crm_custom_fields.field_name", "phone2")
+          .maybeSingle();
+        const v = (p2 as any)?.value?.trim();
+        setPhone2(v || null);
+      } catch {
+        setPhone2(null);
+      }
 
       // Backfill: se o lead já está GANHO e não existe venda registrada,
       // cria um registro em crm_sales para refletir faturamento/receita no dashboard.
@@ -970,10 +985,29 @@ export const CRMLeadDetailPage = () => {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-emerald-500 hover:text-emerald-400"
-                title="Ligar pelo discador (Twilio)"
+                title={phone2 ? `Ligar no Telefone 1 (${lead.phone}) — discador` : "Ligar pelo discador (Twilio)"}
                 onClick={() => startCall({ id: lead.id, name: lead.company || lead.name, phone: lead.phone })}
               >
-                <Phone className="h-4 w-4" />
+                <span className="relative inline-flex items-center justify-center">
+                  <Phone className="h-4 w-4" />
+                  {phone2 && (
+                    <span className="absolute -bottom-1.5 -right-1.5 text-[8px] font-bold leading-none bg-emerald-500 text-white rounded-full h-3 w-3 flex items-center justify-center">1</span>
+                  )}
+                </span>
+              </Button>
+            )}
+            {phone2 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-emerald-500 hover:text-emerald-400"
+                title={`Ligar no Telefone 2 (${phone2}) — discador`}
+                onClick={() => startCall({ id: lead.id, name: lead.company || lead.name, phone: phone2 })}
+              >
+                <span className="relative inline-flex items-center justify-center">
+                  <Phone className="h-4 w-4" />
+                  <span className="absolute -bottom-1.5 -right-1.5 text-[8px] font-bold leading-none bg-emerald-500 text-white rounded-full h-3 w-3 flex items-center justify-center">2</span>
+                </span>
               </Button>
             )}
             {lead.phone && (
