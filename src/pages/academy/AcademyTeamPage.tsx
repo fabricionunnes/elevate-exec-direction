@@ -41,6 +41,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import type { AcademyUserContext } from "./AcademyLayout";
+import { AcademyUserProgressTable } from "./admin/AcademyUserProgressTable";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -70,6 +71,14 @@ interface MemberProgress {
 
 export const AcademyTeamPage = () => {
   const userContext = useOutletContext<AcademyUserContext>();
+  const [totalActiveLessons, setTotalActiveLessons] = useState(0);
+  useEffect(() => {
+    supabase
+      .from("academy_lessons")
+      .select("id", { count: "exact", head: true })
+      .eq("is_active", true)
+      .then(({ count }) => setTotalActiveLessons(count || 0));
+  }, []);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -277,6 +286,9 @@ export const AcademyTeamPage = () => {
           Acompanhe o progresso de treinamento da sua equipe
         </p>
       </div>
+
+      {/* Quem está (e quem não está) assistindo — com export CSV */}
+      <AcademyUserProgressTable totalLessons={totalActiveLessons} />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

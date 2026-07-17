@@ -46,11 +46,44 @@ declare global {
  * - Fallback "Abrir no YouTube" para casos onde Universal Links
  *   do iOS impedem a reprodução inline mesmo assim.
  */
-const YouTubePlayer = ({ videoId, title, watchUrl }: { videoId: string; title: string; watchUrl: string }) => {
+const YouTubePlayer = ({
+  videoId,
+  title,
+  watchUrl,
+  startSeconds,
+  onTick,
+  onEnded,
+}: {
+  videoId: string;
+  title: string;
+  watchUrl: string;
+  /** retomar do ponto onde parou (salvo em academy_progress.last_position_seconds) */
+  startSeconds?: number;
+  /** chamado a cada segundo de reprodução REAL (anti-burla + salvar posição) */
+  onTick?: (currentTime: number, duration: number) => void;
+  onEnded?: () => void;
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
   const [playerReady, setPlayerReady] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const playingRef = useRef(false);
+  const onTickRef = useRef(onTick);
+  const onEndedRef = useRef(onEnded);
+  onTickRef.current = onTick;
+  onEndedRef.current = onEnded;
+
+  // Tick de reprodução real: só conta quando o vídeo está TOCANDO
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const p = playerRef.current;
+      if (!playingRef.current || !p?.getCurrentTime) return;
+      try {
+        onTickRef.current?.(p.getCurrentTime() || 0, p.getDuration?.() || 0);
+      } catch { /* player em transição */ }
+    }, 1000);
+    return () => clearInterval(iv);
+  }, []);
 
   useEffect(() => {
     let destroyed = false;
@@ -70,10 +103,17 @@ const YouTubePlayer = ({ videoId, title, watchUrl }: { videoId: string; title: s
           controls: 1,
           modestbranding: 1,
           iv_load_policy: 3,
+          // Retomar de onde parou (2s de folga pra recontextualizar)
+          ...(startSeconds && startSeconds > 5 ? { start: Math.max(0, Math.floor(startSeconds) - 2) } : {}),
         },
         events: {
           onReady: () => {
             if (!destroyed) setPlayerReady(true);
+          },
+          onStateChange: (e: any) => {
+            // 1 = playing · 0 = ended
+            playingRef.current = e?.data === 1;
+            if (e?.data === 0) onEndedRef.current?.();
           },
         },
       });
@@ -201,6 +241,54 @@ export const AcademyLessonPage = () => {
   const [videoPlaying, setVideoPlaying] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<Date | null>(null);
+  // Anti-burla (YouTube): tempo REAL de reprodução + posição pra retomar depois
+  const watchedRealRef = useRef(0);
+  const videoDurationRef = useRef(0);
+  const videoEndedRef = useRef(false);
+  const lastPosSaveRef = useRef(0);
+  const [resumeFrom, setResumeFrom] = useState(0);
+  const [watchedPct, setWatchedPct] = useState(0);
+
+  const isYouTubeLesson = (() => {
+    const u = (lesson?.video_url || "").toLowerCase();
+    return u.includes("youtu.be") || u.includes("youtube.com");
+  })();
+
+  /** Salva a posição atual do vídeo (retomar de onde parou). Throttled ~10s. */
+  const savePosition = (seconds: number, force = false) => {
+    if (!userContext.onboardingUserId || !lessonId) return;
+    const now = Date.now();
+    if (!force && now - lastPosSaveRef.current < 10_000) return;
+    lastPosSaveRef.current = now;
+    void (supabase as any)
+      .from("academy_progress")
+      .update({ last_position_seconds: Math.floor(seconds) })
+      .eq("onboarding_user_id", userContext.onboardingUserId)
+      .eq("lesson_id", lessonId);
+  };
+
+  /** Tick de reprodução REAL do YouTube: acumula, atualiza % e libera a
+   * conclusão só com 80% assistido (ou vídeo terminado). */
+  const handleVideoTick = (currentTime: number, duration: number) => {
+    watchedRealRef.current += 1;
+    if (duration > 0) videoDurationRef.current = duration;
+    const dur = videoDurationRef.current;
+    if (dur > 0) {
+      const pct = Math.min(100, Math.round((watchedRealRef.current / dur) * 100));
+      setWatchedPct(pct);
+      if (!isCompleted && !canComplete && (videoEndedRef.current || watchedRealRef.current >= dur * 0.8)) {
+        setCanComplete(true);
+      }
+    }
+    savePosition(currentTime);
+  };
+
+  const handleVideoEnded = () => {
+    videoEndedRef.current = true;
+    setWatchedPct(100);
+    if (!isCompleted) setCanComplete(true);
+    savePosition(0, true); // terminou → próxima visita começa do início
+  };
 
   // Start timer when lesson loads
   useEffect(() => {
@@ -212,7 +300,9 @@ export const AcademyLessonPage = () => {
           const elapsed = Math.floor((new Date().getTime() - startTimeRef.current.getTime()) / 1000);
           setTimeSpent(elapsed);
           
-          if (elapsed >= MIN_TIME_TO_COMPLETE && !canComplete) {
+          // Anti-burla: em aula do YouTube, quem libera a conclusão é o
+          // progresso REAL do vídeo (80% assistido) — não o tempo de página.
+          if (!isYouTubeLesson && elapsed >= MIN_TIME_TO_COMPLETE && !canComplete) {
             setCanComplete(true);
           }
         }
@@ -232,6 +322,11 @@ export const AcademyLessonPage = () => {
     setCanComplete(false);
     setVideoPlaying(false);
     startTimeRef.current = null;
+    watchedRealRef.current = 0;
+    videoDurationRef.current = 0;
+    videoEndedRef.current = false;
+    setWatchedPct(0);
+    setResumeFrom(0);
   }, [lessonId]);
 
   useEffect(() => {
@@ -293,7 +388,7 @@ export const AcademyLessonPage = () => {
         // Get completion status for all lessons
         const { data: progressData } = await supabase
           .from("academy_progress")
-          .select("lesson_id, status")
+          .select("lesson_id, status, last_position_seconds")
           .eq("onboarding_user_id", userContext.onboardingUserId)
           .in("lesson_id", trackLessons.map(l => l.id));
 
@@ -324,6 +419,10 @@ export const AcademyLessonPage = () => {
         const currentProgress = progressData?.find(p => p.lesson_id === lessonId);
         const isCurrentCompleted = currentProgress?.status === "completed";
         setIsCompleted(isCurrentCompleted);
+        // Retomar de onde parou (só em aula ainda não concluída)
+        if (!isCurrentCompleted && (currentProgress as any)?.last_position_seconds > 0) {
+          setResumeFrom((currentProgress as any).last_position_seconds);
+        }
         
         if (isCurrentCompleted) {
           setCanComplete(true);
@@ -495,6 +594,9 @@ export const AcademyLessonPage = () => {
             videoId={videoId}
             title={lesson?.title || "Video"}
             watchUrl={`https://www.youtube.com/watch?v=${videoId}`}
+            startSeconds={resumeFrom}
+            onTick={handleVideoTick}
+            onEnded={handleVideoEnded}
           />
         );
       }
@@ -658,10 +760,16 @@ export const AcademyLessonPage = () => {
               {issuingCert ? "Gerando..." : "Certificado"}
             </Button>
           )}
+          {isYouTubeLesson && !isCompleted && !canComplete && (
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {watchedPct}% assistido · precisa de 80%
+            </span>
+          )}
           <Button
             onClick={handleComplete}
             disabled={isCompleted || completing || !canComplete}
             className={isCompleted ? "bg-green-600 hover:bg-green-700" : ""}
+            title={!canComplete && isYouTubeLesson ? "Assista pelo menos 80% do vídeo para concluir" : undefined}
           >
             {completing ? (
               <>

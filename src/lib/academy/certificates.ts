@@ -155,6 +155,9 @@ async function generateCertificatePdf(args: CertificatePdfArgs): Promise<Blob> {
   doc.setTextColor(90, 90, 90);
   doc.setFontSize(9);
   doc.text(`Código de verificação: ${args.code}`, W - 26, 172, { align: "right" });
+  doc.setFontSize(8);
+  doc.setTextColor(120, 120, 120);
+  doc.text(`Verifique em unvholdings.com.br/#/certificado/${args.code}`, W - 26, 177, { align: "right" });
 
   // Faixa inferior fina vermelha
   doc.setFillColor(RED);
