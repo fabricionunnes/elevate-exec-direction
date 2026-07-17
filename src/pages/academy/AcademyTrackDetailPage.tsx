@@ -91,6 +91,7 @@ export const AcademyTrackDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [completedLessons, setCompletedLessons] = useState(0);
   const [issuingCert, setIssuingCert] = useState(false);
+  const [trackCertUrl, setTrackCertUrl] = useState<string | null>(null);
   const [totalLessons, setTotalLessons] = useState(0);
 
   useEffect(() => {
@@ -417,37 +418,48 @@ export const AcademyTrackDetailPage = () => {
                   <p className="text-xs text-muted-foreground">Seu certificado com carga horária está disponível.</p>
                 </div>
               </div>
-              <Button
-                size="sm"
-                disabled={issuingCert}
-                onClick={async () => {
-                  if (!userContext.onboardingUserId || !track) return;
-                  setIssuingCert(true);
-                  try {
-                    const totalMinutes = [...modules.flatMap((m) => m.lessons), ...lessonsWithoutModule].reduce(
-                      (sum, l: any) => sum + (l.estimated_duration_minutes || 60),
-                      0
-                    );
-                    const cert = await issueTrackCertificate({
-                      onboardingUserId: userContext.onboardingUserId,
-                      userName: userContext.userName,
-                      trackId: track.id,
-                      trackName: track.name,
-                      lessonCount: totalLessons,
-                      totalMinutes,
-                    });
-                    window.open(cert.pdf_url, "_blank");
-                  } catch (e) {
-                    console.error(e);
-                    toast.error("Não consegui gerar o certificado agora");
-                  } finally {
-                    setIssuingCert(false);
-                  }
-                }}
-              >
-                <GraduationCap className="h-4 w-4 mr-2" />
-                {issuingCert ? "Gerando..." : "Baixar certificado"}
-              </Button>
+              {trackCertUrl ? (
+                /* link direto: window.open pós-async é bloqueado no iOS */
+                <Button asChild size="sm">
+                  <a href={trackCertUrl} target="_blank" rel="noopener noreferrer">
+                    <GraduationCap className="h-4 w-4 mr-2" />
+                    Abrir certificado
+                  </a>
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  disabled={issuingCert}
+                  onClick={async () => {
+                    if (!userContext.onboardingUserId || !track) return;
+                    setIssuingCert(true);
+                    try {
+                      const totalMinutes = [...modules.flatMap((m) => m.lessons), ...lessonsWithoutModule].reduce(
+                        (sum, l: any) => sum + (l.estimated_duration_minutes || 60),
+                        0
+                      );
+                      const cert = await issueTrackCertificate({
+                        onboardingUserId: userContext.onboardingUserId,
+                        userName: userContext.userName,
+                        trackId: track.id,
+                        trackName: track.name,
+                        lessonCount: totalLessons,
+                        totalMinutes,
+                      });
+                      setTrackCertUrl(cert.pdf_url);
+                      toast.success("Certificado pronto! Toque em \"Abrir certificado\".");
+                    } catch (e) {
+                      console.error(e);
+                      toast.error("Não consegui gerar o certificado agora");
+                    } finally {
+                      setIssuingCert(false);
+                    }
+                  }}
+                >
+                  <GraduationCap className="h-4 w-4 mr-2" />
+                  {issuingCert ? "Gerando..." : "Gerar certificado"}
+                </Button>
+              )}
             </div>
           )}
         </div>

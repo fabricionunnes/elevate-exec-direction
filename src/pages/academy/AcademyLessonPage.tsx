@@ -53,6 +53,7 @@ const YouTubePlayer = ({
   startSeconds,
   onTick,
   onEnded,
+  onApiFallback,
 }: {
   videoId: string;
   title: string;
@@ -62,16 +63,37 @@ const YouTubePlayer = ({
   /** chamado a cada segundo de reprodução REAL (anti-burla + salvar posição) */
   onTick?: (currentTime: number, duration: number) => void;
   onEnded?: () => void;
+  /** API do YouTube não carregou (iOS/PWA) → caímos pro embed simples */
+  onApiFallback?: () => void;
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
   const [playerReady, setPlayerReady] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [useFallbackIframe, setUseFallbackIframe] = useState(false);
   const playingRef = useRef(false);
   const onTickRef = useRef(onTick);
   const onEndedRef = useRef(onEnded);
+  const onApiFallbackRef = useRef(onApiFallback);
   onTickRef.current = onTick;
   onEndedRef.current = onEnded;
+  onApiFallbackRef.current = onApiFallback;
+
+  // iOS/PWA às vezes não deixa a IFrame API inicializar — spinner infinito.
+  // Se o player não ficar pronto em 6s, troca pro embed simples (playsinline),
+  // que toca dentro do app; o desbloqueio de conclusão volta pra regra de tempo.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setPlayerReady((ready) => {
+        if (!ready) {
+          setUseFallbackIframe(true);
+          onApiFallbackRef.current?.();
+        }
+        return ready;
+      });
+    }, 6000);
+    return () => clearTimeout(t);
+  }, [videoId]);
 
   // Tick de reprodução real: só conta quando o vídeo está TOCANDO
   useEffect(() => {
@@ -115,6 +137,11 @@ const YouTubePlayer = ({
             playingRef.current = e?.data === 1;
             if (e?.data === 0) onEndedRef.current?.();
           },
+          onError: () => {
+            // vídeo bloqueado pra embed / erro de carregamento → embed simples
+            setUseFallbackIframe(true);
+            onApiFallbackRef.current?.();
+          },
         },
       });
     };
@@ -147,6 +174,29 @@ const YouTubePlayer = ({
       setPlaying(true);
     }
   };
+
+  if (useFallbackIframe) {
+    const startParam = startSeconds && startSeconds > 5 ? `&start=${Math.max(0, Math.floor(startSeconds) - 2)}` : "";
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="aspect-video w-full rounded-xl overflow-hidden bg-black shadow-xl">
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${videoId}?playsinline=1&rel=0&modestbranding=1${startParam}`}
+            className="w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowFullScreen
+            title={title}
+          />
+        </div>
+        <p className="text-center text-xs text-muted-foreground">
+          Vídeo não abriu?{" "}
+          <a href={watchUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary">
+            Assistir no YouTube
+          </a>
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -248,6 +298,10 @@ export const AcademyLessonPage = () => {
   const lastPosSaveRef = useRef(0);
   const [resumeFrom, setResumeFrom] = useState(0);
   const [watchedPct, setWatchedPct] = useState(0);
+  // player caiu pro embed simples (iOS/PWA) → não dá pra medir % assistido
+  const [playerApiFailed, setPlayerApiFailed] = useState(false);
+  // certificado pronto: link direto (window.open pós-async é bloqueado no iOS)
+  const [certUrl, setCertUrl] = useState<string | null>(null);
 
   const isYouTubeLesson = (() => {
     const u = (lesson?.video_url || "").toLowerCase();
@@ -302,7 +356,8 @@ export const AcademyLessonPage = () => {
           
           // Anti-burla: em aula do YouTube, quem libera a conclusão é o
           // progresso REAL do vídeo (80% assistido) — não o tempo de página.
-          if (!isYouTubeLesson && elapsed >= MIN_TIME_TO_COMPLETE && !canComplete) {
+          // Exceção: player caiu pro embed simples (sem medição) → regra de tempo.
+          if ((!isYouTubeLesson || playerApiFailed) && elapsed >= MIN_TIME_TO_COMPLETE && !canComplete) {
             setCanComplete(true);
           }
         }
@@ -314,7 +369,7 @@ export const AcademyLessonPage = () => {
         }
       };
     }
-  }, [lesson, isCompleted]);
+  }, [lesson, isCompleted, playerApiFailed, isYouTubeLesson, canComplete]);
 
   // Reset timer when lesson changes
   useEffect(() => {
@@ -327,6 +382,8 @@ export const AcademyLessonPage = () => {
     videoEndedRef.current = false;
     setWatchedPct(0);
     setResumeFrom(0);
+    setPlayerApiFailed(false);
+    setCertUrl(null);
   }, [lessonId]);
 
   useEffect(() => {
@@ -485,7 +542,7 @@ export const AcademyLessonPage = () => {
       // Certificados (best-effort): emite o da aula e, se a trilha fechou, o da trilha
       void (async () => {
         try {
-          await issueLessonCertificate({
+          const lessonCert = await issueLessonCertificate({
             onboardingUserId: userContext.onboardingUserId!,
             userName: userContext.userName,
             lessonId: lesson.id,
@@ -493,6 +550,7 @@ export const AcademyLessonPage = () => {
             trackName: lesson.track_name,
             durationMinutes: lesson.estimated_duration_minutes,
           });
+          setCertUrl(lessonCert.pdf_url);
           const trackCert = await maybeIssueTrackCertificate({
             onboardingUserId: userContext.onboardingUserId!,
             userName: userContext.userName,
@@ -597,6 +655,7 @@ export const AcademyLessonPage = () => {
             startSeconds={resumeFrom}
             onTick={handleVideoTick}
             onEnded={handleVideoEnded}
+            onApiFallback={() => setPlayerApiFailed(true)}
           />
         );
       }
@@ -731,7 +790,17 @@ export const AcademyLessonPage = () => {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-          {isCompleted && (
+          {isCompleted && certUrl && (
+            /* Link DIRETO: window.open depois de operação assíncrona é bloqueado
+               pelo iOS (popup blocker) — o certificado "sumia" depois de gerar */
+            <Button asChild variant="outline" className="border-emerald-500/50 text-emerald-600">
+              <a href={certUrl} target="_blank" rel="noopener noreferrer">
+                <Award className="h-4 w-4 mr-2" />
+                Abrir certificado
+              </a>
+            </Button>
+          )}
+          {isCompleted && !certUrl && (
             <Button
               variant="outline"
               disabled={issuingCert}
@@ -747,7 +816,8 @@ export const AcademyLessonPage = () => {
                     trackName: lesson.track_name,
                     durationMinutes: lesson.estimated_duration_minutes,
                   });
-                  window.open(cert.pdf_url, "_blank");
+                  setCertUrl(cert.pdf_url);
+                  toast.success("Certificado pronto! Toque em \"Abrir certificado\".");
                 } catch (e) {
                   console.error(e);
                   toast.error("Não consegui gerar o certificado agora");
@@ -760,7 +830,7 @@ export const AcademyLessonPage = () => {
               {issuingCert ? "Gerando..." : "Certificado"}
             </Button>
           )}
-          {isYouTubeLesson && !isCompleted && !canComplete && (
+          {isYouTubeLesson && !playerApiFailed && !isCompleted && !canComplete && (
             <span className="text-xs text-muted-foreground whitespace-nowrap">
               {watchedPct}% assistido · precisa de 80%
             </span>

@@ -32,6 +32,7 @@ const navItems: NavItem[] = [
   { title: "Home", href: "/academy", icon: Home },
   { title: "Trilhas", href: "/academy/tracks", icon: BookOpen },
   { title: "Meu Progresso", href: "/academy/progress", icon: Trophy },
+  { title: "Certificados", href: "/academy/certificates", icon: GraduationCap },
   { title: "Ranking", href: "/academy/ranking", icon: Award },
   { title: "Provas", href: "/academy/quizzes", icon: ClipboardCheck },
   { title: "Meu Time", href: "/academy/team", icon: Users, clientManagerOnly: true },

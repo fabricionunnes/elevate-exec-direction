@@ -289,6 +289,7 @@ const AcademyTracksPage = lazy(() => import("./pages/academy/AcademyTracksPage")
 const AcademyTrackDetailPage = lazy(() => import("./pages/academy/AcademyTrackDetailPage"));
 const AcademyLessonPage = lazy(() => import("./pages/academy/AcademyLessonPage"));
 const AcademyProgressPage = lazy(() => import("./pages/academy/AcademyProgressPage"));
+const AcademyCertificatesPage = lazy(() => import("./pages/academy/AcademyCertificatesPage"));
 const AcademyRankingPage = lazy(() => import("./pages/academy/AcademyRankingPage"));
 const AcademyQuizPage = lazy(() => import("./pages/academy/AcademyQuizPage"));
 const AcademyQuizzesListPage = lazy(() => import("./pages/academy/AcademyQuizzesListPage"));
@@ -718,6 +719,7 @@ const AppShell = () => {
               <Route path="track/:trackId" element={<AcademyTrackDetailPage />} />
               <Route path="lesson/:lessonId" element={<AcademyLessonPage />} />
               <Route path="progress" element={<AcademyProgressPage />} />
+              <Route path="certificates" element={<AcademyCertificatesPage />} />
               <Route path="ranking" element={<AcademyRankingPage />} />
               <Route path="quizzes" element={<AcademyQuizzesListPage />} />
               <Route path="quiz/:quizId" element={<AcademyQuizPage />} />
