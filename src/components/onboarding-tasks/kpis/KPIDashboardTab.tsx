@@ -1646,12 +1646,15 @@ export const KPIDashboardTab = ({
           min-height:0; box-shadow:none; background-image:none;
         }
         /* Cards: relevo visível — sheen no topo + sombra em camadas */
-        .kpi3d [class*="bg-card"]{
+        /* :not(gradient) — cards com fundo em gradiente (ex.: North Star Metric)
+           mantêm o próprio background-image; sem isso o sheen o sobrescrevia e o
+           card ficava branco/lavado no tema claro. */
+        .kpi3d [class*="bg-card"]:not([class*="gradient"]){
           background-image: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0) 130px);
           box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 22px 44px -22px rgba(40,25,70,.5), 0 3px 8px -3px rgba(0,0,0,.16);
           border-color: rgba(120,90,220,.14);
         }
-        :root[data-theme="dark"] .kpi3d [class*="bg-card"], .dark .kpi3d [class*="bg-card"]{
+        :root[data-theme="dark"] .kpi3d [class*="bg-card"]:not([class*="gradient"]), .dark .kpi3d [class*="bg-card"]:not([class*="gradient"]){
           background-image: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0) 130px);
           box-shadow: inset 0 1px 0 rgba(255,255,255,.09), 0 26px 52px -22px rgba(0,0,0,.75);
           border-color: rgba(160,140,255,.16);
