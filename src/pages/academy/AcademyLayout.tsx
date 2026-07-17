@@ -160,12 +160,22 @@ export const AcademyLayout = () => {
           .maybeSingle();
 
         if (salesperson) {
+          // Vendedor do cliente: SEM onboarding_user o Academy não registra nada
+          // (progresso, pontos e certificado gravam por onboarding_user_id).
+          // A RPC cria/retorna o vínculo automaticamente no primeiro acesso.
+          let vendorOnbId: string | null = null;
+          try {
+            const { data: ensured } = await (supabase.rpc as any)("academy_ensure_vendor_user");
+            vendorOnbId = (ensured as string) || null;
+          } catch (e) {
+            console.error("academy_ensure_vendor_user:", e);
+          }
           setUserContext({
             isAdmin: false,
             isClientManager: false,
             isUser: true,
             staffId: null,
-            onboardingUserId: null,
+            onboardingUserId: vendorOnbId,
             companyId: salesperson.company_id,
             projectId: null,
             userName: salesperson.name,
