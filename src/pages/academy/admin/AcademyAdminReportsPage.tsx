@@ -29,6 +29,7 @@ import {
   Percent,
 } from "lucide-react";
 import type { AcademyUserContext } from "../AcademyLayout";
+import { AcademyUserProgressTable } from "./AcademyUserProgressTable";
 
 interface CompanyStats {
   company_id: string;
@@ -65,6 +66,7 @@ export const AcademyAdminReportsPage = () => {
   const [companyStats, setCompanyStats] = useState<CompanyStats[]>([]);
   const [trackStats, setTrackStats] = useState<TrackStats[]>([]);
   const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
+  const [totalLessons, setTotalLessons] = useState(0);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("all");
 
@@ -83,6 +85,12 @@ export const AcademyAdminReportsPage = () => {
         .from("academy_user_levels")
         .select("id", { count: "exact" })
         .gte("last_activity_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+
+      const { count: activeLessons } = await supabase
+        .from("academy_lessons")
+        .select("id", { count: "exact" })
+        .eq("is_active", true);
+      setTotalLessons(activeLessons || 0);
 
       const { count: lessonsCompleted } = await supabase
         .from("academy_progress")
@@ -412,6 +420,9 @@ export const AcademyAdminReportsPage = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Progresso por usuário — o que cada um assistiu */}
+      <AcademyUserProgressTable totalLessons={totalLessons} />
 
       {/* Tracks Table */}
       <Card>

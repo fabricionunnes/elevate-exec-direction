@@ -15,7 +15,10 @@ import {
   FileText,
   Award,
   Star,
+  GraduationCap,
 } from "lucide-react";
+import { toast } from "sonner";
+import { issueTrackCertificate } from "@/lib/academy/certificates";
 import type { AcademyUserContext } from "./AcademyLayout";
 
 // Default cover images for tracks without custom covers
@@ -87,6 +90,7 @@ export const AcademyTrackDetailPage = () => {
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [loading, setLoading] = useState(true);
   const [completedLessons, setCompletedLessons] = useState(0);
+  const [issuingCert, setIssuingCert] = useState(false);
   const [totalLessons, setTotalLessons] = useState(0);
 
   useEffect(() => {
@@ -400,6 +404,52 @@ export const AcademyTrackDetailPage = () => {
             </div>
             <Progress value={progress} className="h-3" />
           </div>
+
+          {/* Trilha 100% concluída → certificado */}
+          {totalLessons > 0 && completedLessons === totalLessons && (
+            <div className="flex items-center justify-between gap-3 flex-wrap rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-emerald-500/20">
+                  <GraduationCap className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Trilha concluída — parabéns!</p>
+                  <p className="text-xs text-muted-foreground">Seu certificado com carga horária está disponível.</p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                disabled={issuingCert}
+                onClick={async () => {
+                  if (!userContext.onboardingUserId || !track) return;
+                  setIssuingCert(true);
+                  try {
+                    const totalMinutes = [...modules.flatMap((m) => m.lessons), ...lessonsWithoutModule].reduce(
+                      (sum, l: any) => sum + (l.estimated_duration_minutes || 60),
+                      0
+                    );
+                    const cert = await issueTrackCertificate({
+                      onboardingUserId: userContext.onboardingUserId,
+                      userName: userContext.userName,
+                      trackId: track.id,
+                      trackName: track.name,
+                      lessonCount: totalLessons,
+                      totalMinutes,
+                    });
+                    window.open(cert.pdf_url, "_blank");
+                  } catch (e) {
+                    console.error(e);
+                    toast.error("Não consegui gerar o certificado agora");
+                  } finally {
+                    setIssuingCert(false);
+                  }
+                }}
+              >
+                <GraduationCap className="h-4 w-4 mr-2" />
+                {issuingCert ? "Gerando..." : "Baixar certificado"}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 

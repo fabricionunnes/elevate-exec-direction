@@ -13,8 +13,10 @@ import {
   ExternalLink,
   Lock,
   Play,
+  Award,
 } from "lucide-react";
 import { toast } from "sonner";
+import { issueLessonCertificate, maybeIssueTrackCertificate } from "@/lib/academy/certificates";
 import type { AcademyUserContext } from "./AcademyLayout";
 
 // Declaração global para a YouTube IFrame Player API
@@ -190,6 +192,7 @@ export const AcademyLessonPage = () => {
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
+  const [issuingCert, setIssuingCert] = useState(false);
   const [trackConfig, setTrackConfig] = useState<TrackConfig>({ require_sequential_lessons: true });
   
   // Timer state
@@ -379,6 +382,31 @@ export const AcademyLessonPage = () => {
 
       setIsCompleted(true);
       toast.success(`Aula concluída! +${lesson.points_on_complete} pontos`);
+
+      // Certificados (best-effort): emite o da aula e, se a trilha fechou, o da trilha
+      void (async () => {
+        try {
+          await issueLessonCertificate({
+            onboardingUserId: userContext.onboardingUserId!,
+            userName: userContext.userName,
+            lessonId: lesson.id,
+            lessonTitle: lesson.title,
+            trackName: lesson.track_name,
+            durationMinutes: lesson.estimated_duration_minutes,
+          });
+          const trackCert = await maybeIssueTrackCertificate({
+            onboardingUserId: userContext.onboardingUserId!,
+            userName: userContext.userName,
+            trackId: lesson.track_id,
+            trackName: lesson.track_name,
+          });
+          if (trackCert) {
+            toast.success("🎓 Trilha concluída! Certificado da trilha emitido — veja em Meu Progresso.");
+          }
+        } catch (e) {
+          console.error("certificado:", e);
+        }
+      })();
 
       // Navigate to next lesson if available
       if (nextLesson) {
@@ -600,6 +628,36 @@ export const AcademyLessonPage = () => {
             </div>
           </div>
 
+          <div className="flex items-center gap-2 flex-wrap">
+          {isCompleted && (
+            <Button
+              variant="outline"
+              disabled={issuingCert}
+              onClick={async () => {
+                if (!userContext.onboardingUserId || !lesson) return;
+                setIssuingCert(true);
+                try {
+                  const cert = await issueLessonCertificate({
+                    onboardingUserId: userContext.onboardingUserId,
+                    userName: userContext.userName,
+                    lessonId: lesson.id,
+                    lessonTitle: lesson.title,
+                    trackName: lesson.track_name,
+                    durationMinutes: lesson.estimated_duration_minutes,
+                  });
+                  window.open(cert.pdf_url, "_blank");
+                } catch (e) {
+                  console.error(e);
+                  toast.error("Não consegui gerar o certificado agora");
+                } finally {
+                  setIssuingCert(false);
+                }
+              }}
+            >
+              <Award className="h-4 w-4 mr-2" />
+              {issuingCert ? "Gerando..." : "Certificado"}
+            </Button>
+          )}
           <Button
             onClick={handleComplete}
             disabled={isCompleted || completing || !canComplete}
@@ -622,6 +680,7 @@ export const AcademyLessonPage = () => {
               </>
             )}
           </Button>
+          </div>
         </div>
 
         {lesson.description && (

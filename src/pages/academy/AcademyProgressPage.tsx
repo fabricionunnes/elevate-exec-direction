@@ -16,6 +16,7 @@ import {
   CheckCircle,
   Clock,
   TrendingUp,
+  GraduationCap,
 } from "lucide-react";
 import type { AcademyUserContext } from "./AcademyLayout";
 
@@ -55,6 +56,16 @@ interface PointsEntry {
   created_at: string;
 }
 
+interface CertificateRow {
+  id: string;
+  certificate_code: string;
+  pdf_url: string | null;
+  total_hours: number | null;
+  issued_at: string;
+  lesson_title: string | null;
+  track_name: string | null;
+}
+
 interface TrackProgress {
   id: string;
   name: string;
@@ -71,6 +82,7 @@ export const AcademyProgressPage = () => {
   const [badges, setBadges] = useState<UserBadge[]>([]);
   const [pointsHistory, setPointsHistory] = useState<PointsEntry[]>([]);
   const [trackProgress, setTrackProgress] = useState<TrackProgress[]>([]);
+  const [certificates, setCertificates] = useState<CertificateRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -180,6 +192,28 @@ export const AcademyProgressPage = () => {
         const progress = await Promise.all(progressPromises);
         setTrackProgress(progress.filter((p) => p.completed_lessons > 0 || p.total_lessons > 0));
       }
+
+      // Meus certificados (aula e trilha)
+      const { data: certsData } = await (supabase as any)
+        .from("academy_certificates")
+        .select(`
+          id, certificate_code, pdf_url, total_hours, issued_at,
+          lesson:academy_lessons(title),
+          track:academy_tracks(name)
+        `)
+        .eq("onboarding_user_id", userContext.onboardingUserId!)
+        .order("issued_at", { ascending: false });
+      setCertificates(
+        (certsData || []).map((c: any) => ({
+          id: c.id,
+          certificate_code: c.certificate_code,
+          pdf_url: c.pdf_url,
+          total_hours: c.total_hours,
+          issued_at: c.issued_at,
+          lesson_title: c.lesson?.title || null,
+          track_name: c.track?.name || null,
+        }))
+      );
     } catch (error) {
       console.error("Error loading progress data:", error);
     } finally {
@@ -343,9 +377,57 @@ export const AcademyProgressPage = () => {
       <Tabs defaultValue="badges" className="space-y-4">
         <TabsList>
           <TabsTrigger value="badges">Conquistas</TabsTrigger>
+          <TabsTrigger value="certificates">Certificados</TabsTrigger>
           <TabsTrigger value="tracks">Trilhas</TabsTrigger>
           <TabsTrigger value="history">Histórico</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="certificates" className="space-y-4">
+          {certificates.length > 0 ? (
+            <div className="grid gap-3">
+              {certificates.map((cert) => (
+                <Card key={cert.id}>
+                  <CardContent className="pt-4 pb-4 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="p-2.5 rounded-lg shrink-0" style={{ background: "linear-gradient(135deg, #0D2B5E, #1a4a8a)" }}>
+                        <GraduationCap className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate">
+                          {cert.lesson_title
+                            ? `Aula: ${cert.lesson_title}`
+                            : `Trilha: ${cert.track_name || "—"}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {cert.total_hours ? `${cert.total_hours}h · ` : ""}
+                          Emitido em {new Date(cert.issued_at).toLocaleDateString("pt-BR")} · Código {cert.certificate_code}
+                        </p>
+                      </div>
+                    </div>
+                    {cert.pdf_url && (
+                      <Button asChild size="sm" variant="outline" className="shrink-0">
+                        <a href={cert.pdf_url} target="_blank" rel="noopener noreferrer">
+                          Baixar PDF
+                        </a>
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="p-12 text-center">
+              <GraduationCap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="font-semibold mb-2">Nenhum certificado ainda</h3>
+              <p className="text-muted-foreground">
+                Conclua uma aula e o certificado dela é emitido na hora. Complete a trilha inteira e ganhe também o certificado da trilha!
+              </p>
+              <Button className="mt-4" asChild>
+                <Link to="/academy/tracks">Ver trilhas</Link>
+              </Button>
+            </Card>
+          )}
+        </TabsContent>
 
         <TabsContent value="badges" className="space-y-4">
           {badges.length > 0 ? (
