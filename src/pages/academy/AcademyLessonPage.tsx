@@ -37,6 +37,19 @@ declare global {
   }
 }
 
+// App instalado (PWA standalone)? Nele a IFrame API do YouTube trava com
+// frequência no iOS — vamos DIRETO pro embed simples, que toca inline.
+const isStandaloneApp = () => {
+  try {
+    return (
+      (navigator as any).standalone === true ||
+      window.matchMedia?.("(display-mode: standalone)")?.matches === true
+    );
+  } catch {
+    return false;
+  }
+};
+
 /**
  * YouTubePlayer via IFrame API.
  * - Carrega o vídeo PAUSADO (autoplay: 0) para que o primeiro play
@@ -70,7 +83,7 @@ const YouTubePlayer = ({
   const playerRef = useRef<any>(null);
   const [playerReady, setPlayerReady] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [useFallbackIframe, setUseFallbackIframe] = useState(false);
+  const [useFallbackIframe, setUseFallbackIframe] = useState(() => isStandaloneApp());
   const playingRef = useRef(false);
   const onTickRef = useRef(onTick);
   const onEndedRef = useRef(onEnded);
@@ -79,10 +92,15 @@ const YouTubePlayer = ({
   onEndedRef.current = onEnded;
   onApiFallbackRef.current = onApiFallback;
 
-  // iOS/PWA às vezes não deixa a IFrame API inicializar — spinner infinito.
-  // Se o player não ficar pronto em 6s, troca pro embed simples (playsinline),
-  // que toca dentro do app; o desbloqueio de conclusão volta pra regra de tempo.
+  // App instalado: já montou em fallback — avisa a página (regra de tempo)
   useEffect(() => {
+    if (isStandaloneApp()) onApiFallbackRef.current?.();
+  }, []);
+
+  // Navegador comum: se a IFrame API não ficar pronta em 6s (ou der erro),
+  // troca pro embed simples (playsinline) — desbloqueio volta pra regra de tempo.
+  useEffect(() => {
+    if (useFallbackIframe) return;
     const t = setTimeout(() => {
       setPlayerReady((ready) => {
         if (!ready) {
@@ -93,6 +111,7 @@ const YouTubePlayer = ({
       });
     }, 6000);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId]);
 
   // Tick de reprodução real: só conta quando o vídeo está TOCANDO
@@ -108,6 +127,7 @@ const YouTubePlayer = ({
   }, []);
 
   useEffect(() => {
+    if (useFallbackIframe) return; // app instalado: embed simples direto
     let destroyed = false;
 
     const initPlayer = () => {
