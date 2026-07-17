@@ -110,7 +110,8 @@ export function ChecklistMeetingScheduler({
   const [meetingTitle, setMeetingTitle] = useState(`Reunião com ${leadName}`);
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [showAvailabilityOptions, setShowAvailabilityOptions] = useState(false);
-  const [allowWeekends, setAllowWeekends] = useState(false);
+  // Sábado é dia de agenda dos closers — sempre liberado. O switch libera domingo.
+  const [allowSunday, setAllowSunday] = useState(false);
 
   // Existing meeting state
   const [existingMeeting, setExistingMeeting] = useState<ExistingMeeting | null>(null);
@@ -1145,8 +1146,8 @@ export function ChecklistMeetingScheduler({
                       </Select>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Label className="text-xs text-muted-foreground">Liberar finais de semana</Label>
-                      <Switch checked={allowWeekends} onCheckedChange={setAllowWeekends} className="scale-75" />
+                      <Label className="text-xs text-muted-foreground">Liberar domingo</Label>
+                      <Switch checked={allowSunday} onCheckedChange={setAllowSunday} className="scale-75" />
                     </div>
                   </div>
                 )}
@@ -1177,8 +1178,9 @@ export function ChecklistMeetingScheduler({
                   }}
                   disabled={(date) => {
                     const isPast = isBefore(date, startOfDay(new Date()));
-                    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                    return isPast || (!allowWeekends && isWeekend);
+                    // Sábado sempre disponível; domingo só com o switch ligado
+                    const isSunday = date.getDay() === 0;
+                    return isPast || (!allowSunday && isSunday);
                   }}
                   locale={ptBR}
                   className="rounded-md w-full"
