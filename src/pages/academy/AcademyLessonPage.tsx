@@ -37,19 +37,6 @@ declare global {
   }
 }
 
-// App instalado (PWA standalone)? Nele a IFrame API do YouTube trava com
-// frequência no iOS — vamos DIRETO pro embed simples, que toca inline.
-const isStandaloneApp = () => {
-  try {
-    return (
-      (navigator as any).standalone === true ||
-      window.matchMedia?.("(display-mode: standalone)")?.matches === true
-    );
-  } catch {
-    return false;
-  }
-};
-
 /**
  * YouTubePlayer via IFrame API.
  * - Carrega o vídeo PAUSADO (autoplay: 0) para que o primeiro play
@@ -83,7 +70,7 @@ const YouTubePlayer = ({
   const playerRef = useRef<any>(null);
   const [playerReady, setPlayerReady] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [useFallbackIframe, setUseFallbackIframe] = useState(() => isStandaloneApp());
+  const [useFallbackIframe, setUseFallbackIframe] = useState(false);
   const playingRef = useRef(false);
   const onTickRef = useRef(onTick);
   const onEndedRef = useRef(onEnded);
@@ -92,12 +79,7 @@ const YouTubePlayer = ({
   onEndedRef.current = onEnded;
   onApiFallbackRef.current = onApiFallback;
 
-  // App instalado: já montou em fallback — avisa a página (regra de tempo)
-  useEffect(() => {
-    if (isStandaloneApp()) onApiFallbackRef.current?.();
-  }, []);
-
-  // Navegador comum: se a IFrame API não ficar pronta em 6s (ou der erro),
+  // Se a IFrame API não ficar pronta em 6s (ou der erro),
   // troca pro embed simples (playsinline) — desbloqueio volta pra regra de tempo.
   useEffect(() => {
     if (useFallbackIframe) return;
@@ -127,7 +109,7 @@ const YouTubePlayer = ({
   }, []);
 
   useEffect(() => {
-    if (useFallbackIframe) return; // app instalado: embed simples direto
+    if (useFallbackIframe) return; // já caiu pro embed simples
     let destroyed = false;
 
     const initPlayer = () => {

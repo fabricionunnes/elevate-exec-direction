@@ -1,4 +1,4 @@
-const CACHE_NAME = 'unv-nexus-v4';
+const CACHE_NAME = 'unv-nexus-v5';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_ASSETS = [
@@ -38,6 +38,11 @@ self.addEventListener('fetch', (event) => {
   if (!request.url.startsWith('http')) return;
 
   const url = new URL(request.url);
+
+  // Cross-origin (YouTube, Google, players de vídeo, CDNs): NUNCA interceptar.
+  // Interceptar a navegação de iframe cross-origin quebrava o player das aulas
+  // no app instalado (fetch falha → offline.html dentro do iframe).
+  if (url.origin !== self.location.origin) return;
 
   // API / supabase / lovable runtime: network-only
   if (
