@@ -306,7 +306,8 @@ export const CRMLeadDetailPage = () => {
           if (existingSaleError) throw existingSaleError;
 
           if (!existingSale?.id) {
-            const closerId = (data as any).closer_staff_id || data.owner_staff_id;
+            // venda conta pro RESPONSÁVEL do lead (owner), não pro closer vinculado
+            const closerId = data.owner_staff_id || (data as any).closer_staff_id;
             const sdrId = (data as any).sdr_staff_id || null;
             const value = (data as any).opportunity_value || 0;
             const closedAt = (data as any).closed_at ? new Date((data as any).closed_at) : new Date();
@@ -546,11 +547,10 @@ export const CRMLeadDetailPage = () => {
     }
 
     try {
-      // A venda é do VENDEDOR RESPONSÁVEL pelo lead, não de quem clica em "Ganho".
-      // (um master/admin pode dar ganho num lead de outra pessoa — ex.: Fabrício fecha
-      //  um lead da Yasmim; a venda tem que contar pra Yasmim.)
-      // Prioridade: closer já vinculado → dono do lead → quem clicou (só se o lead não tiver ninguém).
-      const effectiveCloserId = lead.closer_staff_id || lead.owner_staff_id || staffId || null;
+      // A venda é do RESPONSÁVEL pelo lead, não de quem clica em "Ganho".
+      // (ex.: Fabrício dá ganho num lead da Natalia → a venda conta pra Natalia.)
+      // Prioridade: DONO do lead → closer vinculado → quem clicou (só sem ninguém).
+      const effectiveCloserId = lead.owner_staff_id || lead.closer_staff_id || staffId || null;
 
       const updatePayload: Record<string, any> = {
         stage_id: wonStage.id,
