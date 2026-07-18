@@ -94,12 +94,22 @@ export const AcademyLayout = () => {
           .maybeSingle();
 
         if (staff && ["master", "admin", "cs", "consultant"].includes(staff.role)) {
+          // Staff também estuda: sem perfil de aluno, concluir aula/certificado
+          // não grava NADA (tudo é por onboarding_user_id). A RPC cria/retorna
+          // o perfil de aluno do staff (sem projeto — não aparece pra clientes).
+          let staffLearnerId: string | null = null;
+          try {
+            const { data: ensured } = await (supabase.rpc as any)("academy_ensure_staff_learner");
+            staffLearnerId = (ensured as string) || null;
+          } catch (e) {
+            console.error("academy_ensure_staff_learner:", e);
+          }
           setUserContext({
             isAdmin: true,
             isClientManager: false,
             isUser: true,
             staffId: staff.id,
-            onboardingUserId: null,
+            onboardingUserId: staffLearnerId,
             companyId: null,
             projectId: null,
             userName: staff.name,

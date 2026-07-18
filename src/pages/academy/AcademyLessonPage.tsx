@@ -516,7 +516,11 @@ export const AcademyLessonPage = () => {
   };
 
   const handleComplete = async () => {
-    if (!userContext.onboardingUserId || !lesson) return;
+    if (!lesson) return;
+    if (!userContext.onboardingUserId) {
+      toast.error("Sua conta não tem perfil de aluno — recarregue a página; se persistir, fale com o suporte.");
+      return;
+    }
 
     setCompleting(true);
     try {
