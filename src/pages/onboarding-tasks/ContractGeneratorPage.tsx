@@ -430,8 +430,9 @@ export default function ContractGeneratorPage() {
     setEditableClauses((prev) =>
       prev.map((c) => {
         if (c.id !== "investimento") return c;
-        // auto-gerada = começa com o padrão de valor; re-sincroniza mesmo após snapshot/edição,
-        // pra nunca ficar travada num valor antigo (ex.: R$ 0,00).
+        // Edição MANUAL do consultor nunca é sobrescrita (flag explícita —
+        // a heurística por texto atropelava edições que mantinham a frase padrão).
+        if (c.manuallyEdited) return c;
         const untouched =
           c.content === lastGenInvestimentoRef.current ||
           c.content.includes("conforme especificado nas condições comerciais") ||
@@ -653,6 +654,7 @@ export default function ContractGeneratorPage() {
         title: c.title,
         content: c.content,
         isDynamic: c.isDynamic,
+        manuallyEdited: c.manuallyEdited,
       }));
       
       const blob = await generateContractPDF({ formData, customClauses });
@@ -1127,7 +1129,8 @@ export default function ContractGeneratorPage() {
       paymentMethod: (selectedContract.payment_method as "card" | "pix" | "boleto") || "pix",
       installments: selectedContract.installments || 1,
       isRecurring: selectedContract.is_recurring || false,
-      dueDay: selectedContract.due_date ? parseInt(selectedContract.due_date) : undefined,
+      // due_date é DATA ISO (yyyy-mm-dd): parseInt pegava o ANO ("Vencimento: todo dia 2032")
+      dueDay: selectedContract.due_date ? new Date(selectedContract.due_date + "T12:00:00").getDate() : undefined,
       startDate: selectedContract.start_date ? new Date(selectedContract.start_date) : new Date(),
     });
     

@@ -14,6 +14,8 @@ export interface EditableClause {
   content: string;
   originalContent: string;
   isDynamic?: boolean;
+  /** true quando o consultor editou a cláusula na mão — NUNCA sobrescrever */
+  manuallyEdited?: boolean;
 }
 
 interface ClausesEditorProps {
@@ -100,7 +102,7 @@ export default function ClausesEditor({ clauses, onChange }: ClausesEditorProps)
   const updateClause = (id: string, newContent: string) => {
     onChange(
       clauses.map((clause) =>
-        clause.id === id ? { ...clause, content: newContent } : clause
+        clause.id === id ? { ...clause, content: newContent, manuallyEdited: true } : clause
       )
     );
   };
@@ -108,13 +110,13 @@ export default function ClausesEditor({ clauses, onChange }: ClausesEditorProps)
   const resetClause = (id: string) => {
     onChange(
       clauses.map((clause) =>
-        clause.id === id ? { ...clause, content: clause.originalContent } : clause
+        clause.id === id ? { ...clause, content: clause.originalContent, manuallyEdited: false } : clause
       )
     );
   };
 
   const resetAll = () => {
-    onChange(clauses.map((clause) => ({ ...clause, content: clause.originalContent })));
+    onChange(clauses.map((clause) => ({ ...clause, content: clause.originalContent, manuallyEdited: false })));
   };
 
   const hasChanges = clauses.some((c) => c.content !== c.originalContent);

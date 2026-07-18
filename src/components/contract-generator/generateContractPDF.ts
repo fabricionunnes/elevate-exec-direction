@@ -12,6 +12,7 @@ const NAVY = [10, 34, 64] as const; // #0A2240
 const RED = [220, 38, 38] as const; // #DC2626
 
 interface CustomClause {
+  manuallyEdited?: boolean;
   id: string;
   title: string;
   content: string;
@@ -305,7 +306,9 @@ export async function generateContractPDF({ formData, customClauses }: GenerateP
       // Só preserva o texto cru se for uma reescrita realmente manual (fora desse padrão).
       const isPlaceholder = clause.content.includes("conforme especificado nas condições comerciais");
       const isAutoGerada = /O valor (total )?do presente contrato será de/i.test(clause.content);
-      const isDefault = isPlaceholder || isAutoGerada;
+      // Edição manual do consultor SEMPRE vence — a heurística por texto
+      // descartava edições que mantinham a frase padrão de valor.
+      const isDefault = !clause.manuallyEdited && (isPlaceholder || isAutoGerada);
       const investimentoContent = isDefault
         ? buildInvestimentoContent({
             paymentMethod: formData.paymentMethod,

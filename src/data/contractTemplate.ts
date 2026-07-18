@@ -69,7 +69,11 @@ export function buildInvestimentoContent(fd: InvestimentoFormData): string {
       parts.push(`II. O pagamento será realizado à vista via ${label}.`);
     }
   }
-  if (fd.dueDay) parts.push(`Vencimento: todo dia ${fd.dueDay} de cada mês.`);
+  if (fd.dueDay) {
+    // dia de vencimento sempre 1-31 (já chegou "2032" aqui por parse errado de data)
+    const dd = Math.min(31, Math.max(1, Math.round(Number(fd.dueDay)) || 1));
+    parts.push(`Vencimento: todo dia ${dd} de cada mês.`);
+  }
   parts.push(`III. Em caso de atraso no pagamento, incidirão multa moratória de 2% (dois por cento) e juros de mora de 1% (um por cento) ao mês sobre o valor em atraso.`);
   parts.push(`IV. Este contrato caracteriza-se como prestação de serviço com pagamento ${fd.isRecurring ? "recorrente" : fd.installments > 1 ? "parcelado" : "à vista"}. O não uso dos serviços não isenta a CONTRATANTE do pagamento dos valores acordados.`);
   parts.push(fd.paymentMethod === "card" ? RESCISAO_V_CARTAO : RESCISAO_V_PADRAO);
