@@ -183,10 +183,13 @@ const YouTubePlayer = ({
       <div className="flex flex-col gap-2">
         <div className="aspect-video w-full rounded-xl overflow-hidden bg-black shadow-xl">
           <iframe
-            src={`https://www.youtube-nocookie.com/embed/${videoId}?playsinline=1&rel=0&modestbranding=1${startParam}`}
+            src={`https://www.youtube.com/embed/${videoId}?playsinline=1&rel=0&modestbranding=1${startParam}`}
             className="w-full h-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             allowFullScreen
+            // Erro 153: o YouTube exige referer; o app instalado (standalone)
+            // pode suprimi-lo — forçamos enviar ao menos a origem
+            referrerPolicy="strict-origin-when-cross-origin"
             title={title}
           />
         </div>
