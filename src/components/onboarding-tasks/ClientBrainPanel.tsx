@@ -116,8 +116,9 @@ export const ClientBrainPanel = ({ projectId }: { projectId: string }) => {
       if (insErr) throw insErr;
       setCreatedTasks((s) => new Set(s).add(idx));
       toast.success("Tarefa criada no projeto");
-    } catch {
-      toast.error("Erro ao criar a tarefa");
+    } catch (e: any) {
+      console.error("criar tarefa (cérebro):", e);
+      toast.error(`Erro ao criar a tarefa${e?.message ? `: ${e.message}` : ""}`);
     } finally {
       setCreatingTask(null);
     }

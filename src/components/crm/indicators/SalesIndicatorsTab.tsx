@@ -347,7 +347,9 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       (salesData || []).forEach((s: any) => {
         const sid = s.closer_staff_id;
         if (!sid || expandedCloserMap.has(sid)) return;
-        if (excludedRolesFromClosers.has(staffRoleMap.get(sid) || "")) return;
+        // Quem tem VENDA no período aparece no desempenho — inclusive SDR/BDR
+        // (a exclusão por papel vale só pra reuniões, senão agendamento de SDR
+        // poluiria o ranking; venda é venda, de quem quer que seja).
         const staffInfo = allStaffMap.get(sid) || (s.closer ? { id: sid, name: s.closer.name } : null);
         if (staffInfo) expandedCloserMap.set(sid, staffInfo);
       });
