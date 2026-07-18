@@ -275,6 +275,8 @@ interface TrackConfig {
 }
 
 const MIN_TIME_TO_COMPLETE = 60; // 1 minute in seconds
+// Fração REAL do vídeo que precisa ser assistida pra liberar a conclusão
+const WATCH_FRACTION_TO_COMPLETE = 0.2; // 20%
 
 export const AcademyLessonPage = () => {
   const { lessonId } = useParams();
@@ -328,7 +330,7 @@ export const AcademyLessonPage = () => {
   };
 
   /** Tick de reprodução REAL do YouTube: acumula, atualiza % e libera a
-   * conclusão só com 80% assistido (ou vídeo terminado). */
+   * conclusão só com a fração mínima assistida (ou vídeo terminado). */
   const handleVideoTick = (currentTime: number, duration: number) => {
     watchedRealRef.current += 1;
     if (duration > 0) videoDurationRef.current = duration;
@@ -336,7 +338,7 @@ export const AcademyLessonPage = () => {
     if (dur > 0) {
       const pct = Math.min(100, Math.round((watchedRealRef.current / dur) * 100));
       setWatchedPct(pct);
-      if (!isCompleted && !canComplete && (videoEndedRef.current || watchedRealRef.current >= dur * 0.8)) {
+      if (!isCompleted && !canComplete && (videoEndedRef.current || watchedRealRef.current >= dur * WATCH_FRACTION_TO_COMPLETE)) {
         setCanComplete(true);
       }
     }
@@ -361,7 +363,7 @@ export const AcademyLessonPage = () => {
           setTimeSpent(elapsed);
           
           // Anti-burla: em aula do YouTube, quem libera a conclusão é o
-          // progresso REAL do vídeo (80% assistido) — não o tempo de página.
+          // progresso REAL do vídeo (fração mínima assistida) — não o tempo de página.
           // Exceção: player caiu pro embed simples (sem medição) → regra de tempo.
           const isTrackedVideo = isYouTubeLesson || (lesson?.video_url || "").toLowerCase().includes(".mp4");
           if ((!isTrackedVideo || playerApiFailed) && elapsed >= MIN_TIME_TO_COMPLETE && !canComplete) {
@@ -880,14 +882,14 @@ export const AcademyLessonPage = () => {
           )}
           {(isYouTubeLesson || (lesson?.video_url || "").toLowerCase().includes(".mp4")) && !playerApiFailed && !isCompleted && !canComplete && (
             <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {watchedPct}% assistido · precisa de 80%
+              {watchedPct}% assistido · precisa de 20%
             </span>
           )}
           <Button
             onClick={handleComplete}
             disabled={isCompleted || completing || !canComplete}
             className={isCompleted ? "bg-green-600 hover:bg-green-700" : ""}
-            title={!canComplete && isYouTubeLesson ? "Assista pelo menos 80% do vídeo para concluir" : undefined}
+            title={!canComplete && isYouTubeLesson ? "Assista pelo menos 20% do vídeo para concluir" : undefined}
           >
             {completing ? (
               <>
