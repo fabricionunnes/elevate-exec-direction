@@ -301,6 +301,7 @@ export const AcademyLessonPage = () => {
   const videoDurationRef = useRef(0);
   const videoEndedRef = useRef(false);
   const lastPosSaveRef = useRef(0);
+  const nativeTickRef = useRef(0);
   const [resumeFrom, setResumeFrom] = useState(0);
   const [watchedPct, setWatchedPct] = useState(0);
   // player caiu pro embed simples (iOS/PWA) → não dá pra medir % assistido
@@ -362,7 +363,8 @@ export const AcademyLessonPage = () => {
           // Anti-burla: em aula do YouTube, quem libera a conclusão é o
           // progresso REAL do vídeo (80% assistido) — não o tempo de página.
           // Exceção: player caiu pro embed simples (sem medição) → regra de tempo.
-          if ((!isYouTubeLesson || playerApiFailed) && elapsed >= MIN_TIME_TO_COMPLETE && !canComplete) {
+          const isTrackedVideo = isYouTubeLesson || (lesson?.video_url || "").toLowerCase().includes(".mp4");
+          if ((!isTrackedVideo || playerApiFailed) && elapsed >= MIN_TIME_TO_COMPLETE && !canComplete) {
             setCanComplete(true);
           }
         }
@@ -598,7 +600,9 @@ export const AcademyLessonPage = () => {
     const lowerUrl = url.toLowerCase();
 
     const inferredProvider =
-      lowerUrl.includes("youtu.be") || lowerUrl.includes("youtube.com")
+      lowerUrl.includes(".mp4") || lowerUrl.includes("/storage/v1/object/public/academy-videos/")
+        ? "mp4"
+        : lowerUrl.includes("youtu.be") || lowerUrl.includes("youtube.com")
         ? "youtube"
         : lowerUrl.includes("vimeo.com")
           ? "vimeo"
@@ -609,6 +613,41 @@ export const AcademyLessonPage = () => {
               : null;
 
     const provider = inferredProvider ?? lesson.video_provider;
+
+    // MP4 próprio (Supabase Storage): player HTML5 nativo — toca DENTRO do
+    // app instalado sem restrição do YouTube, com % real e retomada exatas.
+    if (provider === "mp4") {
+      return (
+        <div className="aspect-video w-full rounded-xl overflow-hidden bg-black shadow-xl">
+          <video
+            key={url}
+            src={url}
+            controls
+            playsInline
+            preload="metadata"
+            controlsList="nodownload"
+            className="w-full h-full"
+            ref={(el) => {
+              if (el && resumeFrom > 5 && !el.dataset.resumed) {
+                el.dataset.resumed = "1";
+                el.currentTime = Math.max(0, resumeFrom - 2);
+              }
+            }}
+            onTimeUpdate={(e) => {
+              const v = e.currentTarget;
+              if (!v.paused && !v.seeking) {
+                nativeTickRef.current += 1;
+                // onTimeUpdate dispara ~4x/s — converte pra ~1s de reprodução real
+                if (nativeTickRef.current % 4 === 0) {
+                  handleVideoTick(v.currentTime, v.duration || 0);
+                }
+              }
+            }}
+            onEnded={handleVideoEnded}
+          />
+        </div>
+      );
+    }
 
     // YouTube: usa IFrame Player API (não iframe simples) para garantir
     // reprodução inline no iOS. iframe simples é interceptado pelo app.
@@ -835,7 +874,7 @@ export const AcademyLessonPage = () => {
               {issuingCert ? "Gerando..." : "Certificado"}
             </Button>
           )}
-          {isYouTubeLesson && !playerApiFailed && !isCompleted && !canComplete && (
+          {(isYouTubeLesson || (lesson?.video_url || "").toLowerCase().includes(".mp4")) && !playerApiFailed && !isCompleted && !canComplete && (
             <span className="text-xs text-muted-foreground whitespace-nowrap">
               {watchedPct}% assistido · precisa de 80%
             </span>
