@@ -280,7 +280,6 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       const baseCloserStaff = filteredCloserStaff.map(s => ({ id: s.id, name: s.name }));
       const allStaffMap = new Map((allActiveStaff || []).map(s => [s.id, { id: s.id, name: s.name }]));
       // Roles que NUNCA devem aparecer no Desempenho dos Closers (são pré-vendas)
-      const excludedRolesFromClosers = new Set(["sdr", "social_setter", "bdr"]);
       const staffRoleMap = new Map(
         (allActiveStaff || []).map(s => [s.id, String((s as any).role ?? "").toLowerCase()])
       );
@@ -333,23 +332,15 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       );
       setRawSalesData(salesData);
 
-      // Expand "closers" list with anyone who has scheduled/realized meetings
-      // or sales in the period — even without the "closer" role.
+      // REGRA DOS CARDS/TABELA (definição do Fabrício):
+      // - CLOSER de verdade (role closer ou flag is_crm_closer): aparece SEMPRE,
+      //   mesmo zerado.
+      // - Todo o resto (SDR, BDR, head, master...): só aparece se tiver VENDA
+      //   no período — quem só agendou/realizou reunião não entra.
       const expandedCloserMap = new Map(baseCloserStaff.map(s => [s.id, s]));
-      (meetingEvents || []).forEach((ev: any) => {
-        // Crédito vai para o RESPONSÁVEL do lead (owner), não para quem deu baixa.
-        const sid = ev.lead?.owner_staff_id;
-        if (!sid || expandedCloserMap.has(sid)) return;
-        if (excludedRolesFromClosers.has(staffRoleMap.get(sid) || "")) return;
-        const staffInfo = allStaffMap.get(sid);
-        if (staffInfo) expandedCloserMap.set(sid, staffInfo);
-      });
       (salesData || []).forEach((s: any) => {
         const sid = s.closer_staff_id;
         if (!sid || expandedCloserMap.has(sid)) return;
-        // Quem tem VENDA no período aparece no desempenho — inclusive SDR/BDR
-        // (a exclusão por papel vale só pra reuniões, senão agendamento de SDR
-        // poluiria o ranking; venda é venda, de quem quer que seja).
         const staffInfo = allStaffMap.get(sid) || (s.closer ? { id: sid, name: s.closer.name } : null);
         if (staffInfo) expandedCloserMap.set(sid, staffInfo);
       });

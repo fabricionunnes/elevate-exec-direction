@@ -30,7 +30,6 @@ import { ImportLeadsDialog } from "@/components/crm/ImportLeadsDialog";
 import { createStageActivities } from "@/hooks/useStageActions";
 import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
 import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
-import { sendWonLeadNotification } from "@/hooks/useSendWonNotification";
 import { trackMeetingEventOnStageChange } from "@/hooks/useMeetingEventTracker";
 import { CRMFiltersBar, CRMFilters } from "@/components/crm/CRMFiltersBar";
 import { useCRMContext } from "./CRMLayout";
@@ -558,15 +557,8 @@ export const CRMPipelinePage = () => {
           }
         }
 
-        // Notificação da venda no grupo de WhatsApp (Integração) — antes só o
-        // botão "Marcar como Ganho" do lead notificava; arrastar no kanban
-        // ganhava sem avisar o grupo. Best-effort: não bloqueia o fluxo.
-        sendWonLeadNotification(stageMoveDialog.leadId)
-          .then((result) => {
-            if (result.success) toast.success("📱 Notificação enviada para o grupo!");
-            else console.warn("[WON NOTIFICATION] Falha ao notificar grupo:", result.error);
-          })
-          .catch((e) => console.error("[WON NOTIFICATION] Exception:", e));
+        // Notificação do grupo é SERVER-SIDE (trigger no banco → edge
+        // crm-won-notify, idempotente) — dispara em qualquer caminho de ganho.
       } else {
         toast.success("Lead movido com sucesso");
       }

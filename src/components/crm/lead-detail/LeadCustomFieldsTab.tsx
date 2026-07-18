@@ -480,12 +480,13 @@ export const LeadCustomFieldsTab = ({
   };
 
   const loadStaff = async () => {
-    // Load closers + admins/masters with CRM access
+    // Todos os usuários do CRM Comercial podem ser Closer do negócio
+    // (inclusive SDR/BDR/head — a SDR que fecha conta a venda dela)
     const { data: closers } = await supabase
       .from("onboarding_staff")
       .select("id, name, role")
       .eq("is_active", true)
-      .in("role", ["closer", "admin", "master"])
+      .in("role", ["closer", "sdr", "social_setter", "bdr", "head_comercial", "admin", "master"])
       .order("name");
     
     setCloserStaff(closers || []);
