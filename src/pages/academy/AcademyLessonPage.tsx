@@ -527,6 +527,12 @@ export const AcademyLessonPage = () => {
     setCompleting(true);
     try {
       // Update progress
+      // % REAL assistido no momento da conclusão (vai estampado no certificado)
+      const watchedPctFinal = videoEndedRef.current
+        ? 100
+        : videoDurationRef.current > 0
+          ? Math.min(100, Math.round((watchedRealRef.current / videoDurationRef.current) * 100))
+          : null;
       await supabase
         .from("academy_progress")
         .upsert({
@@ -535,7 +541,8 @@ export const AcademyLessonPage = () => {
           status: "completed",
           completed_at: new Date().toISOString(),
           time_spent_seconds: timeSpent,
-        }, {
+          watched_pct: watchedPctFinal,
+        } as any, {
           onConflict: "onboarding_user_id,lesson_id",
         });
 

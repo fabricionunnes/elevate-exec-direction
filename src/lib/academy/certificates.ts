@@ -52,6 +52,8 @@ interface CertificatePdfArgs {
   /** linha auxiliar (ex.: nome da trilha da aula, ou "12 aulas") */
   subtitle?: string | null;
   hours: number;
+  /** % da aula efetivamente assistida (estampado no certificado da aula) */
+  watchedPct?: number | null;
   code: string;
   issuedAt: Date;
 }
@@ -133,6 +135,12 @@ async function generateCertificatePdf(args: CertificatePdfArgs): Promise<Blob> {
   doc.setFontSize(12);
   const hoursLabel = args.hours === 1 ? "1 hora" : `${args.hours} horas`;
   doc.text(`com carga horária de ${hoursLabel}.`, W / 2, y + 4, { align: "center" });
+
+  if (args.watchedPct != null) {
+    doc.setTextColor(110, 110, 110);
+    doc.setFontSize(11);
+    doc.text(`Aproveitamento: ${args.watchedPct}% da aula assistida`, W / 2, y + 12, { align: "center" });
+  }
 
   // Rodapé: data + assinatura + verificação
   const issued = args.issuedAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
@@ -220,6 +228,14 @@ export async function issueLessonCertificate(opts: {
     .maybeSingle();
   if (existing?.pdf_url) return existing as IssuedCertificate;
 
+  // % assistido registrado na conclusão — sai estampado no certificado
+  const { data: prog } = await (supabase as any)
+    .from("academy_progress")
+    .select("watched_pct")
+    .eq("onboarding_user_id", opts.onboardingUserId)
+    .eq("lesson_id", opts.lessonId)
+    .maybeSingle();
+
   const hours = Math.max(1, Math.round((opts.durationMinutes || 60) / 60));
   const code = certificateCode();
   const pdf = await generateCertificatePdf({
@@ -228,6 +244,7 @@ export async function issueLessonCertificate(opts: {
     title: opts.lessonTitle,
     subtitle: opts.trackName ? `Trilha: ${opts.trackName}` : null,
     hours,
+    watchedPct: prog?.watched_pct ?? null,
     code,
     issuedAt: new Date(),
   });
