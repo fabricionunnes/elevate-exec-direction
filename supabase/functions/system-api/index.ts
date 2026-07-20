@@ -1006,6 +1006,17 @@ serve(async (req) => {
           }
 
           await c.supabase.from("company_salespeople").update({ user_id: userId }).eq("id", sp.id);
+          // E-mail de boas-vindas com credenciais (best-effort — não bloqueia)
+          try {
+            await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-welcome-email`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+              },
+              body: JSON.stringify({ to: sp.email, name: sp.name, role_label: "Vendedor", password }),
+            });
+          } catch (e) { console.error("welcome email:", e); }
           return json({ success: true, user_id: userId });
         },
         reset_password: async (c) => {

@@ -5,6 +5,35 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// E-mail de boas-vindas (best-effort — NUNCA bloqueia a criação do usuário)
+async function sendWelcome(to: string, name: string, roleLabel: string, password?: string | null) {
+  try {
+    await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-welcome-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+      },
+      body: JSON.stringify({ to, name, role_label: roleLabel, password }),
+    });
+  } catch (e) {
+    console.error("welcome email:", e);
+  }
+}
+
+const WELCOME_ROLE_LABELS: Record<string, string> = {
+  client: "Proprietário",
+  gerente: "Gerente",
+  vendedor: "Vendedor",
+  rh_client: "RH",
+  estoque: "Estoque",
+  financeiro: "Financeiro",
+  cs: "Customer Success",
+  consultant: "Consultor",
+  admin: "Administrador",
+  master: "Master",
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -465,6 +494,8 @@ Deno.serve(async (req) => {
       }
       
       console.log(`Created new onboarding user: ${email} as ${role}`);
+      // boas-vindas com credenciais (best-effort)
+      void sendWelcome(email, name, WELCOME_ROLE_LABELS[role] || role, password);
     }
 
     return new Response(

@@ -324,6 +324,24 @@ Deno.serve(async (req) => {
       console.log(`Created new staff: ${staffId}`);
     }
 
+    // E-mail de boas-vindas com credenciais (best-effort — não bloqueia)
+    try {
+      const roleLabels: Record<string, string> = {
+        master: "Master", admin: "Administrador", cs: "Customer Success",
+        consultant: "Consultor", closer: "Closer", sdr: "SDR",
+        social_setter: "Social Setter", bdr: "BDR", head_comercial: "Head Comercial",
+        juridico: "Jurídico", financeiro: "Financeiro",
+      };
+      await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-welcome-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        },
+        body: JSON.stringify({ to: email, name, role_label: roleLabels[role] || role, password }),
+      });
+    } catch (e) { console.error("welcome email:", e); }
+
     return new Response(JSON.stringify({ success: true, user_id: userId, staff_id: staffId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
