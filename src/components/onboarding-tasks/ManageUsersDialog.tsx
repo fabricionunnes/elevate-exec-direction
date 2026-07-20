@@ -300,6 +300,27 @@ export const ManageUsersDialog = ({
     }
   };
 
+  const handleDeleteSalespersonLogin = async (spId: string, spName: string) => {
+    if (!window.confirm(`Remover o acesso de ${spName}? O cadastro do vendedor e os KPIs continuam — só o login é apagado.`)) return;
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error("Sessão expirada — recarregue a página.");
+      const params = new URLSearchParams({ module: "salespeople", action: "delete_login", id: spId });
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/system-api?${params}`,
+        { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: "{}" },
+      );
+      const result = await res.json();
+      if (result?.error) throw new Error(result.error);
+      toast.success(`Acesso de ${spName} removido`);
+      fetchSalespeople();
+      onUsersChanged();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao remover o acesso");
+    }
+  };
+
   const copyPassword = (password: string) => {
     navigator.clipboard.writeText(password);
     toast.success("Senha copiada!");
@@ -496,20 +517,31 @@ export const ManageUsersDialog = ({
                   </TableCell>
                   <TableCell>
                     {isAdmin && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => {
-                          setChangingSalespersonId(sp.id);
-                          setChangingPasswordUserId(null);
-                          setNewPassword("");
-                          setShowChangePassword(false);
-                        }}
-                        title="Alterar senha do vendedor"
-                      >
-                        <KeyRound className="h-4 w-4" />
-                      </Button>
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => {
+                            setChangingSalespersonId(sp.id);
+                            setChangingPasswordUserId(null);
+                            setNewPassword("");
+                            setShowChangePassword(false);
+                          }}
+                          title="Alterar senha do vendedor"
+                        >
+                          <KeyRound className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteSalespersonLogin(sp.id, sp.name)}
+                          title="Remover o acesso deste vendedor (o cadastro e os KPIs permanecem)"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
                     )}
                   </TableCell>
                 </TableRow>

@@ -1043,6 +1043,20 @@ serve(async (req) => {
           if (error) throw error;
           return json({ success: true, deleted_id: c.id });
         },
+        // Revoga só o ACESSO do vendedor (apaga o login/auth e desvincula) —
+        // o cadastro dele permanece com os KPIs/lançamentos intactos.
+        delete_login: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data: sp } = await c.supabase.from("company_salespeople").select("user_id, name").eq("id", c.id).single();
+          if (!sp) return json({ error: "Vendedor não encontrado" }, 404);
+          if (!sp.user_id) return json({ error: "Esse vendedor não tem login" }, 400);
+          await c.supabase.auth.admin.deleteUser(sp.user_id).catch(() => {});
+          // desvincula também o perfil de aluno do Academy, se houver
+          await c.supabase.from("onboarding_users").delete().eq("user_id", sp.user_id).is("project_id", null).catch(() => {});
+          const { error } = await c.supabase.from("company_salespeople").update({ user_id: null }).eq("id", c.id);
+          if (error) throw error;
+          return json({ success: true, login_removed: c.id });
+        },
         kpi_links: async (c) => {
           const BASE_URL = "https://unvholdings.com.br";
           let q = c.supabase
