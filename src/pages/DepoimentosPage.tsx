@@ -11,6 +11,12 @@ interface Testimonial {
 
 const testimonials: Testimonial[] = [
   {
+    youtubeId: "jxquNXjI94I",
+    name: "Gabriel",
+    company: "Facunicamps",
+    description: "Gabriel, da Facunicamps, conta como a estrutura comercial montada com a Universidade Nacional de Vendas transformou a captação de alunos da faculdade — processo, gestão e resultado com previsibilidade.",
+  },
+  {
     youtubeId: "pOUL5pil2kk",
     name: "Lucas Viana",
     company: "Pai do Tráfego",
