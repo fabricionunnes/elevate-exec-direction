@@ -33,6 +33,31 @@ Deno.serve(async (req) => {
         if (real !== i.status) {
           await supabase.from("whatsapp_instances").update({ status: real }).eq("id", i.id);
           fixed++; out.push({ instance: i.instance_name, de: i.status, para: real });
+
+          // Voltou a conectar → RE-REGISTRA O WEBHOOK. Reconexão no Stevo perde
+          // a configuração de webhook e a instância fica "conectada mas muda"
+          // (telefone recebe, sistema não — foi assim que Ricardo/Natalia
+          // sumiram do Atendimento por dias). Mesmo payload do ManagerV2.connect.
+          if (real === "connected") {
+            try {
+              const webhookUrl = `${SUPABASE_URL}/functions/v1/evolution-webhook`;
+              await fetch(`${baseUrl}/instance/connect`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", apikey: i.api_key },
+                body: JSON.stringify({
+                  webhookUrl,
+                  events: "Message,Connected,Disconnected,QR",
+                  subscribe: ["Message", "Connected", "Disconnected", "QR"],
+                  immediate: true,
+                  phone: "",
+                  rabbitmqEnable: "",
+                  websocketEnable: "",
+                  natsEnable: "",
+                }),
+              });
+              out.push({ instance: i.instance_name, webhook: "re-registrado" });
+            } catch { /* best-effort — próximo ciclo tenta de novo */ }
+          }
         }
       } catch { /* ignora instância que não respondeu */ }
     }
