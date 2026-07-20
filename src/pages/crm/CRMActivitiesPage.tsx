@@ -177,6 +177,14 @@ export const CRMActivitiesPage = () => {
       if (error) throw error;
       toast.success("Atividade concluída");
       loadActivities();
+      // Lead FECHADO (ganho/perdido) não exige próxima tarefa
+      const { data: leadStage } = await supabase
+        .from("crm_leads")
+        .select("stage:crm_stages(final_type)")
+        .eq("id", activity.lead_id)
+        .maybeSingle();
+      if ((leadStage as any)?.stage?.final_type) return;
+
       // Abre a criação da próxima atividade — obrigatória se o lead ficou sem pendente
       const { count } = await supabase
         .from("crm_activities")

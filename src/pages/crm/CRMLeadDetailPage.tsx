@@ -528,7 +528,11 @@ export const CRMLeadDetailPage = () => {
           .select("id", { count: "exact", head: true })
           .eq("lead_id", lead.id)
           .eq("status", "pending");
-        setNextTask({ mandatory: (count ?? 0) === 0 });
+        // Lead FECHADO (ganho/perdido): concluir tarefa não exige criar a próxima
+        const isClosed = !!lead.stage?.final_type;
+        if (!isClosed) {
+          setNextTask({ mandatory: (count ?? 0) === 0 });
+        }
       }
     } catch (error) {
       console.error("Error completing activity:", error);
