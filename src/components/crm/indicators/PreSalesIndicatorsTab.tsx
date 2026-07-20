@@ -114,6 +114,9 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     diariaReunioes: 0,
   });
 
+  // Leads que CHEGARAM no período (por SDR atribuído) — contagem no card Atividades
+  const [monthLeads, setMonthLeads] = useState<{ sdr: string | null }[]>([]);
+
   // Daily meetings by SDR
   const [dailyMeetingsData, setDailyMeetingsData] = useState<{ day: number; [key: string]: number }[]>([]);
 
@@ -262,6 +265,27 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       const periodStart = startOfDay(dateRange.from);
       const periodEnd = endOfDay(dateRange.to);
       const totalDaysInPeriod = differenceInDays(periodEnd, periodStart) + 1;
+
+      // Leads criados no período (paginado) — a contagem visível é escopada
+      // pela SDR no render, sem re-consultar ao trocar o filtro.
+      {
+        const collected: { sdr: string | null }[] = [];
+        let from = 0;
+        const page = 1000;
+        while (true) {
+          const { data: chunk } = await supabase
+            .from("crm_leads")
+            .select("sdr_staff_id, scheduled_by_staff_id")
+            .gte("created_at", periodStart.toISOString())
+            .lte("created_at", periodEnd.toISOString())
+            .range(from, from + page - 1);
+          if (!chunk || chunk.length === 0) break;
+          chunk.forEach((l: any) => collected.push({ sdr: l.sdr_staff_id || l.scheduled_by_staff_id || null }));
+          if (chunk.length < page) break;
+          from += page;
+        }
+        setMonthLeads(collected);
+      }
       const now = new Date();
       const daysElapsed = Math.min(differenceInDays(now, periodStart) + 1, totalDaysInPeriod);
 
@@ -680,6 +704,10 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     return pipeline && s.pipeline === pipeline.name;
   }) : salesBySDR;
 
+  const leadsNoMes = selectedSDR !== "all"
+    ? monthLeads.filter((l) => l.sdr === selectedSDR).length
+    : monthLeads.length;
+
   const visibleMetrics = (() => {
     const agendamentos = filteredSdrs.reduce((sum, sdr) => sum + sdr.callsScheduled, 0);
     const reunioes = filteredSdrs.reduce((sum, sdr) => sum + sdr.meetings, 0);
@@ -939,7 +967,8 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       </Section>
 
       {/* ── Atividades (âmbar) ── */}
-      <Section tone={TONE.amber} label="Atividades" cols="grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
+      <Section tone={TONE.amber} label="Atividades" cols="grid-cols-2 sm:grid-cols-4 lg:grid-cols-9">
+        <Metric tone={TONE.amber} label="Leads no Mês" value={leadsNoMes} color="#8b5cf6" />
         <Metric tone={TONE.amber} label="Agendamentos" value={visibleMetrics.agendamentos} color={TONE.amber} onClick={leadsForType("scheduled").length > 0 ? () => setLeadListType("scheduled") : undefined} />
         <Metric tone={TONE.amber} label="Reuniões" value={visibleMetrics.reunioes} onClick={leadsForType("realized").length > 0 ? () => setLeadListType("realized") : undefined} />
         <Metric tone={TONE.amber} label="Qualificações" value={opsLoading ? "…" : opsMetrics.qualificacoes} />
