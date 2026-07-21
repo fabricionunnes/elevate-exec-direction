@@ -21,14 +21,12 @@ import {
   Legend,
   Cell,
 } from "recharts";
-import { format, startOfMonth, endOfMonth, getDaysInMonth, getDate, differenceInDays, startOfDay, endOfDay } from "date-fns";
+import { format, startOfMonth, endOfMonth, getDaysInMonth, getDate, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Phone, Users, Calendar as CalendarIcon, AlertTriangle, CheckCircle, XCircle, TrendingUp, Upload, ChevronDown, Loader2 } from "lucide-react";
 import { ImportPreSalesDialog } from "@/components/crm/ImportPreSalesDialog";
 import { MeetingDetailCards, MeetingEventDetail } from "@/components/crm/MeetingDetailCards";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { trackMeetingEvent, getCurrentStaffId } from "@/components/crm/LeadMeetingActions";
 import { DateRange } from "react-day-picker";
@@ -114,9 +112,6 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     diariaReunioes: 0,
   });
 
-  // Leads que CHEGARAM no período (por SDR atribuído) — contagem no card Atividades
-  const [monthLeads, setMonthLeads] = useState<{ sdr: string | null }[]>([]);
-
   // Daily meetings by SDR
   const [dailyMeetingsData, setDailyMeetingsData] = useState<{ day: number; [key: string]: number }[]>([]);
 
@@ -136,114 +131,16 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
   // Meeting event details for cards
   const [meetingEventDetails, setMeetingEventDetails] = useState<MeetingEventDetail[]>([]);
 
-  // Métricas operacionais (ligações, WhatsApp, perdas, deadline) — agregadas via RPC
-  const [opsMetrics, setOpsMetrics] = useState({
-    ligacoesRealizadas: 0,
-    ligacoesAtendidas: 0,
-    whatsappPessoas: 0,
-    leadsPerdidosSemResposta: 0,
-    deadlineDias: null as number | null,
-    qualificacoes: 0,
-    cancelamentos: 0,
-    reagendamentos: 0,
-    primeiroContatoMin: null as number | null,
-    taxaContatoPct: null as number | null,
-  });
-  const [opsLoading, setOpsLoading] = useState(true);
-
-  // Cadastro de metas (crm_sales_targets)
-  const [metaDialogOpen, setMetaDialogOpen] = useState(false);
-  const [metaCallsInput, setMetaCallsInput] = useState("");
-  const [metaMeetingsInput, setMetaMeetingsInput] = useState("");
-  const [savingMeta, setSavingMeta] = useState(false);
-
-  // Formata minutos em min / h / dias (pra tempo de primeiro contato)
-  const formatDuration = (min: number | null): string => {
-    if (min == null) return "—";
-    if (min < 60) return `${Math.round(min)} min`;
-    if (min < 60 * 48) return `${(min / 60).toFixed(1)}h`;
-    return `${(min / 1440).toFixed(1)} dias`;
-  };
-
-  const openMetaDialog = () => {
-    setMetaCallsInput(String(metrics.metaAgendamentos ?? ""));
-    setMetaMeetingsInput(String(metrics.metaReunioes ?? ""));
-    setMetaDialogOpen(true);
-  };
-
-  const saveMetas = async () => {
-    const now = new Date();
-    const calls = Number(metaCallsInput);
-    const meetings = Number(metaMeetingsInput);
-    if (!Number.isFinite(calls) || !Number.isFinite(meetings) || calls < 0 || meetings < 0) {
-      toast.error("Informe metas válidas");
-      return;
-    }
-    setSavingMeta(true);
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
-    const [{ error: e1 }, { error: e2 }] = await Promise.all([
-      supabase.rpc("set_presales_target", { p_month: month, p_year: year, p_target_type: "calls", p_value: calls }),
-      supabase.rpc("set_presales_target", { p_month: month, p_year: year, p_target_type: "meetings", p_value: meetings }),
-    ]);
-    setSavingMeta(false);
-    if (e1 || e2) {
-      toast.error("Erro ao salvar metas: " + (e1?.message || e2?.message));
-      return;
-    }
-    toast.success("Metas atualizadas");
-    setMetaDialogOpen(false);
-    loadData();
-  };
-
   useEffect(() => {
     loadPipelines();
   }, []);
-
-  // Métricas operacionais respondem a período, SDR e funil (agregação no servidor)
-  useEffect(() => {
-    if (!dateRange?.from || !dateRange?.to) return;
-    let alive = true;
-    const loadOpsMetrics = async () => {
-      setOpsLoading(true);
-      const { data, error } = await supabase.rpc("get_presales_operational_metrics", {
-        p_start: dateRange.from!.toISOString(),
-        p_end: dateRange.to!.toISOString(),
-        p_sdr: selectedSDR !== "all" ? selectedSDR : null,
-        p_pipeline: selectedPipeline !== "all" ? selectedPipeline : null,
-      });
-      if (!alive) return;
-      const row = Array.isArray(data) ? data[0] : null;
-      if (error || !row) {
-        setOpsMetrics({ ligacoesRealizadas: 0, ligacoesAtendidas: 0, whatsappPessoas: 0, leadsPerdidosSemResposta: 0, deadlineDias: null, qualificacoes: 0, cancelamentos: 0, reagendamentos: 0, primeiroContatoMin: null, taxaContatoPct: null });
-      } else {
-        setOpsMetrics({
-          ligacoesRealizadas: Number(row.ligacoes_realizadas) || 0,
-          ligacoesAtendidas: Number(row.ligacoes_atendidas) || 0,
-          whatsappPessoas: Number(row.whatsapp_pessoas) || 0,
-          leadsPerdidosSemResposta: Number(row.leads_perdidos_sem_resposta) || 0,
-          deadlineDias: row.deadline_dias != null ? Number(row.deadline_dias) : null,
-          qualificacoes: Number(row.qualificacoes) || 0,
-          cancelamentos: Number(row.cancelamentos) || 0,
-          reagendamentos: Number(row.reagendamentos) || 0,
-          primeiroContatoMin: row.primeiro_contato_min != null ? Number(row.primeiro_contato_min) : null,
-          taxaContatoPct: row.taxa_contato_pct != null ? Number(row.taxa_contato_pct) : null,
-        });
-      }
-      setOpsLoading(false);
-    };
-    loadOpsMetrics();
-    return () => { alive = false; };
-  }, [dateRange?.from?.getTime(), dateRange?.to?.getTime(), selectedSDR, selectedPipeline]);
 
   // Load data when date range is complete (both from and to selected)
   useEffect(() => {
     if (dateRange?.from && dateRange?.to) {
       loadData();
     }
-    // selectedSDR entra nas deps: o card de reuniões é escopado pela SDR
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateRange?.from?.getTime(), dateRange?.to?.getTime(), selectedSDR]);
+  }, [dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
 
   const loadPipelines = async () => {
     const { data } = await supabase
@@ -260,32 +157,9 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     
     setLoading(true);
     try {
-      // O date picker devolve o "to" à meia-noite (00:00); sem normalizar,
-      // filtrar um único dia perde todas as reuniões do próprio dia.
-      const periodStart = startOfDay(dateRange.from);
-      const periodEnd = endOfDay(dateRange.to);
+      const periodStart = dateRange.from;
+      const periodEnd = dateRange.to;
       const totalDaysInPeriod = differenceInDays(periodEnd, periodStart) + 1;
-
-      // Leads criados no período (paginado) — a contagem visível é escopada
-      // pela SDR no render, sem re-consultar ao trocar o filtro.
-      {
-        const collected: { sdr: string | null }[] = [];
-        let from = 0;
-        const page = 1000;
-        while (true) {
-          const { data: chunk } = await supabase
-            .from("crm_leads")
-            .select("sdr_staff_id, scheduled_by_staff_id")
-            .gte("created_at", periodStart.toISOString())
-            .lte("created_at", periodEnd.toISOString())
-            .range(from, from + page - 1);
-          if (!chunk || chunk.length === 0) break;
-          chunk.forEach((l: any) => collected.push({ sdr: l.sdr_staff_id || l.scheduled_by_staff_id || null }));
-          if (chunk.length < page) break;
-          from += page;
-        }
-        setMonthLeads(collected);
-      }
       const now = new Date();
       const daysElapsed = Math.min(differenceInDays(now, periodStart) + 1, totalDaysInPeriod);
 
@@ -427,16 +301,17 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       const totalCancelled = (calls || []).filter(c => c.status === "cancelled").length;
       const totalRescheduled = (calls || []).filter(c => c.status === "rescheduled").length;
 
-      // For TOTAL counts, deduplicate by lead_id + event_type (unique meetings regardless of who gets credit)
-      // Card de cima escopado pela SDR selecionada (SDR só vê as dela; antes
-      // somava as reuniões de TODAS as SDRs, deduplicado por lead).
-      const scopedMeetingEvents = selectedSDR !== "all"
-        ? uniqueAttributedMeetingEvents.filter((e: any) => e.attributed_sdr_id === selectedSDR)
-        : uniqueAttributedMeetingEvents;
+      // Reunião ÚNICA = mesmo lead + mesmo tipo + mesmo horário (ao minuto).
+      // Um mesmo agendamento gera várias linhas de evento (crédito p/ SDR, closer,
+      // dono...) — contar linhas cruas inflava (36 vs 18 reais). Já deduplicar só por
+      // lead+tipo era agressivo demais: colapsava 2 reuniões distintas do mesmo lead
+      // em dias diferentes (era o "17 + 3 = 18"). Incluir o horário resolve os dois.
+      const meetingKey = (event: any) =>
+        `${event.lead_id}-${event.event_type}-${event.event_date ? new Date(event.event_date).toISOString().slice(0, 16) : "nd"}`;
       const uniqueByLead = (() => {
         const seen = new Set<string>();
-        return scopedMeetingEvents.filter((event) => {
-          const key = `${event.lead_id}-${event.event_type}`;
+        return uniqueAttributedMeetingEvents.filter((event) => {
+          const key = meetingKey(event);
           if (seen.has(key)) return false;
           seen.add(key);
           return true;
@@ -448,7 +323,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
 
       // Reuniões agendadas SEM DESFECHO: lead foi agendado mas nunca virou realizada/no-show/fora do ICP
       const leadEventTypes = new Map<string, Set<string>>();
-      scopedMeetingEvents.forEach((e: any) => {
+      uniqueAttributedMeetingEvents.forEach((e: any) => {
         if (!e.lead_id) return;
         if (!leadEventTypes.has(e.lead_id)) leadEventTypes.set(e.lead_id, new Set());
         leadEventTypes.get(e.lead_id)!.add(e.event_type);
@@ -460,7 +335,9 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         }
       });
 
-      const eventDetails: MeetingEventDetail[] = uniqueAttributedMeetingEvents
+      // Os cards do "Detalhamento" usam a MESMA lista única do KPI — sem repetidos
+      // e batendo com os números de cima.
+      const eventDetails: MeetingEventDetail[] = uniqueByLead
         .filter(e => ["scheduled", "realized", "no_show", "out_of_icp"].includes(e.event_type))
         .map(e => ({
           id: e.id,
@@ -529,7 +406,18 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       const sdrMetricsList: SDRMetrics[] = (sdrStaff || []).map(sdr => {
         const sdrActivities = (dailyActivities || []).filter(a => a.staff_id === sdr.id);
         const sdrCalls = (calls || []).filter(c => c.scheduled_by === sdr.id);
-        const sdrMeetingEvents = uniqueAttributedMeetingEvents.filter(e => e.credited_staff_id === sdr.id);
+        // Deduplica as reuniões deste SDR pela mesma chave (lead+tipo+horário),
+        // pra ele nunca contar a mesma reunião duas vezes.
+        const sdrMeetingEvents = (() => {
+          const seen = new Set<string>();
+          return uniqueAttributedMeetingEvents.filter(e => {
+            if (e.credited_staff_id !== sdr.id) return false;
+            const k = meetingKey(e);
+            if (seen.has(k)) return false;
+            seen.add(k);
+            return true;
+          });
+        })();
         const sdrEventsScheduled = sdrMeetingEvents.filter(e => e.event_type === "scheduled").length;
         const sdrEventsRealized = sdrMeetingEvents.filter(e => e.event_type === "realized").length;
         const sdrEventsNoShow = sdrMeetingEvents.filter(e => e.event_type === "no_show").length;
@@ -575,9 +463,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
           semDesfecho: sdrSemDesfecho,
         };
       });
-      // SDR NÃO vê os outros: ranking/gráfico por SDR ficam restritos à própria
-      // linha. Gestão (admin/master/head) segue vendo todos.
-      setSDRs(isSDRUser && staffId ? sdrMetricsList.filter((s) => s.id === staffId) : sdrMetricsList);
+      setSDRs(sdrMetricsList);
 
       // Calculate daily meetings by SDR
       const dailyMeetings: { day: number; [key: string]: number }[] = [];
@@ -703,10 +589,6 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     const pipeline = pipelines.find(p => p.id === selectedPipeline);
     return pipeline && s.pipeline === pipeline.name;
   }) : salesBySDR;
-
-  const leadsNoMes = selectedSDR !== "all"
-    ? monthLeads.filter((l) => l.sdr === selectedSDR).length
-    : monthLeads.length;
 
   const visibleMetrics = (() => {
     const agendamentos = filteredSdrs.reduce((sum, sdr) => sum + sdr.callsScheduled, 0);
@@ -922,58 +804,13 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         <MeetingDetailCards events={selectedSDR !== "all" ? meetingEventDetails.filter(e => e.attributed_sdr_id === selectedSDR) : meetingEventDetails} />
       </div>
 
-      {/* ── Operação (roxo) — ligações, WhatsApp, perdas, ciclo ── */}
-      <Section tone={TONE.violet} label="Operação" cols="grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
-        <Metric
-          tone={TONE.violet}
-          label="Ligações realizadas"
-          value={opsLoading ? "…" : formatNumber(opsMetrics.ligacoesRealizadas, 0)}
-          color={TONE.violet}
-        />
-        <Metric
-          tone={TONE.violet}
-          label="Atendidas (>50s)"
-          value={opsLoading ? "…" : formatNumber(opsMetrics.ligacoesAtendidas, 0)}
-          color="#34d399"
-        />
-        <Metric
-          tone={TONE.violet}
-          label="Contatos WhatsApp"
-          value={opsLoading ? "…" : formatNumber(opsMetrics.whatsappPessoas, 0)}
-        />
-        <Metric
-          tone={TONE.violet}
-          label="Perdidos s/ resposta"
-          value={opsLoading ? "…" : formatNumber(opsMetrics.leadsPerdidosSemResposta, 0)}
-          color={opsMetrics.leadsPerdidosSemResposta > 0 ? "#f87171" : undefined}
-        />
-        <Metric
-          tone={TONE.violet}
-          label="Deadline fechamento"
-          value={opsLoading ? "…" : opsMetrics.deadlineDias != null ? `${opsMetrics.deadlineDias.toFixed(1)} dias` : "—"}
-        />
-        <Metric
-          tone={TONE.violet}
-          label="Tempo 1º contato"
-          value={opsLoading ? "…" : formatDuration(opsMetrics.primeiroContatoMin)}
-          color={opsMetrics.primeiroContatoMin != null && opsMetrics.primeiroContatoMin > 15 ? "#f87171" : "#34d399"}
-        />
-        <Metric
-          tone={TONE.violet}
-          label="Taxa de contato"
-          value={opsLoading ? "…" : opsMetrics.taxaContatoPct != null ? `${opsMetrics.taxaContatoPct.toFixed(0)}%` : "—"}
-          color={opsMetrics.taxaContatoPct != null ? (opsMetrics.taxaContatoPct >= 80 ? "#34d399" : opsMetrics.taxaContatoPct >= 50 ? "#fbbf24" : "#f87171") : undefined}
-        />
-      </Section>
-
       {/* ── Atividades (âmbar) ── */}
-      <Section tone={TONE.amber} label="Atividades" cols="grid-cols-2 sm:grid-cols-4 lg:grid-cols-9">
-        <Metric tone={TONE.amber} label="Leads no Mês" value={leadsNoMes} color="#8b5cf6" />
+      <Section tone={TONE.amber} label="Atividades" cols="grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
         <Metric tone={TONE.amber} label="Agendamentos" value={visibleMetrics.agendamentos} color={TONE.amber} onClick={leadsForType("scheduled").length > 0 ? () => setLeadListType("scheduled") : undefined} />
         <Metric tone={TONE.amber} label="Reuniões" value={visibleMetrics.reunioes} onClick={leadsForType("realized").length > 0 ? () => setLeadListType("realized") : undefined} />
-        <Metric tone={TONE.amber} label="Qualificações" value={opsLoading ? "…" : opsMetrics.qualificacoes} />
-        <Metric tone={TONE.amber} label="Cancelamentos" value={opsLoading ? "…" : opsMetrics.cancelamentos} color={opsMetrics.cancelamentos > 0 ? "#f87171" : undefined} />
-        <Metric tone={TONE.amber} label="Reagendamentos" value={opsLoading ? "…" : opsMetrics.reagendamentos} />
+        <Metric tone={TONE.amber} label="Qualificações" value={visibleMetrics.qualificacoes} />
+        <Metric tone={TONE.amber} label="Cancelamentos" value={visibleMetrics.cancelamentos} />
+        <Metric tone={TONE.amber} label="Reagendamentos" value={visibleMetrics.reagendamentos} />
         <Metric tone={TONE.amber} label="No Show" value={visibleMetrics.noShow} color={visibleMetrics.noShow > 0 ? "#f87171" : undefined} onClick={leadsForType("no_show").length > 0 ? () => setLeadListType("no_show") : undefined} />
         <Metric tone={TONE.amber} label="Sem Desfecho" value={visibleMetrics.semDesfecho} color={visibleMetrics.semDesfecho > 0 ? "#fb923c" : undefined} onClick={semDesfechoLeads.length > 0 ? () => setLeadListType("sem_desfecho") : undefined} />
         <Metric tone={TONE.amber} label="% da Meta" value={`${visibleMetrics.metaPercent.toFixed(1)}%`} color={visibleMetrics.metaPercent >= 100 ? "#34d399" : "#fbbf24"} />
@@ -981,34 +818,23 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
 
       {/* ── Metas & Projeção (verde) ── */}
       <Section tone={TONE.green} label="Metas & Projeção" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-        <Metric tone={TONE.green} label={isAdmin ? "Meta Agend. (editar)" : "Meta Agend."} value={metrics.metaAgendamentos} onClick={isAdmin ? openMetaDialog : undefined} />
-        <Metric tone={TONE.green} label={isAdmin ? "Meta Reuniões (editar)" : "Meta Reuniões"} value={metrics.metaReunioes} onClick={isAdmin ? openMetaDialog : undefined} />
+        <Metric tone={TONE.green} label="Meta Agend." value={metrics.metaAgendamentos} />
+        <Metric tone={TONE.green} label="Meta Reuniões" value={metrics.metaReunioes} />
         <Metric tone={TONE.green} label="% Meta Agend." value={`${metrics.metaAgendamentosPercent.toFixed(0)}%`} color={metrics.metaAgendamentosPercent >= 100 ? "#34d399" : "#fbbf24"} />
         <Metric tone={TONE.green} label="% Meta Reuniões" value={`${metrics.metaReunioesPercent.toFixed(0)}%`} color={metrics.metaReunioesPercent >= 100 ? "#34d399" : "#fbbf24"} />
         <Metric tone={TONE.green} label="Projeção" value={formatNumber(metrics.projecao, 0)} color={TONE.green} />
         <Metric tone={TONE.green} label="% Projetado" value={`${metrics.projecaoPercent.toFixed(0)}%`} color={metrics.projecaoPercent >= 100 ? "#34d399" : "#fbbf24"} />
       </Section>
 
-      {/* ── Funil de Abordagem (roxo) — fontes reais (ligações → conexões → agendamentos → vendas) ── */}
-      {(() => {
-        const abordagens = opsMetrics.ligacoesRealizadas;
-        const conexoes = opsMetrics.ligacoesAtendidas;
-        const agendamentos = visibleMetrics.agendamentos;
-        const vendas = salesSummary.quantidade;
-        const convAbord = abordagens > 0 ? (conexoes / abordagens) * 100 : 0;
-        const convAgend = conexoes > 0 ? (agendamentos / conexoes) * 100 : 0;
-        const convVendas = agendamentos > 0 ? (vendas / agendamentos) * 100 : 0;
-        return (
-          <Section tone={TONE.violet} label="Funil de Abordagem" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-            <Metric tone={TONE.violet} label="Abordagens (ligações)" value={opsLoading ? "…" : formatNumber(abordagens)} color={TONE.violet} />
-            <Metric tone={TONE.violet} label="Conexões (atendidas)" value={opsLoading ? "…" : formatNumber(conexoes)} />
-            <Metric tone={TONE.violet} label="Agendamentos" value={agendamentos} />
-            <Metric tone={TONE.violet} label="% Conv. Abord." value={`${convAbord.toFixed(1)}%`} />
-            <Metric tone={TONE.violet} label="% Conv. Agend." value={`${convAgend.toFixed(1)}%`} />
-            <Metric tone={TONE.violet} label="% Conv. Vendas" value={`${convVendas.toFixed(1)}%`} color="#34d399" />
-          </Section>
-        );
-      })()}
+      {/* ── Funil de Abordagem (roxo) ── */}
+      <Section tone={TONE.violet} label="Funil de Abordagem" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+        <Metric tone={TONE.violet} label="Abordagens" value={formatNumber(approachMetrics.abordagens)} color={TONE.violet} />
+        <Metric tone={TONE.violet} label="Conexões" value={formatNumber(approachMetrics.conexoes)} />
+        <Metric tone={TONE.violet} label="% Conv. Abord." value={`${approachMetrics.conversaoAbord.toFixed(1)}%`} />
+        <Metric tone={TONE.violet} label="% Conv. Agend." value={`${approachMetrics.conversaoAgend.toFixed(1)}%`} />
+        <Metric tone={TONE.violet} label="% Conv. Vendas" value={`${approachMetrics.conversaoVendas.toFixed(1)}%`} color="#34d399" />
+        <Metric tone={TONE.violet} label="Diária Reuniões" value={approachMetrics.diariaReunioes.toFixed(1)} />
+      </Section>
 
       {/* ── Tabela SDRs ── */}
       <GlowCard glowColor="shadow-violet-500/10">
@@ -1282,32 +1108,6 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
               ))}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Cadastro de metas de pré-vendas ── */}
-      <Dialog open={metaDialogOpen} onOpenChange={setMetaDialogOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Metas de pré-vendas</DialogTitle>
-            <DialogDescription>
-              Meta do time para {format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Meta de agendamentos</Label>
-              <Input type="number" min={0} value={metaCallsInput} onChange={(e) => setMetaCallsInput(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Meta de reuniões</Label>
-              <Input type="number" min={0} value={metaMeetingsInput} onChange={(e) => setMetaMeetingsInput(e.target.value)} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMetaDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={saveMetas} disabled={savingMeta}>{savingMeta ? "Salvando..." : "Salvar"}</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
