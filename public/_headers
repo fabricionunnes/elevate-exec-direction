@@ -1,0 +1,14 @@
+# index.html NUNCA em cache — o iPhone Safari servia uma versão velha que
+# apontava pra chunks já apagados num deploy novo (erro "Failed to fetch
+# dynamically imported module" → tela de erro só no celular). no-store força
+# o navegador a sempre pegar o index atual, com os hashes de chunk atuais.
+/
+  Cache-Control: no-store, must-revalidate
+/index.html
+  Cache-Control: no-store, must-revalidate
+/sw.js
+  Cache-Control: no-store, must-revalidate
+
+# Arquivos com hash no nome são imutáveis — cache eterno é seguro e rápido.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
