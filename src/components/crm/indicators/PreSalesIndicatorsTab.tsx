@@ -591,6 +591,12 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
   }) : salesBySDR;
 
   const visibleMetrics = (() => {
+    // Sem SDR específico selecionado, usa os TOTAIS GLOBAIS (reais). Somar por-SDR
+    // aqui perdia as reuniões creditadas a quem não é SDR (closer/dono) — dava 18
+    // no topo enquanto o card de Realizadas mostrava as 21 reais.
+    if (selectedSDR === "all") {
+      return { ...metrics };
+    }
     const agendamentos = filteredSdrs.reduce((sum, sdr) => sum + sdr.callsScheduled, 0);
     const reunioes = filteredSdrs.reduce((sum, sdr) => sum + sdr.meetings, 0);
     const noShow = filteredSdrs.reduce((sum, sdr) => sum + sdr.noShow, 0);
