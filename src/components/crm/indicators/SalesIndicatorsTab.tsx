@@ -28,6 +28,8 @@ import {
   Cell,
   Area,
   AreaChart,
+  CartesianGrid,
+  Label,
 } from "recharts";
 import { format, subDays, startOfDay, endOfDay, startOfMonth, endOfMonth, getDaysInMonth, getDate, startOfWeek, endOfWeek, startOfQuarter, endOfQuarter } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -97,38 +99,12 @@ async function fetchAllRows<T = any>(buildQuery: () => any): Promise<T[]> {
   return all;
 }
 
-function FunnelBarList({ title, data, fmt, color }: { title: string; data: { name: string; value: number }[]; fmt: (v: number) => string; color: string }) {
-  const max = Math.max(1, ...data.map((d) => d.value));
-  return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">{title}</p>
-      {data.length === 0 ? (
-        <p className="text-xs text-muted-foreground py-6 text-center">Sem dados no período</p>
-      ) : (
-        <div className="flex flex-col gap-2.5">
-          {data.map((d) => (
-            <div key={d.name} className="grid items-center gap-2" style={{ gridTemplateColumns: "minmax(70px,120px) 1fr auto" }}>
-              <span className="text-xs font-medium text-foreground truncate" title={d.name}>{d.name}</span>
-              <div className="h-5 rounded-md bg-muted overflow-hidden" style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.18)" }}>
-                <div className="h-full rounded-md" style={{ width: `${Math.max(6, (d.value / max) * 100)}%`, background: `linear-gradient(180deg, ${color}, ${color}cc)`, boxShadow: `0 2px 5px -1px ${color}66, inset 0 1px 0 rgba(255,255,255,.4)` }} />
-              </div>
-              <span className="text-xs font-extrabold text-foreground tabular-nums text-right">{fmt(d.value)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabProps = {}) => {
   const isCloserUser = staffRole === "closer";
   const isAdmin = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
   const [loading, setLoading] = useState(true);
   const [selectedCloser, setSelectedCloser] = useState<string>(isCloserUser && staffId ? staffId : "all");
   const [selectedProduct, setSelectedProduct] = useState<string>("all");
-  const [selectedPipeline, setSelectedPipeline] = useState<string>("all");
-  const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   
@@ -280,6 +256,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       const baseCloserStaff = filteredCloserStaff.map(s => ({ id: s.id, name: s.name }));
       const allStaffMap = new Map((allActiveStaff || []).map(s => [s.id, { id: s.id, name: s.name }]));
       // Roles que NUNCA devem aparecer no Desempenho dos Closers (são pré-vendas)
+      const excludedRolesFromClosers = new Set(["sdr", "social_setter", "bdr"]);
       const staffRoleMap = new Map(
         (allActiveStaff || []).map(s => [s.id, String((s as any).role ?? "").toLowerCase()])
       );
@@ -312,9 +289,6 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       );
       setRawMeetingEvents(meetingEvents);
 
-      const { data: pipelinesData } = await supabase.from("crm_pipelines").select("id, name").order("name");
-      setPipelines(pipelinesData || []);
-
       // Load sales — paginado
       const salesData = await fetchAllRows(() =>
         supabase
@@ -332,15 +306,21 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       );
       setRawSalesData(salesData);
 
-      // REGRA DOS CARDS/TABELA (definição do Fabrício):
-      // - CLOSER de verdade (role closer ou flag is_crm_closer): aparece SEMPRE,
-      //   mesmo zerado.
-      // - Todo o resto (SDR, BDR, head, master...): só aparece se tiver VENDA
-      //   no período — quem só agendou/realizou reunião não entra.
+      // Expand "closers" list with anyone who has scheduled/realized meetings
+      // or sales in the period — even without the "closer" role.
       const expandedCloserMap = new Map(baseCloserStaff.map(s => [s.id, s]));
+      (meetingEvents || []).forEach((ev: any) => {
+        // Crédito vai para o RESPONSÁVEL do lead (owner), não para quem deu baixa.
+        const sid = ev.lead?.owner_staff_id;
+        if (!sid || expandedCloserMap.has(sid)) return;
+        if (excludedRolesFromClosers.has(staffRoleMap.get(sid) || "")) return;
+        const staffInfo = allStaffMap.get(sid);
+        if (staffInfo) expandedCloserMap.set(sid, staffInfo);
+      });
       (salesData || []).forEach((s: any) => {
         const sid = s.closer_staff_id;
         if (!sid || expandedCloserMap.has(sid)) return;
+        if (excludedRolesFromClosers.has(staffRoleMap.get(sid) || "")) return;
         const staffInfo = allStaffMap.get(sid) || (s.closer ? { id: sid, name: s.closer.name } : null);
         if (staffInfo) expandedCloserMap.set(sid, staffInfo);
       });
@@ -357,7 +337,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         const forecastLeads = await fetchAllRows(() =>
           supabase
             .from("crm_leads")
-            .select("id, name, company, opportunity_value, owner_staff_id, stage_id, pipeline_id")
+            .select("id, name, company, opportunity_value, owner_staff_id, stage_id")
             .in("stage_id", forecastStageIds)
         );
         setRawForecastData(forecastLeads);
@@ -377,7 +357,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         const negotiationLeads = await fetchAllRows(() =>
           supabase
             .from("crm_leads")
-            .select("id, name, company, opportunity_value, owner_staff_id, stage_id, pipeline_id")
+            .select("id, name, company, opportunity_value, owner_staff_id, stage_id")
             .in("stage_id", negociacaoStageIds)
         );
         setRawNegotiationData(negotiationLeads);
@@ -447,30 +427,20 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const computed = useMemo(() => {
     const now = new Date();
     const daysInMonth = getDaysInMonth(filterStartDate);
-    // Dia limite dos gráficos diários DEVE respeitar o filtro. A x-axis é do
-    // mês inicial: se o fim efetivo (min entre fim do filtro e hoje) já passou
-    // desse mês, mostra o mês inteiro; se está no próprio mês, para no dia dele;
-    // período totalmente futuro fica zerado.
-    const periodFuture = filterStartDate > endOfMonth(now);
-    const effectiveEnd = filterEndDate < now ? filterEndDate : now;
-    const sameMonthAsStart =
-      effectiveEnd.getMonth() === filterStartDate.getMonth() &&
-      effectiveEnd.getFullYear() === filterStartDate.getFullYear();
-    const currentDay = periodFuture ? 0 : (sameMonthAsStart ? getDate(effectiveEnd) : daysInMonth);
+    const currentDay = getDate(now);
     const isCloserFilter = selectedCloser !== "all";
 
-    // Todas as vendas contam, INCLUSIVE as de evento (Mansão, Imersão, Palestra,
-    // Eventos) — decisão do Fabrício: faturamento de evento entra no dashboard.
-    const commercialRawSales = rawSalesData;
+    // Vendas de EVENTO (Imersão, Mansão, Palestra, Eventos) não são venda comercial core —
+    // são conversão específica do evento e distorcem ticket médio / qtd. Ficam de fora deste painel.
+    const isEventSale = (s: any) => /imers|evento|mans[ãa]o|palestra/i.test(s.pipeline?.name || "");
+    const commercialRawSales = rawSalesData.filter(s => !isEventSale(s));
 
     // Filter raw data by selected closer + produto (filtro de produto antes era morto;
     // vendas carregam product_name livre, não product_id — então filtra por nome).
     const productFilter = selectedProduct !== "all";
-    const isPipelineFilter = selectedPipeline !== "all";
     const salesData = commercialRawSales.filter(s =>
       (!isCloserFilter || s.closer_staff_id === selectedCloser) &&
-      (!productFilter || (s.product?.name || s.product_name) === selectedProduct) &&
-      (!isPipelineFilter || s.pipeline_id === selectedPipeline)
+      (!productFilter || (s.product?.name || s.product_name) === selectedProduct)
     );
 
     const uniqueMeetingEvents = (() => {
@@ -484,25 +454,22 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       });
     })();
 
-    // Filter meeting events by credited_staff_id for the selected closer + funil
-    const meetingEvents = (isCloserFilter
+    // Filter meeting events by credited_staff_id for the selected closer
+    const meetingEvents = isCloserFilter
       ? uniqueMeetingEvents.filter(e => e.credited_staff_id === selectedCloser)
-      : uniqueMeetingEvents
-    ).filter(e => !isPipelineFilter || e.pipeline_id === selectedPipeline);
+      : uniqueMeetingEvents;
 
     const calls = isCloserFilter
       ? rawCalls.filter(c => c.assigned_to === selectedCloser)
       : rawCalls;
 
-    const forecastData = (isCloserFilter
+    const forecastData = isCloserFilter
       ? rawForecastData.filter(f => f.owner_staff_id === selectedCloser)
-      : rawForecastData
-    ).filter(f => !isPipelineFilter || f.pipeline_id === selectedPipeline);
+      : rawForecastData;
 
-    const negotiationData = (isCloserFilter
+    const negotiationData = isCloserFilter
       ? rawNegotiationData.filter(f => f.owner_staff_id === selectedCloser)
-      : rawNegotiationData
-    ).filter(f => !isPipelineFilter || f.pipeline_id === selectedPipeline);
+      : rawNegotiationData;
 
     // Goals: use closer-specific or total
     let metaReceita: number, superMeta: number, hiperMeta: number;
@@ -522,39 +489,20 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     const totalSales = salesData.length;
     const ticketMedio = totalSales > 0 ? totalRevenue / totalSales : 0;
 
-    // Reuniões do card de cima:
-    // - Filtrando um closer: conta as reuniões dos LEADS DELE (por dono no momento
-    //   do evento), IGUAL à tabela "Desempenho dos Closers". Antes usava
-    //   credited_staff_id (só o que ele agendou/deu baixa pessoalmente) e divergia
-    //   da tabela — mostrava, ex., 1 agendada em vez das 8 dos leads dele.
-    // - Sem filtro (gestão): total do time, deduplicado por lead.
-    let totalScheduled: number, totalCompleted: number, totalNoShow: number;
-    if (isCloserFilter) {
+    // For totals when not filtering by closer, deduplicate by lead to avoid double-counting
+    const uniqueByLeadEvents = (() => {
+      if (isCloserFilter) return meetingEvents; // Already filtered by credited_staff_id
       const seen = new Set<string>();
-      const ownerEvents = rawMeetingEvents.filter((ev: any) => {
-        const ownerId = ev.owner_staff_id || ev.lead?.owner_staff_id;
-        if (ownerId !== selectedCloser) return false;
-        if (isPipelineFilter && ev.pipeline_id !== selectedPipeline) return false;
-        const key = `${ev.lead_id}-${ev.event_type}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-      totalScheduled = ownerEvents.filter((e: any) => e.event_type === "scheduled").length;
-      totalCompleted = ownerEvents.filter((e: any) => e.event_type === "realized").length;
-      totalNoShow = ownerEvents.filter((e: any) => e.event_type === "no_show").length;
-    } else {
-      const seen = new Set<string>();
-      const uniqueByLeadEvents = meetingEvents.filter((event) => {
+      return meetingEvents.filter((event) => {
         const key = `${event.lead_id}-${event.event_type}`;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
       });
-      totalScheduled = uniqueByLeadEvents.filter(e => e.event_type === "scheduled").length;
-      totalCompleted = uniqueByLeadEvents.filter(e => e.event_type === "realized").length;
-      totalNoShow = uniqueByLeadEvents.filter(e => e.event_type === "no_show").length;
-    }
+    })();
+    const totalScheduled = uniqueByLeadEvents.filter(e => e.event_type === "scheduled").length;
+    const totalCompleted = uniqueByLeadEvents.filter(e => e.event_type === "realized").length;
+    const totalNoShow = uniqueByLeadEvents.filter(e => e.event_type === "no_show").length;
 
     const noShowPercent = totalScheduled > 0 ? (totalNoShow / totalScheduled) * 100 : 0;
     const conversion = totalCompleted > 0 ? (totalSales / totalCompleted) * 100 : 0;
@@ -616,9 +564,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       const seen = new Set<string>();
       const list: any[] = [];
       rawMeetingEvents.forEach((ev: any) => {
-        // owner_staff_id = responsável NO MOMENTO do evento (snapshot). Trocar o
-        // dono do lead depois NÃO move a reunião realizada de closer.
-        const ownerId = ev.owner_staff_id || ev.lead?.owner_staff_id;
+        const ownerId = ev.lead?.owner_staff_id;
         if (!ownerId) return;
         const key = `${ev.lead_id}-${ev.event_type}-${ownerId}`;
         if (seen.has(key)) return;
@@ -651,12 +597,6 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       };
     }).sort((a, b) => b.revenue - a.revenue); // ranking por receita (1º = maior; troféu vai pro topo)
 
-    // Closer NÃO vê histórico dos outros vendedores: ranking/pódio/tabela/gráfico
-    // por closer ficam restritos à própria linha. Gestão (admin/master/head) vê todos.
-    const visibleCloserMetrics = isCloserUser && staffId
-      ? closerMetrics.filter(c => c.id === staffId)
-      : closerMetrics;
-
     // Sales records (filtered)
     const salesRecords: SaleRecord[] = salesData.map(s => ({
       id: s.id,
@@ -687,7 +627,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
 
     // Daily revenue accumulation (always per closer for chart)
     const dailyRevenueData: { day: number; [key: string]: number }[] = [];
-    const closerNames = visibleCloserMetrics.map(c => c.name);
+    const closerNames = closerMetrics.map(c => c.name);
     for (let day = 1; day <= currentDay; day++) {
       const dayData: { day: number; [key: string]: number } = { day };
       closerNames.forEach(name => {
@@ -741,54 +681,26 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       metrics,
       callsMetrics,
       dailyGoal,
-      closerMetrics: visibleCloserMetrics,
+      closerMetrics,
       salesRecords,
       forecastRecords,
       dailyRevenueData,
       revenueEvolution,
       productDistribution,
     };
-  }, [selectedCloser, selectedProduct, selectedPipeline, rawSalesData, rawMeetingEvents, rawCalls, rawForecastData, rawNegotiationData, rawCloserStaff, staffGoalsMap, totalGoals, filterStartDate, filterEndDate]);
+  }, [selectedCloser, selectedProduct, rawSalesData, rawMeetingEvents, rawCalls, rawForecastData, rawNegotiationData, rawCloserStaff, staffGoalsMap, totalGoals, filterStartDate]);
 
   // Produtos que realmente aparecem nas vendas do período (o dropdown antes vinha de
   // crm_products e não casava com o product_name livre das vendas).
   const productOptions = useMemo(() => {
     const set = new Set<string>();
     rawSalesData.forEach((s: any) => {
+      if (/imers|evento|mans[ãa]o|palestra/i.test(s.pipeline?.name || "")) return; // exclui evento
       const name = s.product?.name || s.product_name;
       if (name && String(name).trim()) set.add(String(name).trim());
     });
     return Array.from(set).sort();
   }, [rawSalesData]);
-
-  // Agregações POR FUNIL (respeita closer/produto/período; mostra todos os funis)
-  const funnelBreakdown = useMemo(() => {
-    const pipeName: Record<string, string> = {};
-    pipelines.forEach((p) => { pipeName[p.id] = p.name; });
-    const cl = selectedCloser !== "all";
-    const pr = selectedProduct !== "all";
-    const salesMap: Record<string, number> = {};
-    rawSalesData.forEach((s: any) => {
-      if (cl && s.closer_staff_id !== selectedCloser) return;
-      if (pr && (s.product?.name || s.product_name) !== selectedProduct) return;
-      const name = s.pipeline?.name || "Sem funil";
-      salesMap[name] = (salesMap[name] || 0) + (s.revenue_value || 0);
-    });
-    const schedMap: Record<string, number> = {};
-    const realMap: Record<string, number> = {};
-    const seen = new Set<string>();
-    rawMeetingEvents.forEach((ev: any) => {
-      if (cl && ev.credited_staff_id !== selectedCloser) return;
-      const key = `${ev.lead_id}-${ev.event_type}`;
-      if (seen.has(key)) return; seen.add(key);
-      const name = pipeName[ev.pipeline_id] || "Sem funil";
-      if (ev.event_type === "scheduled") schedMap[name] = (schedMap[name] || 0) + 1;
-      else if (ev.event_type === "realized") realMap[name] = (realMap[name] || 0) + 1;
-    });
-    const toArr = (m: Record<string, number>) =>
-      Object.entries(m).map(([name, value]) => ({ name, value })).filter((x) => x.value > 0).sort((a, b) => b.value - a.value);
-    return { sales: toArr(salesMap), scheduled: toArr(schedMap), realized: toArr(realMap) };
-  }, [pipelines, rawSalesData, rawMeetingEvents, selectedCloser, selectedProduct]);
 
   const { metrics, callsMetrics, dailyGoal, closerMetrics: closers, salesRecords: sales, forecastRecords: forecasts, dailyRevenueData, revenueEvolution, productDistribution } = computed;
 
@@ -918,16 +830,6 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           </SelectContent>
         </Select>
 
-        <Select value={selectedPipeline} onValueChange={setSelectedPipeline}>
-          <SelectTrigger className="w-[160px] h-9 rounded-xl text-xs border-border ">
-            <SelectValue placeholder="Funil" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os Funis</SelectItem>
-            {pipelines.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-
         <div className="ml-auto flex items-center gap-2">
           <Badge variant="outline" className="text-xs text-foreground border-border bg-card capitalize">
             {dateFilter === "custom" && customDateFrom && customDateTo
@@ -1001,7 +903,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
 
       {/* ── Flags do time (3D): performance vs meta dos 3 últimos meses fechados ── */}
       <Suspense fallback={null}>
-        <CRMTeamFlags3D selfStaffId={isCloserUser ? staffId : undefined} />
+        <CRMTeamFlags3D />
       </Suspense>
 
       {/* ── Metas (Meta / Super / Hiper) ── */}
@@ -1076,7 +978,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       </Section>
 
       {/* ── Term Vision Chart ── */}
-      <TermVisionChart closerStaffId={isCloserUser ? staffId : undefined} />
+      <TermVisionChart />
 
       {/* ── Gráficos ── */}
       <div className="grid md:grid-cols-2 gap-4">
@@ -1095,8 +997,26 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
               <div className="h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={productDistribution} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" paddingAngle={3} strokeWidth={0}>
-                      {productDistribution.map((entry, index) => <Cell key={index} fill={entry.color} />)}
+                    <defs>
+                      {productDistribution.map((entry, index) => (
+                        <linearGradient key={index} id={`pieGrad${index}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={entry.color} stopOpacity={1} />
+                          <stop offset="100%" stopColor={entry.color} stopOpacity={0.72} />
+                        </linearGradient>
+                      ))}
+                    </defs>
+                    <Pie data={productDistribution} cx="50%" cy="50%" innerRadius={48} outerRadius={74} dataKey="value" paddingAngle={3} cornerRadius={6} strokeWidth={0}>
+                      {productDistribution.map((entry, index) => <Cell key={index} fill={`url(#pieGrad${index})`} />)}
+                      <Label position="center" content={({ viewBox }) => {
+                        const vb = viewBox as { cx?: number; cy?: number };
+                        const total = productDistribution.reduce((a, b) => a + (b.value || 0), 0);
+                        return (
+                          <text x={vb.cx} y={vb.cy} textAnchor="middle" dominantBaseline="central">
+                            <tspan x={vb.cx} dy="-0.5em" className="fill-muted-foreground" style={{ fontSize: 10, letterSpacing: "0.05em" }}>TOTAL</tspan>
+                            <tspan x={vb.cx} dy="1.5em" className="fill-foreground" style={{ fontSize: 15, fontWeight: 700 }}>{formatCurrency(total)}</tspan>
+                          </text>
+                        );
+                      }} />
                     </Pie>
                     <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: "12px", fontSize: 12, border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.15)" }} />
                     <Legend formatter={(value) => <span className="text-xs">{value}</span>} />
@@ -1117,14 +1037,21 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
               Projeções vs Meta
             </h3>
             {[
-              { label: "Meta", pct: metaPercent, color: "#10b981" },
-              { label: "Super Meta", pct: superPercent, color: "#f59e0b" },
-              { label: "Hiper Meta", pct: hiperPercent, color: "#0ea5e9" },
+              { label: "Meta", pct: metaPercent, from: "#059669", to: "#10b981" },
+              { label: "Super Meta", pct: superPercent, from: "#d97706", to: "#f59e0b" },
+              { label: "Hiper Meta", pct: hiperPercent, from: "#0284c7", to: "#0ea5e9" },
             ].map((item, idx) => (
               <div key={idx}>
                 <div className="flex justify-between text-xs mb-1.5"><span className="font-medium">{item.label}</span><span className="font-semibold tabular-nums">{item.pct.toFixed(0)}%</span></div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, item.pct)}%`, backgroundColor: item.color }} />
+                <div className="h-3 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width: `${Math.min(100, item.pct)}%`,
+                      backgroundImage: `linear-gradient(90deg, ${item.from}, ${item.to})`,
+                      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.35), 0 1px 4px ${item.to}55`,
+                    }}
+                  />
                 </div>
               </div>
             ))}
@@ -1149,20 +1076,26 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           </div>
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueEvolution} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+              <AreaChart data={revenueEvolution} margin={{ top: 8, right: 20, left: 10, bottom: 5 }}>
                 <defs>
                   <linearGradient id="gradRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10B981" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#10B981" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="#10B981" stopOpacity={0.42} />
+                    <stop offset="60%" stopColor="#10B981" stopOpacity={0.12} />
+                    <stop offset="100%" stopColor="#10B981" stopOpacity={0} />
                   </linearGradient>
+                  <filter id="glowRevenue" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="3" result="b" />
+                    <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+                  </filter>
                 </defs>
+                <CartesianGrid vertical={false} stroke="currentColor" strokeOpacity={0.08} strokeDasharray="4 4" />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} tickFormatter={(v) => String(v).padStart(2, "0")} interval={0} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} domain={[0, "auto"]} axisLine={false} tickLine={false} />
                 <Tooltip formatter={(value: number | null, name: string) => value === null ? ["-", name] : [formatCurrency(value), name]} labelFormatter={(day) => `Dia ${day}`} contentStyle={{ fontSize: 12, borderRadius: "12px", border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.15)" }} />
-                <Area type="monotone" dataKey="receita" name="Receita" stroke="#10B981" strokeWidth={2.5} fill="url(#gradRevenue)" dot={false} connectNulls={false} />
-                <Line type="linear" dataKey="meta" name="Meta" stroke="#EF4444" strokeWidth={1.5} dot={false} />
-                <Line type="linear" dataKey="super" name="Super Meta" stroke="#F59E0B" strokeWidth={1.5} strokeDasharray="6 3" dot={false} />
-                <Line type="linear" dataKey="hiper" name="Hiper Meta" stroke="#3B82F6" strokeWidth={1.5} strokeDasharray="6 3" dot={false} />
+                <Area type="monotone" dataKey="receita" name="Receita" stroke="#10B981" strokeWidth={3} strokeLinecap="round" fill="url(#gradRevenue)" dot={false} activeDot={{ r: 5, strokeWidth: 2 }} connectNulls={false} style={{ filter: "url(#glowRevenue)" }} />
+                <Line type="monotone" dataKey="meta" name="Meta" stroke="#EF4444" strokeWidth={1.5} dot={false} />
+                <Line type="monotone" dataKey="super" name="Super Meta" stroke="#F59E0B" strokeWidth={1.5} strokeDasharray="6 3" dot={false} />
+                <Line type="monotone" dataKey="hiper" name="Hiper Meta" stroke="#3B82F6" strokeWidth={1.5} strokeDasharray="6 3" dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -1182,13 +1115,17 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
             <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={dailyRevenueData}>
+                  <CartesianGrid vertical={false} stroke="currentColor" strokeOpacity={0.08} strokeDasharray="4 4" />
                   <XAxis dataKey="day" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: "12px", fontSize: 12, border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.15)" }} />
                   <Legend />
-                  {closers.map((closer, i) => (
-                    <Line key={closer.id} type="monotone" dataKey={closer.name} stroke={["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"][i % 6]} strokeWidth={2.5} dot={false} />
-                  ))}
+                  {closers.map((closer, i) => {
+                    const c = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"][i % 6];
+                    return (
+                      <Line key={closer.id} type="monotone" dataKey={closer.name} stroke={c} strokeWidth={2.5} strokeLinecap="round" dot={false} activeDot={{ r: 5, strokeWidth: 2 }} />
+                    );
+                  })}
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -1343,13 +1280,6 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           </Table>
         </div>
       </GlowCard>
-
-      {/* ── Por Funil: vendas, reuniões agendadas e realizadas ── */}
-      <div className="grid gap-4 lg:grid-cols-3 mt-4">
-        <FunnelBarList title="Vendas por Funil" data={funnelBreakdown.sales} fmt={formatCurrency} color="#10b981" />
-        <FunnelBarList title="Reuniões Agendadas por Funil" data={funnelBreakdown.scheduled} fmt={(v) => String(v)} color="#3b82f6" />
-        <FunnelBarList title="Reuniões Realizadas por Funil" data={funnelBreakdown.realized} fmt={(v) => String(v)} color="#8b5cf6" />
-      </div>
     </div>
 
     <ImportSalesDialog

@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  LineChart,
+import {
+  ComposedChart,
+  Area,
   Line,
-  XAxis, 
-  YAxis, 
-  ResponsiveContainer, 
-  Tooltip, 
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+  Tooltip,
   Legend,
+  CartesianGrid,
 } from "recharts";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -27,11 +29,9 @@ interface ChartDataPoint {
 
 interface TermVisionChartProps {
   className?: string;
-  /** quando setado, mostra só as vendas desse closer (dashboard do closer) */
-  closerStaffId?: string | null;
 }
 
-export const TermVisionChart = ({ className, closerStaffId }: TermVisionChartProps) => {
+export const TermVisionChart = ({ className }: TermVisionChartProps) => {
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [kpis, setKpis] = useState({
@@ -46,8 +46,7 @@ export const TermVisionChart = ({ className, closerStaffId }: TermVisionChartPro
 
   useEffect(() => {
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [closerStaffId]);
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
@@ -67,13 +66,12 @@ export const TermVisionChart = ({ className, closerStaffId }: TermVisionChartPro
       let hasMore = true;
       
       while (hasMore) {
-        let query = supabase
+        const { data: salesData, error } = await supabase
           .from("crm_sales")
           .select("sale_date, revenue_value, billing_value")
           .gte("sale_date", format(startDate, "yyyy-MM-dd"))
-          .lte("sale_date", format(endDate, "yyyy-MM-dd"));
-        if (closerStaffId) query = query.eq("closer_staff_id", closerStaffId);
-        const { data: salesData, error } = await query.range(from, from + pageSize - 1);
+          .lte("sale_date", format(endDate, "yyyy-MM-dd"))
+          .range(from, from + pageSize - 1);
         
         if (error) {
           console.error("Error fetching sales data:", error);
@@ -302,19 +300,35 @@ export const TermVisionChart = ({ className, closerStaffId }: TermVisionChartPro
         {/* Line Chart */}
         <div className="h-[320px] sm:h-[380px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
-              <XAxis 
-                dataKey="shortLabel" 
+            <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
+              <defs>
+                <linearGradient id="gradTermRevenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#22C55E" stopOpacity={0.34} />
+                  <stop offset="65%" stopColor="#22C55E" stopOpacity={0.08} />
+                  <stop offset="100%" stopColor="#22C55E" stopOpacity={0} />
+                </linearGradient>
+                <filter id="glowTermRevenue" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="3" result="b" />
+                  <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+              </defs>
+              <CartesianGrid vertical={false} stroke="currentColor" strokeOpacity={0.08} strokeDasharray="4 4" />
+              <XAxis
+                dataKey="shortLabel"
                 tick={{ fontSize: 10 }}
                 interval={0}
                 angle={-45}
                 textAnchor="end"
                 height={50}
+                axisLine={false}
+                tickLine={false}
               />
-              <YAxis 
+              <YAxis
                 tickFormatter={formatAxisValue}
                 tick={{ fontSize: 10 }}
                 width={50}
+                axisLine={false}
+                tickLine={false}
               />
               <Tooltip 
                 formatter={(value: number, name: string) => {
@@ -343,17 +357,20 @@ export const TermVisionChart = ({ className, closerStaffId }: TermVisionChartPro
                 ]}
               />
               
-              {/* Revenue - dotted green line */}
-              <Line 
+              {/* Receita — área com gradiente e brilho (linha protagonista) */}
+              <Area
                 type="monotone"
-                dataKey="revenue" 
+                dataKey="revenue"
                 name="revenue"
                 stroke="#22C55E"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={{ fill: "#22C55E", strokeWidth: 0, r: 3 }}
+                strokeWidth={3}
+                strokeLinecap="round"
+                fill="url(#gradTermRevenue)"
+                style={{ filter: "url(#glowTermRevenue)" }}
+                dot={{ fill: "#22C55E", stroke: "#fff", strokeWidth: 1.5, r: 3.5 }}
+                activeDot={{ r: 6, strokeWidth: 2 }}
                 label={({ x, y, value }) => (
-                  <text x={x} y={y - 10} fill="#22C55E" fontSize={9} textAnchor="middle">
+                  <text x={x} y={y - 12} fill="#22C55E" fontSize={9} fontWeight={600} textAnchor="middle">
                     {formatCurrency(value)}
                   </text>
                 )}
@@ -388,7 +405,7 @@ export const TermVisionChart = ({ className, closerStaffId }: TermVisionChartPro
                 strokeWidth={2}
                 dot={{ fill: "#F59E0B", strokeWidth: 0, r: 2 }}
               />
-            </LineChart>
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </CardContent>
