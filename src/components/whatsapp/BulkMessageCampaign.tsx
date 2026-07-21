@@ -155,6 +155,15 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
   const [crmContacts, setCrmContacts] = useState<CRMContact[]>([]);
   const [selectedCRMContacts, setSelectedCRMContacts] = useState<Set<string>>(new Set());
   const [loadingCRM, setLoadingCRM] = useState(false);
+  // CRM filters (funil / origem / etapa)
+  const [crmPipelines, setCrmPipelines] = useState<{ id: string; name: string }[]>([]);
+  const [crmOrigins, setCrmOrigins] = useState<{ id: string; name: string; pipeline_id?: string | null }[]>([]);
+  const [crmStages, setCrmStages] = useState<{ id: string; name: string; pipeline_id: string }[]>([]);
+  const [crmFilterPipeline, setCrmFilterPipeline] = useState("all");
+  const [crmFilterOrigin, setCrmFilterOrigin] = useState("all");
+  const [crmFilterStage, setCrmFilterStage] = useState("all");
+  const [crmTotalMatch, setCrmTotalMatch] = useState(0);
+  const CRM_FETCH_LIMIT = 5000;
   
   // Manual contacts input
   const [showManualInput, setShowManualInput] = useState(false);
@@ -171,9 +180,15 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
   // Delete confirmation
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
 
+  // Recarrega os leads do CRM ao abrir o seletor ou trocar qualquer filtro
+  useEffect(() => {
+    if (showCRMContacts) loadCRMContacts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCRMContacts, crmFilterPipeline, crmFilterOrigin, crmFilterStage]);
+
   useEffect(() => {
     loadData();
-    
+
     // Subscribe to realtime updates
     const campaignsChannel = supabase
       .channel('campaigns-updates')
@@ -271,19 +286,42 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
     });
   };
 
+  // Carrega as opções de filtro (funis, origens, etapas) do CRM Comercial
+  const loadCRMFilters = async () => {
+    const [p, o, s] = await Promise.all([
+      supabase.from("crm_pipelines").select("id, name").eq("is_active", true).order("sort_order"),
+      supabase.from("crm_origins").select("id, name, pipeline_id").eq("is_active", true).order("sort_order"),
+      supabase.from("crm_stages").select("id, name, pipeline_id").order("sort_order"),
+    ]);
+    setCrmPipelines(p.data || []);
+    setCrmOrigins(o.data || []);
+    setCrmStages(s.data || []);
+  };
+
+  // Busca os LEADS do CRM (não os contatos do inbox) filtrando por funil/origem/etapa.
   const loadCRMContacts = async () => {
     setLoadingCRM(true);
-    const { data } = await supabase
-      .from("crm_whatsapp_contacts")
-      .select("id, name, phone_number")
-      .not("phone_number", "is", null)
-      .order("name");
-    
+    let query = supabase
+      .from("crm_leads")
+      .select("id, name, company, phone", { count: "exact" })
+      .not("phone", "is", null)
+      .neq("phone", "");
+    if (crmFilterPipeline !== "all") query = query.eq("pipeline_id", crmFilterPipeline);
+    if (crmFilterOrigin !== "all") query = query.eq("origin_id", crmFilterOrigin);
+    if (crmFilterStage !== "all") query = query.eq("stage_id", crmFilterStage);
+
+    const { data, count } = await query
+      .order("stage_entered_at", { ascending: false })
+      .limit(CRM_FETCH_LIMIT);
+
     setCrmContacts((data || []).map((c: any) => ({
       id: c.id,
       name: c.name || "Sem nome",
-      phone_number: c.phone_number,
+      phone_number: c.phone,
+      company_name: c.company || "",
     })));
+    setCrmTotalMatch(count || 0);
+    setSelectedCRMContacts(new Set());
     setLoadingCRM(false);
   };
 
@@ -889,7 +927,7 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
                   variant="outline"
                   onClick={() => {
                     setShowCRMContacts(true);
-                    loadCRMContacts();
+                    loadCRMFilters();
                   }}
                 >
                   <Database className="h-4 w-4 mr-2" />
@@ -1158,16 +1196,69 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
           <DialogHeader>
             <DialogTitle>Selecionar Contatos do CRM</DialogTitle>
           </DialogHeader>
-          
-          {loadingCRM ? (
-            <div className="flex justify-center p-8">
-              <Loader2 className="h-6 w-6 animate-spin" />
+
+          <div className="space-y-4">
+            {/* Filtros: funil / origem / etapa */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Funil</label>
+                <Select
+                  value={crmFilterPipeline}
+                  onValueChange={(v) => {
+                    setCrmFilterPipeline(v);
+                    setCrmFilterOrigin("all");
+                    setCrmFilterStage("all");
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os funis</SelectItem>
+                    {crmPipelines.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Origem</label>
+                <Select value={crmFilterOrigin} onValueChange={setCrmFilterOrigin}>
+                  <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as origens</SelectItem>
+                    {crmOrigins
+                      .filter((o) => crmFilterPipeline === "all" || o.pipeline_id === crmFilterPipeline || !o.pipeline_id)
+                      .map((o) => (
+                        <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Etapa</label>
+                <Select value={crmFilterStage} onValueChange={setCrmFilterStage}>
+                  <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as etapas</SelectItem>
+                    {crmStages
+                      .filter((s) => crmFilterPipeline === "all" || s.pipeline_id === crmFilterPipeline)
+                      .map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-4">
+
+            {loadingCRM ? (
+              <div className="flex justify-center p-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : (
+              <>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
-                  {selectedCRMContacts.size} selecionados de {crmContacts.length}
+                  {selectedCRMContacts.size} selecionados · {crmContacts.length}
+                  {crmTotalMatch > crmContacts.length ? ` de ${crmTotalMatch}` : ""} leads
                 </span>
                 <Button
                   variant="ghost"
@@ -1180,10 +1271,16 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
                     }
                   }}
                 >
-                  {selectedCRMContacts.size === crmContacts.length ? "Desmarcar todos" : "Selecionar todos"}
+                  {selectedCRMContacts.size === crmContacts.length && crmContacts.length > 0 ? "Desmarcar todos" : "Selecionar todos"}
                 </Button>
               </div>
-              
+
+              {crmTotalMatch > CRM_FETCH_LIMIT && (
+                <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 rounded px-2 py-1.5">
+                  Mostrando os {CRM_FETCH_LIMIT.toLocaleString("pt-BR")} mais recentes de {crmTotalMatch.toLocaleString("pt-BR")}. Refine os filtros pra alcançar o restante.
+                </p>
+              )}
+
               <div className="border rounded-lg max-h-64 overflow-y-auto">
                 {crmContacts.map((contact) => (
                   <div
@@ -1215,13 +1312,14 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
                 ))}
                 {crmContacts.length === 0 && (
                   <p className="text-center py-8 text-muted-foreground">
-                    Nenhum contato encontrado no CRM
+                    Nenhum lead encontrado com esses filtros
                   </p>
                 )}
               </div>
-            </div>
-          )}
-          
+              </>
+            )}
+          </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCRMContacts(false)}>
               Cancelar
