@@ -130,13 +130,15 @@ export const ManagerV2 = {
 
   async connect(target: MgrAction, payload: { webhookUrl?: string; subscribe?: string[]; immediate?: boolean; phone?: string }) {
     // Manager V2 (stevo.chat) espera os eventos no campo `events` como string separada
-    // por vírgula. Mandar `subscribe` (array) grava eventString vazio → a Stevo não
-    // entrega nenhuma mensagem no webhook (bug que deixou o inbox mudo). Usar `events`.
+    // por vírgula. IMPORTANTE: NÃO enviar `subscribe` (array) — a presença desse campo
+    // no corpo faz a Stevo gravar eventString vazio, e aí ela não entrega NENHUMA
+    // mensagem no webhook (era o bug que deixava o inbox mudo e exigia reconectar todo
+    // dia — cada reconexão pelo app re-registrava com subscribe e mutava de novo).
+    // Confirmado empiricamente: só `events` → eventString='MESSAGE'; com subscribe → ''.
     const events = (payload.subscribe ?? ['Message', 'Connected', 'Disconnected', 'QR']).join(',');
     return callManagerV2(target.baseUrl, target.apiKey, 'POST', '/instance/connect', {
       webhookUrl: payload.webhookUrl ?? '',
       events,
-      subscribe: payload.subscribe ?? ['Message', 'Connected', 'Disconnected', 'QR'],
       immediate: payload.immediate ?? true,
       phone: payload.phone ?? '',
       rabbitmqEnable: '',
