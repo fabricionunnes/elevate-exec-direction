@@ -69,6 +69,20 @@ Deno.serve(async (req) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+  // Guard: uma sync por vez (cliques repetidos no botão disparavam runs sobrepostas)
+  const { data: runningRuns } = await supabase
+    .from("facunicamps_sync_runs")
+    .select("id")
+    .eq("status", "running")
+    .gte("started_at", new Date(Date.now() - 3 * 60 * 1000).toISOString());
+
+  if (runningRuns && runningRuns.length > 0) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Sincronização já em andamento. Aguarde alguns segundos." }),
+      { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   // Create sync_run record
   const { data: runData, error: runError } = await supabase
     .from("facunicamps_sync_runs")
@@ -144,23 +158,22 @@ Deno.serve(async (req) => {
 
     console.log(`[facunicamps-sync] Parsed ${records.length} rows`);
 
-    // Truncate existing data
-    const { error: truncError } = await supabase
-      .from("facunicamps_matriculas")
+    // Carrega no staging e troca de forma atômica: a tabela principal nunca fica
+    // vazia durante a sync (antes era delete-all + insert, ~20s de dashboard zerado)
+    const { error: stgClearError } = await supabase
+      .from("facunicamps_matriculas_staging")
       .delete()
-      .neq("id", "00000000-0000-0000-0000-000000000000"); // delete all
-
-    if (truncError) {
-      throw new Error(`Failed to truncate: ${truncError.message}`);
+      .neq("id", "00000000-0000-0000-0000-000000000000");
+    if (stgClearError) {
+      throw new Error(`Failed to clear staging: ${stgClearError.message}`);
     }
 
-    // Insert in batches of 100
     const BATCH_SIZE = 100;
     let totalInserted = 0;
     for (let i = 0; i < records.length; i += BATCH_SIZE) {
       const batch = records.slice(i, i + BATCH_SIZE);
       const { error: insertError } = await supabase
-        .from("facunicamps_matriculas")
+        .from("facunicamps_matriculas_staging")
         .insert(batch);
       if (insertError) {
         throw new Error(`Insert batch failed at row ${i}: ${insertError.message}`);
@@ -168,7 +181,13 @@ Deno.serve(async (req) => {
       totalInserted += batch.length;
     }
 
-    console.log(`[facunicamps-sync] Inserted ${totalInserted} rows`);
+    const { data: swapped, error: swapError } = await supabase.rpc("facunicamps_swap_matriculas");
+    if (swapError) {
+      throw new Error(`Atomic swap failed: ${swapError.message}`);
+    }
+    totalInserted = typeof swapped === "number" ? swapped : totalInserted;
+
+    console.log(`[facunicamps-sync] Swapped ${totalInserted} rows`);
 
     // ─── Import METAS from METAS tab ───────────────────────────────────────
     let metasImported = 0;
