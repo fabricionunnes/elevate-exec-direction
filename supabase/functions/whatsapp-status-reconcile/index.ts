@@ -33,31 +33,29 @@ Deno.serve(async (req) => {
         if (real !== i.status) {
           await supabase.from("whatsapp_instances").update({ status: real }).eq("id", i.id);
           fixed++; out.push({ instance: i.instance_name, de: i.status, para: real });
+        }
 
-          // Voltou a conectar → RE-REGISTRA O WEBHOOK. Reconexão no Stevo perde
-          // a configuração de webhook e a instância fica "conectada mas muda"
-          // (telefone recebe, sistema não — foi assim que Ricardo/Natalia
-          // sumiram do Atendimento por dias). Mesmo payload do ManagerV2.connect.
-          if (real === "connected") {
-            try {
-              const webhookUrl = `${SUPABASE_URL}/functions/v1/evolution-webhook`;
-              await fetch(`${baseUrl}/instance/connect`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", apikey: i.api_key },
-                body: JSON.stringify({
-                  webhookUrl,
-                  events: "Message,Connected,Disconnected,QR",
-                  subscribe: ["Message", "Connected", "Disconnected", "QR"],
-                  immediate: true,
-                  phone: "",
-                  rabbitmqEnable: "",
-                  websocketEnable: "",
-                  natsEnable: "",
-                }),
-              });
-              out.push({ instance: i.instance_name, webhook: "re-registrado" });
-            } catch { /* best-effort — próximo ciclo tenta de novo */ }
-          }
+        // KEEPALIVE do webhook — roda SEMPRE que a instância está conectada, não só
+        // na transição. A Stevo perde/zera a config de webhook mesmo sem "cair"
+        // (fica conectada e muda: telefone recebe, sistema não — foi assim que
+        // Ricardo/Natalia sumiram do Atendimento). Re-afirmar a cada ciclo (~3min)
+        // faz o inbox se consertar sozinho, sem ninguém reconectar na mão.
+        // CRÍTICO: enviar SÓ `events`. A presença de `subscribe` no corpo faz a Stevo
+        // gravar eventString='' e não entregar NENHUMA mensagem (confirmado: com
+        // subscribe → ''; só events → 'MESSAGE'). Era o defeito que re-mutava tudo.
+        if (connected) {
+          try {
+            await fetch(`${baseUrl}/instance/connect`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", apikey: i.api_key },
+              body: JSON.stringify({
+                webhookUrl: `${SUPABASE_URL}/functions/v1/evolution-webhook`,
+                events: "Message,Connected,Disconnected,QR",
+                immediate: true,
+                phone: "",
+              }),
+            });
+          } catch { /* best-effort — próximo ciclo tenta de novo */ }
         }
       } catch { /* ignora instância que não respondeu */ }
     }
