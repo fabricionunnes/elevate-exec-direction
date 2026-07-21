@@ -11,6 +11,12 @@ interface Testimonial {
 
 const testimonials: Testimonial[] = [
   {
+    youtubeId: "PGSp4oJkA6Y",
+    name: "Bruno",
+    company: "Grupo B3 Digital",
+    description: "Já estudei com os maiores players do mercado e o Fabrício foi o único que mudou a história da minha empresa.",
+  },
+  {
     youtubeId: "jxquNXjI94I",
     name: "Gabriel",
     company: "Facunicamps",
