@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -54,8 +55,7 @@ import {
   Bell,
   Link2,
   FileText,
-  Shuffle,
-  Pencil,
+  Shuffle
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
 import { StageChecklistDialog } from "@/components/crm/StageChecklistDialog";
@@ -185,10 +185,10 @@ export const CRMSettingsPage = () => {
   const [newReasonName, setNewReasonName] = useState("");
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#3B82F6");
-  const [editTagOpen, setEditTagOpen] = useState(false);
-  const [editingTag, setEditingTag] = useState<CRMTag | null>(null);
-  const [editTagName, setEditTagName] = useState("");
-  const [editTagColor, setEditTagColor] = useState("#3B82F6");
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [mergeSelected, setMergeSelected] = useState<Record<string, boolean>>({});
+  const [mergeKeepId, setMergeKeepId] = useState("");
+  const [mergeSearch, setMergeSearch] = useState("");
   const [newOriginGroupName, setNewOriginGroupName] = useState("");
   const [newOriginGroupIcon, setNewOriginGroupIcon] = useState("target");
   const [newOriginName, setNewOriginName] = useState("");
@@ -729,15 +729,32 @@ export const CRMSettingsPage = () => {
     setEditReasonOpen(true);
   };
 
+  // normaliza igual ao banco (sem acento/maiúscula/espaço) pra impedir tag repetida
+  const normTag = (t: string) =>
+    (t || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
   const handleCreateTag = async () => {
     if (!newTagName.trim()) return;
+    const norm = normTag(newTagName);
+    const existing = tags.find((t) => normTag(t.name) === norm);
+    if (existing) {
+      toast.error(`Já existe a tag "${existing.name}"`);
+      return;
+    }
     setSaving(true);
     try {
       const { error } = await supabase
         .from("crm_tags")
-        .insert({ name: newTagName, color: newTagColor });
-      
-      if (error) throw error;
+        .insert({ name: newTagName.trim(), color: newTagColor });
+
+      if (error) {
+        // backstop do índice único no banco
+        if (error.code === "23505") {
+          toast.error("Já existe uma tag com esse nome");
+          return;
+        }
+        throw error;
+      }
       toast.success("Tag criada");
       setNewTagOpen(false);
       setNewTagName("");
@@ -750,28 +767,27 @@ export const CRMSettingsPage = () => {
     }
   };
 
-  const openEditTag = (tag: CRMTag) => {
-    setEditingTag(tag);
-    setEditTagName(tag.name);
-    setEditTagColor(tag.color || "#3B82F6");
-    setEditTagOpen(true);
-  };
-
-  const handleUpdateTag = async () => {
-    if (!editingTag || !editTagName.trim()) return;
+  const handleMergeTags = async () => {
+    const keep = mergeKeepId;
+    const sources = Object.keys(mergeSelected).filter((id) => mergeSelected[id] && id !== keep);
+    if (!keep || sources.length === 0) {
+      toast.error("Selecione ao menos 2 tags e qual manter");
+      return;
+    }
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("crm_tags")
-        .update({ name: editTagName.trim(), color: editTagColor })
-        .eq("id", editingTag.id);
+      const { error } = await supabase.rpc("merge_crm_tags", {
+        p_target: keep,
+        p_sources: sources,
+      });
       if (error) throw error;
-      toast.success("Tag atualizada");
-      setEditTagOpen(false);
-      setEditingTag(null);
+      toast.success(`${sources.length + 1} tags mescladas em 1`);
+      setMergeOpen(false);
+      setMergeSelected({});
+      setMergeKeepId("");
       loadData();
     } catch (error: any) {
-      toast.error(error.message || "Erro ao atualizar tag");
+      toast.error(error.message || "Erro ao mesclar");
     } finally {
       setSaving(false);
     }
@@ -2115,6 +2131,15 @@ export const CRMSettingsPage = () => {
                     Crie tags para categorizar seus leads
                   </CardDescription>
                 </div>
+                <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { setMergeOpen(true); setMergeSelected({}); setMergeKeepId(""); setMergeSearch(""); }}
+                >
+                  <Tag className="h-4 w-4 mr-2" />
+                  Mesclar
+                </Button>
                 <Dialog open={newTagOpen} onOpenChange={setNewTagOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm">
@@ -2158,6 +2183,73 @@ export const CRMSettingsPage = () => {
                     </div>
                   </DialogContent>
                 </Dialog>
+
+                {/* Diálogo de mesclagem de tags */}
+                <Dialog open={mergeOpen} onOpenChange={setMergeOpen}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Mesclar tags</DialogTitle>
+                      <CardDescription>
+                        Selecione as tags que são a mesma coisa e escolha qual manter.
+                        Os leads das outras passam pra tag mantida, e as demais são apagadas.
+                      </CardDescription>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      <Input
+                        placeholder="Buscar tag..."
+                        value={mergeSearch}
+                        onChange={(e) => setMergeSearch(e.target.value)}
+                      />
+                      <div className="max-h-[280px] overflow-auto space-y-1 border rounded-md p-2">
+                        {tags
+                          .filter((t) =>
+                            !mergeSearch.trim() ||
+                            t.name.toLowerCase().includes(mergeSearch.trim().toLowerCase())
+                          )
+                          .map((tag) => {
+                            const checked = !!mergeSelected[tag.id];
+                            return (
+                              <div key={tag.id} className="flex items-center justify-between gap-2 py-1">
+                                <label className="flex items-center gap-2 cursor-pointer flex-1">
+                                  <Checkbox
+                                    checked={checked}
+                                    onCheckedChange={(v) => {
+                                      setMergeSelected((prev) => ({ ...prev, [tag.id]: !!v }));
+                                      if (!v && mergeKeepId === tag.id) setMergeKeepId("");
+                                    }}
+                                  />
+                                  <span
+                                    className="w-2.5 h-2.5 rounded-full"
+                                    style={{ backgroundColor: tag.color || "#888" }}
+                                  />
+                                  <span className="text-sm">{tag.name}</span>
+                                </label>
+                                {checked && (
+                                  <Button
+                                    size="sm"
+                                    variant={mergeKeepId === tag.id ? "default" : "outline"}
+                                    className="h-6 px-2 text-[11px]"
+                                    onClick={() => setMergeKeepId(tag.id)}
+                                  >
+                                    {mergeKeepId === tag.id ? "Manter esta" : "Manter"}
+                                  </Button>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                      <Button
+                        onClick={handleMergeTags}
+                        disabled={saving || !mergeKeepId || Object.values(mergeSelected).filter(Boolean).length < 2}
+                        className="w-full"
+                      >
+                        {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Mesclar selecionadas
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -2171,15 +2263,7 @@ export const CRMSettingsPage = () => {
                   >
                     {tag.name}
                     <button
-                      className="ml-2 hover:text-primary"
-                      title="Editar tag"
-                      onClick={() => openEditTag(tag)}
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </button>
-                    <button
-                      className="ml-1 hover:text-destructive"
-                      title="Excluir tag"
+                      className="ml-2 hover:text-destructive"
                       onClick={() => setDeleteDialog({ type: "tag", id: tag.id, name: tag.name })}
                     >
                       ×
@@ -2189,31 +2273,6 @@ export const CRMSettingsPage = () => {
               </div>
             </CardContent>
           </Card>
-
-          <Dialog open={editTagOpen} onOpenChange={setEditTagOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Editar Tag</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>Nome</Label>
-                  <Input value={editTagName} onChange={(e) => setEditTagName(e.target.value)} placeholder="Nome da tag" />
-                </div>
-                <div>
-                  <Label>Cor</Label>
-                  <div className="flex gap-2">
-                    <Input type="color" value={editTagColor} onChange={(e) => setEditTagColor(e.target.value)} className="w-16 h-10 p-1" />
-                    <Input value={editTagColor} onChange={(e) => setEditTagColor(e.target.value)} className="flex-1" />
-                  </div>
-                </div>
-                <Button onClick={handleUpdateTag} disabled={saving} className="w-full">
-                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Salvar alterações
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
         </TabsContent>
 
         {/* Abas exclusivas de master/admin (head comercial não acessa) */}

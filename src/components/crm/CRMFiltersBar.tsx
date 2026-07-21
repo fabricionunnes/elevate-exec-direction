@@ -75,6 +75,13 @@ export const CRMFiltersBar = ({
   entityName = "negócios",
 }: CRMFiltersBarProps) => {
   const [dateOpen, setDateOpen] = useState(false);
+  const [tagSearch, setTagSearch] = useState("");
+
+  const filteredTagOptions = tagSearch.trim()
+    ? tagOptions.filter((t) =>
+        t.name.toLowerCase().includes(tagSearch.trim().toLowerCase())
+      )
+    : tagOptions;
 
   const updateFilter = <K extends keyof CRMFilters>(key: K, value: CRMFilters[K]) => {
     onFiltersChange({ ...filters, [key]: value });
@@ -243,12 +250,24 @@ export const CRMFiltersBar = ({
               <ChevronDown className="h-3 w-3" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-56" align="start">
+          <PopoverContent className="w-56 p-2" align="start">
+            <div className="relative mb-2">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                autoFocus
+                placeholder="Buscar tag..."
+                value={tagSearch}
+                onChange={(e) => setTagSearch(e.target.value)}
+                className="pl-7 h-8 text-sm"
+              />
+            </div>
             <div className="space-y-1 max-h-[200px] overflow-auto">
               {tagOptions.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2">Nenhuma tag</p>
+              ) : filteredTagOptions.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">Nenhuma tag encontrada</p>
               ) : (
-                tagOptions.map((tag) => (
+                filteredTagOptions.map((tag) => (
                   <div key={tag.id} className="flex items-center gap-2 py-1">
                     <Checkbox
                       id={`tag-${tag.id}`}
