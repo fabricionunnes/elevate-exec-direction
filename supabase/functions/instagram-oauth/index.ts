@@ -203,10 +203,11 @@ Deno.serve(async (req) => {
           can_reply: true,
         }, { onConflict: "instance_id,staff_id" });
 
-      // Assina o app nos webhooks DESSA conta (DMs)
+      // Assina o app nos webhooks DESSA conta (DMs + comentários/menções pros
+      // gatilhos estilo ManyChat do CRM)
       try {
         const subUrl = new URL(`https://graph.instagram.com/v21.0/${me.id}/subscribed_apps`);
-        subUrl.searchParams.set("subscribed_fields", "messages");
+        subUrl.searchParams.set("subscribed_fields", "messages,message_reactions,messaging_postbacks,messaging_seen,comments,live_comments,mentions");
         subUrl.searchParams.set("access_token", accessToken);
         const subResp = await fetch(subUrl.toString(), { method: "POST" });
         console.log("Account webhook subscription:", JSON.stringify(await subResp.json()));
