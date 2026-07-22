@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   children: ReactNode;
@@ -27,6 +28,19 @@ class ErrorBoundary extends Component<Props, State> {
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
     this.setState({ errorInfo });
+    // Registra o erro real (útil pra diagnosticar crashes que só acontecem no
+    // aparelho do usuário — ex: iPhone do vendedor). Best-effort, não bloqueia.
+    try {
+      void supabase.from("client_error_logs").insert({
+        message: String(error?.message || error),
+        stack: String(error?.stack || "").slice(0, 4000),
+        component_stack: String(errorInfo?.componentStack || "").slice(0, 4000),
+        url: window.location.href,
+        user_agent: navigator.userAgent,
+      });
+    } catch {
+      /* ignore */
+    }
   }
 
   private handleReload = () => {
@@ -59,9 +73,9 @@ class ErrorBoundary extends Component<Props, State> {
               </p>
             </div>
 
-            {import.meta.env.DEV && this.state.error && (
-              <div className="bg-muted/50 rounded-lg p-4 text-left overflow-auto max-h-40">
-                <p className="text-sm font-mono text-destructive">
+            {this.state.error && (
+              <div className="bg-muted/50 rounded-lg p-3 text-left overflow-auto max-h-32">
+                <p className="text-xs font-mono text-destructive break-words">
                   {this.state.error.message}
                 </p>
               </div>
