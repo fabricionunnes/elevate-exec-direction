@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain, Download, Share2 } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain } from "lucide-react";
 import { GlobalAccessControlPanel } from "@/components/onboarding-tasks/GlobalAccessControlPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -1011,12 +1011,15 @@ const OnboardingTasksPage = () => {
   // Helper: resolve the effective monthly target for a KPI from kpi_monthly_targets.
   // Priority: company-level target (no unit/team/salesperson) > sum of unit-level targets > kpi.target_value adjusted by periodicity
   const resolveMonthlyTarget = (kpiId: string, companyId: string, monthYear: string, kpiTargetValue: number, kpiPeriodicity: string, daysInMonth: number): number => {
-    // 1. Company-level target
-    const companyLevel = monthlyTargetsForProjection.find(
+    // 1. Company-level target — SOMA todas as linhas company-level do mês.
+    // Pode haver várias (metas lançadas em partes), e o KPI interno soma todas.
+    // Usar .find() pegava só a 1ª (ex: Padre Pio, 18.333 em vez de 63.999) e a
+    // projeção externa inflava (360% em vez de 103%).
+    const companyLevelTargets = monthlyTargetsForProjection.filter(
       t => t.kpi_id === kpiId && t.company_id === companyId && t.month_year === monthYear &&
            t.unit_id === null && t.team_id === null && t.salesperson_id === null
     );
-    if (companyLevel) return companyLevel.target_value;
+    if (companyLevelTargets.length > 0) return companyLevelTargets.reduce((sum, t) => sum + t.target_value, 0);
 
     // 2. Sum of unit-level targets (no team/salesperson)
     const unitTargets = monthlyTargetsForProjection.filter(
@@ -1934,11 +1937,6 @@ const OnboardingTasksPage = () => {
                     <Video className="h-4 w-4 mr-2" />
                     Escritório UNV
                   </DropdownMenuItem>
-                  {/* Baixar extensão Closer Copilot — todo o staff */}
-                  <DropdownMenuItem onClick={() => window.open("https://unv-closer-install.pages.dev/", "_blank", "noopener,noreferrer")}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Baixar Copilot
-                  </DropdownMenuItem>
                   {/* Escritório 3D dos agentes IA — somente master */}
                   {isMaster && (
                     <DropdownMenuItem onClick={() => navigate("/office")}>
@@ -2306,9 +2304,6 @@ const OnboardingTasksPage = () => {
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/copiloto")} className="text-primary focus:text-primary font-semibold">
                   <Sparkles className="h-4 w-4 mr-2" /> Copiloto de Resultados
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => window.open("https://unv-closer-install.pages.dev/", "_blank", "noopener,noreferrer")}>
-                  <Download className="h-4 w-4 mr-2" /> Baixar Copilot
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/task-manager")}>
                   <LayoutGrid className="h-4 w-4 mr-2" /> Gerenciador
                 </DropdownMenuItem>
@@ -2342,9 +2337,6 @@ const OnboardingTasksPage = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp-hub")}>
                   <MessageSquare className="h-4 w-4 mr-2" /> WhatsApp Hub
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/processos")}>
-                  <BookOpen className="h-4 w-4 mr-2" /> Manual de Processos
                 </DropdownMenuItem>
                 {canCreateCompany && (
                   <>
@@ -2476,10 +2468,6 @@ const OnboardingTasksPage = () => {
                   <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cerebro")} className="text-primary focus:text-primary font-semibold">
                     <Brain className="h-4 w-4 mr-2" />
                     Cérebro da Carteira
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/grafo")} className="text-primary focus:text-primary font-semibold">
-                    <Share2 className="h-4 w-4 mr-2" />
-                    Grafo Geral
                   </DropdownMenuItem>
                   {isAdmin && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations-retention")}>
@@ -2976,7 +2964,7 @@ const OnboardingTasksPage = () => {
           <ReferralsPanel />
         )}
 
-        {/* Companies List - Hidden when on NPS, CSAT or Referrals tab */}
+        {/* Companies List - Hidden when on NPS, CSAT, Referrals or Parcelas tab */}
         {activeDashboardTab === "nps" || activeDashboardTab === "csat" || activeDashboardTab === "referrals" || activeDashboardTab === "parcelas" ? null : filteredCompanies.length === 0 ? (
           <Card className="p-12 text-center">
             <Building2 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
