@@ -450,21 +450,109 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 2) Agente ativo vinculado a esta instância/canal
-    const { data: chRows } = await supabase
-      .from("crm_ai_agent_channels")
-      .select("agent_id, agent:crm_ai_agents(*)")
-      .eq("channel", channel).eq("instance_id", conv.instance_id);
-    const agents = (chRows || []).map((r: any) => r.agent).filter((a: any) => a && a.is_active);
-    if (agents.length === 0) return j({ ok: true, skip: "nenhum agente ativo nesta instância" });
-    agents.sort((a: any, b: any) => (a.created_at < b.created_at ? -1 : 1));
-    const agent = agents[0];
+    // 1.5) GATILHO POR PALAVRA-CHAVE (estilo ManyChat). Se a última mensagem do
+    // lead bate uma regra ativa, ligamos o agente qualificador da regra NESTA
+    // conversa (via override) — mesmo que o funil estivesse "off" e mesmo que o
+    // agente não esteja vinculado ao canal. Idempotente: só liga uma vez por regra.
+    let forcedAgent: any = null;
+    try {
+      const msgTable = isIG ? "instagram_messages" : "crm_whatsapp_messages";
+      const tsCol = isIG ? "timestamp" : "created_at";
+      const { data: lastIn } = await supabase.from(msgTable)
+        .select(`content, direction, ${tsCol}`)
+        .eq("conversation_id", conversation_id).eq("direction", "inbound")
+        .order(tsCol, { ascending: false }).limit(1).maybeSingle();
+      const text = String((lastIn as any)?.content || "").toLowerCase().trim();
+      const matchKw = (kw: string, mt: string) =>
+        mt === "exact" ? text === kw : mt === "starts" ? text.startsWith(kw) : text.includes(kw);
+      if (text) {
+        // (a) PALAVRA-CHAVE NO PRÓPRIO AGENTE (jeito simples: você edita o agente e
+        // coloca as palavras que o ativam). Vale pra qualquer agente ativo com
+        // trigger_keywords, mesmo sem estar vinculado ao canal.
+        const { data: kwAgents } = await supabase.from("crm_ai_agents")
+          .select("*").eq("is_active", true).not("trigger_keywords", "is", null);
+        for (const ag of (kwAgents || [])) {
+          const kws: string[] = (ag.trigger_keywords || []).map((k: string) => k.toLowerCase().trim()).filter(Boolean);
+          if (kws.length === 0) continue;
+          if (!(ag.trigger_channels || ["whatsapp", "instagram"]).includes(channel)) continue;
+          const hit = kws.find((kw) => matchKw(kw, ag.trigger_match_type || "contains"));
+          if (!hit) continue;
+          const { data: prev } = await supabase.from("crm_keyword_trigger_logs")
+            .select("id").eq("agent_id", ag.id).eq("conversation_id", conversation_id).eq("source", "agent_kw").limit(1).maybeSingle();
+          if (prev) continue;
+          await supabase.from("crm_ai_agent_conversation_overrides").upsert({
+            agent_id: ag.id, conversation_id, channel, enabled: true, reply_mode: "auto",
+          }, { onConflict: "conversation_id,channel" });
+          await supabase.from("crm_keyword_trigger_logs").insert({
+            agent_id: ag.id, conversation_id, channel, source: "agent_kw", matched_keyword: hit,
+          });
+          forcedAgent = ag;
+          break;
+        }
+      }
+      if (text && !forcedAgent) {
+        const { data: rules } = await supabase.from("crm_keyword_triggers")
+          .select("*").eq("is_active", true).eq("listen_dm", true)
+          .order("priority", { ascending: false });
+        for (const rule of (rules || [])) {
+          if (!(rule.channels || []).includes(channel)) continue;
+          if (rule.pipeline_id && conv.lead_id) {
+            // se a regra é de um funil específico, respeita o funil do lead
+            const { data: ld } = await supabase.from("crm_leads").select("pipeline_id").eq("id", conv.lead_id).maybeSingle();
+            if (ld && ld.pipeline_id !== rule.pipeline_id) continue;
+          }
+          const kws: string[] = (rule.keywords || []).map((k: string) => k.toLowerCase().trim()).filter(Boolean);
+          const hit = kws.find((kw) =>
+            rule.match_type === "exact" ? text === kw
+            : rule.match_type === "starts" ? text.startsWith(kw)
+            : text.includes(kw));
+          if (!hit) continue;
+          // já disparou esta regra nesta conversa? não repete
+          const { data: prev } = await supabase.from("crm_keyword_trigger_logs")
+            .select("id").eq("trigger_id", rule.id).eq("conversation_id", conversation_id).limit(1).maybeSingle();
+          if (prev) continue;
+          const { data: ruleAgent } = await supabase.from("crm_ai_agents").select("*").eq("id", rule.agent_id).maybeSingle();
+          if (!ruleAgent || !ruleAgent.is_active) continue;
+          // liga o agente da regra nesta conversa (auto) e registra
+          await supabase.from("crm_ai_agent_conversation_overrides").upsert({
+            agent_id: rule.agent_id, conversation_id, channel, enabled: true, reply_mode: "auto",
+          }, { onConflict: "conversation_id,channel" });
+          await supabase.from("crm_keyword_trigger_logs").insert({
+            trigger_id: rule.id, agent_id: rule.agent_id, conversation_id, channel,
+            source: "dm", matched_keyword: hit,
+          });
+          forcedAgent = ruleAgent;
+          break;
+        }
+      }
+    } catch (e) { console.error("keyword match error", e); }
 
-    // 3) Modo: override da conversa > funil do lead (allowlist) > padrão do agente
+    // 2) Agente: o forçado pela palavra-chave vence; senão o vinculado à instância/canal
+    let agent: any = forcedAgent;
+    // Override da conversa (interruptor + agente fixado por palavra-chave/manual)
     const { data: override } = await supabase
       .from("crm_ai_agent_conversation_overrides")
-      .select("enabled, reply_mode").eq("conversation_id", conversation_id).eq("channel", channel).maybeSingle();
+      .select("enabled, reply_mode, agent_id").eq("conversation_id", conversation_id).eq("channel", channel).maybeSingle();
     if (override && override.enabled === false) return j({ ok: true, skip: "agente desligado nesta conversa" });
+
+    // Agente fixado no override (foi uma palavra-chave que ligou este agente aqui):
+    // mantém o MESMO agente qualificador ao longo da conversa, mesmo sem vínculo de canal.
+    if (!agent && override?.agent_id && override.enabled) {
+      const { data: ovAgent } = await supabase.from("crm_ai_agents").select("*").eq("id", override.agent_id).maybeSingle();
+      if (ovAgent && ovAgent.is_active) agent = ovAgent;
+    }
+    if (!agent) {
+      const { data: chRows } = await supabase
+        .from("crm_ai_agent_channels")
+        .select("agent_id, agent:crm_ai_agents(*)")
+        .eq("channel", channel).eq("instance_id", conv.instance_id);
+      const agents = (chRows || []).map((r: any) => r.agent).filter((a: any) => a && a.is_active);
+      if (agents.length === 0) return j({ ok: true, skip: "nenhum agente ativo nesta instância" });
+      agents.sort((a: any, b: any) => (a.created_at < b.created_at ? -1 : 1));
+      agent = agents[0];
+    }
+
+    // 3) Modo: override da conversa > funil do lead (allowlist) > padrão do agente
     const mode = await resolveAgentMode(supabase, agent, conv.lead_id, override);
     if (mode === "off") return j({ ok: true, skip: "modo desligado para este funil" });
 

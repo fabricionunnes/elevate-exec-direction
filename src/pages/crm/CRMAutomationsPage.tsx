@@ -17,6 +17,7 @@ interface Agent {
   id: string; name: string; objective: string | null; greeting: string | null;
   instructions: string | null; tone: string | null; reply_mode: string | null;
   is_active: boolean; can_move_stage: boolean; model: string | null;
+  trigger_keywords: string[] | null; trigger_match_type: string | null; trigger_channels: string[] | null;
 }
 interface Rule {
   id: string; name: string; keywords: string[]; match_type: string; channels: string[];
@@ -41,12 +42,13 @@ export default function CRMAutomationsPage() {
 
   const [agentDialog, setAgentDialog] = useState(false);
   const [editAgent, setEditAgent] = useState<Partial<Agent> | null>(null);
+  const [agentKwText, setAgentKwText] = useState("");
 
   const load = async () => {
     setLoading(true);
     const [r, a, p] = await Promise.all([
       supabase.from("crm_keyword_triggers").select("*").order("priority", { ascending: false }),
-      supabase.from("crm_ai_agents").select("id, name, objective, greeting, instructions, tone, reply_mode, is_active, can_move_stage, model").order("created_at"),
+      supabase.from("crm_ai_agents").select("id, name, objective, greeting, instructions, tone, reply_mode, is_active, can_move_stage, model, trigger_keywords, trigger_match_type, trigger_channels").order("created_at"),
       supabase.from("crm_pipelines").select("id, name").eq("is_active", true).order("sort_order"),
     ]);
     setRules(r.data || []);
@@ -100,10 +102,11 @@ export default function CRMAutomationsPage() {
   };
 
   const openNewAgent = () => {
-    setEditAgent({ name: "", objective: "", greeting: "", instructions: "", tone: "consultivo e direto", reply_mode: "copilot", is_active: false, can_move_stage: false, model: "claude-sonnet-5" });
+    setEditAgent({ name: "", objective: "", greeting: "", instructions: "", tone: "consultivo e direto", reply_mode: "auto", is_active: false, can_move_stage: false, model: "claude-sonnet-5", trigger_match_type: "contains", trigger_channels: ["whatsapp", "instagram"] });
+    setAgentKwText("");
     setAgentDialog(true);
   };
-  const openEditAgent = (a: Agent) => { setEditAgent({ ...a }); setAgentDialog(true); };
+  const openEditAgent = (a: Agent) => { setEditAgent({ ...a }); setAgentKwText((a.trigger_keywords || []).join(", ")); setAgentDialog(true); };
   const saveAgent = async () => {
     if (!editAgent?.name?.trim()) { toast.error("Dê um nome ao agente"); return; }
     setSaving(true);
@@ -111,6 +114,9 @@ export default function CRMAutomationsPage() {
       name: editAgent.name.trim(), objective: editAgent.objective || null, greeting: editAgent.greeting || null,
       instructions: editAgent.instructions || null, tone: editAgent.tone || null, reply_mode: editAgent.reply_mode || "copilot",
       is_active: editAgent.is_active ?? false, can_move_stage: editAgent.can_move_stage ?? false, model: editAgent.model || "claude-sonnet-5",
+      trigger_keywords: agentKwText.split(",").map((k) => k.trim()).filter(Boolean),
+      trigger_match_type: editAgent.trigger_match_type || "contains",
+      trigger_channels: editAgent.trigger_channels || ["whatsapp", "instagram"],
     };
     const { error } = editAgent.id
       ? await supabase.from("crm_ai_agents").update(payload).eq("id", editAgent.id)
@@ -181,6 +187,12 @@ export default function CRMAutomationsPage() {
                     {a.is_active ? <Badge className="text-[10px] bg-emerald-500">ativo</Badge> : <Badge variant="secondary" className="text-[10px]">inativo</Badge>}
                   </div>
                   <p className="text-xs text-muted-foreground line-clamp-2">{a.objective || "Sem objetivo definido"}</p>
+                  {(a.trigger_keywords || []).length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Zap className="h-3 w-3" /></span>
+                      {(a.trigger_keywords || []).slice(0, 6).map((k) => <Badge key={k} variant="secondary" className="text-[10px]">{k}</Badge>)}
+                    </div>
+                  )}
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => openEditAgent(a)}>Configurar</Button>
               </CardContent>
@@ -267,6 +279,23 @@ export default function CRMAutomationsPage() {
           {editAgent && (
             <div className="space-y-3">
               <div><Label>Nome</Label><Input value={editAgent.name || ""} onChange={(e) => setEditAgent({ ...editAgent, name: e.target.value })} placeholder="Ex: Qualificador de tráfego" /></div>
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+                <Label className="flex items-center gap-1.5"><Zap className="h-3.5 w-3.5 text-primary" />Palavras-chave que ativam este agente</Label>
+                <Input value={agentKwText} onChange={(e) => setAgentKwText(e.target.value)} placeholder="crescer, quero, preço (separadas por vírgula)" />
+                <p className="text-[11px] text-muted-foreground">Se a pessoa mandar uma dessas no direct, o agente entra e começa a qualificar. Deixe vazio se este agente não deve ser ativado por palavra-chave.</p>
+                <div className="flex items-center gap-3">
+                  <Select value={editAgent.trigger_match_type || "contains"} onValueChange={(v) => setEditAgent({ ...editAgent, trigger_match_type: v })}>
+                    <SelectTrigger className="h-8 text-xs w-36"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="contains">Contém</SelectItem>
+                      <SelectItem value="starts">Começa com</SelectItem>
+                      <SelectItem value="exact">Exata</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <label className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={(editAgent.trigger_channels || []).includes("whatsapp")} onChange={(e) => setEditAgent({ ...editAgent, trigger_channels: e.target.checked ? [...(editAgent.trigger_channels || []), "whatsapp"] : (editAgent.trigger_channels || []).filter((c) => c !== "whatsapp") })} />WhatsApp</label>
+                  <label className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={(editAgent.trigger_channels || []).includes("instagram")} onChange={(e) => setEditAgent({ ...editAgent, trigger_channels: e.target.checked ? [...(editAgent.trigger_channels || []), "instagram"] : (editAgent.trigger_channels || []).filter((c) => c !== "instagram") })} />Instagram</label>
+                </div>
+              </div>
               <div><Label>Objetivo</Label><Textarea rows={2} value={editAgent.objective || ""} onChange={(e) => setEditAgent({ ...editAgent, objective: e.target.value })} placeholder="O que ele deve alcançar (ex: qualificar por BANT)" /></div>
               <div><Label>Saudação (primeira mensagem)</Label><Textarea rows={2} value={editAgent.greeting || ""} onChange={(e) => setEditAgent({ ...editAgent, greeting: e.target.value })} placeholder="Oi! Que bom seu interesse..." /></div>
               <div><Label>Instruções / o que perguntar</Label><Textarea rows={5} value={editAgent.instructions || ""} onChange={(e) => setEditAgent({ ...editAgent, instructions: e.target.value })} placeholder="Uma pergunta por vez. Descubra necessidade, urgência, orçamento e se é quem decide..." /></div>
