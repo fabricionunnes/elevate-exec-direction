@@ -144,6 +144,45 @@ async function downloadAndStoreMedia(
   }
 }
 
+// Salva mídia que o Stevo JÁ manda embutida no webhook (campo base64) — sem
+// precisar chamar getBase64FromMediaMessage (que dá 404 no servidor atual).
+// Essa é a razão dos áudios ficarem sem media_url: o download por API quebrou,
+// mas o arquivo já vinha no payload o tempo todo.
+async function storeBase64Media(
+  supabase: any,
+  base64Raw: string,
+  messageId: string,
+  mediaType: string,
+  mimetype: string,
+): Promise<string | null> {
+  try {
+    let base64Data = base64Raw;
+    if (base64Data.includes('base64,')) base64Data = base64Data.split('base64,').pop() || '';
+    base64Data = base64Data.replace(/\s/g, '');
+    if (!base64Data) return null;
+    const extMap: Record<string, string> = {
+      'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif',
+      'video/mp4': 'mp4', 'video/3gpp': '3gp',
+      'audio/ogg; codecs=opus': 'ogg', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a',
+      'application/pdf': 'pdf',
+    };
+    const ext = extMap[mimetype] || mimetype.split(';')[0].split('/')[1] || 'bin';
+    const storagePath = `whatsapp/${mediaType}/${messageId}.${ext}`;
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+    const { error: uploadError } = await supabase.storage
+      .from('whatsapp-media')
+      .upload(storagePath, bytes, { contentType: mimetype, upsert: true });
+    if (uploadError) { console.error('storeBase64Media upload error:', uploadError); return null; }
+    const { data: urlData } = supabase.storage.from('whatsapp-media').getPublicUrl(storagePath);
+    return urlData.publicUrl;
+  } catch (e) {
+    console.error('storeBase64Media error:', e);
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -162,15 +201,6 @@ Deno.serve(async (req) => {
     // Manager V2 uses `instanceName` (camelCase); Evolution uses `instance`
     let instanceName = body.instance || body.instanceName;
     let data = body.data;
-
-    // Marcelo forwarder
-    if (instanceName === 'marceloalmeida') {
-      fetch('https://kktocqnwlmmxjzgmnxgs.supabase.co/functions/v1/marcelo-webhook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      }).catch(err => console.error('[evolution-webhook] marcelo forward error:', err));
-    }
 
     // ============ Manager V2 adapter ============
     // Manager V2 sends: Message (inbound), SendMessage (outbound), Receipt (delivery), ReadReceipt
@@ -410,6 +440,7 @@ async function handleIncomingMessage(
   let type = 'text';
   let mediaUrl = null;
   let mediaMimetype = null;
+  let mediaBase64: string | null = null;
 
   // Evolution payload formats vary. Common cases:
   // 1) data.message.message => { conversation | extendedTextMessage | imageMessage | ... }
@@ -417,6 +448,8 @@ async function handleIncomingMessage(
   // 3) data => { message: { ... }, key: { ... } }
   const msgContainer = data?.data?.message || data?.message || message;
   const msg = msgContainer?.message ?? msgContainer;
+  // Stevo (manager_v2) manda o arquivo de mídia embutido no webhook como base64.
+  mediaBase64 = (msg as any)?.base64 || (msgContainer as any)?.base64 || (data as any)?.base64 || (data as any)?.data?.base64 || null;
   
   if (msg) {
     // Text messages - check all possible text fields
@@ -494,25 +527,24 @@ async function handleIncomingMessage(
     return;
   }
 
-  // If this is a media message, download and store in Supabase Storage
+  // If this is a media message, store it in Supabase Storage.
   let storedMediaUrl = mediaUrl;
-  if (mediaUrl && ['image', 'video', 'audio', 'document'].includes(type)) {
-    console.log(`Downloading ${type} media for message ${messageId}...`);
-    const downloadedUrl = await downloadAndStoreMedia(
-      supabase,
-      instanceName,
-      messageId,
-      type,
-      mediaMimetype || 'application/octet-stream',
-      // IMPORTANT: instance can override API URL/key (per-connection credentials)
-      instanceApiUrl,
-      instanceApiKey,
-    );
-    if (downloadedUrl) {
-      storedMediaUrl = downloadedUrl;
-      console.log(`Media stored at: ${storedMediaUrl}`);
-    } else {
-      console.log('Failed to download media, keeping original URL (may expire)');
+  if (['image', 'video', 'audio', 'document'].includes(type)) {
+    if (mediaBase64) {
+      // Caminho principal (Stevo): o arquivo já veio embutido no webhook.
+      console.log(`Storing inline base64 ${type} for message ${messageId}...`);
+      const url = await storeBase64Media(supabase, mediaBase64, messageId, type, mediaMimetype || 'application/octet-stream');
+      if (url) { storedMediaUrl = url; console.log(`Media stored (base64): ${url}`); }
+    } else if (mediaUrl) {
+      // Fallback: baixa pela API (Evolution legado).
+      console.log(`Downloading ${type} media for message ${messageId}...`);
+      const downloadedUrl = await downloadAndStoreMedia(
+        supabase, instanceName, messageId, type,
+        mediaMimetype || 'application/octet-stream',
+        instanceApiUrl, instanceApiKey,
+      );
+      if (downloadedUrl) { storedMediaUrl = downloadedUrl; console.log(`Media stored at: ${storedMediaUrl}`); }
+      else console.log('Failed to download media, keeping original URL (may expire)');
     }
   }
 
