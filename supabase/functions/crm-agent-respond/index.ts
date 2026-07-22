@@ -678,7 +678,20 @@ Deno.serve(async (req) => {
 
     // 7) Prompt + ferramentas
     const tools = buildTools(agent, !!conv.lead_id);
+    // Instagram: dá ao agente busca na web para pesquisar a pessoa/empresa e abordar sob medida.
+    if (isIG) tools.push({ type: "web_search_20250305", name: "web_search", max_uses: 3 } as any);
     const channelLabel = isIG ? "Direct do Instagram" : "WhatsApp";
+
+    // Abordagem 100% personalizada no Instagram (empresário → pela empresa/segmento;
+    // não claro → pergunta se é empresário).
+    const igPersonalization = isIG ? [
+      `\n\nPERFIL DO CONTATO (Instagram): @${conv.contact?.username || "desconhecido"}${conv.contact?.name ? `, nome "${conv.contact.name}"` : ""}.`,
+      `\nABORDAGEM PERSONALIZADA (siga à risca):`,
+      `- Primeiro descubra se a pessoa é EMPRESÁRIA / dona de negócio. Use o @, o nome e o que ela escrever. Se precisar de mais contexto, use a ferramenta web_search pesquisando o @ ou o nome dela para identificar a empresa e o segmento.`,
+      `- Se ficar claro que tem empresa: comente algo ESPECÍFICO e verdadeiro sobre o negócio/segmento dela e conecte com o que oferecemos — nada genérico, nada de "vi que você tem uma empresa".`,
+      `- Se NÃO estiver claro que é empresária: diga de forma leve e humana que você busca se conectar com empresários, e PERGUNTE diretamente se ela é dona de empresa. Conduza conforme a resposta.`,
+      `- NUNCA invente dados da empresa. Se a busca não trouxer nada concreto e verdadeiro, não afirme — pergunte.`,
+    ].join("") : "";
     const system = [
       agent.instructions || "Você é um atendente comercial.",
       agent.objective ? `\nOBJETIVO: ${agent.objective}` : "",
@@ -687,6 +700,7 @@ Deno.serve(async (req) => {
       `\n\nData/hora atual (Brasília): ${nowBR}.`,
       tools.length ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou.` : "",
       confirmedTimeHint,
+      igPersonalization,
       `\n\nVocê está respondendo uma conversa de ${channelLabel} com ${leadName}. Responda como mensagem: curta, humana, sem markdown, sem títulos, uma ideia por mensagem. NUNCA repita uma pergunta que o lead já respondeu — antes de perguntar, confira o histórico. Escreva a resposta UMA única vez, sem repetir o texto. Nunca revele que é uma IA. Se não souber algo, seja honesto e ofereça encaminhar para uma pessoa.`,
     ].join("");
 
@@ -727,6 +741,13 @@ Deno.serve(async (req) => {
       }
       const aiData = await aiResp.json();
       const content = Array.isArray(aiData?.content) ? aiData.content : [];
+
+      // Busca na web (server tool): o modelo pausa entre rodadas — devolve o
+      // conteúdo acumulado e continua até concluir.
+      if (aiData.stop_reason === "pause_turn") {
+        apiMessages.push({ role: "assistant", content });
+        continue;
+      }
 
       if (aiData.stop_reason === "tool_use") {
         // executa cada tool e devolve resultado
