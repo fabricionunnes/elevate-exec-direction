@@ -509,6 +509,18 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
   const [expanded, setExpanded] = useState(false)
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const [bgPanelOpen, setBgPanelOpen] = useState(false)
+  // Chat dentro da reunião
+  const chatMessages = useTeamStore((s) => s.chatMessages)
+  const [meetChatOpen, setMeetChatOpen] = useState(false)
+  const [meetChatText, setMeetChatText] = useState('')
+  const meetChatEndRef = useRef<HTMLDivElement>(null)
+  useEffect(() => { if (meetChatOpen) meetChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatMessages, meetChatOpen])
+  const sendMeetChat = () => {
+    const t = meetChatText.trim()
+    if (!t) return
+    void realtime.sendChat(t)
+    setMeetChatText('')
+  }
   const [bgKind, setBgKind] = useState(() => callManager.getCameraBackground().kind)
   // Área útil do palco do modo reunião (descontando header + dock + margens)
   const [stageSize, setStageSize] = useState({ w: 1200, h: 600 })
@@ -523,12 +535,6 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
   useEffect(() => {
     if (!expanded && focusedId) setFocusedId(null)
   }, [expanded, focusedId])
-
-  // Espelha o modo reunião no store: com o overlay aberto, o 3D congela (perf)
-  useEffect(() => {
-    useTeamStore.getState().setMeetingExpanded(expanded)
-    return () => useTeamStore.getState().setMeetingExpanded(false)
-  }, [expanded])
 
   // Pré-carrega o modelo de segmentação quando a câmera liga (1ª troca de fundo rápida)
   useEffect(() => {
@@ -911,21 +917,74 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
                 {meetingPeers.length + 1} participantes
               </span>
             </div>
-            <button
-              onClick={() => setExpanded(false)}
-              style={{
-                background: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                color: '#fff',
-                borderRadius: '8px',
-                padding: '6px 12px',
-                fontSize: '12px',
-                cursor: 'pointer',
-              }}
-            >
-              Voltar ao escritório (Esc)
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => setMeetChatOpen((v) => !v)}
+                style={{
+                  background: meetChatOpen ? 'rgba(255,215,0,0.18)' : 'rgba(255,255,255,0.1)',
+                  border: `1px solid ${meetChatOpen ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.2)'}`,
+                  color: '#fff', borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                }}
+              >
+                💬 Chat
+                {!meetChatOpen && chatMessages.length > 0 && (
+                  <span style={{ background: '#CC1B1B', color: '#fff', borderRadius: '999px', fontSize: '10px', padding: '0 6px', fontWeight: 700 }}>{chatMessages.length}</span>
+                )}
+              </button>
+              <button
+                onClick={() => setExpanded(false)}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  color: '#fff',
+                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                }}
+              >
+                Voltar ao escritório (Esc)
+              </button>
+            </div>
           </div>
+
+          {meetChatOpen && (
+            <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: '340px', maxWidth: '90vw', zIndex: 106, background: 'rgba(18,20,28,0.98)', borderLeft: '1px solid rgba(255,255,255,0.12)', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#fff', fontWeight: 700, fontSize: '14px' }}>Chat da reunião</span>
+                <button onClick={() => setMeetChatOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', fontSize: '18px', cursor: 'pointer' }}>✕</button>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {chatMessages.length === 0 && (
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', textAlign: 'center', marginTop: '20px' }}>Nenhuma mensagem ainda. Fale com a sala.</p>
+                )}
+                {chatMessages.map((msg) => {
+                  const isMine = msg.userId === me?.id
+                  return (
+                    <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
+                      <div style={{ maxWidth: '85%', padding: '8px 12px', borderRadius: isMine ? '12px 12px 4px 12px' : '12px 12px 12px 4px', background: isMine ? 'rgba(255,215,0,0.14)' : 'rgba(255,255,255,0.06)', border: `1px solid ${isMine ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.1)'}`, fontSize: '13px', lineHeight: 1.45, color: '#f0f0f0' }}>
+                        {!isMine && <div style={{ fontSize: '11px', fontWeight: 700, color: msg.color, marginBottom: '3px' }}>{msg.name}</div>}
+                        <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.content}</div>
+                        <div style={{ fontSize: '9.5px', color: 'rgba(255,255,255,0.3)', marginTop: '3px', textAlign: 'right' }}>{new Date(msg.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                      </div>
+                    </div>
+                  )
+                })}
+                <div ref={meetChatEndRef} />
+              </div>
+              <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: '8px' }}>
+                <input
+                  value={meetChatText}
+                  onChange={(e) => setMeetChatText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); sendMeetChat() } }}
+                  placeholder="Mensagem…"
+                  style={{ flex: 1, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', padding: '9px 12px', color: '#fff', fontSize: '13px', outline: 'none' }}
+                />
+                <button onClick={sendMeetChat} style={{ background: '#CC1B1B', border: 'none', color: '#fff', borderRadius: '8px', padding: '0 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Enviar</button>
+              </div>
+            </div>
+          )}
           {(() => {
             // Lista unificada de participantes (eu + audíveis)
             const participants = [
