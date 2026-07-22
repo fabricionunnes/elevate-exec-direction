@@ -43,6 +43,7 @@ interface StageAction {
   activity_title: string;
   activity_description: string | null;
   days_offset: number;
+  offset_unit: string;
   is_required: boolean;
   sort_order: number;
   action_mode: string;
@@ -105,6 +106,7 @@ export function StageActionsDialog({
   const [newActionTitle, setNewActionTitle] = useState("");
   const [newActionDescription, setNewActionDescription] = useState("");
   const [newActionDaysOffset, setNewActionDaysOffset] = useState(0);
+  const [newActionOffsetUnit, setNewActionOffsetUnit] = useState("days");
   const [newActionRequired, setNewActionRequired] = useState(true);
   const [newWhatsappTemplate, setNewWhatsappTemplate] = useState("");
   const [newMeetingStaffId, setNewMeetingStaffId] = useState<string>("");
@@ -186,6 +188,7 @@ export function StageActionsDialog({
           activity_title: newActionTitle,
           activity_description: newActionDescription || null,
           days_offset: newActionDaysOffset,
+          offset_unit: newActionOffsetUnit,
           is_required: newActionRequired,
           sort_order: maxOrder,
           action_mode: newActionMode,
@@ -245,6 +248,7 @@ export function StageActionsDialog({
     setNewActionTitle("");
     setNewActionDescription("");
     setNewActionDaysOffset(0);
+    setNewActionOffsetUnit("days");
     setNewActionRequired(true);
     setNewWhatsappTemplate("");
     setNewMeetingStaffId("");
@@ -345,7 +349,8 @@ export function StageActionsDialog({
                           )}
                           {action.days_offset !== 0 && (
                             <p className="text-xs text-muted-foreground">
-                              Prazo: {action.days_offset > 0 ? `+${action.days_offset}` : action.days_offset} dia(s)
+                              Prazo: {action.days_offset > 0 ? `+${action.days_offset}` : action.days_offset}{" "}
+                              {(action.offset_unit === "minutes" ? "min" : action.offset_unit === "hours" ? "hora(s)" : "dia(s)")}
                             </p>
                           )}
                         </div>
@@ -431,13 +436,24 @@ export function StageActionsDialog({
                       </Select>
                     </div>
                     <div>
-                      <Label>Prazo (dias)</Label>
-                      <Input
-                        type="number"
-                        value={newActionDaysOffset}
-                        onChange={(e) => setNewActionDaysOffset(parseInt(e.target.value) || 0)}
-                        placeholder="0 = mesmo dia"
-                      />
+                      <Label>Prazo</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          className="flex-1"
+                          value={newActionDaysOffset}
+                          onChange={(e) => setNewActionDaysOffset(parseInt(e.target.value) || 0)}
+                          placeholder="0 = imediato"
+                        />
+                        <Select value={newActionOffsetUnit} onValueChange={setNewActionOffsetUnit}>
+                          <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="minutes">Minutos</SelectItem>
+                            <SelectItem value="hours">Horas</SelectItem>
+                            <SelectItem value="days">Dias</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
                   

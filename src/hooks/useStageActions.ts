@@ -9,6 +9,7 @@ interface StageAction {
   activity_title: string;
   activity_description: string | null;
   days_offset: number;
+  offset_unit?: string;
   is_required: boolean;
   sort_order: number;
   action_mode: string;
@@ -39,10 +40,10 @@ export async function createStageActivities(
       return; // No actions configured for this stage
     }
 
-    // Fetch lead info (nome + donos) para notificação e definição de responsável
+    // Fetch lead info for notification
     const { data: leadData } = await supabase
       .from("crm_leads")
-      .select("name, owner_staff_id, closer_staff_id, sdr_staff_id")
+      .select("name")
       .eq("id", leadId)
       .single();
 
@@ -53,46 +54,21 @@ export async function createStageActivities(
       .eq("id", stageId)
       .single();
 
-    // Responsável NUNCA pode ficar nulo: quem moveu > dono do lead > closer > sdr
-    // > usuário logado. Antes ficava `staffId || null` e, como nenhum chamador
-    // passava staffId, TODA tarefa de etapa nascia sem responsável.
-    let responsibleId: string | null =
-      staffId ||
-      leadData?.owner_staff_id ||
-      leadData?.closer_staff_id ||
-      leadData?.sdr_staff_id ||
-      null;
-    if (!responsibleId) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: me } = await supabase
-          .from("onboarding_staff").select("id").eq("user_id", user.id).maybeSingle();
-        responsibleId = me?.id || null;
-      }
-    }
-
-    // Idempotência: não recriar ação que já existe pendente para o lead (mesmo
-    // título). Sem isso, mover/re-renderizar o card criava dezenas de cópias.
-    const actionTitles = actions.map((a: StageAction) => a.activity_title);
-    const { data: existingRows } = await supabase
-      .from("crm_activities")
-      .select("title")
-      .eq("lead_id", leadId)
-      .eq("status", "pending")
-      .in("title", actionTitles);
-    const existingTitles = new Set((existingRows || []).map((r: { title: string }) => r.title));
-    const pendingActions = actions.filter((a: StageAction) => !existingTitles.has(a.activity_title));
-    if (pendingActions.length === 0) {
-      return; // tudo que essa etapa criaria já existe pendente
-    }
-
     // Create activities for each action - using business days to avoid weekends/holidays
-    const activities = pendingActions.map((action: StageAction) => {
+    const activities = actions.map((action: StageAction) => {
       let scheduledAt: string;
+      const unit = action.offset_unit || "days";
       if (action.days_offset && action.days_offset > 0) {
-        scheduledAt = addBusinessDays(new Date(), action.days_offset).toISOString();
+        if (unit === "minutes") {
+          scheduledAt = new Date(Date.now() + action.days_offset * 60 * 1000).toISOString();
+        } else if (unit === "hours") {
+          scheduledAt = new Date(Date.now() + action.days_offset * 60 * 60 * 1000).toISOString();
+        } else {
+          // dias: mantém dias úteis (pula fim de semana/feriado)
+          scheduledAt = addBusinessDays(new Date(), action.days_offset).toISOString();
+        }
       } else {
-        // Ensure today is also a business day
+        // 0 = imediato/mesmo dia (garante dia útil)
         scheduledAt = ensureBusinessDay(new Date()).toISOString();
       }
 
@@ -126,8 +102,8 @@ export async function createStageActivities(
         description: action.activity_description,
         scheduled_at: scheduledAt,
         status: "pending",
-        responsible_staff_id: responsibleId,
-        created_by: staffId || responsibleId,
+        responsible_staff_id: staffId || null,
+        created_by: staffId || null,
         is_automation: isAutomation,
         automation_config: automationConfig,
       };
@@ -143,10 +119,10 @@ export async function createStageActivities(
     }
 
     // Send WhatsApp notifications for each activity to the responsible staff
-    if (responsibleId && leadData) {
+    if (staffId && leadData) {
       for (const activity of activities) {
         notifyCrmActivityViaWhatsApp({
-          staffId: activity.responsible_staff_id || responsibleId,
+          staffId: activity.responsible_staff_id || staffId,
           leadId,
           leadName: leadData.name || "Lead",
           activityTitle: activity.title,
@@ -157,14 +133,14 @@ export async function createStageActivities(
     }
 
     // Create notification for the responsible staff member
-    if (responsibleId && leadData && stageData) {
-      const activityCount = pendingActions.length;
+    if (staffId && leadData && stageData) {
+      const activityCount = actions.length;
       const activityWord = activityCount === 1 ? "atividade foi criada" : "atividades foram criadas";
-
+      
       const { error: notificationError } = await supabase
         .from("onboarding_notifications")
         .insert({
-          staff_id: responsibleId,
+          staff_id: staffId,
           type: "crm_stage_activity",
           title: "Novas atividades do CRM",
           message: `${activityCount} ${activityWord} para o lead "${leadData.name}" na etapa "${stageData.name}".`,
