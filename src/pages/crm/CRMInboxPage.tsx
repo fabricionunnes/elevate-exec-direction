@@ -149,8 +149,9 @@ export const CRMInboxPage = () => {
     // Channel filter
     if (channelFilter !== "all" && conv.channel !== channelFilter) return false;
 
-    // Master has access to all
-    if (staffRole === "master") return true;
+    // NÃO dá bypass total pro master: a visibilidade do Atendimento (show_in_inbox)
+    // vale pra todos, inclusive master. Instância com "Atendimento" desligado não
+    // aparece — nem pro master. As instâncias visíveis já estão em allowedInstanceIds.
     // If still loading access, don't filter yet - will re-render when loaded
     if (loadingAccess) return false;
 
@@ -168,7 +169,7 @@ export const CRMInboxPage = () => {
     // Orphan conversations (no instance_id and no official_instance_id):
     // only admin/master can see them — regular staff must NOT see unassigned conversations
     if (!conv.instance_id && !conv.official_instance_id) {
-      return staffRole === "admin";
+      return staffRole === "admin" || staffRole === "master";
     }
     
     // Check if user has access to this Evolution instance
