@@ -57,7 +57,6 @@ import {
   ChevronLeft,
   Info,
   Instagram,
-  Bot,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -78,14 +77,19 @@ import { ReceiptAnalysisButton } from "@/components/crm/inbox/ReceiptAnalysisBut
 import { useCompanyIdentification } from "@/hooks/useCompanyIdentification";
 import { useIsMobile } from "@/hooks/use-mobile";
 
+// Cor estável por remetente (estilo WhatsApp em grupos) — mesmo nome, mesma cor.
+function senderColor(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+  return `hsl(${h}, 62%, 45%)`;
+}
+
 export const CRMInboxPage = () => {
   const [searchParams] = useSearchParams();
   const conversationIdFromUrl = searchParams.get("conversation");
   const { staffId, staffName, isAdmin, staffRole } = useCRMContext();
   const [selectedConversation, setSelectedConversation] = useState<WhatsAppConversation | null>(null);
   const [newMessage, setNewMessage] = useState("");
-  // Sugestão pendente do agente (modo copiloto): card acima do composer
-  const [aiSuggestion, setAiSuggestion] = useState<{ id: string; content: string; agent: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram">("all");
@@ -145,11 +149,10 @@ export const CRMInboxPage = () => {
     // Channel filter
     if (channelFilter !== "all" && conv.channel !== channelFilter) return false;
 
-    // Master também respeita a visibilidade global (Dispositivos > coluna Atendimento):
-    // pra ele, as listas allowed* já vêm preenchidas com TODAS as instâncias visíveis,
-    // então NÃO pode haver return true antecipado aqui — senão o filtro nunca roda.
-    // Enquanto carrega o acesso, master vê tudo (evita piscada); os demais, nada.
-    if (loadingAccess) return staffRole === "master";
+    // Master has access to all
+    if (staffRole === "master") return true;
+    // If still loading access, don't filter yet - will re-render when loaded
+    if (loadingAccess) return false;
 
     // Instagram conversations - check IG instance access
     if (conv.channel === "instagram") {
@@ -165,7 +168,7 @@ export const CRMInboxPage = () => {
     // Orphan conversations (no instance_id and no official_instance_id):
     // only admin/master can see them — regular staff must NOT see unassigned conversations
     if (!conv.instance_id && !conv.official_instance_id) {
-      return staffRole === "admin" || staffRole === "master";
+      return staffRole === "admin";
     }
     
     // Check if user has access to this Evolution instance
@@ -364,39 +367,6 @@ export const CRMInboxPage = () => {
     }
   }, [conversationIdFromUrl, conversations, selectedConversation, loadingConversations]);
 
-  // Busca sugestão pendente do agente pra conversa aberta (+ realtime)
-  useEffect(() => {
-    let active = true;
-    setAiSuggestion(null);
-    const convId = selectedConversation?.id;
-    if (!convId) return;
-    const channelName = selectedConversation?.channel === "instagram" ? "instagram" : "whatsapp";
-    const fetchSuggestion = async () => {
-      const { data } = await (supabase as any)
-        .from("crm_ai_suggested_replies")
-        .select("id, content, agent:crm_ai_agents(name)")
-        .eq("conversation_id", convId)
-        .eq("channel", channelName)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false })
-        .limit(1).maybeSingle();
-      if (active) setAiSuggestion(data ? { id: data.id, content: data.content, agent: data.agent?.name || "Agente IA" } : null);
-    };
-    fetchSuggestion();
-    const rt = supabase
-      .channel(`ai-suggestions-${convId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "crm_ai_suggested_replies", filter: `conversation_id=eq.${convId}` }, fetchSuggestion)
-      .subscribe();
-    return () => { active = false; supabase.removeChannel(rt); };
-  }, [selectedConversation?.id, selectedConversation?.channel]);
-
-  const resolveSuggestion = async (id: string, status: "used" | "dismissed") => {
-    setAiSuggestion(null);
-    await (supabase as any).from("crm_ai_suggested_replies")
-      .update({ status, acted_at: new Date().toISOString(), acted_by: staffId })
-      .eq("id", id);
-  };
-
   // Mark as read when selecting conversation
   useEffect(() => {
     if (selectedConversation && selectedConversation.unread_count > 0) {
@@ -431,11 +401,10 @@ export const CRMInboxPage = () => {
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || sending) return;
     
-    const isInstagram = selectedConversation.channel === "instagram";
     const isOfficialAPI = !!selectedConversation.official_instance_id && !selectedConversation.instance_id;
     const isEvolutionAPI = !!selectedConversation.instance_id;
     
-    if (!isInstagram && !isOfficialAPI && !isEvolutionAPI) {
+    if (!isOfficialAPI && !isEvolutionAPI) {
       toast.error("Conversa sem dispositivo associado");
       return;
     }
@@ -444,29 +413,7 @@ export const CRMInboxPage = () => {
     setNewMessage(""); // Clear immediately for better UX
 
     try {
-      if (isInstagram) {
-        // DM do Instagram via edge instagram-send (Send API da Meta, janela de 24h)
-        const { data, error } = await supabase.functions.invoke("instagram-send", {
-          body: {
-            conversationId: selectedConversation.id,
-            message: messageToSend,
-            staffId,
-          },
-        });
-        if (error) {
-          let msg = error.message;
-          try {
-            const body = await (error as any).context?.json?.();
-            if (body?.error) msg = body.error;
-          } catch { /* mantém a mensagem genérica */ }
-          throw new Error(msg);
-        }
-        if (data?.error) throw new Error(data.error);
-
-        await refetchMessages();
-        scrollToBottom();
-        toast.success("Mensagem enviada!");
-      } else if (isOfficialAPI) {
+      if (isOfficialAPI) {
         // Send via Official WhatsApp API
         const { data, error } = await supabase.functions.invoke('whatsapp-official-api', {
           body: {
@@ -526,11 +473,6 @@ export const CRMInboxPage = () => {
   const handleSendMedia = async (file: File, type: "image" | "video" | "audio" | "document") => {
     if (!selectedConversation) return;
     
-    if (selectedConversation.channel === "instagram") {
-      toast.error("Envio de mídia pelo Instagram ainda não é suportado — só texto");
-      return;
-    }
-
     const isOfficialAPI = !!selectedConversation.official_instance_id && !selectedConversation.instance_id;
     const isEvolutionAPI = !!selectedConversation.instance_id;
     
@@ -631,9 +573,6 @@ export const CRMInboxPage = () => {
     // Deal filters
     if (filters.hasDeal === "with" && !conv.lead_id) return false;
     if (filters.hasDeal === "without" && conv.lead_id) return false;
-    // Filtro por funil (origem) e etapa do negócio vinculado à conversa — múltipla seleção
-    if (filters.dealOrigin.length && !filters.dealOrigin.includes(conv.lead?.origin_id ?? "")) return false;
-    if (filters.dealStage.length && !filters.dealStage.includes(conv.lead?.stage_id ?? "")) return false;
 
     // Date filter
     if (filters.createdAt) {
@@ -1014,6 +953,12 @@ export const CRMInboxPage = () => {
                           : "bg-card border border-border"
                       )}
                     >
+                      {/* Grupo de WhatsApp: mostra quem enviou a mensagem */}
+                      {message.direction === "inbound" && message.sender_name && (
+                        <p className="text-xs font-semibold mb-1" style={{ color: senderColor(message.sender_name) }}>
+                          {message.sender_name}
+                        </p>
+                      )}
                       {/* Render media content based on message type */}
                       {message.type === "image" && message.media_url ? (
                         <div className="space-y-2">
@@ -1102,30 +1047,6 @@ export const CRMInboxPage = () => {
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
-
-          {/* Sugestão do agente (copiloto) */}
-          {aiSuggestion && (
-            <div className="border-t border-border bg-primary/5 px-3 py-2.5">
-              <div className="max-w-3xl mx-auto">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Bot className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-[11px] font-medium text-primary">Sugestão · {aiSuggestion.agent}</span>
-                </div>
-                <p className="text-sm whitespace-pre-wrap mb-2">{aiSuggestion.content}</p>
-                <div className="flex gap-2">
-                  <Button size="sm" className="h-7 text-xs" onClick={() => {
-                    setNewMessage(aiSuggestion.content);
-                    resolveSuggestion(aiSuggestion.id, "used");
-                  }}>
-                    Usar sugestão
-                  </Button>
-                  <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => resolveSuggestion(aiSuggestion.id, "dismissed")}>
-                    Descartar
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Message Input */}
           <div className="border-t border-border p-2 sm:p-3 bg-card">
