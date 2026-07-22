@@ -246,9 +246,11 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       const allowedCloserRoles = new Set(["closer"]);
       const filteredCloserStaff = (allActiveStaff || []).filter(staff => {
         const role = String((staff as any).role ?? "").toLowerCase();
-        if (role === "head_comercial") return false;
-        // Flag manual "closer no CRM" entra direto; senão precisa do role + acesso ao CRM.
-        return (staff as any).is_crm_closer || (crmStaffIds.has(staff.id) && allowedCloserRoles.has(role));
+        // Base SEMPRE-visível = closer de verdade (role "closer"). Admin/master/SDR
+        // — mesmo com a flag is_crm_closer — NÃO entram só pela flag: aparecem apenas
+        // se tiverem venda no período (expansão abaixo). Isso mantém o closer no card
+        // mesmo zerado e tira quem não é closer e não vendeu.
+        return allowedCloserRoles.has(role);
       });
       // Base list (closers/head_comercial). Será expandido abaixo com qualquer staff
       // que tenha tido agendamento/realização de reunião ou venda no período,
@@ -320,7 +322,8 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       (salesData || []).forEach((s: any) => {
         const sid = s.closer_staff_id;
         if (!sid || expandedCloserMap.has(sid)) return;
-        if (excludedRolesFromClosers.has(staffRoleMap.get(sid) || "")) return;
+        // QUEM TEM VENDA APARECE — inclusive SDR (ex: Natalia). Sem exclusão de role
+        // aqui: a exclusão de SDR vale só pra expansão por reunião, não por venda.
         const staffInfo = allStaffMap.get(sid) || (s.closer ? { id: sid, name: s.closer.name } : null);
         if (staffInfo) expandedCloserMap.set(sid, staffInfo);
       });
