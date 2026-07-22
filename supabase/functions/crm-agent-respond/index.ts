@@ -324,6 +324,45 @@ Deno.serve(async (req) => {
       return j({ ok: true, tool: body0.tool, result });
     }
 
+    // ---------- Gatilho por ETAPA: ativa o agente e manda a saudação ao lead entrar na etapa ----------
+    if (body0.action === "stage_trigger") {
+      const { agent_id, lead_id } = body0;
+      const { data: ag } = await supabase.from("crm_ai_agents").select("*").eq("id", agent_id).maybeSingle();
+      if (!ag || !ag.is_active) return j({ ok: true, skip: "agente inativo" });
+      const [{ data: waConvs }, { data: igConvs }] = await Promise.all([
+        supabase.from("crm_whatsapp_conversations").select("id, instance_id, contact:crm_whatsapp_contacts(phone)").eq("lead_id", lead_id),
+        supabase.from("instagram_conversations").select("id").eq("lead_id", lead_id),
+      ]);
+      const targets: any[] = [
+        ...(waConvs || []).map((c: any) => ({ channel: "whatsapp", conv: c })),
+        ...(igConvs || []).map((c: any) => ({ channel: "instagram", conv: c })),
+      ];
+      let greeted = 0;
+      for (const t of targets) {
+        const { data: prev } = await supabase.from("crm_keyword_trigger_logs")
+          .select("id").eq("agent_id", agent_id).eq("conversation_id", t.conv.id).eq("source", "stage").limit(1).maybeSingle();
+        if (prev) continue;
+        await supabase.from("crm_ai_agent_conversation_overrides").upsert({
+          agent_id, conversation_id: t.conv.id, channel: t.channel, enabled: true, reply_mode: "auto",
+        }, { onConflict: "conversation_id,channel" });
+        const greeting = String(ag.greeting || "").trim();
+        if (greeting && !body0.dry_run) {
+          if (t.channel === "instagram") {
+            await supabase.functions.invoke("instagram-send", { body: { conversationId: t.conv.id, message: greeting, staffId: null } });
+          } else {
+            const ph = String(t.conv.contact?.phone || "").replace(/\D/g, "");
+            const sent = await sendWhatsAppText(supabase, t.conv.instance_id, ph, greeting);
+            if (sent.ok) await supabase.from("crm_whatsapp_conversations").update({ last_message: greeting.substring(0, 255), last_message_at: new Date().toISOString() }).eq("id", t.conv.id);
+          }
+        }
+        await supabase.from("crm_keyword_trigger_logs").insert({
+          agent_id, conversation_id: t.conv.id, channel: t.channel, source: "stage", matched_keyword: greeting ? "(saudação)" : "(ativado)",
+        });
+        greeted++;
+      }
+      return j({ ok: true, greeted });
+    }
+
     // ---------- Follow-up automático (cron): reativa leads que pararam de responder ----------
     if (body0.action === "followups") {
       const results: string[] = [];

@@ -33,8 +33,15 @@ export default function CRMAutomationsPage() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
+  const [waInstances, setWaInstances] = useState<{ id: string; label: string }[]>([]);
+  const [igInstances, setIgInstances] = useState<{ id: string; label: string }[]>([]);
+  const [stages, setStages] = useState<{ id: string; name: string; pipeline_id: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // Vínculos do agente em edição
+  const [agChannels, setAgChannels] = useState<Set<string>>(new Set()); // "whatsapp:instId" | "instagram:instId"
+  const [agPipelines, setAgPipelines] = useState<Record<string, string>>({}); // pipeline_id -> mode
+  const [agStages, setAgStages] = useState<Set<string>>(new Set());
 
   const [ruleDialog, setRuleDialog] = useState(false);
   const [editRule, setEditRule] = useState<Partial<Rule> | null>(null);
@@ -54,6 +61,14 @@ export default function CRMAutomationsPage() {
     setRules(r.data || []);
     setAgents(a.data || []);
     setPipelines(p.data || []);
+    const [wa, ig, st] = await Promise.all([
+      supabase.from("whatsapp_instances").select("id, display_name, instance_name").order("display_name"),
+      supabase.from("instagram_instances").select("id, instagram_username, instance_name"),
+      supabase.from("crm_stages").select("id, name, pipeline_id").order("sort_order"),
+    ]);
+    setWaInstances((wa.data || []).map((x: any) => ({ id: x.id, label: x.display_name || x.instance_name })));
+    setIgInstances((ig.data || []).map((x: any) => ({ id: x.id, label: x.instagram_username || x.instance_name || "Instagram" })));
+    setStages(st.data || []);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -104,9 +119,23 @@ export default function CRMAutomationsPage() {
   const openNewAgent = () => {
     setEditAgent({ name: "", objective: "", greeting: "", instructions: "", tone: "consultivo e direto", reply_mode: "auto", is_active: false, can_move_stage: false, model: "claude-sonnet-5", trigger_match_type: "contains", trigger_channels: ["whatsapp", "instagram"] });
     setAgentKwText("");
+    setAgChannels(new Set()); setAgPipelines({}); setAgStages(new Set());
     setAgentDialog(true);
   };
-  const openEditAgent = (a: Agent) => { setEditAgent({ ...a }); setAgentKwText((a.trigger_keywords || []).join(", ")); setAgentDialog(true); };
+  const openEditAgent = async (a: Agent) => {
+    setEditAgent({ ...a });
+    setAgentKwText((a.trigger_keywords || []).join(", "));
+    setAgStages(new Set((a as any).trigger_stage_ids || []));
+    setAgentDialog(true);
+    const [ch, pp] = await Promise.all([
+      supabase.from("crm_ai_agent_channels").select("channel, instance_id").eq("agent_id", a.id),
+      supabase.from("crm_ai_agent_pipelines").select("pipeline_id, reply_mode").eq("agent_id", a.id),
+    ]);
+    setAgChannels(new Set((ch.data || []).map((x: any) => `${x.channel}:${x.instance_id}`)));
+    const pm: Record<string, string> = {};
+    (pp.data || []).forEach((x: any) => { pm[x.pipeline_id] = x.reply_mode || "auto"; });
+    setAgPipelines(pm);
+  };
   const saveAgent = async () => {
     if (!editAgent?.name?.trim()) { toast.error("Dê um nome ao agente"); return; }
     setSaving(true);
@@ -117,12 +146,25 @@ export default function CRMAutomationsPage() {
       trigger_keywords: agentKwText.split(",").map((k) => k.trim()).filter(Boolean),
       trigger_match_type: editAgent.trigger_match_type || "contains",
       trigger_channels: editAgent.trigger_channels || ["whatsapp", "instagram"],
+      trigger_stage_ids: Array.from(agStages),
     };
-    const { error } = editAgent.id
-      ? await supabase.from("crm_ai_agents").update(payload).eq("id", editAgent.id)
-      : await supabase.from("crm_ai_agents").insert(payload);
+    let agentId = editAgent.id;
+    if (agentId) {
+      const { error } = await supabase.from("crm_ai_agents").update(payload).eq("id", agentId);
+      if (error) { setSaving(false); toast.error(error.message); return; }
+    } else {
+      const { data, error } = await supabase.from("crm_ai_agents").insert(payload).select("id").single();
+      if (error) { setSaving(false); toast.error(error.message); return; }
+      agentId = data.id;
+    }
+    // Sincroniza canais e funis (substitui os vínculos)
+    await supabase.from("crm_ai_agent_channels").delete().eq("agent_id", agentId);
+    const chRows = Array.from(agChannels).map((k) => { const [channel, instance_id] = k.split(":"); return { agent_id: agentId, channel, instance_id }; });
+    if (chRows.length) await supabase.from("crm_ai_agent_channels").insert(chRows);
+    await supabase.from("crm_ai_agent_pipelines").delete().eq("agent_id", agentId);
+    const ppRows = Object.entries(agPipelines).filter(([, mode]) => mode && mode !== "off").map(([pipeline_id, reply_mode]) => ({ agent_id: agentId, pipeline_id, reply_mode }));
+    if (ppRows.length) await supabase.from("crm_ai_agent_pipelines").insert(ppRows);
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
     toast.success("Agente salvo");
     setAgentDialog(false); load();
   };
@@ -296,6 +338,66 @@ export default function CRMAutomationsPage() {
                   <label className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={(editAgent.trigger_channels || []).includes("instagram")} onChange={(e) => setEditAgent({ ...editAgent, trigger_channels: e.target.checked ? [...(editAgent.trigger_channels || []), "instagram"] : (editAgent.trigger_channels || []).filter((c) => c !== "instagram") })} />Instagram</label>
                 </div>
               </div>
+              {/* Canais onde o agente atende */}
+              <div className="rounded-md border p-3 space-y-2">
+                <Label className="flex items-center gap-1.5"><MessageSquare className="h-3.5 w-3.5" />Canais onde este agente atende</Label>
+                {waInstances.length > 0 && <p className="text-[11px] text-muted-foreground">WhatsApp</p>}
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {waInstances.map((i) => {
+                    const key = `whatsapp:${i.id}`;
+                    return <label key={key} className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={agChannels.has(key)} onChange={(e) => { const s = new Set(agChannels); e.target.checked ? s.add(key) : s.delete(key); setAgChannels(s); }} />{i.label}</label>;
+                  })}
+                </div>
+                {igInstances.length > 0 && <p className="text-[11px] text-muted-foreground mt-1">Instagram</p>}
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {igInstances.map((i) => {
+                    const key = `instagram:${i.id}`;
+                    return <label key={key} className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={agChannels.has(key)} onChange={(e) => { const s = new Set(agChannels); e.target.checked ? s.add(key) : s.delete(key); setAgChannels(s); }} />{i.label}</label>;
+                  })}
+                </div>
+              </div>
+
+              {/* Funis onde o agente age (allowlist + modo) */}
+              <div className="rounded-md border p-3 space-y-2">
+                <Label>Acionar por funil</Label>
+                <p className="text-[11px] text-muted-foreground">Defina o modo por funil. Desligado = não age naquele funil.</p>
+                {pipelines.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between gap-2">
+                    <span className="text-sm">{p.name}</span>
+                    <Select value={agPipelines[p.id] || "off"} onValueChange={(v) => { const m = { ...agPipelines }; if (v === "off") delete m[p.id]; else m[p.id] = v; setAgPipelines(m); }}>
+                      <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="off">Desligado</SelectItem>
+                        <SelectItem value="copilot">Copiloto</SelectItem>
+                        <SelectItem value="auto">Automático</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+
+              {/* Etapas que ativam o agente */}
+              <div className="rounded-md border p-3 space-y-2">
+                <Label>Acionar por etapa do funil</Label>
+                <p className="text-[11px] text-muted-foreground">Quando o lead entra numa dessas etapas, o agente entra na conversa. Deixe vazio pra não usar.</p>
+                <div className="max-h-40 overflow-y-auto space-y-2">
+                  {pipelines.map((p) => {
+                    const ps = stages.filter((s) => s.pipeline_id === p.id);
+                    if (ps.length === 0) return null;
+                    return (
+                      <div key={p.id}>
+                        <p className="text-[11px] font-medium text-muted-foreground">{p.name}</p>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1">
+                          {ps.map((s) => (
+                            <label key={s.id} className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={agStages.has(s.id)} onChange={(e) => { const set = new Set(agStages); e.target.checked ? set.add(s.id) : set.delete(s.id); setAgStages(set); }} />{s.name}</label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div><Label>Objetivo</Label><Textarea rows={2} value={editAgent.objective || ""} onChange={(e) => setEditAgent({ ...editAgent, objective: e.target.value })} placeholder="O que ele deve alcançar (ex: qualificar por BANT)" /></div>
               <div><Label>Saudação (primeira mensagem)</Label><Textarea rows={2} value={editAgent.greeting || ""} onChange={(e) => setEditAgent({ ...editAgent, greeting: e.target.value })} placeholder="Oi! Que bom seu interesse..." /></div>
               <div><Label>Instruções / o que perguntar</Label><Textarea rows={5} value={editAgent.instructions || ""} onChange={(e) => setEditAgent({ ...editAgent, instructions: e.target.value })} placeholder="Uma pergunta por vez. Descubra necessidade, urgência, orçamento e se é quem decide..." /></div>
