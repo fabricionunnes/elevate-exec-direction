@@ -353,24 +353,6 @@ const products: Product[] = [
     highlights: ["Hot seats", "Mansão empresarial", "Board coletivo", "Networking premium"]
   },
   {
-    id: "le-desir",
-    name: "Le Désir",
-    tagline: "Análise Estratégica para Líderes",
-    icon: Heart,
-    color: "bg-rose-500",
-    category: "Eventos",
-    icp: "Líderes com peso psicológico",
-    revenue: "R$ 200k–3M+/mês",
-    team: "CEO/Fundador",
-    price: "R$ 2.000",
-    priceType: "/mês",
-    link: "/le-desir",
-    keyDiff: "Análise estratégica — suporte emocional para decisores sob pressão",
-    bestFor: "Líderes exaustos ou com padrões que afetam decisões",
-    notFor: "Quem busca terapia clínica ou mentoria de negócios",
-    highlights: ["Análise individual", "Suporte emocional", "Padrões decisórios", "Confidencial"]
-  },
-  {
     id: "execution-partnership",
     name: "UNV Execution Partnership",
     tagline: "Parceria de Execução Intensiva",

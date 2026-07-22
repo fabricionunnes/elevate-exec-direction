@@ -53,7 +53,6 @@ const productCategories: ProductCategory[] = [
     category: "Estratégia & Estrutura",
     items: [
       { name: "UNV Leadership", href: "/leadership" },
-      { name: "Le Désir", href: "/le-desir", comingSoon: true },
       { name: "UNV Finance", href: "/finance", comingSoon: true },
       { name: "UNV People", href: "/people" },
       { name: "UNV Safe", href: "/safe" },
@@ -119,10 +118,6 @@ export function Header() {
     cat.items.some(item => location.pathname === item.href)
   );
 
-  // Manual de Processos é interno — NÃO fica no site público. Staff acessa pelo
-  // CRM (menu "Mais") e pelo hub /onboarding-tasks.
-  const navItems = navigation;
-
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/30">
       <nav className="container-premium flex items-center justify-between h-16 md:h-20">
@@ -137,7 +132,7 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <div className="hidden lg:flex items-center gap-1">
-          {navItems.map((item) => (
+          {navigation.map((item) => (
             <div key={item.name} className="relative group">
               {item.hasSubmenu ? (
                 <button
@@ -303,7 +298,7 @@ export function Header() {
       {mobileMenuOpen && (
         <div className="lg:hidden bg-background/95 backdrop-blur-xl border-t border-border/30 animate-fade-in max-h-[calc(100vh-4rem)] overflow-y-auto">
           <div className="container-premium py-6 space-y-2">
-            {navItems.map((item) => (
+            {navigation.map((item) => (
               <div key={item.name}>
                 {item.hasSubmenu ? (
                   <div>

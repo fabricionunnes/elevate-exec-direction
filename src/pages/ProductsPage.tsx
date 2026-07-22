@@ -197,15 +197,6 @@ const leadershipProduct: Product = {
 // New products
 const strategicProducts: Product[] = [
   {
-    name: "Le Désir",
-    tagline: "Análise estratégica",
-    description:
-      "Análise estratégica 100% online para empresários. Espaço de escuta, elaboração e consciência voltado à lucidez, presença e tomada de decisão.",
-    icp: "Empresários, Fundadores, Sócios, C-Level",
-    href: "/le-desir",
-    investment: "A partir de R$ 1.200/mês",
-  },
-  {
     name: "UNV Finance",
     tagline: "Controle financeiro",
     description:
@@ -330,7 +321,7 @@ export default function ProductsPage() {
           <div className="flex items-center gap-3 mb-8">
             <div className="w-3 h-3 rounded-full bg-rose-500" />
             <h2 className="text-xl font-bold text-foreground">Estratégia & Estrutura</h2>
-            <span className="text-sm text-muted-foreground">Le Désir • Finance • People • Safe</span>
+            <span className="text-sm text-muted-foreground">Finance • People • Safe</span>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {strategicProducts.map((product, i) => (
