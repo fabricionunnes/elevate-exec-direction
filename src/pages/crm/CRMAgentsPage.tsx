@@ -6,8 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Loader2, Bot, Radio, GitBranch, BookOpen } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Bot, Radio, GitBranch, BookOpen, Zap } from "lucide-react";
 import { AgentEditorDialog } from "@/components/crm/agents/AgentEditorDialog";
+import { IgTriggersManager } from "@/components/crm/agents/IgTriggersManager";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -127,16 +129,28 @@ export default function CRMAgentsPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-5xl mx-auto">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" /> Agentes de Atendimento
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Crie agentes de IA, alimente com conhecimento e escolha em quais instâncias e funis eles atuam.
-            O modo (auto ou copiloto) é definido por funil.
-          </p>
-        </div>
+      <div>
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <Bot className="h-5 w-5 text-primary" /> Agentes de Atendimento
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Crie agentes de IA, alimente com conhecimento e escolha em quais instâncias e funis eles atuam.
+          O modo (auto ou copiloto) é definido por funil.
+        </p>
+      </div>
+
+      <Tabs defaultValue="agents">
+        <TabsList>
+          <TabsTrigger value="agents" className="gap-1.5"><Bot className="h-4 w-4" /> Agentes</TabsTrigger>
+          <TabsTrigger value="ig-triggers" className="gap-1.5"><Zap className="h-4 w-4" /> Gatilhos do Instagram</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="ig-triggers" className="mt-4">
+          <IgTriggersManager canSettings={canSettings} staffId={staffId} tenantId={tenantId} />
+        </TabsContent>
+
+        <TabsContent value="agents" className="mt-4 space-y-5">
+      <div className="flex justify-end">
         <Button onClick={handleNew} className="gap-2 shrink-0"><Plus className="h-4 w-4" /> Novo agente</Button>
       </div>
 
@@ -185,6 +199,8 @@ export default function CRMAgentsPage() {
           })}
         </div>
       )}
+        </TabsContent>
+      </Tabs>
 
       <AgentEditorDialog
         open={dialogOpen}
