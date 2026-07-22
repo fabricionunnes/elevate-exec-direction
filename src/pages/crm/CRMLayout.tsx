@@ -34,15 +34,13 @@ import {
   CalendarDays,
   TrendingUp,
   Repeat2,
+  Zap,
   ClipboardList,
   Building2,
   BarChart3,
   Phone,
   ChevronDown,
   Contact,
-  Download,
-  BookOpen,
-  Bot,
 } from "lucide-react";
 import logoUnv from "@/assets/logo-unv-nexus.png";
 import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
@@ -86,27 +84,19 @@ const baseNavTabs = [
   { title: "Reuniões", href: "/crm/meetings", icon: CalendarDays },
   { title: "Forecast", href: "/crm/forecast", icon: TrendingUp },
   { title: "Cadências", href: "/crm/cadences", icon: Repeat2 },
+  { title: "Automações IA", href: "/crm/automacoes", icon: Zap },
   { title: "Aplicações", href: "/crm/applications", icon: BarChart3 },
   { title: "Nota Fiscal", href: "/onboarding-tasks/nota-fiscal", icon: FileText },
   { title: "Escritório", href: "/crm/office", icon: Building2 },
   { title: "UNV Office", href: "/onboarding-tasks/unv-office", icon: Building2 },
 ];
 
-const getNavTabs = (role: string | null, isUnvStaff: boolean) => {
+const getNavTabs = (role: string | null) => {
   const tabs = [...baseNavTabs];
-  // Manual de Processos: só staff UNV (tenant nulo). Vai pro topo do "Mais",
-  // acessível a todo o comercial (closer, sdr, bdr, social setter, head).
-  if (isUnvStaff) {
-    const at = tabs.findIndex((t) => t.href === "/crm/transcriptions");
-    const processos = { title: "Processos", href: "/processos", icon: BookOpen };
-    if (at >= 0) tabs.splice(at, 0, processos);
-    else tabs.push(processos);
-  }
   if (role === "master" || role === "head_comercial") {
     tabs.push({ title: "Head Comercial", href: "/crm/head", icon: BarChart3 });
   }
   if (role === "master" || role === "admin" || role === "head_comercial") {
-    tabs.push({ title: "Agentes IA", href: "/crm/agents", icon: Bot });
     tabs.push({ title: "Resumo Calls", href: "/crm/call-summary", icon: Phone });
     tabs.push({ title: "UNV Profile", href: "/unv-profile", icon: Contact });
   }
@@ -237,7 +227,7 @@ export const CRMLayout = () => {
   // Cliente "só discador": vê apenas a aba Discador.
   const navTabs = dialerOnly
     ? [{ title: "Discador", href: "/crm/dialer", icon: Phone }]
-    : getNavTabs(staffRole, tenantId === null);
+    : getNavTabs(staffRole);
 
   const isTabActive = (href: string) => {
     if (href === "/crm/reports") {
@@ -393,31 +383,6 @@ export const CRMLayout = () => {
                       </DropdownMenuItem>
                     );
                   })}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <a
-                      href="https://unv-closer-install.pages.dev/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2"
-                    >
-                      <Download className="h-4 w-4 text-muted-foreground" />
-                      Baixar Copilot
-                    </a>
-                  </DropdownMenuItem>
-                  {canSettings && (
-                    <DropdownMenuItem asChild>
-                      <a
-                        href="https://unv-closer-gestor.pages.dev/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2"
-                      >
-                        <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                        Painel do Gestor (Copilot)
-                      </a>
-                    </DropdownMenuItem>
-                  )}
                   {canSettings && (
                     <>
                       <DropdownMenuSeparator />

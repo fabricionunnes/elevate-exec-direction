@@ -1,5 +1,4 @@
-import { Suspense } from "react";
-import { lazyRetry as lazy } from "@/lib/lazyRetry";
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -31,10 +30,6 @@ const ControlPage = lazy(() => import("./pages/ControlPage"));
 const GrowthRoomPage = lazy(() => import("./pages/GrowthRoomPage"));
 const PartnersPage = lazy(() => import("./pages/PartnersPage"));
 const UNVBoardPage = lazy(() => import("./pages/UNVBoardPage"));
-const UNVStartPage = lazy(() => import("./pages/UNVStartPage"));
-const UNVStartLoginPage = lazy(() => import("./pages/UNVStartLoginPage"));
-const UNVStartPortalPage = lazy(() => import("./pages/UNVStartPortalPage"));
-const UNVStartCheckoutPage = lazy(() => import("./pages/UNVStartCheckoutPage"));
 const SalesOpsPage = lazy(() => import("./pages/SalesOpsPage"));
 const AISalesSystemPage = lazy(() => import("./pages/AISalesSystemPage"));
 const FractionalCROPage = lazy(() => import("./pages/FractionalCROPage"));
@@ -128,7 +123,6 @@ const OnboardingTasksPage = lazy(() => import("./pages/onboarding-tasks/Onboardi
 const OnboardingProjectPage = lazy(() => import("./pages/onboarding-tasks/OnboardingProjectPage"));
 const CommercialActionsDashboardPage = lazy(() => import("./pages/onboarding-tasks/CommercialActionsDashboardPage"));
 const OnboardingCompaniesPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCompaniesPage"));
-const UNVStartClientsPage = lazy(() => import("./pages/onboarding-tasks/UNVStartClientsPage"));
 const OnboardingCompanyDetailPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCompanyDetailPage"));
 const OnboardingStaffPage = lazy(() => import("./pages/onboarding-tasks/OnboardingStaffPage"));
 const ClientOnboardingPage = lazy(() => import("./pages/onboarding-tasks/ClientOnboardingPage"));
@@ -158,7 +152,6 @@ const VendedorKPIPage = lazy(() => import("./pages/vendedor/VendedorKPIPage"));
 const HealthScorePage = lazy(() => import("./pages/onboarding-tasks/HealthScorePage"));
 const FinancialModulePage = lazy(() => import("./pages/onboarding-tasks/FinancialModulePage"));
 const ApiDocsPage = lazy(() => import("./pages/onboarding-tasks/ApiDocsPage"));
-const ProcessosPage = lazy(() => import("./pages/onboarding-tasks/ProcessosPage"));
 const AllRecurringChargesPage = lazy(() => import("./pages/onboarding-tasks/AllRecurringChargesPage"));
 const RecurringMonitorPage = lazy(() => import("./pages/onboarding-tasks/RecurringMonitorPage"));
 const WhatsAppAdminPage = lazy(() => import("./pages/onboarding-tasks/WhatsAppAdminPage"));
@@ -180,7 +173,6 @@ const ClientAccessReportPage = lazy(() => import("./pages/onboarding-tasks/Clien
 const BillingRulesPage = lazy(() => import("./pages/onboarding-tasks/BillingRulesPage"));
 const SurveySendConfigPage = lazy(() => import("./pages/onboarding-tasks/SurveySendConfigPage"));
 const ContractGeneratorPage = lazy(() => import("./pages/onboarding-tasks/ContractGeneratorPage"));
-const CertificateVerifyPage = lazy(() => import("./pages/CertificateVerifyPage"));
 const EmployeeContractPage = lazy(() => import("./pages/onboarding-tasks/EmployeeContractPage"));
 const DistratoPage = lazy(() => import("./pages/onboarding-tasks/DistratoPage"));
 const DistratoHistoryPage = lazy(() => import("./pages/onboarding-tasks/DistratoHistoryPage"));
@@ -192,7 +184,6 @@ const DatabaseBackupPage = lazy(() => import("./pages/onboarding-tasks/DatabaseB
 const TaskManagerPage = lazy(() => import("./pages/onboarding-tasks/TaskManagerPage"));
 const CopilotPage = lazy(() => import("./pages/onboarding-tasks/CopilotPage"));
 const CerebroPage = lazy(() => import("./pages/onboarding-tasks/CerebroPage"));
-const GlobalGraphPage = lazy(() => import("./pages/onboarding-tasks/GlobalGraphPage"));
 const AutomationsPage = lazy(() => import("./pages/onboarding-tasks/AutomationsPage"));
 const B2BProspectionPage = lazy(() => import("./pages/onboarding-tasks/B2BProspectionPage"));
 const ConsultoriasAdminPage = lazy(() => import("./pages/onboarding-tasks/ConsultoriasAdminPage"));
@@ -290,7 +281,6 @@ const AcademyTracksPage = lazy(() => import("./pages/academy/AcademyTracksPage")
 const AcademyTrackDetailPage = lazy(() => import("./pages/academy/AcademyTrackDetailPage"));
 const AcademyLessonPage = lazy(() => import("./pages/academy/AcademyLessonPage"));
 const AcademyProgressPage = lazy(() => import("./pages/academy/AcademyProgressPage"));
-const AcademyCertificatesPage = lazy(() => import("./pages/academy/AcademyCertificatesPage"));
 const AcademyRankingPage = lazy(() => import("./pages/academy/AcademyRankingPage"));
 const AcademyQuizPage = lazy(() => import("./pages/academy/AcademyQuizPage"));
 const AcademyQuizzesListPage = lazy(() => import("./pages/academy/AcademyQuizzesListPage"));
@@ -324,8 +314,8 @@ const CRMApiPage = lazy(() => import("./pages/crm/CRMApiPage"));
 const CRMTrafficApiPage = lazy(() => import("./pages/crm/CRMTrafficApiPage"));
 const CRMForecastPage = lazy(() => import("./pages/crm/CRMForecastPage"));
 const CRMCadencesPage = lazy(() => import("./pages/crm/CRMCadencesPage"));
-const CRMAgentsPage = lazy(() => import("./pages/crm/CRMAgentsPage"));
 const CRMApplicationsPage = lazy(() => import("./pages/crm/CRMApplicationsPage"));
+const CRMAutomationsPage = lazy(() => import("./pages/crm/CRMAutomationsPage"));
 
 // Social Pipeline
 const SocialLayoutPage = lazy(() => import("./pages/social").then(m => ({ default: m.SocialLayout })));
@@ -392,10 +382,6 @@ const AppShell = () => {
             <Route path="/growth-room" element={<GrowthRoomPage />} />
             <Route path="/partners" element={<PartnersPage />} />
             <Route path="/unv-board" element={<UNVBoardPage />} />
-            <Route path="/unv-start" element={<UNVStartPage />} />
-            <Route path="/start" element={<UNVStartLoginPage />} />
-            <Route path="/start/checkout" element={<UNVStartCheckoutPage />} />
-            <Route path="/start/:token" element={<UNVStartPortalPage />} />
             <Route path="/sales-ops" element={<SalesOpsPage />} />
             <Route path="/ai-sales-system" element={<AISalesSystemPage />} />
             <Route path="/fractional-cro" element={<FractionalCROPage />} />
@@ -437,10 +423,6 @@ const AppShell = () => {
             <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/onboarding/:productId" element={<OnboardingProductPage />} />
             
-            {/* Verificação pública de certificado (UNV Academy) */}
-            <Route path="/certificado" element={<CertificateVerifyPage />} />
-            <Route path="/certificado/:code" element={<CertificateVerifyPage />} />
-
             {/* Contract Generator - Public */}
             <Route path="/contratos" element={<ContractGeneratorPage />} />
             <Route path="/contratos/colaboradores" element={<EmployeeContractPage />} />
@@ -479,7 +461,6 @@ const AppShell = () => {
               <Route path="/onboarding-tasks" element={<OnboardingTasksPage />} />
               <Route path="/onboarding-tasks/login" element={<OnboardingLoginPage />} />
               <Route path="/onboarding-tasks/companies" element={<OnboardingCompaniesPage />} />
-              <Route path="/onboarding-tasks/unv-start" element={<UNVStartClientsPage />} />
               <Route path="/onboarding-tasks/companies/new" element={<OnboardingNewCompanyPage />} />
               <Route path="/onboarding-tasks/companies/:companyId" element={<OnboardingCompanyDetailPage />} />
               <Route path="/onboarding-tasks/staff" element={<OnboardingStaffPage />} />
@@ -500,8 +481,6 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/results" element={<OnboardingResultsPage />} />
               <Route path="/onboarding-tasks/financeiro" element={<ModuleGuard module="financial" label="Financeiro"><FinancialModulePage /></ModuleGuard>} />
               <Route path="/onboarding-tasks/api-docs" element={<ApiDocsPage />} />
-              <Route path="/processos" element={<ProcessosPage />} />
-              <Route path="/onboarding-tasks/processos" element={<ProcessosPage />} />
               <Route path="/onboarding-tasks/financeiro/recorrencias" element={<ModuleGuard module="financial" label="Financeiro"><AllRecurringChargesPage /></ModuleGuard>} />
               <Route path="/onboarding-tasks/financeiro/monitor-parcelas" element={<RecurringMonitorPage />} />
               <Route path="/onboarding-tasks/whatsapp" element={<WhatsAppAdminPage />} />
@@ -526,7 +505,6 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/task-manager" element={<TaskManagerPage />} />
               <Route path="/onboarding-tasks/copiloto" element={<CopilotPage />} />
               <Route path="/onboarding-tasks/cerebro" element={<CerebroPage />} />
-              <Route path="/onboarding-tasks/grafo" element={<GlobalGraphPage />} />
               <Route path="/onboarding-tasks/automations" element={<AutomationsPage />} />
               <Route path="/onboarding-tasks/juridico" element={<JuridicoPage />} />
               <Route path="/onboarding-tasks/roi-clientes" element={<ROIClientePage />} />
@@ -643,8 +621,8 @@ const AppShell = () => {
               <Route path="trafego-pago/api" element={<CRMTrafficApiPage />} />
               <Route path="forecast" element={<CRMForecastPage />} />
               <Route path="cadences" element={<CRMCadencesPage />} />
-              <Route path="agents" element={<CRMAgentsPage />} />
               <Route path="applications" element={<CRMApplicationsPage />} />
+              <Route path="automacoes" element={<CRMAutomationsPage />} />
             </Route>
             
             {/* UNV Social - Content Pipeline */}
@@ -720,7 +698,6 @@ const AppShell = () => {
               <Route path="track/:trackId" element={<AcademyTrackDetailPage />} />
               <Route path="lesson/:lessonId" element={<AcademyLessonPage />} />
               <Route path="progress" element={<AcademyProgressPage />} />
-              <Route path="certificates" element={<AcademyCertificatesPage />} />
               <Route path="ranking" element={<AcademyRankingPage />} />
               <Route path="quizzes" element={<AcademyQuizzesListPage />} />
               <Route path="quiz/:quizId" element={<AcademyQuizPage />} />
