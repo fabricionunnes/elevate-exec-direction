@@ -82,6 +82,7 @@ import {
   LeadTranscriptionTab,
 } from "@/components/crm/lead-detail";
 import { LeadContractDataTab } from "@/components/crm/lead-detail/LeadContractDataTab";
+import { LeadPaymentPanel } from "@/components/crm/lead-detail/LeadPaymentPanel";
 import { useMetaAdNames } from "@/components/crm/useMetaAdNames";
 import { LeadProposalTab } from "@/components/crm/lead-detail/LeadProposalTab";
 import { LeadConversationsTab } from "@/components/crm/lead-detail/LeadConversationsTab";
