@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Loader2, Maximize2, Minimize2, ChevronLeft, ChevronRight, Target, TrendingUp, Trophy, Flag,
-  Eye, EyeOff, Users, Megaphone, Plus, X, Filter,
+  Eye, EyeOff, Users, Megaphone, Plus, X, Filter, Check, Pencil, Trash2,
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from "recharts";
 import { cn } from "@/lib/utils";
@@ -62,10 +62,14 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
   const [mainKpi, setMainKpi] = useState<KpiRow | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [newNotice, setNewNotice] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
   const [cfg, setCfg] = useState<{ show_meta: boolean; show_realizado: boolean; show_ranking: boolean; ranking_mode: "value" | "percent" | "none" }>({ show_meta: true, show_realizado: true, show_ranking: true, ranking_mode: "value" });
   const [monthOffset, setMonthOffset] = useState(0);
   const [isFull, setIsFull] = useState(false);
+  const [scale, setScale] = useState(1);
   const boardRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
 
   const refDate = useMemo(() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + monthOffset); return d; }, [monthOffset]);
 
@@ -214,6 +218,13 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
     setNotices(notices.filter(n => n.id !== id));
     await supabase.from("gestao_vista_notices").delete().eq("id", id);
   };
+  const saveNoticeEdit = async (id: string, text: string) => {
+    const t = text.trim();
+    if (!t) { removeNotice(id); return; }
+    setNotices(notices.map(n => n.id === id ? { ...n, text: t } : n));
+    setEditId(null);
+    await supabase.from("gestao_vista_notices").update({ text: t }).eq("id", id);
+  };
 
   const toggleFull = async () => {
     const el = boardRef.current; if (!el) return;
@@ -227,6 +238,20 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
     document.addEventListener("fullscreenchange", onFs);
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
+
+  // Em tela cheia, escala o conteúdo pra caber INTEIRO na tela (sem rolar).
+  const FULL_W = 1536;
+  useEffect(() => {
+    if (!isFull) { setScale(1); return; }
+    const fit = () => {
+      const el = innerRef.current; if (!el) return;
+      const s = Math.min(window.innerWidth / el.scrollWidth, window.innerHeight / el.scrollHeight, 1);
+      if (s > 0 && isFinite(s)) setScale(s);
+    };
+    const id = window.setTimeout(fit, 80);
+    window.addEventListener("resize", fit);
+    return () => { window.clearTimeout(id); window.removeEventListener("resize", fit); };
+  }, [isFull, loading, kpis.length, notices.length, ranking.length, teamSales.length, weekly.length, editId, cfg]);
 
   const showMeta = cfg.show_meta, showReal = cfg.show_realizado;
   const mainGoals = kpis.filter(k => k.is_main_goal);
@@ -248,18 +273,19 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
   const funnelStages = FUNNEL.map(f => ({ ...f, kpi: mFun(f.keys) })).filter(f => f.kpi) as { label: string; kpi: KpiRow }[];
   const funnelMax = Math.max(1, ...funnelStages.map(s => s.kpi.realizado));
 
-  const val = (v: number, t: string, allowed: boolean) => allowed ? fmt(v, t) : "•••";
-  // exibição do ranking conforme o modo escolhido: valor | % da meta | nada
+  // exibição do ranking conforme o modo escolhido: valor | % da meta | nada.
+  // showReal off = esconde o realizado POR VENDEDORA (só no ranking); totais sempre aparecem.
   const rankVal = (r: { value: number; type: string; pct: number }): string | null =>
     cfg.ranking_mode === "none" ? null
       : cfg.ranking_mode === "percent" ? `${r.pct.toFixed(0)}%`
-      : showReal ? fmt(r.value, r.type) : "•••";
+      : showReal ? fmt(r.value, r.type) : null;
   const rankModeLabel = { value: "Valor", percent: "% meta", none: "Sem valor" }[cfg.ranking_mode];
   const cycleRankMode = () => saveCfg({ ranking_mode: cfg.ranking_mode === "value" ? "percent" : cfg.ranking_mode === "percent" ? "none" : "value" });
 
   return (
-    <div ref={boardRef} className={cn(isFull ? "fixed inset-0 z-[200] overflow-auto bg-background" : "rounded-2xl border border-border overflow-hidden bg-card")}>
-      <div className="p-4 sm:p-6 space-y-4 min-h-full">
+    <div ref={boardRef} className={cn(isFull ? "fixed inset-0 z-[200] overflow-hidden bg-background flex justify-center items-start" : "rounded-2xl border border-border overflow-hidden bg-card")}>
+      <div ref={innerRef} style={isFull ? { width: FULL_W, transform: `scale(${scale})`, transformOrigin: "top center" } : undefined}
+        className={cn("p-4 sm:p-6 space-y-4", isFull ? "shrink-0" : "w-full min-h-full")}>
         {/* Cabeçalho */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
           <div className="flex items-center gap-3 min-w-0">
@@ -276,7 +302,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
             {isStaff && (
               <div className="hidden sm:flex items-center gap-1 rounded-lg bg-muted px-1.5 py-1 text-[11px]">
                 <button onClick={() => saveCfg({ show_meta: !cfg.show_meta })} className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded", cfg.show_meta ? "text-foreground" : "text-muted-foreground/50")} title="Mostrar meta">{cfg.show_meta ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}Meta</button>
-                <button onClick={() => saveCfg({ show_realizado: !cfg.show_realizado })} className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded", cfg.show_realizado ? "text-foreground" : "text-muted-foreground/50")} title="Mostrar realizado">{cfg.show_realizado ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}Real.</button>
+                <button onClick={() => saveCfg({ show_realizado: !cfg.show_realizado })} className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded", cfg.show_realizado ? "text-foreground" : "text-muted-foreground/50")} title="Mostrar realizado por vendedora no ranking (totais sempre aparecem)">{cfg.show_realizado ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}Real/vend</button>
                 <button onClick={() => saveCfg({ show_ranking: !cfg.show_ranking })} className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded", cfg.show_ranking ? "text-foreground" : "text-muted-foreground/50")} title="Mostrar ranking">{cfg.show_ranking ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}Rank</button>
                 {cfg.show_ranking && <button onClick={cycleRankMode} className="flex items-center gap-1 px-1.5 py-0.5 rounded text-foreground border-l border-border ml-0.5" title="No ranking: valor / % da meta / sem valor"><Trophy className="h-3 w-3" />{rankModeLabel}</button>}
               </div>
@@ -306,7 +332,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                     <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
                       <Target className="h-3.5 w-3.5" /> <span className="truncate">{k.name}</span>
                     </div>
-                    <div className={cn("text-2xl sm:text-3xl font-black", toneText(k.pct))}>{val(k.realizado, k.kpi_type, showReal)}</div>
+                    <div className={cn("text-2xl sm:text-3xl font-black", toneText(k.pct))}>{fmt(k.realizado, k.kpi_type)}</div>
                     <div className="text-[11px] text-muted-foreground mt-0.5">{showMeta && <>meta {fmt(k.meta, k.kpi_type)} · </>}<span className={toneText(k.pct)}>{k.pct.toFixed(0)}%</span></div>
                     <div className="h-1.5 rounded-full bg-muted mt-2 overflow-hidden">
                       <div className={cn("h-full rounded-full transition-all", toneClass(k.pct))} style={{ width: `${Math.min(100, k.pct)}%` }} />
@@ -327,7 +353,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                       <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-3">{p.sub}</div>
                       <div className="space-y-1.5 text-sm">
                         {showMeta && <div className="flex justify-between"><span className="text-muted-foreground">Meta</span><span className="font-semibold">{fmt(k.meta, k.kpi_type)}</span></div>}
-                        <div className="flex justify-between"><span className="text-muted-foreground">Realizado</span><span className="font-semibold">{val(k.realizado, k.kpi_type, showReal)}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Realizado</span><span className="font-semibold">{fmt(k.realizado, k.kpi_type)}</span></div>
                         <div className="flex justify-between border-t border-border pt-1.5"><span className="text-muted-foreground">Taxa</span><span className={cn("font-bold", toneText(k.pct))}>{k.pct.toFixed(0)}%</span></div>
                       </div>
                     </div>
@@ -348,7 +374,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                     <div key={k.id}>
                       <div className="flex items-baseline justify-between gap-2 text-sm">
                         <span className="truncate text-foreground/90">{k.name}</span>
-                        <span className={cn("font-bold tabular-nums", toneText(k.pct))}>{val(k.realizado, k.kpi_type, showReal)}</span>
+                        <span className={cn("font-bold tabular-nums", toneText(k.pct))}>{fmt(k.realizado, k.kpi_type)}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
@@ -413,7 +439,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                       {teamSales.map((t) => (
                         <div key={t.name} className="flex items-center gap-3 text-sm">
                           <span className="flex-1 truncate">{t.name}</span>
-                          <span className="font-bold tabular-nums text-foreground">{val(t.value, t.type, showReal)}</span>
+                          <span className="font-bold tabular-nums text-foreground">{fmt(t.value, t.type)}</span>
                         </div>
                       ))}
                     </div>
@@ -437,7 +463,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                           <div className="relative text-center text-white font-semibold py-2.5 rounded-md shadow-md"
                             style={{ width: `${Math.max(38, w)}%`, background: "linear-gradient(180deg, hsl(var(--primary)) 0%, hsl(var(--primary)/0.75) 100%)", transform: "rotateX(12deg)", clipPath: i === funnelStages.length - 1 ? undefined : "polygon(0 0, 100% 0, 92% 100%, 8% 100%)" }}>
                             <span className="text-xs opacity-90">{s.label}</span>
-                            <span className="ml-2 text-sm font-black">{val(s.kpi.realizado, s.kpi.kpi_type, showReal)}</span>
+                            <span className="ml-2 text-sm font-black">{fmt(s.kpi.realizado, s.kpi.kpi_type)}</span>
                           </div>
                           {conv != null && <span className="text-[10px] text-muted-foreground my-0.5">↓ {conv.toFixed(0)}%</span>}
                         </div>
@@ -458,7 +484,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                         tickFormatter={(v) => mainKpi.kpi_type === "monetary" ? `${(v / 1000).toFixed(0)}k` : v.toLocaleString("pt-BR")} />
                       <Tooltip cursor={{ fill: "hsl(var(--muted))" }}
                         contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 12, color: "hsl(var(--popover-foreground))" }}
-                        formatter={(v: number) => [showReal ? fmt(v, mainKpi.kpi_type) : "•••", "Realizado"]} />
+                        formatter={(v: number) => [fmt(v, mainKpi.kpi_type), "Realizado"]} />
                       <Bar dataKey="real" radius={[6, 6, 0, 0]}>
                         {weekly.map((_, i) => <Cell key={i} fill="hsl(var(--primary))" />)}
                       </Bar>
@@ -474,10 +500,23 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
               {notices.length > 0 ? (
                 <ul className="space-y-1.5 mb-3">
                   {notices.map(n => (
-                    <li key={n.id} className="flex items-start gap-2 text-sm group">
-                      <span className="text-primary mt-1.5 h-1 w-1 rounded-full bg-primary shrink-0" />
-                      <span className="flex-1 text-foreground/90">{n.text}</span>
-                      <button onClick={() => removeNotice(n.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-rose-500 transition" title="Remover"><X className="h-3.5 w-3.5" /></button>
+                    <li key={n.id} className="flex items-start gap-2 text-sm">
+                      {editId === n.id ? (
+                        <>
+                          <input autoFocus value={editText} onChange={(e) => setEditText(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") saveNoticeEdit(n.id, editText); if (e.key === "Escape") setEditId(null); }}
+                            className="flex-1 rounded-md border border-border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                          <button onClick={() => saveNoticeEdit(n.id, editText)} className="text-emerald-500 hover:opacity-80 px-1" title="Salvar"><Check className="h-4 w-4" /></button>
+                          <button onClick={() => setEditId(null)} className="text-muted-foreground hover:opacity-80 px-1" title="Cancelar"><X className="h-4 w-4" /></button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                          <span className="flex-1 text-foreground/90">{n.text}</span>
+                          <button onClick={() => { setEditId(n.id); setEditText(n.text); }} className="text-muted-foreground hover:text-primary px-1" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => removeNotice(n.id)} className="text-muted-foreground hover:text-rose-500 px-1" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
+                        </>
+                      )}
                     </li>
                   ))}
                 </ul>
