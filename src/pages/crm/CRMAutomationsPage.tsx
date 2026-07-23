@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Zap, Bot, Trash2, Loader2, MessageSquare, Instagram } from "lucide-react";
+import { IgTriggersManager } from "@/components/crm/agents/IgTriggersManager";
+import { useCRMContext } from "./CRMLayout";
 
 interface Agent {
   id: string; name: string; objective: string | null; greeting: string | null;
@@ -29,6 +31,7 @@ interface Rule {
 const MATCH_LABELS: Record<string, string> = { contains: "Contém", exact: "Exata", starts: "Começa com" };
 
 export default function CRMAutomationsPage() {
+  const { canSettings, staffId, tenantId } = useCRMContext();
   const [tab, setTab] = useState("rules");
   const [rules, setRules] = useState<Rule[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -182,7 +185,12 @@ export default function CRMAutomationsPage() {
         <TabsList>
           <TabsTrigger value="rules"><Zap className="h-4 w-4 mr-1.5" />Palavras-chave</TabsTrigger>
           <TabsTrigger value="agents"><Bot className="h-4 w-4 mr-1.5" />Agentes qualificadores</TabsTrigger>
+          <TabsTrigger value="instagram"><Instagram className="h-4 w-4 mr-1.5" />Instagram</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="instagram" className="mt-4">
+          <IgTriggersManager canSettings={canSettings} staffId={staffId} tenantId={tenantId} />
+        </TabsContent>
 
         <TabsContent value="rules" className="mt-4 space-y-3">
           <div className="flex justify-end">

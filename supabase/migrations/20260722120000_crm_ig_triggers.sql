@@ -41,7 +41,9 @@ create index if not exists crm_ig_triggers_active_idx
 
 create table if not exists public.crm_ig_trigger_runs (
   id uuid primary key default gen_random_uuid(),
-  trigger_id uuid references public.crm_ig_triggers(id) on delete cascade,
+  -- sem FK de propósito: aceita id de crm_ig_triggers OU de crm_keyword_triggers
+  -- (regras da aba Palavras-chave com "responder comentário" rodam na mesma engine)
+  trigger_id uuid,
   instance_id uuid,
   event_type text not null,
   -- comment_id / mid da mensagem / igsid do seguidor — chave de dedup

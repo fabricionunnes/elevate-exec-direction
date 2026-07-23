@@ -229,6 +229,36 @@ async function activeTriggers(instanceId: string, type: string): Promise<Trigger
   return (data ?? []) as TriggerRow[];
 }
 
+// Regras da aba "Palavras-chave" (/crm/automacoes, crm_keyword_triggers) com
+// "responder comentário" ligado — mesma engine, normalizadas pro shape padrão.
+// A parte de DM dessas regras já roda no crm-agent-respond; aqui só comentários.
+async function keywordCommentTriggers(instanceId: string): Promise<TriggerRow[]> {
+  const { data } = await supabase
+    .from("crm_keyword_triggers")
+    .select("id, keywords, match_type, channels, listen_comment, pipeline_id, agent_id, comment_public_reply, comment_dm_text, priority")
+    .eq("is_active", true)
+    .eq("listen_comment", true)
+    .order("priority", { ascending: false });
+  return (data ?? [])
+    .filter((r: any) => (r.channels ?? []).includes("instagram"))
+    .map((r: any): TriggerRow => ({
+      id: r.id,
+      instance_id: instanceId,
+      trigger_type: "comment",
+      media_ids: null,
+      keywords: r.keywords ?? [],
+      match_type: r.match_type === "starts" ? "starts_with" : (r.match_type ?? "contains"),
+      public_replies: r.comment_public_reply?.trim() ? [r.comment_public_reply] : [],
+      dm_message: r.comment_dm_text ?? null,
+      create_lead: true,
+      pipeline_id: r.pipeline_id ?? null,
+      stage_id: null,
+      agent_id: r.agent_id ?? null,
+      cooldown_hours: 24,
+      priority: r.priority ?? 0,
+    }));
+}
+
 type TriggerEvent = {
   eventType: string;
   externalId: string; // comment_id / mid / igsid-follow — chave de dedup
@@ -437,8 +467,8 @@ async function runTrigger(instance: Instance, trg: TriggerRow, ev: TriggerEvent)
 }
 
 // Avalia os gatilhos de um tipo pra um evento; primeiro que casar dispara (1 resposta por evento)
-async function fireTriggers(instance: Instance, type: string, ev: Omit<TriggerEvent, "matchedKeyword">) {
-  const triggers = await activeTriggers(instance.id, type);
+async function fireTriggers(instance: Instance, type: string, ev: Omit<TriggerEvent, "matchedKeyword">, extra: TriggerRow[] = []) {
+  const triggers = [...(await activeTriggers(instance.id, type)), ...extra];
   for (const trg of triggers) {
     // filtro por post (null/vazio = todos)
     if (ev.mediaId && trg.media_ids?.length && !trg.media_ids.includes(ev.mediaId)) continue;
@@ -471,6 +501,7 @@ async function processChange(entryId: string, change: ChangeEvent) {
     // motor envia — sem isso vira loop)
     if (!from.id || from.id === instance.instagram_account_id || from.id === entryId) return;
     if (!value.id) return;
+    const extra = field === "comments" ? await keywordCommentTriggers(instance.id) : [];
     await fireTriggers(instance, field === "comments" ? "comment" : "live_comment", {
       eventType: field,
       externalId: value.id,
@@ -479,7 +510,7 @@ async function processChange(entryId: string, change: ChangeEvent) {
       commentId: value.id,
       mediaId: value.media?.id ?? null,
       text: value.text ?? "",
-    });
+    }, extra);
     return;
   }
 
