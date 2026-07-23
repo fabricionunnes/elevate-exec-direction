@@ -13,6 +13,13 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 const FABRICIO = "5531989840003";
+// Produtos que dão direito ao Mastermind UNV (match por nome normalizado —
+// quando Ads/Partners/Board/Mastermind entrarem no catálogo, já casam sozinhos)
+const ELIGIBLE_PRODUCTS = [
+  "unv sales acceleration", "unv social", "unv ads",
+  "unv partners", "unv board", "unv mastermind",
+];
+const normName = (s: string) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
 const EVA = "5531997667686";
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } });
@@ -44,20 +51,36 @@ Deno.serve(async (req) => {
     if (body.event === "won") {
       const leadId = body.lead_id;
       if (!leadId) return json({ error: "lead_id obrigatório" }, 400);
-      const { data: lead } = await sb.from("crm_leads").select("id, name, phone").eq("id", leadId).maybeSingle();
+      const { data: lead } = await sb.from("crm_leads").select("id, name, phone, product_id").eq("id", leadId).maybeSingle();
       if (!lead) return json({ error: "lead não encontrado" }, 404);
       const phone = digits(lead.phone || "");
       if (!phone || phone.length < 10 || phone.length > 15) {
         return json({ ok: true, skipped: "lead sem telefone válido", lead: lead.name });
+      }
+
+      // Elegibilidade por produto: só os 6 produtos da lista dão Mastermind.
+      // Ganho SEM produto preenchido → ninguém convida no automático; o Fabrício
+      // recebe o caso e decide (fail-safe contra convite indevido).
+      let productName = "";
+      if (lead.product_id) {
+        const { data: prod } = await sb.from("crm_products").select("name").eq("id", lead.product_id).maybeSingle();
+        productName = prod?.name || "";
+      }
+      if (!productName) {
+        await sendWhats(sb, FABRICIO, `Mastermind UNV: ganho no CRM SEM produto preenchido — ${lead.name} (${phone}). Se o produto dá direito ao Mastermind, convida manualmente (ou preenche o produto no lead e move de novo pra Ganho).`);
+        return json({ ok: true, skipped: "ganho sem produto — alertado Fabrício", lead: lead.name });
+      }
+      if (!ELIGIBLE_PRODUCTS.includes(normName(productName))) {
+        return json({ ok: true, skipped: `produto não elegível (${productName})`, lead: lead.name });
       }
       // já é membro não-removido? não repete convite
       const { data: existing } = await sb.from("mastermind_members").select("id, status").eq("phone", phone).maybeSingle();
       if (existing && existing.status !== "removed") return json({ ok: true, skipped: "já é membro", status: existing.status });
 
       if (existing) {
-        await sb.from("mastermind_members").update({ status: "invited", removed_at: null, invited_at: new Date().toISOString(), lead_id: leadId, name: lead.name }).eq("id", existing.id);
+        await sb.from("mastermind_members").update({ status: "invited", removed_at: null, invited_at: new Date().toISOString(), lead_id: leadId, name: lead.name, source: `crm_won:${productName}` }).eq("id", existing.id);
       } else {
-        await sb.from("mastermind_members").insert({ lead_id: leadId, name: lead.name, phone, status: "invited", source: "crm_won" });
+        await sb.from("mastermind_members").insert({ lead_id: leadId, name: lead.name, phone, status: "invited", source: `crm_won:${productName}` });
       }
 
       const { data: cfg } = await sb.from("whatsapp_default_config").select("setting_value").eq("setting_key", "mastermind_invite_link").maybeSingle();
