@@ -87,17 +87,26 @@ Deno.serve(async (req) => {
 
     // 3) Link do 1º pagamento (página PIX do Asaas)
     let url = "";
+    let firstPaymentId = "";
     await new Promise((r) => setTimeout(r, 2000));
     try {
       const pays = await asaas(`/subscriptions/${sub.id}/payments`, "GET");
-      if (pays?.data?.length) url = pays.data[0].invoiceUrl || pays.data[0].bankSlipUrl || "";
+      if (pays?.data?.length) { url = pays.data[0].invoiceUrl || pays.data[0].bankSlipUrl || ""; firstPaymentId = String(pays.data[0].id || ""); }
     } catch { /* segue sem link imediato */ }
 
-    // 4) Registra
+    // 4) Lançamento no Financeiro (a receber, recorrente). Vinculado por asaas_payment_id.
+    const { data: rec } = await supabase.from("financial_receivables").insert({
+      description, amount: amountCents / 100, due_date: nextDueDate(dueDay),
+      status: "pending", payment_method: "PIX", payment_link: url, is_recurring: true,
+      asaas_payment_id: firstPaymentId || null, notes: `CRM · lead ${lead.name || lead_id}`,
+    }).select("id").single();
+
+    // 5) Registra o pagamento do lead
     const { data: row } = await supabase.from("crm_lead_payments").insert({
       lead_id, amount_cents: amountCents, description, provider: "asaas",
       billing_type: "PIX", recurring: true, due_day: dueDay,
-      provider_ref: String(sub.id), url, status: "pending",
+      provider_ref: firstPaymentId || String(sub.id), url, status: "pending",
+      receivable_id: rec?.id || null,
     }).select("id").single();
 
     return j({ ok: true, id: row?.id, url, subscription_id: sub.id, next_due: nextDueDate(dueDay) });

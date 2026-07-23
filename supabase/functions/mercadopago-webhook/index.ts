@@ -37,13 +37,38 @@ Deno.serve(async (req) => {
       rejected: "rejected", cancelled: "cancelled", refunded: "refunded", charged_back: "chargeback",
     };
     const newStatus = statusMap[String(pay.status)] || "pending";
+    const MP_BANK = "50d90f6e-e8e6-4dd7-87e9-3757ccda9842"; // financial_banks: Mercado pago
+
+    // valor líquido e taxa (MP informa)
+    const gross = Math.round(Number(pay?.transaction_amount || 0) * 100);
+    const net = Math.round(Number(pay?.transaction_details?.net_received_amount || pay?.transaction_amount || 0) * 100);
+    const feeCents = Math.max(0, gross - net);
+
+    const { data: lp } = await supabase.from("crm_lead_payments")
+      .select("id, receivable_id, status, amount_cents").eq("id", extRef).maybeSingle();
+    if (!lp) return new Response("ok");
 
     await supabase.from("crm_lead_payments").update({
-      status: newStatus,
-      payer_email: pay?.payer?.email || null,
+      status: newStatus, payer_email: pay?.payer?.email || null,
       paid_at: newStatus === "paid" ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     }).eq("id", extRef);
+
+    // Só credita/baixa uma vez (quando vira pago e ainda não estava pago)
+    if (newStatus === "paid" && lp.status !== "paid") {
+      const today = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+      if (lp.receivable_id) {
+        await supabase.from("financial_receivables").update({
+          status: "paid", paid_date: today, paid_amount: net / 100, fee_amount: feeCents / 100, updated_at: new Date().toISOString(),
+        }).eq("id", lp.receivable_id);
+      }
+      // Crédito no banco Mercado Pago (já com a taxa descontada)
+      await supabase.from("financial_bank_transactions").insert({
+        bank_id: MP_BANK, type: "credit", amount_cents: net, fee_cents: feeCents,
+        description: `Pagamento cartão (Mercado Pago) — pagamento ${lp.id}`,
+        reference_type: "crm_lead_payment", reference_id: lp.id,
+      });
+    }
 
     return new Response("ok");
   } catch (e) {

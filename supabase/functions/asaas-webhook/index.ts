@@ -84,6 +84,28 @@ Deno.serve(async (req) => {
 
     console.log(`[Asaas Webhook] Event: ${event}, Payment: ${paymentId}, Status: ${paymentStatus} -> ${newStatus}, Subscription: ${subscriptionId}, DueDate: ${dueDate}, Value: ${paymentValue}, Discount: ${paymentDiscount}`);
 
+    // === Pagamento gerado no CRM (lead) — marca pago + credita banco Asaas (já com taxa) ===
+    try {
+      const ASAAS_BANK = "9f9de213-46bf-49bf-ba6b-a5a1837b3092"; // financial_banks: Asaas
+      const { data: lp } = await supabase.from("crm_lead_payments")
+        .select("id, receivable_id, status").eq("provider", "asaas").eq("provider_ref", String(paymentId)).limit(1).maybeSingle();
+      if (lp && newStatus === "paid" && lp.status !== "paid") {
+        const today = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+        const netCents = Math.round((paymentNetValue || paymentValue || 0) * 100);
+        const feeCents = Math.max(0, Math.round((paymentValue || 0) * 100) - netCents);
+        await supabase.from("crm_lead_payments").update({ status: "paid", paid_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", lp.id);
+        if (lp.receivable_id) {
+          await supabase.from("financial_receivables").update({
+            status: "paid", paid_date: today, paid_amount: netCents / 100, fee_amount: feeCents / 100, asaas_payment_id: String(paymentId), updated_at: new Date().toISOString(),
+          }).eq("id", lp.receivable_id);
+        }
+        await supabase.from("financial_bank_transactions").insert({
+          bank_id: ASAAS_BANK, type: "credit", amount_cents: netCents, fee_cents: feeCents,
+          description: `Pagamento PIX (Asaas) — pagamento ${lp.id}`, reference_type: "crm_lead_payment", reference_id: lp.id,
+        });
+      }
+    } catch (e) { console.error("[Asaas Webhook] lead payment handling error", e); }
+
     // === Recarga da carteira do discador — tratamento isolado (early return) ===
     const extRef: string | undefined = payment.externalReference;
     if (extRef && extRef.startsWith("dialer_recharge:")) {
@@ -133,30 +155,6 @@ Deno.serve(async (req) => {
         await supabase.from("dialer_billing").update({ status: "paid", paid_at: new Date().toISOString(), asaas_payment_id: paymentId }).eq("id", billingId).neq("status", "paid");
       }
       return new Response(JSON.stringify({ received: true, dialer_billing: billingId }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // === UNV Start — libera acesso ao produto de entrada (R$97) ===
-    if (extRef && extRef.startsWith("unv-start:")) {
-      const memberId = extRef.split(":")[1];
-      if (newStatus === "paid" && memberId) {
-        try {
-          await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/unv-start-checkout`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
-            },
-            body: JSON.stringify({ action: "status", member_id: memberId }),
-          });
-          console.log(`[Asaas Webhook] UNV Start acesso liberado: member ${memberId}`);
-        } catch (e) {
-          console.error(`[Asaas Webhook] UNV Start erro ao liberar ${memberId}:`, e);
-        }
-      }
-      return new Response(JSON.stringify({ received: true, unv_start: memberId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

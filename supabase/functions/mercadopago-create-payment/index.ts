@@ -69,8 +69,16 @@ Deno.serve(async (req) => {
   }
 
   const url = mpData.init_point || mpData.sandbox_init_point;
+
+  // Lançamento no Financeiro (a receber). Banco: Mercado Pago.
+  const { data: rec } = await supabase.from("financial_receivables").insert({
+    description, amount: amountCents / 100, due_date: new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10),
+    status: "pending", payment_method: "CREDIT_CARD", payment_link: url, is_recurring: false,
+    notes: `CRM · lead ${lead.name || lead_id}`,
+  }).select("id").single();
+
   await supabase.from("crm_lead_payments").update({
-    provider_ref: String(mpData.id), url, updated_at: new Date().toISOString(),
+    provider_ref: String(mpData.id), url, receivable_id: rec?.id || null, updated_at: new Date().toISOString(),
   }).eq("id", row.id);
 
   return j({ ok: true, id: row.id, url, amount_cents: amountCents });
