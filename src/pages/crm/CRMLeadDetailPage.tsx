@@ -55,17 +55,15 @@ import {
   FileAudio,
   ClipboardList,
   ScanLine,
-  Radar,
   Video,
   ScrollText,
   FolderOpen,
   History,
   Sparkles,
   MessagesSquare,
-  Newspaper,
+  CreditCard,
 } from "lucide-react";
 import { AddLeadNoteDialog } from "@/components/crm/lead-detail/AddLeadNoteDialog";
-import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
 import { LeadSummaryTab } from "@/components/crm/lead-detail/lead-summary/LeadSummaryTab";
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
@@ -75,6 +73,7 @@ import { useCRMContext } from "./CRMLayout";
 import { createStageActivities } from "@/hooks/useStageActions";
 import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
 import { trackMeetingEventOnStageChange } from "@/hooks/useMeetingEventTracker";
+import { sendWonLeadNotification } from "@/hooks/useSendWonNotification";
 import {
   LeadActivitiesTab,
   LeadCustomFieldsTab,
@@ -85,13 +84,9 @@ import {
 import { LeadContractDataTab } from "@/components/crm/lead-detail/LeadContractDataTab";
 import { useMetaAdNames } from "@/components/crm/useMetaAdNames";
 import { LeadProposalTab } from "@/components/crm/lead-detail/LeadProposalTab";
-import { CustomFollowupTab } from "@/components/crm/lead-detail/CustomFollowupTab";
 import { LeadConversationsTab } from "@/components/crm/lead-detail/LeadConversationsTab";
-import { LeadCallsTab } from "@/components/crm/lead-detail/LeadCallsTab";
-import { NexusClientIntelPanel } from "@/components/crm/lead-detail/NexusClientIntelPanel";
 import { LeadFormAnswersTab } from "@/components/crm/lead-detail/LeadFormAnswersTab";
 import { LeadScannerTab } from "@/components/crm/lead-detail/LeadScannerTab";
-import { LeadMaturityTab } from "@/components/crm/lead-detail/LeadMaturityTab";
 import { LeadMeetingsPanel } from "@/components/crm/lead-detail/LeadMeetingsPanel";
 import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
 import { SendContractButton } from "@/components/crm/SendContractButton";
@@ -177,7 +172,6 @@ export const CRMLeadDetailPage = () => {
   
   const { startCall } = useCallDock();
   const [lead, setLead] = useState<Lead | null>(null);
-  const [phone2, setPhone2] = useState<string | null>(null); // 2º telefone (campo custom "phone2")
   const [notesOpen, setNotesOpen] = useState(false);
   const [adOriginOpen, setAdOriginOpen] = useState(false);
   const adNames = useMetaAdNames();
@@ -277,20 +271,6 @@ export const CRMLeadDetailPage = () => {
       if (error) throw error;
       setLead(data);
 
-      // 2º telefone (campo personalizado "phone2") — habilita o botão "Ligar 2"
-      try {
-        const { data: p2 } = await supabase
-          .from("crm_custom_field_values")
-          .select("value, crm_custom_fields!inner(field_name)")
-          .eq("lead_id", id)
-          .eq("crm_custom_fields.field_name", "phone2")
-          .maybeSingle();
-        const v = (p2 as any)?.value?.trim();
-        setPhone2(v || null);
-      } catch {
-        setPhone2(null);
-      }
-
       // Backfill: se o lead já está GANHO e não existe venda registrada,
       // cria um registro em crm_sales para refletir faturamento/receita no dashboard.
       try {
@@ -305,8 +285,7 @@ export const CRMLeadDetailPage = () => {
           if (existingSaleError) throw existingSaleError;
 
           if (!existingSale?.id) {
-            // venda conta pro RESPONSÁVEL do lead (owner), não pro closer vinculado
-            const closerId = data.owner_staff_id || (data as any).closer_staff_id;
+            const closerId = (data as any).closer_staff_id || data.owner_staff_id;
             const sdrId = (data as any).sdr_staff_id || null;
             const value = (data as any).opportunity_value || 0;
             const closedAt = (data as any).closed_at ? new Date((data as any).closed_at) : new Date();
@@ -482,12 +461,6 @@ export const CRMLeadDetailPage = () => {
       
       // Track meeting events (scheduled/realized) for CRM metrics
       const targetStage = stages.find(s => s.id === stageId);
-
-      // Etapa de reunião agendada: obriga criar a tarefa do próximo contato
-      if (targetStage && /agendad/i.test(targetStage.name)) {
-        setNextTask({ mandatory: true });
-        toast.info("Reunião agendada — crie a tarefa do próximo contato.");
-      }
       if (staffId && lead.pipeline_id && targetStage) {
         await trackMeetingEventOnStageChange(
           lead.id,
@@ -506,9 +479,6 @@ export const CRMLeadDetailPage = () => {
     }
   };
 
-  // Lead nunca fica sem tarefa pendente: concluir abre a criação da próxima
-  const [nextTask, setNextTask] = useState<{ mandatory: boolean } | null>(null);
-
   const handleActivityComplete = async (activityId: string) => {
     try {
       const { error } = await supabase
@@ -522,18 +492,6 @@ export const CRMLeadDetailPage = () => {
       if (error) throw error;
       toast.success("Atividade concluída");
       loadLead();
-      if (lead?.id) {
-        const { count } = await supabase
-          .from("crm_activities")
-          .select("id", { count: "exact", head: true })
-          .eq("lead_id", lead.id)
-          .eq("status", "pending");
-        // Lead FECHADO (ganho/perdido): concluir tarefa não exige criar a próxima
-        const isClosed = !!lead.stage?.final_type;
-        if (!isClosed) {
-          setNextTask({ mandatory: (count ?? 0) === 0 });
-        }
-      }
     } catch (error) {
       console.error("Error completing activity:", error);
       toast.error("Erro ao concluir atividade");
@@ -550,10 +508,11 @@ export const CRMLeadDetailPage = () => {
     }
 
     try {
-      // A venda é do RESPONSÁVEL pelo lead, não de quem clica em "Ganho".
-      // (ex.: Fabrício dá ganho num lead da Natalia → a venda conta pra Natalia.)
-      // Prioridade: DONO do lead → closer vinculado → quem clicou (só sem ninguém).
-      const effectiveCloserId = lead.owner_staff_id || lead.closer_staff_id || staffId || null;
+      // A venda é do VENDEDOR RESPONSÁVEL pelo lead, não de quem clica em "Ganho".
+      // (um master/admin pode dar ganho num lead de outra pessoa — ex.: Fabrício fecha
+      //  um lead da Yasmim; a venda tem que contar pra Yasmim.)
+      // Prioridade: closer já vinculado → dono do lead → quem clicou (só se o lead não tiver ninguém).
+      const effectiveCloserId = lead.closer_staff_id || lead.owner_staff_id || staffId || null;
 
       const updatePayload: Record<string, any> = {
         stage_id: wonStage.id,
@@ -625,9 +584,22 @@ export const CRMLeadDetailPage = () => {
         }
       }
 
-      // Notificação do grupo agora é SERVER-SIDE (trigger crm_won_notify no
-      // banco → edge crm-won-notify, idempotente) — dispara em qualquer caminho
-      // de ganho, sem depender do navegador/bundle do usuário.
+      // Enviar notificação para o grupo de WhatsApp (não bloqueia o fluxo principal)
+      sendWonLeadNotification(lead.id)
+        .then((result) => {
+          console.log("[WON NOTIFICATION] Result:", JSON.stringify(result));
+          if (result.success) {
+            toast.success("📱 Notificação enviada para o grupo!");
+          } else {
+            // Só loga no console — não exibe erro para o usuário pois a venda já foi registrada
+            console.warn("[WON NOTIFICATION] Falha ao notificar grupo:", result.error);
+          }
+        })
+        .catch((e) => {
+          // Falha silenciosa — instância WhatsApp pode estar desconectada
+          console.error("[WON NOTIFICATION] Exception:", e);
+        });
+
       setWonDialogOpen(false);
       loadLead();
     } catch (error) {
@@ -975,29 +947,10 @@ export const CRMLeadDetailPage = () => {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-emerald-500 hover:text-emerald-400"
-                title={phone2 ? `Ligar no Telefone 1 (${lead.phone}) — discador` : "Ligar pelo discador (Twilio)"}
+                title="Ligar pelo discador (Twilio)"
                 onClick={() => startCall({ id: lead.id, name: lead.company || lead.name, phone: lead.phone })}
               >
-                <span className="relative inline-flex items-center justify-center">
-                  <Phone className="h-4 w-4" />
-                  {phone2 && (
-                    <span className="absolute -bottom-1.5 -right-1.5 text-[8px] font-bold leading-none bg-emerald-500 text-white rounded-full h-3 w-3 flex items-center justify-center">1</span>
-                  )}
-                </span>
-              </Button>
-            )}
-            {phone2 && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-emerald-500 hover:text-emerald-400"
-                title={`Ligar no Telefone 2 (${phone2}) — discador`}
-                onClick={() => startCall({ id: lead.id, name: lead.company || lead.name, phone: phone2 })}
-              >
-                <span className="relative inline-flex items-center justify-center">
-                  <Phone className="h-4 w-4" />
-                  <span className="absolute -bottom-1.5 -right-1.5 text-[8px] font-bold leading-none bg-emerald-500 text-white rounded-full h-3 w-3 flex items-center justify-center">2</span>
-                </span>
+                <Phone className="h-4 w-4" />
               </Button>
             )}
             {lead.phone && (
@@ -1340,19 +1293,16 @@ export const CRMLeadDetailPage = () => {
           <TabsList className="h-auto p-0 bg-transparent rounded-none flex flex-wrap w-full justify-start gap-y-0">
             {[
               { value: "summary", label: "Resumo", icon: Sparkles, color: "text-purple-500" },
-              { value: "nexus_client", label: "Cliente UNV", icon: Building2, color: "text-amber-500" },
-              { value: "custom_followup", label: "Follow up personalizado", icon: Newspaper, color: "text-orange-500" },
               { value: "activities", label: "Atividades", icon: Activity, color: "text-blue-500" },
               { value: "conversations", label: "Conversas", icon: MessagesSquare, color: "text-emerald-500" },
-              { value: "calls", label: "Ligações", icon: Phone, color: "text-green-600" },
               { value: "contact", label: "Contato", icon: User, color: "text-violet-500" },
               { value: "company", label: "Empresa", icon: Building2, color: "text-emerald-500" },
               { value: "deal", label: "Negócio", icon: Briefcase, color: "text-amber-500" },
               { value: "transcription", label: "Transcrição", icon: FileAudio, color: "text-pink-500" },
               { value: "proposal", label: "Proposta", icon: FileSignature, color: "text-blue-500" },
+              { value: "payment", label: "Pagamento", icon: CreditCard, color: "text-green-600" },
               { value: "form_answers", label: "Respostas", icon: ClipboardList, color: "text-cyan-500" },
               { value: "scanner", label: "Scanner UNV", icon: ScanLine, color: "text-fuchsia-500" },
-              { value: "maturity", label: "Maturidade", icon: Radar, color: "text-green-500" },
               { value: "meetings", label: "Reuniões", icon: Video, color: "text-indigo-500" },
               { value: "contract_data", label: "Dados Contratuais", icon: ScrollText, color: "text-orange-500" },
               { value: "files", label: "Arquivos", icon: FolderOpen, color: "text-teal-500" },
@@ -1372,10 +1322,6 @@ export const CRMLeadDetailPage = () => {
 
         <TabsContent value="summary" className="flex-1 mt-0 overflow-hidden">
           <LeadSummaryTab leadId={lead.id} leadName={lead.name} />
-        </TabsContent>
-
-        <TabsContent value="custom_followup" className="flex-1 mt-0 overflow-hidden">
-          <CustomFollowupTab leadId={lead.id} leadName={lead.name} leadPhone={lead.phone} />
         </TabsContent>
 
         <TabsContent value="activities" className="flex-1 mt-0 overflow-hidden">
@@ -1399,11 +1345,7 @@ export const CRMLeadDetailPage = () => {
         </TabsContent>
 
         <TabsContent value="conversations" className="flex-1 mt-0 overflow-hidden">
-          <LeadConversationsTab leadId={lead.id} leadPhone={lead.phone} leadName={lead.name} leadInstagram={(lead as any).instagram} />
-        </TabsContent>
-
-        <TabsContent value="calls" className="flex-1 mt-0 overflow-hidden">
-          <LeadCallsTab leadId={lead.id} />
+          <LeadConversationsTab leadId={lead.id} leadPhone={lead.phone} leadName={lead.name} />
         </TabsContent>
 
         <TabsContent value="meetings" className="flex-1 mt-0 overflow-hidden">
@@ -1414,16 +1356,16 @@ export const CRMLeadDetailPage = () => {
           <LeadContractDataTab leadId={lead.id} onUpdate={loadLead} />
         </TabsContent>
 
+        <TabsContent value="payment" className="flex-1 mt-0 overflow-hidden">
+          <LeadPaymentPanel leadId={lead.id} leadName={lead.name} opportunityValue={lead.opportunity_value} />
+        </TabsContent>
+
         <TabsContent value="form_answers" className="flex-1 mt-0 overflow-auto">
           <LeadFormAnswersTab leadId={lead.id} />
         </TabsContent>
 
         <TabsContent value="scanner" className="flex-1 mt-0 overflow-auto">
           <LeadScannerTab leadId={lead.id} />
-        </TabsContent>
-
-        <TabsContent value="maturity" className="flex-1 mt-0 overflow-auto">
-          <LeadMaturityTab leadId={lead.id} />
         </TabsContent>
 
         <TabsContent value="contact" className="flex-1 mt-0 overflow-auto">
@@ -1433,10 +1375,6 @@ export const CRMLeadDetailPage = () => {
             leadData={lead}
             onUpdate={loadLead}
           />
-        </TabsContent>
-
-        <TabsContent value="nexus_client" className="flex-1 mt-0 overflow-auto">
-          <NexusClientIntelPanel leadId={lead.id} />
         </TabsContent>
 
         <TabsContent value="company" className="flex-1 mt-0 overflow-auto">
@@ -1694,26 +1632,6 @@ export const CRMLeadDetailPage = () => {
           onOpenChange={setConvertDialogOpen}
           lead={lead}
           onSuccess={loadLead}
-        />
-      )}
-
-      {/* Próxima atividade após concluir — obrigatória se o lead ficou sem pendente */}
-      {lead && nextTask && (
-        <AddActivityDialog
-          open={!!nextTask}
-          onOpenChange={(o) => {
-            if (o) return;
-            if (nextTask.mandatory) {
-              toast.error("Crie a próxima tarefa — nenhum lead fica sem atividade pendente");
-              return;
-            }
-            setNextTask(null);
-          }}
-          leadId={lead.id}
-          onSuccess={() => {
-            setNextTask(null);
-            loadLead();
-          }}
         />
       )}
     </div>
