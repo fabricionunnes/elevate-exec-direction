@@ -60,6 +60,36 @@ Deno.serve(async (req) => {
         });
     }
 
+    // === Pagamento gerado no CRM (lead) via Dom — marca pago + credita banco Dom ===
+    try {
+      const DOM_BANK = "bd12e32c-d943-40f9-9b25-27f9beaa987f"; // financial_banks: Dom Pagamentos
+      const { data: lp } = await supabase.from("crm_lead_payments")
+        .select("id, receivable_id, status, amount_cents").eq("provider", "dompagamentos").eq("provider_ref", transactionId).limit(1).maybeSingle();
+      if (lp) {
+        await supabase.from("crm_lead_payments").update({
+          status: newStatus === "paid" ? "paid" : newStatus,
+          paid_at: newStatus === "paid" ? new Date().toISOString() : null, updated_at: new Date().toISOString(),
+        }).eq("id", lp.id);
+        if (newStatus === "paid" && lp.status !== "paid") {
+          const today = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+          const net = Math.round(Number(data.net_amount ?? data.amount_net ?? 0)) || lp.amount_cents;
+          const feeCents = Math.max(0, lp.amount_cents - net);
+          if (lp.receivable_id) {
+            await supabase.from("financial_receivables").update({
+              status: "paid", paid_date: today, paid_amount: net / 100, fee_amount: feeCents / 100, updated_at: new Date().toISOString(),
+            }).eq("id", lp.receivable_id);
+          }
+          await supabase.from("financial_bank_transactions").insert({
+            bank_id: DOM_BANK, type: "credit", amount_cents: net, fee_cents: feeCents,
+            description: `Pagamento cartão (Dom) — pagamento ${lp.id}`, reference_type: "crm_lead_payment", reference_id: lp.id,
+          });
+        }
+        return new Response(JSON.stringify({ received: true, lead_payment: lp.id, status: newStatus }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } catch (e) { console.error("[Dom Webhook] lead payment error", e); }
+
     // Find the order by transaction ID
     const { data: order, error: orderError } = await supabase
       .from("pagarme_orders")

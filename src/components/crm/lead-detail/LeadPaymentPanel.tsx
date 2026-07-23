@@ -25,7 +25,7 @@ const STATUS: Record<string, { label: string; variant: "default" | "secondary" |
 
 export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadId: string; leadName: string; opportunityValue: number | null }) {
   const [amount, setAmount] = useState<string>(opportunityValue ? String(opportunityValue).replace(".", ",") : "");
-  const [provider, setProvider] = useState<"mercadopago" | "asaas">("mercadopago");
+  const [provider, setProvider] = useState<"mercadopago" | "asaas" | "dompagamentos">("mercadopago");
   const [installments, setInstallments] = useState("12");
   const [dueDay, setDueDay] = useState("5");
   const [description, setDescription] = useState("");
@@ -48,9 +48,13 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
     if (!cents || cents < 100) { toast.error("Informe um valor válido (mín. R$ 1,00)"); return; }
     setGenerating(true);
     try {
-      const fn = provider === "asaas" ? "asaas-lead-subscription" : "mercadopago-create-payment";
+      const fn = provider === "asaas" ? "asaas-lead-subscription"
+        : provider === "dompagamentos" ? "dompagamentos-create-payment"
+        : "mercadopago-create-payment";
       const payload = provider === "asaas"
         ? { lead_id: leadId, amount_cents: cents, due_day: Number(dueDay), description: description || `Assinatura mensal — ${leadName}` }
+        : provider === "dompagamentos"
+        ? { lead_id: leadId, amount_cents: cents, installments: Number(installments), interest_free_installments: Number(installments), description: description || `Pagamento — ${leadName}` }
         : { lead_id: leadId, amount_cents: cents, installments: Number(installments), description: description || `Pagamento — ${leadName}` };
       const { data, error } = await supabase.functions.invoke(fn, { body: payload });
       if (error || !data?.ok) { toast.error(data?.error || error?.message || "Falha ao gerar link"); return; }
@@ -70,14 +74,18 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
         <h3 className="font-semibold flex items-center gap-2"><CreditCard className="h-4 w-4 text-emerald-500" /> Gerar link de pagamento</h3>
         <div>
           <Label className="text-xs">Forma</Label>
-          <div className="grid grid-cols-2 gap-2 mt-1">
+          <div className="grid grid-cols-3 gap-2 mt-1">
             <button type="button" onClick={() => setProvider("mercadopago")}
               className={`rounded-md border p-2 text-xs text-left ${provider === "mercadopago" ? "border-primary bg-primary/5 font-medium" : "border-border"}`}>
-              Mercado Pago<br /><span className="text-[10px] text-muted-foreground">Cartão (parcelado)</span>
+              Mercado Pago<br /><span className="text-[10px] text-muted-foreground">Cartão parcelado</span>
+            </button>
+            <button type="button" onClick={() => setProvider("dompagamentos")}
+              className={`rounded-md border p-2 text-xs text-left ${provider === "dompagamentos" ? "border-primary bg-primary/5 font-medium" : "border-border"}`}>
+              Dom Pagamentos<br /><span className="text-[10px] text-muted-foreground">Cartão parcelado</span>
             </button>
             <button type="button" onClick={() => setProvider("asaas")}
               className={`rounded-md border p-2 text-xs text-left ${provider === "asaas" ? "border-primary bg-primary/5 font-medium" : "border-border"}`}>
-              Asaas<br /><span className="text-[10px] text-muted-foreground">PIX · assinatura mensal</span>
+              Asaas<br /><span className="text-[10px] text-muted-foreground">PIX · mensal</span>
             </button>
           </div>
         </div>
