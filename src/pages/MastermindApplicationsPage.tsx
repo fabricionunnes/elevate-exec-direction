@@ -42,6 +42,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { User, Session } from "@supabase/supabase-js";
+import { MastermindGroupInviteDialog } from "@/components/mastermind/MastermindGroupInviteDialog";
 
 interface MastermindApplication {
   id: string;
@@ -486,6 +487,7 @@ export default function MastermindApplicationsPage() {
                   className="pl-9 w-64"
                 />
               </div>
+              <MastermindGroupInviteDialog />
               <Button variant="outline" onClick={fetchApplications} disabled={loading}>
                 <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
               </Button>
