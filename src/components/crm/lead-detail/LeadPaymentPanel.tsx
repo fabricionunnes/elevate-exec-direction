@@ -11,6 +11,7 @@ import { toast } from "sonner";
 interface Payment {
   id: string; amount_cents: number; description: string | null; status: string;
   url: string | null; installments: number | null; created_at: string; paid_at: string | null;
+  provider: string; recurring: boolean; due_day: number | null;
 }
 
 const fmt = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -24,7 +25,9 @@ const STATUS: Record<string, { label: string; variant: "default" | "secondary" |
 
 export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadId: string; leadName: string; opportunityValue: number | null }) {
   const [amount, setAmount] = useState<string>(opportunityValue ? String(opportunityValue).replace(".", ",") : "");
+  const [provider, setProvider] = useState<"mercadopago" | "asaas">("mercadopago");
   const [installments, setInstallments] = useState("12");
+  const [dueDay, setDueDay] = useState("5");
   const [description, setDescription] = useState("");
   const [generating, setGenerating] = useState(false);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -33,7 +36,7 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
   const load = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase.from("crm_lead_payments")
-      .select("id, amount_cents, description, status, url, installments, created_at, paid_at")
+      .select("id, amount_cents, description, status, url, installments, created_at, paid_at, provider, recurring, due_day")
       .eq("lead_id", leadId).order("created_at", { ascending: false });
     setPayments((data as Payment[]) || []);
     setLoading(false);
@@ -45,9 +48,11 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
     if (!cents || cents < 100) { toast.error("Informe um valor válido (mín. R$ 1,00)"); return; }
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("mercadopago-create-payment", {
-        body: { lead_id: leadId, amount_cents: cents, installments: Number(installments), description: description || `Pagamento — ${leadName}` },
-      });
+      const fn = provider === "asaas" ? "asaas-lead-subscription" : "mercadopago-create-payment";
+      const payload = provider === "asaas"
+        ? { lead_id: leadId, amount_cents: cents, due_day: Number(dueDay), description: description || `Assinatura mensal — ${leadName}` }
+        : { lead_id: leadId, amount_cents: cents, installments: Number(installments), description: description || `Pagamento — ${leadName}` };
+      const { data, error } = await supabase.functions.invoke(fn, { body: payload });
       if (error || !data?.ok) { toast.error(data?.error || error?.message || "Falha ao gerar link"); return; }
       toast.success("Link gerado!");
       if (data.url) { navigator.clipboard.writeText(data.url); toast.success("Link copiado"); }
@@ -62,27 +67,55 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
   return (
     <div className="p-4 space-y-5 overflow-auto h-full">
       <div className="rounded-lg border p-4 space-y-3">
-        <h3 className="font-semibold flex items-center gap-2"><CreditCard className="h-4 w-4 text-emerald-500" /> Gerar link de pagamento (Mercado Pago)</h3>
+        <h3 className="font-semibold flex items-center gap-2"><CreditCard className="h-4 w-4 text-emerald-500" /> Gerar link de pagamento</h3>
+        <div>
+          <Label className="text-xs">Forma</Label>
+          <div className="grid grid-cols-2 gap-2 mt-1">
+            <button type="button" onClick={() => setProvider("mercadopago")}
+              className={`rounded-md border p-2 text-xs text-left ${provider === "mercadopago" ? "border-primary bg-primary/5 font-medium" : "border-border"}`}>
+              Mercado Pago<br /><span className="text-[10px] text-muted-foreground">Cartão (parcelado)</span>
+            </button>
+            <button type="button" onClick={() => setProvider("asaas")}
+              className={`rounded-md border p-2 text-xs text-left ${provider === "asaas" ? "border-primary bg-primary/5 font-medium" : "border-border"}`}>
+              Asaas<br /><span className="text-[10px] text-muted-foreground">PIX · assinatura mensal</span>
+            </button>
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label className="text-xs">Valor</Label>
+            <Label className="text-xs">Valor{provider === "asaas" ? " (por mês)" : ""}</Label>
             <div className="relative">
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
               <Input className="pl-8" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" />
             </div>
           </div>
-          <div>
-            <Label className="text-xs">Parcelas sem juros</Label>
-            <Select value={installments} onValueChange={setInstallments}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-                  <SelectItem key={n} value={String(n)}>{n}x{n === 1 ? " (à vista)" : " sem juros"}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {provider === "asaas" ? (
+            <div>
+              <Label className="text-xs">Vencimento (todo dia)</Label>
+              <Select value={dueDay} onValueChange={setDueDay}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[1, 5, 10, 15, 20, 25].map((n) => <SelectItem key={n} value={String(n)}>Dia {n}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div>
+              <Label className="text-xs">Parcelas sem juros</Label>
+              <Select value={installments} onValueChange={setInstallments}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                    <SelectItem key={n} value={String(n)}>{n}x{n === 1 ? " (à vista)" : " sem juros"}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
+        {provider === "asaas" && (
+          <p className="text-[11px] text-muted-foreground">Cria uma assinatura mensal via PIX no Asaas. Exige o CPF/CNPJ preenchido no lead.</p>
+        )}
         <div>
           <Label className="text-xs">Descrição (opcional)</Label>
           <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={`Pagamento — ${leadName}`} />
@@ -113,6 +146,7 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
                       <span className="font-semibold text-sm">{fmt(p.amount_cents)}</span>
                       <Badge variant={st.variant} className="text-[10px]">{st.label}</Badge>
                       {p.installments && p.installments > 1 && <span className="text-[11px] text-muted-foreground">{p.installments}x</span>}
+                      <span className="text-[10px] text-muted-foreground">{p.provider === "asaas" ? `PIX · mensal (dia ${p.due_day})` : "Cartão"}</span>
                     </div>
                     <p className="text-[11px] text-muted-foreground truncate">{p.description}</p>
                     <p className="text-[10px] text-muted-foreground">{new Date(p.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}{p.paid_at ? ` · pago em ${new Date(p.paid_at).toLocaleDateString("pt-BR")}` : ""}</p>
