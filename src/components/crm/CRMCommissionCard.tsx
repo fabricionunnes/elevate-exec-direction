@@ -134,11 +134,20 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
         const monthStart = new Date(currentYear, currentMonth - 1, 1);
         const monthEnd = new Date(currentYear, currentMonth, 0);
 
-        const { data: salesData } = await supabase
+        const { data: rawSalesData } = await supabase
           .from("crm_sales")
-          .select("billing_value, closer_staff_id")
+          .select("billing_value, closer_staff_id, pipeline_id, lead:crm_leads(pipeline_id)")
           .gte("sale_date", monthStart.toISOString().split("T")[0])
           .lte("sale_date", monthEnd.toISOString().split("T")[0]);
+
+        // Funis marcados como fora da meta (eventos/esteira, ex: Imersão, Mansão)
+        // não contam pra remuneração — nem do closer nem da head.
+        const { data: pipes } = await supabase.from("crm_pipelines").select("id, counts_for_goals");
+        const excludedPipes = new Set((pipes || []).filter((p: any) => p.counts_for_goals === false).map((p: any) => p.id));
+        const salesData = (rawSalesData || []).filter((s: any) => {
+          const pid = s.pipeline_id || s.lead?.pipeline_id;
+          return !pid || !excludedPipes.has(pid);
+        });
 
         const { data: meetingsData } = await supabase
           .from("crm_activities")
