@@ -124,15 +124,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
         return v ?? null;
       };
       const periodMul = (k: Kpi) => k.periodicity === "daily" ? (workingDays || endD.getDate()) : k.periodicity === "weekly" ? Math.ceil(endD.getDate() / 7) : 1;
-      // Escopo vencedor das metas (mesma precedência): vendedor > empresa > unidade > time
-      const scopeRowsFor = (kid: string): TargetRow[] => {
-        const all = targets.filter(t => t.kpi_id === kid);
-        const sp = all.filter(t => t.salesperson_id); if (sp.length) return sp;
-        const comp = all.filter(t => !t.salesperson_id && !t.unit_id && !t.team_id); if (comp.length) return comp;
-        const un = all.filter(t => t.unit_id && !t.team_id && !t.salesperson_id); if (un.length) return un;
-        return all.filter(t => t.team_id && !t.salesperson_id);
-      };
-      // Todos os níveis de meta (Base, Alvo, Superação…) somados no escopo, ajustados ao período
+      // Níveis de meta a partir de um conjunto de linhas (soma por nível), ajustado ao período
       const levelsFrom = (rowsIn: TargetRow[], mul: number) => {
         const byLevel = new Map<string, { order: number; value: number }>();
         rowsIn.forEach(r => {
@@ -141,7 +133,29 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
         });
         return [...byLevel.entries()].map(([name, v]) => ({ name, order: v.order, value: v.value * mul })).sort((a, b) => a.order - b.order);
       };
-      const metaLevelsFor = (k: Kpi) => levelsFrom(scopeRowsFor(k.id), periodMul(k));
+      // Níveis da EMPRESA: cada nível pega o escopo que tiver (vendedor > empresa > unidade > time),
+      // INDEPENDENTE por nível. Assim uma "Diamante" só cadastrada na empresa não é perdida quando o
+      // "Meta" existe por vendedor.
+      const metaLevelsFor = (k: Kpi) => {
+        const all = targets.filter(t => t.kpi_id === k.id);
+        const mul = periodMul(k);
+        const orderByName = new Map<string, number>();
+        all.forEach(r => { if (!orderByName.has(r.level_name)) orderByName.set(r.level_name, r.level_order); });
+        const sumScope = (name: string) => {
+          const sp = all.filter(t => t.salesperson_id && t.level_name === name);
+          if (sp.length) return sp.reduce((s, r) => s + Number(r.target_value || 0), 0);
+          const comp = all.filter(t => !t.salesperson_id && !t.unit_id && !t.team_id && t.level_name === name);
+          if (comp.length) return comp.reduce((s, r) => s + Number(r.target_value || 0), 0);
+          const un = all.filter(t => t.unit_id && !t.team_id && !t.salesperson_id && t.level_name === name);
+          if (un.length) return un.reduce((s, r) => s + Number(r.target_value || 0), 0);
+          const tm = all.filter(t => t.team_id && !t.salesperson_id && t.level_name === name);
+          return tm.reduce((s, r) => s + Number(r.target_value || 0), 0);
+        };
+        return [...orderByName.entries()]
+          .map(([name, order]) => ({ name, order, value: sumScope(name) * mul }))
+          .filter(l => l.value > 0)
+          .sort((a, b) => a.order - b.order);
+      };
       const metaFor = (k: Kpi) => {
         const lv = metaLevelsFor(k);
         const base = lv.find(l => l.name === "Meta") ?? lv[0];
