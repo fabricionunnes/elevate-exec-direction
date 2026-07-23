@@ -166,7 +166,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
           const value = byPerson.get(p.id) || 0;
           const pm = metaPerson(p.id);
           return { name: p.name, value, type: main.kpi_type, pct: pm > 0 ? (value / pm) * 100 : 0 };
-        }).filter(r => r.value > 0).sort((a, b) => b.value - a.value).slice(0, 10);
+        }).filter(r => r.value > 0).sort((a, b) => b.pct - a.pct || b.value - a.value).slice(0, 10);
         // vendas por equipe
         people.forEach(p => {
           if (!p.team_id) return;
