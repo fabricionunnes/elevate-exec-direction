@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   Circle,
   Clock,
+  MonitorPlay,
   Users,
   MessageSquare,
   Calendar,
@@ -87,6 +88,7 @@ import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistor
 import { MeetingHistoryPanel } from "@/components/onboarding-tasks/MeetingHistoryPanel";
 import { AssessmentsPanel } from "@/components/assessments/AssessmentsPanel";
 import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel";
+import { GestaoVistaBoard } from "@/components/onboarding-tasks/kpis/GestaoVistaBoard";
 import { FacunicampsIndicadoresPanel } from "@/components/facunicamps/FacunicampsIndicadoresPanel";
 
 const FACUNICAMPS_ID = "1081cb78-bd6c-42b2-8a85-104ead3ecc18";
@@ -246,7 +248,7 @@ const OnboardingProjectPage = () => {
 
   // Two-level navigation: group → sub-tabs
   const tabGroupMap: Record<string, string> = {
-    indicadores: "principal", kpis: "principal", briefing: "principal", diagnostic: "principal", tasks: "principal", "ai-coach": "principal",
+    indicadores: "principal", kpis: "principal", gestao_vista: "principal", briefing: "principal", diagnostic: "principal", tasks: "principal", "ai-coach": "principal",
     nps: "relacionamento", csat: "relacionamento", assessments: "relacionamento", meetings: "relacionamento", support: "relacionamento", whatsapp: "relacionamento",
     health: "gestao", hr: "gestao", board: "gestao", financial: "gestao", history: "gestao",
     cfin_sistema: "sistema",
@@ -1594,7 +1596,8 @@ const OnboardingProjectPage = () => {
                   ...(project?.onboarding_company_id === FACUNICAMPS_ID ? [
                     <TabsTrigger key="indicadores" value="indicadores"><BarChart3 className="h-3.5 w-3.5 shrink-0" />Indicadores</TabsTrigger>
                   ] : [
-                    <TabsTrigger key="kpis" value="kpis"><BarChart3 className="h-3.5 w-3.5 shrink-0" />KPIs</TabsTrigger>
+                    <TabsTrigger key="kpis" value="kpis"><BarChart3 className="h-3.5 w-3.5 shrink-0" />KPIs</TabsTrigger>,
+                    <TabsTrigger key="gestao_vista" value="gestao_vista"><MonitorPlay className="h-3.5 w-3.5 shrink-0" />Gestão à Vista</TabsTrigger>
                   ]),
                   <TabsTrigger key="briefing" value="briefing"><Building2 className="h-3.5 w-3.5 shrink-0" />Briefing</TabsTrigger>,
                   <TabsTrigger key="curriculum" value="curriculum"><GraduationCap className="h-3.5 w-3.5 shrink-0" />Grade</TabsTrigger>,
@@ -1971,6 +1974,10 @@ const OnboardingProjectPage = () => {
               isStaff={currentUserRole === "admin" || currentUserRole === "cs" || currentUserRole === "consultant"}
               defaultTab={kpiDefaultTab}
             />
+          </TabsContent>
+
+          <TabsContent value="gestao_vista">
+            <GestaoVistaBoard companyId={project.onboarding_company_id || ""} />
           </TabsContent>
 
           <TabsContent value="hr">
