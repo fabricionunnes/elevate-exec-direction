@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { IntegrationDialog } from "./IntegrationDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -163,6 +164,7 @@ export const KPIMetasPanel = ({
           </p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
+          {canAccessAllTabs && <IntegrationDialog companyId={companyId} />}
           {(canAccessAllTabs || canSeeSalesLinks) && (
             <Button variant="outline" size="sm" onClick={() => setShowSalesLinks(true)} className="gap-2 flex-1 sm:flex-initial h-8 sm:h-9 text-xs sm:text-sm">
               <Link className="h-3.5 w-3.5 sm:h-4 sm:w-4" />

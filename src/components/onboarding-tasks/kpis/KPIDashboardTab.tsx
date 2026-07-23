@@ -35,7 +35,6 @@ import { SalesHistoryDialog } from "./SalesHistoryDialog";
 import { SalesComparisonChart } from "./SalesComparisonChart";
 import { CACCalculatorCard } from "@/components/client-portal/CACCalculatorCard";
 import { KPIEntriesHistoryDialog } from "./KPIEntriesHistoryDialog";
-import { IntegrationDialog } from "./IntegrationDialog";
 import { SalespeopleComparisonTable } from "./SalespeopleComparisonTable";
 import { MonthlySalesChart } from "./MonthlySalesChart";
 import { PerformanceComparisonCard } from "./PerformanceComparisonCard";
@@ -1890,7 +1889,6 @@ export const KPIDashboardTab = ({
                   canEdit={canEditSalesHistory}
                 />
               )}
-              <IntegrationDialog companyId={companyId} />
               <KPIEntriesHistoryDialog
                 companyId={companyId}
                 canDelete={canDeleteEntries}
