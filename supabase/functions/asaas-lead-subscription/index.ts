@@ -38,29 +38,29 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return j({ ok: false, error: "use POST" }, 405);
   if (!req.headers.get("authorization")) return j({ ok: false, error: "não autenticado" }, 401);
-  if (!ASAAS_KEY) return j({ ok: false, error: "Asaas não configurado (falta a chave no servidor)" }, 400);
+  if (!ASAAS_KEY) return j({ ok: false, error: "Asaas não configurado (falta a chave no servidor)" });
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
   let body: any;
-  try { body = await req.json(); } catch { return j({ ok: false, error: "JSON inválido" }, 400); }
+  try { body = await req.json(); } catch { return j({ ok: false, error: "JSON inválido" }); }
 
   const { lead_id } = body;
   const dueDay = Number(body.due_day);
-  if (!lead_id) return j({ ok: false, error: "lead_id obrigatório" }, 400);
-  if (![1, 5, 10, 15, 20, 25].includes(dueDay)) return j({ ok: false, error: "dia de vencimento deve ser 1, 5, 10, 15, 20 ou 25" }, 400);
+  if (!lead_id) return j({ ok: false, error: "lead_id obrigatório" });
+  if (![1, 5, 10, 15, 20, 25].includes(dueDay)) return j({ ok: false, error: "dia de vencimento deve ser 1, 5, 10, 15, 20 ou 25" });
 
   const { data: lead } = await supabase
     .from("crm_leads").select("id, name, email, phone, document, opportunity_value")
     .eq("id", lead_id).maybeSingle();
-  if (!lead) return j({ ok: false, error: "lead não encontrado" }, 404);
+  if (!lead) return j({ ok: false, error: "lead não encontrado" });
 
   const cpf = String(lead.document || "").replace(/\D/g, "");
-  if (!cpf) return j({ ok: false, error: "preencha o CPF/CNPJ do lead (o Asaas exige pra PIX)" }, 400);
+  if (!cpf) return j({ ok: false, error: "preencha o CPF/CNPJ do lead (o Asaas exige pra PIX)" });
 
   const amountCents = Number.isFinite(Number(body.amount_cents)) && Number(body.amount_cents) > 0
     ? Math.round(Number(body.amount_cents))
     : Math.round(Number(lead.opportunity_value || 0) * 100);
-  if (!amountCents || amountCents < 100) return j({ ok: false, error: "valor inválido (mínimo R$ 1,00)" }, 400);
+  if (!amountCents || amountCents < 100) return j({ ok: false, error: "valor inválido (mínimo R$ 1,00)" });
 
   const description = String(body.description || `Assinatura mensal — ${lead.name || "Cliente"}`).slice(0, 240);
   const phone = String(lead.phone || "").replace(/\D/g, "");
@@ -111,6 +111,6 @@ Deno.serve(async (req) => {
 
     return j({ ok: true, id: row?.id, url, subscription_id: sub.id, next_due: nextDueDate(dueDay) });
   } catch (e) {
-    return j({ ok: false, error: String((e as Error).message || e) }, 400);
+    return j({ ok: false, error: String((e as Error).message || e) });
   }
 });

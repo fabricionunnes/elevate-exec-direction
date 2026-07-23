@@ -18,26 +18,26 @@ Deno.serve(async (req) => {
   // Precisa estar autenticado (staff logado). O front chama via functions.invoke.
   const auth = req.headers.get("authorization") || "";
   if (!auth) return j({ ok: false, error: "não autenticado" }, 401);
-  if (!MP_TOKEN) return j({ ok: false, error: "Mercado Pago não configurado (falta o token no servidor)" }, 400);
+  if (!MP_TOKEN) return j({ ok: false, error: "Mercado Pago não configurado (falta o token no servidor)" });
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
   let body: any;
-  try { body = await req.json(); } catch { return j({ ok: false, error: "JSON inválido" }, 400); }
+  try { body = await req.json(); } catch { return j({ ok: false, error: "JSON inválido" }); }
 
   const { lead_id } = body;
-  if (!lead_id) return j({ ok: false, error: "lead_id obrigatório" }, 400);
+  if (!lead_id) return j({ ok: false, error: "lead_id obrigatório" });
 
   const { data: lead } = await supabase
     .from("crm_leads")
     .select("id, name, phone, opportunity_value")
     .eq("id", lead_id).maybeSingle();
-  if (!lead) return j({ ok: false, error: "lead não encontrado" }, 404);
+  if (!lead) return j({ ok: false, error: "lead não encontrado" });
 
   // Valor: do corpo (centavos) ou do valor do negócio (opportunity_value em reais)
   const amountCents = Number.isFinite(Number(body.amount_cents)) && Number(body.amount_cents) > 0
     ? Math.round(Number(body.amount_cents))
     : Math.round(Number(lead.opportunity_value || 0) * 100);
-  if (!amountCents || amountCents < 100) return j({ ok: false, error: "valor inválido (mínimo R$ 1,00)" }, 400);
+  if (!amountCents || amountCents < 100) return j({ ok: false, error: "valor inválido (mínimo R$ 1,00)" });
 
   const description = String(body.description || `Pagamento — ${lead.name || "Cliente"}`).slice(0, 240);
   const installments = Math.max(1, Math.min(12, Math.round(Number(body.installments) || 12)));
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
   const mpData = await mpResp.json();
   if (!mpResp.ok) {
     await supabase.from("crm_lead_payments").update({ status: "error" }).eq("id", row.id);
-    return j({ ok: false, error: mpData?.message || "Mercado Pago recusou", detail: mpData }, 400);
+    return j({ ok: false, error: mpData?.message || "Mercado Pago recusou", detail: mpData });
   }
 
   const url = mpData.init_point || mpData.sandbox_init_point;
