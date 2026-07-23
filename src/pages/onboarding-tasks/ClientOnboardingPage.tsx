@@ -57,6 +57,8 @@ import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistor
 import { ClientMeetingsView } from "@/components/client-portal/ClientMeetingsView";
 import { ClientAssessmentsView } from "@/components/client-portal/ClientAssessmentsView";
 import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel";
+import { GestaoVistaBoard } from "@/components/onboarding-tasks/kpis/GestaoVistaBoard";
+import { MonitorPlay } from "lucide-react";
 import { FacunicampsIndicadoresPanel } from "@/components/facunicamps/FacunicampsIndicadoresPanel";
 import { ClientReferralsPanel } from "@/components/client-portal/ClientReferralsPanel";
 import { ClientHRView } from "@/components/client-portal/ClientHRView";
@@ -128,7 +130,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "kpis" | "indicadores" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing" | "paid_traffic" | "sales_funnel" | "instagram" | "commercial_director" | "other_services" | "crm_comercial" | "b2b_prospection" | "diagnostic" | "unv_office" | "sf_comissoes" | "cfin_sistema";
+type ViewType = "kpis" | "gestao_vista" | "indicadores" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing" | "paid_traffic" | "sales_funnel" | "instagram" | "commercial_director" | "other_services" | "crm_comercial" | "b2b_prospection" | "diagnostic" | "unv_office" | "sf_comissoes" | "cfin_sistema";
 
 const FACUNICAMPS_ID = "1081cb78-bd6c-42b2-8a85-104ead3ecc18";
 const FACUNICAMPS_PROJECT_ID = "1152db5b-2053-45e4-a0ac-6e68a0beb852";
@@ -530,6 +532,9 @@ const ClientOnboardingPage = () => {
       (projectCompanyId === FACUNICAMPS_ID || projectId === FACUNICAMPS_PROJECT_ID)
         ? { id: "indicadores" as ViewType, icon: BarChart3, label: "Indicadores" }
         : { id: "kpis" as ViewType, icon: BarChart3, label: "KPIs", menuKey: CLIENT_MENU_KEYS.kpis },
+      ...(!(projectCompanyId === FACUNICAMPS_ID || projectId === FACUNICAMPS_PROJECT_ID)
+        ? [{ id: "gestao_vista" as ViewType, icon: MonitorPlay, label: "Gestão à Vista", menuKey: CLIENT_MENU_KEYS.kpis }]
+        : []),
       ...(temCfin ? [{ id: "cfin_sistema" as ViewType, icon: Landmark, label: "Sistema" }] : []),
       {
         id: "trilha-group",
@@ -1017,6 +1022,17 @@ const ClientOnboardingPage = () => {
                 isClientView={true}
                 isSalespersonView={!!salespersonId}
               />
+            </motion.div>
+          )}
+
+          {activeView === "gestao_vista" && hasViewAccess("kpis") && (
+            <motion.div
+              key="gestao_vista"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <GestaoVistaBoard companyId={project.onboarding_company_id || ""} />
             </motion.div>
           )}
 

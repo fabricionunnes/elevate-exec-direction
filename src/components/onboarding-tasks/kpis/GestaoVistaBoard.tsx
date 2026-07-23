@@ -14,7 +14,7 @@ import {
 
 type KpiType = "numeric" | "monetary" | "percentage";
 interface Kpi { id: string; name: string; kpi_type: KpiType; periodicity: string; target_value: number; is_main_goal: boolean; sort_order: number; }
-interface TargetRow { kpi_id: string; target_value: number; level_order: number; salesperson_id: string | null; unit_id: string | null; team_id: string | null; sector_id: string | null; }
+interface TargetRow { kpi_id: string; target_value: number; level_order: number; level_name: string; salesperson_id: string | null; unit_id: string | null; team_id: string | null; sector_id: string | null; }
 interface EntryRow { kpi_id: string; salesperson_id: string | null; value: number; entry_date: string; }
 interface Person { id: string; name: string; }
 
@@ -58,12 +58,13 @@ export function GestaoVistaBoard({ companyId }: { companyId: string }) {
       const endD = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0);
       const end = `${mKey}-${String(endD.getDate()).padStart(2, "0")}`;
 
-      const [companyRes, kpiRes, targetRes, entryRes, peopleRes] = await Promise.all([
+      const [companyRes, kpiRes, targetRes, entryRes, peopleRes, settingsRes] = await Promise.all([
         supabase.from("onboarding_companies").select("name, owner_name").eq("id", companyId).maybeSingle(),
         supabase.from("company_kpis").select("id, name, kpi_type, periodicity, target_value, is_main_goal, sort_order").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
-        supabase.from("kpi_monthly_targets").select("kpi_id, target_value, level_order, salesperson_id, unit_id, team_id, sector_id").eq("company_id", companyId).eq("month_year", mKey),
+        supabase.from("kpi_monthly_targets").select("kpi_id, target_value, level_order, level_name, salesperson_id, unit_id, team_id, sector_id").eq("company_id", companyId).eq("month_year", mKey),
         supabase.from("kpi_entries").select("kpi_id, salesperson_id, value, entry_date").eq("company_id", companyId).gte("entry_date", start).lte("entry_date", end),
         supabase.from("company_salespeople").select("id, name").eq("company_id", companyId).eq("is_active", true),
+        supabase.from("company_daily_goal_settings").select("include_saturday, include_sunday, include_holidays").eq("company_id", companyId).maybeSingle(),
       ]);
       if (!alive) return;
 
@@ -71,14 +72,46 @@ export function GestaoVistaBoard({ companyId }: { companyId: string }) {
       const targets = (targetRes.data as TargetRow[]) || [];
       const entries = (entryRes.data as EntryRow[]) || [];
       const people = (peopleRes.data as Person[]) || [];
+      const daySettings = (settingsRes.data as { include_saturday: boolean; include_sunday: boolean; include_holidays: boolean } | null);
 
-      // meta por KPI: nível base da empresa (menor level_order, sem escopo individual); fallback target_value
-      const metaFor = (k: Kpi) => {
-        const rows = targets.filter(t => t.kpi_id === k.id);
-        const companyLevel = rows.filter(t => !t.salesperson_id && !t.unit_id && !t.team_id && !t.sector_id);
-        const pool = companyLevel.length ? companyLevel : rows;
-        if (pool.length) return pool.slice().sort((a, b) => a.level_order - b.level_order)[0].target_value || 0;
+      // dias úteis do mês (respeita marcação de fim de semana; feriados ignorados aqui)
+      const incSat = daySettings?.include_saturday ?? false;
+      const incSun = daySettings?.include_sunday ?? false;
+      let workingDays = 0;
+      for (let d = 1; d <= endD.getDate(); d++) {
+        const dow = new Date(refDate.getFullYear(), refDate.getMonth(), d).getDay();
+        if (dow === 6 && !incSat) continue;
+        if (dow === 0 && !incSun) continue;
+        workingDays++;
+      }
+
+      // Meta da empresa = MESMA regra do painel de KPIs:
+      // 1) rollup = soma das metas por VENDEDOR (nível "Meta"); tem precedência
+      // 2) senão linha de empresa; 3) senão soma unidade; 4) senão soma time; 5) fallback target_value.
+      const pickLevel = (rowsIn: TargetRow[]): number | null => {
+        if (!rowsIn.length) return null;
+        const byLevel: Record<string, number> = {};
+        rowsIn.forEach(r => { byLevel[r.level_name] = (byLevel[r.level_name] || 0) + Number(r.target_value || 0); });
+        const v = byLevel["Meta"] ?? Object.values(byLevel)[0];
+        return v ?? null;
+      };
+      const metaBaseFor = (k: Kpi): number => {
+        const all = targets.filter(t => t.kpi_id === k.id);
+        const sp = pickLevel(all.filter(t => t.salesperson_id));
+        if (sp != null) return sp;
+        const comp = pickLevel(all.filter(t => !t.salesperson_id && !t.unit_id && !t.team_id));
+        if (comp != null) return comp;
+        const units = pickLevel(all.filter(t => t.unit_id && !t.team_id && !t.salesperson_id));
+        if (units != null) return units;
+        const teams = pickLevel(all.filter(t => t.team_id && !t.salesperson_id));
+        if (teams != null) return teams;
         return Number(k.target_value) || 0;
+      };
+      const metaFor = (k: Kpi) => {
+        const base = metaBaseFor(k);
+        if (k.periodicity === "daily") return base * (workingDays || endD.getDate());
+        if (k.periodicity === "weekly") return base * Math.ceil(endD.getDate() / 7);
+        return base;
       };
       // realizado por KPI = soma de todos os lançamentos do mês
       const realFor = (kid: string) => entries.filter(e => e.kpi_id === kid).reduce((s, e) => s + Number(e.value || 0), 0);
