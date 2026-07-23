@@ -496,31 +496,31 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
 
             {/* Avisos importantes (cliente adiciona) */}
             <div className="rounded-xl border border-border bg-muted/20 p-4">
-              <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-foreground mb-3"><Megaphone className="h-4 w-4 text-primary" /> Avisos Importantes</div>
+              <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-3", isFull ? "text-xl" : "text-sm")}><Megaphone className={cn("text-primary", isFull ? "h-6 w-6" : "h-4 w-4")} /> Avisos Importantes</div>
               {notices.length > 0 ? (
-                <ul className="space-y-1.5 mb-3">
+                <ul className={cn("mb-3", isFull ? "space-y-3" : "space-y-1.5")}>
                   {notices.map(n => (
-                    <li key={n.id} className="flex items-start gap-2 text-sm">
+                    <li key={n.id} className={cn("flex items-start gap-2", isFull ? "text-2xl" : "text-sm")}>
                       {editId === n.id ? (
                         <>
                           <input autoFocus value={editText} onChange={(e) => setEditText(e.target.value)}
                             onKeyDown={(e) => { if (e.key === "Enter") saveNoticeEdit(n.id, editText); if (e.key === "Escape") setEditId(null); }}
-                            className="flex-1 rounded-md border border-border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
-                          <button onClick={() => saveNoticeEdit(n.id, editText)} className="text-emerald-500 hover:opacity-80 px-1" title="Salvar"><Check className="h-4 w-4" /></button>
-                          <button onClick={() => setEditId(null)} className="text-muted-foreground hover:opacity-80 px-1" title="Cancelar"><X className="h-4 w-4" /></button>
+                            className={cn("flex-1 rounded-md border border-border bg-background outline-none focus:ring-2 focus:ring-primary/30", isFull ? "px-3 py-2 text-2xl" : "px-2 py-1 text-sm")} />
+                          <button onClick={() => saveNoticeEdit(n.id, editText)} className="text-emerald-500 hover:opacity-80 px-1" title="Salvar"><Check className={isFull ? "h-6 w-6" : "h-4 w-4"} /></button>
+                          <button onClick={() => setEditId(null)} className="text-muted-foreground hover:opacity-80 px-1" title="Cancelar"><X className={isFull ? "h-6 w-6" : "h-4 w-4"} /></button>
                         </>
                       ) : (
                         <>
-                          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                          <span className="flex-1 text-foreground/90">{n.text}</span>
-                          <button onClick={() => { setEditId(n.id); setEditText(n.text); }} className="text-muted-foreground hover:text-primary px-1" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => removeNotice(n.id)} className="text-muted-foreground hover:text-rose-500 px-1" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
+                          <span className={cn("rounded-full bg-primary shrink-0", isFull ? "mt-3 h-2.5 w-2.5" : "mt-1.5 h-1.5 w-1.5")} />
+                          <span className="flex-1 text-foreground/90 leading-snug">{n.text}</span>
+                          <button onClick={() => { setEditId(n.id); setEditText(n.text); }} className="text-muted-foreground hover:text-primary px-1" title="Editar"><Pencil className={isFull ? "h-5 w-5" : "h-3.5 w-3.5"} /></button>
+                          <button onClick={() => removeNotice(n.id)} className="text-muted-foreground hover:text-rose-500 px-1" title="Excluir"><Trash2 className={isFull ? "h-5 w-5" : "h-3.5 w-3.5"} /></button>
                         </>
                       )}
                     </li>
                   ))}
                 </ul>
-              ) : <p className="text-sm text-muted-foreground mb-3">Nenhum aviso ainda. Adicione lembretes pro time.</p>}
+              ) : <p className={cn("text-muted-foreground mb-3", isFull ? "text-xl" : "text-sm")}>Nenhum aviso ainda. Adicione lembretes pro time.</p>}
               <div className="flex items-center gap-2">
                 <input value={newNotice} onChange={(e) => setNewNotice(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addNotice()}
                   placeholder="Novo aviso (ex: responder leads em até 15 min)"
