@@ -70,7 +70,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
   const formatMetric = (value: number, role: string) =>
-    role === "closer" ? formatCurrency(value) : Math.round(value).toString();
+    role === "sdr" ? Math.round(value).toString() : formatCurrency(value);
 
   useEffect(() => {
     const loadCommissions = async () => {
@@ -84,7 +84,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
           .from("onboarding_staff")
           .select("id, name, role")
           .eq("is_active", true)
-          .in("role", ["closer", "sdr"]);
+          .in("role", ["closer", "sdr", "head_comercial"]);
 
         if (!isMaster && staffId) {
           staffQuery.eq("id", staffId);
@@ -169,6 +169,10 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
           } else if (staff.role === "sdr") {
             achieved = (meetingsData || [])
               .filter(m => m.responsible_staff_id === staff.id).length;
+          } else if (staff.role === "head_comercial") {
+            // Head: meta é a soma dos closers, então o realizado é o faturamento do time inteiro
+            achieved = (salesData || [])
+              .reduce((sum, s) => sum + (Number(s.billing_value) || 0), 0);
           }
 
           const achievedPercent = metaValue > 0 ? (achieved / metaValue) * 100 : 0;
@@ -271,7 +275,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
             bonuses,
             missingToFirstTier,
             isCommissioning,
-            metricLabel: staff.role === "closer" ? "em faturamento" : "reuniões",
+            metricLabel: staff.role === "sdr" ? "reuniões" : "em faturamento",
           });
         }
 
@@ -294,7 +298,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
       }
     };
 
-    if (staffId && (staffRole === "closer" || staffRole === "sdr" || isMaster)) {
+    if (staffId && (staffRole === "closer" || staffRole === "sdr" || staffRole === "head_comercial" || isMaster)) {
       loadCommissions();
     } else {
       setLoading(false);
@@ -490,7 +494,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
         <div className="flex items-center justify-between mb-3">
           <span className="font-semibold text-sm">{data.staffName}</span>
           <Badge variant="outline" className="text-[10px] capitalize">
-            {data.role === "closer" ? "Closer" : "SDR"}
+            {data.role === "closer" ? "Closer" : data.role === "head_comercial" ? "Head Comercial" : "SDR"}
           </Badge>
         </div>
       )}
@@ -638,7 +642,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
             <SelectContent>
               {commissionData.map(d => (
                 <SelectItem key={d.staffId} value={d.staffId}>
-                  {d.staffName} ({d.role === "closer" ? "Closer" : "SDR"})
+                  {d.staffName} ({d.role === "closer" ? "Closer" : d.role === "head_comercial" ? "Head Comercial" : "SDR"})
                 </SelectItem>
               ))}
             </SelectContent>

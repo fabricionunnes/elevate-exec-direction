@@ -24,7 +24,7 @@ export const CRMIndicatorsPage = () => {
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
-  const showCommission = staffRole === "closer" || staffRole === "sdr" || isMaster;
+  const showCommission = staffRole === "closer" || staffRole === "sdr" || staffRole === "head_comercial" || isMaster;
 
   return (
     <div className="flex flex-col h-full">
