@@ -860,7 +860,6 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
                 <TableHead className="text-center">Abord.</TableHead>
                 <TableHead className="text-center">Conexões</TableHead>
                 <TableHead className="text-center">Agend.</TableHead>
-                <TableHead className="text-center">Calls</TableHead>
                 <TableHead className="text-center">Cancel.</TableHead>
                 <TableHead className="text-center">Reag.</TableHead>
                 <TableHead className="text-center">No Show</TableHead>
@@ -875,7 +874,6 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
                   <TableCell className="font-semibold">{sdr.name}</TableCell>
                   <TableCell className="text-center">{formatNumber(sdr.approaches)}</TableCell>
                   <TableCell className="text-center">{sdr.connections}</TableCell>
-                  <TableCell className="text-center">{sdr.callsScheduled}</TableCell>
                   <TableCell className="text-center">{sdr.callsScheduled}</TableCell>
                   <TableCell className="text-center">{sdr.cancelled}</TableCell>
                   <TableCell className="text-center">{sdr.rescheduled}</TableCell>
@@ -894,7 +892,6 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
                   <TableCell>Total</TableCell>
                   <TableCell className="text-center">{formatNumber(filteredSdrs.reduce((s, c) => s + c.approaches, 0))}</TableCell>
                   <TableCell className="text-center">{filteredSdrs.reduce((s, c) => s + c.connections, 0)}</TableCell>
-                  <TableCell className="text-center">{filteredSdrs.reduce((s, c) => s + c.callsScheduled, 0)}</TableCell>
                   <TableCell className="text-center">{filteredSdrs.reduce((s, c) => s + c.callsScheduled, 0)}</TableCell>
                   <TableCell className="text-center">{filteredSdrs.reduce((s, c) => s + c.cancelled, 0)}</TableCell>
                   <TableCell className="text-center">{filteredSdrs.reduce((s, c) => s + c.rescheduled, 0)}</TableCell>
