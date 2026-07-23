@@ -122,7 +122,9 @@ export default function MRRDashboardPage() {
           .order("created_at", { ascending: false });
 
         if (error) throw error;
-        setCharges((data || []) as unknown as RecurringCharge[]);
+        // Avulsa (1 fatura só) não é recorrência — fora do MRR. null = contrato aberto (conta).
+        const onlyRecurring = ((data || []) as any[]).filter((c) => (c.installments ?? 12) !== 1);
+        setCharges(onlyRecurring as unknown as RecurringCharge[]);
       } catch (err) {
         console.error("Error fetching recurring charges:", err);
       } finally {
@@ -148,6 +150,8 @@ export default function MRRDashboardPage() {
     () =>
       charges.filter((c) => {
         const d = new Date(c.created_at);
+        // Criada e cancelada dentro do mesmo mês = ruído de cadastro, não é MRR novo
+        if (!c.is_active && isWithinInterval(new Date(c.updated_at), { start: periodStart, end: periodEnd })) return false;
         return isWithinInterval(d, { start: periodStart, end: periodEnd });
       }),
     [charges, periodStart, periodEnd]

@@ -37,6 +37,10 @@ const toMonthlyMRR = (amountCents: number, recurrence: string): number => {
   }
 };
 
+// Cobrança avulsa (1 fatura só) NÃO é recorrência — fica fora de MRR/ticket/movimento.
+// installments null = contrato aberto (gera 12 por padrão) = recorrente.
+const isRecurringCharge = (c: any): boolean => (c.installments ?? 12) !== 1;
+
 const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 // Metric card — clean, no gradients
@@ -167,27 +171,37 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     return { count: allOverdue.length, value: allOverdue.reduce((s: number, p: any) => s + ((p.amount || 0) * 100), 0) };
   }, [payables, todayStr]);
 
+  // Só contratos recorrentes de verdade (avulsas de 1 fatura fora)
+  const recurringCharges = useMemo(() => charges.filter(isRecurringCharge), [charges]);
+
   const mrr = useMemo(() => {
-    const activeCharges = charges.filter(c => c.is_active);
+    const activeCharges = recurringCharges.filter(c => c.is_active);
     return activeCharges.reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
-  }, [charges]);
+  }, [recurringCharges]);
+
+  const activeRecurringCount = useMemo(() => recurringCharges.filter(c => c.is_active).length, [recurringCharges]);
 
   const ticketMedio = useMemo(() => {
-    const activeCharges = charges.filter(c => c.is_active);
-    if (activeCharges.length === 0) return 0;
-    return mrr / activeCharges.length;
-  }, [charges, mrr]);
+    if (activeRecurringCount === 0) return 0;
+    return mrr / activeRecurringCount;
+  }, [activeRecurringCount, mrr]);
 
   const mrrMovement = useMemo(() => {
-    const added = charges.filter(c => c.is_active && c.created_at?.startsWith(monthStr)).reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
-    const addedCount = charges.filter(c => c.is_active && c.created_at?.startsWith(monthStr)).length;
-    const lost = charges.filter(c => !c.is_active && c.updated_at?.startsWith(monthStr)).reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
-    const lostCount = charges.filter(c => !c.is_active && c.updated_at?.startsWith(monthStr)).length;
-    return { added, addedCount, lost, lostCount, net: added - lost };
-  }, [charges, monthStr]);
+    // Acrescentado: contratos recorrentes criados no mês e AINDA ativos.
+    // Perdido: encerrados no mês, mas só se criados ANTES do mês — cobrança criada e
+    // cancelada no mesmo mês é ruído de cadastro (recriação/erro), não é churn.
+    const addedList = recurringCharges.filter(c => c.is_active && c.created_at?.startsWith(monthStr));
+    const lostList = recurringCharges.filter(c => !c.is_active && c.updated_at?.startsWith(monthStr) && !c.created_at?.startsWith(monthStr));
+    const added = addedList.reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
+    const lost = lostList.reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
+    return { added, addedCount: addedList.length, lost, lostCount: lostList.length, net: added - lost };
+  }, [recurringCharges, monthStr]);
 
   const vendasNovas = useMemo(() => {
-    const novas = invoices.filter(i => !i.recurring_charge_id && i.created_at?.startsWith(monthStr));
+    // Só faturas avulsas reais (company_invoices sem cobrança recorrente). Os lançamentos
+    // do financeiro central (financial_receivables/Asaas) são mensalidades e cobranças de
+    // clientes existentes — não são "vendas novas".
+    const novas = invoices.filter(i => (i as any).source_table !== "financial_receivables" && !i.recurring_charge_id && i.created_at?.startsWith(monthStr));
     return { count: novas.length, value: novas.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0) };
   }, [invoices, monthStr]);
 
@@ -197,23 +211,27 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
       const d = new Date(selectedYear, selectedMonth - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
-      const rec = invoices.filter(inv => inv.due_date?.startsWith(key) && inv.status === "paid").reduce((s: number, i: any) => s + (i.paid_amount_cents || i.amount_cents), 0) / 100;
-      const desp = payables.filter((p: any) => (p.due_date?.startsWith(key) || p.reference_month === key) && p.status === "paid").reduce((s: number, p: any) => s + (p.paid_amount || p.amount || 0), 0);
+      // Receita pelo mês do RECEBIMENTO (paid_at) — mesma regra do card "Receita Recebida"
+      const rec = invoices.filter(inv => inv.status === "paid" && (inv.paid_at || inv.due_date)?.startsWith(key)).reduce((s: number, i: any) => s + (i.paid_amount_cents || i.amount_cents), 0) / 100;
+      // Despesa pelo mês do PAGAMENTO (paid_date) — mesma regra do card "Despesa Paga"
+      const desp = payables.filter((p: any) => p.status === "paid" && (p.paid_date || p.due_date)?.startsWith(key)).reduce((s: number, p: any) => s + (p.paid_amount || p.amount || 0), 0);
       months.push({ month: key, label, receita: rec, despesa: desp, resultado: rec - desp });
     }
     return months;
   }, [invoices, payables, selectedYear, selectedMonth]);
 
   const statusData = useMemo(() => {
+    // Vencido pela DATA real (não pelo campo status, que pode ficar desatualizado)
+    const open = monthInvoices.filter(i => i.status !== "paid" && i.status !== "cancelled");
     const paid = monthInvoices.filter(i => i.status === "paid").length;
-    const pending = monthInvoices.filter(i => i.status === "pending").length;
-    const overdue = monthInvoices.filter(i => i.status === "overdue").length;
+    const overdue = open.filter(i => i.due_date && i.due_date < todayStr).length;
+    const pending = open.length - overdue;
     return [
       { name: "Recebido", value: paid, color: "hsl(var(--primary))" },
       { name: "Pendente", value: pending, color: "hsl(var(--muted-foreground))" },
       { name: "Vencido", value: overdue, color: "hsl(var(--destructive))" },
     ].filter(d => d.value > 0);
-  }, [monthInvoices]);
+  }, [monthInvoices, todayStr]);
 
   const years = Array.from({ length: 7 }, (_, i) => now.getFullYear() - 3 + i);
 
@@ -501,7 +519,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
         <MetricCard
           label="MRR Atual"
           value={formatCurrencyCents(mrr)}
-          sub={`${charges.filter(c => c.is_active).length} recorrência(s) ativa(s)`}
+          sub={`${activeRecurringCount} recorrência(s) ativa(s)`}
           icon={RefreshCw}
           valueClass="text-primary"
           badge={
@@ -535,7 +553,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
         <MetricCard
           label="Ticket Médio"
           value={formatCurrencyCents(ticketMedio)}
-          sub={`${charges.filter(c => c.is_active).length} recorrência(s) ativa(s)`}
+          sub={`${activeRecurringCount} recorrência(s) ativa(s)`}
           icon={DollarSign}
           valueClass="text-foreground"
         />
