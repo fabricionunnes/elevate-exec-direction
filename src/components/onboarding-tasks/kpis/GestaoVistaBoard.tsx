@@ -232,15 +232,20 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
   const mainGoals = kpis.filter(k => k.is_main_goal);
   const generalCards = (mainGoals.length ? mainGoals : kpis).slice(0, 4);
 
-  // casa KPIs de processo e funil por nome (sem repetir)
-  const used = new Set<string>();
-  const matchKpi = (keys: string[]) => {
-    const k = kpis.find(x => !used.has(x.id) && keys.some(w => norm(x.name).includes(w)));
-    if (k) used.add(k.id);
-    return k || null;
+  // casa KPIs por nome. Processo e funil têm pools independentes (um KPI pode
+  // aparecer nos dois), mas sem repetir DENTRO de cada bloco.
+  const makeMatcher = () => {
+    const used = new Set<string>();
+    return (keys: string[]) => {
+      const k = kpis.find(x => !used.has(x.id) && keys.some(w => norm(x.name).includes(w)));
+      if (k) used.add(k.id);
+      return k || null;
+    };
   };
-  const processCols = PROCESS.map(p => ({ ...p, kpi: matchKpi(p.keys) })).filter(p => p.kpi);
-  const funnelStages = FUNNEL.map(f => ({ ...f, kpi: matchKpi(f.keys) })).filter(f => f.kpi) as { label: string; kpi: KpiRow }[];
+  const mProc = makeMatcher();
+  const processCols = PROCESS.map(p => ({ ...p, kpi: mProc(p.keys) })).filter(p => p.kpi);
+  const mFun = makeMatcher();
+  const funnelStages = FUNNEL.map(f => ({ ...f, kpi: mFun(f.keys) })).filter(f => f.kpi) as { label: string; kpi: KpiRow }[];
   const funnelMax = Math.max(1, ...funnelStages.map(s => s.kpi.realizado));
 
   const val = (v: number, t: string, allowed: boolean) => allowed ? fmt(v, t) : "•••";
