@@ -22,7 +22,8 @@ interface EntryRow { kpi_id: string; salesperson_id: string | null; value: numbe
 interface Person { id: string; name: string; team_id: string | null; }
 interface Team { id: string; name: string; }
 interface Notice { id: string; text: string; }
-interface KpiRow extends Kpi { meta: number; realizado: number; pct: number; }
+interface Level { name: string; value: number; pct: number; }
+interface KpiRow extends Kpi { meta: number; realizado: number; pct: number; levels: Level[]; }
 
 const fmt = (v: number, t: string) => {
   if (t === "monetary") return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(v);
@@ -56,7 +57,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
   const [loading, setLoading] = useState(true);
   const [company, setCompany] = useState<{ name: string; owner_name: string | null } | null>(null);
   const [kpis, setKpis] = useState<KpiRow[]>([]);
-  const [ranking, setRanking] = useState<{ name: string; value: number; type: string; pct: number }[]>([]);
+  const [ranking, setRanking] = useState<{ name: string; value: number; type: string; pct: number; levels: Level[]; reached: string | null }[]>([]);
   const [teamSales, setTeamSales] = useState<{ name: string; value: number; type: string }[]>([]);
   const [weekly, setWeekly] = useState<{ week: string; real: number }[]>([]);
   const [mainKpi, setMainKpi] = useState<KpiRow | null>(null);
@@ -122,50 +123,63 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
         const v = byLevel["Meta"] ?? Object.values(byLevel)[0];
         return v ?? null;
       };
-      const metaBaseFor = (k: Kpi): number => {
-        const all = targets.filter(t => t.kpi_id === k.id);
-        const sp = pickLevel(all.filter(t => t.salesperson_id)); if (sp != null) return sp;
-        const comp = pickLevel(all.filter(t => !t.salesperson_id && !t.unit_id && !t.team_id)); if (comp != null) return comp;
-        const units = pickLevel(all.filter(t => t.unit_id && !t.team_id && !t.salesperson_id)); if (units != null) return units;
-        const tms = pickLevel(all.filter(t => t.team_id && !t.salesperson_id)); if (tms != null) return tms;
-        return Number(k.target_value) || 0;
+      const periodMul = (k: Kpi) => k.periodicity === "daily" ? (workingDays || endD.getDate()) : k.periodicity === "weekly" ? Math.ceil(endD.getDate() / 7) : 1;
+      // Escopo vencedor das metas (mesma precedência): vendedor > empresa > unidade > time
+      const scopeRowsFor = (kid: string): TargetRow[] => {
+        const all = targets.filter(t => t.kpi_id === kid);
+        const sp = all.filter(t => t.salesperson_id); if (sp.length) return sp;
+        const comp = all.filter(t => !t.salesperson_id && !t.unit_id && !t.team_id); if (comp.length) return comp;
+        const un = all.filter(t => t.unit_id && !t.team_id && !t.salesperson_id); if (un.length) return un;
+        return all.filter(t => t.team_id && !t.salesperson_id);
       };
+      // Todos os níveis de meta (Base, Alvo, Superação…) somados no escopo, ajustados ao período
+      const levelsFrom = (rowsIn: TargetRow[], mul: number) => {
+        const byLevel = new Map<string, { order: number; value: number }>();
+        rowsIn.forEach(r => {
+          const e = byLevel.get(r.level_name) || { order: r.level_order, value: 0 };
+          e.value += Number(r.target_value || 0); byLevel.set(r.level_name, e);
+        });
+        return [...byLevel.entries()].map(([name, v]) => ({ name, order: v.order, value: v.value * mul })).sort((a, b) => a.order - b.order);
+      };
+      const metaLevelsFor = (k: Kpi) => levelsFrom(scopeRowsFor(k.id), periodMul(k));
       const metaFor = (k: Kpi) => {
-        const base = metaBaseFor(k);
-        if (k.periodicity === "daily") return base * (workingDays || endD.getDate());
-        if (k.periodicity === "weekly") return base * Math.ceil(endD.getDate() / 7);
-        return base;
+        const lv = metaLevelsFor(k);
+        const base = lv.find(l => l.name === "Meta") ?? lv[0];
+        if (base) return base.value;
+        return (Number(k.target_value) || 0) * periodMul(k);
       };
       const realFor = (kid: string) => entries.filter(e => e.kpi_id === kid).reduce((s, e) => s + Number(e.value || 0), 0);
 
       const rows: KpiRow[] = kpiList.map(k => {
         const meta = metaFor(k), realizado = realFor(k.id);
-        return { ...k, meta, realizado, pct: meta > 0 ? (realizado / meta) * 100 : 0 };
+        const levels = metaLevelsFor(k).map(l => ({ name: l.name, value: l.value, pct: l.value > 0 ? (realizado / l.value) * 100 : 0 }));
+        return { ...k, meta, realizado, pct: meta > 0 ? (realizado / meta) * 100 : 0, levels };
       });
 
       const main = rows.find(r => r.is_main_goal && r.kpi_type === "monetary")
         || rows.find(r => r.is_main_goal) || rows.find(r => r.kpi_type === "monetary") || rows[0] || null;
 
-      // ranking do time (valor + % da meta individual)
-      let rank: { name: string; value: number; type: string; pct: number }[] = [];
+      // ranking do time (valor + % da meta individual + níveis)
+      let rank: { name: string; value: number; type: string; pct: number; levels: Level[]; reached: string | null }[] = [];
       const teamAgg = new Map<string, number>();
       if (main) {
+        const mul = periodMul(main);
         const byPerson = new Map<string, number>();
         entries.filter(e => e.kpi_id === main.id && e.salesperson_id).forEach(e => {
           byPerson.set(e.salesperson_id!, (byPerson.get(e.salesperson_id!) || 0) + Number(e.value || 0));
         });
-        // meta individual de cada vendedor para o KPI principal
-        const metaPerson = (pid: string) => {
-          const base = pickLevel(targets.filter(t => t.kpi_id === main.id && t.salesperson_id === pid));
-          const v = base != null ? base : (metaBaseFor(main) / Math.max(1, people.length));
-          if (main.periodicity === "daily") return v * (workingDays || endD.getDate());
-          if (main.periodicity === "weekly") return v * Math.ceil(endD.getDate() / 7);
-          return v;
+        // níveis de meta individuais do vendedor (fallback: meta da empresa / nº de vendedores)
+        const levelsPerson = (pid: string): { name: string; value: number }[] => {
+          const own = levelsFrom(targets.filter(t => t.kpi_id === main.id && t.salesperson_id === pid), mul);
+          if (own.length) return own;
+          return metaLevelsFor(main).map(l => ({ name: l.name, value: l.value / Math.max(1, people.length) }));
         };
         rank = people.map(p => {
           const value = byPerson.get(p.id) || 0;
-          const pm = metaPerson(p.id);
-          return { name: p.name, value, type: main.kpi_type, pct: pm > 0 ? (value / pm) * 100 : 0 };
+          const lv = levelsPerson(p.id).map(l => ({ name: l.name, value: l.value, pct: l.value > 0 ? (value / l.value) * 100 : 0 }));
+          const base = lv.find(l => l.name === "Meta") ?? lv[0];
+          const reached = [...lv].reverse().find(l => l.value > 0 && value >= l.value)?.name || null;
+          return { name: p.name, value, type: main.kpi_type, pct: base && base.value > 0 ? (value / base.value) * 100 : 0, levels: lv, reached };
         }).filter(r => r.value > 0).sort((a, b) => b.pct - a.pct || b.value - a.value).slice(0, 10);
         // vendas por equipe
         people.forEach(p => {
@@ -281,6 +295,17 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
       : showReal ? fmt(r.value, r.type) : null;
   const rankModeLabel = { value: "Valor", percent: "% meta", none: "Sem valor" }[cfg.ranking_mode];
   const cycleRankMode = () => saveCfg({ ranking_mode: cfg.ranking_mode === "value" ? "percent" : cfg.ranking_mode === "percent" ? "none" : "value" });
+  // chips dos níveis de meta (Base, Alvo, Superação…) — quão perto está de cada
+  const levelChips = (levels: Level[], t: string) => levels.length > 1 ? (
+    <div className={cn("flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5", isFull ? "text-sm" : "text-[10px]")}>
+      {levels.map(l => (
+        <span key={l.name} className={cn("flex items-center gap-0.5", l.pct >= 100 ? "text-emerald-500 font-semibold" : "text-muted-foreground")}>
+          {l.pct >= 100 && <Check className={isFull ? "h-3.5 w-3.5" : "h-2.5 w-2.5"} />}
+          {l.name}{showMeta ? ` ${fmt(l.value, t)}` : ""} · {l.pct.toFixed(0)}%
+        </span>
+      ))}
+    </div>
+  ) : null;
 
   return (
     <div ref={boardRef} className={cn(isFull ? "fixed inset-0 z-[200] overflow-hidden bg-background flex justify-center items-start" : "rounded-2xl border border-border overflow-hidden bg-card")}>
@@ -337,6 +362,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                     <div className="h-1.5 rounded-full bg-muted mt-2 overflow-hidden">
                       <div className={cn("h-full rounded-full transition-all", toneClass(k.pct))} style={{ width: `${Math.min(100, k.pct)}%` }} />
                     </div>
+                    {levelChips(k.levels, k.kpi_type)}
                   </div>
                 ))}
               </div>
@@ -383,6 +409,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                         <span className={cn("text-[11px] font-semibold tabular-nums w-9 text-right", toneText(k.pct))}>{k.pct.toFixed(0)}%</span>
                       </div>
                       {showMeta && <div className="text-[10px] text-muted-foreground mt-0.5">meta {fmt(k.meta, k.kpi_type)}</div>}
+                      {levelChips(k.levels, k.kpi_type)}
                     </div>
                   ))}
                 </div>
@@ -409,6 +436,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                             <div className="text-center mb-1.5 w-full min-w-0 px-0.5">
                               <div className="text-xs font-bold truncate text-foreground">{r.name.split(" ")[0]}</div>
                               {rankVal(r) && <div className="text-[11px] font-semibold tabular-nums text-muted-foreground truncate">{rankVal(r)}</div>}
+                              {r.reached && <div className="text-[10px] font-bold text-emerald-500 truncate">✓ {r.reached}</div>}
                             </div>
                             <div className="w-full rounded-t-md flex items-start justify-center pt-2 font-black text-lg text-black/70 relative"
                               style={{ height: h, background: `linear-gradient(180deg, ${medal.face}, ${medal.front})`, transform: "rotateX(20deg)", transformOrigin: "bottom", boxShadow: "0 10px 18px -6px rgba(0,0,0,.45), inset 0 2px 0 rgba(255,255,255,.4)" }}>
@@ -424,6 +452,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                           <div key={r.name} className="flex items-center gap-3 text-sm">
                             <span className="w-5 text-center font-bold text-muted-foreground">{i + 4}º</span>
                             <span className="flex-1 truncate">{r.name}</span>
+                            {r.reached && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 font-semibold shrink-0">✓ {r.reached}</span>}
                             {rankVal(r) && <span className="font-bold tabular-nums text-foreground">{rankVal(r)}</span>}
                           </div>
                         ))}
