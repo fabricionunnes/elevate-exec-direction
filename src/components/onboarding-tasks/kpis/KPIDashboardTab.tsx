@@ -35,6 +35,7 @@ import { SalesHistoryDialog } from "./SalesHistoryDialog";
 import { SalesComparisonChart } from "./SalesComparisonChart";
 import { CACCalculatorCard } from "@/components/client-portal/CACCalculatorCard";
 import { KPIEntriesHistoryDialog } from "./KPIEntriesHistoryDialog";
+import { IntegrationDialog } from "./IntegrationDialog";
 import { SalespeopleComparisonTable } from "./SalespeopleComparisonTable";
 import { MonthlySalesChart } from "./MonthlySalesChart";
 import { PerformanceComparisonCard } from "./PerformanceComparisonCard";
@@ -42,7 +43,6 @@ import { DailyGoalCard } from "./DailyGoalCard";
 import { ProjectTermVisionCard } from "./ProjectTermVisionCard";
 import { NorthStarMetricCard } from "./NorthStarMetricCard";
 import { SalesHeatmapCharts } from "./SalesHeatmapCharts";
-import { RankingPodium } from "./RankingPodium";
 import { UnitRankingCard } from "./UnitRankingCard";
 import { PeriodComparisonCard } from "./PeriodComparisonCard";
 import { SalespersonFlagsPanel } from "./SalespersonFlagsPanel";
@@ -1027,7 +1027,7 @@ export const KPIDashboardTab = ({
       const baseTarget = getEffectiveTargetForKpi(kpi);
       let monthlyTarget = baseTarget;
       if (kpi.periodicity === "daily") {
-        // Meta diária x dias UTEIS do mes (respeita marcacao de fim de semana/feriado)
+        // Meta diária × dias ÚTEIS do mês (respeita marcação de fim de semana/feriado)
         monthlyTarget = baseTarget * (totalWorkingDays > 0 ? totalWorkingDays : daysInMonth);
       } else if (kpi.periodicity === "weekly") {
         monthlyTarget = baseTarget * Math.ceil(daysInMonth / 7);
@@ -1409,11 +1409,7 @@ export const KPIDashboardTab = ({
     const conversionStages: Array<{ name: string; value: number; kpiName: string | undefined }> = [];
     
     if (leadsKpi && totalLeads > 0) {
-      // Quando o topo do funil é um KPI de "contatos", mostra o nome real
-      // (ex.: "Contatos realizados") em vez do rótulo genérico "Leads" — assim
-      // a linha de conversão fica coerente com a Conversão Geral.
-      const topLabel = /contato/i.test(leadsKpi.name) ? leadsKpi.name.replace(/\s+/g, " ").trim() : "Leads";
-      conversionStages.push({ name: topLabel, value: totalLeads, kpiName: leadsKpi.name });
+      conversionStages.push({ name: 'Leads', value: totalLeads, kpiName: leadsKpi.name });
     }
     if (serviceKpi && totalServices > 0) {
       conversionStages.push({ name: 'Atendimentos', value: totalServices, kpiName: serviceKpi.name });
@@ -1625,45 +1621,7 @@ export const KPIDashboardTab = ({
   ];
 
   return (
-    <div className="space-y-6 kpi3d">
-      <style>{`
-        /* Relevo 3D em TODOS os cards do dashboard — cores do tema preservadas */
-        /* Trilho da barra: canal escavado */
-        .kpi3d [class*="bg-muted"].rounded-full{
-          min-height:16px;
-          box-shadow: inset 0 2px 5px rgba(0,0,0,.28), inset 0 -1px 0 rgba(255,255,255,.05);
-        }
-        /* Preenchimento: pílula 3D com brilho no topo e sombra embaixo */
-        .kpi3d [class*="bg-muted"].rounded-full > .rounded-full{
-          min-height:16px; position:relative;
-          box-shadow: 0 5px 10px -2px rgba(0,0,0,.42), inset 0 2px 0 rgba(255,255,255,.55), inset 0 -4px 7px rgba(0,0,0,.28);
-        }
-        .kpi3d [class*="bg-muted"].rounded-full > .rounded-full:not([class*="gradient"]){
-          background-image: linear-gradient(180deg, rgba(255,255,255,.48), rgba(255,255,255,0) 46%, rgba(0,0,0,.30));
-        }
-        /* Não mexe no marcador fino (linha do progresso do tempo) */
-        .kpi3d [class*="bg-muted"].rounded-full > .w-0\.5{
-          min-height:0; box-shadow:none; background-image:none;
-        }
-        /* Cards: relevo visível — sheen no topo + sombra em camadas */
-        /* :not(gradient) — cards com fundo em gradiente (ex.: North Star Metric)
-           mantêm o próprio background-image; sem isso o sheen o sobrescrevia e o
-           card ficava branco/lavado no tema claro. */
-        .kpi3d [class*="bg-card"]:not([class*="gradient"]){
-          background-image: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0) 130px);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 22px 44px -22px rgba(40,25,70,.5), 0 3px 8px -3px rgba(0,0,0,.16);
-          border-color: rgba(120,90,220,.14);
-        }
-        :root[data-theme="dark"] .kpi3d [class*="bg-card"]:not([class*="gradient"]), .dark .kpi3d [class*="bg-card"]:not([class*="gradient"]){
-          background-image: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0) 130px);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,.09), 0 26px 52px -22px rgba(0,0,0,.75);
-          border-color: rgba(160,140,255,.16);
-        }
-        /* Gráficos recharts com profundidade */
-        .kpi3d .recharts-bar-rectangle path, .kpi3d .recharts-rectangle path{
-          filter: drop-shadow(0 6px 7px rgba(0,0,0,.32));
-        }
-      `}</style>
+    <div className="space-y-6">
       {/* Filters */}
       <Card className="border-border/50 shadow-sm overflow-hidden relative">
         {/* Cabeçalho clicável para colapsar */}
@@ -1932,6 +1890,7 @@ export const KPIDashboardTab = ({
                   canEdit={canEditSalesHistory}
                 />
               )}
+              <IntegrationDialog companyId={companyId} />
               <KPIEntriesHistoryDialog
                 companyId={companyId}
                 canDelete={canDeleteEntries}
@@ -3220,10 +3179,20 @@ export const KPIDashboardTab = ({
                 );
               })()
             ) : rankingData.length > 0 && rankingData.some(r => r.total > 0) ? (
-              <RankingPodium
-                data={rankingData}
-                formatValue={(v) => selectedKpiData ? formatValue(v, selectedKpiData.kpi_type) : v.toLocaleString("pt-BR")}
-              />
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={rankingData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                  <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis dataKey="name" type="category" width={100} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    formatter={(value: number) => [
+                      selectedKpiData ? formatValue(value, selectedKpiData.kpi_type) : value.toLocaleString("pt-BR"),
+                      "Total"
+                    ]}
+                  />
+                  <Bar dataKey="total" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
                 Nenhum dado para o período selecionado
