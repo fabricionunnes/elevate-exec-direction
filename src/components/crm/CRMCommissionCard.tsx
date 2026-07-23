@@ -148,6 +148,28 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
           .gte("completed_at", monthStart.toISOString())
           .lte("completed_at", monthEnd.toISOString());
 
+        // Meta da head = soma das metas dos closers EM TEMPO REAL (mesma regra da tela
+        // de Metas) — o valor gravado na linha dela pode estar desatualizado.
+        let headSums: { meta: number; superV: number; hiperV: number } | null = null;
+        if (staffList.some(s => s.role === "head_comercial") && closerOte) {
+          const { data: allStaff } = await supabase
+            .from("onboarding_staff")
+            .select("id, role, is_crm_closer")
+            .eq("is_active", true);
+          const closerIds = (allStaff || [])
+            .filter(s => (s.role === "closer" || (s as any).is_crm_closer) && s.role !== "head_comercial")
+            .map(s => s.id);
+          const { data: cgv } = await supabase
+            .from("crm_goal_values")
+            .select("staff_id, meta_value, super_meta_value, hiper_meta_value")
+            .eq("goal_type_id", closerOte.id)
+            .eq("month", currentMonth)
+            .eq("year", currentYear)
+            .in("staff_id", closerIds);
+          const sum = (f: string) => (cgv || []).reduce((s, g) => s + (Number((g as any)[f]) || 0), 0);
+          headSums = { meta: sum("meta_value"), superV: sum("super_meta_value"), hiperV: sum("hiper_meta_value") };
+        }
+
         const results: CommissionData[] = [];
 
         for (const staff of staffList) {
@@ -158,7 +180,8 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
           const goalValue = goalValues.find(g => g.staff_id === staff.id && g.goal_type_id === goalType.id);
           if (!goalValue) continue;
 
-          const metaValue = Number(goalValue.meta_value) || 0;
+          const isHead = staff.role === "head_comercial";
+          const metaValue = isHead && headSums && headSums.meta > 0 ? headSums.meta : Number(goalValue.meta_value) || 0;
           const fixedSalary = Number(goalValue.ote_base) || 0;
 
           let achieved = 0;
@@ -218,8 +241,8 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
 
           // Build bonus info
           const bonuses: BonusInfo[] = [];
-          const superMetaValue = Number(goalValue.super_meta_value) || 0;
-          const hiperMetaValue = Number(goalValue.hiper_meta_value) || 0;
+          const superMetaValue = isHead && headSums && headSums.superV > 0 ? headSums.superV : Number(goalValue.super_meta_value) || 0;
+          const hiperMetaValue = isHead && headSums && headSums.hiperV > 0 ? headSums.hiperV : Number(goalValue.hiper_meta_value) || 0;
 
           if (superMetaValue > 0) {
             const missing = Math.max(0, superMetaValue - achieved);
