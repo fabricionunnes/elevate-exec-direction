@@ -1977,7 +1977,7 @@ const OnboardingProjectPage = () => {
           </TabsContent>
 
           <TabsContent value="gestao_vista">
-            <GestaoVistaBoard companyId={project.onboarding_company_id || ""} />
+            <GestaoVistaBoard companyId={project.onboarding_company_id || ""} isStaff={currentUserRole === "admin" || currentUserRole === "cs" || currentUserRole === "consultant"} />
           </TabsContent>
 
           <TabsContent value="hr">
