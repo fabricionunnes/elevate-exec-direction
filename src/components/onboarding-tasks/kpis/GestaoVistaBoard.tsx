@@ -506,7 +506,8 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                     ];
                     const n = funnelStages.length;
                     const colors = n === 4 ? [PAL[0], PAL[1], PAL[2], PAL[4]] : PAL.slice(0, n);
-                    const sliceH = 44, gap = 10, cx = 118, top = 18;
+                    // top precisa cobrir o ry da tampa do 1º disco (112 * 0.26 ≈ 30)
+                    const sliceH = 44, gap = 10, cx = 118, top = 36;
                     const H = top + n * (sliceH + gap) + 26;
                     const W = 560;
                     const rAt = (i: number) => 112 - (86 * i) / n;
