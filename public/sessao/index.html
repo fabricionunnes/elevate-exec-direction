@@ -450,6 +450,8 @@
         telefone: tel,
         email: email,
         instagram: instagram || undefined,
+        // veio da página de obrigado do UNV Start → marca a compra nas observações do lead
+        observacao: qp("origem") === "unv-start" ? "★ Comprou o UNV Start (Raio-X Comercial) antes de agendar a sessão" : undefined,
         utm_source: qp("utm_source"), utm_medium: qp("utm_medium"),
         utm_campaign: qp("utm_campaign"), utm_content: qp("utm_content"), utm_term: qp("utm_term"),
         fbclid: qp("fbclid"), ad_name: qp("ad_name"), adset_name: qp("adset_name"), campaign_name: qp("campaign_name"),

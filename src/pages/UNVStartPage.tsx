@@ -1,5 +1,7 @@
+import { useEffect, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { initMetaPixel, trackMetaEvent } from "@/lib/metaPixel";
 import fabricioMentor from "@/assets/fabricio-mentor.webp";
 import {
   Accordion,
@@ -106,8 +108,19 @@ const faqs = [
   { question: "E se eu quiser ajuda pra colocar em prática?", answer: "Depois que sua estrutura estiver pronta, a UNV tem programas de execução acompanhada. Mas o Raio-X já te entrega tudo pra agir sozinho." },
 ];
 
+// Checkout hospedado da Greenn — cole aqui o link do produto quando criar na Greenn.
+// Vazio = usa o checkout interno (/start/checkout, Asaas) como fallback.
+const GREENN_CHECKOUT_URL = "";
+
+const CheckoutLink = ({ children, className }: { children: ReactNode; className?: string }) =>
+  GREENN_CHECKOUT_URL ? (
+    <a href={GREENN_CHECKOUT_URL} className={className}>{children}</a>
+  ) : (
+    <Link to="/start/checkout" className={className}>{children}</Link>
+  );
+
 const CTA = ({ label = "SIM! QUERO MEU RAIO-X AGORA" }: { label?: string }) => (
-  <Link to="/start/checkout">
+  <CheckoutLink>
     <Button
       variant="hero"
       size="xl"
@@ -116,7 +129,7 @@ const CTA = ({ label = "SIM! QUERO MEU RAIO-X AGORA" }: { label?: string }) => (
       {label}
       <ArrowRight className="ml-2" />
     </Button>
-  </Link>
+  </CheckoutLink>
 );
 
 /* ---------- Visuais (SVG/CSS inline, zero peso externo) ---------- */
@@ -224,6 +237,16 @@ const DocCard = ({ icon: Icon, title, description }: { icon: typeof Activity; ti
 );
 
 export default function UNVStartPage() {
+  useEffect(() => {
+    initMetaPixel();
+    trackMetaEvent("ViewContent", {
+      content_name: "Raio-X Comercial",
+      content_category: "low-ticket",
+      value: 37,
+      currency: "BRL",
+    });
+  }, []);
+
   return (
     <main className="min-h-screen bg-background">
       {/* 1. Hero — badge + promessa "mesmo que" + visual. Sem preço, sem botão. */}
@@ -492,12 +515,12 @@ export default function UNVStartPage() {
                 <p className="text-slate-500 text-sm mb-1">De <span className="line-through">R$ 97</span> por apenas</p>
                 <p className="text-6xl font-display font-bold text-[#0D2B5E] mb-1">R$ 37</p>
                 <p className="text-slate-500 text-sm mb-6">Pagamento único · Seu pra sempre</p>
-                <Link to="/start/checkout">
+                <CheckoutLink>
                   <Button variant="hero" size="xl" className="w-full">
                     SIM! QUERO MEU RAIO-X AGORA
                     <ArrowRight className="ml-2" />
                   </Button>
-                </Link>
+                </CheckoutLink>
                 <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 mt-5 text-xs text-slate-500">
                   <span className="flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" /> Compra 100% segura</span>
                   <span className="flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5" /> Pix ou cartão</span>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { initMetaPixel, trackMetaEvent } from "@/lib/metaPixel";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import logoUnvBoard from "@/assets/logo-unv-board.png";
@@ -62,12 +63,19 @@ export default function UNVStartCheckoutPage() {
   const pollRef = useRef<number | null>(null);
 
   const goToPortal = useCallback(
-    (token: string) => {
+    (token: string, crmLeadId?: string | null) => {
       if (pollRef.current) window.clearInterval(pollRef.current);
-      navigate(`/start/${token}`);
+      const lid = crmLeadId ? `&lid=${encodeURIComponent(crmLeadId)}` : "";
+      navigate(`/start/obrigado?token=${encodeURIComponent(token)}${lid}`);
     },
     [navigate],
   );
+
+  // pixel do Meta (Purchase é server-side via CAPI no gate de pagamento)
+  useEffect(() => {
+    initMetaPixel();
+    trackMetaEvent("InitiateCheckout", { value: 37, currency: "BRL" });
+  }, []);
 
   // polling do pagamento
   useEffect(() => {
@@ -75,7 +83,7 @@ export default function UNVStartCheckoutPage() {
     pollRef.current = window.setInterval(async () => {
       try {
         const r = await callCheckout({ action: "status", member_id: memberId });
-        if (r.paid && r.token) goToPortal(r.token);
+        if (r.paid && r.token) goToPortal(r.token, r.crm_lead_id);
       } catch {
         /* silencioso */
       }
@@ -115,11 +123,11 @@ export default function UNVStartCheckoutPage() {
         return;
       }
       if (r.already_paid && r.token) {
-        goToPortal(r.token);
+        goToPortal(r.token, r.crm_lead_id);
         return;
       }
       if (r.paid && r.token) {
-        goToPortal(r.token);
+        goToPortal(r.token, r.crm_lead_id);
         return;
       }
       setMemberId(r.member_id);

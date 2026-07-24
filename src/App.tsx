@@ -36,6 +36,7 @@ import UNVStartPage from "./pages/UNVStartPage";
 const UNVStartLoginPage = lazy(() => import("./pages/UNVStartLoginPage"));
 const UNVStartPortalPage = lazy(() => import("./pages/UNVStartPortalPage"));
 const UNVStartCheckoutPage = lazy(() => import("./pages/UNVStartCheckoutPage"));
+const UNVStartObrigadoPage = lazy(() => import("./pages/UNVStartObrigadoPage"));
 const UNVStartClientsPage = lazy(() => import("./pages/onboarding-tasks/UNVStartClientsPage"));
 const ProcessosPage = lazy(() => import("./pages/onboarding-tasks/ProcessosPage"));
 const CertificateVerifyPage = lazy(() => import("./pages/CertificateVerifyPage"));
@@ -397,6 +398,7 @@ const AppShell = () => {
             <Route path="/unv-start" element={<UNVStartPage />} />
             <Route path="/start" element={<UNVStartLoginPage />} />
             <Route path="/start/checkout" element={<UNVStartCheckoutPage />} />
+            <Route path="/start/obrigado" element={<UNVStartObrigadoPage />} />
             <Route path="/start/:token" element={<UNVStartPortalPage />} />
             <Route path="/sales-ops" element={<SalesOpsPage />} />
             <Route path="/ai-sales-system" element={<AISalesSystemPage />} />
