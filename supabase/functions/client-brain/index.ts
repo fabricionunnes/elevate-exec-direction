@@ -342,6 +342,36 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
           }))
           .reverse();
       }
+      // Mastermind UNV: o que o dono desta empresa falou na mesa de donos também
+      // alimenta o cérebro (metas declaradas, dores, trocas — material riquíssimo).
+      try {
+        const mmCtx = await fetch(`${MARCELO_URL}/rest/v1/mastermind_member_context?select=phone,member_name&company_id=eq.${companyId}`, { headers: mh });
+        const members = mmCtx.ok ? await mmCtx.json() : [];
+        if (members.length) {
+          const mmGrp = await fetch(`${MARCELO_URL}/rest/v1/marcelo_groups?select=group_jid&group_type=eq.mastermind&limit=1`, { headers: mh });
+          const mg = mmGrp.ok ? await mmGrp.json() : [];
+          const mmJid = mg[0]?.group_jid;
+          if (mmJid) {
+            const last10 = new Set(members.map((m: any) => String(m.phone || "").replace(/\D/g, "").slice(-10)).filter((ph: string) => ph.length === 10));
+            const mmRes = await fetch(`${MARCELO_URL}/rest/v1/marcelo_group_messages?select=sender_jid,sender_name,message_text,msg_timestamp&group_jid=eq.${encodeURIComponent(mmJid)}&msg_timestamp=gte.${d14}&order=msg_timestamp.desc&limit=300`, { headers: mh });
+            const mmMsgs = mmRes.ok ? await mmRes.json() : [];
+            const mine = mmMsgs
+              .filter((mm: any) => {
+                const ph = String(mm.sender_jid || "").split("@")[0].replace(/\D/g, "").slice(-10);
+                return ph.length === 10 && last10.has(ph) && (mm.message_text || "").trim();
+              })
+              .slice(0, 40)
+              .map((mm: any) => ({
+                grupo: "Mastermind UNV (mesa de donos)",
+                quem: mm.sender_name,
+                msg: truncate(mm.message_text, 300),
+                quando: mm.msg_timestamp,
+              }))
+              .reverse();
+            waMessages = waMessages.concat(mine);
+          }
+        }
+      } catch (_e) { /* segue sem mastermind */ }
     } catch (_e) {
       // Marcelo indisponível: segue sem WhatsApp
     }
