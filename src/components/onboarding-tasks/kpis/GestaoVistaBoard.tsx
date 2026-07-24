@@ -299,7 +299,6 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
   const processCols = PROCESS.map(p => ({ ...p, kpi: mProc(p.keys) })).filter(p => p.kpi);
   const mFun = makeMatcher();
   const funnelStages = FUNNEL.map(f => ({ ...f, kpi: mFun(f.keys) })).filter(f => f.kpi) as { label: string; kpi: KpiRow }[];
-  const funnelMax = Math.max(1, ...funnelStages.map(s => s.kpi.realizado));
 
   // exibição do ranking conforme o modo escolhido: valor | % da meta | nada.
   // showReal off = esconde o realizado POR VENDEDORA (só no ranking); totais sempre aparecem.
@@ -495,24 +494,62 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
             <div className="grid gap-4 lg:grid-cols-2">
               {funnelStages.length >= 2 && (
                 <div className="rounded-xl border border-border bg-muted/20 p-4">
-                  <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-foreground mb-4"><Filter className="h-4 w-4 text-primary" /> Funil de Vendas</div>
-                  <div className="flex flex-col items-center gap-1" style={{ perspective: "700px" }}>
-                    {funnelStages.map((s, i) => {
-                      const w = 55 + (45 * s.kpi.realizado) / funnelMax; // 55%..100%
-                      const conv = i > 0 && funnelStages[i - 1].kpi.realizado > 0
-                        ? (s.kpi.realizado / funnelStages[i - 1].kpi.realizado) * 100 : null;
-                      return (
-                        <div key={i} className="w-full flex flex-col items-center">
-                          <div className="relative text-center text-white font-semibold py-2.5 rounded-md shadow-md"
-                            style={{ width: `${Math.max(38, w)}%`, background: "linear-gradient(180deg, hsl(var(--primary)) 0%, hsl(var(--primary)/0.75) 100%)", transform: "rotateX(12deg)", clipPath: i === funnelStages.length - 1 ? undefined : "polygon(0 0, 100% 0, 92% 100%, 8% 100%)" }}>
-                            <span className="text-xs opacity-90">{s.label}</span>
-                            <span className="ml-2 text-sm font-black">{fmt(s.kpi.realizado, s.kpi.kpi_type)}</span>
-                          </div>
-                          {conv != null && <span className="text-[10px] text-muted-foreground my-0.5">↓ {conv.toFixed(0)}%</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-foreground mb-2"><Filter className="h-4 w-4 text-primary" /> Funil de Vendas</div>
+                  {(() => {
+                    // Cone 3D estilo infográfico: discos empilhados + barras de rótulo atrás
+                    const PAL = [
+                      { main: "#aab2bd", light: "#dde2e8", dark: "#7d8791" },
+                      { main: "#7cb93e", light: "#a9d878", dark: "#568c22" },
+                      { main: "#29a3c4", light: "#6fcbe2", dark: "#1b7a95" },
+                      { main: "#4e5a67", light: "#78848f", dark: "#333d47" },
+                      { main: "#e64560", light: "#f0808f", dark: "#b02742" },
+                    ];
+                    const n = funnelStages.length;
+                    const colors = n === 4 ? [PAL[0], PAL[1], PAL[2], PAL[4]] : PAL.slice(0, n);
+                    const sliceH = 44, gap = 10, cx = 118, top = 18;
+                    const H = top + n * (sliceH + gap) + 26;
+                    const W = 560;
+                    const rAt = (i: number) => 112 - (86 * i) / n;
+                    return (
+                      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 320 }}>
+                        <defs>
+                          {colors.map((c, i) => (
+                            <linearGradient key={i} id={`gvf${i}`} x1="0" y1="0" x2="1" y2="0">
+                              <stop offset="0%" stopColor={c.dark} />
+                              <stop offset="45%" stopColor={c.light} />
+                              <stop offset="100%" stopColor={c.dark} />
+                            </linearGradient>
+                          ))}
+                        </defs>
+                        {funnelStages.map((s, i) => {
+                          const c = colors[i];
+                          const y = top + i * (sliceH + gap);
+                          const yb = y + sliceH;
+                          const rt = rAt(i), rb = rAt(i + 1);
+                          const ryt = rt * 0.26, ryb = rb * 0.26;
+                          const conv = i > 0 && funnelStages[i - 1].kpi.realizado > 0
+                            ? (s.kpi.realizado / funnelStages[i - 1].kpi.realizado) * 100 : null;
+                          const barY = y + sliceH / 2 - 15;
+                          return (
+                            <g key={i}>
+                              {/* barra de rótulo (atrás do cone) */}
+                              <rect x={cx} y={barY} width={W - cx - 12} height={30} rx={3} fill={c.main} />
+                              <text x={cx + 128} y={barY + 20} fontSize={15} fontWeight={700} fill="#fff">{s.label}</text>
+                              <text x={W - 22} y={barY + 20} fontSize={15} fontWeight={800} fill="#fff" textAnchor="end">{fmt(s.kpi.realizado, s.kpi.kpi_type)}</text>
+                              {conv != null && (
+                                <text x={W - 22} y={barY + 42} fontSize={10} fill="currentColor" opacity={0.55} textAnchor="end">↓ {conv.toFixed(0)}% de conversão</text>
+                              )}
+                              {/* corpo do disco */}
+                              <path d={`M ${cx - rt} ${y} L ${cx - rb} ${yb} A ${rb} ${ryb} 0 0 0 ${cx + rb} ${yb} L ${cx + rt} ${y} A ${rt} ${ryt} 0 0 1 ${cx - rt} ${y} Z`} fill={`url(#gvf${i})`} />
+                              {/* tampa do disco */}
+                              <ellipse cx={cx} cy={y} rx={rt} ry={ryt} fill={c.light} />
+                              <ellipse cx={cx} cy={y} rx={rt * 0.45} ry={ryt * 0.45} fill={c.main} opacity={0.35} />
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    );
+                  })()}
                 </div>
               )}
 
