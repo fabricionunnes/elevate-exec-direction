@@ -1669,8 +1669,11 @@ export function FacunicampsIndicadoresPanel() {
     });
     const count = rows.length;
     const valorTotal = rows.reduce((s, m) => s + (m.valor_total ?? 0), 0);
+    const valorMatricula = rows.reduce((s, m) => s + (m.valor_matricula ?? 0), 0);
     const paid = rows.filter((m) => (m.valor_total ?? 0) > 0);
     const ticketMedio = paid.length > 0 ? valorTotal / paid.length : 0;
+    const paidMat = rows.filter((m) => (m.valor_matricula ?? 0) > 0);
+    const ticketMatricula = paidMat.length > 0 ? valorMatricula / paidMat.length : 0;
     const cursosMap = new Map<string, number>();
     const vendsMap = new Map<string, number>();
     for (const m of rows) {
@@ -1682,7 +1685,7 @@ export function FacunicampsIndicadoresPanel() {
     }
     const topCursos = [...cursosMap.entries()].sort(([, a], [, b]) => b - a).slice(0, 3);
     const topVendedores = [...vendsMap.entries()].sort(([, a], [, b]) => b - a).slice(0, 3);
-    return { count, valorTotal, ticketMedio, topCursos, topVendedores };
+    return { count, valorTotal, valorMatricula, ticketMedio, ticketMatricula, topCursos, topVendedores };
   };
 
   const period1Stats = compareFrom1 && compareTo1 ? getPeriodStats(compareFrom1, compareTo1, periodFilters1) : null;
@@ -2307,11 +2310,22 @@ export function FacunicampsIndicadoresPanel() {
             <KpiCard title="Meta Total Configurada" value={histKpis.totalMeta > 0 ? String(histKpis.totalMeta) : "--"} accentColor="#f97316" icon={Target} />
           </div>
 
-          {/* Valor Total Mensal BarChart with % change labels */}
-          <DarkChartCard title="Valor Total no período (mensal)" accentColor="#3b82f6">
+          {/* Valor Matrícula vs Valor Total mensal, com % de variação do total */}
+          <DarkChartCard title="Valor Matrícula vs Valor Total (mensal)" accentColor="#3b82f6">
             {monthlyDataWithPct.length === 0 ? (
               <p className="text-white/40 text-sm">Sem dados</p>
             ) : (
+              <>
+              <div className="flex gap-4 text-xs mb-3 flex-wrap">
+                <span className="flex items-center gap-1.5 text-white/60">
+                  <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ backgroundColor: C3D.emerald.front }} />
+                  Valor Matrícula
+                </span>
+                <span className="flex items-center gap-1.5 text-white/60">
+                  <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ backgroundColor: C3D.blue.front }} />
+                  Valor Total
+                </span>
+              </div>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={monthlyDataWithPct} margin={{ left: 8, right: 16, top: 36, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID_COLOR} />
@@ -2320,22 +2334,33 @@ export function FacunicampsIndicadoresPanel() {
                   <Tooltip
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
-                      const cur = payload[0].value as number;
                       const item = monthlyDataWithPct.find((d) => d.label === label);
                       const pct = item?.pct ?? null;
                       return (
                         <div className="rounded-2xl shadow-2xl p-3 border border-white/10" style={{ background: "linear-gradient(135deg, rgba(15,23,42,0.98), rgba(30,41,59,0.96))" }}>
                           <p className="text-[11px] font-bold text-white/50 mb-1 uppercase tracking-widest">{label}</p>
-                          <p className="text-sm font-bold text-white">{fmtBRL(cur)}</p>
+                          {payload.map((p) => (
+                            <p key={String(p.name)} className="text-sm font-bold text-white">
+                              <span className="text-white/50 font-semibold">{p.name}: </span>{fmtBRL(p.value as number)}
+                            </p>
+                          ))}
                           {pct !== null && (
                             <p className={`text-xs font-semibold ${pct >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                              {pct >= 0 ? "▲" : "▼"} {Math.abs(pct).toFixed(1)}%
+                              Total {pct >= 0 ? "▲" : "▼"} {Math.abs(pct).toFixed(1)}%
                             </p>
                           )}
                         </div>
                       );
                     }}
                     cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                  />
+                  <Bar
+                    dataKey="valorMatricula"
+                    name="Valor Matrícula"
+                    radius={[4, 4, 0, 0]}
+                    shape={(props: Record<string, unknown>) => (
+                      <ThreeDBar {...props} frontColor={C3D.emerald.front} topColor={C3D.emerald.top} sideColor={C3D.emerald.side} />
+                    )}
                   />
                   <Bar
                     dataKey="valorTotal"
@@ -2370,6 +2395,7 @@ export function FacunicampsIndicadoresPanel() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              </>
             )}
           </DarkChartCard>
 
@@ -2665,7 +2691,9 @@ export function FacunicampsIndicadoresPanel() {
                     </div>
                     <div className="px-3 sm:px-5 py-3 space-y-3">
                       <CompareMetric label="Qtde. Vendas" value={period1Stats.count} other={period2Stats.count} />
+                      <CompareMetric label="Valor Matrícula" value={period1Stats.valorMatricula} other={period2Stats.valorMatricula} isCurrency />
                       <CompareMetric label="Valor Total" value={period1Stats.valorTotal} other={period2Stats.valorTotal} isCurrency />
+                      <CompareMetric label="Ticket Médio Matrícula" value={period1Stats.ticketMatricula} other={period2Stats.ticketMatricula} isCurrency />
                       <CompareMetric label="Ticket Médio" value={period1Stats.ticketMedio} other={period2Stats.ticketMedio} isCurrency />
                       <div className="pt-1 space-y-1.5">
                         <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Top 3 Cursos</p>
@@ -2702,7 +2730,9 @@ export function FacunicampsIndicadoresPanel() {
                     </div>
                     <div className="px-3 sm:px-5 py-3 space-y-3">
                       <CompareMetric label="Qtde. Vendas" value={period2Stats.count} other={period1Stats.count} />
+                      <CompareMetric label="Valor Matrícula" value={period2Stats.valorMatricula} other={period1Stats.valorMatricula} isCurrency />
                       <CompareMetric label="Valor Total" value={period2Stats.valorTotal} other={period1Stats.valorTotal} isCurrency />
+                      <CompareMetric label="Ticket Médio Matrícula" value={period2Stats.ticketMatricula} other={period1Stats.ticketMatricula} isCurrency />
                       <CompareMetric label="Ticket Médio" value={period2Stats.ticketMedio} other={period1Stats.ticketMedio} isCurrency />
                       <div className="pt-1 space-y-1.5">
                         <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Top 3 Cursos</p>
