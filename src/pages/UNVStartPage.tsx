@@ -110,7 +110,7 @@ const faqs = [
 
 // Checkout hospedado da Greenn — cole aqui o link do produto quando criar na Greenn.
 // Vazio = usa o checkout interno (/start/checkout, Asaas) como fallback.
-const GREENN_CHECKOUT_URL = "";
+const GREENN_CHECKOUT_URL = "https://payfast.greenn.com.br/u4q3ecv";
 
 const CheckoutLink = ({ children, className }: { children: ReactNode; className?: string }) =>
   GREENN_CHECKOUT_URL ? (
