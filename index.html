@@ -1,6 +1,20 @@
 <!doctype html>
 <html lang="pt-BR">
   <head>
+    <script>
+      // Links de tráfego sem hash: /start abre a página de vendas do Raio-X (HashRouter).
+      // /start/{qualquer-coisa} preserva o destino (checkout, link mágico do portal).
+      (function () {
+        var p = window.location.pathname;
+        if (!window.location.hash) {
+          if (p === "/start" || p === "/start/" || p === "/unv-start") {
+            window.location.replace("/#/unv-start" + window.location.search);
+          } else if (p.indexOf("/start/") === 0) {
+            window.location.replace("/#" + p + window.location.search);
+          }
+        }
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="facebook-domain-verification" content="sl4u68uwtgn55q98tbv1v39xc8ojro" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
