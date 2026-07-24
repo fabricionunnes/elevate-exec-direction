@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
 
     // ── Default action: create lead (step 1) ──
     const {
-      form_token, nome, telefone, email, instagram, empresa, desafio,
+      form_token, nome, telefone, email, instagram, empresa, desafio, observacao,
       utm_source, utm_medium, utm_campaign, utm_content, utm_term,
       fbclid, ad_name, adset_name, campaign_name,
       meta_campaign_id, meta_adset_id, meta_ad_id,
@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
     if (email) dedupeFilters.unshift(`email.eq.${email}`);
     const { data: existingLead } = await supabase
       .from('crm_leads')
-      .select('id, pipeline_id, stage_id, tenant_id')
+      .select('id, pipeline_id, stage_id, tenant_id, notes')
       .eq('pipeline_id', form.pipeline_id)
       .or(dedupeFilters.join(','))
       .limit(1)
@@ -197,6 +197,9 @@ Deno.serve(async (req) => {
           entered_pipeline_at: reentryAt,
           ...(empresa ? { company: empresa } : {}),
           ...(desafio ? { main_pain: desafio } : {}),
+          ...(observacao && !(existingLead.notes || '').includes(String(observacao).slice(0, 300))
+            ? { notes: existingLead.notes ? `${existingLead.notes} | ${String(observacao).slice(0, 300)}` : String(observacao).slice(0, 300) }
+            : {}),
         })
         .eq('id', existingLead.id);
 
@@ -293,6 +296,7 @@ Deno.serve(async (req) => {
     }
 
     const notesParts: string[] = [];
+    if (observacao) notesParts.push(String(observacao).slice(0, 300));
     if (desafio) notesParts.push(`Desafio: ${desafio}`);
     if (utm_source) notesParts.push(`UTM Source: ${utm_source}`);
     if (utm_medium) notesParts.push(`UTM Medium: ${utm_medium}`);
