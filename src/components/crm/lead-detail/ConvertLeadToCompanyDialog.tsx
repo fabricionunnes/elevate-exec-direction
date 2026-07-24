@@ -40,6 +40,7 @@ interface Lead {
   trade_name?: string | null;
   legal_representative_name?: string | null;
   cpf?: string | null;
+  instagram?: string | null;
 }
 
 interface ConvertLeadToCompanyDialogProps {
@@ -131,6 +132,7 @@ export function ConvertLeadToCompanyDialog({
         cnpj: document || null,
         segment: lead.segment,
         contract_value: lead.opportunity_value || null,
+        instagram: lead.instagram || null,
         address: lead.address,
         address_number: lead.address_number,
         address_complement: lead.address_complement,
