@@ -253,7 +253,7 @@ export default function UNVStartCheckoutPage() {
                           <Loader2 className="animate-spin" />
                         ) : (
                           <>
-                            Pagar R$ 97 e liberar acesso
+                            Pagar R$ 37 e liberar acesso
                             <ArrowRight className="ml-2" />
                           </>
                         )}
@@ -333,7 +333,7 @@ export default function UNVStartCheckoutPage() {
 
                 <div className="mt-5 flex items-baseline justify-between rounded-2xl bg-white/10 border border-white/10 px-5 py-4">
                   <span className="text-white/70">Total</span>
-                  <span className="font-display text-3xl font-bold text-white">R$ 97</span>
+                  <span className="font-display text-3xl font-bold text-white">R$ 37</span>
                 </div>
 
                 <p className="mt-4 flex items-center gap-2 text-xs text-white/60">
