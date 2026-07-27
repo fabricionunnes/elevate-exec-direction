@@ -369,8 +369,12 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         .select("id, name")
         .eq("category", "sdr")
         .eq("is_active", true);
-      const agendTypeIds = (goalTypesSdr || []).filter(t => /agendam/i.test(t.name)).map(t => t.id);
-      const meetTypeIds = (goalTypesSdr || []).filter(t => /reuni/i.test(t.name)).map(t => t.id);
+      // Semântica UNV: a meta cadastrada pro SDR (tipo "Agendamentos", a mesma das
+      // faixas de remuneração) é cobrada em REUNIÕES REALIZADAS — é a meta de
+      // reuniões. Meta de agendamentos separada só existe se criarem um tipo próprio
+      // (ex: "Agendamentos marcados"); hoje mostra "—".
+      const meetTypeIds = (goalTypesSdr || []).filter(t => /agendam|reuni/i.test(t.name)).map(t => t.id);
+      const agendTypeIds: string[] = [];
       const allTypeIds = [...agendTypeIds, ...meetTypeIds];
       const { data: sdrGoals } = allTypeIds.length
         ? await supabase
@@ -415,7 +419,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         reagendamentos: totalRescheduled,
         noShow: totalNoShow,
         semDesfecho: meetingEventsSemDesfecho,
-        metaPercent: metaAgendamentos > 0 ? (totalScheduled / metaAgendamentos) * 100 : 0,
+        metaPercent: metaReunioes > 0 ? (totalCompleted / metaReunioes) * 100 : 0,
         metaAgendamentos,
         metaReunioes,
         metaAgendamentosPercent: metaAgendamentos > 0 ? (totalScheduled / metaAgendamentos) * 100 : 0,
@@ -655,7 +659,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       noShowPercent,
       metaAgendamentos: sdrMeta.agend,
       metaReunioes: sdrMeta.reunioes,
-      metaPercent: sdrMeta.agend > 0 ? (agendamentos / sdrMeta.agend) * 100 : 0,
+      metaPercent: sdrMeta.reunioes > 0 ? (reunioes / sdrMeta.reunioes) * 100 : 0,
       metaAgendamentosPercent: sdrMeta.agend > 0 ? (agendamentos / sdrMeta.agend) * 100 : 0,
       metaReunioesPercent: sdrMeta.reunioes > 0 ? (reunioes / sdrMeta.reunioes) * 100 : 0,
       projecaoPercent: sdrMeta.reunioes > 0 ? (metrics.projecao / sdrMeta.reunioes) * 100 : 0,
