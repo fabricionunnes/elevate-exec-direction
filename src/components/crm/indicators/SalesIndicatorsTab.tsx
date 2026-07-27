@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, lazy, Suspense } from "react";
 
 // Card 3D das flags do time (three.js) — lazy pra não pesar o bundle do CRM
 const CRMTeamFlags3D = lazy(() => import("@/components/crm/CRMTeamFlags3D"));
+const CRMWeekday3D = lazy(() => import("@/components/crm/CRMWeekday3D"));
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -44,6 +45,7 @@ interface CloserMetrics {
   name: string;
   callsScheduled: number;
   callsCompleted: number;
+  noShow: number;
   salesQty: number;
   revenue: number;
   metaPercent: number;
@@ -120,6 +122,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const [rawForecastData, setRawForecastData] = useState<any[]>([]);
   const [rawNegotiationData, setRawNegotiationData] = useState<any[]>([]);
   const [rawCloserStaff, setRawCloserStaff] = useState<{ id: string; name: string }[]>([]);
+  const [staffRoles, setStaffRoles] = useState<Map<string, string>>(new Map());
   const [staffGoalsMap, setStaffGoalsMap] = useState<Map<string, { meta: number; super: number; hiper: number }>>(new Map());
   const [totalGoals, setTotalGoals] = useState({ meta: 0, super: 0, hiper: 0 });
   const [filterStartDate, setFilterStartDate] = useState<Date>(startOfMonth(new Date()));
@@ -276,6 +279,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       const staffRoleMap = new Map(
         (allActiveStaff || []).map(s => [s.id, String((s as any).role ?? "").toLowerCase()])
       );
+      setStaffRoles(staffRoleMap as Map<string, string>);
 
       // Load scheduled calls (paginado — evita corte de 1000)
       const calls = await fetchAllRows(() =>
@@ -573,19 +577,26 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     };
 
     // Closer metrics table (sempre mostra todos os closers).
-    // Crédito de agendamento/realização vai para o RESPONSÁVEL do lead (owner),
-    // não para quem deu baixa/agendou (credited_staff_id pode ser SDR ou outro).
-    // Deduplicamos por (lead_id, event_type) para não contar a mesma reunião 2x
-    // quando houver múltiplos credited (ex.: SDR + Closer).
+    // Atribuição da reunião: o CLOSER CREDITADO na baixa (quem fez a reunião);
+    // se nenhum não-SDR foi creditado, cai pro dono do lead. Atribuir só pelo
+    // dono atual inflava quem recebe leads transferidos (Ricardo 17 vs 13 reais —
+    // reuniões feitas pelo Fabrício antes da transferência contavam pro Ricardo).
+    // Dedup por lead+tipo+minuto (mesma reunião gera linhas pra SDR e closer).
+    const preSalesRoles = new Set(["sdr", "social_setter", "bdr"]);
     const eventsByOwner = (() => {
-      const seen = new Set<string>();
-      const list: any[] = [];
+      const groups = new Map<string, { ev: any; attr: string | null }>();
       rawMeetingEvents.forEach((ev: any) => {
-        const ownerId = ev.lead?.owner_staff_id;
+        const key = `${ev.lead_id}-${ev.event_type}-${String(ev.event_date || "").slice(0, 16)}`;
+        const cred = ev.credited_staff_id as string | null;
+        const credCloser = cred && !preSalesRoles.has(staffRoles.get(cred) || "") ? cred : null;
+        const g = groups.get(key);
+        if (!g) groups.set(key, { ev, attr: credCloser });
+        else if (!g.attr && credCloser) g.attr = credCloser;
+      });
+      const list: any[] = [];
+      groups.forEach(({ ev, attr }) => {
+        const ownerId = attr || ev.lead?.owner_staff_id;
         if (!ownerId) return;
-        const key = `${ev.lead_id}-${ev.event_type}-${ownerId}`;
-        if (seen.has(key)) return;
-        seen.add(key);
         list.push({ ...ev, owner_id: ownerId });
       });
       return list;
@@ -597,6 +608,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       const closerMeetingEvents = eventsByOwner.filter(e => e.owner_id === closer.id);
       const closerScheduled = closerMeetingEvents.filter(e => e.event_type === "scheduled").length;
       const closerCompleted = closerMeetingEvents.filter(e => e.event_type === "realized").length;
+      const closerNoShow = closerMeetingEvents.filter(e => e.event_type === "no_show").length;
 
       const closerGoal = staffGoalsMap.get(closer.id);
       const closerMeta = closerGoal?.meta || (totalGoals.meta / (rawCloserStaff.length || 1));
@@ -606,6 +618,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         name: closer.name,
         callsScheduled: closerScheduled,
         callsCompleted: closerCompleted,
+        noShow: closerNoShow,
         salesQty: closerSales.length,
         revenue: closerRevenue,
         metaPercent: closerMeta > 0 ? (closerRevenue / closerMeta) * 100 : 0,
@@ -705,7 +718,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       revenueEvolution,
       productDistribution,
     };
-  }, [selectedCloser, selectedProduct, rawSalesData, rawMeetingEvents, rawCalls, rawForecastData, rawNegotiationData, rawCloserStaff, staffGoalsMap, totalGoals, filterStartDate]);
+  }, [selectedCloser, selectedProduct, rawSalesData, rawMeetingEvents, rawCalls, rawForecastData, rawNegotiationData, rawCloserStaff, staffRoles, staffGoalsMap, totalGoals, filterStartDate]);
 
   // Produtos que realmente aparecem nas vendas do período (o dropdown antes vinha de
   // crm_products e não casava com o product_name livre das vendas).
@@ -768,6 +781,34 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         return ((Number(a[funnelSort.key]) || 0) - (Number(b[funnelSort.key]) || 0)) * m;
       });
   }, [leadsByFunnel, rawMeetingEvents, rawSalesData, funnelSort]);
+
+  // Vendas (R$) e reuniões realizadas por dia da semana e por dia do mês
+  const timingCharts = useMemo(() => {
+    const WD = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    const wd = WD.map(dia => ({ dia, vendas: 0, reunioes: 0 }));
+    const md = Array.from({ length: 31 }, (_, i) => ({ dia: String(i + 1), vendas: 0, reunioes: 0 }));
+    const toDate = (v: string) => new Date(String(v).includes("T") ? v : `${v}T12:00:00`);
+    rawSalesData.forEach((s: any) => {
+      if (!s.sale_date) return;
+      const d = toDate(s.sale_date);
+      if (isNaN(d.getTime())) return;
+      const val = Number(s.billing_value) || 0;
+      wd[d.getDay()].vendas += val;
+      md[d.getDate() - 1].vendas += val;
+    });
+    const seen = new Set<string>();
+    rawMeetingEvents.forEach((ev: any) => {
+      if (ev.event_type !== "realized" || !ev.event_date) return;
+      const k = `${ev.lead_id}|${String(ev.event_date).slice(0, 16)}`;
+      if (seen.has(k)) return;
+      seen.add(k);
+      const d = new Date(ev.event_date);
+      if (isNaN(d.getTime())) return;
+      wd[d.getDay()].reunioes += 1;
+      md[d.getDate() - 1].reunioes += 1;
+    });
+    return { weekday: [...wd.slice(1), wd[0]], monthday: md };
+  }, [rawSalesData, rawMeetingEvents]);
 
   if (loading) {
     return (
@@ -1010,6 +1051,57 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           </div>
         </div>
       )}
+
+      {/* ── Quando vende: dia da semana (3D) + dia do mês (mapa de calor) ── */}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <div className="rounded-xl border p-4" style={{ borderColor: `${TONE.violet}2e`, background: `${TONE.violet}0d` }}>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="h-2 w-2 rounded-full" style={{ background: TONE.violet }} />
+            <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: TONE.violet }}>Dia da Semana — Vendas × Reuniões</span>
+            <span className="ml-auto flex items-center gap-3 text-[10px] text-muted-foreground">
+              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: "#34d399" }} /> Vendas (R$)</span>
+              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: "#60a5fa" }} /> Reuniões</span>
+            </span>
+          </div>
+          <Suspense fallback={<div className="h-[300px] rounded-xl bg-muted/40 animate-pulse" />}>
+            <CRMWeekday3D data={timingCharts.weekday} />
+          </Suspense>
+        </div>
+        <div className="rounded-xl border p-4" style={{ borderColor: `${TONE.amber}2e`, background: `${TONE.amber}0d` }}>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="h-2 w-2 rounded-full" style={{ background: TONE.amber }} />
+            <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: TONE.amber }}>Dia do Mês — Mapa de Calor</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">mais escuro = mais volume</span>
+          </div>
+          <div className="space-y-3 overflow-x-auto">
+            {([
+              { key: "vendas" as const, label: "Vendas", rgb: "16,185,129", fmt: (v: number) => formatCurrency(v) },
+              { key: "reunioes" as const, label: "Reuniões", rgb: "96,165,250", fmt: (v: number) => String(v) },
+            ]).map(m => {
+              const max = Math.max(...timingCharts.monthday.map(d => d[m.key]), 1);
+              return (
+                <div key={m.key}>
+                  <div className="text-[11px] font-semibold text-muted-foreground mb-1">{m.label}</div>
+                  <div className="grid gap-[3px]" style={{ gridTemplateColumns: "repeat(31, minmax(0, 1fr))" }}>
+                    {timingCharts.monthday.map(d => {
+                      const v = d[m.key];
+                      const int = v / max;
+                      return (
+                        <div key={d.dia} title={`Dia ${d.dia}: ${m.fmt(v)}`}
+                          className="rounded-[3px] h-9 flex flex-col items-center justify-center cursor-default"
+                          style={{ background: v > 0 ? `rgba(${m.rgb}, ${0.18 + 0.72 * int})` : "hsl(var(--muted))" }}>
+                          <span className={cn("text-[8px] leading-none", v > 0 && int > 0.45 ? "text-white/80" : "text-muted-foreground")}>{d.dia}</span>
+                          {v > 0 && <span className={cn("text-[9px] font-bold leading-tight", int > 0.45 ? "text-white" : "text-foreground")}>{m.key === "vendas" ? `${Math.round(v / 1000)}k` : v}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
 
       {/* ── Flags do time (3D): performance vs meta dos 3 últimos meses fechados ── */}
       <Suspense fallback={null}>
@@ -1260,6 +1352,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                 <TableHead>Closer</TableHead>
                 <TableHead className="text-center">Agend.</TableHead>
                 <TableHead className="text-center">Realiz.</TableHead>
+                <TableHead className="text-center">No Show</TableHead>
                 <TableHead className="text-center">Vendas</TableHead>
                 <TableHead className="text-right">Receita</TableHead>
                 <TableHead className="text-center">% Meta</TableHead>
@@ -1273,6 +1366,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                   <TableCell className="font-semibold">{closer.name}</TableCell>
                   <TableCell className="text-center">{closer.callsScheduled}</TableCell>
                   <TableCell className="text-center">{closer.callsCompleted}</TableCell>
+                  <TableCell className={cn("text-center", closer.noShow > 0 && "font-semibold text-rose-400")}>{closer.noShow}</TableCell>
                   <TableCell className="text-center font-semibold">{closer.salesQty}</TableCell>
                   <TableCell className="text-right font-semibold text-foreground">{formatCurrency(closer.revenue)}</TableCell>
                   <TableCell className="text-center">
@@ -1289,6 +1383,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                   <TableCell>Total</TableCell>
                   <TableCell className="text-center">{closers.reduce((s, c) => s + c.callsScheduled, 0)}</TableCell>
                   <TableCell className="text-center">{closers.reduce((s, c) => s + c.callsCompleted, 0)}</TableCell>
+                  <TableCell className="text-center">{closers.reduce((s, c) => s + c.noShow, 0)}</TableCell>
                   <TableCell className="text-center">{closers.reduce((s, c) => s + c.salesQty, 0)}</TableCell>
                   <TableCell className="text-right text-foreground">{formatCurrency(closers.reduce((s, c) => s + c.revenue, 0))}</TableCell>
                   <TableCell className="text-center">{metaPercent.toFixed(1)}%</TableCell>
