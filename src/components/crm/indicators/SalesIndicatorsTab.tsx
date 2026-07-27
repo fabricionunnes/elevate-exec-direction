@@ -736,20 +736,8 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     return new Intl.NumberFormat("pt-BR").format(value);
   };
 
-  if (loading) {
-    return (
-      <div className="p-4 md:p-6 space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Array(8).fill(0).map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-2xl" />
-          ))}
-        </div>
-        <Skeleton className="h-80 rounded-2xl" />
-      </div>
-    );
-  }
-
   // Tabela por funil: entradas de leads + calls agendadas/realizadas + vendas + ticket
+  // (hook — precisa vir ANTES do return condicional de loading)
   const funnelTable = useMemo(() => {
     const rows = new Map<string, { entradas: number; agendadas: number; realizadas: number; vendas: number; faturamento: number }>();
     const get = (n: string) => {
@@ -775,6 +763,19 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       .map(([name, r]) => ({ name, ...r, ticket: r.vendas > 0 ? r.faturamento / r.vendas : 0 }))
       .sort((a, b) => b.entradas - a.entradas);
   }, [leadsByFunnel, rawMeetingEvents, rawSalesData]);
+
+  if (loading) {
+    return (
+      <div className="p-4 md:p-6 space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array(8).fill(0).map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-2xl" />
+          ))}
+        </div>
+        <Skeleton className="h-80 rounded-2xl" />
+      </div>
+    );
+  }
 
   const metaPercent = metrics.metaReceita > 0 ? (metrics.receita / metrics.metaReceita) * 100 : 0;
   const superPercent = metrics.superMeta > 0 ? (metrics.receita / metrics.superMeta) * 100 : 0;
