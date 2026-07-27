@@ -958,13 +958,14 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
             <span className="h-2 w-2 rounded-full" style={{ background: TONE.green }} />
             <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: TONE.green }}>Entradas de Leads por Funil</span>
           </div>
-          {/* card compacto: ~6 funis visíveis, resto por rolagem interna; cabeçalho fixo */}
-          <div className="overflow-x-auto overflow-y-auto max-h-[300px] rounded-lg">
-            <Table>
-              <TableHeader className="sticky top-0 z-10 bg-card">
-                <TableRow className="text-xs border-border/50">
+          {/* card compacto: ~6 funis visíveis, resto por rolagem interna; cabeçalho
+              congelado com <table> nativa (o wrapper do ui/Table captura o sticky) */}
+          <div className="overflow-auto max-h-[300px] rounded-lg">
+            <table className="w-full caption-bottom text-sm">
+              <thead>
+                <tr className="border-b border-border/50">
                   {([
-                    { k: "name", label: "Funil", cls: "" },
+                    { k: "name", label: "Funil", cls: "text-left" },
                     { k: "entradas", label: "Entradas", cls: "text-center" },
                     { k: "agendadas", label: "Calls Agendadas", cls: "text-center" },
                     { k: "realizadas", label: "Calls Realizadas", cls: "text-center" },
@@ -972,40 +973,40 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                     { k: "ticket", label: "Ticket Médio", cls: "text-right" },
                     { k: "faturamento", label: "Valor Total", cls: "text-right" },
                   ] as const).map(c => (
-                    <TableHead key={c.k}
-                      className={cn(c.cls, "cursor-pointer select-none whitespace-nowrap hover:text-foreground")}
+                    <th key={c.k}
+                      className={cn(c.cls, "sticky top-0 z-10 bg-card h-10 px-3 align-middle text-xs font-medium text-muted-foreground cursor-pointer select-none whitespace-nowrap hover:text-foreground shadow-[inset_0_-1px_0_hsl(var(--border))]")}
                       onClick={() => setFunnelSort(s => ({ key: c.k, dir: s.key === c.k && s.dir === "desc" ? "asc" : "desc" }))}
                       title="Clique pra ordenar">
                       {c.label}{funnelSort.key === c.k ? (funnelSort.dir === "desc" ? " ↓" : " ↑") : ""}
-                    </TableHead>
+                    </th>
                   ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+                </tr>
+              </thead>
+              <tbody>
                 {funnelTable.map(f => (
-                  <TableRow key={f.name} className="text-sm border-border/50 hover:bg-muted/40">
-                    <TableCell className="font-medium py-2">{f.name}</TableCell>
-                    <TableCell className="text-center font-semibold py-2">{f.entradas}</TableCell>
-                    <TableCell className="text-center py-2">{f.agendadas}</TableCell>
-                    <TableCell className="text-center py-2">{f.realizadas}</TableCell>
-                    <TableCell className="text-center font-semibold text-emerald-500 py-2">{f.vendas}</TableCell>
-                    <TableCell className="text-right py-2">{f.ticket > 0 ? formatCurrency(f.ticket) : "—"}</TableCell>
-                    <TableCell className="text-right font-semibold py-2">{f.faturamento > 0 ? formatCurrency(f.faturamento) : "—"}</TableCell>
-                  </TableRow>
+                  <tr key={f.name} className="border-b border-border/50 hover:bg-muted/40">
+                    <td className="font-medium py-2 px-3">{f.name}</td>
+                    <td className="text-center font-semibold py-2 px-3">{f.entradas}</td>
+                    <td className="text-center py-2 px-3">{f.agendadas}</td>
+                    <td className="text-center py-2 px-3">{f.realizadas}</td>
+                    <td className="text-center font-semibold text-emerald-500 py-2 px-3">{f.vendas}</td>
+                    <td className="text-right py-2 px-3">{f.ticket > 0 ? formatCurrency(f.ticket) : "—"}</td>
+                    <td className="text-right font-semibold py-2 px-3">{f.faturamento > 0 ? formatCurrency(f.faturamento) : "—"}</td>
+                  </tr>
                 ))}
                 {funnelTable.length > 1 && (
-                  <TableRow className="font-semibold text-sm bg-muted/30 border-border/50">
-                    <TableCell className="py-2">Total</TableCell>
-                    <TableCell className="text-center py-2">{funnelTable.reduce((s, f) => s + f.entradas, 0)}</TableCell>
-                    <TableCell className="text-center py-2">{funnelTable.reduce((s, f) => s + f.agendadas, 0)}</TableCell>
-                    <TableCell className="text-center py-2">{funnelTable.reduce((s, f) => s + f.realizadas, 0)}</TableCell>
-                    <TableCell className="text-center text-emerald-500 py-2">{funnelTable.reduce((s, f) => s + f.vendas, 0)}</TableCell>
-                    <TableCell className="text-right py-2">{(() => { const v = funnelTable.reduce((s, f) => s + f.vendas, 0); const fat = funnelTable.reduce((s, f) => s + f.faturamento, 0); return v > 0 ? formatCurrency(fat / v) : "—"; })()}</TableCell>
-                    <TableCell className="text-right py-2">{formatCurrency(funnelTable.reduce((s, f) => s + f.faturamento, 0))}</TableCell>
-                  </TableRow>
+                  <tr className="font-semibold bg-muted/30">
+                    <td className="py-2 px-3">Total</td>
+                    <td className="text-center py-2 px-3">{funnelTable.reduce((s, f) => s + f.entradas, 0)}</td>
+                    <td className="text-center py-2 px-3">{funnelTable.reduce((s, f) => s + f.agendadas, 0)}</td>
+                    <td className="text-center py-2 px-3">{funnelTable.reduce((s, f) => s + f.realizadas, 0)}</td>
+                    <td className="text-center text-emerald-500 py-2 px-3">{funnelTable.reduce((s, f) => s + f.vendas, 0)}</td>
+                    <td className="text-right py-2 px-3">{(() => { const v = funnelTable.reduce((s, f) => s + f.vendas, 0); const fat = funnelTable.reduce((s, f) => s + f.faturamento, 0); return v > 0 ? formatCurrency(fat / v) : "—"; })()}</td>
+                    <td className="text-right py-2 px-3">{formatCurrency(funnelTable.reduce((s, f) => s + f.faturamento, 0))}</td>
+                  </tr>
                 )}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           </div>
         </div>
       )}
