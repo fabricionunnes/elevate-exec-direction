@@ -197,7 +197,7 @@ export default function CerebroPage() {
   const [search, setSearch] = useState("");
   const [termoFilter, setTermoFilter] = useState<"all" | TermoKey>("all");
   const [consultantFilter, setConsultantFilter] = useState("all");
-  const [freshFilter, setFreshFilter] = useState<"all" | "stale">("all");
+  const [freshFilter, setFreshFilter] = useState<"all" | "stale" | "24h" | "3d" | "7d" | "older7">("all");
   const [selected, setSelected] = useState<BrainRow | null>(null);
   const [regenerating, setRegenerating] = useState<string | null>(null);
   const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null);
@@ -259,7 +259,14 @@ export default function CerebroPage() {
     let l = rows;
     if (termoFilter !== "all") l = l.filter((r) => termoOf(r.brain) === termoFilter);
     if (consultantFilter !== "all") l = l.filter((r) => r.consultant_id === consultantFilter);
-    if (freshFilter === "stale") l = l.filter(isStale);
+    if (freshFilter !== "all") {
+      const ageH = (r: BrainRow) => (Date.now() - new Date(r.generated_at).getTime()) / 3600000;
+      if (freshFilter === "stale") l = l.filter(isStale);
+      else if (freshFilter === "24h") l = l.filter((r) => ageH(r) <= 24);
+      else if (freshFilter === "3d") l = l.filter((r) => ageH(r) <= 72);
+      else if (freshFilter === "7d") l = l.filter((r) => ageH(r) <= 168);
+      else if (freshFilter === "older7") l = l.filter((r) => ageH(r) > 168);
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       l = l.filter((r) => r.company_name.toLowerCase().includes(q));
@@ -402,6 +409,17 @@ export default function CerebroPage() {
               <SelectItem value="risco_alto">Risco alto</SelectItem>
               <SelectItem value="atencao">Atenção</SelectItem>
               <SelectItem value="seguro">Seguro</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={freshFilter} onValueChange={(v) => setFreshFilter(v as any)}>
+            <SelectTrigger className="w-52 h-9"><SelectValue placeholder="Atualização" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Qualquer atualização</SelectItem>
+              <SelectItem value="24h">Atualizados nas últimas 24h</SelectItem>
+              <SelectItem value="3d">Últimos 3 dias</SelectItem>
+              <SelectItem value="7d">Últimos 7 dias</SelectItem>
+              <SelectItem value="stale">Desatualizados +24h</SelectItem>
+              <SelectItem value="older7">Mais de 7 dias sem atualizar</SelectItem>
             </SelectContent>
           </Select>
           {bulk && (
