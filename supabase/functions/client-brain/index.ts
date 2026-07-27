@@ -113,82 +113,6 @@ interface GenResult {
   generatedAt: string;
   companyName: string;
   becameHighRisk: boolean;
-  autoCompleted: number;
-}
-
-/** Palavras significativas (sem acento, >2 letras) pra comparar títulos. */
-function significantWords(s: string): Set<string> {
-  return new Set(
-    (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 2),
-  );
-}
-/** Duas tarefas são "a mesma" se metade das palavras significativas coincide. */
-function tasksSimilar(a: string, b: string): boolean {
-  const wa = significantWords(a);
-  const wb = significantWords(b);
-  if (wa.size === 0 || wb.size === 0) return false;
-  let inter = 0;
-  wa.forEach((w) => { if (wb.has(w)) inter++; });
-  return inter / (wa.size + wb.size - inter) >= 0.5;
-}
-
-/** Registra como CONCLUÍDAS as tarefas que o time já executou (detectadas no
- * grupo/reuniões pela IA) e que ainda NÃO existem no sistema. Idempotente:
- * a cada rodada, o que já foi registrado é filtrado pela similaridade. */
-async function reconcileExecutedTasks(
-  supabase: SupabaseClient,
-  projectId: string,
-  executed: any[],
-  generatedAt: string,
-): Promise<number> {
-  const items = (Array.isArray(executed) ? executed : [])
-    .filter((e) => e && typeof e.titulo === "string" && e.titulo.trim().length > 3)
-    .slice(0, 12); // trava anti-flood por rodada
-  if (items.length === 0) return 0;
-
-  // Todos os títulos de tarefas do projeto (abertas e concluídas) pra dedup.
-  const { data: existing } = await supabase
-    .from("onboarding_tasks")
-    .select("title")
-    .eq("project_id", projectId)
-    .limit(1000);
-  const existingTitles = (existing || []).map((t: any) => t.title || "");
-
-  const rows: Record<string, unknown>[] = [];
-  const acceptedTitles: string[] = [];
-  for (const e of items) {
-    const titulo = String(e.titulo).trim().slice(0, 140);
-    // já existe algo parecido no sistema? ou já vamos inserir parecido nesta rodada?
-    if (existingTitles.some((t) => tasksSimilar(t, titulo))) continue;
-    if (acceptedTitles.some((t) => tasksSimilar(t, titulo))) continue;
-    acceptedTitles.push(titulo);
-    // data de conclusão: usa a informada se válida, senão a hora da geração
-    let completedAt = generatedAt;
-    let dueDate = generatedAt.slice(0, 10);
-    if (typeof e.quando === "string" && /^\d{4}-\d{2}-\d{2}/.test(e.quando)) {
-      dueDate = e.quando.slice(0, 10);
-      completedAt = `${dueDate}T12:00:00-03:00`;
-    }
-    rows.push({
-      project_id: projectId,
-      title: titulo,
-      description: `Detectada como JÁ EXECUTADA pelo time e registrada automaticamente pelo Cérebro do Cliente.\nEvidência: ${truncate(e.evidencia, 500)}`,
-      status: "completed",
-      completed_at: completedAt,
-      due_date: dueDate,
-      is_internal: true,
-      priority: "medium",
-      tags: ["cerebro-executada"],
-    });
-  }
-  if (rows.length === 0) return 0;
-  const { error } = await supabase.from("onboarding_tasks").insert(rows as never);
-  if (error) {
-    console.error("reconcileExecutedTasks insert error:", error.message);
-    return 0;
-  }
-  return rows.length;
 }
 
 /** Gera o cérebro de UM projeto e persiste. */
@@ -210,14 +134,25 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
 
   const now = new Date();
   const d90 = new Date(now.getTime() - 90 * 86400000).toISOString();
-  const d60 = new Date(now.getTime() - 60 * 86400000).toISOString();
   const d30 = new Date(now.getTime() - 30 * 86400000).toISOString();
   const d14 = new Date(now.getTime() - 14 * 86400000).toISOString();
+
+  // Sinais da EMPRESA (reuniões, NPS, CSAT) valem pra todos os projetos dela.
+  // Sem isso, o cérebro de um projeto irmão (ex: UNV Ads) acusava "zero reuniões /
+  // zero NPS" enquanto tudo estava registrado no projeto principal.
+  let companyProjectIds: string[] = [projectId];
+  if (companyId) {
+    const { data: sibs } = await supabase
+      .from("onboarding_projects")
+      .select("id")
+      .eq("onboarding_company_id", companyId);
+    if (sibs?.length) companyProjectIds = sibs.map((s: any) => s.id);
+  }
 
   const { data: meetings } = await supabase
     .from("onboarding_meeting_notes")
     .select("meeting_title, meeting_date, notes, transcript, is_no_show, is_internal")
-    .eq("project_id", projectId)
+    .in("project_id", companyProjectIds)
     .gte("meeting_date", d90)
     .order("meeting_date", { ascending: false })
     .limit(8);
@@ -237,16 +172,6 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
   const upcoming = (tasks || []).filter(
     (t: any) => t.status !== "completed" && t.due_date && new Date(t.due_date) >= now,
   ).slice(0, 10);
-  // Para a IA NÃO sugerir algo que já foi feito ou já está na fila: manda os
-  // TÍTULOS do que foi concluído (60d) e de tudo que está em aberto agora.
-  const concluidasTitulos = (tasks || [])
-    .filter((t: any) => t.status === "completed" && t.completed_at && t.completed_at >= d60)
-    .slice(0, 40)
-    .map((t: any) => ({ titulo: t.title, concluida_em: t.completed_at }));
-  const emAbertoTitulos = (tasks || [])
-    .filter((t: any) => t.status !== "completed")
-    .slice(0, 40)
-    .map((t: any) => t.title);
 
   const { data: health } = await supabase
     .from("client_health_scores")
@@ -257,13 +182,13 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
   const { data: nps } = await supabase
     .from("onboarding_nps_responses")
     .select("score, feedback, created_at")
-    .eq("project_id", projectId)
+    .in("project_id", companyProjectIds)
     .order("created_at", { ascending: false })
     .limit(3);
   const { data: csat } = await supabase
     .from("csat_responses")
     .select("score, comment, created_at")
-    .eq("project_id", projectId)
+    .in("project_id", companyProjectIds)
     .order("created_at", { ascending: false })
     .limit(3);
 
@@ -288,12 +213,29 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
         .in("kpi_id", ids)
         .gte("entry_date", monthStart);
       const realized = (entries || []).reduce((s: number, e: any) => s + (e.value || 0), 0);
-      const target = kpis.reduce((s: number, k: any) => {
-        if (!k.target_value) return s;
-        if (k.periodicity === "daily") return s + k.target_value * daysInMonth;
-        if (k.periodicity === "weekly") return s + k.target_value * Math.ceil(daysInMonth / 7);
-        return s + k.target_value;
-      }, 0);
+      // Meta = kpi_monthly_targets do mês (mesma régua do painel de KPIs): rollup por
+      // vendedor > empresa > unidade > time, nível "Meta". O target_value do cadastro
+      // é legado e vive zerado — era isso que fazia o cérebro acusar "meta zerada".
+      const monthYear = `${y}-${String(m).padStart(2, "0")}`;
+      const { data: mts } = await supabase
+        .from("kpi_monthly_targets")
+        .select("kpi_id, target_value, level_name, salesperson_id, unit_id, team_id")
+        .eq("company_id", companyId)
+        .eq("month_year", monthYear)
+        .in("kpi_id", ids);
+      const metaOf = (k: any): number => {
+        const all = (mts || []).filter((t: any) => t.kpi_id === k.id && (t.level_name === "Meta" || !t.level_name));
+        const sum = (rows: any[]) => rows.reduce((s: number, r: any) => s + (Number(r.target_value) || 0), 0);
+        const sp = all.filter((t: any) => t.salesperson_id);
+        const comp = all.filter((t: any) => !t.salesperson_id && !t.unit_id && !t.team_id);
+        const un = all.filter((t: any) => t.unit_id && !t.salesperson_id);
+        const tm = all.filter((t: any) => t.team_id && !t.salesperson_id);
+        const base = sp.length ? sum(sp) : comp.length ? sum(comp) : un.length ? sum(un) : tm.length ? sum(tm) : (Number(k.target_value) || 0);
+        if (k.periodicity === "daily") return base * daysInMonth;
+        if (k.periodicity === "weekly") return base * Math.ceil(daysInMonth / 7);
+        return base;
+      };
+      const target = kpis.reduce((s: number, k: any) => s + metaOf(k), 0);
       const elapsed = now.getDate() / daysInMonth;
       kpiResumo = {
         meta_mes: target,
@@ -342,36 +284,6 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
           }))
           .reverse();
       }
-      // Mastermind UNV: o que o dono desta empresa falou na mesa de donos também
-      // alimenta o cérebro (metas declaradas, dores, trocas — material riquíssimo).
-      try {
-        const mmCtx = await fetch(`${MARCELO_URL}/rest/v1/mastermind_member_context?select=phone,member_name&company_id=eq.${companyId}`, { headers: mh });
-        const members = mmCtx.ok ? await mmCtx.json() : [];
-        if (members.length) {
-          const mmGrp = await fetch(`${MARCELO_URL}/rest/v1/marcelo_groups?select=group_jid&group_type=eq.mastermind&limit=1`, { headers: mh });
-          const mg = mmGrp.ok ? await mmGrp.json() : [];
-          const mmJid = mg[0]?.group_jid;
-          if (mmJid) {
-            const last10 = new Set(members.map((m: any) => String(m.phone || "").replace(/\D/g, "").slice(-10)).filter((ph: string) => ph.length === 10));
-            const mmRes = await fetch(`${MARCELO_URL}/rest/v1/marcelo_group_messages?select=sender_jid,sender_name,message_text,msg_timestamp&group_jid=eq.${encodeURIComponent(mmJid)}&msg_timestamp=gte.${d14}&order=msg_timestamp.desc&limit=300`, { headers: mh });
-            const mmMsgs = mmRes.ok ? await mmRes.json() : [];
-            const mine = mmMsgs
-              .filter((mm: any) => {
-                const ph = String(mm.sender_jid || "").split("@")[0].replace(/\D/g, "").slice(-10);
-                return ph.length === 10 && last10.has(ph) && (mm.message_text || "").trim();
-              })
-              .slice(0, 40)
-              .map((mm: any) => ({
-                grupo: "Mastermind UNV (mesa de donos)",
-                quem: mm.sender_name,
-                msg: truncate(mm.message_text, 300),
-                quando: mm.msg_timestamp,
-              }))
-              .reverse();
-            waMessages = waMessages.concat(mine);
-          }
-        }
-      } catch (_e) { /* segue sem mastermind */ }
     } catch (_e) {
       // Marcelo indisponível: segue sem WhatsApp
     }
@@ -382,7 +294,7 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
     segmento: project.company?.segment,
     produto_contratado: project.product_name,
     status_projeto: project.status,
-    inicio_contrato: project.contract_start_date ?? project.contract_start ?? project.created_at,
+    inicio_contrato: project.contract_start ?? project.created_at,
     saude: health,
     resultado_mes: kpiResumo,
     nps_recentes: (nps || []).map((n: any) => ({ nota: n.score, feedback: truncate(n.feedback, 300), quando: n.created_at })),
@@ -391,8 +303,6 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
       atrasadas: overdueTasks.slice(0, 10).map((t: any) => ({ titulo: t.title, vencia_em: t.due_date })),
       concluidas_30d: doneRecent.length,
       proximas: upcoming.map((t: any) => ({ titulo: t.title, vence_em: t.due_date })),
-      ja_concluidas: concluidasTitulos, // o que JÁ foi feito (não sugerir de novo)
-      em_aberto: emAbertoTitulos,       // o que JÁ está na fila (não duplicar)
     },
     reunioes_90d: (meetings || []).map((mm: any) => ({
       titulo: mm.meeting_title,
@@ -420,16 +330,12 @@ Responda APENAS com JSON válido (sem markdown) neste formato:
   "dores_atuais": ["dores/insatisfações vivas, com evidência curta"],
   "vitorias_recentes": ["vitórias/resultados que devem ser LEMBRADOS ao cliente (anti-churn)"],
   "riscos": [{ "sinal": "sinal de risco de churn", "evidencia": "fato/frase/data", "gravidade": "alta" | "media" | "baixa" }],
-  "proximas_acoes": [{ "acao": "ação concreta pro consultor/CS fazer (SÓ o que ainda NÃO foi feito e NÃO está em aberto)", "motivo": "por quê (ligado a evidência)", "urgencia": "hoje" | "esta_semana" | "este_mes" }],
+  "proximas_acoes": [{ "acao": "ação concreta pro consultor/CS fazer", "motivo": "por quê (ligado a evidência)", "urgencia": "hoje" | "esta_semana" | "este_mes" }],
   "relacionamento": { "ultima_reuniao": "data ou null", "dias_sem_reuniao": número ou null, "whatsapp": "ativo | morno | silencioso", "resumo": "1 frase sobre a qualidade da relação" },
-  "citacoes_chave": [{ "quem": "nome", "frase": "citação real e relevante", "quando": "data", "leitura": "o que essa frase significa pro churn" }],
-  "tarefas_executadas": [{ "titulo": "entrega/tarefa que a UNV JÁ FEZ e comunicou (ex: 'subiu as campanhas de tráfego', 'entregou os criativos', 'montou o funil no CRM', 'treinou o time de vendas')", "quando": "data YYYY-MM-DD da execução ou null", "evidencia": "trecho/mensagem do grupo (ou reunião) que comprova que foi FEITO, com data" }]
+  "citacoes_chave": [{ "quem": "nome", "frase": "citação real e relevante", "quando": "data", "leitura": "o que essa frase significa pro churn" }]
 }
 
-Regras:
-- ANTES de montar "proximas_acoes", leia "tarefas.ja_concluidas" (o que já foi FEITO) e "tarefas.em_aberto" (o que já está na fila). NÃO sugira nenhuma ação que seja igual ou muito parecida (mesma intenção/objetivo) a algo que já está nessas listas — mesmo que as palavras sejam diferentes. Se algo já foi resolvido, ele NÃO é próxima ação; vira, no máximo, uma vitória. Só proponha ações genuinamente novas e ainda pendentes.
-- "tarefas_executadas": liste SÓ o que o time da UNV JÁ ENTREGOU/EXECUTOU e comunicou (principalmente no whatsapp_14d dos grupos; reuniões também valem). Regras rígidas: (a) só entregas CONCLUÍDAS — nada de promessa, plano, "vou fazer", "agendado" ou tarefa do cliente; se houver qualquer dúvida se foi realmente feito, NÃO inclua; (b) cada item precisa de evidência real (frase/data) de que foi feito; (c) não repita algo que já esteja em "tarefas.ja_concluidas". Cada título curto e no passado ("Subiu as campanhas", "Entregou os criativos"). Se não houver nada claramente executado, devolva lista vazia.
-- promessas VENCIDAS e riscos vêm primeiro nas listas. Máximo 6 itens por lista. Se não houver dado pra um campo, use lista vazia ou null — NÃO invente. Português do Brasil.`;
+Regras: promessas VENCIDAS e riscos vêm primeiro nas listas. Máximo 6 itens por lista. Se não houver dado pra um campo, use lista vazia ou null — NÃO invente. Português do Brasil.`;
 
   const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -451,19 +357,9 @@ Regras:
     { onConflict: "project_id" },
   );
 
-  // Registra no sistema (como concluídas) as tarefas que o time já executou
-  // e comunicou no grupo, mas que ninguém tinha lançado ainda.
-  let autoCompleted = 0;
-  try {
-    autoCompleted = await reconcileExecutedTasks(supabase, projectId, brain?.tarefas_executadas, generatedAt);
-  } catch (e) {
-    console.error("reconcileExecutedTasks falhou:", String(e).slice(0, 160));
-  }
-
   return {
     brain,
     generatedAt,
-    autoCompleted,
     companyName: project.company?.name || "Cliente",
     becameHighRisk: brain?.termometro === "risco_alto" && prevTermo !== "risco_alto",
   };
@@ -477,69 +373,6 @@ function riskAlertText(items: { companyName: string; brain: any }[]): string {
   return `🚨 *Cérebro do Cliente — RISCO ALTO*\n\n${lines.join("\n\n")}\n\nAbra o projeto no Nexus (aba Cérebro) pra ver promessas, riscos e o plano completo.`;
 }
 
-// Relatório matinal: tarefas registradas automaticamente (tag cerebro-executada)
-// nas últimas 24h, agrupadas por cliente. Vai pro Fabrício e pra Eva.
-// Cron: 07:50 BRT seg-sex; feriados nacionais são pulados aqui na função.
-const REPORT_PHONES = [
-  "5531989840003", // Fabrício
-  "5531997667686", // Eva Castanon
-];
-
-/** Domingo de Páscoa (algoritmo de Meeus) — base dos feriados móveis. */
-function easterDate(year: number): Date {
-  const a = year % 19, b = Math.floor(year / 100), c = year % 100;
-  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
-  const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
-  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
-  const m = Math.floor((a + 11 * h + 22 * l) / 451);
-  const month = Math.floor((h + l - 7 * m + 114) / 31);
-  const day = ((h + l - 7 * m + 114) % 31) + 1;
-  return new Date(year, month - 1, day);
-}
-/** Feriado nacional brasileiro? Recebe "YYYY-MM-DD" (data BRT). */
-function isBrazilHoliday(dateStr: string): boolean {
-  const [y, mo, da] = dateStr.split("-").map(Number);
-  const fixed = ["01-01", "04-21", "05-01", "09-07", "10-12", "11-02", "11-15", "11-20", "12-25"];
-  const mmdd = `${String(mo).padStart(2, "0")}-${String(da).padStart(2, "0")}`;
-  if (fixed.includes(mmdd)) return true;
-  const easter = easterDate(y);
-  const key = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  const offset = (n: number) => { const d = new Date(easter); d.setDate(d.getDate() + n); return key(d); };
-  // Carnaval (seg/ter), Sexta-feira Santa, Corpus Christi
-  return [offset(-48), offset(-47), offset(-2), offset(60)].includes(dateStr);
-}
-function brTodayStr(): string {
-  const br = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
-  return `${br.getFullYear()}-${String(br.getMonth() + 1).padStart(2, "0")}-${String(br.getDate()).padStart(2, "0")}`;
-}
-
-async function buildExecutedReport(supabase: SupabaseClient): Promise<string> {
-  const since = new Date(Date.now() - 24 * 3600_000).toISOString();
-  const { data: tasks } = await supabase
-    .from("onboarding_tasks")
-    .select("title, completed_at, created_at, project:onboarding_projects(company:onboarding_companies(name))")
-    .contains("tags", ["cerebro-executada"])
-    .gte("created_at", since)
-    .order("created_at", { ascending: true })
-    .limit(200);
-
-  const hoje = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
-  if (!tasks || tasks.length === 0) {
-    return `*Cérebro do Cliente — ${hoje}*\n\nNenhuma tarefa executada nova foi identificada nos grupos nas últimas 24h.`;
-  }
-
-  const byCompany = new Map<string, string[]>();
-  for (const t of tasks as any[]) {
-    const name = t.project?.company?.name || "Sem empresa";
-    if (!byCompany.has(name)) byCompany.set(name, []);
-    byCompany.get(name)!.push(truncate(t.title, 120));
-  }
-  const blocks = [...byCompany.entries()].map(
-    ([name, titles]) => `*${name}*\n${titles.map((tt) => `  ✓ ${tt}`).join("\n")}`,
-  );
-  return `*Cérebro do Cliente — ${hoje}*\n\nTarefas que o time já executou (detectadas nos grupos) e foram registradas como concluídas no sistema:\n\n${blocks.join("\n\n")}\n\nTotal: ${tasks.length}. Todas com a etiqueta cerebro-executada, dentro de cada projeto.`;
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
@@ -548,22 +381,6 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-
-    // ── Modo REPORT (cron 07:50 BRT seg-sex): tarefas auto-registradas ──
-    if (body.report) {
-      const todayBR = brTodayStr();
-      if (!body.dry && isBrazilHoliday(todayBR)) {
-        return json({ ok: true, skipped: "feriado nacional", date: todayBR });
-      }
-      const text = await buildExecutedReport(supabase);
-      if (body.dry) return json({ ok: true, preview: text, holiday: isBrazilHoliday(todayBR) });
-      const phones = body.to === "test" ? [REPORT_PHONES[0]] : REPORT_PHONES;
-      const sent: Record<string, boolean> = {};
-      for (const phone of phones) {
-        sent[phone] = await sendWhatsApp(supabase, phone, text);
-      }
-      return json({ ok: true, sent });
-    }
 
     // ── Modo BATCH (cron da madrugada): renova os cérebros mais antigos ──
     if (body.batch) {
@@ -584,7 +401,7 @@ Deno.serve(async (req) => {
       for (const p of pending) {
         try {
           const r = await generateBrain(supabase, p.id);
-          results.push({ project: p.id, empresa: r.companyName, termometro: r.brain?.termometro, auto_completed: r.autoCompleted });
+          results.push({ project: p.id, empresa: r.companyName, termometro: r.brain?.termometro });
           if (r.becameHighRisk) newHighRisk.push({ companyName: r.companyName, brain: r.brain });
         } catch (e) {
           results.push({ project: p.id, error: String(e).slice(0, 120) });
@@ -614,7 +431,7 @@ Deno.serve(async (req) => {
     if (r.becameHighRisk) {
       await sendWhatsApp(supabase, ALERT_PHONE, riskAlertText([{ companyName: r.companyName, brain: r.brain }]));
     }
-    return json({ brain: r.brain, generated_at: r.generatedAt, cached: false, auto_completed: r.autoCompleted });
+    return json({ brain: r.brain, generated_at: r.generatedAt, cached: false });
   } catch (error) {
     console.error("client-brain error:", error);
     return json({ error: String(error).slice(0, 300) }, 500);

@@ -130,6 +130,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
 
   // Meeting event details for cards
   const [meetingEventDetails, setMeetingEventDetails] = useState<MeetingEventDetail[]>([]);
+  const [sdrGoalMetas, setSdrGoalMetas] = useState<Record<string, { agend: number; reunioes: number }>>({});
 
   useEffect(() => {
     loadPipelines();
@@ -358,11 +359,41 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       const showUpPercent = totalScheduled > 0 ? ((totalCompleted / totalScheduled) * 100) : 0;
       const noShowPercent = totalScheduled > 0 ? ((totalNoShow / totalScheduled) * 100) : 0;
 
-      // Get targets
+      // Metas: fonte da verdade = sistema de Metas (crm_goal_values, tela Definir
+      // Metas), por SDR. crm_sales_targets é legado (fallback); NUNCA usar os
+      // defaults 122/99 — inventavam meta que não existe.
+      const gy = periodStart.getFullYear();
+      const gm = periodStart.getMonth() + 1;
+      const { data: goalTypesSdr } = await supabase
+        .from("crm_goal_types")
+        .select("id, name")
+        .eq("category", "sdr")
+        .eq("is_active", true);
+      const agendTypeIds = (goalTypesSdr || []).filter(t => /agendam/i.test(t.name)).map(t => t.id);
+      const meetTypeIds = (goalTypesSdr || []).filter(t => /reuni/i.test(t.name)).map(t => t.id);
+      const allTypeIds = [...agendTypeIds, ...meetTypeIds];
+      const { data: sdrGoals } = allTypeIds.length
+        ? await supabase
+            .from("crm_goal_values")
+            .select("staff_id, goal_type_id, meta_value")
+            .in("goal_type_id", allTypeIds)
+            .eq("month", gm)
+            .eq("year", gy)
+        : { data: [] as any[] };
+      const goalMetaMap: Record<string, { agend: number; reunioes: number }> = {};
+      (sdrGoals || []).forEach((g: any) => {
+        const r = goalMetaMap[g.staff_id] || { agend: 0, reunioes: 0 };
+        if (agendTypeIds.includes(g.goal_type_id)) r.agend += Number(g.meta_value) || 0;
+        if (meetTypeIds.includes(g.goal_type_id)) r.reunioes += Number(g.meta_value) || 0;
+        goalMetaMap[g.staff_id] = r;
+      });
+      setSdrGoalMetas(goalMetaMap);
+      const sumGoal = (f: "agend" | "reunioes") =>
+        (sdrStaff || []).reduce((s, sd) => s + (goalMetaMap[sd.id]?.[f] || 0), 0);
       const callsTarget = targets?.find(t => t.target_type === "calls");
       const meetingsTarget = targets?.find(t => t.target_type === "meetings");
-      const metaAgendamentos = callsTarget?.target_value || 122;
-      const metaReunioes = meetingsTarget?.target_value || 99;
+      const metaAgendamentos = sumGoal("agend") || callsTarget?.target_value || 0;
+      const metaReunioes = sumGoal("reunioes") || meetingsTarget?.target_value || 0;
 
       // Calculate projections
       const dailyAvgMeetings = daysElapsed > 0 ? totalCompleted / daysElapsed : 0;
@@ -609,6 +640,8 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     const showUpPercent = agendamentos > 0 ? (reunioes / agendamentos) * 100 : 0;
     const noShowPercent = agendamentos > 0 ? (noShow / agendamentos) * 100 : 0;
 
+    // Metas do SDR selecionado (do sistema de Metas) — não a meta global
+    const sdrMeta = sdrGoalMetas[selectedSDR] || { agend: 0, reunioes: 0 };
     return {
       ...metrics,
       agendamentos,
@@ -620,9 +653,12 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       reagendamentos,
       showUpPercent,
       noShowPercent,
-      metaPercent: metrics.metaAgendamentos > 0 ? (agendamentos / metrics.metaAgendamentos) * 100 : 0,
-      metaAgendamentosPercent: metrics.metaAgendamentos > 0 ? (agendamentos / metrics.metaAgendamentos) * 100 : 0,
-      metaReunioesPercent: metrics.metaReunioes > 0 ? (reunioes / metrics.metaReunioes) * 100 : 0,
+      metaAgendamentos: sdrMeta.agend,
+      metaReunioes: sdrMeta.reunioes,
+      metaPercent: sdrMeta.agend > 0 ? (agendamentos / sdrMeta.agend) * 100 : 0,
+      metaAgendamentosPercent: sdrMeta.agend > 0 ? (agendamentos / sdrMeta.agend) * 100 : 0,
+      metaReunioesPercent: sdrMeta.reunioes > 0 ? (reunioes / sdrMeta.reunioes) * 100 : 0,
+      projecaoPercent: sdrMeta.reunioes > 0 ? (metrics.projecao / sdrMeta.reunioes) * 100 : 0,
     };
   })();
 
@@ -826,12 +862,12 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
 
       {/* ── Metas & Projeção (verde) ── */}
       <Section tone={TONE.green} label="Metas & Projeção" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-        <Metric tone={TONE.green} label="Meta Agend." value={metrics.metaAgendamentos} />
-        <Metric tone={TONE.green} label="Meta Reuniões" value={metrics.metaReunioes} />
-        <Metric tone={TONE.green} label="% Meta Agend." value={`${metrics.metaAgendamentosPercent.toFixed(0)}%`} color={metrics.metaAgendamentosPercent >= 100 ? "#34d399" : "#fbbf24"} />
-        <Metric tone={TONE.green} label="% Meta Reuniões" value={`${metrics.metaReunioesPercent.toFixed(0)}%`} color={metrics.metaReunioesPercent >= 100 ? "#34d399" : "#fbbf24"} />
+        <Metric tone={TONE.green} label="Meta Agend." value={visibleMetrics.metaAgendamentos > 0 ? visibleMetrics.metaAgendamentos : "—"} />
+        <Metric tone={TONE.green} label="Meta Reuniões" value={visibleMetrics.metaReunioes > 0 ? visibleMetrics.metaReunioes : "—"} />
+        <Metric tone={TONE.green} label="% Meta Agend." value={visibleMetrics.metaAgendamentos > 0 ? `${visibleMetrics.metaAgendamentosPercent.toFixed(0)}%` : "—"} color={visibleMetrics.metaAgendamentosPercent >= 100 ? "#34d399" : "#fbbf24"} />
+        <Metric tone={TONE.green} label="% Meta Reuniões" value={visibleMetrics.metaReunioes > 0 ? `${visibleMetrics.metaReunioesPercent.toFixed(0)}%` : "—"} color={visibleMetrics.metaReunioesPercent >= 100 ? "#34d399" : "#fbbf24"} />
         <Metric tone={TONE.green} label="Projeção" value={formatNumber(metrics.projecao, 0)} color={TONE.green} />
-        <Metric tone={TONE.green} label="% Projetado" value={`${metrics.projecaoPercent.toFixed(0)}%`} color={metrics.projecaoPercent >= 100 ? "#34d399" : "#fbbf24"} />
+        <Metric tone={TONE.green} label="% Projetado" value={visibleMetrics.metaReunioes > 0 ? `${visibleMetrics.projecaoPercent.toFixed(0)}%` : "—"} color={visibleMetrics.projecaoPercent >= 100 ? "#34d399" : "#fbbf24"} />
       </Section>
 
       {/* ── Funil de Abordagem (roxo) ── */}
