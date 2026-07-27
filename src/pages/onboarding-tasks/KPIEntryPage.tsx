@@ -220,7 +220,13 @@ export default function KPIEntryPage() {
         .select("sector_id")
         .eq("salesperson_id", salespersonData.id);
 
-      const sectorIds = (spSectorsData || []).map((s: any) => s.sector_id);
+      // Setores do vendedor: N:N (salesperson_sectors) + o setor do CADASTRO
+      // (company_salespeople.sector_id). A tela de Vendedores grava só no cadastro,
+      // então sem esse union os KPIs de setor sumiam do lançamento.
+      const sectorIds = Array.from(new Set([
+        ...(spSectorsData || []).map((s: any) => s.sector_id),
+        ...(salespersonData.sector_id ? [salespersonData.sector_id] : []),
+      ].filter(Boolean)));
       setSalespersonSectors(sectorIds);
 
       // Fetch sector details if salesperson has sectors
