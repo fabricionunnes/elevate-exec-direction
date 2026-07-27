@@ -297,7 +297,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           .select(`
             *,
             credited_staff:onboarding_staff!crm_meeting_events_credited_staff_id_fkey(id, name),
-            lead:crm_leads!crm_meeting_events_lead_id_fkey(id, owner_staff_id)
+            lead:crm_leads!crm_meeting_events_lead_id_fkey(id, owner_staff_id, pipeline:crm_pipelines(name))
           `)
           .gte("event_date", filterStart.toISOString())
           .lte("event_date", filterEnd.toISOString())
@@ -749,6 +749,33 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     );
   }
 
+  // Tabela por funil: entradas de leads + calls agendadas/realizadas + vendas + ticket
+  const funnelTable = useMemo(() => {
+    const rows = new Map<string, { entradas: number; agendadas: number; realizadas: number; vendas: number; faturamento: number }>();
+    const get = (n: string) => {
+      if (!rows.has(n)) rows.set(n, { entradas: 0, agendadas: 0, realizadas: 0, vendas: 0, faturamento: 0 });
+      return rows.get(n)!;
+    };
+    leadsByFunnel.forEach(f => { get(f.name).entradas = f.count; });
+    // reuniões dedup por lead+tipo+minuto (mesma regra dos cards)
+    const seen = new Set<string>();
+    rawMeetingEvents.forEach((ev: any) => {
+      if (ev.event_type !== "scheduled" && ev.event_type !== "realized") return;
+      const k = `${ev.lead_id}|${ev.event_type}|${String(ev.event_date || "").slice(0, 16)}`;
+      if (seen.has(k)) return;
+      seen.add(k);
+      const n = ev.lead?.pipeline?.name || "(sem funil)";
+      if (ev.event_type === "scheduled") get(n).agendadas++; else get(n).realizadas++;
+    });
+    rawSalesData.forEach((s: any) => {
+      const n = s.pipeline?.name || "(sem funil)";
+      const r = get(n); r.vendas++; r.faturamento += Number(s.billing_value) || 0;
+    });
+    return [...rows.entries()]
+      .map(([name, r]) => ({ name, ...r, ticket: r.vendas > 0 ? r.faturamento / r.vendas : 0 }))
+      .sort((a, b) => b.entradas - a.entradas);
+  }, [leadsByFunnel, rawMeetingEvents, rawSalesData]);
+
   const metaPercent = metrics.metaReceita > 0 ? (metrics.receita / metrics.metaReceita) * 100 : 0;
   const superPercent = metrics.superMeta > 0 ? (metrics.receita / metrics.superMeta) * 100 : 0;
   const hiperPercent = metrics.hiperMeta > 0 ? (metrics.receita / metrics.hiperMeta) * 100 : 0;
@@ -918,13 +945,50 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         <Metric tone={TONE.amber} label="Custo / Reunião Agendada" value={dialerOutcomes.scheduled > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / dialerOutcomes.scheduled) : "—"} />
       </Section>
 
-      {/* ── Entradas de leads por funil (verde) ── */}
-      {leadsByFunnel.length > 0 && (
-        <Section tone={TONE.green} label="Entradas de Leads por Funil" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-          {leadsByFunnel.map(f => (
-            <Metric key={f.name} tone={TONE.green} label={f.name} value={f.count} />
-          ))}
-        </Section>
+      {/* ── Entradas de leads por funil (verde) — tabela ── */}
+      {funnelTable.length > 0 && (
+        <div className="rounded-xl border p-4" style={{ borderColor: `${TONE.green}2e`, background: `${TONE.green}0d` }}>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="h-2 w-2 rounded-full" style={{ background: TONE.green }} />
+            <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: TONE.green }}>Entradas de Leads por Funil</span>
+          </div>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="text-xs border-border/50">
+                  <TableHead>Funil</TableHead>
+                  <TableHead className="text-center">Entradas</TableHead>
+                  <TableHead className="text-center">Calls Agendadas</TableHead>
+                  <TableHead className="text-center">Calls Realizadas</TableHead>
+                  <TableHead className="text-center">Vendas</TableHead>
+                  <TableHead className="text-right">Ticket Médio</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {funnelTable.map(f => (
+                  <TableRow key={f.name} className="text-sm border-border/50 hover:bg-muted/40">
+                    <TableCell className="font-medium">{f.name}</TableCell>
+                    <TableCell className="text-center font-semibold">{f.entradas}</TableCell>
+                    <TableCell className="text-center">{f.agendadas}</TableCell>
+                    <TableCell className="text-center">{f.realizadas}</TableCell>
+                    <TableCell className="text-center font-semibold text-emerald-500">{f.vendas}</TableCell>
+                    <TableCell className="text-right">{f.ticket > 0 ? formatCurrency(f.ticket) : "—"}</TableCell>
+                  </TableRow>
+                ))}
+                {funnelTable.length > 1 && (
+                  <TableRow className="font-semibold text-sm bg-muted/30 border-border/50">
+                    <TableCell>Total</TableCell>
+                    <TableCell className="text-center">{funnelTable.reduce((s, f) => s + f.entradas, 0)}</TableCell>
+                    <TableCell className="text-center">{funnelTable.reduce((s, f) => s + f.agendadas, 0)}</TableCell>
+                    <TableCell className="text-center">{funnelTable.reduce((s, f) => s + f.realizadas, 0)}</TableCell>
+                    <TableCell className="text-center text-emerald-500">{funnelTable.reduce((s, f) => s + f.vendas, 0)}</TableCell>
+                    <TableCell className="text-right">{(() => { const v = funnelTable.reduce((s, f) => s + f.vendas, 0); const fat = funnelTable.reduce((s, f) => s + f.faturamento, 0); return v > 0 ? formatCurrency(fat / v) : "—"; })()}</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
       )}
 
       {/* ── Flags do time (3D): performance vs meta dos 3 últimos meses fechados ── */}
