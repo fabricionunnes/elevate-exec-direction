@@ -125,6 +125,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const [filterStartDate, setFilterStartDate] = useState<Date>(startOfMonth(new Date()));
   const [filterEndDate, setFilterEndDate] = useState<Date>(endOfMonth(new Date()));
   const [callStats, setCallStats] = useState({ total: 0, discador: 0, avulsa: 0, atendidas: 0 });
+  const [leadsByFunnel, setLeadsByFunnel] = useState<{ name: string; count: number }[]>([]);
   const [dialerCostBrl, setDialerCostBrl] = useState(0);
   // Reuniões/vendas atribuídas AO DISCADOR (não o CRM todo) — pra CAC e custos por reunião
   const [dialerOutcomes, setDialerOutcomes] = useState({ scheduled: 0, realized: 0, sales: 0 });
@@ -199,6 +200,18 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       const map: Record<string, { total: number; atendidas: number }> = {};
       ((byAgent.data as any[]) || []).forEach((r) => { map[r.agent_staff_id] = { total: Number(r.total) || 0, atendidas: Number(r.atendidas) || 0 }; });
       setCallsByCloser(map);
+      // Entradas de leads por funil no período (leads criados em cada funil)
+      try {
+        const rows = await fetchAllRows<{ pipeline: { name: string } | null }>(() =>
+          supabase.from("crm_leads").select("pipeline:crm_pipelines(name)")
+            .gte("created_at", start.toISOString()).lte("created_at", end.toISOString())
+        );
+        if (active) {
+          const agg = new Map<string, number>();
+          rows.forEach(r => { const n = r.pipeline?.name || "(sem funil)"; agg.set(n, (agg.get(n) || 0) + 1); });
+          setLeadsByFunnel([...agg.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count));
+        }
+      } catch { /* sem entradas */ }
     })();
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -896,13 +909,23 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       </Section>
 
       {/* ── Discador — reuniões e custos (âmbar) — SÓ do discador, não o total ── */}
-      <Section tone={TONE.amber} label="Discador — Reuniões e Custos (só via discador)" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+      <Section tone={TONE.amber} label="Discador — Reuniões e Custos (só via discador)" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+        <Metric tone={TONE.amber} label="Ligações (via discador)" value={callStats.discador} />
         <Metric tone={TONE.amber} label="Realizadas (via discador)" value={dialerOutcomes.realized} color="#34d399" />
         <Metric tone={TONE.amber} label="Agendadas (via discador)" value={dialerOutcomes.scheduled} color={TONE.blue} />
         <Metric tone={TONE.amber} label="CAC" value={dialerOutcomes.sales > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / dialerOutcomes.sales) : "—"} color="#f87171" />
         <Metric tone={TONE.amber} label="Custo / Reunião Realizada" value={dialerOutcomes.realized > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / dialerOutcomes.realized) : "—"} />
         <Metric tone={TONE.amber} label="Custo / Reunião Agendada" value={dialerOutcomes.scheduled > 0 && dialerCostBrl > 0 ? formatCurrency(dialerCostBrl / dialerOutcomes.scheduled) : "—"} />
       </Section>
+
+      {/* ── Entradas de leads por funil (verde) ── */}
+      {leadsByFunnel.length > 0 && (
+        <Section tone={TONE.green} label="Entradas de Leads por Funil" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+          {leadsByFunnel.map(f => (
+            <Metric key={f.name} tone={TONE.green} label={f.name} value={f.count} />
+          ))}
+        </Section>
+      )}
 
       {/* ── Flags do time (3D): performance vs meta dos 3 últimos meses fechados ── */}
       <Suspense fallback={null}>
