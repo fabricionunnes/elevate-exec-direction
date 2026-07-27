@@ -16,6 +16,7 @@ import type {
   CampaignPipelineLink, PipelineLeadCount, MeetingStat, AdLeadStat, TrackingDiagnostics,
 } from "./useCRMTrafficData";
 import { CRMTrafficCompare } from "./CRMTrafficCompare";
+import { CRMCreativeEvolution } from "./CRMCreativeEvolution";
 
 interface Props {
   campaigns: CRMMetaCampaign[];
@@ -568,6 +569,9 @@ export const CRMTrafficDashboard = ({
               )}
             </CardContent>
           </Card>
+
+          {/* Evolução dia a dia do criativo selecionado (CPM/CPL/CTR/Frequência) */}
+          <CRMCreativeEvolution ads={ads} />
         </TabsContent>
       </Tabs>
     </div>
