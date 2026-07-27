@@ -408,10 +408,12 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         const sdrCalls = (calls || []).filter(c => c.scheduled_by === sdr.id);
         // Deduplica as reuniões deste SDR pela mesma chave (lead+tipo+horário),
         // pra ele nunca contar a mesma reunião duas vezes.
+        // Atribuição = SDR do lead (attributed_sdr_id), a MESMA régua do card de
+        // Detalhamento — senão o topo mostra 20 e a lista 22.
         const sdrMeetingEvents = (() => {
           const seen = new Set<string>();
           return uniqueAttributedMeetingEvents.filter(e => {
-            if (e.credited_staff_id !== sdr.id) return false;
+            if (e.attributed_sdr_id !== sdr.id) return false;
             const k = meetingKey(e);
             if (seen.has(k)) return false;
             seen.add(k);
