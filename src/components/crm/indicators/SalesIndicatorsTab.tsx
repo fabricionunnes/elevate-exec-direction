@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, lazy, Suspense } from "react";
 
 // Card 3D das flags do time (three.js) — lazy pra não pesar o bundle do CRM
 const CRMTeamFlags3D = lazy(() => import("@/components/crm/CRMTeamFlags3D"));
-const CRMWeekday3D = lazy(() => import("@/components/crm/CRMWeekday3D"));
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -807,7 +806,14 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       wd[d.getDay()].reunioes += 1;
       md[d.getDate() - 1].reunioes += 1;
     });
-    return { weekday: [...wd.slice(1), wd[0]], monthday: md };
+    // Semanas do mês (Sem 1 = dias 1–7, ... Sem 5 = 29+)
+    const wk = Array.from({ length: 5 }, (_, i) => ({ dia: `Sem ${i + 1}`, vendas: 0, reunioes: 0 }));
+    md.forEach((d, i) => {
+      const w = Math.min(4, Math.floor(i / 7));
+      wk[w].vendas += d.vendas;
+      wk[w].reunioes += d.reunioes;
+    });
+    return { weekday: [...wd.slice(1), wd[0]], monthday: md, weeks: wk };
   }, [rawSalesData, rawMeetingEvents]);
 
   if (loading) {
@@ -1052,20 +1058,47 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         </div>
       )}
 
-      {/* ── Quando vende: dia da semana (3D) + dia do mês (mapa de calor) ── */}
-      <div className="grid gap-4 xl:grid-cols-2">
+      {/* ── Quando vende: dia da semana + semana do mês + dia do mês (heatmap) ── */}
+      <div className="grid gap-4">
         <div className="rounded-xl border p-4" style={{ borderColor: `${TONE.violet}2e`, background: `${TONE.violet}0d` }}>
           <div className="flex items-center gap-2 mb-3">
             <span className="h-2 w-2 rounded-full" style={{ background: TONE.violet }} />
-            <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: TONE.violet }}>Dia da Semana — Vendas × Reuniões</span>
-            <span className="ml-auto flex items-center gap-3 text-[10px] text-muted-foreground">
-              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: "#34d399" }} /> Vendas (R$)</span>
-              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: "#60a5fa" }} /> Reuniões</span>
-            </span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: TONE.violet }}>Quando Vende — Dia da Semana × Semana do Mês</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">barra cheia = melhor período</span>
           </div>
-          <Suspense fallback={<div className="h-[300px] rounded-xl bg-muted/40 animate-pulse" />}>
-            <CRMWeekday3D data={timingCharts.weekday} />
-          </Suspense>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {([
+              { key: "vendas" as const, label: "Vendas por dia", short: "vendas", color: "#10b981", fmt: (v: number) => formatCurrency(v), data: timingCharts.weekday },
+              { key: "reunioes" as const, label: "Reuniões por dia", short: "reuniões", color: "#3b82f6", fmt: (v: number) => `${v} reunião(ões)`, data: timingCharts.weekday },
+              { key: "vendas" as const, label: "Vendas por semana", short: "vendas", color: "#8b5cf6", fmt: (v: number) => formatCurrency(v), data: timingCharts.weeks },
+            ]).map(m => {
+              const max = Math.max(...m.data.map(d => d[m.key]), 0);
+              const best = m.data.find(d => d[m.key] === max);
+              return (
+                <div key={m.label}>
+                  <div className="text-[11px] font-semibold text-muted-foreground mb-1">{m.label}</div>
+                  <ResponsiveContainer width="100%" height={190}>
+                    <BarChart data={m.data} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                      <XAxis dataKey="dia" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
+                      <YAxis hide />
+                      <Tooltip cursor={{ fill: "hsl(var(--muted))" }}
+                        contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 12 }}
+                        formatter={(v: number) => [m.fmt(v), m.label]} />
+                      <Bar dataKey={m.key} radius={[6, 6, 0, 0]}>
+                        {m.data.map((d, i) => (
+                          <Cell key={i} fill={max > 0 && d[m.key] === max ? m.color : `${m.color}55`} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <p className="text-center text-[11px] text-muted-foreground mt-1">
+                    {max > 0 && best ? <>Melhor: <span className="font-bold" style={{ color: m.color }}>{best.dia}</span> · {m.fmt(max)}</> : `Sem ${m.short} no período`}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
         </div>
         <div className="rounded-xl border p-4" style={{ borderColor: `${TONE.amber}2e`, background: `${TONE.amber}0d` }}>
           <div className="flex items-center gap-2 mb-3">
