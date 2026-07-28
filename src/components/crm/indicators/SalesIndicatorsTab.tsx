@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, lazy, Suspense } from "react";
 
 // Card 3D das flags do time (three.js) — lazy pra não pesar o bundle do CRM
 const CRMTeamFlags3D = lazy(() => import("@/components/crm/CRMTeamFlags3D"));
+import { CRMGoalStrategyDialog } from "@/components/crm/CRMGoalStrategyDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -927,6 +928,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         </Select>
 
         <div className="ml-auto flex items-center gap-2">
+          <CRMGoalStrategyDialog />
           <Badge variant="outline" className="text-xs text-foreground border-border bg-card capitalize">
             {dateFilter === "custom" && customDateFrom && customDateTo
               ? `${format(customDateFrom, "dd/MM")} - ${format(customDateTo, "dd/MM/yyyy")}`

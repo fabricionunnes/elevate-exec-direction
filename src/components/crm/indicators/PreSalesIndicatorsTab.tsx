@@ -26,6 +26,7 @@ import { ptBR } from "date-fns/locale";
 import { Phone, Users, Calendar as CalendarIcon, AlertTriangle, CheckCircle, XCircle, TrendingUp, Upload, ChevronDown, Loader2 } from "lucide-react";
 import { ImportPreSalesDialog } from "@/components/crm/ImportPreSalesDialog";
 import { MeetingDetailCards, MeetingEventDetail } from "@/components/crm/MeetingDetailCards";
+import { CRMGoalStrategyDialog } from "@/components/crm/CRMGoalStrategyDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { trackMeetingEvent, getCurrentStaffId } from "@/components/crm/LeadMeetingActions";
@@ -827,6 +828,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         </Select>
 
         <div className="ml-auto flex items-center gap-2">
+          <CRMGoalStrategyDialog />
           <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="h-9 text-xs rounded-xl border-border bg-card/80">
             <Upload className="h-3.5 w-3.5 mr-1.5" />
             Importar
