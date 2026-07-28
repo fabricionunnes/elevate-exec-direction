@@ -259,7 +259,41 @@ Responda APENAS um JSON válido, sem markdown:
 Regras: máx 5 estratégias por prioridade. Tudo em nº de reuniões (nunca R$). Cite os leads pelo nome. Tom direto.`;
     })();
 
-    const prompt = level === "sdr" ? sdrPrompt : `Você é o diretor comercial da UNV. Hoje é ${now.toISOString().slice(0, 10)}, restam ${daysLeft} dias úteis no mês.
+    // ── Nível CLOSER: prompt próprio — só a meta e os leads DELE ──
+    const closerPrompt = (() => {
+      const g = closerGoals.find((x: any) => x.staff_id === staff.id);
+      const metaC = Number(g?.meta_value) || 0;
+      const sC = salesByCloser.get(staff.id) || { total: 0, count: 0 };
+      const faltaC = Math.max(0, metaC - sC.total);
+      const vn = Math.ceil(faltaC / porVenda);
+      const rn = convReuniaoVenda > 0 ? Math.ceil(vn / convReuniaoVenda) : vn * 4;
+      const renegHis = (cardPays || [])
+        .filter((p: any) => p.lead?.owner_staff_id === staff.id)
+        .map((p: any) => `- ${p.lead?.name}${p.lead?.company ? ` (${p.lead.company})` : ""}: ${brl((p.amount_cents || 0) / 100)} no cartão ${p.installments}x (${p.status})`)
+        .join("\n");
+      return `Você é o diretor comercial da UNV falando com o closer ${staff.name}. Hoje é ${now.toISOString().slice(0, 10)}, restam ${daysLeft} dias úteis no mês.
+PROIBIDO: citar metas, números ou tarefas de OUTRAS pessoas (outros closers, SDR, gestão). O plano é 100% sobre os leads DELE listados abaixo. Quando precisar de condição especial/desconto, escreva "solicite aprovação da gestão" — sem atribuir tarefa a ninguém.
+
+== SUA META ==
+Meta: ${brl(metaC)} | Vendido: ${brl(sC.total)} (${sC.count} vendas) | Falta: ${brl(faltaC)}
+Conversão reunião→venda da operação: ${(convReuniaoVenda * 100).toFixed(1)}% | Ticket médio: ${brl(ticketMedio)}
+Ritmo: ~${vn} vendas → ~${rn} reuniões/atendimentos (${daysLeft > 0 ? Math.ceil(rn / daysLeft) : rn}/dia útil)
+
+== SEUS LEADS ABERTOS (maiores primeiro, com inteligência das calls) ==
+${leadsBlock || "(nenhum lead aberto com valor)"}
+
+== SEUS CONTRATOS NO CARTÃO PARCELADO (renegociáveis pra PIX mensal recorrente) ==
+${renegHis || "(nenhum)"}
+
+Responda APENAS um JSON válido, sem markdown:
+{"resumo": "diagnóstico direto em 2 frases, só sobre a SUA meta",
+ "gap": {"meta": ${metaC}, "realizado": ${sC.total}, "falta": ${faltaC}, "dias_uteis": ${daysLeft}, "cenario_realista": "o que dá pra fechar de verdade e por quê"},
+ "estrategias": [{"titulo": "...", "como_executar": "passo a passo concreto citando SEUS leads reais (quem atacar primeiro, canal, gatilho)", "embasamento": "qual dado sustenta (lead X, call Y)", "impacto_estimado": "R$", "prioridade": 1}],
+ "por_pessoa": []}
+Regras: máx 5 estratégias por prioridade. Cite os leads pelo nome e valor. Tom direto.`;
+    })();
+
+    const prompt = level === "sdr" ? sdrPrompt : level === "closer" ? closerPrompt : `Você é o diretor comercial da UNV. Hoje é ${now.toISOString().slice(0, 10)}, restam ${daysLeft} dias úteis no mês.
 Monte a ESTRATÉGIA PRA BATER A META usando SOMENTE os dados abaixo (reais, do CRM). Seja realista: se a meta não fecha 100%, diga o máximo alcançável e como.
 
 ${focoNivel}
@@ -305,6 +339,8 @@ Regras: máx 6 estratégias, ordenadas por prioridade (1 = maior impacto/menor e
     let text = (aiData.content || []).map((c: any) => c.text || "").join("");
     text = text.replace(/^```json?\s*/i, "").replace(/```\s*$/, "").trim();
     const strategy = parseLoose(text);
+    // Trava: plano por pessoa é EXCLUSIVO da gestão — closer/SDR nunca veem o dos outros
+    if (level !== "gestao") strategy.por_pessoa = [];
 
     // persiste (upsert manual por nível+pessoa+mês)
     await supabase.from("crm_goal_strategies").delete()
