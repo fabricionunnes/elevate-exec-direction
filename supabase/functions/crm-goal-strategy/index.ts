@@ -17,6 +17,22 @@ const MODEL = "claude-sonnet-4-6";
 const j = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
 
+// Parse tolerante: se a IA truncar o JSON, corta no último elemento completo
+// e fecha as chaves/colchetes que faltam.
+function parseLoose(text: string): any {
+  try { return JSON.parse(text); } catch { /* repara */ }
+  const start = text.indexOf("{");
+  let cut = text.length;
+  for (let i = 0; i < 80 && cut > start; i++) {
+    const cand = text.slice(start, cut).replace(/,\s*$/, "");
+    for (const closer of ["", "}", "]}", "]}]}", "\"}", "\"}]}", "\"]}", "\"}]}]}"]) {
+      try { return JSON.parse(cand + closer); } catch { /* tenta próximo */ }
+    }
+    cut = text.lastIndexOf("}", cut - 1);
+  }
+  throw new Error("JSON da IA irrecuperável");
+}
+
 const brl = (v: number) => `R$ ${Math.round(v).toLocaleString("pt-BR")}`;
 const trunc = (s: unknown, n: number) => String(s || "").replace(/\s+/g, " ").slice(0, n);
 
@@ -80,7 +96,10 @@ Deno.serve(async (req) => {
       .select("staff_id, goal_type_id, meta_value, staff:onboarding_staff(id, name, role)")
       .in("goal_type_id", typeIds).eq("month", m).eq("year", y);
 
-    const closerGoals = (goalRows || []).filter((g: any) => g.goal_type_id === closerType?.id && Number(g.meta_value) > 0);
+    // Head fica fora da soma: a meta dela ESPELHA a soma dos closers (senão conta 2x)
+    const closerGoals = (goalRows || []).filter((g: any) =>
+      g.goal_type_id === closerType?.id && Number(g.meta_value) > 0 && g.staff?.role !== "head_comercial");
+    const headGoal = (goalRows || []).find((g: any) => g.goal_type_id === closerType?.id && g.staff?.role === "head_comercial");
     const sdrGoals = (goalRows || []).filter((g: any) => g.goal_type_id === sdrType?.id && Number(g.meta_value) > 0);
 
     // ── vendas do mês (só funis que contam pra meta) ──
@@ -182,6 +201,32 @@ Deno.serve(async (req) => {
       `- ${p.lead?.name}${p.lead?.company ? ` (${p.lead.company})` : ""}: ${brl((p.amount_cents || 0) / 100)} no cartão ${p.installments}x (${p.status}) — candidato a renegociar pra PIX mensal recorrente`
     ).join("\n");
 
+    // ── matemática do ritmo: reuniões × conversão × ticket ──
+    const realizedTotal = uniq(attributed.filter(e => e.event_type === "realized")).length;
+    const salesCount = sales.length;
+    const convReuniaoVenda = realizedTotal > 0 ? salesCount / realizedTotal : 0;
+    const ticketMedio = salesCount > 0 ? totalSold / salesCount : 0;
+    const faltaTotal = Math.max(0, totalMeta - totalSold);
+    const porVenda = ticketMedio > 0 ? ticketMedio : 30000;
+    const vendasNecessarias = Math.ceil(faltaTotal / porVenda);
+    const reunioesNecessarias = convReuniaoVenda > 0 ? Math.ceil(vendasNecessarias / convReuniaoVenda) : vendasNecessarias * 4;
+    const ritmoBlock = `Reuniões realizadas no mês: ${realizedTotal} | Vendas: ${salesCount} | Conversão reunião→venda: ${(convReuniaoVenda * 100).toFixed(1)}% | Ticket médio: ${brl(ticketMedio)}
+Pra fechar o gap de ${brl(faltaTotal)}: ~${vendasNecessarias} vendas → ~${reunioesNecessarias} reuniões realizadas → ${daysLeft > 0 ? Math.ceil(reunioesNecessarias / daysLeft) : reunioesNecessarias}/dia útil (restam ${daysLeft}).
+Por closer (mesma conversão/ticket da empresa):
+${closerGoals.map((g: any) => {
+  const s = salesByCloser.get(g.staff_id) || { total: 0, count: 0 };
+  const falta = Math.max(0, Number(g.meta_value) - s.total);
+  const vn = Math.ceil(falta / porVenda);
+  const rn = convReuniaoVenda > 0 ? Math.ceil(vn / convReuniaoVenda) : vn * 4;
+  return `- ${g.staff?.name}: falta ${brl(falta)} → ~${vn} vendas → ~${rn} reuniões (${daysLeft > 0 ? Math.ceil(rn / daysLeft) : rn}/dia útil)`;
+}).join("\n")}`;
+
+    const regrasPapeis = `REGRAS DE PAPÉIS (OBRIGATÓRIAS — nunca viole):
+- O CEO (Fabrício) e a Head Comercial NÃO ligam pra cliente e NÃO fecham venda diretamente. Eles podem: destravar uma negociação específica, aprovar condição/desconto, entrar como APOIO numa call que o closer conduz. Nunca escreva "Fabrício liga/fecha" ou "Milena assume o lead pra fechar".
+- Lead com reunião REALIZADA pertence ao CLOSER dono: follow-up e fechamento são do closer. Nunca mande o SDR trabalhar lead já realizado.
+- O SDR gera e reagenda REUNIÕES FUTURAS (no-shows, sem desfecho, base nova) pros closers atenderem. Estratégia de SDR = volume e qualidade de agendamento, nunca fechamento.
+- A meta da Head é a meta geral do time: o plano dela é fazer o TIME bater (rituais, cobrança de ritmo, destrave), não vender ela mesma.`;
+
     const focoNivel = level === "gestao"
       ? "NÍVEL GESTÃO: além do plano geral, monte um plano individual pra CADA closer e CADA SDR (campo por_pessoa)."
       : level === "closer"
@@ -193,10 +238,16 @@ Monte a ESTRATÉGIA PRA BATER A META usando SOMENTE os dados abaixo (reais, do C
 
 ${focoNivel}
 
+${regrasPapeis}
+
+== RITMO NECESSÁRIO (reuniões × conversão × ticket) ==
+${ritmoBlock}
+
 == METAS E VENDAS DO MÊS (empresa) ==
 Meta total: ${brl(totalMeta)} | Vendido: ${brl(totalSold)} | Falta: ${brl(Math.max(0, totalMeta - totalSold))}
 Closers:
 ${closersBlock || "(sem metas de closer cadastradas)"}
+${headGoal ? `Head Comercial (${(headGoal as any).staff?.name}): meta = a soma dos closers (${brl(totalMeta)}) — cobra o time inteiro, não soma na meta da empresa.` : ""}
 SDRs (meta em reuniões realizadas):
 ${sdrBlock || "(sem metas de SDR cadastradas)"}
 
@@ -215,23 +266,19 @@ Responda APENAS um JSON válido, sem markdown, neste formato:
  "gap": {"meta": number, "realizado": number, "falta": number, "dias_uteis": ${daysLeft}, "cenario_realista": "o que dá pra alcançar de verdade e por quê"},
  "estrategias": [{"titulo": "...", "como_executar": "passo a passo curto e concreto, citando leads/valores REAIS dos dados", "embasamento": "qual dado sustenta (lead X, call Y, contrato Z)", "impacto_estimado": "R$ ou nº reuniões", "prioridade": 1}],
  "por_pessoa": [{"nome": "...", "papel": "closer|sdr", "meta": "...", "realizado": "...", "plano": ["ação 1", "ação 2"]}]}
-Regras: máx 6 estratégias, ordenadas por prioridade (1 = maior impacto/menor esforço). Cite nomes e valores reais. Nada genérico tipo "faça follow-up" sem dizer em quem. Tom direto, sem enrolação.`;
+Regras: máx 6 estratégias, ordenadas por prioridade (1 = maior impacto/menor esforço). Cite nomes e valores reais. Nada genérico tipo "faça follow-up" sem dizer em quem. Use o RITMO NECESSÁRIO nas estratégias e nos planos: closer em vendas/reuniões por dia, SDR em reuniões agendadas por dia, Head em ritmo do time. Respeite as REGRAS DE PAPÉIS à risca. Tom direto, sem enrolação.`;
 
     if (!ANTHROPIC_KEY) return j({ error: "ANTHROPIC_API_KEY não configurada" }, 500);
     const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-      body: JSON.stringify({ model: MODEL, max_tokens: 3500, messages: [{ role: "user", content: prompt }] }),
+      body: JSON.stringify({ model: MODEL, max_tokens: 8000, messages: [{ role: "user", content: prompt }] }),
     });
     const aiData = await aiResp.json();
     if (!aiResp.ok) return j({ error: aiData?.error?.message || "IA falhou" }, 500);
     let text = (aiData.content || []).map((c: any) => c.text || "").join("");
     text = text.replace(/^```json?\s*/i, "").replace(/```\s*$/, "").trim();
-    let strategy: any;
-    try { strategy = JSON.parse(text); } catch {
-      const a = text.indexOf("{"), b = text.lastIndexOf("}");
-      strategy = JSON.parse(text.slice(a, b + 1));
-    }
+    const strategy = parseLoose(text);
 
     // persiste (upsert manual por nível+pessoa+mês)
     await supabase.from("crm_goal_strategies").delete()
