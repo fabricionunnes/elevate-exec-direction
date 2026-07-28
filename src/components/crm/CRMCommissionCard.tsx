@@ -149,13 +149,28 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
           return !pid || !excludedPipes.has(pid);
         });
 
-        const { data: meetingsData } = await supabase
-          .from("crm_activities")
-          .select("responsible_staff_id")
-          .eq("type", "meeting")
-          .eq("status", "completed")
-          .gte("completed_at", monthStart.toISOString())
-          .lte("completed_at", monthEnd.toISOString());
+        // Reuniões do SDR: MESMA régua canônica do Pré-vendas — crm_meeting_events
+        // 'realized', atribuídas pelo SDR do lead (sdr_staff_id > quem agendou >
+        // creditado), dedup por lead+minuto. A fonte antiga (crm_activities
+        // concluídas) contava 3 quando as reais eram 28 — comissão zerava errado.
+        const { data: meetingEventsData } = await supabase
+          .from("crm_meeting_events")
+          .select("lead_id, event_date, credited_staff_id, lead:crm_leads!crm_meeting_events_lead_id_fkey(sdr_staff_id, scheduled_by_staff_id)")
+          .eq("event_type", "realized")
+          .gte("event_date", monthStart.toISOString())
+          .lte("event_date", monthEnd.toISOString());
+        const realizedBySdr = new Map<string, number>();
+        {
+          const seen = new Set<string>();
+          (meetingEventsData || []).forEach((ev: any) => {
+            const attr = ev.lead?.sdr_staff_id || ev.lead?.scheduled_by_staff_id || ev.credited_staff_id;
+            if (!attr) return;
+            const k = `${ev.lead_id}|${String(ev.event_date).slice(0, 16)}`;
+            if (seen.has(k)) return;
+            seen.add(k);
+            realizedBySdr.set(attr, (realizedBySdr.get(attr) || 0) + 1);
+          });
+        }
 
         // Meta da head = soma das metas dos closers EM TEMPO REAL (mesma regra da tela
         // de Metas) — o valor gravado na linha dela pode estar desatualizado.
@@ -199,8 +214,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
               .filter(s => s.closer_staff_id === staff.id)
               .reduce((sum, s) => sum + (Number(s.billing_value) || 0), 0);
           } else if (staff.role === "sdr") {
-            achieved = (meetingsData || [])
-              .filter(m => m.responsible_staff_id === staff.id).length;
+            achieved = realizedBySdr.get(staff.id) || 0;
           } else if (staff.role === "head_comercial") {
             // Head: meta é a soma dos closers, então o realizado é o faturamento do time inteiro
             achieved = (salesData || [])
