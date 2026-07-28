@@ -77,12 +77,17 @@ export function CRMGoalStrategyDialog() {
             {strategy.gap && (
               <div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {[
-                    { l: "Meta", v: brl(strategy.gap.meta) },
-                    { l: "Realizado", v: brl(strategy.gap.realizado), cls: "text-emerald-500" },
-                    { l: "Falta", v: brl(strategy.gap.falta), cls: "text-amber-500" },
-                    { l: "Dias úteis", v: String(strategy.gap.dias_uteis ?? "—") },
-                  ].map(c => (
+                  {(() => {
+                    // SDR: meta é em REUNIÕES, não em R$
+                    const isSdr = level === "sdr";
+                    const f = (v?: number) => v == null ? "—" : isSdr ? String(v) : brl(v);
+                    return [
+                      { l: isSdr ? "Meta (reuniões)" : "Meta", v: f(strategy.gap!.meta) },
+                      { l: isSdr ? "Realizadas" : "Realizado", v: f(strategy.gap!.realizado), cls: "text-emerald-500" },
+                      { l: isSdr ? "Faltam" : "Falta", v: f(strategy.gap!.falta), cls: "text-amber-500" },
+                      { l: "Dias úteis", v: String(strategy.gap!.dias_uteis ?? "—") },
+                    ];
+                  })().map(c => (
                     <div key={c.l} className="rounded-lg border border-border p-2.5 text-center">
                       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{c.l}</div>
                       <div className={`text-base font-bold ${c.cls || ""}`}>{c.v}</div>

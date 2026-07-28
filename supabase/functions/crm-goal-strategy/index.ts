@@ -233,7 +233,33 @@ ${closerGoals.map((g: any) => {
         ? `NÍVEL CLOSER (${staff.name}): estratégias APENAS sobre os leads deste closer. Sem plano de outras pessoas (por_pessoa = []).`
         : `NÍVEL SDR (${staff.name}): foco em gerar as reuniões que faltam — reagendar no-shows, resgatar sem-desfecho, cadência na base. (por_pessoa = []).`;
 
-    const prompt = `Você é o diretor comercial da UNV. Hoje é ${now.toISOString().slice(0, 10)}, restam ${daysLeft} dias úteis no mês.
+    // ── Nível SDR: prompt PRÓPRIO, só do mundo dela — meta de reuniões, base
+    // reagendável e ritmo. Sem faturamento da empresa, sem tarefa de closer/gestão.
+    const sdrPrompt = (() => {
+      const g = sdrGoals.find((x: any) => x.staff_id === staff.id);
+      const metaR = Number(g?.meta_value) || 0;
+      const feitasR = realizedBySdr.get(staff.id) || 0;
+      const faltamR = Math.max(0, metaR - feitasR);
+      const porDia = daysLeft > 0 ? Math.ceil(faltamR / daysLeft) : faltamR;
+      return `Você é o diretor comercial da UNV falando com a SDR ${staff.name}. Hoje é ${now.toISOString().slice(0, 10)}, restam ${daysLeft} dias úteis no mês.
+A meta dela é REUNIÕES REALIZADAS. Monte o plano APENAS do mundo dela: agendar e reagendar reuniões pros closers atenderem. PROIBIDO: citar faturamento/metas em R$ da empresa ou dos closers, ou dizer o que closer/gestão deve fazer.
+
+== SUA META ==
+Meta: ${metaR} reuniões realizadas | Feitas: ${feitasR} | Faltam: ${faltamR} | Ritmo necessário: ${porDia}/dia útil
+
+== SUA BASE REAGENDÁVEL (leads que JÁ quiseram reunião) ==
+Agendadas SEM DESFECHO (${semDesfecho.length}): ${semDesfecho.slice(0, 18).join("; ") || "—"}
+No-shows do mês (${noShows.length}): ${noShows.slice(0, 12).join("; ") || "—"}
+
+Responda APENAS um JSON válido, sem markdown:
+{"resumo": "diagnóstico direto em 2 frases, só sobre reuniões",
+ "gap": {"meta": ${metaR}, "realizado": ${feitasR}, "falta": ${faltamR}, "dias_uteis": ${daysLeft}, "cenario_realista": "quantas reuniões dá pra realizar de verdade até o fim do mês e como"},
+ "estrategias": [{"titulo": "...", "como_executar": "passo a passo concreto citando os leads REAIS acima (quem ligar primeiro, script curto, quando)", "embasamento": "qual dado sustenta", "impacto_estimado": "nº de reuniões", "prioridade": 1}],
+ "por_pessoa": []}
+Regras: máx 5 estratégias por prioridade. Tudo em nº de reuniões (nunca R$). Cite os leads pelo nome. Tom direto.`;
+    })();
+
+    const prompt = level === "sdr" ? sdrPrompt : `Você é o diretor comercial da UNV. Hoje é ${now.toISOString().slice(0, 10)}, restam ${daysLeft} dias úteis no mês.
 Monte a ESTRATÉGIA PRA BATER A META usando SOMENTE os dados abaixo (reais, do CRM). Seja realista: se a meta não fecha 100%, diga o máximo alcançável e como.
 
 ${focoNivel}
