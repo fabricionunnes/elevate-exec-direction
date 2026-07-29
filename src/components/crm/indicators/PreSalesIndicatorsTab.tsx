@@ -23,7 +23,7 @@ import {
 } from "recharts";
 import { format, startOfMonth, endOfMonth, getDaysInMonth, getDate, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Phone, Users, Calendar as CalendarIcon, AlertTriangle, CheckCircle, XCircle, TrendingUp, Upload, ChevronDown, Loader2 } from "lucide-react";
+import { Phone, Users, Calendar as CalendarIcon, AlertTriangle, CheckCircle, XCircle, TrendingUp, Upload, ChevronDown, Loader2, Check } from "lucide-react";
 import { ImportPreSalesDialog } from "@/components/crm/ImportPreSalesDialog";
 import { MeetingDetailCards, MeetingEventDetail } from "@/components/crm/MeetingDetailCards";
 import { CRMGoalStrategyDialog } from "@/components/crm/CRMGoalStrategyDialog";
@@ -71,8 +71,9 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
   const [loading, setLoading] = useState(true);
   const [sdrs, setSDRs] = useState<SDRMetrics[]>([]);
   const [salesBySDR, setSalesBySDR] = useState<SaleBySDR[]>([]);
-  const [selectedSDR, setSelectedSDR] = useState<string>(isSDRUser && staffId ? staffId : "all");
-  const [selectedPipeline, setSelectedPipeline] = useState<string>("all");
+  // filtros multi-seleção: array vazio = todos
+  const [selectedSDRs, setSelectedSDRs] = useState<string[]>(isSDRUser && staffId ? [staffId] : []);
+  const [selectedPipelines, setSelectedPipelines] = useState<string[]>([]);
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [leadListType, setLeadListType] = useState<"scheduled" | "realized" | "no_show" | "sem_desfecho" | null>(null);
@@ -630,20 +631,20 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     pct <= 10 ? "bg-emerald-500/20" : pct <= 20 ? "bg-amber-500/20" : "bg-rose-500/20";
 
   // Filter by SDR if selected
-  const filteredSdrs = selectedSDR !== "all" ? sdrs.filter(s => s.id === selectedSDR) : sdrs;
-  const filteredSales = selectedSDR !== "all" ? salesBySDR.filter(s => {
-    const sdr = sdrs.find(sd => sd.id === selectedSDR);
-    return sdr && s.sdr === sdr.name;
-  }) : selectedPipeline !== "all" ? salesBySDR.filter(s => {
-    const pipeline = pipelines.find(p => p.id === selectedPipeline);
-    return pipeline && s.pipeline === pipeline.name;
+  const filteredSdrs = selectedSDRs.length ? sdrs.filter(s => selectedSDRs.includes(s.id)) : sdrs;
+  const filteredSales = selectedSDRs.length ? salesBySDR.filter(s => {
+    const names = new Set(sdrs.filter(sd => selectedSDRs.includes(sd.id)).map(sd => sd.name));
+    return names.has(s.sdr);
+  }) : selectedPipelines.length ? salesBySDR.filter(s => {
+    const names = new Set(pipelines.filter(p => selectedPipelines.includes(p.id)).map(p => p.name));
+    return names.has(s.pipeline);
   }) : salesBySDR;
 
   const visibleMetrics = (() => {
     // Sem SDR específico selecionado, usa os TOTAIS GLOBAIS (reais). Somar por-SDR
     // aqui perdia as reuniões creditadas a quem não é SDR (closer/dono) — dava 18
     // no topo enquanto o card de Realizadas mostrava as 21 reais.
-    if (selectedSDR === "all") {
+    if (selectedSDRs.length === 0) {
       return { ...metrics };
     }
     const agendamentos = filteredSdrs.reduce((sum, sdr) => sum + sdr.callsScheduled, 0);
@@ -656,8 +657,11 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     const showUpPercent = agendamentos > 0 ? (reunioes / agendamentos) * 100 : 0;
     const noShowPercent = agendamentos > 0 ? (noShow / agendamentos) * 100 : 0;
 
-    // Metas do SDR selecionado (do sistema de Metas) — não a meta global
-    const sdrMeta = sdrGoalMetas[selectedSDR] || { agend: 0, reunioes: 0 };
+    // Metas dos SDRs selecionados (do sistema de Metas) — soma quando tem mais de um
+    const sdrMeta = selectedSDRs.reduce((acc, id) => {
+      const m = sdrGoalMetas[id] || { agend: 0, reunioes: 0 };
+      return { agend: acc.agend + m.agend, reunioes: acc.reunioes + m.reunioes };
+    }, { agend: 0, reunioes: 0 });
     return {
       ...metrics,
       agendamentos,
@@ -680,14 +684,16 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
 
   // Entradas de leads no período, respeitando filtro de SDR e funil
   const leadsCount = periodLeads.filter(l =>
-    (selectedPipeline === "all" || l.pipeline_id === selectedPipeline) &&
-    (selectedSDR === "all" || l.sdr_staff_id === selectedSDR || (!l.sdr_staff_id && l.scheduled_by_staff_id === selectedSDR))
+    (selectedPipelines.length === 0 || (l.pipeline_id && selectedPipelines.includes(l.pipeline_id))) &&
+    (selectedSDRs.length === 0 ||
+      (l.sdr_staff_id && selectedSDRs.includes(l.sdr_staff_id)) ||
+      (!l.sdr_staff_id && l.scheduled_by_staff_id && selectedSDRs.includes(l.scheduled_by_staff_id)))
   ).length;
 
   // Leads agendados SEM DESFECHO (agendados que nunca viraram realizada/no-show/fora do ICP)
   const semDesfechoLeads = (() => {
-    const source = selectedSDR !== "all"
-      ? meetingEventDetails.filter(e => e.attributed_sdr_id === selectedSDR)
+    const source = selectedSDRs.length
+      ? meetingEventDetails.filter(e => e.attributed_sdr_id && selectedSDRs.includes(e.attributed_sdr_id))
       : meetingEventDetails;
     const byLead = new Map<string, { lead_id: string; lead_name: string; lead_company?: string; types: Set<string>; scheduledDate?: string }>();
     source.forEach((e) => {
@@ -708,8 +714,8 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
   // Leads por trás de cada card (agendadas/realizadas/no-show)
   const leadsForType = (type: "scheduled" | "realized" | "no_show" | "sem_desfecho") => {
     if (type === "sem_desfecho") return semDesfechoLeads;
-    const source = selectedSDR !== "all"
-      ? meetingEventDetails.filter(e => e.attributed_sdr_id === selectedSDR)
+    const source = selectedSDRs.length
+      ? meetingEventDetails.filter(e => e.attributed_sdr_id && selectedSDRs.includes(e.attributed_sdr_id))
       : meetingEventDetails;
     const byLead = new Map<string, { lead_id: string; lead_name: string; lead_company?: string; types: Set<string>; scheduledDate?: string }>();
     source.forEach((e) => {
@@ -771,6 +777,47 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     }
   };
 
+  // Filtro com seleção múltipla (vazio = todos)
+  const MultiFilter = ({ label, options, selected, onChange }: { label: string; options: { id: string; name: string }[]; selected: string[]; onChange: (v: string[]) => void }) => (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-9 gap-2 rounded-xl text-xs border-border min-w-[160px] justify-between">
+          <span className="truncate">
+            {selected.length === 0 ? label
+              : selected.length === 1 ? (options.find(o => o.id === selected[0])?.name || label)
+              : `${selected.length} selecionados`}
+          </span>
+          <ChevronDown className="h-3 w-3 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-60 p-2" align="start">
+        <button
+          className={cn("w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted", selected.length === 0 && "font-semibold text-primary")}
+          onClick={() => onChange([])}
+        >
+          {label}
+        </button>
+        <div className="max-h-64 overflow-y-auto mt-1 space-y-0.5">
+          {options.map(o => {
+            const on = selected.includes(o.id);
+            return (
+              <button
+                key={o.id}
+                className={cn("w-full flex items-center gap-2 text-left text-xs px-2 py-1.5 rounded hover:bg-muted", on && "bg-primary/10 text-primary font-medium")}
+                onClick={() => onChange(on ? selected.filter(x => x !== o.id) : [...selected, o.id])}
+              >
+                <span className={cn("h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0", on ? "bg-primary border-primary" : "border-border")}>
+                  {on && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                </span>
+                <span className="truncate">{o.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+
   // Card limpo (sem glow/escala) — visual profissional
   const GlowCard = ({ children, className = "" }: { children: React.ReactNode; className?: string; glowColor?: string }) => (
     <div className={cn("relative rounded-lg border border-border/60 bg-card overflow-hidden transition-colors hover:border-border", className)}>
@@ -823,26 +870,10 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         </Popover>
         
         {!isSDRUser && (
-          <Select value={selectedSDR} onValueChange={setSelectedSDR}>
-            <SelectTrigger className="w-[160px] h-9 rounded-xl text-xs border-border ">
-              <SelectValue placeholder="SDR / SS" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os SDRs</SelectItem>
-              {sdrs.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <MultiFilter label="Todos os SDRs" options={sdrs} selected={selectedSDRs} onChange={setSelectedSDRs} />
         )}
 
-        <Select value={selectedPipeline} onValueChange={setSelectedPipeline}>
-          <SelectTrigger className="w-[160px] h-9 rounded-xl text-xs border-border ">
-            <SelectValue placeholder="Funil" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os Funis</SelectItem>
-            {pipelines.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <MultiFilter label="Todos os Funis" options={pipelines} selected={selectedPipelines} onChange={setSelectedPipelines} />
 
         <div className="ml-auto flex items-center gap-2">
           <CRMGoalStrategyDialog />
@@ -870,7 +901,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       {/* ── Detalhamento de Reuniões ── */}
       <div className="space-y-2.5">
         <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Detalhamento das Reuniões</h3>
-        <MeetingDetailCards events={selectedSDR !== "all" ? meetingEventDetails.filter(e => e.attributed_sdr_id === selectedSDR) : meetingEventDetails} />
+        <MeetingDetailCards events={selectedSDRs.length ? meetingEventDetails.filter(e => e.attributed_sdr_id && selectedSDRs.includes(e.attributed_sdr_id)) : meetingEventDetails} />
       </div>
 
       {/* ── Atividades (âmbar) ── */}

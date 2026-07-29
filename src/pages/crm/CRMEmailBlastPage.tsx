@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -13,14 +12,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Mail, Loader2, Eye, Send, RefreshCw, Play, Plus, Trash2, Paperclip, Users, Pencil, Repeat2 } from "lucide-react";
 import { toast } from "sonner";
+import { RichTextEditor } from "@/components/crm/RichTextEditor";
 
 // Disparador de E-mail do CRM: disparo único (campanha) + cadências (sequência
 // de e-mails com espera em dias, anexos e links) + tracking (aberturas, cliques,
 // descadastros via webhook do Resend).
 
-interface Campaign { id: string; name: string; status: string; total: number; sent: number; failed: number; created_at: string; }
+interface Campaign { id: string; name: string; status: string; total: number; sent: number; failed: number; created_at: string; filters?: { pipeline_id?: string; stage_id?: string; origin_id?: string } | null; }
 interface Attachment { name: string; url: string; }
-interface Step { id?: string; step_order: number; delay_days: number; subject: string; body_text: string; attachments: Attachment[]; }
+interface Step { id?: string; step_order: number; delay_days: number; subject: string; body_text: string; body_html?: string; attachments: Attachment[]; }
 interface Sequence { id: string; name: string; from_email: string; is_active: boolean; auto_enroll?: boolean; }
 interface EvStats { delivered: number; opened: number; clicked: number; unsubscribe: number; openedUnique: number; clickedUnique: number; }
 
@@ -40,6 +40,7 @@ export default function CRMEmailBlastPage() {
   const [fromEmail, setFromEmail] = useState(DEFAULT_FROM);
   const [subject, setSubject] = useState("");
   const [bodyText, setBodyText] = useState("");
+  const [bodyHtml, setBodyHtml] = useState("");
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState<{ total: number; done: number } | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -47,7 +48,7 @@ export default function CRMEmailBlastPage() {
 
   // cadências
   const [sequences, setSequences] = useState<Sequence[]>([]);
-  const [seqCounts, setSeqCounts] = useState<Record<string, { active: number; done: number; steps: number }>>({});
+  const [seqCounts, setSeqCounts] = useState<Record<string, { active: number; done: number; stopped: number; steps: number }>>({});
   const [seqStats, setSeqStats] = useState<Record<string, EvStats & { sent: number }>>({});
   const [editorOpen, setEditorOpen] = useState(false);
   const [editSeqId, setEditSeqId] = useState<string | null>(null);
@@ -58,6 +59,9 @@ export default function CRMEmailBlastPage() {
   const [enrollFor, setEnrollFor] = useState<Sequence | null>(null);
   const [autoEnroll, setAutoEnroll] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
+  const [histFor, setHistFor] = useState<Sequence | null>(null);
+  const [histRows, setHistRows] = useState<{ email: string; name: string | null; status: string; current_step: number; next_send_at: string | null }[]>([]);
+  const [histLoading, setHistLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -74,7 +78,7 @@ export default function CRMEmailBlastPage() {
 
   const loadCampaigns = async () => {
     const { data } = await supabase.from("crm_email_campaigns")
-      .select("id, name, status, total, sent, failed, created_at")
+      .select("id, name, status, total, sent, failed, created_at, filters")
       .order("created_at", { ascending: false }).limit(20);
     setCampaigns((data as Campaign[]) || []);
     const { data: evs } = await supabase.from("crm_email_events")
@@ -109,20 +113,34 @@ export default function CRMEmailBlastPage() {
     const [{ data: enr }, { data: st }, { data: evs }] = await Promise.all([
       supabase.from("crm_email_enrollments").select("sequence_id, status").in("sequence_id", ids),
       supabase.from("crm_email_sequence_steps").select("sequence_id").in("sequence_id", ids),
-      supabase.from("crm_email_events").select("sequence_id, event_type").in("sequence_id", ids),
+      supabase.from("crm_email_events").select("sequence_id, event_type, email").in("sequence_id", ids),
     ]);
-    const counts: Record<string, { active: number; done: number; steps: number }> = {};
-    ids.forEach((id: string) => counts[id] = { active: 0, done: 0, steps: 0 });
-    (enr || []).forEach((e: any) => { if (e.status === "active") counts[e.sequence_id].active++; if (e.status === "done") counts[e.sequence_id].done++; });
+    const counts: Record<string, { active: number; done: number; stopped: number; steps: number }> = {};
+    ids.forEach((id: string) => counts[id] = { active: 0, done: 0, stopped: 0, steps: 0 });
+    (enr || []).forEach((e: any) => {
+      if (e.status === "active") counts[e.sequence_id].active++;
+      if (e.status === "done") counts[e.sequence_id].done++;
+      if (e.status === "stopped") counts[e.sequence_id].stopped++;
+    });
     (st || []).forEach((e: any) => counts[e.sequence_id].steps++);
     setSeqCounts(counts);
     const stats: Record<string, EvStats & { sent: number }> = {};
+    const uniq: Record<string, Set<string>> = {};
     ids.forEach((id: string) => stats[id] = { sent: 0, delivered: 0, opened: 0, clicked: 0, unsubscribe: 0, openedUnique: 0, clickedUnique: 0 });
     (evs || []).forEach((e: any) => {
       const a = stats[e.sequence_id]; if (!a) return;
       if (e.event_type === "sent") a.sent++;
-      if (e.event_type === "opened") a.opened++;
-      if (e.event_type === "clicked") a.clicked++;
+      if (e.event_type === "delivered") a.delivered++;
+      if (e.event_type === "opened" || e.event_type === "clicked") {
+        const key = `${e.sequence_id}|${e.event_type}`;
+        (uniq[key] = uniq[key] || new Set()).add(String(e.email || "").toLowerCase());
+      }
+    });
+    ids.forEach((id: string) => {
+      stats[id].openedUnique = uniq[`${id}|opened`]?.size || 0;
+      stats[id].clickedUnique = uniq[`${id}|clicked`]?.size || 0;
+      stats[id].opened = stats[id].openedUnique;
+      stats[id].clicked = stats[id].clickedUnique;
     });
     setSeqStats(stats);
   };
@@ -163,13 +181,13 @@ export default function CRMEmailBlastPage() {
   };
 
   const doSend = async () => {
-    if (!subject.trim() || !bodyText.trim()) { toast.error("Preencha assunto e corpo"); return; }
+    if (!subject.trim() || (!bodyText.trim() && !/<img/i.test(bodyHtml))) { toast.error("Preencha assunto e corpo"); return; }
     const p = preview || await call({ action: "preview", filters });
     if (!p.enviaveis) { toast.error("Nenhum lead enviável nesse filtro — ajuste funil/etapa/origem"); return; }
     if (!confirm(`Enviar e-mail para ${p.enviaveis} lead(s)? Essa ação não tem volta.`)) return;
     setSending(true);
     try {
-      const c = await call({ action: "create", name: subject, subject, body_text: bodyText, from_email: fromEmail, filters });
+      const c = await call({ action: "create", name: subject, subject, body_text: bodyText, body_html: bodyHtml, from_email: fromEmail, filters });
       toast.success(`Campanha criada — ${c.total} destinatário(s). Enviando...`);
       await processLoop(c.campaign_id, c.total);
     } catch (e: any) { toast.error(e.message); setSending(false); }
@@ -178,7 +196,7 @@ export default function CRMEmailBlastPage() {
   const sendTest = async () => {
     const to = prompt("Enviar teste pra qual e-mail?", "fabricio@universidadevendas.com.br");
     if (!to) return;
-    try { await call({ action: "test", to, subject, body_text: bodyText, from_email: fromEmail }); toast.success(`Teste enviado pra ${to}`); }
+    try { await call({ action: "test", to, subject, body_text: bodyText, body_html: bodyHtml, from_email: fromEmail }); toast.success(`Teste enviado pra ${to}`); }
     catch (e: any) { toast.error(e.message); }
   };
 
@@ -199,7 +217,7 @@ export default function CRMEmailBlastPage() {
 
   const saveSequence = async () => {
     if (!seqName.trim()) { toast.error("Dê um nome à cadência"); return; }
-    if (steps.some(s => !s.subject.trim() || !s.body_text.trim())) { toast.error("Todo passo precisa de assunto e corpo"); return; }
+    if (steps.some(s => !s.subject.trim() || (!s.body_text.trim() && !/<img/i.test(s.body_html || "")))) { toast.error("Todo passo precisa de assunto e corpo"); return; }
     setSavingSeq(true);
     try {
       let seqId = editSeqId;
@@ -213,7 +231,7 @@ export default function CRMEmailBlastPage() {
         seqId = ns.id;
       }
       const { error: stErr } = await supabase.from("crm_email_sequence_steps").insert(
-        steps.map((s, i) => ({ sequence_id: seqId, step_order: i + 1, delay_days: s.delay_days, subject: s.subject, body_text: s.body_text, attachments: s.attachments })),
+        steps.map((s, i) => ({ sequence_id: seqId, step_order: i + 1, delay_days: s.delay_days, subject: s.subject, body_text: s.body_text, body_html: s.body_html || null, attachments: s.attachments })),
       );
       if (stErr) throw new Error(stErr.message);
       toast.success("Cadência salva");
@@ -251,6 +269,28 @@ export default function CRMEmailBlastPage() {
       setEnrollFor(null); loadSequences();
     } catch (e: any) { toast.error(e.message); }
     finally { setEnrolling(false); }
+  };
+
+  const openSeqHistory = async (sq: Sequence) => {
+    setHistFor(sq); setHistLoading(true);
+    try {
+      const { data } = await supabase.from("crm_email_enrollments")
+        .select("email, name, status, current_step, next_send_at")
+        .eq("sequence_id", sq.id)
+        .order("next_send_at", { ascending: true, nullsFirst: false })
+        .limit(500);
+      setHistRows((data as any[]) || []);
+    } finally { setHistLoading(false); }
+  };
+
+  // descreve o filtro salvo da campanha (funil/etapa/origem) pelos nomes
+  const filterLabel = (f?: Campaign["filters"]) => {
+    if (!f || (!f.pipeline_id && !f.stage_id && !f.origin_id)) return "Todos os leads";
+    const parts: string[] = [];
+    if (f.pipeline_id) parts.push(pipelines.find(p => p.id === f.pipeline_id)?.name || "Funil");
+    if (f.stage_id) parts.push(stages.find(s => s.id === f.stage_id)?.name || "Etapa");
+    if (f.origin_id) parts.push(origins.find(o => o.id === f.origin_id)?.name || "Origem");
+    return parts.join(" · ");
   };
 
   const stagesOfPipeline = stages.filter(s => pipelineId !== "all" && s.pipeline_id === pipelineId);
@@ -344,9 +384,12 @@ export default function CRMEmailBlastPage() {
                 </div>
               </div>
               <div>
-                <Label className="text-xs">Corpo — {"{nome}"} vira o primeiro nome. Links podem ir direto no texto. Rodapé com descadastro entra automático.</Label>
-                <Textarea className="mt-1" rows={9} value={bodyText} onChange={e => setBodyText(e.target.value)}
-                  placeholder={"Fala, {nome}.\n\nAqui é o Fabrício, da UNV..."} />
+                <Label className="text-xs">Corpo — {"{nome}"} vira o primeiro nome. Negrito, cor, tamanho, link e imagem na barra. Rodapé com descadastro entra automático.</Label>
+                <div className="mt-1">
+                  <RichTextEditor initialHtml={bodyHtml} minHeight={200}
+                    placeholder={"Fala, {nome}.\n\nAqui é o Fabrício, da UNV..."}
+                    onChange={(html, text) => { setBodyHtml(html); setBodyText(text); }} />
+                </div>
               </div>
               {progress && (
                 <div className="space-y-1">
@@ -392,6 +435,7 @@ export default function CRMEmailBlastPage() {
                       <Badge variant={c.status === "done" ? "default" : "secondary"} className="text-[10px]">
                         {c.status === "done" ? "Concluída" : c.status === "sending" ? "Enviando" : c.status}
                       </Badge>
+                      <Badge variant="outline" className="text-[10px] max-w-[260px] truncate" title={filterLabel(c.filters)}>{filterLabel(c.filters)}</Badge>
                       <span className="text-[11px] text-muted-foreground ml-auto whitespace-nowrap">
                         {new Date(c.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
                       </span>
@@ -429,29 +473,47 @@ export default function CRMEmailBlastPage() {
           {sequences.length === 0 ? (
             <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">Nenhuma cadência ainda. Crie a primeira.</CardContent></Card>
           ) : sequences.map(sq => {
-            const c = seqCounts[sq.id] || { active: 0, done: 0, steps: 0 };
-            const st = seqStats[sq.id] || { sent: 0, opened: 0, clicked: 0 };
+            const c = seqCounts[sq.id] || { active: 0, done: 0, stopped: 0, steps: 0 };
+            const st = seqStats[sq.id] || { sent: 0, opened: 0, clicked: 0, openedUnique: 0, clickedUnique: 0 };
+            const rate = (n: number) => st.sent > 0 ? Math.round((n / st.sent) * 100) : 0;
+            const Bar = ({ label, count, pct, color }: { label: string; count: number; pct: number; color: string }) => (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-muted-foreground w-24 shrink-0">{label}</span>
+                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                  <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                </div>
+                <span className="text-xs font-semibold w-20 text-right tabular-nums">{count} <span className="text-muted-foreground font-normal">({pct}%)</span></span>
+              </div>
+            );
             return (
               <Card key={sq.id}>
-                <CardContent className="py-4 flex flex-wrap items-center gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">{sq.name}</span>
-                      <Badge variant="outline" className="text-[10px]">{c.steps} passo(s)</Badge>
-                      {sq.auto_enroll && <Badge className="text-[10px] bg-sky-500/15 text-sky-600 border-0">Auto-inscrição</Badge>}
+                <CardContent className="py-4 space-y-2.5">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">{sq.name}</span>
+                        <Badge variant="outline" className="text-[10px]">{c.steps} passo(s)</Badge>
+                        {sq.auto_enroll && <Badge className="text-[10px] bg-sky-500/15 text-sky-600 border-0">Auto-inscrição</Badge>}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        de {sq.from_email} · {c.active} na fila · {c.done} concluídos{c.stopped > 0 ? ` · ${c.stopped} parados` : ""}
+                      </p>
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      de {sq.from_email} · {c.active} em andamento · {c.done} concluídos · {st.sent} enviados · {st.opened} aberturas · {st.clicked} cliques
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-muted-foreground">Ativa</span>
+                      <Switch checked={sq.is_active} onCheckedChange={async (v) => {
+                        await supabase.from("crm_email_sequences").update({ is_active: v }).eq("id", sq.id);
+                        loadSequences();
+                      }} />
+                      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openSeqHistory(sq)}><RefreshCw className="h-3.5 w-3.5" /> Histórico</Button>
+                      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openEditor(sq)}><Pencil className="h-3.5 w-3.5" /> Editar</Button>
+                      <Button size="sm" className="gap-1.5" onClick={() => { setEnrollFor(sq); setAutoEnroll(!!sq.auto_enroll); setPreview(null); }}><Users className="h-3.5 w-3.5" /> Inscrever leads</Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-muted-foreground">Ativa</span>
-                    <Switch checked={sq.is_active} onCheckedChange={async (v) => {
-                      await supabase.from("crm_email_sequences").update({ is_active: v }).eq("id", sq.id);
-                      loadSequences();
-                    }} />
-                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openEditor(sq)}><Pencil className="h-3.5 w-3.5" /> Editar</Button>
-                    <Button size="sm" className="gap-1.5" onClick={() => { setEnrollFor(sq); setAutoEnroll(!!sq.auto_enroll); setPreview(null); }}><Users className="h-3.5 w-3.5" /> Inscrever leads</Button>
+                  <div className="space-y-1.5">
+                    <Bar label="Enviados" count={st.sent} pct={c.active + c.done > 0 ? Math.round((st.sent / Math.max(1, c.active + c.done)) * 100) : (st.sent > 0 ? 100 : 0)} color="bg-primary/70" />
+                    <Bar label="Aberturas" count={st.openedUnique} pct={rate(st.openedUnique)} color="bg-emerald-500" />
+                    <Bar label="Cliques" count={st.clickedUnique} pct={rate(st.clickedUnique)} color="bg-sky-500" />
                   </div>
                 </CardContent>
               </Card>
@@ -483,8 +545,9 @@ export default function CRMEmailBlastPage() {
                 </div>
                 <Input placeholder="Assunto (pode usar {nome})" value={s.subject}
                   onChange={e => setSteps(p => p.map((x, k) => k === i ? { ...x, subject: e.target.value } : x))} />
-                <Textarea rows={5} placeholder={"Corpo do e-mail — {nome}, links direto no texto..."} value={s.body_text}
-                  onChange={e => setSteps(p => p.map((x, k) => k === i ? { ...x, body_text: e.target.value } : x))} />
+                <RichTextEditor initialHtml={s.body_html || ""} minHeight={130}
+                  placeholder={"Corpo do e-mail — {nome}, negrito, cor, imagem, links..."}
+                  onChange={(html, text) => setSteps(p => p.map((x, k) => k === i ? { ...x, body_html: html, body_text: text } : x))} />
                 <div className="flex items-center gap-2 flex-wrap">
                   <label className="inline-flex items-center gap-1.5 text-xs cursor-pointer text-primary">
                     <Paperclip className="h-3.5 w-3.5" /> {uploading ? "Enviando…" : "Anexar arquivo"}
@@ -507,6 +570,40 @@ export default function CRMEmailBlastPage() {
               {savingSeq ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Salvar cadência
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* histórico da cadência */}
+      <Dialog open={!!histFor} onOpenChange={(o) => !o && setHistFor(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Histórico — “{histFor?.name}”</DialogTitle></DialogHeader>
+          {histLoading ? (
+            <div className="py-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+          ) : histRows.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6">Ninguém inscrito ainda.</p>
+          ) : (
+            <div className="space-y-1">
+              <p className="text-[11px] text-muted-foreground mb-2">{histRows.length} inscrito(s){histRows.length === 500 ? " (mostrando os primeiros 500)" : ""}. "Na fila" = aguardando o horário do próximo passo.</p>
+              {histRows.map((r, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs border-b border-border/50 py-1.5">
+                  <span className="font-medium truncate w-40 shrink-0">{r.name || "—"}</span>
+                  <span className="text-muted-foreground truncate flex-1">{r.email}</span>
+                  <Badge variant="outline" className="text-[10px] shrink-0">passo {r.current_step}</Badge>
+                  <Badge className={`text-[10px] border-0 shrink-0 ${
+                    r.status === "done" ? "bg-emerald-500/15 text-emerald-600"
+                    : r.status === "stopped" ? "bg-rose-500/15 text-rose-500"
+                    : "bg-sky-500/15 text-sky-600"}`}>
+                    {r.status === "done" ? "Concluído" : r.status === "stopped" ? "Parado" : "Na fila"}
+                  </Badge>
+                  <span className="text-[10px] text-muted-foreground w-24 text-right shrink-0">
+                    {r.status === "active" && r.next_send_at
+                      ? new Date(r.next_send_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+                      : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

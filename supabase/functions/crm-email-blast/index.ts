@@ -24,19 +24,29 @@ const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const firstName = (n?: string | null) => String(n || "").trim().split(/\s+/)[0] || "";
 const render = (tpl: string, name?: string | null) => tpl.replace(/\{nome\}/gi, firstName(name));
 
-function toHtml(text: string, optoutUrl: string): string {
-  const body = text
-    .split(/\n{2,}/)
-    .map(p => `<p style="margin:0 0 14px">${p.replace(/\n/g, "<br>")}</p>`)
-    .join("");
+function wrapHtml(inner: string, optoutUrl: string): string {
   return `<!DOCTYPE html><html><body style="margin:0;background:#f4f5f7;padding:24px 12px">
 <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:10px;padding:28px 30px;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a2332">
-${body}
+${inner}
 </div>
 <p style="max-width:600px;margin:14px auto 0;text-align:center;font-size:11px;color:#94a3b8;font-family:Arial,sans-serif">
 UNV — Universidade Nacional de Vendas · <a href="${optoutUrl}" style="color:#94a3b8">não quero receber e-mails</a>
 </p></body></html>`;
 }
+
+function toHtml(text: string, optoutUrl: string): string {
+  const body = text
+    .split(/\n{2,}/)
+    .map(p => `<p style="margin:0 0 14px">${p.replace(/\n/g, "<br>")}</p>`)
+    .join("");
+  return wrapHtml(body, optoutUrl);
+}
+
+// corpo do e-mail: usa o HTML do editor rico quando existir, senão o texto puro
+const buildBody = (bodyHtml: string | null | undefined, bodyText: string, name: string | null | undefined, optoutUrl: string) =>
+  bodyHtml && String(bodyHtml).trim()
+    ? wrapHtml(render(String(bodyHtml), name), optoutUrl)
+    : toHtml(render(bodyText, name), optoutUrl);
 
 // ── monta a lista de leads pelo filtro (funil/etapa/origem) ──
 async function buildRecipients(supabase: any, filters: any) {
@@ -117,7 +127,8 @@ async function processSequences(supabase: any): Promise<Response> {
     }
     const nextOrder = (en.current_step || 0) + 1;
     const { data: step } = await supabase.from("crm_email_sequence_steps")
-      .select("*").eq("sequence_id", en.sequence_id).eq("step_order", nextOrder).maybeSingle();
+      .select("*")
+      .eq("sequence_id", en.sequence_id).eq("step_order", nextOrder).maybeSingle();
     if (!step) {
       await supabase.from("crm_email_enrollments").update({ status: "done", finished_at: now }).eq("id", en.id);
       done++; continue;
@@ -133,7 +144,7 @@ async function processSequences(supabase: any): Promise<Response> {
           from: `UNV <${seq.from_email}>`,
           to: [en.email],
           subject: render(step.subject, en.name),
-          html: toHtml(render(step.body_text, en.name), optoutUrl),
+          html: buildBody(step.body_html, step.body_text, en.name, optoutUrl),
           headers: { "List-Unsubscribe": `<${optoutUrl}>` },
           ...(atts.length ? { attachments: atts.map((a: any) => ({ filename: a.name, path: a.url })) } : {}),
         }),
@@ -249,14 +260,14 @@ Deno.serve(async (req) => {
     }
 
     if (action === "create") {
-      const { name, subject, body_text, from_email, filters } = body;
-      if (!subject || !body_text) return j({ error: "assunto e corpo obrigatórios" });
+      const { name, subject, body_text, body_html, from_email, filters } = body;
+      if (!subject || (!body_text && !body_html)) return j({ error: "assunto e corpo obrigatórios" });
       const from = /@(universidadevendas\.com\.br|unvholdings\.com\.br)$/i.test(String(from_email || ""))
         ? String(from_email) : "fabricio@unvholdings.com.br";
       const { final } = await buildRecipients(supabase, filters || {});
       if (!final.length) return j({ error: "nenhum destinatário enviável com esse filtro — ajuste funil/etapa/origem" });
       const { data: camp, error } = await supabase.from("crm_email_campaigns").insert({
-        name: name || subject, subject, body_text, from_email: from,
+        name: name || subject, subject, body_text: body_text || "", body_html: body_html || null, from_email: from,
         filters: filters || {}, status: "sending", total: final.length, created_by: staff.id,
       }).select("id").single();
       if (error || !camp) return j({ error: error?.message || "falha ao criar campanha" }, 500);
@@ -318,7 +329,7 @@ Deno.serve(async (req) => {
           from: `UNV <${from}>`,
           to: [to],
           subject: `[TESTE] ${render(String(body.subject || "Teste do disparador"), "Teste")}`,
-          html: toHtml(render(String(body.body_text || "E-mail de teste do disparador UNV."), "Teste"), optoutUrl),
+          html: buildBody(body.body_html, String(body.body_text || "E-mail de teste do disparador UNV."), "Teste", optoutUrl),
         }),
       });
       const out = await resp.json().catch(() => ({}));
@@ -347,7 +358,7 @@ Deno.serve(async (req) => {
               from: `UNV <${camp.from_email}>`,
               to: [r.email],
               subject: render(camp.subject, r.name),
-              html: toHtml(render(camp.body_text, r.name), optoutUrl),
+              html: buildBody(camp.body_html, camp.body_text, r.name, optoutUrl),
               headers: { "List-Unsubscribe": `<${optoutUrl}>` },
             }),
           });
