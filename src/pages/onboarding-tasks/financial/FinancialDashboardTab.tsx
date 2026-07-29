@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -188,14 +189,46 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
 
   const mrrMovement = useMemo(() => {
     // Acrescentado: contratos recorrentes criados no mês e AINDA ativos.
-    // Perdido: encerrados no mês, mas só se criados ANTES do mês — cobrança criada e
-    // cancelada no mesmo mês é ruído de cadastro (recriação/erro), não é churn.
     const addedList = recurringCharges.filter(c => c.is_active && c.created_at?.startsWith(monthStr));
-    const lostList = recurringCharges.filter(c => !c.is_active && c.updated_at?.startsWith(monthStr) && !c.created_at?.startsWith(monthStr));
     const added = addedList.reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
-    const lost = lostList.reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
-    return { added, addedCount: addedList.length, lost, lostCount: lostList.length, net: added - lost };
+    return { added, addedCount: addedList.length };
   }, [recurringCharges, monthStr]);
+
+  // MRR Perdido = CLIENTES que encerraram no mês (churn do projeto) × parcela
+  // mensal que pagavam (cobrança recorrente do cliente; pega o conjunto mais
+  // recente — ativo ou da última desativação — pra ignorar recriações antigas).
+  const [mrrLost, setMrrLost] = useState<{ cents: number; count: number }>({ cents: 0, count: 0 });
+  useEffect(() => {
+    (async () => {
+      const start = `${monthStr}-01`;
+      const end = new Date(selectedYear, selectedMonth + 1, 1).toISOString().slice(0, 10);
+      const { data: churned } = await supabase
+        .from("onboarding_projects")
+        .select("onboarding_company_id, company_id")
+        .gte("churn_date", start).lt("churn_date", end);
+      const companyIds = Array.from(new Set((churned || [])
+        .map((p: any) => p.onboarding_company_id || p.company_id).filter(Boolean)));
+      if (!companyIds.length) { setMrrLost({ cents: 0, count: 0 }); return; }
+      const { data: chs } = await supabase
+        .from("company_recurring_charges")
+        .select("company_id, amount_cents, recurrence, is_active, updated_at")
+        .in("company_id", companyIds);
+      let cents = 0;
+      companyIds.forEach(cid => {
+        const mine = (chs || []).filter((c: any) => c.company_id === cid);
+        if (!mine.length) return;
+        // conjunto vigente: cobranças ativas; se nenhuma, as da última data de desativação
+        const active = mine.filter((c: any) => c.is_active);
+        let current = active;
+        if (!current.length) {
+          const lastDay = mine.map((c: any) => String(c.updated_at || "").slice(0, 10)).sort().pop();
+          current = mine.filter((c: any) => String(c.updated_at || "").slice(0, 10) === lastDay);
+        }
+        cents += current.reduce((s: number, c: any) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
+      });
+      setMrrLost({ cents, count: companyIds.length });
+    })();
+  }, [monthStr, selectedYear, selectedMonth]);
 
   const vendasNovas = useMemo(() => {
     // Só faturas avulsas reais (company_invoices sem cobrança recorrente). Os lançamentos
@@ -539,13 +572,13 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
 
         <MetricCard
           label="MRR Perdido"
-          value={`-${formatCurrencyCents(mrrMovement.lost)}`}
-          sub={`${mrrMovement.lostCount} encerrada(s)`}
+          value={`-${formatCurrencyCents(mrrLost.cents)}`}
+          sub={`${mrrLost.count} cliente(s) encerrado(s) no mês`}
           icon={ArrowDownRight}
           valueClass="text-destructive"
-          badge={mrrMovement.net !== 0 ? (
-            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium ${mrrMovement.net >= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-destructive/10 text-destructive"}`}>
-              Líquido: {mrrMovement.net >= 0 ? "+" : ""}{formatCurrencyCents(mrrMovement.net)}
+          badge={(mrrMovement.added - mrrLost.cents) !== 0 ? (
+            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium ${(mrrMovement.added - mrrLost.cents) >= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-destructive/10 text-destructive"}`}>
+              Líquido: {(mrrMovement.added - mrrLost.cents) >= 0 ? "+" : ""}{formatCurrencyCents(mrrMovement.added - mrrLost.cents)}
             </span>
           ) : undefined}
         />
