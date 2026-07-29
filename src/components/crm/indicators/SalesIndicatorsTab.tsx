@@ -130,6 +130,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const [callStats, setCallStats] = useState({ total: 0, discador: 0, avulsa: 0, atendidas: 0 });
   const [leadsByFunnel, setLeadsByFunnel] = useState<{ name: string; count: number }[]>([]);
   const [funnelSort, setFunnelSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "entradas", dir: "desc" });
+  const [firstSchedByLead, setFirstSchedByLead] = useState<Record<string, string>>({});
   const [dialerCostBrl, setDialerCostBrl] = useState(0);
   // Reuniões/vendas atribuídas AO DISCADOR (não o CRM todo) — pra CAC e custos por reunião
   const [dialerOutcomes, setDialerOutcomes] = useState({ scheduled: 0, realized: 0, sales: 0 });
@@ -325,6 +326,26 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           .lte("sale_date", format(filterEnd, "yyyy-MM-dd"))
       );
       setRawSalesData(salesData);
+
+      // 1º agendamento de cada lead VENDIDO (qualquer data, fora do filtro): usado
+      // no lead time dos funis de base importada (ex: Leads Clint), onde o
+      // created_at é a data da importação e não a entrada real do lead.
+      {
+        const soldLeadIds = Array.from(new Set((salesData || []).map((s: any) => s.lead?.id).filter(Boolean)));
+        if (soldLeadIds.length) {
+          const { data: schedEvs } = await supabase
+            .from("crm_meeting_events")
+            .select("lead_id, event_date")
+            .eq("event_type", "scheduled")
+            .in("lead_id", soldLeadIds)
+            .order("event_date", { ascending: true });
+          const m: Record<string, string> = {};
+          (schedEvs || []).forEach((e: any) => { if (!m[e.lead_id]) m[e.lead_id] = e.event_date; });
+          setFirstSchedByLead(m);
+        } else {
+          setFirstSchedByLead({});
+        }
+      }
 
       // Expand "closers" list with anyone who has scheduled/realized meetings
       // or sales in the period — even without the "closer" role.
@@ -772,9 +793,15 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     rawSalesData.forEach((s: any) => {
       const n = s.pipeline?.name || "(sem funil)";
       const r = get(n); r.vendas++; r.faturamento += Number(s.billing_value) || 0;
-      // lead time: entrada do lead no CRM → data da venda (em dias)
-      if (s.lead?.created_at && s.sale_date) {
-        const dias = (new Date(s.sale_date + "T12:00:00").getTime() - new Date(s.lead.created_at).getTime()) / 86400000;
+      // lead time: entrada do lead no CRM → data da venda (em dias).
+      // Funis de base importada (Clint/importação): o created_at é a data da carga,
+      // então o relógio começa no 1º AGENDAMENTO do lead.
+      const imported = /clint|import/i.test(n);
+      const start = imported && s.lead?.id && firstSchedByLead[s.lead.id]
+        ? firstSchedByLead[s.lead.id]
+        : s.lead?.created_at;
+      if (start && s.sale_date) {
+        const dias = (new Date(s.sale_date + "T12:00:00").getTime() - new Date(start).getTime()) / 86400000;
         if (isFinite(dias)) { r.ltSum += Math.max(0, dias); r.ltN++; }
       }
     });
@@ -785,7 +812,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         if (funnelSort.key === "name") return a.name.localeCompare(b.name, "pt-BR") * m;
         return ((Number(a[funnelSort.key]) || 0) - (Number(b[funnelSort.key]) || 0)) * m;
       });
-  }, [leadsByFunnel, rawMeetingEvents, rawSalesData, funnelSort]);
+  }, [leadsByFunnel, rawMeetingEvents, rawSalesData, funnelSort, firstSchedByLead]);
 
   // Vendas (R$) e reuniões realizadas por dia da semana e por dia do mês
   const timingCharts = useMemo(() => {
