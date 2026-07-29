@@ -131,6 +131,8 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
 
   // Meeting event details for cards
   const [meetingEventDetails, setMeetingEventDetails] = useState<MeetingEventDetail[]>([]);
+  // Leads que ENTRARAM no período (pra card de Destaques; filtro SDR/funil é client-side)
+  const [periodLeads, setPeriodLeads] = useState<{ id: string; pipeline_id: string | null; sdr_staff_id: string | null; scheduled_by_staff_id: string | null }[]>([]);
   const [sdrGoalMetas, setSdrGoalMetas] = useState<Record<string, { agend: number; reunioes: number }>>({});
 
   useEffect(() => {
@@ -218,6 +220,15 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         `)
         .gte("event_date", periodStart.toISOString())
         .lte("event_date", periodEnd.toISOString());
+
+      // Leads criados no período (entradas)
+      const { data: leadsInPeriod } = await supabase
+        .from("crm_leads")
+        .select("id, pipeline_id, sdr_staff_id, scheduled_by_staff_id")
+        .gte("created_at", periodStart.toISOString())
+        .lte("created_at", periodEnd.toISOString())
+        .limit(20000);
+      setPeriodLeads(leadsInPeriod || []);
 
       // Load real meeting activities to compute completed meetings per SDR
       const { data: meetingActivities } = await supabase
@@ -667,6 +678,12 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     };
   })();
 
+  // Entradas de leads no período, respeitando filtro de SDR e funil
+  const leadsCount = periodLeads.filter(l =>
+    (selectedPipeline === "all" || l.pipeline_id === selectedPipeline) &&
+    (selectedSDR === "all" || l.sdr_staff_id === selectedSDR || (!l.sdr_staff_id && l.scheduled_by_staff_id === selectedSDR))
+  ).length;
+
   // Leads agendados SEM DESFECHO (agendados que nunca viraram realizada/no-show/fora do ICP)
   const semDesfechoLeads = (() => {
     const source = selectedSDR !== "all"
@@ -842,7 +859,9 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       </div>
 
       {/* ── Destaques (azul) ── */}
-      <Section tone={TONE.blue} label="Destaques" cols="grid-cols-3">
+      <Section tone={TONE.blue} label="Destaques" cols="grid-cols-2 sm:grid-cols-5">
+        <Metric tone={TONE.blue} label="Leads" value={leadsCount} color="#a78bfa" big />
+        <Metric tone={TONE.blue} label="Agendamentos" value={visibleMetrics.agendamentos} color="#fbbf24" big />
         <Metric tone={TONE.blue} label="Reuniões" value={visibleMetrics.reunioes} color={TONE.blue} big />
         <Metric tone={TONE.blue} label="Show Up" value={`${visibleMetrics.showUpPercent.toFixed(0)}%`} color="#34d399" big />
         <Metric tone={TONE.blue} label="No Show" value={`${visibleMetrics.noShowPercent.toFixed(0)}%`} color={visibleMetrics.noShowPercent > 30 ? "#f87171" : undefined} big />
