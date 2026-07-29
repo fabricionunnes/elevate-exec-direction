@@ -319,7 +319,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
             sdr:onboarding_staff!crm_sales_sdr_staff_id_fkey(id, name),
             pipeline:crm_pipelines(id, name),
             product:crm_products(id, name),
-            lead:crm_leads(id, name, company)
+            lead:crm_leads(id, name, company, created_at)
           `)
           .gte("sale_date", format(filterStart, "yyyy-MM-dd"))
           .lte("sale_date", format(filterEnd, "yyyy-MM-dd"))
@@ -753,9 +753,9 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   // Tabela por funil: entradas de leads + calls agendadas/realizadas + vendas + ticket
   // (hook — precisa vir ANTES do return condicional de loading)
   const funnelTable = useMemo(() => {
-    const rows = new Map<string, { entradas: number; agendadas: number; realizadas: number; vendas: number; faturamento: number }>();
+    const rows = new Map<string, { entradas: number; agendadas: number; realizadas: number; vendas: number; faturamento: number; ltSum: number; ltN: number }>();
     const get = (n: string) => {
-      if (!rows.has(n)) rows.set(n, { entradas: 0, agendadas: 0, realizadas: 0, vendas: 0, faturamento: 0 });
+      if (!rows.has(n)) rows.set(n, { entradas: 0, agendadas: 0, realizadas: 0, vendas: 0, faturamento: 0, ltSum: 0, ltN: 0 });
       return rows.get(n)!;
     };
     leadsByFunnel.forEach(f => { get(f.name).entradas = f.count; });
@@ -772,9 +772,14 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     rawSalesData.forEach((s: any) => {
       const n = s.pipeline?.name || "(sem funil)";
       const r = get(n); r.vendas++; r.faturamento += Number(s.billing_value) || 0;
+      // lead time: entrada do lead no CRM → data da venda (em dias)
+      if (s.lead?.created_at && s.sale_date) {
+        const dias = (new Date(s.sale_date + "T12:00:00").getTime() - new Date(s.lead.created_at).getTime()) / 86400000;
+        if (isFinite(dias)) { r.ltSum += Math.max(0, dias); r.ltN++; }
+      }
     });
     return [...rows.entries()]
-      .map(([name, r]) => ({ name, ...r, ticket: r.vendas > 0 ? r.faturamento / r.vendas : 0 }))
+      .map(([name, r]) => ({ name, ...r, ticket: r.vendas > 0 ? r.faturamento / r.vendas : 0, leadtime: r.ltN > 0 ? r.ltSum / r.ltN : -1 }))
       .sort((a: any, b: any) => {
         const m = funnelSort.dir === "asc" ? 1 : -1;
         if (funnelSort.key === "name") return a.name.localeCompare(b.name, "pt-BR") * m;
@@ -1021,6 +1026,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                     { k: "vendas", label: "Vendas", cls: "text-center" },
                     { k: "ticket", label: "Ticket Médio", cls: "text-right" },
                     { k: "faturamento", label: "Valor Total", cls: "text-right" },
+                    { k: "leadtime", label: "Tempo até Venda", cls: "text-right" },
                   ] as const).map(c => (
                     <th key={c.k}
                       className={cn(c.cls, "sticky top-0 z-10 bg-card h-10 px-3 align-middle text-xs font-medium text-muted-foreground cursor-pointer select-none whitespace-nowrap hover:text-foreground shadow-[inset_0_-1px_0_hsl(var(--border))]")}
@@ -1041,6 +1047,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                     <td className="text-center font-semibold text-emerald-500 py-2 px-3">{f.vendas}</td>
                     <td className="text-right py-2 px-3">{f.ticket > 0 ? formatCurrency(f.ticket) : "—"}</td>
                     <td className="text-right font-semibold py-2 px-3">{f.faturamento > 0 ? formatCurrency(f.faturamento) : "—"}</td>
+                    <td className="text-right py-2 px-3">{f.leadtime >= 0 ? `${Math.round(f.leadtime)} dia(s)` : "—"}</td>
                   </tr>
                 ))}
                 {funnelTable.length > 1 && (
@@ -1052,6 +1059,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                     <td className="text-center text-emerald-500 py-2 px-3">{funnelTable.reduce((s, f) => s + f.vendas, 0)}</td>
                     <td className="text-right py-2 px-3">{(() => { const v = funnelTable.reduce((s, f) => s + f.vendas, 0); const fat = funnelTable.reduce((s, f) => s + f.faturamento, 0); return v > 0 ? formatCurrency(fat / v) : "—"; })()}</td>
                     <td className="text-right py-2 px-3">{formatCurrency(funnelTable.reduce((s, f) => s + f.faturamento, 0))}</td>
+                    <td className="text-right py-2 px-3">{(() => { const n = funnelTable.reduce((s, f) => s + f.ltN, 0); const soma = funnelTable.reduce((s, f) => s + f.ltSum, 0); return n > 0 ? `${Math.round(soma / n)} dia(s)` : "—"; })()}</td>
                   </tr>
                 )}
               </tbody>
