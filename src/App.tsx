@@ -327,6 +327,7 @@ const CRMApiPage = lazy(() => import("./pages/crm/CRMApiPage"));
 const CRMTrafficApiPage = lazy(() => import("./pages/crm/CRMTrafficApiPage"));
 const CRMForecastPage = lazy(() => import("./pages/crm/CRMForecastPage"));
 const CRMCadencesPage = lazy(() => import("./pages/crm/CRMCadencesPage"));
+const CRMEmailBlastPage = lazy(() => import("./pages/crm/CRMEmailBlastPage"));
 const CRMApplicationsPage = lazy(() => import("./pages/crm/CRMApplicationsPage"));
 const CRMAutomationsPage = lazy(() => import("./pages/crm/CRMAutomationsPage"));
 
@@ -647,6 +648,7 @@ const AppShell = () => {
               <Route path="trafego-pago/api" element={<CRMTrafficApiPage />} />
               <Route path="forecast" element={<CRMForecastPage />} />
               <Route path="cadences" element={<CRMCadencesPage />} />
+              <Route path="email-blast" element={<CRMEmailBlastPage />} />
               <Route path="applications" element={<CRMApplicationsPage />} />
               <Route path="agents" element={<CRMAgentsPage />} />
               <Route path="automacoes" element={<CRMAutomationsPage />} />

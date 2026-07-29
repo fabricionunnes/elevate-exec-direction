@@ -41,6 +41,7 @@ import {
   Phone,
   ChevronDown,
   Contact,
+  Mail as MailIcon,
 } from "lucide-react";
 import logoUnv from "@/assets/logo-unv-nexus.png";
 import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
@@ -85,6 +86,7 @@ const baseNavTabs = [
   { title: "Reuniões", href: "/crm/meetings", icon: CalendarDays },
   { title: "Forecast", href: "/crm/forecast", icon: TrendingUp },
   { title: "Cadências", href: "/crm/cadences", icon: Repeat2 },
+  { title: "Disparador E-mail", href: "/crm/email-blast", icon: MailIcon },
   { title: "Automações IA", href: "/crm/automacoes", icon: Zap },
   { title: "Aplicações", href: "/crm/applications", icon: BarChart3 },
   { title: "Nota Fiscal", href: "/onboarding-tasks/nota-fiscal", icon: FileText },
