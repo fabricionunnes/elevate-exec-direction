@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
       const { name, subject, body_text, from_email, filters } = body;
       if (!subject || !body_text) return j({ error: "assunto e corpo obrigatórios" });
       const from = /@(universidadevendas\.com\.br|unvholdings\.com\.br)$/i.test(String(from_email || ""))
-        ? String(from_email) : "contato@universidadevendas.com.br";
+        ? String(from_email) : "fabricio@unvholdings.com.br";
       const { final } = await buildRecipients(supabase, filters || {});
       if (!final.length) return j({ error: "nenhum destinatário enviável com esse filtro — ajuste funil/etapa/origem" });
       const { data: camp, error } = await supabase.from("crm_email_campaigns").insert({
@@ -308,7 +308,7 @@ Deno.serve(async (req) => {
       const to = String(body.to || "").toLowerCase().trim();
       if (!EMAIL_RX.test(to)) return j({ error: "destinatário inválido" });
       const from = /@(universidadevendas\.com\.br|unvholdings\.com\.br)$/i.test(String(body.from_email || ""))
-        ? String(body.from_email) : "contato@universidadevendas.com.br";
+        ? String(body.from_email) : "fabricio@unvholdings.com.br";
       const b64 = btoa(to).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
       const optoutUrl = `${SUPABASE_URL}/functions/v1/crm-email-blast?e=${b64}`;
       const resp = await fetch("https://api.resend.com/emails", {

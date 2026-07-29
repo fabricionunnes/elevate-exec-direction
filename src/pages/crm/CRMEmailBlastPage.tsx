@@ -24,7 +24,7 @@ interface Step { id?: string; step_order: number; delay_days: number; subject: s
 interface Sequence { id: string; name: string; from_email: string; is_active: boolean; auto_enroll?: boolean; }
 interface EvStats { delivered: number; opened: number; clicked: number; unsubscribe: number; openedUnique: number; clickedUnique: number; }
 
-const DEFAULT_FROM = "contato@universidadevendas.com.br";
+const DEFAULT_FROM = "fabricio@unvholdings.com.br";
 
 export default function CRMEmailBlastPage() {
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
