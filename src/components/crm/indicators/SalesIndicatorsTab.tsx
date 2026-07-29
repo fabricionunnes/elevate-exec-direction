@@ -130,7 +130,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const [callStats, setCallStats] = useState({ total: 0, discador: 0, avulsa: 0, atendidas: 0 });
   const [leadsByFunnel, setLeadsByFunnel] = useState<{ name: string; count: number }[]>([]);
   const [funnelSort, setFunnelSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "entradas", dir: "desc" });
-  const [firstSchedByLead, setFirstSchedByLead] = useState<Record<string, string>>({});
+  const [ltByFunnel, setLtByFunnel] = useState<Record<string, { ltSum: number; ltN: number }>>({});
   const [dialerCostBrl, setDialerCostBrl] = useState(0);
   // Reuniões/vendas atribuídas AO DISCADOR (não o CRM todo) — pra CAC e custos por reunião
   const [dialerOutcomes, setDialerOutcomes] = useState({ scheduled: 0, realized: 0, sales: 0 });
@@ -327,25 +327,41 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       );
       setRawSalesData(salesData);
 
-      // 1º agendamento de cada lead VENDIDO (qualquer data, fora do filtro): usado
-      // no lead time dos funis de base importada (ex: Leads Clint), onde o
-      // created_at é a data da importação e não a entrada real do lead.
-      {
-        const soldLeadIds = Array.from(new Set((salesData || []).map((s: any) => s.lead?.id).filter(Boolean)));
-        if (soldLeadIds.length) {
+      // Lead time por funil: janela móvel dos ÚLTIMOS 90 DIAS (independente do
+      // filtro da tela) — métrica viva, não média de datas eternas. Início do
+      // relógio: entrada do lead no CRM; em funil de base importada (Clint/
+      // importação), o 1º agendamento do lead.
+      try {
+        const d90 = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+        const { data: sales90 } = await supabase
+          .from("crm_sales")
+          .select("sale_date, pipeline:crm_pipelines(name), lead:crm_leads(id, created_at)")
+          .gte("sale_date", d90);
+        const soldIds = Array.from(new Set((sales90 || []).map((s: any) => s.lead?.id).filter(Boolean)));
+        const firstSched: Record<string, string> = {};
+        if (soldIds.length) {
           const { data: schedEvs } = await supabase
             .from("crm_meeting_events")
             .select("lead_id, event_date")
             .eq("event_type", "scheduled")
-            .in("lead_id", soldLeadIds)
+            .in("lead_id", soldIds)
             .order("event_date", { ascending: true });
-          const m: Record<string, string> = {};
-          (schedEvs || []).forEach((e: any) => { if (!m[e.lead_id]) m[e.lead_id] = e.event_date; });
-          setFirstSchedByLead(m);
-        } else {
-          setFirstSchedByLead({});
+          (schedEvs || []).forEach((e: any) => { if (!firstSched[e.lead_id]) firstSched[e.lead_id] = e.event_date; });
         }
-      }
+        const agg: Record<string, { ltSum: number; ltN: number }> = {};
+        (sales90 || []).forEach((s: any) => {
+          const name = s.pipeline?.name || "(sem funil)";
+          const imported = /clint|import/i.test(name);
+          const start = imported && s.lead?.id && firstSched[s.lead.id] ? firstSched[s.lead.id] : s.lead?.created_at;
+          if (!start || !s.sale_date) return;
+          const dias = (new Date(s.sale_date + "T12:00:00").getTime() - new Date(start).getTime()) / 86400000;
+          if (!isFinite(dias)) return;
+          const a = agg[name] || { ltSum: 0, ltN: 0 };
+          a.ltSum += Math.max(0, dias); a.ltN++;
+          agg[name] = a;
+        });
+        setLtByFunnel(agg);
+      } catch { setLtByFunnel({}); }
 
       // Expand "closers" list with anyone who has scheduled/realized meetings
       // or sales in the period — even without the "closer" role.
@@ -793,26 +809,19 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     rawSalesData.forEach((s: any) => {
       const n = s.pipeline?.name || "(sem funil)";
       const r = get(n); r.vendas++; r.faturamento += Number(s.billing_value) || 0;
-      // lead time: entrada do lead no CRM → data da venda (em dias).
-      // Funis de base importada (Clint/importação): o created_at é a data da carga,
-      // então o relógio começa no 1º AGENDAMENTO do lead.
-      const imported = /clint|import/i.test(n);
-      const start = imported && s.lead?.id && firstSchedByLead[s.lead.id]
-        ? firstSchedByLead[s.lead.id]
-        : s.lead?.created_at;
-      if (start && s.sale_date) {
-        const dias = (new Date(s.sale_date + "T12:00:00").getTime() - new Date(start).getTime()) / 86400000;
-        if (isFinite(dias)) { r.ltSum += Math.max(0, dias); r.ltN++; }
-      }
     });
+    // lead time vem da janela móvel de 90 dias (ltByFunnel), não do filtro da tela
     return [...rows.entries()]
-      .map(([name, r]) => ({ name, ...r, ticket: r.vendas > 0 ? r.faturamento / r.vendas : 0, leadtime: r.ltN > 0 ? r.ltSum / r.ltN : -1 }))
+      .map(([name, r]) => {
+        const lt = ltByFunnel[name];
+        return { name, ...r, ltSum: lt?.ltSum || 0, ltN: lt?.ltN || 0, ticket: r.vendas > 0 ? r.faturamento / r.vendas : 0, leadtime: lt && lt.ltN > 0 ? lt.ltSum / lt.ltN : -1 };
+      })
       .sort((a: any, b: any) => {
         const m = funnelSort.dir === "asc" ? 1 : -1;
         if (funnelSort.key === "name") return a.name.localeCompare(b.name, "pt-BR") * m;
         return ((Number(a[funnelSort.key]) || 0) - (Number(b[funnelSort.key]) || 0)) * m;
       });
-  }, [leadsByFunnel, rawMeetingEvents, rawSalesData, funnelSort, firstSchedByLead]);
+  }, [leadsByFunnel, rawMeetingEvents, rawSalesData, funnelSort, ltByFunnel]);
 
   // Vendas (R$) e reuniões realizadas por dia da semana e por dia do mês
   const timingCharts = useMemo(() => {
@@ -1053,7 +1062,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                     { k: "vendas", label: "Vendas", cls: "text-center" },
                     { k: "ticket", label: "Ticket Médio", cls: "text-right" },
                     { k: "faturamento", label: "Valor Total", cls: "text-right" },
-                    { k: "leadtime", label: "Tempo até Venda", cls: "text-right" },
+                    { k: "leadtime", label: "Tempo até Venda (90d)", cls: "text-right" },
                   ] as const).map(c => (
                     <th key={c.k}
                       className={cn(c.cls, "sticky top-0 z-10 bg-card h-10 px-3 align-middle text-xs font-medium text-muted-foreground cursor-pointer select-none whitespace-nowrap hover:text-foreground shadow-[inset_0_-1px_0_hsl(var(--border))]")}
