@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 // etapa, com valor em negociação e tempo médio parado na etapa.
 
 interface Stage { id: string; name: string; pipeline_id: string; sort_order: number; final_type: string | null; }
-interface LeadRow { pipeline_id: string | null; stage_id: string | null; opportunity_value: number | null; stage_entered_at: string | null; }
+interface AggRow { pipeline_id: string; stage_id: string; lead_count: number; value_sum: number; avg_days_in_stage: number | null; }
 
 const fmtBRL = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(v);
@@ -18,48 +18,39 @@ export const FunnelsOverviewTab = () => {
   const [loading, setLoading] = useState(true);
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
-  const [leads, setLeads] = useState<LeadRow[]>([]);
+  const [agg, setAgg] = useState<AggRow[]>([]);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
       try {
-        const [p, s] = await Promise.all([
+        const [p, s, a] = await Promise.all([
           supabase.from("crm_pipelines").select("id, name").eq("is_active", true).order("name"),
           supabase.from("crm_stages").select("id, name, pipeline_id, sort_order, final_type").order("sort_order"),
+          supabase.rpc("get_funnels_overview"),
         ]);
         setPipelines(p.data || []);
         setStages((s.data as Stage[]) || []);
-        // pagina de 1000 em 1000 (limite do PostgREST) até varrer todos os leads
-        const all: LeadRow[] = [];
-        for (let from = 0; from < 100000; from += 1000) {
-          const { data } = await supabase.from("crm_leads")
-            .select("pipeline_id, stage_id, opportunity_value, stage_entered_at")
-            .range(from, from + 999);
-          all.push(...((data as LeadRow[]) || []));
-          if (!data || data.length < 1000) break;
-        }
-        setLeads(all);
+        setAgg((a.data as AggRow[]) || []);
       } finally { setLoading(false); }
     })();
   }, []);
 
   const byPipeline = useMemo(() => {
-    const now = Date.now();
+    const byStage = new Map(agg.map(r => [r.stage_id, r]));
     return pipelines.map(p => {
       const pStages = stages.filter(s => s.pipeline_id === p.id);
-      const pLeads = leads.filter(l => l.pipeline_id === p.id);
       const rows = pStages.map(st => {
-        const inStage = pLeads.filter(l => l.stage_id === st.id);
-        const value = inStage.reduce((sum, l) => sum + (Number(l.opportunity_value) || 0), 0);
-        const days = inStage
-          .map(l => l.stage_entered_at ? (now - new Date(l.stage_entered_at).getTime()) / 86400000 : null)
-          .filter((d): d is number => d !== null);
-        const avgDays = days.length ? days.reduce((a, b) => a + b, 0) / days.length : null;
-        return { stage: st, count: inStage.length, value, avgDays };
+        const r = byStage.get(st.id);
+        return {
+          stage: st,
+          count: Number(r?.lead_count || 0),
+          value: Number(r?.value_sum || 0),
+          avgDays: r?.avg_days_in_stage !== null && r?.avg_days_in_stage !== undefined ? Number(r.avg_days_in_stage) : null,
+        };
       });
       const open = rows.filter(r => !r.stage.final_type);
-      const total = pLeads.length;
+      const total = rows.reduce((s, r) => s + r.count, 0);
       const openCount = open.reduce((s, r) => s + r.count, 0);
       const openValue = open.reduce((s, r) => s + r.value, 0);
       const won = rows.filter(r => r.stage.final_type === "won").reduce((s, r) => s + r.count, 0);
@@ -67,15 +58,15 @@ export const FunnelsOverviewTab = () => {
       const maxCount = Math.max(1, ...rows.map(r => r.count));
       return { pipeline: p, rows, total, openCount, openValue, won, lost, maxCount };
     }).sort((a, b) => b.total - a.total);
-  }, [pipelines, stages, leads]);
+  }, [pipelines, stages, agg]);
 
   const totals = useMemo(() => ({
-    leads: leads.length,
+    leads: byPipeline.reduce((s, p) => s + p.total, 0),
     open: byPipeline.reduce((s, p) => s + p.openCount, 0),
     openValue: byPipeline.reduce((s, p) => s + p.openValue, 0),
     won: byPipeline.reduce((s, p) => s + p.won, 0),
     lost: byPipeline.reduce((s, p) => s + p.lost, 0),
-  }), [leads, byPipeline]);
+  }), [byPipeline]);
 
   if (loading) {
     return <div className="flex items-center justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
