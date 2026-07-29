@@ -38,8 +38,67 @@ UNV — Universidade Nacional de Vendas · <a href="${optoutUrl}" style="color:#
 </p></body></html>`;
 }
 
+// ── monta a lista de leads pelo filtro (funil/etapa/origem) ──
+async function buildRecipients(supabase: any, filters: any) {
+  let q = supabase.from("crm_leads")
+    .select("id, name, email")
+    .not("email", "is", null)
+    .limit(20000);
+  if (filters?.pipeline_id) q = q.eq("pipeline_id", filters.pipeline_id);
+  if (filters?.stage_id) q = q.eq("stage_id", filters.stage_id);
+  if (filters?.origin_id) q = q.eq("origin_id", filters.origin_id);
+  const { data: leads, error } = await q;
+  if (error) throw new Error(error.message);
+  const seen = new Set<string>();
+  const valid: { lead_id: string; email: string; name: string | null }[] = [];
+  let invalid = 0;
+  (leads || []).forEach((l: any) => {
+    const e = String(l.email || "").toLowerCase().trim();
+    if (!EMAIL_RX.test(e)) { invalid++; return; }
+    if (seen.has(e)) return;
+    seen.add(e);
+    valid.push({ lead_id: l.id, email: e, name: l.name });
+  });
+  // remove supressos (descadastrados/bounces)
+  const emails = valid.map(v => v.email);
+  const suppressed = new Set<string>();
+  for (let i = 0; i < emails.length; i += 500) {
+    const { data: sup } = await supabase.from("suppressed_emails")
+      .select("email").in("email", emails.slice(i, i + 500));
+    (sup || []).forEach((s: any) => suppressed.add(String(s.email).toLowerCase()));
+  }
+  const final = valid.filter(v => !suppressed.has(v.email));
+  return { final, invalid, suppressedCount: valid.length - final.length, totalLeads: (leads || []).length };
+}
+
+// inscreve leads novos que entraram no filtro das cadências com auto-inscrição
+async function autoEnrollSequences(supabase: any): Promise<number> {
+  const { data: autoSeqs } = await supabase.from("crm_email_sequences")
+    .select("id, auto_filters").eq("auto_enroll", true).eq("is_active", true);
+  let enrolled = 0;
+  for (const seq of autoSeqs || []) {
+    try {
+      const { data: firstStep } = await supabase.from("crm_email_sequence_steps")
+        .select("delay_days").eq("sequence_id", seq.id).order("step_order").limit(1).maybeSingle();
+      if (!firstStep) continue;
+      const { final } = await buildRecipients(supabase, seq.auto_filters || {});
+      if (!final.length) continue;
+      const firstAt = new Date(Date.now() + (Number(firstStep.delay_days) || 0) * 86400000).toISOString();
+      for (let i = 0; i < final.length; i += 500) {
+        const { count } = await supabase.from("crm_email_enrollments").upsert(
+          final.slice(i, i + 500).map((f: any) => ({ sequence_id: seq.id, ...f, next_send_at: firstAt })),
+          { onConflict: "sequence_id,email", ignoreDuplicates: true, count: "exact" },
+        );
+        enrolled += count || 0;
+      }
+    } catch { /* uma cadência com problema não trava as outras */ }
+  }
+  return enrolled;
+}
+
 async function processSequences(supabase: any): Promise<Response> {
   if (!RESEND_KEY) return j({ error: "RESEND_API_KEY não configurada" }, 500);
+  const autoEnrolled = await autoEnrollSequences(supabase);
   const now = new Date().toISOString();
   const { data: due } = await supabase.from("crm_email_enrollments")
     .select("id, sequence_id, email, name, current_step")
@@ -99,7 +158,7 @@ async function processSequences(supabase: any): Promise<Response> {
     } catch { failed++; }
     await new Promise(res => setTimeout(res, DELAY_MS));
   }
-  return j({ ok: true, processed: (due || []).length, sent, done, stopped, failed });
+  return j({ ok: true, auto_enrolled: autoEnrolled, processed: (due || []).length, sent, done, stopped, failed });
 }
 
 Deno.serve(async (req) => {
@@ -180,41 +239,8 @@ Deno.serve(async (req) => {
     const body = rawBody;
     const action = String(body.action || "");
 
-    // ── monta a lista de leads pelo filtro (funil/etapa/origem) ──
-    const buildRecipients = async (filters: any) => {
-      let q = supabase.from("crm_leads")
-        .select("id, name, email")
-        .not("email", "is", null)
-        .limit(20000);
-      if (filters?.pipeline_id) q = q.eq("pipeline_id", filters.pipeline_id);
-      if (filters?.stage_id) q = q.eq("stage_id", filters.stage_id);
-      if (filters?.origin_id) q = q.eq("origin_id", filters.origin_id);
-      const { data: leads, error } = await q;
-      if (error) throw new Error(error.message);
-      const seen = new Set<string>();
-      const valid: { lead_id: string; email: string; name: string | null }[] = [];
-      let invalid = 0;
-      (leads || []).forEach((l: any) => {
-        const e = String(l.email || "").toLowerCase().trim();
-        if (!EMAIL_RX.test(e)) { invalid++; return; }
-        if (seen.has(e)) return;
-        seen.add(e);
-        valid.push({ lead_id: l.id, email: e, name: l.name });
-      });
-      // remove supressos (descadastrados/bounces)
-      const emails = valid.map(v => v.email);
-      const suppressed = new Set<string>();
-      for (let i = 0; i < emails.length; i += 500) {
-        const { data: sup } = await supabase.from("suppressed_emails")
-          .select("email").in("email", emails.slice(i, i + 500));
-        (sup || []).forEach((s: any) => suppressed.add(String(s.email).toLowerCase()));
-      }
-      const final = valid.filter(v => !suppressed.has(v.email));
-      return { final, invalid, suppressedCount: valid.length - final.length, totalLeads: (leads || []).length };
-    };
-
     if (action === "preview") {
-      const { final, invalid, suppressedCount, totalLeads } = await buildRecipients(body.filters || {});
+      const { final, invalid, suppressedCount, totalLeads } = await buildRecipients(supabase, body.filters || {});
       return j({
         ok: true, total_leads: totalLeads, enviaveis: final.length,
         invalidos: invalid, supressos: suppressedCount,
@@ -224,11 +250,11 @@ Deno.serve(async (req) => {
 
     if (action === "create") {
       const { name, subject, body_text, from_email, filters } = body;
-      if (!subject || !body_text) return j({ error: "assunto e corpo obrigatórios" }, 400);
+      if (!subject || !body_text) return j({ error: "assunto e corpo obrigatórios" });
       const from = /@(universidadevendas\.com\.br|unvholdings\.com\.br)$/i.test(String(from_email || ""))
         ? String(from_email) : "contato@universidadevendas.com.br";
-      const { final } = await buildRecipients(filters || {});
-      if (!final.length) return j({ error: "nenhum destinatário enviável com esse filtro" }, 400);
+      const { final } = await buildRecipients(supabase, filters || {});
+      if (!final.length) return j({ error: "nenhum destinatário enviável com esse filtro — ajuste funil/etapa/origem" });
       const { data: camp, error } = await supabase.from("crm_email_campaigns").insert({
         name: name || subject, subject, body_text, from_email: from,
         filters: filters || {}, status: "sending", total: final.length, created_by: staff.id,
@@ -243,15 +269,23 @@ Deno.serve(async (req) => {
     }
 
     if (action === "enroll") {
-      // inscreve leads do filtro numa cadência
+      // inscreve leads do filtro numa cadência; auto_enroll arma a inscrição
+      // automática de leads novos que entrarem no filtro (roda no cron)
       const sequenceId = String(body.sequence_id || "");
       const { data: seq } = await supabase.from("crm_email_sequences").select("id").eq("id", sequenceId).maybeSingle();
-      if (!seq) return j({ error: "cadência não encontrada" }, 404);
+      if (!seq) return j({ error: "cadência não encontrada" });
       const { data: firstStep } = await supabase.from("crm_email_sequence_steps")
         .select("delay_days").eq("sequence_id", sequenceId).order("step_order").limit(1).maybeSingle();
-      if (!firstStep) return j({ error: "a cadência não tem passos" }, 400);
-      const { final } = await buildRecipients(body.filters || {});
-      if (!final.length) return j({ error: "nenhum destinatário enviável com esse filtro" }, 400);
+      if (!firstStep) return j({ error: "a cadência não tem passos" });
+      const autoOn = body.auto_enroll === true;
+      await supabase.from("crm_email_sequences")
+        .update({ auto_enroll: autoOn, auto_filters: autoOn ? (body.filters || {}) : {} })
+        .eq("id", sequenceId);
+      const { final } = await buildRecipients(supabase, body.filters || {});
+      if (!final.length) {
+        if (autoOn) return j({ ok: true, enrolled: 0, total_filtro: 0, auto_armed: true });
+        return j({ error: "nenhum destinatário enviável com esse filtro — ajuste funil/etapa/origem" });
+      }
       const firstAt = new Date(Date.now() + (Number(firstStep.delay_days) || 0) * 86400000).toISOString();
       let enrolled = 0;
       for (let i = 0; i < final.length; i += 500) {
@@ -261,7 +295,7 @@ Deno.serve(async (req) => {
         );
         enrolled += count || 0;
       }
-      return j({ ok: true, enrolled, total_filtro: final.length });
+      return j({ ok: true, enrolled, total_filtro: final.length, auto_armed: autoOn });
     }
 
     if (action === "sequence_process") {
@@ -272,7 +306,7 @@ Deno.serve(async (req) => {
       // envia UM e-mail de teste pro endereço informado (valida domínio/template)
       if (!RESEND_KEY) return j({ error: "RESEND_API_KEY não configurada" }, 500);
       const to = String(body.to || "").toLowerCase().trim();
-      if (!EMAIL_RX.test(to)) return j({ error: "destinatário inválido" }, 400);
+      if (!EMAIL_RX.test(to)) return j({ error: "destinatário inválido" });
       const from = /@(universidadevendas\.com\.br|unvholdings\.com\.br)$/i.test(String(body.from_email || ""))
         ? String(body.from_email) : "contato@universidadevendas.com.br";
       const b64 = btoa(to).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -297,7 +331,7 @@ Deno.serve(async (req) => {
       const campaignId = String(body.campaign_id || "");
       const { data: camp } = await supabase.from("crm_email_campaigns")
         .select("*").eq("id", campaignId).maybeSingle();
-      if (!camp) return j({ error: "campanha não encontrada" }, 404);
+      if (!camp) return j({ error: "campanha não encontrada" });
       const { data: pend } = await supabase.from("crm_email_recipients")
         .select("id, lead_id, email, name")
         .eq("campaign_id", campaignId).eq("status", "pending").limit(BATCH);

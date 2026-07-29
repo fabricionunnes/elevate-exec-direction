@@ -11,7 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Mail, Loader2, Eye, Send, RefreshCw, Play, Plus, Trash2, Paperclip, Users, Pencil, Repeat2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -22,8 +21,8 @@ import { toast } from "sonner";
 interface Campaign { id: string; name: string; status: string; total: number; sent: number; failed: number; created_at: string; }
 interface Attachment { name: string; url: string; }
 interface Step { id?: string; step_order: number; delay_days: number; subject: string; body_text: string; attachments: Attachment[]; }
-interface Sequence { id: string; name: string; from_email: string; is_active: boolean; }
-interface EvStats { opened: number; clicked: number; unsubscribe: number; }
+interface Sequence { id: string; name: string; from_email: string; is_active: boolean; auto_enroll?: boolean; }
+interface EvStats { delivered: number; opened: number; clicked: number; unsubscribe: number; openedUnique: number; clickedUnique: number; }
 
 const DEFAULT_FROM = "contato@universidadevendas.com.br";
 
@@ -57,6 +56,7 @@ export default function CRMEmailBlastPage() {
   const [steps, setSteps] = useState<Step[]>([{ step_order: 1, delay_days: 0, subject: "", body_text: "", attachments: [] }]);
   const [savingSeq, setSavingSeq] = useState(false);
   const [enrollFor, setEnrollFor] = useState<Sequence | null>(null);
+  const [autoEnroll, setAutoEnroll] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -78,21 +78,31 @@ export default function CRMEmailBlastPage() {
       .order("created_at", { ascending: false }).limit(20);
     setCampaigns((data as Campaign[]) || []);
     const { data: evs } = await supabase.from("crm_email_events")
-      .select("campaign_id, event_type").not("campaign_id", "is", null);
+      .select("campaign_id, event_type, email").not("campaign_id", "is", null);
     const agg: Record<string, EvStats> = {};
+    const uniq: Record<string, Set<string>> = {};
     (evs || []).forEach((e: any) => {
-      const a = agg[e.campaign_id] || { opened: 0, clicked: 0, unsubscribe: 0 };
+      const a = agg[e.campaign_id] || { delivered: 0, opened: 0, clicked: 0, unsubscribe: 0, openedUnique: 0, clickedUnique: 0 };
+      if (e.event_type === "delivered") a.delivered++;
       if (e.event_type === "opened") a.opened++;
       if (e.event_type === "clicked") a.clicked++;
       if (e.event_type === "unsubscribe") a.unsubscribe++;
+      if (e.event_type === "opened" || e.event_type === "clicked") {
+        const key = `${e.campaign_id}|${e.event_type}`;
+        (uniq[key] = uniq[key] || new Set()).add(String(e.email || "").toLowerCase());
+      }
       agg[e.campaign_id] = a;
+    });
+    Object.keys(agg).forEach(id => {
+      agg[id].openedUnique = uniq[`${id}|opened`]?.size || 0;
+      agg[id].clickedUnique = uniq[`${id}|clicked`]?.size || 0;
     });
     setCampStats(agg);
   };
 
   const loadSequences = async () => {
     const { data: seqs } = await supabase.from("crm_email_sequences")
-      .select("id, name, from_email, is_active").order("created_at", { ascending: false });
+      .select("id, name, from_email, is_active, auto_enroll").order("created_at", { ascending: false });
     setSequences((seqs as Sequence[]) || []);
     const ids = (seqs || []).map((s: any) => s.id);
     if (!ids.length) return;
@@ -107,7 +117,7 @@ export default function CRMEmailBlastPage() {
     (st || []).forEach((e: any) => counts[e.sequence_id].steps++);
     setSeqCounts(counts);
     const stats: Record<string, EvStats & { sent: number }> = {};
-    ids.forEach((id: string) => stats[id] = { sent: 0, opened: 0, clicked: 0, unsubscribe: 0 });
+    ids.forEach((id: string) => stats[id] = { sent: 0, delivered: 0, opened: 0, clicked: 0, unsubscribe: 0, openedUnique: 0, clickedUnique: 0 });
     (evs || []).forEach((e: any) => {
       const a = stats[e.sequence_id]; if (!a) return;
       if (e.event_type === "sent") a.sent++;
@@ -155,6 +165,7 @@ export default function CRMEmailBlastPage() {
   const doSend = async () => {
     if (!subject.trim() || !bodyText.trim()) { toast.error("Preencha assunto e corpo"); return; }
     const p = preview || await call({ action: "preview", filters });
+    if (!p.enviaveis) { toast.error("Nenhum lead enviável nesse filtro — ajuste funil/etapa/origem"); return; }
     if (!confirm(`Enviar e-mail para ${p.enviaveis} lead(s)? Essa ação não tem volta.`)) return;
     setSending(true);
     try {
@@ -229,9 +240,14 @@ export default function CRMEmailBlastPage() {
     setEnrolling(true);
     try {
       const p = await call({ action: "preview", filters });
-      if (!confirm(`Inscrever ${p.enviaveis} lead(s) na cadência "${enrollFor.name}"?`)) { setEnrolling(false); return; }
-      const r = await call({ action: "enroll", sequence_id: enrollFor.id, filters });
-      toast.success(`${r.enrolled} lead(s) inscritos (${r.total_filtro - r.enrolled} já estavam)`);
+      if (!p.enviaveis && !autoEnroll) { toast.error("Nenhum lead enviável nesse filtro — ajuste o filtro ou ligue a inscrição automática pra esperar leads novos"); setEnrolling(false); return; }
+      const msg = p.enviaveis
+        ? `Inscrever ${p.enviaveis} lead(s) na cadência "${enrollFor.name}"?${autoEnroll ? " Leads novos que entrarem no filtro também serão inscritos." : ""}`
+        : `O filtro está com 0 leads agora. Armar a cadência "${enrollFor.name}" pra inscrever automaticamente quem entrar?`;
+      if (!confirm(msg)) { setEnrolling(false); return; }
+      const r = await call({ action: "enroll", sequence_id: enrollFor.id, filters, auto_enroll: autoEnroll });
+      if (r.auto_armed && !r.enrolled) toast.success("Cadência armada — todo lead novo que entrar nesse filtro será inscrito automaticamente (verificação a cada 10 min)");
+      else toast.success(`${r.enrolled} lead(s) inscritos (${r.total_filtro - r.enrolled} já estavam)${r.auto_armed ? " · auto-inscrição ligada" : ""}`);
       setEnrollFor(null); loadSequences();
     } catch (e: any) { toast.error(e.message); }
     finally { setEnrolling(false); }
@@ -353,45 +369,52 @@ export default function CRMEmailBlastPage() {
                 <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={loadCampaigns}><RefreshCw className="h-3.5 w-3.5" /></Button>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              {campaigns.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum disparo ainda.</p> : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader><TableRow className="text-xs">
-                      <TableHead>Campanha</TableHead><TableHead className="text-center">Total</TableHead>
-                      <TableHead className="text-center">Enviados</TableHead><TableHead className="text-center">Falhas</TableHead>
-                      <TableHead className="text-center">Aberturas</TableHead><TableHead className="text-center">Cliques</TableHead>
-                      <TableHead className="text-center">Descad.</TableHead>
-                      <TableHead>Status</TableHead><TableHead>Data</TableHead><TableHead></TableHead>
-                    </TableRow></TableHeader>
-                    <TableBody>
-                      {campaigns.map(c => {
-                        const st = campStats[c.id] || { opened: 0, clicked: 0, unsubscribe: 0 };
-                        return (
-                          <TableRow key={c.id} className="text-sm">
-                            <TableCell className="font-medium max-w-[220px] truncate">{c.name}</TableCell>
-                            <TableCell className="text-center">{c.total}</TableCell>
-                            <TableCell className="text-center text-emerald-600 font-semibold">{c.sent}</TableCell>
-                            <TableCell className="text-center">{c.failed > 0 ? <span className="text-rose-500 font-semibold">{c.failed}</span> : 0}</TableCell>
-                            <TableCell className="text-center">{st.opened}</TableCell>
-                            <TableCell className="text-center">{st.clicked}</TableCell>
-                            <TableCell className="text-center">{st.unsubscribe > 0 ? <span className="text-rose-500">{st.unsubscribe}</span> : 0}</TableCell>
-                            <TableCell><Badge variant={c.status === "done" ? "default" : "secondary"} className="text-[10px]">{c.status === "done" ? "Concluída" : c.status === "sending" ? "Enviando" : c.status}</Badge></TableCell>
-                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{new Date(c.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</TableCell>
-                            <TableCell>
-                              {c.status === "sending" && !sending && (
-                                <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={() => processLoop(c.id, c.total, c.sent + c.failed)}>
-                                  <Play className="h-3 w-3" /> Retomar
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+            <CardContent className="space-y-3">
+              {campaigns.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum disparo ainda.</p> : campaigns.map(c => {
+                const st = campStats[c.id] || { delivered: 0, opened: 0, clicked: 0, unsubscribe: 0, openedUnique: 0, clickedUnique: 0 };
+                const base = c.sent || 0;
+                const delivered = Math.min(st.delivered || base, base); // sem webhook, assume entregue = enviado
+                const rate = (n: number) => base > 0 ? Math.round((n / base) * 100) : 0;
+                const rDeliv = rate(delivered), rOpen = rate(st.openedUnique), rClick = rate(st.clickedUnique);
+                const RateRow = ({ label, count, pct, color }: { label: string; count: number; pct: number; color: string }) => (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground w-24 shrink-0">{label}</span>
+                    <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                      <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                    </div>
+                    <span className="text-xs font-semibold w-20 text-right tabular-nums">{count} <span className="text-muted-foreground font-normal">({pct}%)</span></span>
+                  </div>
+                );
+                return (
+                  <div key={c.id} className="rounded-xl border border-border p-4 space-y-2.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-sm truncate max-w-[320px]">{c.name}</span>
+                      <Badge variant={c.status === "done" ? "default" : "secondary"} className="text-[10px]">
+                        {c.status === "done" ? "Concluída" : c.status === "sending" ? "Enviando" : c.status}
+                      </Badge>
+                      <span className="text-[11px] text-muted-foreground ml-auto whitespace-nowrap">
+                        {new Date(c.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                      {c.status === "sending" && !sending && (
+                        <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={() => processLoop(c.id, c.total, c.sent + c.failed)}>
+                          <Play className="h-3 w-3" /> Retomar
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                      <span>Base: <b className="text-foreground">{c.total}</b></span>
+                      <span>Enviados: <b className="text-emerald-600">{c.sent}</b></span>
+                      {c.failed > 0 && <span>Falhas: <b className="text-rose-500">{c.failed}</b></span>}
+                      {st.unsubscribe > 0 && <span>Descadastros: <b className="text-rose-500">{st.unsubscribe}</b></span>}
+                    </div>
+                    <div className="space-y-1.5">
+                      <RateRow label="Entregues" count={delivered} pct={rDeliv} color="bg-primary/70" />
+                      <RateRow label="Aberturas" count={st.openedUnique} pct={rOpen} color="bg-emerald-500" />
+                      <RateRow label="Cliques" count={st.clickedUnique} pct={rClick} color="bg-sky-500" />
+                    </div>
+                  </div>
+                );
+              })}
               <p className="text-[11px] text-muted-foreground mt-2">Aberturas e cliques dependem do tracking ativado no Resend (Domains) e do webhook configurado. Respostas chegam direto na caixa do remetente.</p>
             </CardContent>
           </Card>
@@ -400,7 +423,7 @@ export default function CRMEmailBlastPage() {
         {/* ── CADÊNCIAS ── */}
         <TabsContent value="sequences" className="space-y-4 mt-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="text-sm text-muted-foreground">Sequência de e-mails com espera em dias entre os passos. O envio roda de hora em hora, automático.</p>
+            <p className="text-sm text-muted-foreground">Sequência de e-mails com espera em dias entre os passos. O envio roda a cada 10 minutos, automático — inclusive a inscrição de leads novos nas cadências com auto-inscrição.</p>
             <Button onClick={() => openEditor()} className="gap-2"><Plus className="h-4 w-4" /> Nova cadência</Button>
           </div>
           {sequences.length === 0 ? (
@@ -415,6 +438,7 @@ export default function CRMEmailBlastPage() {
                     <div className="flex items-center gap-2">
                       <span className="font-semibold">{sq.name}</span>
                       <Badge variant="outline" className="text-[10px]">{c.steps} passo(s)</Badge>
+                      {sq.auto_enroll && <Badge className="text-[10px] bg-sky-500/15 text-sky-600 border-0">Auto-inscrição</Badge>}
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       de {sq.from_email} · {c.active} em andamento · {c.done} concluídos · {st.sent} enviados · {st.opened} aberturas · {st.clicked} cliques
@@ -427,7 +451,7 @@ export default function CRMEmailBlastPage() {
                       loadSequences();
                     }} />
                     <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openEditor(sq)}><Pencil className="h-3.5 w-3.5" /> Editar</Button>
-                    <Button size="sm" className="gap-1.5" onClick={() => { setEnrollFor(sq); setPreview(null); }}><Users className="h-3.5 w-3.5" /> Inscrever leads</Button>
+                    <Button size="sm" className="gap-1.5" onClick={() => { setEnrollFor(sq); setAutoEnroll(!!sq.auto_enroll); setPreview(null); }}><Users className="h-3.5 w-3.5" /> Inscrever leads</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -493,8 +517,15 @@ export default function CRMEmailBlastPage() {
           <div className="space-y-3">
             {FilterBar}
             {PreviewBar}
+            <div className="flex items-center gap-2 rounded-lg border border-border p-3">
+              <Switch checked={autoEnroll} onCheckedChange={setAutoEnroll} />
+              <div className="text-xs">
+                <p className="font-medium">Inscrever automaticamente leads novos</p>
+                <p className="text-muted-foreground">Todo lead que entrar nesse filtro daqui pra frente entra sozinho na cadência. Funciona mesmo com o filtro em 0 leads hoje.</p>
+              </div>
+            </div>
             <Button onClick={doEnroll} disabled={enrolling} className="w-full gap-2">
-              {enrolling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />} Inscrever na cadência
+              {enrolling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />} {autoEnroll ? "Inscrever e armar auto-inscrição" : "Inscrever na cadência"}
             </Button>
           </div>
         </DialogContent>
