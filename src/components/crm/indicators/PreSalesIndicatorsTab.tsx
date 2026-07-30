@@ -292,7 +292,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
           closer:onboarding_staff!crm_sales_closer_staff_id_fkey(id, name),
           sdr:onboarding_staff!crm_sales_sdr_staff_id_fkey(id, name),
           pipeline:crm_pipelines(id, name),
-          product:crm_products(id, name),
+          product:onboarding_services(id, name),
           lead:crm_leads(id, name, company)
         `)
         .gte("sale_date", format(periodStart, "yyyy-MM-dd"))

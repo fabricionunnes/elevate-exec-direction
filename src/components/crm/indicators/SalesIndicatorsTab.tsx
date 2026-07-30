@@ -228,12 +228,13 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   }, [dateFilter, customDateFrom, customDateTo]);
 
   const loadProducts = async () => {
+    // mesmo catálogo do campo "Produto" do card (onboarding_services)
     const { data } = await supabase
-      .from("crm_products")
+      .from("onboarding_services")
       .select("id, name")
       .eq("is_active", true)
-      .order("sort_order");
-    
+      .order("name");
+
     setProducts(data || []);
   };
 
@@ -319,7 +320,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
             closer:onboarding_staff!crm_sales_closer_staff_id_fkey(id, name),
             sdr:onboarding_staff!crm_sales_sdr_staff_id_fkey(id, name),
             pipeline:crm_pipelines(id, name),
-            product:crm_products(id, name),
+            product:onboarding_services(id, name),
             lead:crm_leads(id, name, company, created_at)
           `)
           .gte("sale_date", format(filterStart, "yyyy-MM-dd"))
