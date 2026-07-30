@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
@@ -790,9 +791,10 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     }
   };
 
-  // Filtro com seleção múltipla (vazio = todos)
+  // Filtro com seleção múltipla (vazio = todos) + busca por nome
+  const [filterQuery, setFilterQuery] = useState("");
   const MultiFilter = ({ label, options, selected, onChange }: { label: string; options: { id: string; name: string }[]; selected: string[]; onChange: (v: string[]) => void }) => (
-    <Popover>
+    <Popover onOpenChange={(o) => { if (o) setFilterQuery(""); }}>
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="h-9 gap-2 rounded-xl text-xs border-border min-w-[160px] justify-between">
           <span className="truncate">
@@ -804,6 +806,13 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-60 p-2" align="start">
+        <Input
+          autoFocus
+          placeholder="Buscar..."
+          className="h-8 text-xs mb-1"
+          value={filterQuery}
+          onChange={(e) => setFilterQuery(e.target.value)}
+        />
         <button
           className={cn("w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted", selected.length === 0 && "font-semibold text-primary")}
           onClick={() => onChange([])}
@@ -811,7 +820,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
           {label}
         </button>
         <div className="max-h-64 overflow-y-auto mt-1 space-y-0.5">
-          {options.map(o => {
+          {options.filter(o => !filterQuery.trim() || o.name.toLowerCase().includes(filterQuery.toLowerCase())).map(o => {
             const on = selected.includes(o.id);
             return (
               <button
