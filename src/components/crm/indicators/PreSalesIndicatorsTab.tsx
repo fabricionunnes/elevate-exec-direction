@@ -75,6 +75,9 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
   // filtros multi-seleção: array vazio = todos
   const [selectedSDRs, setSelectedSDRs] = useState<string[]>(isSDRUser && staffId ? [staffId] : []);
   const [selectedPipelines, setSelectedPipelines] = useState<string[]>([]);
+  // busca dentro do dropdown de filtro — PRECISA ficar antes do return de
+  // loading (regra dos hooks; fora daqui derruba a tela com React #310)
+  const [filterQuery, setFilterQuery] = useState("");
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [leadListType, setLeadListType] = useState<"scheduled" | "realized" | "no_show" | "sem_desfecho" | null>(null);
@@ -792,7 +795,6 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
   };
 
   // Filtro com seleção múltipla (vazio = todos) + busca por nome
-  const [filterQuery, setFilterQuery] = useState("");
   const MultiFilter = ({ label, options, selected, onChange }: { label: string; options: { id: string; name: string }[]; selected: string[]; onChange: (v: string[]) => void }) => (
     <Popover onOpenChange={(o) => { if (o) setFilterQuery(""); }}>
       <PopoverTrigger asChild>
