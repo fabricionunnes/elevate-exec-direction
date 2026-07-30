@@ -185,7 +185,10 @@ export function CandidatesTab({ projectId, canEdit, isStaff, userRole = '', onUp
                     size="icon"
                     className="h-6 w-6"
                     onClick={async () => {
-                      const url = `${getPublicBaseUrl()}/#/job-application?job=${job.id}`;
+                      // formato ?public= sobrevive aos navegadores embutidos
+                      // (Instagram/WhatsApp descartam o #fragment e o candidato
+                      // caía na home comercial em vez do formulário da vaga)
+                      const url = `${getPublicBaseUrl()}/?public=vagas&job=${job.id}`;
                       await navigator.clipboard.writeText(url);
                       toast.success("Link copiado!");
                     }}
@@ -197,7 +200,10 @@ export function CandidatesTab({ projectId, canEdit, isStaff, userRole = '', onUp
                     size="icon"
                     className="h-6 w-6"
                     onClick={() => {
-                      const url = `${getPublicBaseUrl()}/#/job-application?job=${job.id}`;
+                      // formato ?public= sobrevive aos navegadores embutidos
+                      // (Instagram/WhatsApp descartam o #fragment e o candidato
+                      // caía na home comercial em vez do formulário da vaga)
+                      const url = `${getPublicBaseUrl()}/?public=vagas&job=${job.id}`;
                       window.open(url, "_blank");
                     }}
                   >
