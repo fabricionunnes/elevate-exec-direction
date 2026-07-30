@@ -289,6 +289,21 @@ export const DailyGoalCard = ({
       return (kpi?.effective_target ?? kpi?.target_value ?? 0) / activeSalespeopleCount;
     }
 
+    // Meta da empresa: rollup por vendedor tem PRECEDÊNCIA (mesma regra do
+    // painel de KPIs) — se há metas individuais, a meta da empresa é a soma
+    // delas, senão o card acha que "bateu 310%" comparando o realizado do time
+    // inteiro com a meta de um vendedor só.
+    const spLevelTargets = allMonthlyTargets.filter(
+      (mt) => mt.kpi_id === kpiId && mt.salesperson_id !== null
+    );
+    if (spLevelTargets.length > 0) {
+      const bySp: Record<string, MonthlyTarget[]> = {};
+      spLevelTargets.forEach((mt) => {
+        (bySp[mt.salesperson_id!] ||= []).push(mt);
+      });
+      return Object.values(bySp).reduce((sum, list) => sum + pickMeta(list), 0);
+    }
+
     const targets = allMonthlyTargets.filter(
       (mt) =>
         mt.kpi_id === kpiId &&
