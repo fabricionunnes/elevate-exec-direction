@@ -402,8 +402,10 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
             )}
 
             <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-              {/* Metas do mês (todos os KPIs) */}
-              <div className="rounded-xl border border-border bg-muted/20 p-4">
+              {/* Metas do mês (todos os KPIs). Em coluna única (tela estreita /
+                  aba do projeto no staff) o ranking sobe pra frente — senão ele
+                  some lá no fundo e parece que "não aparece". */}
+              <div className="rounded-xl border border-border bg-muted/20 p-4 order-2 lg:order-none">
                 <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-foreground mb-3">
                   <Flag className="h-4 w-4 text-primary" /> Metas do Mês
                   <span className="ml-auto text-[11px] font-normal text-muted-foreground">{kpis.length} indicadores</span>
@@ -429,7 +431,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
               </div>
 
               {/* Coluna direita: ranking + equipes + funil */}
-              <div className="space-y-4">
+              <div className="space-y-4 order-1 lg:order-none">
                 {cfg.show_ranking && ranking.length > 0 && (
                   <div className="rounded-xl border border-border bg-muted/20 p-4 overflow-hidden">
                     <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-foreground mb-5"><Trophy className="h-4 w-4 text-amber-500" /> Ranking do Time</div>
