@@ -153,7 +153,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
         // Metas extra (quantidade de vendas / por produto) com premiação atrelada
         const { data: secondaryGoals } = await supabase
           .from("crm_secondary_goals")
-          .select("*, product:crm_products(name)")
+          .select("*, product:onboarding_services(name)")
           .eq("month", currentMonth)
           .eq("year", currentYear)
           .in("staff_id", staffList.map(s => s.id));

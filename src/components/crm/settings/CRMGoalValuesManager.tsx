@@ -171,7 +171,8 @@ export const CRMGoalValuesManager = () => {
     setExtraStaff(staff);
     setExtraDialogOpen(true);
     const [{ data: prods }, { data: rows }] = await Promise.all([
-      supabase.from("crm_products").select("id, name").eq("is_active", true).order("sort_order"),
+      // mesmo catálogo do campo "Produto" do card de negócios
+      supabase.from("onboarding_services").select("id, name").eq("is_active", true).order("name"),
       supabase.from("crm_secondary_goals").select("*")
         .eq("staff_id", staff.id).eq("month", selectedMonth).eq("year", selectedYear).order("created_at"),
     ]);
