@@ -27,6 +27,15 @@ interface BonusInfo {
   achievedPercent: number;
 }
 
+interface ExtraGoalInfo {
+  label: string;
+  achievedQty: number;
+  targetQty: number;
+  isAchieved: boolean;
+  rewardLabel: string;
+  rewardAmount: number; // R$ que a premiação adiciona (0 se não bateu)
+}
+
 interface CommissionData {
   staffId: string;
   staffName: string;
@@ -40,6 +49,7 @@ interface CommissionData {
   tierLabel: string;
   tiers: TierInfo[];
   bonuses: BonusInfo[];
+  extras: ExtraGoalInfo[];
   missingToFirstTier: number;
   isCommissioning: boolean;
   metricLabel: string;
@@ -136,9 +146,17 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
 
         const { data: rawSalesData } = await supabase
           .from("crm_sales")
-          .select("billing_value, closer_staff_id, pipeline_id, lead:crm_leads(pipeline_id)")
+          .select("billing_value, revenue_value, product_id, closer_staff_id, pipeline_id, lead:crm_leads(pipeline_id)")
           .gte("sale_date", monthStart.toISOString().split("T")[0])
           .lte("sale_date", monthEnd.toISOString().split("T")[0]);
+
+        // Metas extra (quantidade de vendas / por produto) com premiação atrelada
+        const { data: secondaryGoals } = await supabase
+          .from("crm_secondary_goals")
+          .select("*, product:crm_products(name)")
+          .eq("month", currentMonth)
+          .eq("year", currentYear)
+          .in("staff_id", staffList.map(s => s.id));
 
         // Funis marcados como fora da meta (eventos/esteira, ex: Imersão, Mansão)
         // não contam pra remuneração — nem do closer nem da head.
@@ -304,6 +322,52 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
             ? Math.max(0, ((firstTier.min_percent / 100) * metaValue) - achieved)
             : 0;
 
+          // ── Metas extra: quantidade de vendas e por produto ──
+          // Premiação só entra quando a meta extra é batida: multiplicador aplica
+          // sobre a comissão das faixas; fixo soma R$; % soma sobre o faturamento
+          // do produto no mês. Vendas contam pelo closer responsável (mesma base).
+          const extras: ExtraGoalInfo[] = [];
+          const mySales = (salesData || []).filter((s: any) => s.closer_staff_id === staff.id);
+          let extraFixed = 0;
+          let extraMultiplier = 1;
+          for (const g of (secondaryGoals || []).filter((g: any) => g.staff_id === staff.id)) {
+            const relevant = g.kind === "product"
+              ? mySales.filter((s: any) => s.product_id === g.product_id)
+              : mySales;
+            const achievedQty = relevant.length;
+            const target = Number(g.target_qty) || 0;
+            const hit = target > 0 && achievedQty >= target;
+            const rv = Number(g.reward_value) || 0;
+            let rewardLabel = "";
+            let rewardAmount = 0;
+            if (g.reward_kind === "multiplier") {
+              rewardLabel = `${rv.toLocaleString("pt-BR")}x na comissão`;
+              if (hit) extraMultiplier *= rv;
+            } else if (g.reward_kind === "fixed") {
+              rewardLabel = `bônus R$ ${rv.toLocaleString("pt-BR")}`;
+              if (hit) { rewardAmount = rv; extraFixed += rv; }
+            } else if (g.reward_kind === "percent_product") {
+              const prodRevenue = relevant.reduce((s: number, x: any) => s + (Number(x.revenue_value ?? x.billing_value) || 0), 0);
+              rewardLabel = `${rv}% do faturamento do produto`;
+              if (hit) { rewardAmount = (prodRevenue * rv) / 100; extraFixed += rewardAmount; }
+            }
+            extras.push({
+              label: g.kind === "product" ? `Produto: ${g.product?.name || "?"}` : "Quantidade de vendas",
+              achievedQty,
+              targetQty: target,
+              isAchieved: hit,
+              rewardLabel,
+              rewardAmount,
+            });
+          }
+          if (extraMultiplier !== 1) {
+            const before = commission;
+            commission = Math.round(commission * extraMultiplier * 100) / 100;
+            // registra o ganho do multiplicador na linha correspondente
+            extras.forEach(e => { if (e.isAchieved && e.rewardLabel.includes("x na comissão") && !e.rewardAmount) e.rewardAmount = Math.round((commission - before) * 100) / 100; });
+          }
+          commission += extraFixed;
+
           const isCommissioning = commission > 0;
 
           results.push({
@@ -319,6 +383,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
             tierLabel,
             tiers: tierInfos,
             bonuses,
+            extras,
             missingToFirstTier,
             isCommissioning,
             metricLabel: staff.role === "sdr" ? "reuniões" : "em faturamento",
@@ -660,6 +725,40 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
           </div>
           <div className="space-y-2">
             {data.bonuses.map(bonus => renderBonusCard(bonus, data.role))}
+          </div>
+        </div>
+      )}
+
+      {/* Metas extra: quantidade de vendas / por produto */}
+      {data.extras.length > 0 && (
+        <div className="mt-4">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Trophy className="h-3.5 w-3.5 text-violet-500" />
+            <span className="text-xs font-semibold text-foreground">Metas Extra</span>
+          </div>
+          <div className="space-y-2">
+            {data.extras.map((ex, i) => (
+              <div key={i} className={`rounded-lg border p-3 ${ex.isAchieved ? "border-emerald-500/40 bg-emerald-500/5" : "border-border"}`}>
+                <div className="flex items-center gap-2 flex-wrap text-sm">
+                  <span className="font-medium">{ex.label}</span>
+                  <span className={`text-xs font-semibold tabular-nums ${ex.isAchieved ? "text-emerald-600" : "text-muted-foreground"}`}>
+                    {ex.achievedQty}/{ex.targetQty} venda(s)
+                  </span>
+                  <span className="text-[11px] text-muted-foreground ml-auto">{ex.rewardLabel}</span>
+                  {ex.isAchieved ? (
+                    <span className="text-xs font-bold text-emerald-600">
+                      {ex.rewardAmount > 0 ? `+${formatCurrency(ex.rewardAmount)}` : "batida"}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-muted-foreground">faltam {Math.max(0, ex.targetQty - ex.achievedQty)}</span>
+                  )}
+                </div>
+                <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div className={`h-full rounded-full ${ex.isAchieved ? "bg-emerald-500" : "bg-violet-500/60"}`}
+                    style={{ width: `${Math.min(100, ex.targetQty > 0 ? (ex.achievedQty / ex.targetQty) * 100 : 0)}%` }} />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

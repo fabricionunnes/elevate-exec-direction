@@ -182,6 +182,8 @@ export const CRMLeadDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [linkedProject, setLinkedProject] = useState<{ id: string; product_name: string | null } | null>(null);
   const [wonDialogOpen, setWonDialogOpen] = useState(false);
+  const [wonProducts, setWonProducts] = useState<{ id: string; name: string }[]>([]);
+  const [wonProductId, setWonProductId] = useState<string>("");
   const [lostDialogOpen, setLostDialogOpen] = useState(false);
   const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -297,8 +299,7 @@ export const CRMLeadDetailPage = () => {
               closer_staff_id: closerId,
               sdr_staff_id: sdrId,
               pipeline_id: data.pipeline_id,
-              // product_id pode estar inconsistente; não bloquear a criação da venda
-              product_id: null,
+              product_id: (data as any).product_id || null,
               billing_value: value,
               revenue_value: value,
               sale_date: saleDateStr,
@@ -519,6 +520,7 @@ export const CRMLeadDetailPage = () => {
         stage_id: wonStage.id,
         closed_at: new Date().toISOString(),
       };
+      if (wonProductId) updatePayload.product_id = wonProductId;
       // só define o closer se o lead ainda não tiver um — nunca sobrescreve o responsável
       if (!lead.closer_staff_id && effectiveCloserId) {
         updatePayload.closer_staff_id = effectiveCloserId;
@@ -558,8 +560,8 @@ export const CRMLeadDetailPage = () => {
               closer_staff_id: closerId,
               sdr_staff_id: sdrId,
               pipeline_id: lead.pipeline_id,
-              // product_id pode estar inconsistente; não bloquear a criação da venda
-              product_id: null,
+              product_id: wonProductId || (lead as any).product_id || null,
+              product_name: wonProducts.find(p => p.id === (wonProductId || (lead as any).product_id))?.name || null,
               billing_value: value,
               revenue_value: value,
               sale_date: saleDateStr,
@@ -1021,7 +1023,12 @@ export const CRMLeadDetailPage = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-popover">
                 <DropdownMenuItem 
-                  onClick={() => setWonDialogOpen(true)}
+                  onClick={async () => {
+                    const { data: prods } = await supabase.from("crm_products").select("id, name").eq("is_active", true).order("sort_order");
+                    setWonProducts(prods || []);
+                    setWonProductId((lead as any)?.product_id || "");
+                    setWonDialogOpen(true);
+                  }}
                   disabled={lead.stage?.final_type === 'won'}
                 >
                   <Trophy className="h-4 w-4 mr-2 text-green-500" />
@@ -1428,12 +1435,37 @@ export const CRMLeadDetailPage = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Marcar como Ganho?</AlertDialogTitle>
             <AlertDialogDescription>
-              Este lead será marcado como ganho e movido para a etapa final.
+              Este lead será marcado como ganho e movido para a etapa final. Escolha o produto vendido — ele alimenta as metas por produto e a comissão.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {wonProducts.length > 0 && (
+            <div className="py-1">
+              <Label>Produto vendido *</Label>
+              <Select value={wonProductId} onValueChange={setWonProductId}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Selecione o produto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {wonProducts.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleMarkWon} className="bg-green-600 hover:bg-green-700">
+            <AlertDialogAction
+              onClick={(e) => {
+                if (wonProducts.length > 0 && !wonProductId) {
+                  e.preventDefault();
+                  toast.error("Escolha o produto vendido antes de confirmar o ganho");
+                  return;
+                }
+                handleMarkWon();
+              }}
+              className="bg-green-600 hover:bg-green-700"
+            >
               Confirmar Ganho
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -150,6 +150,64 @@ export const CRMGoalValuesManager = () => {
   const [bonusDialogOpen, setBonusDialogOpen] = useState(false);
   const [bonusStaff, setBonusStaff] = useState<StaffMember | null>(null);
 
+  // Metas extra (quantidade de vendas / por produto)
+  interface SecondaryGoal { id?: string; kind: "sales_count" | "product"; product_id: string | null; target_qty: number; reward_kind: "multiplier" | "fixed" | "percent_product"; reward_value: number; }
+  const [extraDialogOpen, setExtraDialogOpen] = useState(false);
+  const [extraStaff, setExtraStaff] = useState<StaffMember | null>(null);
+  const [extraGoals, setExtraGoals] = useState<SecondaryGoal[]>([]);
+  const [extraProducts, setExtraProducts] = useState<{ id: string; name: string }[]>([]);
+  const [extraSaving, setExtraSaving] = useState(false);
+  const [extraCounts, setExtraCounts] = useState<Map<string, number>>(new Map());
+
+  const loadExtraCounts = async () => {
+    const { data } = await supabase.from("crm_secondary_goals")
+      .select("staff_id").eq("month", selectedMonth).eq("year", selectedYear);
+    const m = new Map<string, number>();
+    (data || []).forEach((r: any) => m.set(r.staff_id, (m.get(r.staff_id) || 0) + 1));
+    setExtraCounts(m);
+  };
+
+  const openExtraDialog = async (staff: StaffMember) => {
+    setExtraStaff(staff);
+    setExtraDialogOpen(true);
+    const [{ data: prods }, { data: rows }] = await Promise.all([
+      supabase.from("crm_products").select("id, name").eq("is_active", true).order("sort_order"),
+      supabase.from("crm_secondary_goals").select("*")
+        .eq("staff_id", staff.id).eq("month", selectedMonth).eq("year", selectedYear).order("created_at"),
+    ]);
+    setExtraProducts(prods || []);
+    setExtraGoals((rows || []).map((r: any) => ({
+      id: r.id, kind: r.kind, product_id: r.product_id,
+      target_qty: Number(r.target_qty) || 0, reward_kind: r.reward_kind, reward_value: Number(r.reward_value) || 0,
+    })));
+  };
+
+  const saveExtraGoals = async () => {
+    if (!extraStaff) return;
+    const invalid = extraGoals.some(g =>
+      g.target_qty <= 0 || (g.kind === "product" && !g.product_id) || (g.reward_kind !== "multiplier" && g.reward_value <= 0) || (g.reward_kind === "multiplier" && g.reward_value <= 1));
+    if (invalid) { toast.error("Confira as metas extra: alvo > 0, produto escolhido e premiação preenchida (multiplicador > 1)"); return; }
+    setExtraSaving(true);
+    try {
+      await supabase.from("crm_secondary_goals").delete()
+        .eq("staff_id", extraStaff.id).eq("month", selectedMonth).eq("year", selectedYear);
+      if (extraGoals.length) {
+        const { error } = await supabase.from("crm_secondary_goals").insert(
+          extraGoals.map(g => ({
+            staff_id: extraStaff.id, month: selectedMonth, year: selectedYear,
+            kind: g.kind, product_id: g.kind === "product" ? g.product_id : null,
+            target_qty: g.target_qty, reward_kind: g.reward_kind, reward_value: g.reward_value,
+          })),
+        );
+        if (error) throw error;
+      }
+      toast.success("Metas extra salvas");
+      setExtraDialogOpen(false);
+      loadExtraCounts();
+    } catch (e: any) { toast.error(e.message || "Erro ao salvar metas extra"); }
+    finally { setExtraSaving(false); }
+  };
+
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
   const getGoalTypeForStaff = (staff: StaffMember): GoalType | null => {
@@ -166,6 +224,7 @@ export const CRMGoalValuesManager = () => {
     if (closerOteGoalType || sdrOteGoalType) {
       loadGoalValues();
     }
+    loadExtraCounts();
   }, [selectedMonth, selectedYear, closerOteGoalType, sdrOteGoalType, staffMembers]);
 
   const loadInitialData = async () => {
@@ -777,9 +836,109 @@ export const CRMGoalValuesManager = () => {
                 <div className="h-2 w-2 rounded-full bg-amber-500" />
               )}
             </Button>
+            {(CLOSER_ROLES.includes(staff.role) || staff.is_crm_closer) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openExtraDialog(staff)}
+                className="gap-1"
+                title="Metas extra: quantidade de vendas e meta por produto, com premiação atrelada"
+              >
+                <Trophy className="h-3.5 w-3.5" />
+                Metas extra
+                {(extraCounts.get(staff.id) || 0) > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-xs h-5 px-1.5">
+                    {extraCounts.get(staff.id)}
+                  </Badge>
+                )}
+              </Button>
+            )}
           </div>
         </TableCell>
       </TableRow>
+    );
+  };
+
+  const renderExtraDialog = () => {
+    if (!extraStaff) return null;
+    const monthLabel = MONTHS.find(m => m.value === selectedMonth)?.label;
+    return (
+      <Dialog open={extraDialogOpen} onOpenChange={setExtraDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trophy className="h-4 w-4" />
+              Metas extra — {extraStaff.name} · {monthLabel}/{selectedYear}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Metas paralelas à meta principal em R$. A premiação entra na remuneração do mês quando a meta extra é batida:
+            multiplicador aplica sobre a comissão das faixas; bônus fixo soma em R$; % do produto soma sobre o faturamento daquele produto no mês.
+          </p>
+          <div className="space-y-3">
+            {extraGoals.map((g, i) => (
+              <div key={i} className="rounded-xl border border-border p-3 space-y-2.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Select value={g.kind} onValueChange={(v: any) =>
+                    setExtraGoals(p => p.map((x, k) => k === i ? { ...x, kind: v, product_id: v === "product" ? x.product_id : null, reward_kind: v === "product" ? x.reward_kind : (x.reward_kind === "percent_product" ? "fixed" : x.reward_kind) } : x))}>
+                    <SelectTrigger className="w-[190px] h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sales_count">Quantidade de vendas</SelectItem>
+                      <SelectItem value="product">Vendas de um produto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {g.kind === "product" && (
+                    <Select value={g.product_id || ""} onValueChange={(v) =>
+                      setExtraGoals(p => p.map((x, k) => k === i ? { ...x, product_id: v } : x))}>
+                      <SelectTrigger className="w-[210px] h-9"><SelectValue placeholder="Escolha o produto" /></SelectTrigger>
+                      <SelectContent>
+                        {extraProducts.map(pr => <SelectItem key={pr.id} value={pr.id}>{pr.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground">alvo</span>
+                    <Input type="number" min={1} className="w-20 h-9 text-right" value={g.target_qty || ""}
+                      onChange={(e) => setExtraGoals(p => p.map((x, k) => k === i ? { ...x, target_qty: parseFloat(e.target.value) || 0 } : x))} />
+                    <span className="text-xs text-muted-foreground">venda(s) no mês</span>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 ml-auto text-destructive"
+                    onClick={() => setExtraGoals(p => p.filter((_, k) => k !== i))}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-muted-foreground w-20">Premiação:</span>
+                  <Select value={g.reward_kind} onValueChange={(v: any) =>
+                    setExtraGoals(p => p.map((x, k) => k === i ? { ...x, reward_kind: v } : x))}>
+                    <SelectTrigger className="w-[240px] h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fixed">Bônus fixo (R$)</SelectItem>
+                      <SelectItem value="multiplier">Multiplicador da comissão</SelectItem>
+                      {g.kind === "product" && <SelectItem value="percent_product">% do faturamento do produto</SelectItem>}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex items-center gap-1.5">
+                    {g.reward_kind === "fixed" && <span className="text-xs text-muted-foreground">R$</span>}
+                    <Input type="number" step="0.01" className="w-24 h-9 text-right" value={g.reward_value || ""}
+                      placeholder={g.reward_kind === "multiplier" ? "1,10" : g.reward_kind === "percent_product" ? "5" : "500"}
+                      onChange={(e) => setExtraGoals(p => p.map((x, k) => k === i ? { ...x, reward_value: parseFloat(e.target.value) || 0 } : x))} />
+                    {g.reward_kind === "multiplier" && <span className="text-xs text-muted-foreground">x (ex.: 1,1 = +10%)</span>}
+                    {g.reward_kind === "percent_product" && <span className="text-xs text-muted-foreground">%</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+            <Button variant="outline" size="sm" className="gap-1.5"
+              onClick={() => setExtraGoals(p => [...p, { kind: "sales_count", product_id: null, target_qty: 0, reward_kind: "fixed", reward_value: 0 }])}>
+              <Plus className="h-4 w-4" /> Adicionar meta extra
+            </Button>
+            <Button onClick={saveExtraGoals} disabled={extraSaving} className="w-full gap-2">
+              {extraSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Salvar metas extra
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     );
   };
 
@@ -1160,6 +1319,7 @@ export const CRMGoalValuesManager = () => {
 
       {/* Bonus Dialog */}
       {renderBonusDialog()}
+      {renderExtraDialog()}
     </>
   );
 };
