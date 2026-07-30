@@ -66,6 +66,60 @@ interface PreSalesIndicatorsTabProps {
   staffRole?: string | null;
 }
 
+// Filtro com seleção múltipla (vazio = todos) + busca por nome.
+// FICA NO ESCOPO DO MÓDULO de propósito: definido dentro do componente pai,
+// ele ganharia identidade nova a cada render e o Radix remontava/fechava o
+// popover a cada tecla digitada na busca.
+const MultiFilter = ({ label, options, selected, onChange }: { label: string; options: { id: string; name: string }[]; selected: string[]; onChange: (v: string[]) => void }) => {
+  const [query, setQuery] = useState("");
+  return (
+    <Popover onOpenChange={(o) => { if (o) setQuery(""); }}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-9 gap-2 rounded-xl text-xs border-border min-w-[160px] justify-between">
+          <span className="truncate">
+            {selected.length === 0 ? label
+              : selected.length === 1 ? (options.find(o => o.id === selected[0])?.name || label)
+              : `${selected.length} selecionados`}
+          </span>
+          <ChevronDown className="h-3 w-3 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-60 p-2" align="start">
+        <Input
+          autoFocus
+          placeholder="Buscar..."
+          className="h-8 text-xs mb-1"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <button
+          className={cn("w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted", selected.length === 0 && "font-semibold text-primary")}
+          onClick={() => onChange([])}
+        >
+          {label}
+        </button>
+        <div className="max-h-64 overflow-y-auto mt-1 space-y-0.5">
+          {options.filter(o => !query.trim() || o.name.toLowerCase().includes(query.toLowerCase())).map(o => {
+            const on = selected.includes(o.id);
+            return (
+              <button
+                key={o.id}
+                className={cn("w-full flex items-center gap-2 text-left text-xs px-2 py-1.5 rounded hover:bg-muted", on && "bg-primary/10 text-primary font-medium")}
+                onClick={() => onChange(on ? selected.filter(x => x !== o.id) : [...selected, o.id])}
+              >
+                <span className={cn("h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0", on ? "bg-primary border-primary" : "border-border")}>
+                  {on && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                </span>
+                <span className="truncate">{o.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicatorsTabProps = {}) => {
   const isSDRUser = staffRole === "sdr" || staffRole === "social_setter" || staffRole === "bdr";
   const isAdmin = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
@@ -75,9 +129,6 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
   // filtros multi-seleção: array vazio = todos
   const [selectedSDRs, setSelectedSDRs] = useState<string[]>(isSDRUser && staffId ? [staffId] : []);
   const [selectedPipelines, setSelectedPipelines] = useState<string[]>([]);
-  // busca dentro do dropdown de filtro — PRECISA ficar antes do return de
-  // loading (regra dos hooks; fora daqui derruba a tela com React #310)
-  const [filterQuery, setFilterQuery] = useState("");
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [leadListType, setLeadListType] = useState<"scheduled" | "realized" | "no_show" | "sem_desfecho" | null>(null);
@@ -793,54 +844,6 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       setMarkingKey(null);
     }
   };
-
-  // Filtro com seleção múltipla (vazio = todos) + busca por nome
-  const MultiFilter = ({ label, options, selected, onChange }: { label: string; options: { id: string; name: string }[]; selected: string[]; onChange: (v: string[]) => void }) => (
-    <Popover onOpenChange={(o) => { if (o) setFilterQuery(""); }}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-9 gap-2 rounded-xl text-xs border-border min-w-[160px] justify-between">
-          <span className="truncate">
-            {selected.length === 0 ? label
-              : selected.length === 1 ? (options.find(o => o.id === selected[0])?.name || label)
-              : `${selected.length} selecionados`}
-          </span>
-          <ChevronDown className="h-3 w-3 shrink-0" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-60 p-2" align="start">
-        <Input
-          autoFocus
-          placeholder="Buscar..."
-          className="h-8 text-xs mb-1"
-          value={filterQuery}
-          onChange={(e) => setFilterQuery(e.target.value)}
-        />
-        <button
-          className={cn("w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted", selected.length === 0 && "font-semibold text-primary")}
-          onClick={() => onChange([])}
-        >
-          {label}
-        </button>
-        <div className="max-h-64 overflow-y-auto mt-1 space-y-0.5">
-          {options.filter(o => !filterQuery.trim() || o.name.toLowerCase().includes(filterQuery.toLowerCase())).map(o => {
-            const on = selected.includes(o.id);
-            return (
-              <button
-                key={o.id}
-                className={cn("w-full flex items-center gap-2 text-left text-xs px-2 py-1.5 rounded hover:bg-muted", on && "bg-primary/10 text-primary font-medium")}
-                onClick={() => onChange(on ? selected.filter(x => x !== o.id) : [...selected, o.id])}
-              >
-                <span className={cn("h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0", on ? "bg-primary border-primary" : "border-border")}>
-                  {on && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
-                </span>
-                <span className="truncate">{o.name}</span>
-              </button>
-            );
-          })}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
 
   // Card limpo (sem glow/escala) — visual profissional
   const GlowCard = ({ children, className = "" }: { children: React.ReactNode; className?: string; glowColor?: string }) => (
