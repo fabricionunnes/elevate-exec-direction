@@ -133,7 +133,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
   // Meeting event details for cards
   const [meetingEventDetails, setMeetingEventDetails] = useState<MeetingEventDetail[]>([]);
   // Leads que ENTRARAM no período (pra card de Destaques; filtro SDR/funil é client-side)
-  const [periodLeads, setPeriodLeads] = useState<{ id: string; pipeline_id: string | null; sdr_staff_id: string | null; scheduled_by_staff_id: string | null }[]>([]);
+  const [periodLeads, setPeriodLeads] = useState<{ id: string; pipeline_id: string | null; stage_id: string | null; sdr_staff_id: string | null; scheduled_by_staff_id: string | null }[]>([]);
   const [sdrGoalMetas, setSdrGoalMetas] = useState<Record<string, { agend: number; reunioes: number }>>({});
 
   useEffect(() => {
@@ -222,14 +222,27 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         .gte("event_date", periodStart.toISOString())
         .lte("event_date", periodEnd.toISOString());
 
-      // Leads criados no período (entradas)
-      const { data: leadsInPeriod } = await supabase
-        .from("crm_leads")
-        .select("id, pipeline_id, sdr_staff_id, scheduled_by_staff_id")
-        .gte("created_at", periodStart.toISOString())
-        .lte("created_at", periodEnd.toISOString())
-        .limit(20000);
-      setPeriodLeads(leadsInPeriod || []);
+      // Leads criados no período (entradas) — SÓ funis marcados como entrada
+      // real (counts_lead_inflow); importados ficam fora. Leads na etapa
+      // "Pessoal" (exclude_from_lead_count) saem da soma.
+      const [{ data: inflowPipes }, { data: exStages }] = await Promise.all([
+        supabase.from("crm_pipelines").select("id").eq("counts_lead_inflow", true),
+        supabase.from("crm_stages").select("id").eq("exclude_from_lead_count", true),
+      ]);
+      const inflowIds = (inflowPipes || []).map((p: any) => p.id);
+      const exStageIds = new Set((exStages || []).map((s: any) => s.id));
+      let leadsInPeriod: any[] = [];
+      if (inflowIds.length) {
+        const { data } = await supabase
+          .from("crm_leads")
+          .select("id, pipeline_id, stage_id, sdr_staff_id, scheduled_by_staff_id")
+          .in("pipeline_id", inflowIds)
+          .gte("created_at", periodStart.toISOString())
+          .lte("created_at", periodEnd.toISOString())
+          .limit(20000);
+        leadsInPeriod = (data || []).filter((l: any) => !l.stage_id || !exStageIds.has(l.stage_id));
+      }
+      setPeriodLeads(leadsInPeriod);
 
       // Load real meeting activities to compute completed meetings per SDR
       const { data: meetingActivities } = await supabase

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 // Visão geral de todos os funis: quantos leads em cada funil, separado por
 // etapa, com valor em negociação e tempo médio parado na etapa.
 
-interface Stage { id: string; name: string; pipeline_id: string; sort_order: number; final_type: string | null; }
+interface Stage { id: string; name: string; pipeline_id: string; sort_order: number; final_type: string | null; exclude_from_lead_count?: boolean; }
 interface AggRow { pipeline_id: string; stage_id: string; lead_count: number; value_sum: number; avg_days_in_stage: number | null; }
 
 const fmtBRL = (v: number) =>
@@ -26,7 +26,7 @@ export const FunnelsOverviewTab = () => {
       try {
         const [p, s, a] = await Promise.all([
           supabase.from("crm_pipelines").select("id, name").eq("is_active", true).order("name"),
-          supabase.from("crm_stages").select("id, name, pipeline_id, sort_order, final_type").order("sort_order"),
+          supabase.from("crm_stages").select("id, name, pipeline_id, sort_order, final_type, exclude_from_lead_count").order("sort_order"),
           supabase.rpc("get_funnels_overview"),
         ]);
         setPipelines(p.data || []);
@@ -39,7 +39,8 @@ export const FunnelsOverviewTab = () => {
   const byPipeline = useMemo(() => {
     const byStage = new Map(agg.map(r => [r.stage_id, r]));
     return pipelines.map(p => {
-      const pStages = stages.filter(s => s.pipeline_id === p.id);
+      // etapa "Pessoal" (exclude_from_lead_count) fica fora da contagem de leads
+      const pStages = stages.filter(s => s.pipeline_id === p.id && !s.exclude_from_lead_count);
       const rows = pStages.map(st => {
         const r = byStage.get(st.id);
         return {

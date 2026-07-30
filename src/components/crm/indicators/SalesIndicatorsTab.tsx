@@ -205,15 +205,17 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       const map: Record<string, { total: number; atendidas: number }> = {};
       ((byAgent.data as any[]) || []).forEach((r) => { map[r.agent_staff_id] = { total: Number(r.total) || 0, atendidas: Number(r.atendidas) || 0 }; });
       setCallsByCloser(map);
-      // Entradas de leads por funil no período (leads criados em cada funil)
+      // Entradas de leads por funil no período (leads criados em cada funil).
+      // Lead na etapa "Pessoal" (exclude_from_lead_count) sai da soma.
       try {
-        const rows = await fetchAllRows<{ pipeline: { name: string } | null }>(() =>
-          supabase.from("crm_leads").select("pipeline:crm_pipelines(name)")
+        const rows = await fetchAllRows<{ pipeline: { name: string } | null; stage: { exclude_from_lead_count: boolean } | null }>(() =>
+          supabase.from("crm_leads").select("pipeline:crm_pipelines(name), stage:crm_stages(exclude_from_lead_count)")
             .gte("created_at", start.toISOString()).lte("created_at", end.toISOString())
         );
         if (active) {
           const agg = new Map<string, number>();
-          rows.forEach(r => { const n = r.pipeline?.name || "(sem funil)"; agg.set(n, (agg.get(n) || 0) + 1); });
+          rows.filter(r => !r.stage?.exclude_from_lead_count)
+            .forEach(r => { const n = r.pipeline?.name || "(sem funil)"; agg.set(n, (agg.get(n) || 0) + 1); });
           setLeadsByFunnel([...agg.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count));
         }
       } catch { /* sem entradas */ }
