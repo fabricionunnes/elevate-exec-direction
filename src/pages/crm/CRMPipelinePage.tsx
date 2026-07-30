@@ -473,9 +473,20 @@ export const CRMPipelinePage = () => {
 
   const confirmStageMove = async () => {
     if (!stageMoveDialog.leadId || !stageMoveDialog.targetStageId) return;
-    
+
+    // Ganho exige valor: sem valor a venda entra zerada nas métricas e no ROAS do Meta.
+    // (o banco também bloqueia via trigger enforce_won_value_upd — aqui é só o aviso amigável)
+    const movingToStage = stages.find(s => s.id === stageMoveDialog.targetStageId);
+    if (movingToStage?.final_type === "won") {
+      const movingLead = leads.find(l => l.id === stageMoveDialog.leadId);
+      if ((movingLead?.opportunity_value || 0) <= 0) {
+        toast.error("Preencha o valor da oportunidade antes de marcar o lead como Ganho.");
+        return;
+      }
+    }
+
     setMovingLead(true);
-    
+
     setLeads(prev =>
       prev.map(l =>
         l.id === stageMoveDialog.leadId ? { ...l, stage_id: stageMoveDialog.targetStageId } : l

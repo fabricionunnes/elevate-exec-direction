@@ -509,6 +509,13 @@ export const CRMLeadDetailPage = () => {
       return;
     }
 
+    // Ganho exige valor: sem valor a venda entra zerada nas métricas e no ROAS do Meta.
+    // (o banco também bloqueia via trigger enforce_won_value_upd — aqui é só o aviso amigável)
+    if ((lead.opportunity_value || 0) <= 0) {
+      toast.error("Preencha o valor da oportunidade antes de marcar o lead como Ganho.");
+      return;
+    }
+
     try {
       // A venda é do VENDEDOR RESPONSÁVEL pelo lead, não de quem clica em "Ganho".
       // (um master/admin pode dar ganho num lead de outra pessoa — ex.: Fabrício fecha
