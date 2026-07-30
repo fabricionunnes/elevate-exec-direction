@@ -27,6 +27,7 @@ interface TrafficLead {
   source: string;
   notes: string | null;
   created_at: string;
+  sale_value?: number | null;
 }
 
 const STATUS_OPTIONS: { value: string; label: string; color: string }[] = [
@@ -138,10 +139,19 @@ export const ClientTrafficLeadsTab = ({ projectId }: { projectId: string }) => {
 
   const updateStatus = async (id: string, status: string) => {
     const prev = leads;
-    setLeads((ls) => ls.map((l) => (l.id === id ? { ...l, status } : l)));
+    // ao fechar, pergunta o valor da venda (alimenta o ROI do dashboard)
+    let saleValue: number | null = null;
+    if (status === "fechou") {
+      const raw = prompt("Valor da venda (R$) — deixe vazio se não quiser informar:", "");
+      if (raw !== null && raw.trim()) saleValue = parseFloat(raw.replace(/\./g, "").replace(",", ".")) || null;
+    }
+    setLeads((ls) => ls.map((l) => (l.id === id ? { ...l, status, ...(saleValue != null ? { sale_value: saleValue } : {}) } : l)));
+    const upd: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+    if (status === "fechou" || status === "perdido") upd.closed_at = new Date().toISOString();
+    if (saleValue != null) upd.sale_value = saleValue;
     const { error } = await supabase
       .from("client_traffic_leads" as never)
-      .update({ status, updated_at: new Date().toISOString() } as never)
+      .update(upd as never)
       .eq("id", id);
     if (error) {
       setLeads(prev);
@@ -185,11 +195,13 @@ export const ClientTrafficLeadsTab = ({ projectId }: { projectId: string }) => {
     const count = (s: string) => leads.filter((l) => l.status === s).length;
     const agendou = count("agendou") + count("compareceu") + count("fechou");
     const fechou = count("fechou");
+    const vendido = leads.filter((l) => l.status === "fechou").reduce((s, l) => s + (Number(l.sale_value) || 0), 0);
     return {
       total,
       agendou,
       compareceu: count("compareceu") + fechou,
       fechou,
+      vendido,
       convAgendamento: total > 0 ? Math.round((agendou / total) * 100) : 0,
       convFechamento: total > 0 ? Math.round((fechou / total) * 100) : 0,
     };
@@ -206,12 +218,13 @@ export const ClientTrafficLeadsTab = ({ projectId }: { projectId: string }) => {
   return (
     <div className="space-y-4">
       {/* Contadores */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
         {[
           { label: "Leads", value: stats.total },
           { label: "Agendaram", value: stats.agendou },
           { label: "Compareceram", value: stats.compareceu },
           { label: "Fecharam", value: stats.fechou },
+          { label: "Vendido", value: stats.vendido > 0 ? stats.vendido.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }) : "—" },
           { label: "Conv. agendamento", value: `${stats.convAgendamento}%` },
           { label: "Conv. fechamento", value: `${stats.convFechamento}%` },
         ].map((s) => (
@@ -285,6 +298,11 @@ export const ClientTrafficLeadsTab = ({ projectId }: { projectId: string }) => {
                       <span>{format(new Date(l.arrived_at + "T12:00:00"), "dd/MM/yyyy")}</span>
                     </p>
                   </div>
+                  {l.status === "fechou" && Number(l.sale_value) > 0 && (
+                    <span className="text-xs font-semibold text-emerald-600 shrink-0">
+                      {Number(l.sale_value).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
+                    </span>
+                  )}
                   <Badge className={`${st.color} border-0 text-[10px] shrink-0`}>{st.label}</Badge>
                   <Select value={l.status} onValueChange={(v) => updateStatus(l.id, v)}>
                     <SelectTrigger className="h-7 w-[150px] text-xs shrink-0">

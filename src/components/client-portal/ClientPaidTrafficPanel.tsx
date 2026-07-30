@@ -7,10 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Megaphone, ExternalLink, Settings, Loader2, Code, Link, BarChart3 } from "lucide-react";
+import { Megaphone, ExternalLink, Settings, Loader2, Code, Link, BarChart3, Plug } from "lucide-react";
 import { toast } from "sonner";
 import { MetaAdsModule } from "@/components/meta-ads/MetaAdsModule";
 import { ClientTrafficLeadsTab } from "@/components/client-portal/ClientTrafficLeadsTab";
+import { ClientCrmIntegrationTab } from "@/components/client-portal/ClientCrmIntegrationTab";
 import { Users } from "lucide-react";
 import { useClientPermissions } from "@/hooks/useClientPermissions";
 import { CLIENT_MENU_KEYS } from "@/types/onboarding";
@@ -143,6 +144,10 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
             <BarChart3 className="h-3.5 w-3.5" />
             Dashboard
           </TabsTrigger>
+          <TabsTrigger value="crm" className="gap-1.5">
+            <Plug className="h-3.5 w-3.5" />
+            Integração CRM
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="meta_ads">
@@ -152,6 +157,11 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
         {/* Leads do tráfego: a SDR do cliente registra cada lead e o desfecho */}
         <TabsContent value="leads">
           <ClientTrafficLeadsTab projectId={projectId} />
+        </TabsContent>
+
+        {/* CRM do cliente: desfecho automático + CAPI */}
+        <TabsContent value="crm">
+          <ClientCrmIntegrationTab projectId={projectId} canEdit={canEdit} />
         </TabsContent>
 
         <TabsContent value="dashboard">
