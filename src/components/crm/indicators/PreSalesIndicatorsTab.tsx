@@ -23,7 +23,7 @@ import {
 } from "recharts";
 import { format, startOfMonth, endOfMonth, getDaysInMonth, getDate, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Phone, Users, Calendar as CalendarIcon, AlertTriangle, CheckCircle, XCircle, TrendingUp, Upload, ChevronDown, Loader2, Check } from "lucide-react";
+import { Phone, Users, Calendar as CalendarIcon, AlertTriangle, CheckCircle, XCircle, TrendingUp, Upload, ChevronDown, Loader2, Check, Filter } from "lucide-react";
 import { ImportPreSalesDialog } from "@/components/crm/ImportPreSalesDialog";
 import { MeetingDetailCards, MeetingEventDetail } from "@/components/crm/MeetingDetailCards";
 import { CRMGoalStrategyDialog } from "@/components/crm/CRMGoalStrategyDialog";
@@ -915,6 +915,69 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       <div className="space-y-2.5">
         <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Detalhamento das Reuniões</h3>
         <MeetingDetailCards events={selectedSDRs.length ? meetingEventDetails.filter(e => e.attributed_sdr_id && selectedSDRs.includes(e.attributed_sdr_id)) : meetingEventDetails} />
+      </div>
+
+      {/* ── Funil de Conversão 3D: Leads → Agendamentos → Realizadas → Vendas ── */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-foreground mb-2">
+          <Filter className="h-4 w-4 text-primary" /> Funil de Conversão
+        </div>
+        {(() => {
+          const steps = [
+            { label: "Leads", value: leadsCount },
+            { label: "Agendamentos", value: visibleMetrics.agendamentos },
+            { label: "Realizadas", value: visibleMetrics.reunioes },
+            { label: "Vendas", value: filteredSales.length },
+          ];
+          // Cone 3D estilo infográfico (mesmo desenho do Quadro de Gestão à Vista)
+          const PAL = [
+            { main: "#aab2bd", light: "#dde2e8", dark: "#7d8791" },
+            { main: "#7cb93e", light: "#a9d878", dark: "#568c22" },
+            { main: "#29a3c4", light: "#6fcbe2", dark: "#1b7a95" },
+            { main: "#e64560", light: "#f0808f", dark: "#b02742" },
+          ];
+          const n = steps.length;
+          const sliceH = 44, gap = 10, cx = 118, top = 36;
+          const H = top + n * (sliceH + gap) + 26;
+          const W = 560;
+          const rAt = (i: number) => 112 - (86 * i) / n;
+          return (
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 340 }}>
+              <defs>
+                {PAL.map((c, i) => (
+                  <linearGradient key={i} id={`psf${i}`} x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor={c.dark} />
+                    <stop offset="45%" stopColor={c.light} />
+                    <stop offset="100%" stopColor={c.dark} />
+                  </linearGradient>
+                ))}
+              </defs>
+              {steps.map((s, i) => {
+                const c = PAL[i];
+                const y = top + i * (sliceH + gap);
+                const yb = y + sliceH;
+                const rt = rAt(i), rb = rAt(i + 1);
+                const ryt = rt * 0.26, ryb = rb * 0.26;
+                const conv = i > 0 && steps[i - 1].value > 0 ? (s.value / steps[i - 1].value) * 100 : null;
+                const barY = y + sliceH / 2 - 15;
+                return (
+                  <g key={i}>
+                    <rect x={cx} y={barY} width={W - cx - 12} height={30} rx={3} fill={c.main} />
+                    <text x={cx + 128} y={barY + 20} fontSize={15} fontWeight={700} fill="#fff">{s.label}</text>
+                    <text x={W - 22} y={barY + 20} fontSize={15} fontWeight={800} fill="#fff" textAnchor="end">{s.value.toLocaleString("pt-BR")}</text>
+                    {conv != null && (
+                      <text x={W - 22} y={barY + 42} fontSize={10} fill="currentColor" opacity={0.55} textAnchor="end">↓ {conv.toFixed(0)}% de conversão</text>
+                    )}
+                    <path d={`M ${cx - rt} ${y} L ${cx - rb} ${yb} A ${rb} ${ryb} 0 0 0 ${cx + rb} ${yb} L ${cx + rt} ${y} A ${rt} ${ryt} 0 0 1 ${cx - rt} ${y} Z`} fill={`url(#psf${i})`} />
+                    <ellipse cx={cx} cy={y} rx={rt} ry={ryt} fill={c.light} />
+                    <ellipse cx={cx} cy={y} rx={rt * 0.45} ry={ryt * 0.45} fill={c.main} opacity={0.35} />
+                  </g>
+                );
+              })}
+            </svg>
+          );
+        })()}
+        <p className="text-[11px] text-muted-foreground mt-1">Leads dos funis de entrada real no período · conversão etapa a etapa até a venda.</p>
       </div>
 
       {/* ── Atividades (âmbar) ── */}
