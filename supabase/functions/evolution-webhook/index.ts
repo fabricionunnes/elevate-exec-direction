@@ -22,6 +22,42 @@ function buildEvolutionHeaders(apiKey: string) {
   };
 }
 
+// Transcreve áudio de WhatsApp (Whisper) pra o agente de IA e o time "ouvirem"
+// a mensagem como texto. Falha silenciosa: sem transcrição, segue como [Áudio].
+async function transcribeAudio(base64: string, mimetype: string): Promise<string | null> {
+  try {
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    if (!OPENAI_API_KEY) return null;
+    let b64 = base64;
+    if (b64.includes('base64,')) b64 = b64.split('base64,').pop() || '';
+    const binary = atob(b64);
+    if (binary.length > 24 * 1024 * 1024) return null; // limite do Whisper ~25MB
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const ext = mimetype.includes('mp4') ? 'm4a' : mimetype.includes('mpeg') ? 'mp3' : 'ogg';
+    const form = new FormData();
+    form.append('file', new Blob([bytes], { type: mimetype || 'audio/ogg' }), `audio.${ext}`);
+    form.append('model', 'whisper-1');
+    form.append('language', 'pt');
+    const resp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+      body: form,
+      signal: AbortSignal.timeout(45000),
+    });
+    if (!resp.ok) {
+      console.error('Whisper falhou:', resp.status, (await resp.text()).slice(0, 200));
+      return null;
+    }
+    const out = await resp.json();
+    const text = String(out?.text || '').trim();
+    return text || null;
+  } catch (e) {
+    console.error('Erro na transcrição de áudio:', e);
+    return null;
+  }
+}
+
 // Helper to download media from Evolution API and upload to Supabase Storage
 async function downloadAndStoreMedia(
   supabase: any,
@@ -535,6 +571,15 @@ async function handleIncomingMessage(
       console.log(`Storing inline base64 ${type} for message ${messageId}...`);
       const url = await storeBase64Media(supabase, mediaBase64, messageId, type, mediaMimetype || 'application/octet-stream');
       if (url) { storedMediaUrl = url; console.log(`Media stored (base64): ${url}`); }
+      // Áudio recebido: transcreve pra virar texto no histórico — o agente de IA
+      // responde ao conteúdo e o time lê sem precisar ouvir.
+      if (type === 'audio' && !fromMe) {
+        const transcript = await transcribeAudio(mediaBase64, mediaMimetype || 'audio/ogg');
+        if (transcript) {
+          content = `🎙️ ${transcript}`;
+          console.log(`Áudio transcrito (${transcript.length} chars)`);
+        }
+      }
     } else if (mediaUrl) {
       // Fallback: baixa pela API (Evolution legado).
       console.log(`Downloading ${type} media for message ${messageId}...`);
