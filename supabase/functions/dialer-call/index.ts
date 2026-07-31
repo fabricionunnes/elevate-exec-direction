@@ -127,17 +127,29 @@ Deno.serve(async (req) => {
         .eq("id", queueId);
     }
 
-    if (!leadId) throw new Error("leadId ou campaignId é obrigatório");
+    // Ligação de PROJETO (consultor → cliente do Nexus): sem lead do CRM,
+    // liga direto pro telefone informado e amarra a ligação ao projeto.
+    const projectId: string | null = body.projectId || null;
+    let toNumber = "";
+    if (projectId) {
+      if (!body.phone) throw new Error("phone é obrigatório na ligação de projeto");
+      toNumber = toE164BR(String(body.phone));
+      if (!toNumber) throw new Error("Telefone inválido");
+    } else if (!leadId) {
+      throw new Error("leadId ou campaignId é obrigatório");
+    }
     if (!agentStaffId) throw new Error("agentStaffId é obrigatório (atendente que recebe a ligação)");
 
-    const { data: lead } = await supabase
-      .from("crm_leads")
-      .select("id, name, phone")
-      .eq("id", leadId)
-      .maybeSingle();
-    if (!lead) throw new Error("Lead não encontrado");
-    const toNumber = toE164BR(lead.phone || "");
-    if (!toNumber) throw new Error(`Lead "${lead.name}" sem telefone válido`);
+    if (!projectId) {
+      const { data: lead } = await supabase
+        .from("crm_leads")
+        .select("id, name, phone")
+        .eq("id", leadId)
+        .maybeSingle();
+      if (!lead) throw new Error("Lead não encontrado");
+      toNumber = toE164BR(lead.phone || "");
+      if (!toNumber) throw new Error(`Lead "${lead.name}" sem telefone válido`);
+    }
     if (!callerId) throw new Error("Sem número de origem (TWILIO_CALLER_ID ou caller_id da campanha)");
 
     // Bloqueio por saldo e por assinatura — só para clientes (tenant). UNV/owner (tenant null) não debita.
@@ -164,7 +176,8 @@ Deno.serve(async (req) => {
     const { data: call, error: callErr } = await supabase
       .from("crm_calls")
       .insert({
-        lead_id: leadId,
+        lead_id: leadId || null,
+        project_id: projectId,
         campaign_id: campaignId || null,
         queue_id: queueId || null,
         agent_staff_id: agentStaffId,

@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
 
     const { data: call } = await supabase
       .from("crm_calls")
-      .select("id, lead_id, activity_id, recording_url, duration_seconds, transcription")
+      .select("id, lead_id, project_id, activity_id, recording_url, duration_seconds, transcription")
       .eq("id", callId)
       .maybeSingle();
     if (!call) throw new Error("Ligação não encontrada");
@@ -99,6 +99,44 @@ Deno.serve(async (req) => {
         await supabase.from("crm_activities").update({ notes: "Caixa postal" }).eq("id", call.activity_id);
       }
       return new Response(JSON.stringify({ ok: true, callId, disposition: "nao_atendeu", transcribed: false, voicemail: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Ligação de PROJETO (consultor → cliente): resumo de consultoria, sem BANT
+    if ((call as any).project_id) {
+      if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY não configurada");
+      const pPrompt = `Você é analista de Customer Success da UNV. Abaixo está a transcrição de uma ligação entre o CONSULTOR da UNV e o CLIENTE (projeto de consultoria comercial). Resuma pra gestão.
+
+Transcrição:
+${truncate(transcription, 12000)}
+
+Responda APENAS com JSON válido (sem markdown):
+{
+  "resumo": "4 a 6 frases objetivas do que foi tratado",
+  "compromissos": ["ações combinadas, com responsável e prazo quando citados"],
+  "riscos": "sinais de insatisfação ou risco de churn, ou null",
+  "proximo_passo": "ação recomendada pro consultor"
+}
+Regras: não invente nada que não esteja na transcrição. Português do Brasil.`;
+      const pResp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+        body: JSON.stringify({ model: MODEL, max_tokens: 1200, messages: [{ role: "user", content: pPrompt }] }),
+      });
+      if (!pResp.ok) throw new Error(`Anthropic ${pResp.status}`);
+      const pData = await pResp.json();
+      let pRaw = (pData?.content?.[0]?.text || "{}").trim().replace(/^```(json)?/i, "").replace(/```$/i, "").trim();
+      let pq: any;
+      try { pq = JSON.parse(pRaw); } catch { const m = pRaw.match(/\{[\s\S]*\}/); pq = m ? JSON.parse(m[0]) : { resumo: pRaw }; }
+      const resumo = [
+        pq.resumo,
+        Array.isArray(pq.compromissos) && pq.compromissos.length ? "Compromissos: " + pq.compromissos.join("; ") : null,
+        pq.riscos ? "Riscos: " + pq.riscos : null,
+        pq.proximo_passo ? "Próximo passo: " + pq.proximo_passo : null,
+      ].filter(Boolean).join("\n");
+      await supabase.from("crm_calls").update({ ai_summary: resumo, ai_disposition: "projeto" }).eq("id", callId);
+      return new Response(JSON.stringify({ ok: true, callId, project: true, transcribed: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

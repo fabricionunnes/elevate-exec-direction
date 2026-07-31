@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Phone, PhoneOff, PhoneCall, Loader2, X, Mic, Minus } from "lucide-react";
 
-export interface CallTarget { id: string; name: string; phone?: string | null }
+export interface CallTarget { id: string; name: string; phone?: string | null; projectId?: string | null }
 
 interface CallDockCtx { startCall: (lead: CallTarget) => void; busy: boolean }
 const Ctx = createContext<CallDockCtx>({ startCall: () => {}, busy: false });
@@ -78,7 +78,11 @@ export function CallDockProvider({ staffId, tenantId = null, children }: { staff
     try {
       if (statusRef.current === "offline") await goReady();
       const { data, error: fnErr } = await supabase.functions.invoke("dialer-call", {
-        body: { leadId: target.id, agentStaffId: staffId, tenantId },
+        // ligação de projeto (consultor → cliente) vai com projectId + phone;
+        // ligação de lead do CRM segue como sempre
+        body: target.projectId
+          ? { projectId: target.projectId, phone: target.phone, agentStaffId: staffId, tenantId }
+          : { leadId: target.id, agentStaffId: staffId, tenantId },
       });
       if (fnErr) throw new Error(fnErr.message);
       if (data?.error) throw new Error(data.error);

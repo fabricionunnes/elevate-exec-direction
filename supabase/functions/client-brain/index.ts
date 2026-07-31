@@ -157,6 +157,16 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
     .order("meeting_date", { ascending: false })
     .limit(8);
 
+  // Ligações do consultor pro cliente (aba Ligações do projeto) — transcritas
+  const { data: projectCalls } = await supabase
+    .from("crm_calls")
+    .select("created_at, duration_seconds, transcription, ai_summary, agent:onboarding_staff!crm_calls_agent_staff_id_fkey(name)")
+    .in("project_id", companyProjectIds)
+    .not("transcription", "is", null)
+    .gte("created_at", d90)
+    .order("created_at", { ascending: false })
+    .limit(6);
+
   const { data: tasks } = await supabase
     .from("onboarding_tasks")
     .select("title, status, due_date, completed_at, is_internal")
@@ -311,6 +321,13 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
       interna: mm.is_internal,
       notas: truncate(mm.notes, 800),
       transcricao: truncate(mm.transcript, 2200),
+    })),
+    ligacoes_90d: (projectCalls || []).map((pc: any) => ({
+      quando: pc.created_at,
+      consultor: pc.agent?.name || null,
+      duracao_seg: pc.duration_seconds,
+      resumo_ia: truncate(pc.ai_summary, 600),
+      transcricao: truncate(pc.transcription, 1800),
     })),
     dossie_vivo: dossierMd,
     whatsapp_14d: waMessages,

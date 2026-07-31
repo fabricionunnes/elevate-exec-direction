@@ -62,7 +62,8 @@ Deno.serve(async (req) => {
     }
 
     // Cria atividade type 'call' no lead (aparece na timeline) se ainda não houver
-    if (!call.activity_id) {
+    // (ligações de PROJETO não têm lead — pulam a atividade do CRM)
+    if (!call.activity_id && call.lead_id) {
       const { data: act } = await supabase
         .from("crm_activities")
         .insert({

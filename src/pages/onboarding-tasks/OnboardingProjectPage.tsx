@@ -33,7 +33,9 @@ import {
   Pencil,
   Search,
   Copy,
+  Phone,
 } from "lucide-react";
+import { ProjectCallsPanel } from "@/components/onboarding-tasks/ProjectCallsPanel";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -248,7 +250,7 @@ const OnboardingProjectPage = () => {
 
   // Two-level navigation: group → sub-tabs
   const tabGroupMap: Record<string, string> = {
-    indicadores: "principal", kpis: "principal", gestao_vista: "principal", briefing: "principal", diagnostic: "principal", tasks: "principal", "ai-coach": "principal",
+    indicadores: "principal", kpis: "principal", gestao_vista: "principal", ligacoes: "principal", briefing: "principal", diagnostic: "principal", tasks: "principal", "ai-coach": "principal",
     nps: "relacionamento", csat: "relacionamento", assessments: "relacionamento", meetings: "relacionamento", support: "relacionamento", whatsapp: "relacionamento",
     health: "gestao", hr: "gestao", board: "gestao", financial: "gestao", history: "gestao",
     cfin_sistema: "sistema",
@@ -1599,6 +1601,7 @@ const OnboardingProjectPage = () => {
                     <TabsTrigger key="kpis" value="kpis"><BarChart3 className="h-3.5 w-3.5 shrink-0" />KPIs</TabsTrigger>,
                     <TabsTrigger key="gestao_vista" value="gestao_vista"><MonitorPlay className="h-3.5 w-3.5 shrink-0" />Gestão à Vista</TabsTrigger>
                   ]),
+                  <TabsTrigger key="ligacoes" value="ligacoes"><Phone className="h-3.5 w-3.5 shrink-0" />Ligações</TabsTrigger>,
                   <TabsTrigger key="briefing" value="briefing"><Building2 className="h-3.5 w-3.5 shrink-0" />Briefing</TabsTrigger>,
                   <TabsTrigger key="curriculum" value="curriculum"><GraduationCap className="h-3.5 w-3.5 shrink-0" />Grade</TabsTrigger>,
                   <TabsTrigger key="graph" value="graph"><Network className="h-3.5 w-3.5 shrink-0" />Grafo</TabsTrigger>,
@@ -1978,6 +1981,10 @@ const OnboardingProjectPage = () => {
 
           <TabsContent value="gestao_vista">
             <GestaoVistaBoard companyId={project.onboarding_company_id || ""} isStaff={currentUserRole === "master" || currentUserRole === "admin" || currentUserRole === "cs" || currentUserRole === "consultant"} />
+          </TabsContent>
+
+          <TabsContent value="ligacoes">
+            <ProjectCallsPanel projectId={projectId!} companyId={project.onboarding_company_id || null} />
           </TabsContent>
 
           <TabsContent value="hr">
