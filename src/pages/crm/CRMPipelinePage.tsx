@@ -419,10 +419,17 @@ export const CRMPipelinePage = () => {
         if (lead.phone) return false;
       }
 
-      // Filtro por anúncio (Meta): campanha / conjunto / anúncio
-      if ((filters.campaigns?.length || 0) > 0 && !filters.campaigns!.includes((lead as any).campaign_name)) return false;
-      if ((filters.adsets?.length || 0) > 0 && !filters.adsets!.includes((lead as any).adset_name)) return false;
-      if ((filters.ads?.length || 0) > 0 && !filters.ads!.includes((lead as any).ad_name)) return false;
+      // Filtro por anúncio (Meta): campanha / conjunto / anúncio.
+      // Nome oficial quando existe; senão cai no UTM (padrão dos leads atuais).
+      const adNames = (l: any) => ({
+        camp: l.campaign_name || l.utm_campaign || null,
+        adset: l.adset_name || l.utm_term || null,
+        ad: l.ad_name || l.utm_content || null,
+      });
+      const an = adNames(lead as any);
+      if ((filters.campaigns?.length || 0) > 0 && (!an.camp || !filters.campaigns!.includes(an.camp))) return false;
+      if ((filters.adsets?.length || 0) > 0 && (!an.adset || !filters.adsets!.includes(an.adset))) return false;
+      if ((filters.ads?.length || 0) > 0 && (!an.ad || !filters.ads!.includes(an.ad))) return false;
 
       return true;
     });
@@ -799,9 +806,9 @@ export const CRMPipelinePage = () => {
           originOptions={originOptions}
           totalCount={filteredLeads.length}
           entityName={selectedOriginName || "Negócio"}
-          campaignOptions={[...new Set(leads.map((l: any) => l.campaign_name).filter(Boolean))].sort() as string[]}
-          adsetOptions={[...new Set(leads.map((l: any) => l.adset_name).filter(Boolean))].sort() as string[]}
-          adOptions={[...new Set(leads.map((l: any) => l.ad_name).filter(Boolean))].sort() as string[]}
+          campaignOptions={[...new Set(leads.map((l: any) => l.campaign_name || l.utm_campaign).filter(Boolean))].sort() as string[]}
+          adsetOptions={[...new Set(leads.map((l: any) => l.adset_name || l.utm_term).filter(Boolean))].sort() as string[]}
+          adOptions={[...new Set(leads.map((l: any) => l.ad_name || l.utm_content).filter(Boolean))].sort() as string[]}
         />
       </div>
 
