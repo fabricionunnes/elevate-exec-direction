@@ -185,16 +185,26 @@ export const CRMGoalValuesManager = () => {
 
   const saveExtraGoals = async () => {
     if (!extraStaff) return;
-    const invalid = extraGoals.some(g =>
-      g.target_qty <= 0 || (g.kind === "product" && !g.product_id) || (g.reward_kind !== "multiplier" && g.reward_value <= 0) || (g.reward_kind === "multiplier" && g.reward_value <= 1));
-    if (invalid) { toast.error("Confira as metas extra: alvo > 0, produto escolhido e premiação preenchida (multiplicador > 1)"); return; }
+    // linha adicionada e deixada em branco é descartada no salvar (ficava
+    // escondida no rolamento e barrava tudo com erro genérico)
+    const rows = extraGoals.filter(g => !(g.target_qty <= 0 && g.reward_value <= 0 && !g.product_id));
+    const motivo = (g: SecondaryGoal): string | null => {
+      if (g.target_qty <= 0) return "alvo precisa ser maior que zero";
+      if (g.kind === "product" && !g.product_id) return "escolha o produto";
+      if (g.reward_kind === "multiplier" && g.reward_value <= 1) return "multiplicador precisa ser maior que 1 (ex.: 1,1)";
+      if (g.reward_kind !== "multiplier" && g.reward_value <= 0) return "preencha o valor da premiação";
+      return null;
+    };
+    const badIdx = rows.findIndex(g => motivo(g) !== null);
+    if (badIdx >= 0) { toast.error(`Meta extra ${badIdx + 1}: ${motivo(rows[badIdx])}`); return; }
+    setExtraGoals(rows);
     setExtraSaving(true);
     try {
       await supabase.from("crm_secondary_goals").delete()
         .eq("staff_id", extraStaff.id).eq("month", selectedMonth).eq("year", selectedYear);
-      if (extraGoals.length) {
+      if (rows.length) {
         const { error } = await supabase.from("crm_secondary_goals").insert(
-          extraGoals.map(g => ({
+          rows.map(g => ({
             staff_id: extraStaff.id, month: selectedMonth, year: selectedYear,
             kind: g.kind, product_id: g.kind === "product" ? g.product_id : null,
             target_qty: g.target_qty, reward_kind: g.reward_kind, reward_value: g.reward_value,
