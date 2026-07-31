@@ -27,6 +27,7 @@ import {
   Settings2,
   RotateCcw,
   Phone,
+  Megaphone,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -111,6 +112,10 @@ export const CRMFiltersBar = ({
     const current = filters[key] || [];
     updateFilter(key, current.includes(val) ? current.filter((v) => v !== val) : [...current, val]);
   };
+
+  const adFilterCount = (filters.campaigns?.length || 0) + (filters.adsets?.length || 0) + (filters.ads?.length || 0);
+  const clearAdFilters = () =>
+    onFiltersChange({ ...filters, campaigns: [], adsets: [], ads: [] });
 
   const clearFilters = () => {
     onFiltersChange({
@@ -390,6 +395,93 @@ export const CRMFiltersBar = ({
           </PopoverContent>
         </Popover>
 
+        {/* Anúncios (Meta): campanha / conjunto / anúncio */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "h-8 gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground",
+                adFilterCount > 0 && "bg-primary/10 text-foreground font-medium"
+              )}
+            >
+              <Megaphone className="h-3.5 w-3.5" />
+              Anúncios
+              {adFilterCount > 0 && (
+                <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                  {adFilterCount}
+                </Badge>
+              )}
+              <ChevronDown className="h-3 w-3" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-0" align="start">
+            <div className="p-3 border-b border-border">
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-xs font-semibold flex-1">Filtrar por anúncio</p>
+                {adFilterCount > 0 && (
+                  <button onClick={clearAdFilters} className="text-[11px] text-muted-foreground hover:text-foreground">
+                    Limpar
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar campanha, conjunto ou anúncio"
+                  value={adSearch}
+                  onChange={(e) => setAdSearch(e.target.value)}
+                  className="h-8 pl-8 text-xs"
+                />
+              </div>
+            </div>
+            <div className="max-h-[340px] overflow-y-auto p-3 space-y-3">
+              {campaignOptions.length === 0 && adsetOptions.length === 0 && adOptions.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground py-2">
+                  Nenhum lead deste funil tem campanha, conjunto ou anúncio registrado.
+                </p>
+              ) : (
+                ([
+                  { key: "campaigns" as const, label: "Campanha", opts: campaignOptions },
+                  { key: "adsets" as const, label: "Conjunto de anúncios", opts: adsetOptions },
+                  { key: "ads" as const, label: "Anúncio", opts: adOptions },
+                ]).map(({ key, label, opts }) => {
+                  const q = adSearch.trim().toLowerCase();
+                  const shown = opts.filter((o) => !q || o.toLowerCase().includes(q));
+                  if (shown.length === 0) return null;
+                  return (
+                    <div key={key}>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                        {label} <span className="font-normal normal-case">({shown.length})</span>
+                      </p>
+                      <div className="space-y-0.5">
+                        {shown.slice(0, 60).map((name) => (
+                          <div key={name} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-muted/60">
+                            <Checkbox
+                              id={`adf-${key}-${name}`}
+                              checked={(filters[key] || []).includes(name)}
+                              onCheckedChange={() => toggleNameFilter(key, name)}
+                            />
+                            <Label htmlFor={`adf-${key}-${name}`} className="text-xs cursor-pointer truncate flex-1" title={name}>
+                              {name}
+                            </Label>
+                          </div>
+                        ))}
+                        {shown.length > 60 && (
+                          <p className="text-[10px] text-muted-foreground px-1 pt-1">
+                            +{shown.length - 60} resultados — refine a busca
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+
         {/* Phone Filter */}
         <Select
           value={filters.phoneFilter}
@@ -417,7 +509,7 @@ export const CRMFiltersBar = ({
             <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground">
               <Filter className="h-3.5 w-3.5" />
               Mais filtros
-              {(filters.stages.length > 0 || filters.valueMin || filters.valueMax || (filters.campaigns?.length || 0) > 0 || (filters.adsets?.length || 0) > 0 || (filters.ads?.length || 0) > 0) && (
+              {(filters.stages.length > 0 || filters.valueMin || filters.valueMax) && (
                 <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
                   +
                 </Badge>
@@ -478,46 +570,6 @@ export const CRMFiltersBar = ({
                 </div>
               </div>
 
-              {/* Filtro por anúncio (Meta): campanha / conjunto / anúncio */}
-              {(campaignOptions.length > 0 || adsetOptions.length > 0 || adOptions.length > 0) && (
-                <div>
-                  <Label className="text-xs text-muted-foreground uppercase">Anúncios (Meta)</Label>
-                  <Input
-                    placeholder="Buscar campanha, conjunto ou anúncio..."
-                    value={adSearch}
-                    onChange={(e) => setAdSearch(e.target.value)}
-                    className="h-8 mt-2 text-xs"
-                  />
-                  {([
-                    { key: "campaigns" as const, label: "Campanha", opts: campaignOptions },
-                    { key: "adsets" as const, label: "Conjunto de anúncios", opts: adsetOptions },
-                    { key: "ads" as const, label: "Anúncio", opts: adOptions },
-                  ]).map(({ key, label, opts }) => {
-                    const q = adSearch.trim().toLowerCase();
-                    const shown = opts.filter((o) => !q || o.toLowerCase().includes(q));
-                    if (shown.length === 0) return null;
-                    return (
-                      <div key={key} className="mt-2">
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase">{label}</p>
-                        <div className="space-y-0.5 mt-1 max-h-[120px] overflow-auto">
-                          {shown.slice(0, 80).map((name) => (
-                            <div key={name} className="flex items-center gap-2 py-0.5">
-                              <Checkbox
-                                id={`adf-${key}-${name}`}
-                                checked={(filters[key] || []).includes(name)}
-                                onCheckedChange={() => toggleNameFilter(key, name)}
-                              />
-                              <Label htmlFor={`adf-${key}-${name}`} className="text-xs cursor-pointer truncate max-w-[215px]" title={name}>
-                                {name}
-                              </Label>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </div>
           </PopoverContent>
         </Popover>
