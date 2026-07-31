@@ -255,7 +255,7 @@ export const GlobalSupportNotification = () => {
                   variant="destructive"
                   onClick={() => {
                     toast.dismiss(t);
-                    navigate(`/onboarding-tasks/project/${session.project_id}`);
+                    navigate(`/onboarding-tasks/${session.project_id}`);
                   }}
                 >
                   <FolderOpen className="h-4 w-4 mr-1" />
@@ -291,8 +291,9 @@ export const GlobalSupportNotification = () => {
     if (currentSession) {
       stopPhoneRing();
       setDismissedSessions(prev => new Set(prev).add(currentSession.id));
-      navigate(`/onboarding-tasks/project/${currentSession.project_id}`, { 
-        state: { supportSessionId: currentSession.id } 
+      // rota correta é /onboarding-tasks/:projectId (sem "project/")
+      navigate(`/onboarding-tasks/${currentSession.project_id}`, {
+        state: { supportSessionId: currentSession.id }
       });
     }
   };
