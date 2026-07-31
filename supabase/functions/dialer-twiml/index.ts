@@ -39,9 +39,11 @@ Deno.serve(async (req) => {
 
     const ab = answeredBy.toLowerCase();
     const isMachine = ab.startsWith("machine") || ab === "fax";
-    // Com AMD ligada, só conecta a atendente quando for HUMANO confirmado.
-    // Máquina/fax = caixa postal; "unknown"/vazio = a Twilio não confirmou humano -> NÃO conecta (evita sentar na caixa postal).
-    if (amdOn && ab !== "human") {
+    // Com AMD ligada, corta APENAS máquina/fax CONFIRMADOS. "unknown"/vazio
+    // CONECTA: a Twilio devolve unknown com frequência pra humano de verdade
+    // (atende e fala pouco) e derrubar aqui = perder prospect vivo na linha.
+    // Trade-off aceito: de vez em quando uma caixa postal passa.
+    if (amdOn && isMachine) {
       if (callId) {
         const callStatus = isMachine ? "voicemail" : "no-answer";
         const queueStatus = isMachine ? "voicemail" : "no_answer";

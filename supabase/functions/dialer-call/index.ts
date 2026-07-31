@@ -140,6 +140,9 @@ Deno.serve(async (req) => {
     }
     if (!agentStaffId) throw new Error("agentStaffId é obrigatório (atendente que recebe a ligação)");
 
+    // leadRow fica no escopo de fora: a resposta final usa (bug: ficava preso
+    // no if e a function estourava DEPOIS de já ter disparado a ligação)
+    let leadRow: { id: string; name: string; phone: string | null } | null = null;
     if (!projectId) {
       const { data: lead } = await supabase
         .from("crm_leads")
@@ -147,6 +150,7 @@ Deno.serve(async (req) => {
         .eq("id", leadId)
         .maybeSingle();
       if (!lead) throw new Error("Lead não encontrado");
+      leadRow = lead;
       toNumber = toE164BR(lead.phone || "");
       if (!toNumber) throw new Error(`Lead "${lead.name}" sem telefone válido`);
     }
@@ -245,7 +249,9 @@ Deno.serve(async (req) => {
       ok: true,
       callId,
       callSid: twData.sid,
-      lead: { id: lead.id, name: lead.name, phone: toNumber },
+      lead: leadRow
+        ? { id: leadRow.id, name: leadRow.name, phone: toNumber }
+        : { id: null, name: "Ligação de projeto", phone: toNumber },
       queueId: queueId || null,
     });
   } catch (error: any) {
