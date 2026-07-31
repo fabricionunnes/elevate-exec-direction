@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Upload, FileText, DollarSign, History, Settings, Download, Search, Eye, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Upload, FileText, DollarSign, History, Settings, Download, Search, Eye, Pencil, Trash2, Copy, Building2 } from "lucide-react";
 
 const MONTHS = [
   { value: 1, label: "Janeiro" },
@@ -748,6 +748,26 @@ const StaffInvoicePage = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Dados da empresa (tomador) pra emissão da NF */}
+                  <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                      <Building2 className="h-3.5 w-3.5" /> Emitir a nota fiscal para
+                    </p>
+                    <p className="text-sm font-medium">UNV — Universidade Nacional de Vendas</p>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="tabular-nums">CNPJ: 51.356.237/0001-40</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs gap-1 text-primary"
+                        onClick={() => { navigator.clipboard.writeText("51356237000140"); toast.success("CNPJ copiado"); }}
+                      >
+                        <Copy className="h-3 w-3" /> copiar
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Rua Araguaia, 130, Alphaville — Nova Lima/MG · CEP 34.018-150</p>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label>Tipo de Chave PIX *</Label>
