@@ -45,6 +45,10 @@ export interface CRMFilters {
   valueMin: number | null;
   valueMax: number | null;
   phoneFilter: "all" | "with_phone" | "without_phone";
+  // filtros por nome do anúncio (Meta) — opcionais pra não quebrar quem não usa
+  campaigns?: string[];
+  adsets?: string[];
+  ads?: string[];
 }
 
 interface FilterOption {
@@ -62,6 +66,9 @@ interface CRMFiltersBarProps {
   originOptions: FilterOption[];
   totalCount: number;
   entityName?: string;
+  campaignOptions?: string[];
+  adsetOptions?: string[];
+  adOptions?: string[];
 }
 
 export const CRMFiltersBar = ({
@@ -73,9 +80,13 @@ export const CRMFiltersBar = ({
   originOptions,
   totalCount,
   entityName = "negócios",
+  campaignOptions = [],
+  adsetOptions = [],
+  adOptions = [],
 }: CRMFiltersBarProps) => {
   const [dateOpen, setDateOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState("");
+  const [adSearch, setAdSearch] = useState("");
 
   const filteredTagOptions = tagSearch.trim()
     ? tagOptions.filter((t) =>
@@ -95,6 +106,12 @@ export const CRMFiltersBar = ({
     updateFilter(key, updated);
   };
 
+  // filtros por nome (campanha/conjunto/anúncio)
+  const toggleNameFilter = (key: "campaigns" | "adsets" | "ads", val: string) => {
+    const current = filters[key] || [];
+    updateFilter(key, current.includes(val) ? current.filter((v) => v !== val) : [...current, val]);
+  };
+
   const clearFilters = () => {
     onFiltersChange({
       search: "",
@@ -108,6 +125,9 @@ export const CRMFiltersBar = ({
       valueMin: null,
       valueMax: null,
       phoneFilter: "all",
+      campaigns: [],
+      adsets: [],
+      ads: [],
     });
   };
 
@@ -121,6 +141,9 @@ export const CRMFiltersBar = ({
     filters.origins.length,
     filters.valueMin || filters.valueMax ? 1 : 0,
     filters.phoneFilter !== "all" ? 1 : 0,
+    (filters.campaigns?.length || 0),
+    (filters.adsets?.length || 0),
+    (filters.ads?.length || 0),
   ].reduce((a, b) => a + b, 0);
 
   const statusOptions = [
@@ -394,7 +417,7 @@ export const CRMFiltersBar = ({
             <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground">
               <Filter className="h-3.5 w-3.5" />
               Mais filtros
-              {(filters.stages.length > 0 || filters.valueMin || filters.valueMax) && (
+              {(filters.stages.length > 0 || filters.valueMin || filters.valueMax || (filters.campaigns?.length || 0) > 0 || (filters.adsets?.length || 0) > 0 || (filters.ads?.length || 0) > 0) && (
                 <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
                   +
                 </Badge>
@@ -454,6 +477,47 @@ export const CRMFiltersBar = ({
                   />
                 </div>
               </div>
+
+              {/* Filtro por anúncio (Meta): campanha / conjunto / anúncio */}
+              {(campaignOptions.length > 0 || adsetOptions.length > 0 || adOptions.length > 0) && (
+                <div>
+                  <Label className="text-xs text-muted-foreground uppercase">Anúncios (Meta)</Label>
+                  <Input
+                    placeholder="Buscar campanha, conjunto ou anúncio..."
+                    value={adSearch}
+                    onChange={(e) => setAdSearch(e.target.value)}
+                    className="h-8 mt-2 text-xs"
+                  />
+                  {([
+                    { key: "campaigns" as const, label: "Campanha", opts: campaignOptions },
+                    { key: "adsets" as const, label: "Conjunto de anúncios", opts: adsetOptions },
+                    { key: "ads" as const, label: "Anúncio", opts: adOptions },
+                  ]).map(({ key, label, opts }) => {
+                    const q = adSearch.trim().toLowerCase();
+                    const shown = opts.filter((o) => !q || o.toLowerCase().includes(q));
+                    if (shown.length === 0) return null;
+                    return (
+                      <div key={key} className="mt-2">
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase">{label}</p>
+                        <div className="space-y-0.5 mt-1 max-h-[120px] overflow-auto">
+                          {shown.slice(0, 80).map((name) => (
+                            <div key={name} className="flex items-center gap-2 py-0.5">
+                              <Checkbox
+                                id={`adf-${key}-${name}`}
+                                checked={(filters[key] || []).includes(name)}
+                                onCheckedChange={() => toggleNameFilter(key, name)}
+                              />
+                              <Label htmlFor={`adf-${key}-${name}`} className="text-xs cursor-pointer truncate max-w-[215px]" title={name}>
+                                {name}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </PopoverContent>
         </Popover>

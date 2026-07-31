@@ -243,6 +243,7 @@ export const CRMPipelinePage = () => {
             id, name, company, phone, email, document, stage_id, origin_id, owner_staff_id,
             opportunity_value, probability, last_activity_at, next_activity_at, urgency, notes, created_at, stage_entered_at,
             utm_source, utm_campaign, utm_content, utm_term, meta_campaign_id, meta_adset_id, meta_ad_id,
+            campaign_name, adset_name, ad_name,
             origin:crm_origins(name),
             owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name, avatar_url),
             tags:crm_lead_tags(tag:crm_tags(id, name, color)),
@@ -417,6 +418,11 @@ export const CRMPipelinePage = () => {
       } else if (filters.phoneFilter === "without_phone") {
         if (lead.phone) return false;
       }
+
+      // Filtro por anúncio (Meta): campanha / conjunto / anúncio
+      if ((filters.campaigns?.length || 0) > 0 && !filters.campaigns!.includes((lead as any).campaign_name)) return false;
+      if ((filters.adsets?.length || 0) > 0 && !filters.adsets!.includes((lead as any).adset_name)) return false;
+      if ((filters.ads?.length || 0) > 0 && !filters.ads!.includes((lead as any).ad_name)) return false;
 
       return true;
     });
@@ -793,6 +799,9 @@ export const CRMPipelinePage = () => {
           originOptions={originOptions}
           totalCount={filteredLeads.length}
           entityName={selectedOriginName || "Negócio"}
+          campaignOptions={[...new Set(leads.map((l: any) => l.campaign_name).filter(Boolean))].sort() as string[]}
+          adsetOptions={[...new Set(leads.map((l: any) => l.adset_name).filter(Boolean))].sort() as string[]}
+          adOptions={[...new Set(leads.map((l: any) => l.ad_name).filter(Boolean))].sort() as string[]}
         />
       </div>
 
