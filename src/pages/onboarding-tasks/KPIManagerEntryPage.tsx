@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Building2, Users, Search, Save, CalendarDays, ShieldCheck, RotateCcw } from "lucide-react";
+import { Building2, Users, Search, Save, CalendarDays, ShieldCheck, RotateCcw, Upload, Sparkles } from "lucide-react";
 import { toDateString } from "@/lib/dateUtils";
+import * as XLSX from "xlsx";
 
 interface KPI {
   id: string;
@@ -70,6 +71,8 @@ export default function KPIManagerEntryPage() {
   const [authLoading, setAuthLoading] = useState(!!codeFromUrl);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importInfo, setImportInfo] = useState<{ filled: number; unmatched: string[] } | null>(null);
 
   const [units, setUnits] = useState<NamedRef[]>([]);
   const [sectors, setSectors] = useState<NamedRef[]>([]);
@@ -341,6 +344,114 @@ export default function KPIManagerEntryPage() {
     }
   };
 
+  // ---- importar arquivo (planilha, PDF ou foto) e preencher as células
+  const extractFromFile = async (file: File): Promise<any> => {
+    const name = file.name.toLowerCase();
+    const isSheet = /\.(xlsx|xls|csv|ods)$/.test(name);
+    const isPdf = /\.pdf$/.test(name);
+    const isImage = file.type.startsWith("image/");
+
+    if (isSheet) {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const parts: string[] = [];
+      wb.SheetNames.forEach((sheetName) => {
+        const csv = XLSX.utils.sheet_to_csv(wb.Sheets[sheetName]);
+        if (csv.trim()) parts.push(`### Aba: ${sheetName}\n${csv}`);
+      });
+      return { kind: "text", text: parts.join("\n\n") };
+    }
+
+    if (isPdf) {
+      const pdfjs: any = await import("pdfjs-dist");
+      pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+        "pdfjs-dist/build/pdf.worker.min.mjs",
+        import.meta.url
+      ).toString();
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjs.getDocument({ data: buf }).promise;
+      const pages: string[] = [];
+      for (let i = 1; i <= Math.min(pdf.numPages, 10); i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        pages.push(content.items.map((it: any) => it.str).join(" "));
+      }
+      const text = pages.join("\n").trim();
+      if (text.length > 40) return { kind: "text", text };
+
+      // PDF escaneado: manda a primeira página como imagem
+      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 2 });
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext("2d")!, viewport }).promise;
+      const dataUrl = canvas.toDataURL("image/png");
+      return { kind: "image", image_base64: dataUrl.split(",")[1], media_type: "image/png" };
+    }
+
+    if (isImage) {
+      const base64: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      return { kind: "image", image_base64: base64, media_type: file.type || "image/png" };
+    }
+
+    // txt e afins
+    return { kind: "text", text: await file.text() };
+  };
+
+  const handleImportFile = async (file: File | null | undefined) => {
+    if (!file || !link) return;
+    if (file.size > 12 * 1024 * 1024) {
+      toast.error("Arquivo muito grande (máximo 12 MB)");
+      return;
+    }
+    setImporting(true);
+    setImportInfo(null);
+    try {
+      const payload = await extractFromFile(file);
+      const { data, error } = await supabase.functions.invoke("kpi-manager-import", {
+        body: {
+          code: code || codeFromUrl,
+          unit_id: filterUnit !== "all" ? filterUnit : null,
+          ...payload,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      const res = data as any;
+      if (res.date && /^\d{4}-\d{2}-\d{2}$/.test(res.date)) setEntryDate(res.date);
+
+      const visibleSpIds = new Set(filteredSalespeople.map((sp) => sp.id));
+      const nextDraft: Record<string, string> = {};
+      let filled = 0;
+      (res.cells || []).forEach((c: any) => {
+        if (!visibleSpIds.has(c.salesperson_id)) return;
+        const kpi = kpis.find((k) => k.id === c.kpi_id);
+        nextDraft[`${c.salesperson_id}:${c.kpi_id}`] = formatValue(Number(c.value), kpi?.kpi_type || "numeric");
+        filled++;
+      });
+
+      if (filled === 0) {
+        toast.error("Não achei nenhum vendedor deste filtro no arquivo");
+      } else {
+        setDraft((prev) => ({ ...prev, ...nextDraft }));
+        toast.success(`${filled} célula(s) preenchida(s) — confira e clique em Salvar`);
+      }
+      setImportInfo({ filled, unmatched: res.unmatched_salespeople || [] });
+    } catch (err: any) {
+      console.error("[KPIManager] import error:", err);
+      toast.error(err?.message || "Erro ao ler o arquivo");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   // ---- telas
   if (!link) {
     return (
@@ -499,6 +610,31 @@ export default function KPIManagerEntryPage() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              <input
+                id="kpi-import-file"
+                type="file"
+                accept=".xlsx,.xls,.csv,.ods,.pdf,image/*"
+                className="hidden"
+                onChange={(e) => {
+                  handleImportFile(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+              <Button
+                variant="outline"
+                onClick={() => document.getElementById("kpi-import-file")?.click()}
+                disabled={importing}
+              >
+                {importing ? (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2 animate-pulse" /> Lendo arquivo...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" /> Importar arquivo
+                  </>
+                )}
+              </Button>
               {changedCells.length > 0 && (
                 <Button variant="ghost" size="sm" onClick={() => setDraft({})}>
                   <RotateCcw className="h-4 w-4 mr-1" /> Descartar
@@ -510,6 +646,12 @@ export default function KPIManagerEntryPage() {
               </Button>
             </div>
           </CardHeader>
+          {importInfo && importInfo.unmatched.length > 0 && (
+            <div className="mx-6 mb-3 p-3 rounded-lg border border-amber-500/40 bg-amber-500/10 text-sm">
+              Não consegui identificar no cadastro: <strong>{importInfo.unmatched.join(", ")}</strong>. Lance esses
+              valores na mão ou ajuste o nome do vendedor no Nexus.
+            </div>
+          )}
           <CardContent className="p-0">
             {loading ? (
               <div className="p-10 text-center text-muted-foreground">Carregando...</div>
