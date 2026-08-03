@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
     // 3. Busca contas de anúncio
     const accRes = await fetch(
-      `${GRAPH_API}/me/adaccounts?fields=id,name,account_id,account_status,currency&access_token=${token}`
+      `${GRAPH_API}/me/adaccounts?fields=id,name,account_id,account_status,currency&limit=100&access_token=${token}`
     );
     const accData = await accRes.json();
     const accounts: Array<{ id: string; name: string; account_id?: string; currency?: string }> = accData.data ?? [];

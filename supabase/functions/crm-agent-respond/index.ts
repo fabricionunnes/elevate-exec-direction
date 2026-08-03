@@ -670,6 +670,25 @@ Deno.serve(async (req) => {
       if (nl > 0 && s2.slice(nl + 1).trim() === s2.slice(0, nl).trim()) return s2.slice(0, nl).trim();
       return s2;
     };
+    // Trava anti-vazamento: se o modelo escorregar e narrar bastidor
+    // ("não achei nada sobre o perfil, então vou perguntar"), a frase é cortada
+    // antes de ir pro lead. Só remove a linha/frase problemática, o resto segue.
+    const stripMeta = (t: string) => {
+      const padrao = /(n[ãa]o (achei|encontrei|consegui achar)[^.!?\n]*|pesquis(?:ei|ando|ar)[^.!?\n]*|dei uma (olhada|pesquisada)[^.!?\n]*|vou (pesquisar|perguntar direto|checar)[^.!?\n]*|(?:como |já que |ent[ãa]o )?n[ãa]o (?:tem|h[áa]) (?:nada|muita coisa)[^.!?\n]*)/gi;
+      const limpo = t
+        .split(/\n/)
+        .map((linha) => {
+          const semMeta = linha.replace(padrao, "").replace(/^\s*[,.;:—-]+\s*/, "").trim();
+          // linha que era só meta-narração some inteira
+          return padrao.test(linha) && semMeta.length < 12 ? "" : semMeta;
+        })
+        .filter((l, i, arr) => l !== "" || (i > 0 && i < arr.length - 1))
+        .join("\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+      return limpo || t.trim();
+    };
+
     msgs = msgs.map((m) => ({ ...m, content: unhalve(m.content) }));
     msgs = msgs.filter((m, i) => !(i > 0 && msgs[i - 1].direction === m.direction && msgs[i - 1].content === m.content));
     if (msgs.length === 0) return { ok: true, skip: "sem conteúdo textual" };
@@ -730,6 +749,7 @@ Deno.serve(async (req) => {
       `- Se ficar claro que tem empresa: comente algo ESPECÍFICO e verdadeiro sobre o negócio/segmento dela e conecte com o que oferecemos — nada genérico, nada de "vi que você tem uma empresa".`,
       `- Se NÃO estiver claro que é empresária: diga de forma leve e humana que você busca se conectar com empresários, e PERGUNTE diretamente se ela é dona de empresa. Conduza conforme a resposta.`,
       `- NUNCA invente dados da empresa. Se a busca não trouxer nada concreto e verdadeiro, não afirme — pergunte.`,
+      `- NUNCA conte pro lead o que você fez nos bastidores. Proibido escrever coisas como "não achei nada sobre o perfil", "pesquisei", "vou perguntar direto", "dei uma olhada no seu perfil". A busca é interna: ou você usa o que achou pra personalizar, ou simplesmente puxa assunto/pergunta — sem explicar o motivo.`,
     ].join("") : "";
     const system = [
       agent.instructions || "Você é um atendente comercial.",
@@ -741,6 +761,7 @@ Deno.serve(async (req) => {
       confirmedTimeHint,
       igPersonalization,
       `\n\nVocê está respondendo uma conversa de ${channelLabel} com ${leadName}. Responda como mensagem: curta, humana, sem markdown, sem títulos, uma ideia por mensagem. NUNCA repita uma pergunta que o lead já respondeu — antes de perguntar, confira o histórico. Escreva a resposta UMA única vez, sem repetir o texto. Nunca revele que é uma IA. Se não souber algo, seja honesto e ofereça encaminhar para uma pessoa.`,
+      `\n\nREGRA DE OURO: a sua saída é EXATAMENTE o texto que o lead vai ler no celular dele. Escreva só a mensagem — nada de raciocínio, plano, justificativa, narração do que você fez ou vai fazer, nem menção a busca, perfil, ferramenta, sistema ou consulta. Se você não descobriu algo, apenas pergunte com naturalidade, sem dizer que não descobriu.`,
     ].join("");
 
     // Alternância user/assistant exigida pela API (mescla consecutivas, começa em user)
@@ -810,7 +831,7 @@ Deno.serve(async (req) => {
 
       const texts = content.filter((b: any) => b?.type === "text").map((b: any) => String(b.text));
       reply = [...new Set(texts)].join("").trim();
-      reply = unhalve(reply);
+      reply = stripMeta(unhalve(reply));
       // Pós-checagem anti-alucinação: se houve consulta de agenda e a resposta cita
       // horários fora da lista retornada, força UMA correção.
       const lastConsult = [...toolCalls].reverse().find((t) => t.startsWith("consultar_horarios"));

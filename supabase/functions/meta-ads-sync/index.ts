@@ -164,17 +164,26 @@ Deno.serve(async (req) => {
       const longToken = longData.access_token;
 
       // Get ad accounts
-      const accountsRes = await fetchWithTimeout(`${GRAPH_API}/me/adaccounts?fields=id,name,account_id,account_status,currency,timezone_name&access_token=${longToken}`);
-      const accountsData = await accountsRes.json();
-      if (accountsData.error) throw new Error(accountsData.error.message);
+      // A Graph API devolve 25 contas por página. Sem seguir paging.next,
+      // quem administra muitas BMs perdia contas na lista (bug: Vitor Duarte,
+      // Makeimports etc. não apareciam).
+      const allAccounts: any[] = [];
+      let pageUrl = `${GRAPH_API}/me/adaccounts?fields=id,name,account_id,account_status,currency,timezone_name&limit=100&access_token=${longToken}`;
+      for (let p = 0; p < 25 && pageUrl; p++) {
+        const pRes = await fetchWithTimeout(pageUrl);
+        const pData = await pRes.json();
+        if (pData.error) throw new Error(pData.error.message);
+        allAccounts.push(...(pData.data || []));
+        pageUrl = pData.paging?.next || "";
+      }
 
-      const accounts = (accountsData.data || []).map((acc: any) => ({
+      const accounts = allAccounts.map((acc: any) => ({
         id: acc.id,
         account_id: acc.account_id,
         name: acc.name,
         status: acc.account_status,
         currency: acc.currency,
-      }));
+      })).sort((a: any, b: any) => String(a.name || "").localeCompare(String(b.name || ""), "pt-BR"));
 
       return new Response(JSON.stringify({ accounts, access_token: longToken }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

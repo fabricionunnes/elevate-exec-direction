@@ -109,16 +109,23 @@ Deno.serve(async (req) => {
       const expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000).toISOString() : null;
 
       // List ad accounts
-      const accRes = await gj(
-        `${GRAPH_API}/me/adaccounts?fields=id,account_id,name,currency,account_status&limit=200&access_token=${accessToken}`,
-      );
-      if (accRes.error) throw new Error(accRes.error.message);
+      // segue paging.next: sem isso, quem administra muitas BMs só via as
+      // primeiras contas e achava que a conta do cliente "não existia"
+      const allAcc: any[] = [];
+      let accUrl = `${GRAPH_API}/me/adaccounts?fields=id,account_id,name,currency,account_status&limit=100&access_token=${accessToken}`;
+      for (let p = 0; p < 25 && accUrl; p++) {
+        const page = await gj(accUrl);
+        if (page.error) throw new Error(page.error.message);
+        allAcc.push(...(page.data || []));
+        accUrl = page.paging?.next || "";
+      }
+      allAcc.sort((a: any, b: any) => String(a.name || "").localeCompare(String(b.name || ""), "pt-BR"));
 
       return new Response(
         JSON.stringify({
           access_token: accessToken,
           expires_at: expiresAt,
-          accounts: accRes.data || [],
+          accounts: allAcc,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
