@@ -106,86 +106,65 @@ export default function KPIManagerEntryPage() {
       return;
     }
     setAuthLoading(true);
+    setLoading(true);
     try {
-      const { data, error } = await (supabase as any).rpc("validate_kpi_manager_code", { p_code: clean });
+      // RPC única (security definer): unidades e equipes não são legíveis sem login,
+      // então o bootstrap devolve tudo já escopado na empresa do código.
+      const { data, error } = await (supabase as any).rpc("kpi_manager_bootstrap", { p_code: clean });
       if (error) throw error;
-      const row = Array.isArray(data) ? data[0] : data;
-      if (!row) {
+      const boot = data as any;
+      if (!boot || !boot.company_id) {
         toast.error("Código inválido ou desativado");
         return;
       }
-      setLink(row as LinkInfo);
-      if ((row as LinkInfo).unit_id) setFilterUnit((row as LinkInfo).unit_id!);
+      applyBootstrap(boot);
     } catch (err) {
       console.error("[KPIManager] validate error:", err);
       toast.error("Erro ao validar o código");
     } finally {
       setAuthLoading(false);
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (link?.company_id) loadCompanyData(link.company_id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [link?.company_id]);
-
-  const loadCompanyData = async (companyId: string) => {
-    setLoading(true);
-    try {
-      const [unitsRes, sectorsRes, teamsRes, spRes, kpisRes] = await Promise.all([
-        supabase.from("company_units").select("id, name").eq("company_id", companyId).eq("is_active", true).order("name"),
-        supabase.from("company_sectors").select("id, name, unit_id").eq("company_id", companyId).eq("is_active", true).order("name"),
-        supabase.from("company_teams").select("id, name, unit_id").eq("company_id", companyId).eq("is_active", true).order("name"),
-        supabase.from("company_salespeople").select("id, name, unit_id, team_id, sector_id").eq("company_id", companyId).eq("is_active", true).order("name"),
-        supabase.from("company_kpis").select("id, name, kpi_type, periodicity, scope, unit_id, team_id, sector_id, salesperson_id, sort_order").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
-      ]);
-
-      const kpiList = (kpisRes.data || []) as KPI[];
-      const spList = (spRes.data || []) as Salesperson[];
-      const kpiIds = kpiList.map((k) => k.id);
-      const spIds = spList.map((s) => s.id);
-
-      const [kuRes, ksRes, ktRes, kspRes, sSecRes] = await Promise.all([
-        kpiIds.length ? supabase.from("kpi_units").select("kpi_id, unit_id").in("kpi_id", kpiIds) : Promise.resolve({ data: [] as any[] }),
-        kpiIds.length ? supabase.from("kpi_sectors").select("kpi_id, sector_id").in("kpi_id", kpiIds) : Promise.resolve({ data: [] as any[] }),
-        kpiIds.length ? supabase.from("kpi_teams").select("kpi_id, team_id").in("kpi_id", kpiIds) : Promise.resolve({ data: [] as any[] }),
-        kpiIds.length ? supabase.from("kpi_salespeople").select("kpi_id, salesperson_id").in("kpi_id", kpiIds) : Promise.resolve({ data: [] as any[] }),
-        spIds.length ? supabase.from("salesperson_sectors").select("salesperson_id, sector_id").in("salesperson_id", spIds) : Promise.resolve({ data: [] as any[] }),
-      ]);
-
-      const group = (rows: any[], keyField: string, valField: string) => {
-        const map: Record<string, string[]> = {};
-        (rows || []).forEach((r: any) => {
-          if (!map[r[keyField]]) map[r[keyField]] = [];
-          map[r[keyField]].push(r[valField]);
-        });
-        return map;
-      };
-
-      setUnits((unitsRes.data || []) as NamedRef[]);
-      setSectors((sectorsRes.data || []) as NamedRef[]);
-      setTeams((teamsRes.data || []) as NamedRef[]);
-      setSalespeople(spList);
-      setKpis(kpiList);
-      setKpiUnitIds(group(kuRes.data as any[], "kpi_id", "unit_id"));
-      setKpiSectorIds(group(ksRes.data as any[], "kpi_id", "sector_id"));
-      setKpiTeamIds(group(ktRes.data as any[], "kpi_id", "team_id"));
-      setKpiSpIds(group(kspRes.data as any[], "kpi_id", "salesperson_id"));
-
-      const secMap = group(sSecRes.data as any[], "salesperson_id", "sector_id");
-      spList.forEach((sp) => {
-        if (sp.sector_id) {
-          if (!secMap[sp.id]) secMap[sp.id] = [];
-          if (!secMap[sp.id].includes(sp.sector_id)) secMap[sp.id].push(sp.sector_id);
-        }
+  const applyBootstrap = (boot: any) => {
+    const group = (rows: any[], keyField: string, valField: string) => {
+      const map: Record<string, string[]> = {};
+      (rows || []).forEach((r: any) => {
+        if (!map[r[keyField]]) map[r[keyField]] = [];
+        map[r[keyField]].push(r[valField]);
       });
-      setSpSectors(secMap);
-    } catch (err) {
-      console.error("[KPIManager] load error:", err);
-      toast.error("Erro ao carregar os dados da empresa");
-    } finally {
-      setLoading(false);
-    }
+      return map;
+    };
+
+    const spList = (boot.salespeople || []) as Salesperson[];
+
+    setUnits((boot.units || []) as NamedRef[]);
+    setSectors((boot.sectors || []) as NamedRef[]);
+    setTeams((boot.teams || []) as NamedRef[]);
+    setSalespeople(spList);
+    setKpis((boot.kpis || []) as KPI[]);
+    setKpiUnitIds(group(boot.kpi_units || [], "kpi_id", "unit_id"));
+    setKpiSectorIds(group(boot.kpi_sectors || [], "kpi_id", "sector_id"));
+    setKpiTeamIds(group(boot.kpi_teams || [], "kpi_id", "team_id"));
+    setKpiSpIds(group(boot.kpi_salespeople || [], "kpi_id", "salesperson_id"));
+
+    const secMap = group(boot.salesperson_sectors || [], "salesperson_id", "sector_id");
+    spList.forEach((sp) => {
+      if (sp.sector_id) {
+        if (!secMap[sp.id]) secMap[sp.id] = [];
+        if (!secMap[sp.id].includes(sp.sector_id)) secMap[sp.id].push(sp.sector_id);
+      }
+    });
+    setSpSectors(secMap);
+
+    setLink({
+      company_id: boot.company_id,
+      company_name: boot.company_name,
+      unit_id: boot.link_unit_id ?? null,
+      label: boot.label ?? null,
+    });
+    if (boot.link_unit_id) setFilterUnit(boot.link_unit_id);
   };
 
   // ---- escopo: quais KPIs valem pra cada vendedor (mesma regra do link individual)
