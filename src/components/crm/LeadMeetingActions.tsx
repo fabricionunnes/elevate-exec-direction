@@ -174,6 +174,59 @@ export const trackMeetingEvent = async (
   }
 };
 
+/** Desfaz o registro de um evento: apaga TODAS as linhas do tipo pro lead
+ * (closer + SDR). Em "realized" apaga também o realized_out_of_icp gerado pelo
+ * trigger de Fora do ICP, senão a reunião voltaria a contar ao remover o ICP. */
+export const untrackMeetingEvent = async (
+  leadId: string,
+  eventType: MeetingEventType
+): Promise<boolean> => {
+  try {
+    const types: string[] =
+      eventType === "realized" ? ["realized", "realized_out_of_icp"] : [eventType];
+
+    const { error } = await supabase
+      .from("crm_meeting_events")
+      .delete()
+      .eq("lead_id", leadId)
+      .in("event_type", types);
+
+    if (error) {
+      console.error("Error untracking meeting event:", error);
+      return false;
+    }
+
+    // desfaz o efeito colateral nas atividades de reunião
+    if (eventType === "realized") {
+      await supabase
+        .from("crm_activities")
+        .update({ status: "pending", completed_at: null })
+        .eq("lead_id", leadId)
+        .eq("type", "meeting")
+        .eq("status", "completed");
+    }
+    if (eventType === "no_show" || eventType === "out_of_icp") {
+      await supabase
+        .from("crm_activities")
+        .update({ status: "pending" })
+        .eq("lead_id", leadId)
+        .eq("type", "meeting")
+        .eq("status", "cancelled");
+    }
+    if (eventType === "scheduled") {
+      await supabase
+        .from("crm_leads")
+        .update({ scheduled_by_staff_id: null, scheduled_at: null })
+        .eq("id", leadId);
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error in untrackMeetingEvent:", error);
+    return false;
+  }
+};
+
 export const getCurrentStaffId = async (): Promise<string | null> => {
   const {
     data: { user },
@@ -236,9 +289,32 @@ export function LeadMeetingActions({
     e.preventDefault();
     e.stopPropagation();
 
-    if (loading || trackedEvents.has(eventType)) {
-      if (trackedEvents.has(eventType)) {
-        toast.info("Este evento já foi registrado para este lead");
+    if (loading) return;
+
+    // já marcado: clicar de novo DESMARCA (para de contar na métrica)
+    if (trackedEvents.has(eventType)) {
+      setLoading(eventType);
+      try {
+        const removed = await untrackMeetingEvent(leadId, eventType);
+        if (removed) {
+          setTrackedEvents((prev) => {
+            const next = new Set(prev);
+            next.delete(eventType);
+            return next;
+          });
+          const undoLabels: Record<MeetingEventType, string> = {
+            scheduled: "Agendamento desmarcado",
+            realized: "Reunião realizada desmarcada",
+            no_show: "No show desmarcado",
+            out_of_icp: "Fora do ICP desmarcado",
+          };
+          toast.success(undoLabels[eventType]);
+          onEventTracked?.();
+        } else {
+          toast.error("Erro ao desmarcar o evento");
+        }
+      } finally {
+        setLoading(null);
       }
       return;
     }
@@ -303,7 +379,7 @@ export function LeadMeetingActions({
           )}
           onClick={(e) => handleTrackEvent(e, "scheduled")}
           disabled={loading !== null}
-          title="Reunião Agendada"
+          title={trackedEvents.has("scheduled") ? "Clique para desmarcar o agendamento" : "Reunião Agendada"}
         >
           {loading === "scheduled" ? (
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -320,7 +396,7 @@ export function LeadMeetingActions({
           )}
           onClick={(e) => handleTrackEvent(e, "realized")}
           disabled={loading !== null}
-          title="Reunião Realizada"
+          title={trackedEvents.has("realized") ? "Clique para desmarcar (para de contar)" : "Reunião Realizada"}
         >
           {loading === "realized" ? (
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -337,7 +413,7 @@ export function LeadMeetingActions({
           )}
           onClick={(e) => handleTrackEvent(e, "no_show")}
           disabled={loading !== null}
-          title="No Show"
+          title={trackedEvents.has("no_show") ? "Clique para desmarcar o no show" : "No Show"}
         >
           {loading === "no_show" ? (
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -354,7 +430,7 @@ export function LeadMeetingActions({
           )}
           onClick={(e) => handleTrackEvent(e, "out_of_icp")}
           disabled={loading !== null}
-          title="Fora do ICP"
+          title={trackedEvents.has("out_of_icp") ? "Clique para desmarcar o Fora do ICP" : "Fora do ICP"}
         >
           {loading === "out_of_icp" ? (
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -401,7 +477,7 @@ export function LeadMeetingActions({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top" className="text-xs">
-            Reunião Agendada
+            {trackedEvents.has("scheduled") ? "Clique para desmarcar o agendamento" : "Reunião Agendada"}
           </TooltipContent>
         </Tooltip>
 
@@ -426,7 +502,7 @@ export function LeadMeetingActions({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top" className="text-xs">
-            Reunião Realizada
+            {trackedEvents.has("realized") ? "Clique para desmarcar (para de contar)" : "Reunião Realizada"}
           </TooltipContent>
         </Tooltip>
 
@@ -451,7 +527,7 @@ export function LeadMeetingActions({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top" className="text-xs">
-            No Show
+            {trackedEvents.has("no_show") ? "Clique para desmarcar o no show" : "No Show"}
           </TooltipContent>
         </Tooltip>
 
@@ -476,7 +552,7 @@ export function LeadMeetingActions({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top" className="text-xs">
-            Fora do ICP
+            {trackedEvents.has("out_of_icp") ? "Clique para desmarcar o Fora do ICP" : "Fora do ICP"}
           </TooltipContent>
         </Tooltip>
 
