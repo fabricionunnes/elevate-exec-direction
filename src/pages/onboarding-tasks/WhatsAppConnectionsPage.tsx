@@ -260,6 +260,9 @@ export default function WhatsAppConnectionsPage() {
                   {inst.server === "unv"
                     ? <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 text-xs">Servidor UNV</Badge>
                     : <Badge className="bg-amber-500/15 text-amber-600 border-amber-500/30 text-xs">Stevo — migrar</Badge>}
+                  {connected(inst.status)
+                    ? <Badge className="bg-emerald-500 text-white border-0 text-xs">Conectada</Badge>
+                    : <Badge variant="destructive" className="text-xs">Desconectada</Badge>}
                 </div>
               </div>
               <CardDescription className="font-mono text-xs">
