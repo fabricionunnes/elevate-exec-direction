@@ -2953,7 +2953,9 @@ export default function AllRecurringChargesPage() {
         } : null}
         categories={staffCategories.filter((c: any) => c.type === "receita").map((c: any) => ({ id: c.id, name: c.name }))}
         existingAccounts={invoices
-          .filter((x: any) => x.source_table === "financial_receivables" && (x.status === "pending" || x.status === "overdue" || x.status === "partial") && !x.description?.startsWith("Ajuste automático Asaas"))
+          // inclui mensalidades de cliente (company_invoices) além dos lançamentos
+          // do financeiro central — a RPC agora dá baixa nas duas origens
+          .filter((x: any) => (x.status === "pending" || x.status === "overdue" || x.status === "partial") && !x.description?.startsWith("Ajuste automático Asaas"))
           .map((x: any) => ({ id: x.id, description: x.description, amount: Number(x.amount_cents || 0) / 100, party: x.company_name || x.custom_receiver_name || null, due_date: x.due_date, paid: Number(x.paid_amount_cents || 0) / 100 }))}
         onDone={() => { setDistributeReceivable(null); loadData(); }}
       />
