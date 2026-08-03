@@ -2338,6 +2338,11 @@ const OnboardingTasksPage = () => {
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp-hub")}>
                   <MessageSquare className="h-4 w-4 mr-2" /> WhatsApp Hub
                 </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/conexoes-whatsapp")}>
+                    <MessageSquare className="h-4 w-4 mr-2" /> Conexões WhatsApp
+                  </DropdownMenuItem>
+                )}
                 {canCreateCompany && (
                   <>
                     <DropdownMenuSeparator />

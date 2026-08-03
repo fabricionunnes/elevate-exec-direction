@@ -164,6 +164,7 @@ const KPIEntryPage = lazy(() => import("./pages/onboarding-tasks/KPIEntryPage"))
 const VendedorKPIPage = lazy(() => import("./pages/vendedor/VendedorKPIPage"));
 const HealthScorePage = lazy(() => import("./pages/onboarding-tasks/HealthScorePage"));
 const FinancialModulePage = lazy(() => import("./pages/onboarding-tasks/FinancialModulePage"));
+const WhatsAppConnectionsPage = lazy(() => import("./pages/onboarding-tasks/WhatsAppConnectionsPage"));
 const ApiDocsPage = lazy(() => import("./pages/onboarding-tasks/ApiDocsPage"));
 const AllRecurringChargesPage = lazy(() => import("./pages/onboarding-tasks/AllRecurringChargesPage"));
 const RecurringMonitorPage = lazy(() => import("./pages/onboarding-tasks/RecurringMonitorPage"));
@@ -503,6 +504,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/companies-report" element={<OnboardingCompaniesReportPage />} />
               <Route path="/sales-report" element={<SalesReportPage />} />
               <Route path="/onboarding-tasks/results" element={<OnboardingResultsPage />} />
+              <Route path="/onboarding-tasks/conexoes-whatsapp" element={<WhatsAppConnectionsPage />} />
               <Route path="/onboarding-tasks/financeiro" element={<ModuleGuard module="financial" label="Financeiro"><FinancialModulePage /></ModuleGuard>} />
               <Route path="/onboarding-tasks/api-docs" element={<ApiDocsPage />} />
               <Route path="/onboarding-tasks/financeiro/recorrencias" element={<ModuleGuard module="financial" label="Financeiro"><AllRecurringChargesPage /></ModuleGuard>} />
