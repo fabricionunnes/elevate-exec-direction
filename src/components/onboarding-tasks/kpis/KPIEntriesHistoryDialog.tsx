@@ -74,7 +74,7 @@ const MultiPick = ({ label, options, selected, onChange }: {
   return (
     <Popover onOpenChange={(o) => { if (o) setQuery(""); }}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="w-[180px] h-10 justify-between font-normal">
+        <Button variant="outline" className="w-full h-9 justify-between font-normal px-3">
           <span className="truncate text-sm">{resumo}</span>
           <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
         </Button>
@@ -342,61 +342,76 @@ export const KPIEntriesHistoryDialog = ({
 
           <div className="space-y-4">
             {/* Filters */}
-            <div className="flex flex-wrap gap-4">
-              <div className="space-y-1">
-                <Label className="text-xs">Data Inicial</Label>
-                <Input type="date" value={dateRange.start} className="w-[150px]"
-                  onChange={(e) => { if (e.target.value) setDateRange({ ...dateRange, start: e.target.value }); }} />
+            <div className="rounded-xl border border-border bg-muted/30 p-3">
+              <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">De</Label>
+                  <Input type="date" value={dateRange.start} className="h-9 w-full text-xs"
+                    onChange={(e) => { if (e.target.value) setDateRange({ ...dateRange, start: e.target.value }); }} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Até</Label>
+                  <Input type="date" value={dateRange.end} className="h-9 w-full text-xs"
+                    onChange={(e) => { if (e.target.value) setDateRange({ ...dateRange, end: e.target.value }); }} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Vendedor</Label>
+                  <MultiPick label="Todos" options={salespeople.map(s => ({ id: s.id, name: s.name }))}
+                    selected={selectedSalespeople}
+                    onChange={(v) => { setSelectedSalespeople(v); setSelectedIds([]); }} />
+                </div>
+                {units.length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Unidade</Label>
+                    <MultiPick label="Todas" options={units}
+                      selected={selectedUnits}
+                      onChange={(v) => { setSelectedUnits(v); setSelectedIds([]); }} />
+                  </div>
+                )}
+                {teams.length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Equipe</Label>
+                    <MultiPick label="Todas" options={teams}
+                      selected={selectedTeams}
+                      onChange={(v) => { setSelectedTeams(v); setSelectedIds([]); }} />
+                  </div>
+                )}
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">KPI</Label>
+                  <Select value={selectedKpi} onValueChange={(v) => { setSelectedKpi(v); setSelectedIds([]); }}>
+                    <SelectTrigger className="h-9 w-full text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      {kpis.map(kpi => <SelectItem key={kpi.id} value={kpi.id}>{kpi.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Data Final</Label>
-                <Input type="date" value={dateRange.end} className="w-[150px]"
-                  onChange={(e) => { if (e.target.value) setDateRange({ ...dateRange, end: e.target.value }); }} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Vendedor</Label>
-                <MultiPick label="Todos" options={salespeople.map(s => ({ id: s.id, name: s.name }))}
-                  selected={selectedSalespeople}
-                  onChange={(v) => { setSelectedSalespeople(v); setSelectedIds([]); }} />
-              </div>
-              {units.length > 0 && (
-                <div className="space-y-1">
-                  <Label className="text-xs">Unidade</Label>
-                  <MultiPick label="Todas" options={units}
-                    selected={selectedUnits}
-                    onChange={(v) => { setSelectedUnits(v); setSelectedIds([]); }} />
+              {(selectedSalespeople.length > 0 || selectedUnits.length > 0 || selectedTeams.length > 0 || selectedKpi !== "all") && (
+                <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-border/60">
+                  <span className="text-[11px] text-muted-foreground">
+                    {filteredEntries.length} de {entries.length} lançamentos
+                  </span>
+                  <button
+                    className="text-[11px] text-primary hover:underline ml-auto"
+                    onClick={() => { setSelectedSalespeople([]); setSelectedUnits([]); setSelectedTeams([]); setSelectedKpi("all"); setSelectedIds([]); }}
+                  >
+                    Limpar filtros
+                  </button>
                 </div>
               )}
-              {teams.length > 0 && (
-                <div className="space-y-1">
-                  <Label className="text-xs">Equipe</Label>
-                  <MultiPick label="Todas" options={teams}
-                    selected={selectedTeams}
-                    onChange={(v) => { setSelectedTeams(v); setSelectedIds([]); }} />
-                </div>
-              )}
-              <div className="space-y-1">
-                <Label className="text-xs">KPI</Label>
-                <Select value={selectedKpi} onValueChange={(v) => { setSelectedKpi(v); setSelectedIds([]); }}>
-                  <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {kpis.map(kpi => <SelectItem key={kpi.id} value={kpi.id}>{kpi.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
             {/* Summary */}
             {summaryBySalesperson.length > 0 && (
               <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
                 {summaryBySalesperson.slice(0, 4).map(sp => (
-                  <div key={sp.id} className="p-3 rounded-lg bg-muted/50">
-                    <p className="text-sm font-medium truncate">{sp.name}</p>
-                    <p className="text-lg font-bold text-primary">
+                  <div key={sp.id} className="p-3 rounded-xl border border-border bg-card">
+                    <p className="text-xs font-medium truncate text-muted-foreground" title={sp.name}>{sp.name}</p>
+                    <p className="text-lg font-bold tabular-nums mt-0.5">
                       {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(sp.totalValue)}
                     </p>
-                    <p className="text-xs text-muted-foreground">{sp.totalEntries} lançamentos</p>
+                    <p className="text-[11px] text-muted-foreground">{sp.totalEntries} lançamento{sp.totalEntries > 1 ? "s" : ""}</p>
                   </div>
                 ))}
               </div>
@@ -456,25 +471,30 @@ export const KPIEntriesHistoryDialog = ({
                               <Checkbox checked={isSelected} onCheckedChange={() => toggleSelect(entry.id)} />
                             </TableCell>
                           )}
-                          <TableCell className="font-medium">
-                            <div>{formatDateLocal(entry.entry_date, "dd/MM/yyyy")}</div>
+                          <TableCell className="py-2 font-medium whitespace-nowrap">
+                            <span className="text-sm">{formatDateLocal(entry.entry_date, "dd/MM/yyyy")}</span>
                             {entry.created_at && (
-                              <div className="text-[11px] font-normal text-muted-foreground">
-                                lançado dia {new Date(entry.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit" })} às {new Date(entry.created_at).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })}
-                              </div>
+                              <span
+                                className="block text-[10px] font-normal text-muted-foreground"
+                                title={`Lançado em ${new Date(entry.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`}
+                              >
+                                reg. {new Date(entry.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit" })} {new Date(entry.created_at).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })}
+                              </span>
                             )}
                           </TableCell>
-                          <TableCell>{salesperson?.name || "-"}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="gap-1">
+                          <TableCell className="py-2 max-w-[180px]">
+                            <span className="block truncate text-sm" title={salesperson?.name || "-"}>{salesperson?.name || "-"}</span>
+                          </TableCell>
+                          <TableCell className="py-2">
+                            <Badge variant="outline" className="gap-1 font-normal">
                               {kpi && getKpiIcon(kpi.kpi_type)}
                               {kpi?.name || "-"}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right font-bold">
+                          <TableCell className="py-2 text-right font-bold tabular-nums">
                             {kpi ? formatValue(entry.value, kpi.kpi_type) : entry.value}
                           </TableCell>
-                          <TableCell className="max-w-[150px] truncate text-muted-foreground">
+                          <TableCell className="py-2 max-w-[150px] truncate text-muted-foreground text-xs">
                             {entry.observations || "-"}
                           </TableCell>
                           {(canEdit || canDelete) && (
