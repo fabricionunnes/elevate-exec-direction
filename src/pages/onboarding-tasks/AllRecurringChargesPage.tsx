@@ -1242,6 +1242,19 @@ export default function AllRecurringChargesPage() {
     };
   }, [filteredInvoices, todayStr]);
 
+  // Cards do topo funcionam como filtro rápido de status (clicar de novo limpa).
+  const isStatusCardActive = (target: string[]) =>
+    target.length > 0 && target.length === selectedStatuses.length && target.every(s => selectedStatuses.includes(s));
+  const applyStatusCard = (target: string[]) =>
+    setSelectedStatuses(isStatusCardActive(target) ? [] : target);
+  const statusCardClass = (target: string[]) =>
+    `cursor-pointer transition-colors ${
+      target.length === 0
+        ? (selectedStatuses.length === 0 ? "border-primary ring-1 ring-primary/30" : "hover:border-primary/40")
+        : (isStatusCardActive(target) ? "border-primary ring-1 ring-primary/30" : "hover:border-primary/40")
+    }`;
+
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -1656,28 +1669,28 @@ export default function AllRecurringChargesPage() {
 
               {/* Summary */}
               <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                <Card>
+                <Card onClick={() => applyStatusCard([])} className={statusCardClass([])}>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total</CardTitle></CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{formatCurrencyCents(invoiceSummary.totalAll)}</div>
                     <p className="text-xs text-muted-foreground">{invoiceSummary.totalCount} parcelas</p>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card onClick={() => applyStatusCard(["pending"])} className={statusCardClass(["pending"])}>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">A Receber</CardTitle></CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{formatCurrencyCents(invoiceSummary.totalPending)}</div>
                     <p className="text-xs text-muted-foreground">{invoiceSummary.pendingCount} parcelas</p>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card onClick={() => applyStatusCard(["paid", "partial"])} className={statusCardClass(["paid", "partial"])}>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Recebido</CardTitle></CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-emerald-600">{formatCurrencyCents(invoiceSummary.totalPaid)}</div>
                     <p className="text-xs text-muted-foreground">{invoiceSummary.paidCount} parcelas</p>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card onClick={() => applyStatusCard(["overdue"])} className={statusCardClass(["overdue"])}>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Vencido</CardTitle></CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-destructive">{formatCurrencyCents(invoiceSummary.totalOverdue)}</div>
@@ -2169,25 +2182,25 @@ export default function AllRecurringChargesPage() {
               </Card>
 
               <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                <Card>
+                <Card onClick={() => applyStatusCard([])} className={statusCardClass([])}>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total</CardTitle></CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{formatCurrency(filteredPayables.reduce((s, p) => s + p.amount, 0))}</div>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card onClick={() => applyStatusCard(["pending", "overdue"])} className={statusCardClass(["pending", "overdue"])}>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total a Pagar</CardTitle></CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-destructive">{formatCurrency(filteredPayables.filter(p => p.status !== "paid").reduce((s, p) => s + p.amount, 0))}</div>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card onClick={() => applyStatusCard(["paid", "partial"])} className={statusCardClass(["paid", "partial"])}>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Pago</CardTitle></CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-emerald-600">{formatCurrency(filteredPayables.filter(p => p.status === "paid").reduce((s, p) => s + (p.paid_amount || p.amount), 0))}</div>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card onClick={() => applyStatusCard(["overdue"])} className={statusCardClass(["overdue"])}>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Vencidos</CardTitle></CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-destructive">{formatCurrency(filteredPayables.filter(p => p.status !== "paid" && p.status !== "cancelled" && p.due_date && p.due_date < new Date().toISOString().split("T")[0]).reduce((s, p) => s + p.amount, 0))}</div>
