@@ -1951,7 +1951,7 @@ export const KPIDashboardTab = ({
       {!isSalespersonView && showWidget("nsm") && <NorthStarMetricCard companyId={companyId} />}
 
       {/* Monthly Projection Card - Shows individual main goals when there are multiple */}
-      {showWidget("projection") && (projection.target > 0 || projection.hasDistinctCategories || projection.hasMultipleMainGoals) && (
+      {showWidget("projection") && (
         <div className="space-y-4">
           {/* Warning when we have distinct categories (faturamento vs receita) that shouldn't be summed */}
           {projection.showDistinctCategoriesWarning && projection.individualProjections.length > 0 && (
@@ -1965,8 +1965,9 @@ export const KPIDashboardTab = ({
           )}
           
           {/* Main consolidated projection card - only show if we DON'T have distinct categories warning AND NOT multiple main goals */}
-          {!projection.showDistinctCategoriesWarning && !projection.hasMultipleMainGoals && projection.target > 0 && (
+          {!projection.showDistinctCategoriesWarning && !projection.hasMultipleMainGoals && (
             <Card className={`border-2 ${
+              projection.target <= 0 ? 'border-muted' :
               projection.projectionPercent >= 100 ? 'border-green-500 bg-green-500/5' :
               projection.projectionPercent >= 70 ? 'border-amber-500 bg-amber-500/5' :
               'border-destructive bg-destructive/5'
@@ -1991,7 +1992,11 @@ export const KPIDashboardTab = ({
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Meta do Mês</p>
-                    <p className="text-2xl font-bold">{formatValue(projection.target, projection.displayType)}</p>
+                    {projection.target > 0 ? (
+                      <p className="text-2xl font-bold">{formatValue(projection.target, projection.displayType)}</p>
+                    ) : (
+                      <p className="text-base font-medium text-muted-foreground mt-1">Sem meta cadastrada</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Valor Projetado</p>
@@ -1999,23 +2004,33 @@ export const KPIDashboardTab = ({
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Projeção</p>
-                    <div className="flex items-center gap-2">
-                      <p className={`text-2xl font-bold ${
-                        projection.projectionPercent >= 100 ? 'text-green-600' :
-                        projection.projectionPercent >= 70 ? 'text-amber-600' :
-                        'text-destructive'
-                      }`}>
-                        {projection.projectionPercent.toFixed(0)}%
-                      </p>
-                      {projection.projectionPercent >= 100 ? (
-                        <TrendingUp className="h-5 w-5 text-green-600" />
-                      ) : (
-                        <TrendingDown className="h-5 w-5 text-destructive" />
-                      )}
-                    </div>
+                    {projection.target > 0 ? (
+                      <div className="flex items-center gap-2">
+                        <p className={`text-2xl font-bold ${
+                          projection.projectionPercent >= 100 ? 'text-green-600' :
+                          projection.projectionPercent >= 70 ? 'text-amber-600' :
+                          'text-destructive'
+                        }`}>
+                          {projection.projectionPercent.toFixed(0)}%
+                        </p>
+                        {projection.projectionPercent >= 100 ? (
+                          <TrendingUp className="h-5 w-5 text-green-600" />
+                        ) : (
+                          <TrendingDown className="h-5 w-5 text-destructive" />
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-base font-medium text-muted-foreground mt-1">—</p>
+                    )}
                   </div>
                 </div>
                 <div className="mt-4">
+                  {projection.target <= 0 && (
+                    <p className="text-xs text-muted-foreground mb-3 p-2 rounded-md bg-muted/60">
+                      Nenhuma meta cadastrada para este mês neste filtro — o card mostra só o realizado e a projeção.
+                      Cadastre a meta em Configuração → Metas para ver o atingimento.
+                    </p>
+                  )}
                   <div className="flex justify-between text-xs text-muted-foreground mb-1">
                     <span>Progresso do mês: {projection.timeProgress.toFixed(0)}%</span>
                     <span>Atingimento: {projection.target > 0 ? ((projection.realized / projection.target) * 100).toFixed(0) : 0}%</span>
@@ -2031,17 +2046,19 @@ export const KPIDashboardTab = ({
                         projection.projectionPercent >= 70 ? 'bg-amber-500' :
                         'bg-destructive'
                       }`}
-                      style={{ width: `${Math.min((projection.realized / projection.target) * 100, 100)}%` }}
+                      style={{ width: `${projection.target > 0 ? Math.min((projection.realized / projection.target) * 100, 100) : 0}%` }}
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2 text-center">
-                    {projection.projectionPercent >= 100 
-                      ? "✅ A empresa está no ritmo para bater a meta!"
-                      : projection.projectionPercent >= 70
-                      ? "⚠️ Atenção: a projeção está abaixo da meta esperada"
-                      : "🚨 Alerta: a empresa está bem abaixo do ritmo necessário"
-                    }
-                  </p>
+                  {projection.target > 0 && (
+                    <p className="text-xs text-muted-foreground mt-2 text-center">
+                      {projection.projectionPercent >= 100 
+                        ? "✅ A empresa está no ritmo para bater a meta!"
+                        : projection.projectionPercent >= 70
+                        ? "⚠️ Atenção: a projeção está abaixo da meta esperada"
+                        : "🚨 Alerta: a empresa está bem abaixo do ritmo necessário"
+                      }
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
