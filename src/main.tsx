@@ -31,6 +31,7 @@ const publicRoutes = [
   "/nps",
   "/csat",
   "/kpi-entry",
+  "/kpi-gestor",
   "/kickoff",
   "/cac-form",
   "/points",
@@ -167,6 +168,9 @@ if (publicParam) {
     if (token) {
       forceHashRoute(`/contrato-rotina/${encodeURIComponent(token)}`, "");
     }
+  } else if (publicParam === "kpi-gestor") {
+    // expects code=...
+    forceHashRoute("/kpi-gestor", window.location.search);
   } else if (publicParam === "fatura") {
     forceHashRoute("/fatura", window.location.search);
   }

@@ -31,6 +31,7 @@ import {
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, RefreshCw, Link, Building2, UsersRound, Filter, X, Check, UserCheck, Users } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
+import { KPIManagerLinkDialog } from "./KPIManagerLinkDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -509,6 +510,7 @@ export const SalespeopleTab = ({ companyId, isAdmin }: SalespeopleTabProps) => {
         </div>
         {isAdmin && (
           <div className="flex items-center gap-2">
+            <KPIManagerLinkDialog companyId={companyId} />
             {salespeople.some((sp) => sp.email && !sp.has_login && sp.is_active) && (
               <Button
                 variant="outline"
