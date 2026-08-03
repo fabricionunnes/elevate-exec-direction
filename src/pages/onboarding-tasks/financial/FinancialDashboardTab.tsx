@@ -15,6 +15,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, Legend, CartesianGrid, LineChart, Line, Area, AreaChart 
 } from "recharts";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DashboardDetailDialog } from "./DashboardDetailDialog";
 import { BankStatementDialog } from "@/components/financial/BankStatementDialog";
 
@@ -187,48 +188,76 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     return mrr / activeRecurringCount;
   }, [activeRecurringCount, mrr]);
 
-  const mrrMovement = useMemo(() => {
-    // Acrescentado: contratos recorrentes criados no mês e AINDA ativos.
-    const addedList = recurringCharges.filter(c => c.is_active && c.created_at?.startsWith(monthStr));
-    const added = addedList.reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
-    return { added, addedCount: addedList.length };
-  }, [recurringCharges, monthStr]);
+  // MRR acrescentado/perdido COM detalhe por cliente (os cards abrem a lista).
+  // Acrescentado: recorrências criadas no mês e ainda ativas, somadas por cliente.
+  // Perdido: clientes com churn no mês × parcela mensal vigente (cobranças ativas
+  // ou, se não houver, as da última desativação — ignora recriações antigas).
+  const [mrrDetails, setMrrDetails] = useState<{ added: { name: string; cents: number }[]; lost: { name: string; cents: number }[] }>({ added: [], lost: [] });
+  const [mrrDialog, setMrrDialog] = useState<null | "added" | "lost">(null);
 
-  // MRR Perdido = CLIENTES que encerraram no mês (churn do projeto) × parcela
-  // mensal que pagavam (cobrança recorrente do cliente; pega o conjunto mais
-  // recente — ativo ou da última desativação — pra ignorar recriações antigas).
-  const [mrrLost, setMrrLost] = useState<{ cents: number; count: number }>({ cents: 0, count: 0 });
   useEffect(() => {
     (async () => {
+      const addedByCompany = new Map<string, number>();
+      recurringCharges
+        .filter(c => c.is_active && c.created_at?.startsWith(monthStr))
+        .forEach(c => {
+          const cid = c.company_id || "sem-cliente";
+          addedByCompany.set(cid, (addedByCompany.get(cid) || 0) + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"));
+        });
+
       const start = `${monthStr}-01`;
       const end = new Date(selectedYear, selectedMonth + 1, 1).toISOString().slice(0, 10);
       const { data: churned } = await supabase
         .from("onboarding_projects")
         .select("onboarding_company_id, company_id")
         .gte("churn_date", start).lt("churn_date", end);
-      const companyIds = Array.from(new Set((churned || [])
+      const lostIds = Array.from(new Set((churned || [])
         .map((p: any) => p.onboarding_company_id || p.company_id).filter(Boolean)));
-      if (!companyIds.length) { setMrrLost({ cents: 0, count: 0 }); return; }
-      const { data: chs } = await supabase
-        .from("company_recurring_charges")
-        .select("company_id, amount_cents, recurrence, is_active, updated_at")
-        .in("company_id", companyIds);
-      let cents = 0;
-      companyIds.forEach(cid => {
-        const mine = (chs || []).filter((c: any) => c.company_id === cid);
-        if (!mine.length) return;
-        // conjunto vigente: cobranças ativas; se nenhuma, as da última data de desativação
-        const active = mine.filter((c: any) => c.is_active);
-        let current = active;
-        if (!current.length) {
-          const lastDay = mine.map((c: any) => String(c.updated_at || "").slice(0, 10)).sort().pop();
-          current = mine.filter((c: any) => String(c.updated_at || "").slice(0, 10) === lastDay);
-        }
-        cents += current.reduce((s: number, c: any) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
-      });
-      setMrrLost({ cents, count: companyIds.length });
+      const lostByCompany = new Map<string, number>();
+      if (lostIds.length) {
+        const { data: chs } = await supabase
+          .from("company_recurring_charges")
+          .select("company_id, amount_cents, recurrence, is_active, updated_at")
+          .in("company_id", lostIds);
+        lostIds.forEach(cid => {
+          const mine = (chs || []).filter((c: any) => c.company_id === cid);
+          if (!mine.length) return;
+          const active = mine.filter((c: any) => c.is_active);
+          let current = active;
+          if (!current.length) {
+            const lastDay = mine.map((c: any) => String(c.updated_at || "").slice(0, 10)).sort().pop();
+            current = mine.filter((c: any) => String(c.updated_at || "").slice(0, 10) === lastDay);
+          }
+          const cents = current.reduce((s: number, c: any) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
+          if (cents > 0) lostByCompany.set(cid, cents);
+        });
+      }
+
+      const allIds = Array.from(new Set([...addedByCompany.keys(), ...lostByCompany.keys()]))
+        .filter(id => id && id !== "sem-cliente");
+      const names = new Map<string, string>();
+      if (allIds.length) {
+        const { data: cos } = await supabase.from("onboarding_companies").select("id, name").in("id", allIds);
+        (cos || []).forEach((c: any) => names.set(c.id, c.name));
+      }
+      const toList = (m: Map<string, number>) =>
+        [...m.entries()]
+          .map(([id, cents]) => ({ name: names.get(id) || "Cliente sem cadastro", cents }))
+          .sort((a, b) => b.cents - a.cents);
+
+      setMrrDetails({ added: toList(addedByCompany), lost: toList(lostByCompany) });
     })();
-  }, [monthStr, selectedYear, selectedMonth]);
+  }, [monthStr, selectedYear, selectedMonth, recurringCharges]);
+
+  const mrrMovement = useMemo(() => ({
+    added: mrrDetails.added.reduce((s, x) => s + x.cents, 0),
+    addedCount: mrrDetails.added.length,
+  }), [mrrDetails]);
+
+  const mrrLost = useMemo(() => ({
+    cents: mrrDetails.lost.reduce((s, x) => s + x.cents, 0),
+    count: mrrDetails.lost.length,
+  }), [mrrDetails]);
 
   const vendasNovas = useMemo(() => {
     // Só faturas avulsas reais (company_invoices sem cobrança recorrente). Os lançamentos
@@ -565,7 +594,8 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
         <MetricCard
           label="MRR Acrescentado"
           value={`+${formatCurrencyCents(mrrMovement.added)}`}
-          sub={`${mrrMovement.addedCount} nova(s) recorrência(s)`}
+          sub={`${mrrMovement.addedCount} cliente(s) com nova recorrência`}
+          onClick={mrrMovement.addedCount > 0 ? () => setMrrDialog("added") : undefined}
           icon={ArrowUpRight}
           valueClass="text-emerald-600"
         />
@@ -574,6 +604,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
           label="MRR Perdido"
           value={`-${formatCurrencyCents(mrrLost.cents)}`}
           sub={`${mrrLost.count} cliente(s) encerrado(s) no mês`}
+          onClick={mrrLost.count > 0 ? () => setMrrDialog("lost") : undefined}
           icon={ArrowDownRight}
           valueClass="text-destructive"
           badge={(mrrMovement.added - mrrLost.cents) !== 0 ? (
@@ -733,6 +764,48 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
         formatCurrencyCents={formatCurrencyCents}
         formatCurrency={formatCurrency}
       />
+
+      {/* Detalhe do MRR acrescentado / perdido, cliente a cliente */}
+      <Dialog open={mrrDialog !== null} onOpenChange={(o) => !o && setMrrDialog(null)}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {mrrDialog === "added" ? "MRR Acrescentado" : "MRR Perdido"} — {MONTH_LABELS[selectedMonth]}/{selectedYear}
+            </DialogTitle>
+          </DialogHeader>
+          {(() => {
+            const list = mrrDialog === "added" ? mrrDetails.added : mrrDetails.lost;
+            const total = list.reduce((s, x) => s + x.cents, 0);
+            const positivo = mrrDialog === "added";
+            return (
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground pb-1">
+                  {positivo
+                    ? "Clientes que passaram a pagar recorrência neste mês, com o valor mensal de cada um."
+                    : "Clientes que encerraram no mês, com a parcela mensal que cada um pagava."}
+                </p>
+                {list.length === 0 && <p className="text-sm text-muted-foreground py-4">Nenhum cliente neste mês.</p>}
+                {list.map((c, i) => (
+                  <div key={i} className="flex items-center gap-3 border-b border-border/50 py-2">
+                    <span className="text-sm font-medium truncate flex-1" title={c.name}>{c.name}</span>
+                    <span className={`text-sm font-bold tabular-nums shrink-0 ${positivo ? "text-emerald-600" : "text-destructive"}`}>
+                      {positivo ? "+" : "-"}{formatCurrencyCents(c.cents)}
+                    </span>
+                  </div>
+                ))}
+                {list.length > 0 && (
+                  <div className="flex items-center gap-3 pt-2">
+                    <span className="text-sm font-semibold flex-1">Total ({list.length} cliente{list.length > 1 ? "s" : ""})</span>
+                    <span className={`text-base font-bold tabular-nums ${positivo ? "text-emerald-600" : "text-destructive"}`}>
+                      {positivo ? "+" : "-"}{formatCurrencyCents(total)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Bank Statement Dialog */}
       <BankStatementDialog
