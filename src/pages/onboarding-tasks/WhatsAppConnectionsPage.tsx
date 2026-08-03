@@ -270,9 +270,17 @@ export default function WhatsAppConnectionsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2 pt-2">
-              {inst.server === "unv" && !connected(inst.status) && (
+              {inst.server === "unv" ? (
+                !connected(inst.status) && (
+                  <Button size="sm" variant="default" className="gap-1.5" onClick={() => openQr(inst.instance_name)}>
+                    <QrCode className="h-3.5 w-3.5" /> Conectar (QR)
+                  </Button>
+                )
+              ) : (
+                // Instância ainda no Stevo: o QR cria a homônima no servidor UNV e,
+                // ao conectar, o backend vira o cadastro sozinho (migração em 1 passo).
                 <Button size="sm" variant="default" className="gap-1.5" onClick={() => openQr(inst.instance_name)}>
-                  <QrCode className="h-3.5 w-3.5" /> Conectar (QR)
+                  <QrCode className="h-3.5 w-3.5" /> Migrar (QR)
                 </Button>
               )}
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => handleRestart(inst)}>
@@ -344,7 +352,7 @@ export default function WhatsAppConnectionsPage() {
           <DialogHeader>
             <DialogTitle>Conectar {qrFor}</DialogTitle>
             <DialogDescription>
-              No celular do número: WhatsApp → Configurações → Aparelhos conectados → Conectar aparelho. O QR renova sozinho a cada 30s.
+              No celular do número: WhatsApp → Configurações → Aparelhos conectados → Conectar aparelho. O QR renova sozinho a cada 30s. Ao conectar, a instância passa a operar no servidor UNV automaticamente.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center min-h-[280px]">
