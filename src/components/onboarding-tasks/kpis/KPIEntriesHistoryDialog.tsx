@@ -38,13 +38,17 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ChevronDown, Check as CheckIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { toast } from "sonner";
 import { History, Trash2, DollarSign, Hash, Percent, Pencil } from "lucide-react";
 import { formatDateLocal } from "@/lib/dateUtils";
 
 interface KPI { id: string; name: string; kpi_type: string; }
-interface Salesperson { id: string; name: string; }
+interface Salesperson { id: string; name: string; unit_id?: string | null; team_id?: string | null; }
+interface NamedRef { id: string; name: string; }
 interface Entry {
   id: string; kpi_id: string; salesperson_id: string;
   entry_date: string; value: number; observations: string | null; created_at: string;
@@ -58,6 +62,56 @@ interface KPIEntriesHistoryDialogProps {
   salespersonId?: string;
 }
 
+// Filtro de seleção múltipla com busca (array vazio = todos).
+const MultiPick = ({ label, options, selected, onChange }: {
+  label: string; options: NamedRef[]; selected: string[]; onChange: (v: string[]) => void;
+}) => {
+  const [query, setQuery] = useState("");
+  const shown = options.filter(o => !query.trim() || o.name.toLowerCase().includes(query.toLowerCase()));
+  const resumo = selected.length === 0 ? label
+    : selected.length === 1 ? (options.find(o => o.id === selected[0])?.name || label)
+    : `${selected.length} selecionados`;
+  return (
+    <Popover onOpenChange={(o) => { if (o) setQuery(""); }}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="w-[180px] h-10 justify-between font-normal">
+          <span className="truncate text-sm">{resumo}</span>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[220px] p-2" align="start">
+        {options.length > 6 && (
+          <Input placeholder="Buscar..." value={query} onChange={(e) => setQuery(e.target.value)} className="h-8 text-xs mb-1" />
+        )}
+        <button
+          className={cn("w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted", selected.length === 0 && "font-semibold text-primary")}
+          onClick={() => onChange([])}
+        >
+          {label}
+        </button>
+        <div className="max-h-[220px] overflow-y-auto mt-1 space-y-0.5">
+          {shown.map(o => {
+            const on = selected.includes(o.id);
+            return (
+              <button
+                key={o.id}
+                className={cn("w-full flex items-center gap-2 text-left text-xs px-2 py-1.5 rounded hover:bg-muted", on && "bg-primary/10 text-primary font-medium")}
+                onClick={() => onChange(on ? selected.filter(x => x !== o.id) : [...selected, o.id])}
+              >
+                <span className={cn("h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0", on ? "bg-primary border-primary" : "border-border")}>
+                  {on && <CheckIcon className="h-2.5 w-2.5 text-primary-foreground" />}
+                </span>
+                <span className="truncate">{o.name}</span>
+              </button>
+            );
+          })}
+          {shown.length === 0 && <p className="text-[11px] text-muted-foreground px-2 py-1">Nada encontrado.</p>}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 export const KPIEntriesHistoryDialog = ({
   companyId, canDelete = false, canEdit = false, onEntryDeleted, salespersonId,
 }: KPIEntriesHistoryDialogProps) => {
@@ -67,7 +121,12 @@ export const KPIEntriesHistoryDialog = ({
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedSalesperson, setSelectedSalesperson] = useState<string>("all");
+  // filtros com seleção múltipla (array vazio = todos)
+  const [selectedSalespeople, setSelectedSalespeople] = useState<string[]>([]);
+  const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+  const [units, setUnits] = useState<NamedRef[]>([]);
+  const [teams, setTeams] = useState<NamedRef[]>([]);
   const [selectedKpi, setSelectedKpi] = useState<string>("all");
   const [dateRange, setDateRange] = useState({
     start: format(startOfMonth(new Date()), "yyyy-MM-dd"),
@@ -109,16 +168,18 @@ export const KPIEntriesHistoryDialog = ({
         .order("created_at", { ascending: false });
 
       let salespeopleQuery = supabase
-        .from("company_salespeople").select("id, name")
+        .from("company_salespeople").select("id, name, unit_id, team_id")
         .eq("company_id", companyId).eq("is_active", true);
       if (salespersonId) salespeopleQuery = salespeopleQuery.eq("id", salespersonId);
       else salespeopleQuery = salespeopleQuery.order("name");
 
-      const [entriesRes, kpisRes, salespeopleRes] = await Promise.all([
+      const [entriesRes, kpisRes, salespeopleRes, unitsRes, teamsRes] = await Promise.all([
         entriesQuery,
         supabase.from("company_kpis").select("id, name, kpi_type")
           .eq("company_id", companyId).eq("is_active", true),
         salespeopleQuery,
+        supabase.from("company_units").select("id, name").eq("company_id", companyId).eq("is_active", true).order("name"),
+        supabase.from("company_teams").select("id, name").eq("company_id", companyId).eq("is_active", true).order("name"),
       ]);
       if (entriesRes.error) throw entriesRes.error;
       if (kpisRes.error) throw kpisRes.error;
@@ -126,6 +187,8 @@ export const KPIEntriesHistoryDialog = ({
       setEntries(entriesRes.data || []);
       setKpis(kpisRes.data || []);
       setSalespeople(salespeopleRes.data || []);
+      setUnits((unitsRes.data as NamedRef[]) || []);
+      setTeams((teamsRes.data as NamedRef[]) || []);
     } catch (error) {
       console.error("Error fetching entries history:", error);
       toast.error("Erro ao carregar histórico");
@@ -222,7 +285,10 @@ export const KPIEntriesHistoryDialog = ({
   const getSalespersonById = (id: string) => salespeople.find(s => s.id === id);
 
   const filteredEntries = entries.filter(entry => {
-    if (selectedSalesperson !== "all" && entry.salesperson_id !== selectedSalesperson) return false;
+    const sp = salespeople.find(s => s.id === entry.salesperson_id);
+    if (selectedSalespeople.length > 0 && !selectedSalespeople.includes(entry.salesperson_id)) return false;
+    if (selectedUnits.length > 0 && !(sp?.unit_id && selectedUnits.includes(sp.unit_id))) return false;
+    if (selectedTeams.length > 0 && !(sp?.team_id && selectedTeams.includes(sp.team_id))) return false;
     if (selectedKpi !== "all" && entry.kpi_id !== selectedKpi) return false;
     return true;
   });
@@ -289,14 +355,26 @@ export const KPIEntriesHistoryDialog = ({
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Vendedor</Label>
-                <Select value={selectedSalesperson} onValueChange={(v) => { setSelectedSalesperson(v); setSelectedIds([]); }}>
-                  <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {salespeople.map(sp => <SelectItem key={sp.id} value={sp.id}>{sp.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <MultiPick label="Todos" options={salespeople.map(s => ({ id: s.id, name: s.name }))}
+                  selected={selectedSalespeople}
+                  onChange={(v) => { setSelectedSalespeople(v); setSelectedIds([]); }} />
               </div>
+              {units.length > 0 && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Unidade</Label>
+                  <MultiPick label="Todas" options={units}
+                    selected={selectedUnits}
+                    onChange={(v) => { setSelectedUnits(v); setSelectedIds([]); }} />
+                </div>
+              )}
+              {teams.length > 0 && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Equipe</Label>
+                  <MultiPick label="Todas" options={teams}
+                    selected={selectedTeams}
+                    onChange={(v) => { setSelectedTeams(v); setSelectedIds([]); }} />
+                </div>
+              )}
               <div className="space-y-1">
                 <Label className="text-xs">KPI</Label>
                 <Select value={selectedKpi} onValueChange={(v) => { setSelectedKpi(v); setSelectedIds([]); }}>
