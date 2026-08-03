@@ -36,6 +36,7 @@ export function useInstagramMessages(conversationId: string | null) {
         media_mimetype: null,
         quoted_message_id: null,
         sent_by: m.sent_by,
+        is_ai: m.is_ai ?? false,
         created_at: m.timestamp,
       }));
 

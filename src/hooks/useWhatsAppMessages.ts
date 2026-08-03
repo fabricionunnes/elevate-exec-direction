@@ -14,6 +14,7 @@ export interface WhatsAppMessage {
   media_mimetype: string | null;
   quoted_message_id: string | null;
   sent_by: string | null;
+  is_ai?: boolean | null;
   sender_name: string | null;
   sender_phone: string | null;
   created_at: string;

@@ -34,6 +34,7 @@ import {
   NotebookPen
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { CommercialDailyBlock } from "./CommercialDailyBlock";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion } from "framer-motion";
@@ -702,6 +703,15 @@ export function DailyLeadershipAgenda() {
             </div>
           </CardContent>
         </Card>
+      </motion.div>
+
+      {/* Comercial: números do dia anterior + forecast + pauta da daily */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.45 }}
+      >
+        <CommercialDailyBlock />
       </motion.div>
 
       <div className="grid lg:grid-cols-2 gap-6">

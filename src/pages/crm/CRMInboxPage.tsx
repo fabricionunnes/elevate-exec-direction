@@ -56,7 +56,8 @@ import {
   X,
   ChevronLeft,
   Info,
-  Instagram,
+  Instagram,,
+  Bot,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -950,10 +951,19 @@ export const CRMInboxPage = () => {
                       className={cn(
                         "max-w-[70%] rounded-lg p-3",
                         message.direction === "outbound"
-                          ? "bg-primary/10 text-foreground"
+                          ? (message as any).is_ai
+                            // enviada pelo agente de IA: cor distinta da mensagem humana
+                            ? "bg-violet-500/10 text-foreground border border-violet-500/30"
+                            : "bg-primary/10 text-foreground"
                           : "bg-card border border-border"
                       )}
                     >
+                      {message.direction === "outbound" && (message as any).is_ai && (
+                        <p className="text-[11px] font-semibold mb-1 flex items-center gap-1 text-violet-600 dark:text-violet-400">
+                          <Bot className="h-3 w-3" />
+                          Agente de IA
+                        </p>
+                      )}
                       {/* Grupo de WhatsApp: mostra quem enviou a mensagem */}
                       {message.direction === "inbound" && message.sender_name && (
                         <p className="text-xs font-semibold mb-1" style={{ color: senderColor(message.sender_name) }}>
