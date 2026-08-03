@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUpRight, ArrowDownRight, Minus, GitCompareArrows } from "lucide-react";
@@ -102,29 +103,37 @@ export const PeriodComparisonCard = ({
       );
 
       // Fetch both periods in parallel
-      const [currentRes, previousRes] = await Promise.all([
-        supabase
-          .from("kpi_entries")
-          .select("kpi_id, salesperson_id, value")
-          .eq("company_id", companyId)
-          .gte("entry_date", dateRange.start)
-          .lte("entry_date", dateRange.end),
-        supabase
-          .from("kpi_entries")
-          .select("kpi_id, salesperson_id, value")
-          .eq("company_id", companyId)
-          .gte("entry_date", prevStartStr)
-          .lte("entry_date", prevEndStr),
+      // Paginado: PostgREST corta toda resposta em 1000 linhas e um mês cheio passa
+      // disso — sem paginar, o comparativo subcontava (Loja Mix jun/26: 181k vs 348k).
+      const [currentRows, previousRows] = await Promise.all([
+        fetchAllRows((from, to) =>
+          supabase
+            .from("kpi_entries")
+            .select("kpi_id, salesperson_id, value")
+            .eq("company_id", companyId)
+            .gte("entry_date", dateRange.start)
+            .lte("entry_date", dateRange.end)
+            .order("id")
+            .range(from, to)
+        ),
+        fetchAllRows((from, to) =>
+          supabase
+            .from("kpi_entries")
+            .select("kpi_id, salesperson_id, value")
+            .eq("company_id", companyId)
+            .gte("entry_date", prevStartStr)
+            .lte("entry_date", prevEndStr)
+            .order("id")
+            .range(from, to)
+        ),
       ]);
-
-      if (currentRes.error || previousRes.error) throw currentRes.error || previousRes.error;
 
       const filteredIds = getFilteredSalespeopleIds();
       const filterEntries = (entries: any[]) =>
         entries.filter(e => filteredIds.includes(e.salesperson_id));
 
-      const currentEntries = filterEntries(currentRes.data || []);
-      const previousEntries = filterEntries(previousRes.data || []);
+      const currentEntries = filterEntries(currentRows || []);
+      const previousEntries = filterEntries(previousRows || []);
 
       // Determine which KPIs to show
       const targetKpis = selectedKpi !== "all"
