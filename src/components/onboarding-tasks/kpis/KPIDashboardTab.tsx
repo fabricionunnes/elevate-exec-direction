@@ -603,6 +603,40 @@ export const KPIDashboardTab = ({
       }
     }
 
+    // Escopo (unidade/setor/equipe) sem meta própria cadastrada no mês: a meta do
+    // escopo é o ROLLUP = soma das metas por vendedor daquele escopo. Sem isso, filtrar
+    // por unidade em um mês onde só há meta por vendedor zerava a meta e sumia com o
+    // card de Projeção do Mês.
+    if (
+      relevantTargets.length === 0 &&
+      selectedSalesperson === "all" &&
+      !unitScoped &&
+      (selectedUnit !== "all" || selectedTeam !== "all" || selectedSector !== "all")
+    ) {
+      const scopeSpIds = new Set(
+        salespeople
+          .filter((sp) => {
+            if (selectedUnit !== "all" && sp.unit_id !== selectedUnit) return false;
+            if (selectedTeam !== "all" && sp.team_id !== selectedTeam) return false;
+            if (selectedSector !== "all" && !salespersonBelongsToSector(sp, selectedSector)) return false;
+            return true;
+          })
+          .map((sp) => sp.id)
+      );
+      if (scopeSpIds.size > 0) {
+        const scopeTargets = allMonthlyTargets.filter(
+          (mt) => mt.kpi_id === kpiId && mt.salesperson_id !== null && scopeSpIds.has(mt.salesperson_id)
+        );
+        if (scopeTargets.length > 0) {
+          const sumByLevel: Record<string, number> = {};
+          scopeTargets.forEach((mt) => {
+            sumByLevel[mt.level_name] = (sumByLevel[mt.level_name] || 0) + mt.target_value;
+          });
+          return sumByLevel;
+        }
+      }
+    }
+
     // Visão da empresa (sem filtro de vendedor/time/unidade): a meta da empresa é o
     // ROLLUP = soma das metas por vendedor. Ex: Luana 30k + Victoria 17,5k + Ana 17,5k = 65k.
     // Tem precedência sobre uma meta-geral antiga de empresa, pra refletir o que está

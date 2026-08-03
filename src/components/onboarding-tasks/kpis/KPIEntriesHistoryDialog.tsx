@@ -47,8 +47,8 @@ import { History, Trash2, DollarSign, Hash, Percent, Pencil } from "lucide-react
 import { formatDateLocal } from "@/lib/dateUtils";
 
 interface KPI { id: string; name: string; kpi_type: string; }
-interface Salesperson { id: string; name: string; unit_id?: string | null; team_id?: string | null; }
-interface NamedRef { id: string; name: string; }
+interface Salesperson { id: string; name: string; unit_id?: string | null; team_id?: string | null; sector_id?: string | null; }
+interface NamedRef { id: string; name: string; unit_id?: string | null; }
 interface Entry {
   id: string; kpi_id: string; salesperson_id: string;
   entry_date: string; value: number; observations: string | null; created_at: string;
@@ -124,8 +124,10 @@ export const KPIEntriesHistoryDialog = ({
   // filtros com seleção múltipla (array vazio = todos)
   const [selectedSalespeople, setSelectedSalespeople] = useState<string[]>([]);
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
+  const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
   const [units, setUnits] = useState<NamedRef[]>([]);
+  const [sectors, setSectors] = useState<NamedRef[]>([]);
   const [teams, setTeams] = useState<NamedRef[]>([]);
   const [selectedKpi, setSelectedKpi] = useState<string>("all");
   const [dateRange, setDateRange] = useState({
@@ -168,18 +170,19 @@ export const KPIEntriesHistoryDialog = ({
         .order("created_at", { ascending: false });
 
       let salespeopleQuery = supabase
-        .from("company_salespeople").select("id, name, unit_id, team_id")
+        .from("company_salespeople").select("id, name, unit_id, team_id, sector_id")
         .eq("company_id", companyId).eq("is_active", true);
       if (salespersonId) salespeopleQuery = salespeopleQuery.eq("id", salespersonId);
       else salespeopleQuery = salespeopleQuery.order("name");
 
-      const [entriesRes, kpisRes, salespeopleRes, unitsRes, teamsRes] = await Promise.all([
+      const [entriesRes, kpisRes, salespeopleRes, unitsRes, teamsRes, sectorsRes] = await Promise.all([
         entriesQuery,
         supabase.from("company_kpis").select("id, name, kpi_type")
           .eq("company_id", companyId).eq("is_active", true),
         salespeopleQuery,
         supabase.from("company_units").select("id, name").eq("company_id", companyId).eq("is_active", true).order("name"),
-        supabase.from("company_teams").select("id, name").eq("company_id", companyId).eq("is_active", true).order("name"),
+        supabase.from("company_teams").select("id, name, unit_id").eq("company_id", companyId).eq("is_active", true).order("name"),
+        supabase.from("company_sectors").select("id, name, unit_id").eq("company_id", companyId).eq("is_active", true).order("name"),
       ]);
       if (entriesRes.error) throw entriesRes.error;
       if (kpisRes.error) throw kpisRes.error;
@@ -189,6 +192,7 @@ export const KPIEntriesHistoryDialog = ({
       setSalespeople(salespeopleRes.data || []);
       setUnits((unitsRes.data as NamedRef[]) || []);
       setTeams((teamsRes.data as NamedRef[]) || []);
+      setSectors((sectorsRes.data as NamedRef[]) || []);
     } catch (error) {
       console.error("Error fetching entries history:", error);
       toast.error("Erro ao carregar histórico");
@@ -284,10 +288,23 @@ export const KPIEntriesHistoryDialog = ({
   const getKpiById = (id: string) => kpis.find(k => k.id === id);
   const getSalespersonById = (id: string) => salespeople.find(s => s.id === id);
 
+  // Cascata: escolher a unidade restringe setor, equipe e vendedores mostrados.
+  const visibleSectors = selectedUnits.length === 0
+    ? sectors : sectors.filter(s => s.unit_id && selectedUnits.includes(s.unit_id));
+  const visibleTeams = selectedUnits.length === 0
+    ? teams : teams.filter(t => t.unit_id && selectedUnits.includes(t.unit_id));
+  const visibleSalespeople = salespeople.filter(sp => {
+    if (selectedUnits.length > 0 && !(sp.unit_id && selectedUnits.includes(sp.unit_id))) return false;
+    if (selectedSectors.length > 0 && !(sp.sector_id && selectedSectors.includes(sp.sector_id))) return false;
+    if (selectedTeams.length > 0 && !(sp.team_id && selectedTeams.includes(sp.team_id))) return false;
+    return true;
+  });
+
   const filteredEntries = entries.filter(entry => {
     const sp = salespeople.find(s => s.id === entry.salesperson_id);
     if (selectedSalespeople.length > 0 && !selectedSalespeople.includes(entry.salesperson_id)) return false;
     if (selectedUnits.length > 0 && !(sp?.unit_id && selectedUnits.includes(sp.unit_id))) return false;
+    if (selectedSectors.length > 0 && !(sp?.sector_id && selectedSectors.includes(sp.sector_id))) return false;
     if (selectedTeams.length > 0 && !(sp?.team_id && selectedTeams.includes(sp.team_id))) return false;
     if (selectedKpi !== "all" && entry.kpi_id !== selectedKpi) return false;
     return true;
@@ -343,7 +360,7 @@ export const KPIEntriesHistoryDialog = ({
           <div className="space-y-4">
             {/* Filters */}
             <div className="rounded-xl border border-border bg-muted/30 p-3">
-              <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+              <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-7">
                 <div className="flex flex-col gap-1">
                   <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">De</Label>
                   <Input type="date" value={dateRange.start} className="h-9 w-full text-xs"
@@ -354,30 +371,41 @@ export const KPIEntriesHistoryDialog = ({
                   <Input type="date" value={dateRange.end} className="h-9 w-full text-xs"
                     onChange={(e) => { if (e.target.value) setDateRange({ ...dateRange, end: e.target.value }); }} />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Vendedor</Label>
-                  <MultiPick label="Todos" options={salespeople.map(s => ({ id: s.id, name: s.name }))}
-                    selected={selectedSalespeople}
-                    onChange={(v) => { setSelectedSalespeople(v); setSelectedIds([]); }} />
-                </div>
                 {units.length > 0 && (
                   <div className="flex flex-col gap-1">
                     <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Unidade</Label>
                     <MultiPick label="Todas" options={units}
                       selected={selectedUnits}
-                      onChange={(v) => { setSelectedUnits(v); setSelectedIds([]); }} />
+                      onChange={(v) => {
+                        // trocar a unidade zera os filtros que dependem dela
+                        setSelectedUnits(v); setSelectedSectors([]); setSelectedTeams([]); setSelectedSalespeople([]); setSelectedIds([]);
+                      }} />
                   </div>
                 )}
-                {teams.length > 0 && (
+                {visibleSectors.length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Setor</Label>
+                    <MultiPick label="Todos" options={visibleSectors}
+                      selected={selectedSectors}
+                      onChange={(v) => { setSelectedSectors(v); setSelectedSalespeople([]); setSelectedIds([]); }} />
+                  </div>
+                )}
+                {visibleTeams.length > 0 && (
                   <div className="flex flex-col gap-1">
                     <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Equipe</Label>
-                    <MultiPick label="Todas" options={teams}
+                    <MultiPick label="Todas" options={visibleTeams}
                       selected={selectedTeams}
-                      onChange={(v) => { setSelectedTeams(v); setSelectedIds([]); }} />
+                      onChange={(v) => { setSelectedTeams(v); setSelectedSalespeople([]); setSelectedIds([]); }} />
                   </div>
                 )}
                 <div className="flex flex-col gap-1">
-                  <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">KPI</Label>
+                  <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Vendedores</Label>
+                  <MultiPick label="Todos" options={visibleSalespeople.map(s => ({ id: s.id, name: s.name }))}
+                    selected={selectedSalespeople}
+                    onChange={(v) => { setSelectedSalespeople(v); setSelectedIds([]); }} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">KPIs</Label>
                   <Select value={selectedKpi} onValueChange={(v) => { setSelectedKpi(v); setSelectedIds([]); }}>
                     <SelectTrigger className="h-9 w-full text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -387,14 +415,14 @@ export const KPIEntriesHistoryDialog = ({
                   </Select>
                 </div>
               </div>
-              {(selectedSalespeople.length > 0 || selectedUnits.length > 0 || selectedTeams.length > 0 || selectedKpi !== "all") && (
+              {(selectedSalespeople.length > 0 || selectedUnits.length > 0 || selectedSectors.length > 0 || selectedTeams.length > 0 || selectedKpi !== "all") && (
                 <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-border/60">
                   <span className="text-[11px] text-muted-foreground">
                     {filteredEntries.length} de {entries.length} lançamentos
                   </span>
                   <button
                     className="text-[11px] text-primary hover:underline ml-auto"
-                    onClick={() => { setSelectedSalespeople([]); setSelectedUnits([]); setSelectedTeams([]); setSelectedKpi("all"); setSelectedIds([]); }}
+                    onClick={() => { setSelectedSalespeople([]); setSelectedUnits([]); setSelectedSectors([]); setSelectedTeams([]); setSelectedKpi("all"); setSelectedIds([]); }}
                   >
                     Limpar filtros
                   </button>
@@ -404,7 +432,19 @@ export const KPIEntriesHistoryDialog = ({
 
             {/* Summary */}
             {summaryBySalesperson.length > 0 && (
-              <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
+              <div className="grid gap-2 grid-cols-2 md:grid-cols-5">
+                {/* Total de tudo que está filtrado (não só dos 4 maiores) */}
+                <div className="p-3 rounded-xl border-2 border-primary/40 bg-primary/5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Total no filtro</p>
+                  <p className="text-lg font-bold tabular-nums mt-0.5 text-primary">
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+                      summaryBySalesperson.reduce((s, sp) => s + sp.totalValue, 0),
+                    )}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {summaryBySalesperson.length} vendedor{summaryBySalesperson.length > 1 ? "es" : ""} · {filteredEntries.length} lançamentos
+                  </p>
+                </div>
                 {summaryBySalesperson.slice(0, 4).map(sp => (
                   <div key={sp.id} className="p-3 rounded-xl border border-border bg-card">
                     <p className="text-xs font-medium truncate text-muted-foreground" title={sp.name}>{sp.name}</p>
@@ -414,6 +454,11 @@ export const KPIEntriesHistoryDialog = ({
                     <p className="text-[11px] text-muted-foreground">{sp.totalEntries} lançamento{sp.totalEntries > 1 ? "s" : ""}</p>
                   </div>
                 ))}
+                {summaryBySalesperson.length > 4 && (
+                  <p className="col-span-2 md:col-span-5 text-[11px] text-muted-foreground -mt-1">
+                    Mostrando os 4 maiores de {summaryBySalesperson.length} vendedores — o card "Total no filtro" soma todos.
+                  </p>
+                )}
               </div>
             )}
 
