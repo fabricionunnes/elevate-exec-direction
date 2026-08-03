@@ -56,7 +56,7 @@ import {
   X,
   ChevronLeft,
   Info,
-  Instagram,,
+  Instagram,
   Bot,
 } from "lucide-react";
 import { format } from "date-fns";
