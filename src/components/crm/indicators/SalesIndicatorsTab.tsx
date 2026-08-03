@@ -76,7 +76,7 @@ interface ForecastRecord {
   value: number;
 }
 
-type DateFilterType = "today" | "week" | "month" | "quarter" | "custom";
+type DateFilterType = "today" | "week" | "lastweek" | "month" | "lastmonth" | "quarter" | "custom";
 
 interface SalesIndicatorsTabProps {
   staffId?: string | null;
@@ -144,8 +144,16 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         return { start: startOfDay(now), end: endOfDay(now) };
       case "week":
         return { start: startOfWeek(now, { locale: ptBR }), end: endOfWeek(now, { locale: ptBR }) };
+      case "lastweek": {
+        const ref = subDays(startOfWeek(now, { locale: ptBR }), 7);
+        return { start: startOfWeek(ref, { locale: ptBR }), end: endOfWeek(ref, { locale: ptBR }) };
+      }
       case "month":
         return { start: startOfMonth(now), end: endOfMonth(now) };
+      case "lastmonth": {
+        const ref = subDays(startOfMonth(now), 1);
+        return { start: startOfMonth(ref), end: endOfMonth(ref) };
+      }
       case "quarter":
         return { start: startOfQuarter(now), end: endOfQuarter(now) };
       case "custom":
@@ -919,36 +927,14 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           <SelectContent>
             <SelectItem value="today">Hoje</SelectItem>
             <SelectItem value="week">Esta Semana</SelectItem>
+            <SelectItem value="lastweek">Semana Passada</SelectItem>
             <SelectItem value="month">Este Mês</SelectItem>
+            <SelectItem value="lastmonth">Mês Passado</SelectItem>
             <SelectItem value="quarter">Trimestre</SelectItem>
             <SelectItem value="custom">Personalizado</SelectItem>
           </SelectContent>
         </Select>
 
-        {dateFilter === "custom" && (
-          <div className="flex items-center gap-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn("h-9 w-[120px] justify-start text-left text-xs rounded-xl border-border", !customDateFrom && "text-muted-foreground")}>
-                  <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
-                  {customDateFrom ? format(customDateFrom, "dd/MM/yy") : "De"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={customDateFrom} onSelect={setCustomDateFrom} initialFocus locale={ptBR} /></PopoverContent>
-            </Popover>
-            <span className="text-xs text-muted-foreground">até</span>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn("h-9 w-[120px] justify-start text-left text-xs rounded-xl border-border", !customDateTo && "text-muted-foreground")}>
-                  <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
-                  {customDateTo ? format(customDateTo, "dd/MM/yy") : "Até"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={customDateTo} onSelect={setCustomDateTo} initialFocus locale={ptBR} /></PopoverContent>
-            </Popover>
-          </div>
-        )}
-        
         {!isCloserUser && (
           <Select value={selectedCloser} onValueChange={setSelectedCloser}>
             <SelectTrigger className="w-[160px] h-9 rounded-xl text-xs border-border ">
@@ -973,11 +959,35 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
 
         <div className="ml-auto flex items-center gap-2">
           <CRMGoalStrategyDialog />
-          <Badge variant="outline" className="text-xs text-foreground border-border bg-card capitalize">
-            {dateFilter === "custom" && customDateFrom && customDateTo
-              ? `${format(customDateFrom, "dd/MM")} - ${format(customDateTo, "dd/MM/yyyy")}`
-              : format(getDateRange().start, "MMMM 'de' yyyy", { locale: ptBR })}
-          </Badge>
+          {dateFilter === "custom" ? (
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn("h-9 w-[120px] justify-start text-left text-xs rounded-xl border-border", !customDateFrom && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
+                    {customDateFrom ? format(customDateFrom, "dd/MM/yy") : "De"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={customDateFrom} onSelect={setCustomDateFrom} initialFocus locale={ptBR} /></PopoverContent>
+              </Popover>
+              <span className="text-xs text-muted-foreground">até</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn("h-9 w-[120px] justify-start text-left text-xs rounded-xl border-border", !customDateTo && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
+                    {customDateTo ? format(customDateTo, "dd/MM/yy") : "Até"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={customDateTo} onSelect={setCustomDateTo} initialFocus locale={ptBR} /></PopoverContent>
+              </Popover>
+            </div>
+          ) : (
+            <Badge variant="outline" className="text-xs text-foreground border-border bg-card capitalize">
+              {["month", "lastmonth"].includes(dateFilter)
+                ? format(getDateRange().start, "MMMM 'de' yyyy", { locale: ptBR })
+                : `${format(getDateRange().start, "dd/MM")} - ${format(getDateRange().end, "dd/MM/yyyy")}`}
+            </Badge>
+          )}
           <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="h-9 text-xs rounded-xl border-border bg-card/80">
             <Upload className="h-3.5 w-3.5 mr-1.5" />
             Importar
