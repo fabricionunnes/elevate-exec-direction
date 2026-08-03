@@ -143,7 +143,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     const despesaPendente = monthPayables.filter((p: any) => p.status !== "paid" && p.status !== "cancelled").reduce((s: number, p: any) => s + (p.amount || 0) * 100, 0);
     const totalBancos = banks.reduce((s: number, b: any) => s + (b.current_balance_cents || 0), 0);
     const resultado = receitaRecebida - despesaPaga;
-    return { receitaRecebida, receitaPendente, despesaPaga, despesaPendente, totalBancos, resultado };
+    return { receitaRecebida, receitaPendente, despesaPaga, despesaPendente, totalBancos, resultado, paidInMonth, paidPayablesInMonth };
   }, [invoices, payables, monthInvoices, monthPayables, banks, monthStr]);
 
   const inadimplencia = useMemo(() => {
@@ -155,22 +155,22 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     const alreadyDueCount = alreadyDue.length;
     const pctQty = alreadyDueCount > 0 ? (overdueCount / alreadyDueCount) * 100 : 0;
     const pctValue = alreadyDueValue > 0 ? (overdueValue / alreadyDueValue) * 100 : 0;
-    return { pctQty, pctValue, overdueCount, total: alreadyDueCount, overdueValue, totalValue: alreadyDueValue };
+    return { pctQty, pctValue, overdueCount, total: alreadyDueCount, overdueValue, totalValue: alreadyDueValue, overdue };
   }, [monthInvoices, todayStr]);
 
   const totalOverdueGeral = useMemo(() => {
     const allOverdue = invoices.filter(i => i.status !== "paid" && i.status !== "cancelled" && i.due_date && i.due_date < todayStr);
-    return { count: allOverdue.length, value: allOverdue.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0) };
+    return { count: allOverdue.length, value: allOverdue.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0), list: allOverdue };
   }, [invoices, todayStr]);
 
   const payablesOverduePeriod = useMemo(() => {
     const overdue = monthPayables.filter((p: any) => p.status !== "paid" && p.status !== "cancelled" && p.due_date && p.due_date < todayStr);
-    return { count: overdue.length, value: overdue.reduce((s: number, p: any) => s + ((p.amount || 0) * 100), 0) };
+    return { count: overdue.length, value: overdue.reduce((s: number, p: any) => s + ((p.amount || 0) * 100), 0), list: overdue };
   }, [monthPayables, todayStr]);
 
   const payablesOverdueGeral = useMemo(() => {
     const allOverdue = payables.filter((p: any) => p.status !== "paid" && p.status !== "cancelled" && p.due_date && p.due_date < todayStr);
-    return { count: allOverdue.length, value: allOverdue.reduce((s: number, p: any) => s + ((p.amount || 0) * 100), 0) };
+    return { count: allOverdue.length, value: allOverdue.reduce((s: number, p: any) => s + ((p.amount || 0) * 100), 0), list: allOverdue };
   }, [payables, todayStr]);
 
   // Só contratos recorrentes de verdade (avulsas de 1 fatura fora)
@@ -192,11 +192,18 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
   // Acrescentado: recorrências criadas no mês e ainda ativas, somadas por cliente.
   // Perdido: clientes com churn no mês × parcela mensal vigente (cobranças ativas
   // ou, se não houver, as da última desativação — ignora recriações antigas).
-  const [mrrDetails, setMrrDetails] = useState<{ added: { name: string; cents: number }[]; lost: { name: string; cents: number }[] }>({ added: [], lost: [] });
-  const [mrrDialog, setMrrDialog] = useState<null | "added" | "lost">(null);
+  const [mrrDetails, setMrrDetails] = useState<{ added: { name: string; cents: number }[]; lost: { name: string; cents: number }[]; current: { name: string; cents: number }[] }>({ added: [], lost: [], current: [] });
+  const [mrrDialog, setMrrDialog] = useState<null | "added" | "lost" | "current">(null);
 
   useEffect(() => {
     (async () => {
+      // MRR atual: todas as recorrências ativas, somadas por cliente
+      const currentByCompany = new Map<string, number>();
+      recurringCharges.filter(c => c.is_active).forEach(c => {
+        const cid = c.company_id || "sem-cliente";
+        currentByCompany.set(cid, (currentByCompany.get(cid) || 0) + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"));
+      });
+
       const addedByCompany = new Map<string, number>();
       recurringCharges
         .filter(c => c.is_active && c.created_at?.startsWith(monthStr))
@@ -233,7 +240,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
         });
       }
 
-      const allIds = Array.from(new Set([...addedByCompany.keys(), ...lostByCompany.keys()]))
+      const allIds = Array.from(new Set([...addedByCompany.keys(), ...lostByCompany.keys(), ...currentByCompany.keys()]))
         .filter(id => id && id !== "sem-cliente");
       const names = new Map<string, string>();
       if (allIds.length) {
@@ -245,7 +252,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
           .map(([id, cents]) => ({ name: names.get(id) || "Cliente sem cadastro", cents }))
           .sort((a, b) => b.cents - a.cents);
 
-      setMrrDetails({ added: toList(addedByCompany), lost: toList(lostByCompany) });
+      setMrrDetails({ added: toList(addedByCompany), lost: toList(lostByCompany), current: toList(currentByCompany) });
     })();
   }, [monthStr, selectedYear, selectedMonth, recurringCharges]);
 
@@ -264,7 +271,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     // do financeiro central (financial_receivables/Asaas) são mensalidades e cobranças de
     // clientes existentes — não são "vendas novas".
     const novas = invoices.filter(i => (i as any).source_table !== "financial_receivables" && !i.recurring_charge_id && i.created_at?.startsWith(monthStr));
-    return { count: novas.length, value: novas.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0) };
+    return { count: novas.length, value: novas.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0), list: novas };
   }, [invoices, monthStr]);
 
   const monthlyData = useMemo(() => {
@@ -369,6 +376,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
           sub="Recebido no mês"
           icon={ArrowUpRight}
           valueClass="text-emerald-600"
+          onClick={summary.paidInMonth.length > 0 ? () => openDetail(`Receita Recebida — ${MONTH_LABELS[selectedMonth]}/${selectedYear}`, summary.paidInMonth, "receivable") : undefined}
         />
         <MetricCard
           label="A Receber"
@@ -385,6 +393,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
             sub="Pago no mês"
             icon={ArrowDownRight}
             valueClass="text-destructive"
+            onClick={summary.paidPayablesInMonth.length > 0 ? () => openDetail(`Despesas Pagas — ${MONTH_LABELS[selectedMonth]}/${selectedYear}`, summary.paidPayablesInMonth, "payable") : undefined}
           />
         )}
         {canSeePayables && (
@@ -518,6 +527,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
           sub={`${inadimplencia.overdueCount} fatura(s) em ${MONTH_LABELS[selectedMonth]}/${selectedYear}`}
           icon={AlertTriangle}
           valueClass="text-destructive"
+          onClick={inadimplencia.overdue.length > 0 ? () => openDetail(`Recebíveis em Atraso — ${MONTH_LABELS[selectedMonth]}/${selectedYear}`, inadimplencia.overdue, "receivable") : undefined}
         />
 
         <MetricCard
@@ -526,6 +536,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
           sub={`${totalOverdueGeral.count} fatura(s) vencida(s) no total`}
           icon={ShieldAlert}
           valueClass="text-destructive"
+          onClick={totalOverdueGeral.list.length > 0 ? () => openDetail("Total Recebíveis em Atraso (todas as datas)", totalOverdueGeral.list, "receivable") : undefined}
         />
       </div>
 
@@ -540,6 +551,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
               sub={`${payablesOverduePeriod.count} conta(s) em ${MONTH_LABELS[selectedMonth]}/${selectedYear}`}
               icon={Wallet}
               valueClass="text-amber-500"
+              onClick={payablesOverduePeriod.list.length > 0 ? () => openDetail(`Pagáveis em Atraso — ${MONTH_LABELS[selectedMonth]}/${selectedYear}`, payablesOverduePeriod.list, "payable") : undefined}
             />
             <MetricCard
               label="Total Pagáveis em Atraso (Geral)"
@@ -547,6 +559,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
               sub={`${payablesOverdueGeral.count} conta(s) vencida(s) no total`}
               icon={ShieldAlert}
               valueClass="text-destructive"
+              onClick={payablesOverdueGeral.list.length > 0 ? () => openDetail("Total Pagáveis em Atraso (todas as datas)", payablesOverdueGeral.list, "payable") : undefined}
             />
           </div>
         </>
@@ -584,6 +597,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
           sub={`${activeRecurringCount} recorrência(s) ativa(s)`}
           icon={RefreshCw}
           valueClass="text-primary"
+          onClick={mrrDetails.current.length > 0 ? () => setMrrDialog("current") : undefined}
           badge={
             <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary">
               ARR: {formatCurrencyCents(mrr * 12)}
@@ -628,6 +642,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
           sub={`${vendasNovas.count} fatura(s) avulsa(s)`}
           icon={ShoppingCart}
           valueClass="text-foreground"
+          onClick={vendasNovas.list.length > 0 ? () => openDetail(`Vendas Novas — ${MONTH_LABELS[selectedMonth]}/${selectedYear}`, vendasNovas.list, "receivable") : undefined}
         />
       </div>
 
@@ -770,34 +785,38 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
         <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {mrrDialog === "added" ? "MRR Acrescentado" : "MRR Perdido"} — {MONTH_LABELS[selectedMonth]}/{selectedYear}
+              {mrrDialog === "added" ? "MRR Acrescentado" : mrrDialog === "lost" ? "MRR Perdido" : "MRR Atual"} — {MONTH_LABELS[selectedMonth]}/{selectedYear}
             </DialogTitle>
           </DialogHeader>
           {(() => {
-            const list = mrrDialog === "added" ? mrrDetails.added : mrrDetails.lost;
+            const list = mrrDialog === "added" ? mrrDetails.added : mrrDialog === "lost" ? mrrDetails.lost : mrrDetails.current;
             const total = list.reduce((s, x) => s + x.cents, 0);
-            const positivo = mrrDialog === "added";
+            const positivo = mrrDialog !== "lost";
+            const sinal = mrrDialog === "added" ? "+" : mrrDialog === "lost" ? "-" : "";
+            const cor = mrrDialog === "lost" ? "text-destructive" : mrrDialog === "added" ? "text-emerald-600" : "text-primary";
             return (
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground pb-1">
-                  {positivo
+                  {mrrDialog === "added"
                     ? "Clientes que passaram a pagar recorrência neste mês, com o valor mensal de cada um."
-                    : "Clientes que encerraram no mês, com a parcela mensal que cada um pagava."}
+                    : mrrDialog === "lost"
+                    ? "Clientes que encerraram no mês, com a parcela mensal que cada um pagava."
+                    : "Clientes com recorrência ativa hoje e o valor mensal de cada um."}
                 </p>
                 {list.length === 0 && <p className="text-sm text-muted-foreground py-4">Nenhum cliente neste mês.</p>}
                 {list.map((c, i) => (
                   <div key={i} className="flex items-center gap-3 border-b border-border/50 py-2">
                     <span className="text-sm font-medium truncate flex-1" title={c.name}>{c.name}</span>
-                    <span className={`text-sm font-bold tabular-nums shrink-0 ${positivo ? "text-emerald-600" : "text-destructive"}`}>
-                      {positivo ? "+" : "-"}{formatCurrencyCents(c.cents)}
+                    <span className={`text-sm font-bold tabular-nums shrink-0 ${cor}`}>
+                      {sinal}{formatCurrencyCents(c.cents)}
                     </span>
                   </div>
                 ))}
                 {list.length > 0 && (
                   <div className="flex items-center gap-3 pt-2">
                     <span className="text-sm font-semibold flex-1">Total ({list.length} cliente{list.length > 1 ? "s" : ""})</span>
-                    <span className={`text-base font-bold tabular-nums ${positivo ? "text-emerald-600" : "text-destructive"}`}>
-                      {positivo ? "+" : "-"}{formatCurrencyCents(total)}
+                    <span className={`text-base font-bold tabular-nums ${cor}`}>
+                      {sinal}{formatCurrencyCents(total)}
                     </span>
                   </div>
                 )}
