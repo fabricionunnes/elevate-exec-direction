@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -269,10 +270,17 @@ export const KPIDashboardTab = ({
       const selectedMonthYear = format(parseDateLocal(dateRange.start), "yyyy-MM");
 
       // Build entries query - filter by salesperson if provided
-      let entriesQuery = supabase.from("kpi_entries").select("*").eq("company_id", companyId).gte("entry_date", dateRange.start).lte("entry_date", dateRange.end);
-      if (salespersonId) {
-        entriesQuery = entriesQuery.eq("salesperson_id", salespersonId);
-      }
+      // PostgREST corta em 1000 linhas: pagina tudo, senão o total do mês vem parcial.
+      const entriesQuery = (async () => {
+        const rows = await fetchAllRows((from, to) => {
+          let q = supabase.from("kpi_entries").select("*").eq("company_id", companyId)
+            .gte("entry_date", dateRange.start).lte("entry_date", dateRange.end)
+            .order("id", { ascending: true }).range(from, to);
+          if (salespersonId) q = q.eq("salesperson_id", salespersonId);
+          return q;
+        });
+        return { data: rows, error: null };
+      })();
 
       const [kpisRes, salespeopleRes, entriesRes, unitsRes, teamsRes, sectorsRes, companyRes, monthlyTargetsRes, sectorTeamsRes, teamUnitsRes, daySettingsRes] = await Promise.all([
         supabase.from("company_kpis").select("*").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
@@ -353,13 +361,17 @@ export const KPIDashboardTab = ({
       // For vendedor view: fetch all company entries to compute real ranking position
       // (uses kpi_entries directly — no need to fetch all salespeople, avoids RLS issues)
       if (isSalespersonView && salespersonId) {
-        const allEntriesRes = await supabase
-          .from("kpi_entries")
-          .select("kpi_id, salesperson_id, value")
-          .eq("company_id", companyId)
-          .gte("entry_date", dateRange.start)
-          .lte("entry_date", dateRange.end);
-        setAllEntriesForRanking(allEntriesRes.data || []);
+        const allRankingRows = await fetchAllRows((from, to) =>
+          supabase
+            .from("kpi_entries")
+            .select("kpi_id, salesperson_id, value")
+            .eq("company_id", companyId)
+            .gte("entry_date", dateRange.start)
+            .lte("entry_date", dateRange.end)
+            .order("id", { ascending: true })
+            .range(from, to)
+        );
+        setAllEntriesForRanking(allRankingRows || []);
       }
       setUnits(unitsRes.data || []);
       setTeams(teamsRes.data || []);

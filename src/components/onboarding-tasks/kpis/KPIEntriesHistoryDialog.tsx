@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -159,15 +160,24 @@ export const KPIEntriesHistoryDialog = ({
   const fetchData = async () => {
     setLoading(true);
     try {
-      let entriesQuery = supabase
-        .from("kpi_entries").select("*")
-        .eq("company_id", companyId)
-        .gte("entry_date", dateRange.start)
-        .lte("entry_date", dateRange.end);
-      if (salespersonId) entriesQuery = entriesQuery.eq("salesperson_id", salespersonId);
-      entriesQuery = entriesQuery
-        .order("entry_date", { ascending: false })
-        .order("created_at", { ascending: false });
+      // PostgREST corta em 1000 linhas: pagina tudo, senão o total do filtro vem parcial
+      // e diverge do dashboard.
+      const entriesQuery = (async () => {
+        const rows = await fetchAllRows((from, to) => {
+          let q = supabase
+            .from("kpi_entries").select("*")
+            .eq("company_id", companyId)
+            .gte("entry_date", dateRange.start)
+            .lte("entry_date", dateRange.end)
+            .order("entry_date", { ascending: false })
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
+            .range(from, to);
+          if (salespersonId) q = q.eq("salesperson_id", salespersonId);
+          return q;
+        });
+        return { data: rows, error: null as any };
+      })();
 
       let salespeopleQuery = supabase
         .from("company_salespeople").select("id, name, unit_id, team_id, sector_id")
