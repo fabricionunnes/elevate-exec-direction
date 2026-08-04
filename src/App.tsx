@@ -166,6 +166,7 @@ const VendedorKPIPage = lazy(() => import("./pages/vendedor/VendedorKPIPage"));
 const HealthScorePage = lazy(() => import("./pages/onboarding-tasks/HealthScorePage"));
 const FinancialModulePage = lazy(() => import("./pages/onboarding-tasks/FinancialModulePage"));
 const WhatsAppConnectionsPage = lazy(() => import("./pages/onboarding-tasks/WhatsAppConnectionsPage"));
+const CRMWhatsAppConnectionPage = lazy(() => import("./pages/crm/CRMWhatsAppConnectionPage"));
 const ApiDocsPage = lazy(() => import("./pages/onboarding-tasks/ApiDocsPage"));
 const AllRecurringChargesPage = lazy(() => import("./pages/onboarding-tasks/AllRecurringChargesPage"));
 const RecurringMonitorPage = lazy(() => import("./pages/onboarding-tasks/RecurringMonitorPage"));
@@ -654,6 +655,7 @@ const AppShell = () => {
               <Route path="cadences" element={<CRMCadencesPage />} />
               <Route path="email-blast" element={<CRMEmailBlastPage />} />
               <Route path="applications" element={<CRMApplicationsPage />} />
+              <Route path="conexao-whatsapp" element={<CRMWhatsAppConnectionPage />} />
               <Route path="agents" element={<CRMAgentsPage />} />
               <Route path="automacoes" element={<CRMAutomationsPage />} />
             </Route>

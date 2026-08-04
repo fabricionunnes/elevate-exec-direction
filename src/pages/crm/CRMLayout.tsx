@@ -89,6 +89,7 @@ const baseNavTabs = [
   { title: "Disparador E-mail", href: "/crm/email-blast", icon: MailIcon },
   { title: "Automações IA", href: "/crm/automacoes", icon: Zap },
   { title: "Aplicações", href: "/crm/applications", icon: BarChart3 },
+  { title: "Conexão WhatsApp", href: "/crm/conexao-whatsapp", icon: MessageSquare },
   { title: "Nota Fiscal", href: "/onboarding-tasks/nota-fiscal", icon: FileText },
   { title: "Escritório", href: "/crm/office", icon: Building2 },
   { title: "UNV Office", href: "/onboarding-tasks/unv-office", icon: Building2 },
