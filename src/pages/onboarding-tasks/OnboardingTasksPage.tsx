@@ -2338,11 +2338,11 @@ const OnboardingTasksPage = () => {
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp-hub")}>
                   <MessageSquare className="h-4 w-4 mr-2" /> Atendimentos
                 </DropdownMenuItem>
-                {isAdmin && (
-                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/conexoes-whatsapp")}>
-                    <MessageSquare className="h-4 w-4 mr-2" /> Conexões WhatsApp
-                  </DropdownMenuItem>
-                )}
+                {/* Admin/master gerencia todas as instâncias; os demais veem só as
+                    liberadas pra eles em Acessos e conectam o próprio número. */}
+                <DropdownMenuItem onClick={() => navigate(isAdmin ? "/onboarding-tasks/conexoes-whatsapp" : "/onboarding-tasks/minhas-conexoes-whatsapp")}>
+                  <MessageSquare className="h-4 w-4 mr-2" /> {isAdmin ? "Conexões WhatsApp" : "Conexão WhatsApp"}
+                </DropdownMenuItem>
                 {canCreateCompany && (
                   <>
                     <DropdownMenuSeparator />

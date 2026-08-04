@@ -507,6 +507,7 @@ const AppShell = () => {
               <Route path="/sales-report" element={<SalesReportPage />} />
               <Route path="/onboarding-tasks/results" element={<OnboardingResultsPage />} />
               <Route path="/onboarding-tasks/conexoes-whatsapp" element={<WhatsAppConnectionsPage />} />
+              <Route path="/onboarding-tasks/minhas-conexoes-whatsapp" element={<CRMWhatsAppConnectionPage />} />
               <Route path="/onboarding-tasks/financeiro" element={<ModuleGuard module="financial" label="Financeiro"><FinancialModulePage /></ModuleGuard>} />
               <Route path="/onboarding-tasks/api-docs" element={<ApiDocsPage />} />
               <Route path="/onboarding-tasks/financeiro/recorrencias" element={<ModuleGuard module="financial" label="Financeiro"><AllRecurringChargesPage /></ModuleGuard>} />
