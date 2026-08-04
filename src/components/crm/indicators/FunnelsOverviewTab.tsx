@@ -2,8 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Filter, Users, Wallet, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Filter, Users, Wallet, CheckCircle2, XCircle, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 
 // Visão geral de todos os funis: quantos leads em cada funil, separado por
 // etapa, com valor em negociação e tempo médio parado na etapa.
@@ -19,22 +22,40 @@ export const FunnelsOverviewTab = () => {
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
   const [agg, setAgg] = useState<AggRow[]>([]);
+  // Período de ENTRADA do lead. Vazio = tudo (comportamento antigo).
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const applyQuick = (days: number) => {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - days);
+    setDateFrom(iso(days === 0 ? to : from));
+    setDateTo(iso(to));
+  };
 
   useEffect(() => {
     (async () => {
       setLoading(true);
       try {
+        const hasRange = !!(dateFrom || dateTo);
         const [p, s, a] = await Promise.all([
           supabase.from("crm_pipelines").select("id, name").eq("is_active", true).order("name"),
           supabase.from("crm_stages").select("id, name, pipeline_id, sort_order, final_type, exclude_from_lead_count").order("sort_order"),
-          supabase.rpc("get_funnels_overview"),
+          hasRange
+            ? (supabase as any).rpc("get_funnels_overview", {
+                p_from: dateFrom || null,
+                p_to: dateTo || null,
+              })
+            : supabase.rpc("get_funnels_overview"),
         ]);
         setPipelines(p.data || []);
         setStages((s.data as Stage[]) || []);
         setAgg((a.data as AggRow[]) || []);
       } finally { setLoading(false); }
     })();
-  }, []);
+  }, [dateFrom, dateTo]);
 
   const byPipeline = useMemo(() => {
     const byStage = new Map(agg.map(r => [r.stage_id, r]));
@@ -58,8 +79,11 @@ export const FunnelsOverviewTab = () => {
       const lost = rows.filter(r => r.stage.final_type === "lost").reduce((s, r) => s + r.count, 0);
       const maxCount = Math.max(1, ...rows.map(r => r.count));
       return { pipeline: p, rows, total, openCount, openValue, won, lost, maxCount };
-    }).sort((a, b) => b.total - a.total);
-  }, [pipelines, stages, agg]);
+    })
+      // com filtro de data, só aparecem os funis que receberam lead no período
+      .filter(x => (dateFrom || dateTo) ? x.total > 0 : true)
+      .sort((a, b) => b.total - a.total);
+  }, [pipelines, stages, agg, dateFrom, dateTo]);
 
   const totals = useMemo(() => ({
     leads: byPipeline.reduce((s, p) => s + p.total, 0),
@@ -68,10 +92,6 @@ export const FunnelsOverviewTab = () => {
     won: byPipeline.reduce((s, p) => s + p.won, 0),
     lost: byPipeline.reduce((s, p) => s + p.lost, 0),
   }), [byPipeline]);
-
-  if (loading) {
-    return <div className="flex items-center justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
-  }
 
   const SummaryCard = ({ icon: Icon, label, value, sub, color }: { icon: any; label: string; value: string | number; sub?: string; color: string }) => (
     <Card>
@@ -88,8 +108,42 @@ export const FunnelsOverviewTab = () => {
     </Card>
   );
 
+  const hasRange = !!(dateFrom || dateTo);
+
   return (
     <div className="p-4 md:p-6 space-y-5">
+      <Card>
+        <CardContent className="py-3 flex flex-wrap items-end gap-3">
+          <div className="flex items-center gap-1.5 text-sm font-medium">
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+            Entrada do lead
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-[10px] text-muted-foreground">De</Label>
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 w-[150px]" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-[10px] text-muted-foreground">Até</Label>
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 w-[150px]" />
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <Button variant="outline" size="sm" className="h-8" onClick={() => applyQuick(0)}>Hoje</Button>
+            <Button variant="outline" size="sm" className="h-8" onClick={() => applyQuick(7)}>7 dias</Button>
+            <Button variant="outline" size="sm" className="h-8" onClick={() => applyQuick(30)}>30 dias</Button>
+            {hasRange && (
+              <Button variant="ghost" size="sm" className="h-8" onClick={() => { setDateFrom(""); setDateTo(""); }}>
+                Limpar
+              </Button>
+            )}
+          </div>
+          {hasRange && (
+            <Badge variant="secondary" className="text-[11px] ml-auto">
+              {byPipeline.length} funil{byPipeline.length === 1 ? "" : "s"} com lead no período
+            </Badge>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <SummaryCard icon={Users} label="Leads no CRM" value={totals.leads} color="#60a5fa" />
         <SummaryCard icon={Filter} label="Em aberto" value={totals.open} sub="fora de ganho/perda" color="#a78bfa" />
@@ -98,8 +152,20 @@ export const FunnelsOverviewTab = () => {
         <SummaryCard icon={XCircle} label="Perdidos" value={totals.lost} color="#f87171" />
       </div>
 
+      {loading && (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {!loading && byPipeline.length === 0 && (
+        <p className="text-sm text-muted-foreground py-10 text-center">
+          Nenhum funil recebeu lead nesse período.
+        </p>
+      )}
+
       <div className="grid lg:grid-cols-2 gap-4">
-        {byPipeline.map(({ pipeline, rows, total, openCount, openValue, won, lost, maxCount }) => (
+        {!loading && byPipeline.map(({ pipeline, rows, total, openCount, openValue, won, lost, maxCount }) => (
           <Card key={pipeline.id}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
@@ -144,7 +210,7 @@ export const FunnelsOverviewTab = () => {
         ))}
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Barras comparam as etapas dentro do mesmo funil. Valor = soma do valor de oportunidade dos leads na etapa. "Xd média" = tempo médio que os leads atuais estão parados na etapa.
+        {hasRange ? "Com filtro de data, os números consideram só os leads que ENTRARAM no período — a etapa mostrada é a atual deles. " : ""}Barras comparam as etapas dentro do mesmo funil. Valor = soma do valor de oportunidade dos leads na etapa. "Xd média" = tempo médio que os leads atuais estão parados na etapa.
       </p>
     </div>
   );
