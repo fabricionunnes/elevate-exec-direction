@@ -140,36 +140,11 @@ nav .btn{width:auto;padding:11px 22px;font-size:11.5px}
 .igbar .dots{margin-left:auto;color:var(--muted2);font-size:13px;letter-spacing:1px}
 .igbio{font-size:8.5px;margin-top:9px;color:rgba(255,255,255,.55);line-height:1.4;padding-bottom:9px;border-bottom:1px solid rgba(255,255,255,.07)}
 .ba{position:relative;width:100%;flex:1;overflow:hidden;cursor:ew-resize;touch-action:none}
-.layer{position:absolute;inset:0;--tile:calc((var(--pw) - 22px) / 3);display:grid;grid-template-columns:repeat(3,var(--tile));grid-auto-rows:calc(var(--tile) * 1.25);gap:2px;align-content:start}
-.layer.after{display:block}
-.layer.after img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
-.layer.after{clip-path:inset(0 0 0 var(--pos,52%))}
+.layer{position:absolute;inset:0}
+.layer img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
+.layer.after{clip-path:inset(0 0 0 var(--pos,50%))}
 .layer.after::before{content:"";position:absolute;inset:0;box-shadow:inset 2px 0 0 rgba(255,255,255,.06);pointer-events:none;z-index:2}
-.t{position:relative;overflow:hidden;min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;padding:7px}
-/* antes */
-.t.b1{background:linear-gradient(150deg,#6f7266,#54574e)}
-.t.b2{background:linear-gradient(150deg,#8d8272,#6b6255)}
-.t.b3{background:linear-gradient(150deg,#5c6470,#464d57)}
-.t.b4{background:linear-gradient(150deg,#7a6f6a,#5a524e)}
-.t.b5{background:linear-gradient(150deg,#6b7566,#4e564b)}
-.t.b6{background:linear-gradient(150deg,#847a86,#5e5762)}
-.layer.before .t span{font-size:6.5px;font-weight:600;color:rgba(255,255,255,.66);text-shadow:0 1px 2px rgba(0,0,0,.5);line-height:1.2;letter-spacing:0}
-.layer.before .t:nth-child(2n) span{transform:rotate(-1.5deg)}
-.layer.before .t:nth-child(3n) span{text-align:right;font-size:5.5px}
-/* depois */
-.t.a1{background:linear-gradient(155deg,#123268,#071733)}
-.t.a2{background:linear-gradient(155deg,var(--red),#8E0F18)}
-.t.a3{background:linear-gradient(155deg,#0f2652,#050f22)}
-.t.a4{background:linear-gradient(155deg,#F4EFE6,#d9cfbe)}
-.t.a5{background:linear-gradient(155deg,#0d2b5e,#0a1c3d)}
-.t.a6{background:linear-gradient(155deg,#1a1a1e,#0a0a0c)}
-.layer.after .t::before{content:"";position:absolute;top:6px;left:6px;width:11px;height:2px;background:var(--red);border-radius:2px;opacity:.95}
-.t.a4::before{background:var(--navy)!important}
-.layer.after .t b{font-size:8px;font-weight:900;letter-spacing:-.03em;line-height:1.03;text-transform:uppercase;color:#fff}
-.t.a4 b{color:#0D2B5E}
-.layer.after .t i{font-style:normal;font-size:5.2px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-top:3px}
-.t.a4 i{color:rgba(13,43,94,.62)}
-.handle{position:absolute;top:0;bottom:0;left:var(--pos,55%);width:2px;background:linear-gradient(180deg,transparent,#fff 12%,#fff 88%,transparent);z-index:6;pointer-events:none;box-shadow:0 0 16px rgba(255,255,255,.55)}
+.handle{position:absolute;top:0;bottom:0;left:var(--pos,50%);width:2px;background:linear-gradient(180deg,transparent,#fff 12%,#fff 88%,transparent);z-index:6;pointer-events:none;box-shadow:0 0 16px rgba(255,255,255,.55)}
 .handle::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.96);box-shadow:0 4px 18px rgba(0,0,0,.6)}
 .handle::before{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:12px;height:12px;z-index:2;
   background:conic-gradient(from 45deg,transparent 0 25%,#111 0 50%,transparent 0 75%,#111 0);clip-path:polygon(0 50%,35% 20%,35% 80%,100% 50%,65% 20%,65% 80%)}
@@ -369,38 +344,21 @@ footer img{height:104px;margin:0 auto 14px;opacity:.85}
           <div class="screen">
             <div class="ightop">
               <div class="igbar">
-                <div class="av">UV</div>
-                <div class="nm">seunegocio<span>Perfil da sua empresa</span></div>
+                <div class="av">BG</div>
+                <div class="nm">begymcompany<span>Cliente UNV Social</span></div>
                 <div class="dots">•••</div>
               </div>
-              <div class="igbio">Feed sem gestão × feed com a UNV Social.<br />Arrasta a linha e compara →</div>
+              <div class="igbio">O mesmo perfil, antes e depois da UNV Social.<br />Arrasta a linha e compara →</div>
             </div>
-            <div class="ba" id="ba" style="--pos:52%">
+            <div class="ba" id="ba" style="--pos:50%">
               <div class="layer before">
-                <div class="t b1"><span>promoção!!! chama no direct</span></div>
-                <div class="t b2"><span>foto do produto</span></div>
-                <div class="t b3"><span>bom dia a todos</span></div>
-                <div class="t b4"><span>estamos abertos</span></div>
-                <div class="t b5"><span>confira</span></div>
-                <div class="t b6"><span>novidade</span></div>
-                <div class="t b3"><span>orçamento sem compromisso</span></div>
-                <div class="t b1"><span>obrigado</span></div>
-                <div class="t b2"><span>promo</span></div>
-                <div class="t b4"><span>feliz dia das mães</span></div>
-                <div class="t b6"><span>chame no zap</span></div>
-                <div class="t b5"><span>aberto hoje</span></div>
-                <div class="t b2"><span>foto antiga</span></div>
-                <div class="t b3"><span>bom fim de semana</span></div>
-                <div class="t b1"><span>desconto</span></div>
-                <div class="t b6"><span>volte sempre</span></div>
-                <div class="t b4"><span>novidades em breve</span></div>
-                <div class="t b5"><span>segue a gente</span></div>
+                <img src="./feed-antes.jpg" alt="Feed do cliente antes da UNV Social" width="540" height="900" fetchpriority="high" />
               </div>
               <div class="layer after">
                 <img src="./feed-real.jpg" alt="Feed produzido pela UNV Social" width="540" height="900" fetchpriority="high" />
               </div>
-              <div class="balabel l">Sem gestão</div>
-              <div class="balabel r">Com a UNV</div>
+              <div class="balabel l">Antes</div>
+              <div class="balabel r">Depois</div>
               <div class="handle"></div>
             </div>
           </div>
@@ -727,7 +685,7 @@ footer img{height:104px;margin:0 auto 14px;opacity:.85}
   var demoed = false;
   function demo(){
     if(demoed || touched) return; demoed = true;
-    var start = null, from = 52, to = 88, back = 18, dur = 1800;
+    var start = null, from = 50, to = 82, back = 20, dur = 1800;
     function step(ts){
       if(touched) return;
       if(!start) start = ts;
@@ -736,7 +694,7 @@ footer img{height:104px;margin:0 auto 14px;opacity:.85}
       var v = t < .5 ? from + (to-from)*(e*2) : to + (back-to)*((e-.5)*2);
       ba.style.setProperty("--pos", Math.max(6, Math.min(94, v)) + "%");
       if(t < 1) requestAnimationFrame(step);
-      else setTimeout(function(){ if(!touched) ba.style.setProperty("--pos","52%"); }, 450);
+      else setTimeout(function(){ if(!touched) ba.style.setProperty("--pos","50%"); }, 450);
     }
     requestAnimationFrame(step);
   }
