@@ -210,8 +210,6 @@ export const FunnelsOverviewTab = () => {
     (async () => {
       setLoading(true);
       try {
-        const hasRange = !!(dateFrom || dateTo);
-  const hasAdFilter = campaignFilter.length + adsetFilter.length + adFilter.length > 0;
         const [p, s, a] = await Promise.all([
           supabase.from("crm_pipelines").select("id, name").eq("is_active", true).order("name"),
           supabase.from("crm_stages").select("id, name, pipeline_id, sort_order, final_type, exclude_from_lead_count").order("sort_order"),
@@ -308,6 +306,7 @@ export const FunnelsOverviewTab = () => {
   };
 
   const hasRange = !!(dateFrom || dateTo);
+  const hasAdFilter = campaignFilter.length + adsetFilter.length + adFilter.length > 0;
 
   return (
     <div className="p-4 md:p-6 space-y-5">
