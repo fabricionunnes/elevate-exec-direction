@@ -86,6 +86,7 @@ export interface PipelineLeadCount {
 
 export interface MeetingStat {
   pipeline_id: string;
+  meta_ad_id: string | null;
   utm_campaign: string | null;
   date: string | null; // YYYY-MM-DD (event_date)
   scheduled: number;
@@ -94,6 +95,7 @@ export interface MeetingStat {
 
 export interface AdLeadStat {
   meta_ad_id: string;
+  pipeline_id: string | null;
   meta_adset_id: string | null;
   meta_campaign_id: string | null;
   date: string | null; // YYYY-MM-DD (created_at)
@@ -270,9 +272,10 @@ export function useCRMTrafficData() {
 
         // Atribuição direta por anúncio (quando o lead carrega meta_ad_id)
         if (lead.meta_ad_id) {
-          const aKey = `${lead.meta_ad_id}::${date || "__nd__"}`;
+          const aKey = `${lead.meta_ad_id}::${lead.pipeline_id || "__np__"}::${date || "__nd__"}`;
           const cur = adMap.get(aKey) || {
             meta_ad_id: lead.meta_ad_id,
+            pipeline_id: lead.pipeline_id || null,
             meta_adset_id: lead.meta_adset_id || null,
             meta_campaign_id: lead.meta_campaign_id || null,
             date,
@@ -284,9 +287,10 @@ export function useCRMTrafficData() {
           adMap.set(aKey, cur);
           // Venda pela data do fechamento
           if (isWon) {
-            const awKey = `${lead.meta_ad_id}::${wonDate || "__nd__"}`;
+            const awKey = `${lead.meta_ad_id}::${lead.pipeline_id || "__np__"}::${wonDate || "__nd__"}`;
             const curW = adMap.get(awKey) || {
               meta_ad_id: lead.meta_ad_id,
+              pipeline_id: lead.pipeline_id || null,
               meta_adset_id: lead.meta_adset_id || null,
               meta_campaign_id: lead.meta_campaign_id || null,
               date: wonDate,
@@ -314,7 +318,7 @@ export function useCRMTrafficData() {
         for (let from = 0; from <= 100000; from += PAGE) {
           const { data: page } = await supabase
             .from("crm_meeting_events")
-            .select("event_type, pipeline_id, event_date, lead:crm_leads(utm_campaign)")
+            .select("event_type, pipeline_id, event_date, lead:crm_leads(utm_campaign, meta_ad_id)")
             .in("event_type", ["scheduled", "realized"])
             .in("pipeline_id", linkedPipelineIds)
             .order("event_date", { ascending: false })
@@ -328,11 +332,13 @@ export function useCRMTrafficData() {
       const mMap = new Map<string, MeetingStat>();
       for (const ev of meetingsArr) {
         const utm = ev.lead?.utm_campaign || null;
+        const adId = ev.lead?.meta_ad_id || null;
         if (!ev.pipeline_id) continue;
         const date = ev.event_date ? String(ev.event_date).slice(0, 10) : null;
-        const key = `${ev.pipeline_id}::${utm || "__none__"}::${date || "__nd__"}`;
+        const key = `${ev.pipeline_id}::${utm || "__none__"}::${adId || "__na__"}::${date || "__nd__"}`;
         const cur = mMap.get(key) || {
           pipeline_id: ev.pipeline_id,
+          meta_ad_id: adId,
           utm_campaign: utm,
           date,
           scheduled: 0,

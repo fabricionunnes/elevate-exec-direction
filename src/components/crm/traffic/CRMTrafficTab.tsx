@@ -167,15 +167,55 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
       if (dateTo && d > dateTo) return false;
       return true;
     };
-    const fLeadStats = leadStats.filter(
+    // Com filtro de campanha/conjunto/anúncio, os leads e vendas do CRM precisam
+    // vir da atribuição por anúncio (meta_ad_id) — senão os cards continuavam
+    // somando a base inteira e só o investimento mudava.
+    const hasAdScope = !!(campSet || adsetSet || adSet);
+    const scopedAdIds = new Set(fAds.map((a) => a.ad_id));
+
+    let fLeadStats = leadStats.filter(
       (s) => (!pipeSet || pipeSet.has(s.pipeline_id)) && inDateStr(s.date),
     );
-    const fMeetingStats = meetingStats.filter(
+    let fMeetingStats = meetingStats.filter(
       (s) => (!pipeSet || pipeSet.has(s.pipeline_id)) && inDateStr(s.date),
     );
 
-    return { campaigns: effectiveCampaigns, adsets: fAdsets, ads: fAds, leadStats: fLeadStats, meetingStats: fMeetingStats };
-  }, [campaigns, adsets, ads, links, leadStats, meetingStats, pipelineFilter, campaignFilter, adsetFilter, adFilter, statusFilter, dateFrom, dateTo]);
+    if (hasAdScope) {
+      fLeadStats = adLeadStats
+        .filter((s) => {
+          if (!scopedAdIds.has(s.meta_ad_id)) return false;
+          if (pipeSet && (!s.pipeline_id || !pipeSet.has(s.pipeline_id))) return false;
+          return inDateStr(s.date);
+        })
+        .map((s) => ({
+          pipeline_id: s.pipeline_id || "",
+          utm_campaign: null,
+          date: s.date,
+          total: s.total,
+          won: s.won,
+          won_value: s.won_value,
+        }));
+
+      fMeetingStats = fMeetingStats.filter(
+        (s) => !!s.meta_ad_id && scopedAdIds.has(s.meta_ad_id),
+      );
+    }
+
+    const fAdLeadStats = adLeadStats.filter((s) => {
+      if (!scopedAdIds.has(s.meta_ad_id)) return false;
+      if (pipeSet && (!s.pipeline_id || !pipeSet.has(s.pipeline_id))) return false;
+      return inDateStr(s.date);
+    });
+
+    return {
+      campaigns: effectiveCampaigns,
+      adsets: fAdsets,
+      ads: fAds,
+      leadStats: fLeadStats,
+      meetingStats: fMeetingStats,
+      adLeadStats: fAdLeadStats,
+    };
+  }, [campaigns, adsets, ads, links, leadStats, meetingStats, adLeadStats, pipelineFilter, campaignFilter, adsetFilter, adFilter, statusFilter, dateFrom, dateTo]);
 
   // Opções dos selects respeitando o filtro de Status (e cascata Campanha → Conjunto → Anúncio)
   const availableOptions = useMemo(() => {
@@ -442,7 +482,7 @@ export const CRMTrafficTab = ({ isAdmin }: Props) => {
         pipelines={pipelines}
         leadStats={filtered.leadStats}
         meetingStats={filtered.meetingStats}
-        adLeadStats={adLeadStats}
+        adLeadStats={filtered.adLeadStats}
         diagnostics={diagnostics}
       />
     </div>
