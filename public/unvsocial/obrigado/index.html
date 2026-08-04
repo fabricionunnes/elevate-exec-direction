@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Recebemos seu contato | UNV Social</title>
+<meta name="description" content="Seu contato chegou. Nosso time vai analisar seu perfil e falar com você no WhatsApp." />
+<meta name="theme-color" content="#070708" />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="../favicon-192.png" />
+<link rel="apple-touch-icon" href="../favicon-180.png" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Instrument+Serif:ital@1&display=swap" media="print" onload="this.media='all'" />
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#070708; --red:#E01E2C; --red-2:#FF4152; --red-deep:#8E0F18; --navy:#0D2B5E;
+  --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.055);
+  --muted:rgba(255,255,255,.62); --muted2:rgba(255,255,255,.38); --green:#4ade80;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --serif:"Instrument Serif",Georgia,serif;
+}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:#fff;font-family:var(--sans);line-height:1.55;min-height:100dvh;display:flex;flex-direction:column;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+img{display:block;max-width:100%;height:auto}
+a{color:inherit;text-decoration:none}
+.grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.aurora{position:absolute;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0}
+.a1{width:min(760px,95vw);height:min(760px,95vw);background:radial-gradient(circle,rgba(224,30,44,.20),transparent 66%);top:-26%;left:-12%;animation:drift 22s ease-in-out infinite}
+.a2{width:min(600px,80vw);height:min(600px,80vw);background:radial-gradient(circle,rgba(13,43,94,.55),transparent 68%);bottom:-24%;right:-14%;animation:drift 26s ease-in-out infinite reverse}
+@keyframes drift{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(5%,7%,0) scale(1.13)}}
+.gridbg{position:absolute;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);
+  background-size:56px 56px;
+  -webkit-mask-image:radial-gradient(ellipse 75% 62% at 50% 30%,#000 18%,transparent 74%);
+  mask-image:radial-gradient(ellipse 75% 62% at 50% 30%,#000 18%,transparent 74%)}
+
+main{flex:1;display:flex;align-items:center;justify-content:center;padding:clamp(36px,7vw,72px) clamp(20px,5vw,48px);position:relative;overflow:hidden}
+.box{position:relative;z-index:2;max-width:640px;width:100%;text-align:center}
+.logo{height:30px;width:auto;margin:0 auto 34px;opacity:.95}
+.ok{width:78px;height:78px;border-radius:50%;background:rgba(74,222,128,.11);border:1px solid rgba(74,222,128,.32);display:flex;align-items:center;justify-content:center;margin:0 auto 26px;animation:pop .6s cubic-bezier(.22,1.4,.36,1) both}
+.ok svg{width:34px;height:34px;color:var(--green);stroke-dasharray:36;stroke-dashoffset:36;animation:draw .5s .35s ease forwards}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes draw{to{stroke-dashoffset:0}}
+h1{font-size:clamp(29px,5vw,46px);font-weight:900;letter-spacing:-.035em;line-height:1.06}
+h1 em{font-style:italic;font-family:var(--serif);font-weight:400;color:var(--red-2)}
+.lead{font-size:clamp(15px,1.7vw,17.5px);color:var(--muted);line-height:1.68;margin-top:18px;max-width:520px;margin-left:auto;margin-right:auto}
+.lead strong{color:#fff;font-weight:700}
+
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:38px;text-align:left}
+.st{padding:18px 18px;border:1px solid var(--line2);border-radius:13px;background:linear-gradient(165deg,rgba(255,255,255,.045),rgba(255,255,255,.012))}
+.st .n{width:24px;height:24px;border-radius:7px;background:rgba(224,30,44,.14);border:1px solid rgba(224,30,44,.3);color:var(--red-2);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-bottom:11px}
+.st b{font-size:13.5px;font-weight:800;display:block;letter-spacing:-.01em}
+.st span{font-size:12.4px;color:var(--muted);display:block;margin-top:4px;line-height:1.5}
+
+.cta{margin-top:38px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border:none;border-radius:100px;padding:18px 34px;font-family:var(--sans);font-size:13.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;color:#fff;position:relative;overflow:hidden;
+  background:linear-gradient(135deg,#2fe27a,#25D366 45%,#12a04c);
+  box-shadow:0 12px 34px -10px rgba(37,211,102,.72),inset 0 1px 0 rgba(255,255,255,.28);transition:transform .18s,box-shadow .25s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 18px 44px -10px rgba(37,211,102,.85)}
+.btn svg{width:18px;height:18px}
+.sub{font-size:12.5px;color:var(--muted2);margin-top:16px}
+.back{display:inline-block;margin-top:26px;font-size:12.5px;color:var(--muted2);border-bottom:1px solid var(--line);padding-bottom:2px}
+.back:hover{color:#fff}
+
+footer{padding:26px 20px;background:#000;border-top:1px solid var(--line2);text-align:center;font-size:12px;color:rgba(255,255,255,.3);position:relative;z-index:2}
+@media(max-width:700px){.steps{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<main>
+  <div class="aurora a1"></div>
+  <div class="aurora a2"></div>
+  <div class="gridbg"></div>
+
+  <div class="box">
+    <img class="logo" src="../logo-social.png" alt="UNV Social" width="240" height="88" />
+
+    <div class="ok">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+    </div>
+
+    <h1>Recebemos seu contato.<br />Agora é com <em>a gente.</em></h1>
+    <p class="lead">
+      Nosso time já vai <strong>analisar o seu perfil</strong> e te chamar no WhatsApp com um retorno
+      direto do que dá pra melhorar — e de como a gente pode assumir isso pra você.
+    </p>
+
+    <div class="steps">
+      <div class="st"><div class="n">1</div><b>Análise do perfil</b><span>Olhamos seu Instagram, seu público e seus concorrentes.</span></div>
+      <div class="st"><div class="n">2</div><b>Contato no WhatsApp</b><span>Falamos com você no mesmo dia, em horário comercial.</span></div>
+      <div class="st"><div class="n">3</div><b>Proposta sob medida</b><span>Nada de pacote genérico: proposta feita pro seu negócio.</span></div>
+    </div>
+
+    <div class="cta">
+      <a class="btn" id="wa" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+        Quero furar a fila
+      </a>
+      <p class="sub">Chamando agora no WhatsApp você entra na frente da fila de análise.</p>
+      <a class="back" href="/unvsocial">Voltar para a página</a>
+    </div>
+  </div>
+</main>
+
+<footer>Todos os direitos reservados · Universidade Nacional de Vendas LTDA</footer>
+
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1747516463051359&ev=Lead&noscript=1" alt="" /></noscript>
+
+<script>
+(function(){
+  "use strict";
+  var PIXEL = "1747516463051359";
+  var WA_NUMBER = "5511927008490";
+  var WA_MSG = "Ola! Acabei de preencher o formulario da UNV Social e quero adiantar a analise do meu perfil";
+  document.getElementById("wa").href = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(WA_MSG);
+
+  /* ── Meta Pixel: PageView + conversao de Lead ── */
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");
+  try {
+    fbq("init", PIXEL);
+    fbq("track", "PageView");
+    fbq("track", "Lead", { content_name: "UNV Social - Proposta", content_category: "social-media" });
+  } catch(e){}
+})();
+</script>
+</body>
+</html>

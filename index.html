@@ -6,7 +6,22 @@
       // /start/{qualquer-coisa} preserva o destino (checkout, link mágico do portal).
       (function () {
         var p = window.location.pathname;
+        // A landing de social media virou página estática em /unvsocial (abre instantânea,
+        // fora do SPA). Anúncios antigos apontam pra /#/social-media — redireciona na hora,
+        // antes do bundle carregar, preservando UTMs tanto do search quanto do hash.
+        var h = window.location.hash || "";
+        if (h.indexOf("#/social-media") === 0) {
+          var qs = window.location.search || "";
+          var iq = h.indexOf("?");
+          if (iq > -1) qs = qs ? qs + "&" + h.slice(iq + 1) : "?" + h.slice(iq + 1);
+          window.location.replace("/unvsocial/" + qs);
+          return;
+        }
         if (!window.location.hash) {
+          if (p === "/social-media" || p === "/social-media/") {
+            window.location.replace("/unvsocial/" + (window.location.search || ""));
+            return;
+          }
           if (p === "/start" || p === "/start/" || p === "/unv-start") {
             window.location.replace("/#/unv-start" + window.location.search);
           } else if (p.indexOf("/start/") === 0) {
