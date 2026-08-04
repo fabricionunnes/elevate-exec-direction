@@ -378,14 +378,14 @@ export default function WhatsAppConnectionsPage() {
           <DialogHeader>
             <DialogTitle>Acessos — {accessFor?.display_name || accessFor?.instance_name}</DialogTitle>
             <DialogDescription>
-              Quem pode ver e enviar conversas desta instância no Atendimento. Master e administradores sempre têm acesso total.
+              Quem pode ver e enviar conversas desta instância no Atendimento. Só o master tem acesso total automático — administradores também precisam ser liberados aqui.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[50vh] overflow-y-auto space-y-1">
             <div className="grid grid-cols-[1fr_70px_70px] gap-2 px-2 pb-1 text-xs font-medium text-muted-foreground">
               <span>Usuário</span><span className="text-center">Ver</span><span className="text-center">Enviar</span>
             </div>
-            {staffList.filter((s) => !["master", "admin"].includes(s.role)).map((s) => {
+            {staffList.filter((s) => s.role !== "master").map((s) => {
               const a = accessMap.get(s.id);
               return (
                 <div key={s.id} className="grid grid-cols-[1fr_70px_70px] gap-2 items-center rounded-md px-2 py-1.5 hover:bg-muted/50">
