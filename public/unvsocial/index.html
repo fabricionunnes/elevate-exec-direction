@@ -153,12 +153,13 @@ nav .btn{width:auto;padding:11px 22px;font-size:11.5px}
 .balabel.r{right:9px;background:rgba(224,30,44,.9);color:#fff}
 
 /* ─── marquee ─── */
-.mq{overflow:hidden;position:relative;padding:6px 0;-webkit-mask-image:linear-gradient(90deg,transparent,#000 9%,#000 91%,transparent);mask-image:linear-gradient(90deg,transparent,#000 9%,#000 91%,transparent)}
-.mq .track{display:flex;gap:14px;width:max-content;animation:scroll 44s linear infinite}
+.mq{overflow:hidden;position:relative;padding:18px 0;-webkit-mask-image:linear-gradient(90deg,transparent,#000 9%,#000 91%,transparent);mask-image:linear-gradient(90deg,transparent,#000 9%,#000 91%,transparent)}
+.mq .track{display:flex;gap:14px;width:max-content;animation:scroll 44s linear infinite;align-items:center}
 .mq.rev .track{animation-direction:reverse;animation-duration:52s}
 .mq:hover .track{animation-play-state:paused}
 @keyframes scroll{to{transform:translateX(-50%)}}
-.pt{width:158px;aspect-ratio:4/5;border-radius:14px;flex:0 0 auto;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.09);background:#111;box-shadow:0 14px 34px -18px rgba(0,0,0,.9)}
+.pt{width:158px;aspect-ratio:4/5;border-radius:14px;flex:0 0 auto;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.09);background:#111;box-shadow:0 14px 34px -18px rgba(0,0,0,.9);cursor:zoom-in;transition:transform .32s cubic-bezier(.22,1,.36,1),box-shadow .32s,border-color .32s}
+.pt:hover{transform:scale(1.16);z-index:6;border-color:rgba(224,30,44,.45);box-shadow:0 26px 60px -18px rgba(0,0,0,.95),0 0 0 1px rgba(224,30,44,.25)}
 .pt img{width:100%;height:100%;object-fit:cover;display:block}
 
 /* ─── cards ─── */
@@ -185,8 +186,8 @@ nav .btn{width:auto;padding:11px 22px;font-size:11.5px}
 
 /* feeds reais */
 .feeds{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:44px}
-.fd{border:1px solid var(--line2);border-radius:16px;overflow:hidden;background:linear-gradient(165deg,rgba(255,255,255,.05),rgba(255,255,255,.012));transition:transform .3s cubic-bezier(.22,1,.36,1),border-color .3s}
-.fd:hover{transform:translateY(-5px);border-color:rgba(224,30,44,.34)}
+.fd{border:1px solid var(--line2);border-radius:16px;overflow:hidden;background:linear-gradient(165deg,rgba(255,255,255,.05),rgba(255,255,255,.012));cursor:zoom-in;transition:transform .34s cubic-bezier(.22,1,.36,1),border-color .34s,box-shadow .34s}
+.fd:hover{transform:translateY(-6px) scale(1.03);border-color:rgba(224,30,44,.4);box-shadow:0 30px 64px -24px rgba(0,0,0,.95)}
 .fh{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line2)}
 .fh .av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--navy));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;flex:0 0 auto}
 .fh b{font-size:13.5px;font-weight:800;letter-spacing:-.01em;display:block}
@@ -195,8 +196,8 @@ nav .btn{width:auto;padding:11px 22px;font-size:11.5px}
 
 /* reels */
 .reels{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:44px;max-width:900px;margin-left:auto;margin-right:auto}
-.reel{position:relative;aspect-ratio:9/16;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#101013;cursor:pointer;transition:transform .3s cubic-bezier(.22,1,.36,1),border-color .3s}
-.reel:hover{transform:translateY(-5px);border-color:rgba(224,30,44,.4)}
+.reel{position:relative;aspect-ratio:9/16;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#101013;cursor:pointer;transition:transform .32s cubic-bezier(.22,1,.36,1),border-color .32s,box-shadow .32s}
+.reel:hover{transform:translateY(-6px) scale(1.035);border-color:rgba(224,30,44,.45);box-shadow:0 28px 60px -22px rgba(0,0,0,.95)}
 .reel img,.reel video{width:100%;height:100%;object-fit:cover;display:block}
 .reel .ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(to top,rgba(0,0,0,.6),transparent 55%)}
 .reel .pc{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.14);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 30px rgba(0,0,0,.5)}
@@ -260,6 +261,7 @@ footer img{height:104px;margin:0 auto 14px;opacity:.85}
   .frow{grid-template-columns:1fr;gap:0}
   .pt{width:132px}
 }
+@media(hover:none){.pt:hover,.fd:hover,.reel:hover{transform:none}}
 @media(prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important}
   .rv{opacity:1;transform:none}
