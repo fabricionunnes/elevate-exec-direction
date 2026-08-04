@@ -155,6 +155,9 @@ function buildTools(agent: any, hasLead: boolean): any[] {
           properties: {
             data_hora: { type: "string", description: "Data e hora confirmadas, formato YYYY-MM-DDTHH:MM (horário de Brasília)" },
             titulo: { type: "string", description: "Título curto da reunião, ex: 'Reunião UNV x Nome do Lead'" },
+            email: { type: "string", description: "E-mail do lead, coletado na conversa. OBRIGATÓRIO: peça antes de agendar se ainda não tiver." },
+            telefone: { type: "string", description: "Telefone/WhatsApp do lead com DDD, coletado na conversa. OBRIGATÓRIO: peça antes de agendar se ainda não tiver." },
+            nome_completo: { type: "string", description: "Nome completo do lead, se ele informou." },
           },
           required: ["data_hora", "titulo"],
         },
@@ -173,6 +176,43 @@ function buildTools(agent: any, hasLead: boolean): any[] {
     });
   }
   return tools;
+}
+
+/** Alerta interno por WhatsApp — instância oficial "fabricionunnes"
+ * (mesmo caminho usado pelos outros alertas do sistema). */
+async function sendWhatsAppAlert(supabase: any, phone: string, text: string): Promise<boolean> {
+  try {
+    let { data: inst } = await supabase
+      .from("whatsapp_instances")
+      .select("instance_name, api_url, api_key, status, provider_type")
+      .eq("instance_name", "fabricionunnes")
+      .eq("status", "connected")
+      .maybeSingle();
+    if (!inst) {
+      const { data: fallback } = await supabase
+        .from("whatsapp_instances")
+        .select("instance_name, api_url, api_key, status, provider_type")
+        .eq("status", "connected")
+        .limit(1)
+        .maybeSingle();
+      inst = fallback;
+    }
+    if (!inst?.api_url || !inst?.api_key) return false;
+    let host = "";
+    try { host = new URL(inst.api_url).hostname.toLowerCase(); } catch { /* noop */ }
+    const isManagerV2 = inst.provider_type === "manager_v2" || host.endsWith(".stevo.chat");
+    const url = isManagerV2
+      ? `${inst.api_url.replace(/\/manager\/?$/i, "").replace(/\/+$/g, "")}/send/text`
+      : `${inst.api_url.replace(/\/+$/g, "")}/message/sendText/${inst.instance_name}`;
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: inst.api_key },
+      body: JSON.stringify({ number: phone, text }),
+    });
+    return resp.ok;
+  } catch {
+    return false;
+  }
 }
 
 async function runTool(supabase: any, agent: any, leadId: string | null, name: string, input: any): Promise<string> {
@@ -247,7 +287,8 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
       let leadRow: any = null;
       if (leadId) {
         const { data: lr } = await supabase.from("crm_leads")
-          .select("id, name, phone, company, pipeline_id").eq("id", leadId).maybeSingle();
+          .select("id, name, phone, email, company, pipeline_id, sdr_staff_id, owner_staff_id, scheduled_by_staff_id")
+          .eq("id", leadId).maybeSingle();
         leadRow = lr;
         if (lr) {
           description = [
@@ -286,6 +327,60 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
           }
         }
       }
+      // Contato coletado na conversa vai pro cadastro do lead (não sobrescreve o que já existe)
+      if (leadId) {
+        const contactUpd: Record<string, string> = {};
+        const email = String(input?.email || "").trim();
+        const phoneIn = String(input?.telefone || "").replace(/\D/g, "");
+        const fullName = String(input?.nome_completo || "").trim();
+        if (email && /.+@.+\..+/.test(email) && !leadRow?.email) contactUpd.email = email;
+        if (phoneIn.length >= 10 && !leadRow?.phone) contactUpd.phone = phoneIn;
+        // "não informado", só dígitos, @usuario ou vazio = lead sem nome de verdade
+        const currentName = String(leadRow?.name || "").trim();
+        const nameIsPlaceholder =
+          !currentName ||
+          /^(n[aã]o informado|sem nome|desconhecid[oa]|lead|contato)$/i.test(currentName) ||
+          /^@?[\d\s()+-]+$/.test(currentName) ||
+          currentName.startsWith("@");
+        if (fullName && (nameIsPlaceholder || fullName.length > currentName.length)) {
+          contactUpd.name = fullName;
+        }
+        if (Object.keys(contactUpd).length > 0) {
+          await supabase.from("crm_leads").update(contactUpd).eq("id", leadId);
+        }
+      }
+
+      // Avisa a SDR/dona do lead que a IA agendou (WhatsApp pela instância fabricionunnes)
+      try {
+        if (leadRow) {
+          const notifyIds = [leadRow.sdr_staff_id, leadRow.owner_staff_id, leadRow.scheduled_by_staff_id]
+            .filter(Boolean);
+          const { data: notifyStaff } = notifyIds.length
+            ? await supabase.from("onboarding_staff").select("id, name, phone").in("id", notifyIds)
+            : { data: [] as any[] };
+          const alvo = (notifyStaff || []).find((st: any) => (st.phone || "").replace(/\D/g, "").length >= 10);
+          // sem telefone cadastrado no responsável, o aviso vai pro Fabrício
+          // (melhor avisar alguém do que perder o agendamento no silêncio)
+          const FALLBACK = "5531989840003";
+          {
+            const digits = alvo ? String(alvo.phone).replace(/\D/g, "") : "";
+            const num = digits ? (digits.startsWith("55") ? digits : `55${digits}`) : FALLBACK;
+            const quando = `${m[1].split("-").reverse().join("/")} às ${m[2]}:${m[3]}`;
+            const texto = [
+              "Agendamento feito pelo agente de IA",
+              "",
+              `Lead: ${leadRow.name}${leadRow.company ? ` (${leadRow.company})` : ""}`,
+              `Quando: ${quando} com ${staff.name}`,
+              leadRow.phone ? `Telefone: ${leadRow.phone}` : null,
+              `Link no CRM: https://unvholdings.com.br/#/crm/leads/${leadRow.id}`,
+            ].filter(Boolean).join("\n");
+            await sendWhatsAppAlert(supabase, num, texto);
+          }
+        }
+      } catch (e) {
+        console.error("[crm-agent-respond] falha ao notificar SDR:", e);
+      }
+
       const link = ev.event?.meetingLink ? ` Link da reunião: ${ev.event.meetingLink}` : "";
       return `Reunião agendada com ${staff.name} em ${m[1]} às ${m[2]}:${m[3]}.${link}`;
     }
@@ -670,25 +765,6 @@ Deno.serve(async (req) => {
       if (nl > 0 && s2.slice(nl + 1).trim() === s2.slice(0, nl).trim()) return s2.slice(0, nl).trim();
       return s2;
     };
-    // Trava anti-vazamento: se o modelo escorregar e narrar bastidor
-    // ("não achei nada sobre o perfil, então vou perguntar"), a frase é cortada
-    // antes de ir pro lead. Só remove a linha/frase problemática, o resto segue.
-    const stripMeta = (t: string) => {
-      const padrao = /(n[ãa]o (achei|encontrei|consegui achar)[^.!?\n]*|pesquis(?:ei|ando|ar)[^.!?\n]*|dei uma (olhada|pesquisada)[^.!?\n]*|vou (pesquisar|perguntar direto|checar)[^.!?\n]*|(?:como |já que |ent[ãa]o )?n[ãa]o (?:tem|h[áa]) (?:nada|muita coisa)[^.!?\n]*)/gi;
-      const limpo = t
-        .split(/\n/)
-        .map((linha) => {
-          const semMeta = linha.replace(padrao, "").replace(/^\s*[,.;:—-]+\s*/, "").trim();
-          // linha que era só meta-narração some inteira
-          return padrao.test(linha) && semMeta.length < 12 ? "" : semMeta;
-        })
-        .filter((l, i, arr) => l !== "" || (i > 0 && i < arr.length - 1))
-        .join("\n")
-        .replace(/\n{3,}/g, "\n\n")
-        .trim();
-      return limpo || t.trim();
-    };
-
     msgs = msgs.map((m) => ({ ...m, content: unhalve(m.content) }));
     msgs = msgs.filter((m, i) => !(i > 0 && msgs[i - 1].direction === m.direction && msgs[i - 1].content === m.content));
     if (msgs.length === 0) return { ok: true, skip: "sem conteúdo textual" };
@@ -725,12 +801,103 @@ Deno.serve(async (req) => {
     // Vira instrução explícita — o modelo tende a ancorar no histórico e reofertar.
     let confirmedTimeHint = "";
     {
-      const lastIn = msgs[msgs.length - 1].content.toLowerCase();
-      const tm = lastIn.match(/\b(?:as|às|pode ser(?: as| às)?|fechado|bora|vamos de|confirmo)?\s*(\d{1,2})(?:[:h](\d{2})?)?\s*(?:h|hs|horas?)?\b/);
-      if (tm && /\b(as|às|pode ser|fechado|bora|confirmo|vamos|então|entao|sim)\b/.test(lastIn)) {
-        const hh = tm[1].padStart(2, "0");
-        const mm = tm[2] || "00";
-        confirmedTimeHint = `\n\nATENÇÃO: a última mensagem do lead indica confirmação do horário ${hh}:${mm}. Se esse horário estiver livre na consulta da agenda, chame agendar_reuniao IMEDIATAMENTE com ele (use a data combinada na conversa). Não ofereça horários de novo.`;
+      const lastIn = msgs[msgs.length - 1].content.toLowerCase().trim();
+      let hh: string | null = null;
+      let mm = "00";
+      // negação com horário ("não consigo às 14", "não dá amanhã") não é confirmação
+      const isNegative = /\b(n[aã]o|nao|nunca|imposs[ií]vel|outro dia|outro hor[aá]rio|mais tarde|remarcar)\b/.test(lastIn);
+
+      // 1) resposta curta que é SÓ o horário: "14", "14h", "14:00", "as 14"
+      //    (lead escolhendo da lista que o agente ofereceu — era o caso que escapava)
+      const bare = lastIn.match(/^(?:as|às|pode ser|fechado|bora|vamos|sim|ok|beleza)?\s*(\d{1,2})(?:[:h]?(\d{2}))?\s*(?:h|hs|horas?)?[.!]?$/);
+      if (bare) {
+        const n = parseInt(bare[1], 10);
+        if (n >= 0 && n <= 23) {
+          hh = String(n).padStart(2, "0");
+          mm = bare[2] || "00";
+        }
+      }
+
+      // 2) horário citado junto de palavra de confirmação, em frase maior
+      if (!hh) {
+        const tm = lastIn.match(/\b(?:as|às|pode ser(?: as| às)?|fechado|bora|vamos de|confirmo)?\s*(\d{1,2})(?:[:h](\d{2})?)?\s*(?:h|hs|horas?)?\b/);
+        if (tm && /\b(as|às|pode ser|fechado|bora|confirmo|vamos|então|entao|sim)\b/.test(lastIn)) {
+          hh = tm[1].padStart(2, "0");
+          mm = tm[2] || "00";
+        }
+      }
+
+      // horários que o agente ofereceu na última mensagem: "14:00", "14h", "14 horas"
+      const offeredTimes = (text: string) => {
+        const out: { h: string; m: string }[] = [];
+        for (const m of text.matchAll(/\b(\d{1,2}):(\d{2})\b/g)) out.push({ h: m[1].padStart(2, "0"), m: m[2] });
+        for (const m of text.matchAll(/\b(\d{1,2})\s*(?:h|hs|horas?)\b/gi)) {
+          const h = m[1].padStart(2, "0");
+          if (!out.some((o) => o.h === h)) out.push({ h, m: "00" });
+        }
+        return out;
+      };
+
+      // 3) o número dito bate com um dos horários que o agente ofereceu na última mensagem
+      if (!hh && lastOut) {
+        const offered = offeredTimes(lastOut.content);
+        if (offered.length > 0) {
+          const said = lastIn.match(/\b(\d{1,2})\b/);
+          if (said) {
+            const n = String(parseInt(said[1], 10)).padStart(2, "0");
+            const hit = offered.find((o) => o.h === n);
+            if (hit) {
+              hh = hit.h;
+              mm = hit.m;
+            }
+          }
+        }
+      }
+
+      // 4) confirmação genérica ("ok", "pode ser", "sim", "fechado", "👍") sem citar
+      //    horário: vale quando o agente ofereceu UM horário só. Com mais de um,
+      //    não dá pra adivinhar — aí ele pergunta qual, sem reofertar a lista inteira.
+      let askWhichHint = "";
+      if (!hh && lastOut) {
+        const isAffirmation =
+          /^(ok|okay|okey|blz|beleza|sim|isso|isso mesmo|claro|perfeito|otimo|ótimo|show|massa|fechado|fechou|combinado|confirmo|confirmado|pode ser|pode sim|podemos|bora|vamos|top|certo|tudo bem|tá bom|ta bom|tudo certo|👍|👍🏻|👍🏼|👍🏽|🙏|✅)[\s.!👍✅🙏]*$/.test(
+            lastIn.replace(/\s+/g, " ").trim()
+          );
+        if (isAffirmation) {
+          const uniq = Array.from(new Set(offeredTimes(lastOut.content).map((o) => `${o.h}:${o.m}`)));
+          if (uniq.length === 1) {
+            hh = uniq[0].split(":")[0];
+            mm = uniq[0].split(":")[1];
+          } else if (uniq.length > 1) {
+            askWhichHint = `\n\nATENÇÃO: o lead confirmou, mas você ofereceu mais de um horário (${uniq.join(", ")}). Pergunte APENAS qual dos horários que você já ofereceu ele prefere — numa frase curta, sem consultar a agenda de novo e sem oferecer horários diferentes.`;
+          }
+        }
+      }
+
+      if (!hh && askWhichHint) confirmedTimeHint = askWhichHint;
+
+      if (isNegative) {
+        hh = null;
+        confirmedTimeHint = "";
+      }
+
+      if (hh) {
+        confirmedTimeHint = `\n\nATENÇÃO: a última mensagem do lead indica confirmação do horário ${hh}:${mm}. Se esse horário estiver livre na consulta da agenda, chame agendar_reuniao IMEDIATAMENTE com ele (use a data combinada na conversa — se o lead disse "amanhã", é o dia seguinte a hoje). Não ofereça horários de novo e não peça o horário outra vez.`;
+      }
+    }
+
+    // Lead sem nome no cadastro: o agente precisa perguntar antes de agendar
+    let missingNameHint = "";
+    {
+      const nm = String(conv.contact?.name || (leadName === "o lead" ? "" : leadName) || "").trim();
+      const placeholder =
+        !nm ||
+        /^(n[aã]o informado|sem nome|desconhecid[oa]|lead|contato)$/i.test(nm) ||
+        /^@?[\d\s()+-]+$/.test(nm) ||
+        nm.startsWith("@");
+      if (placeholder) {
+        missingNameHint =
+          "\n\nATENÇÃO: não sabemos o nome desta pessoa. Pergunte o nome dela de forma natural no início da conversa (ex: \"como posso te chamar?\") e SEMPRE antes de agendar — o nome vai no parâmetro nome_completo de agendar_reuniao.";
       }
     }
 
@@ -749,7 +916,6 @@ Deno.serve(async (req) => {
       `- Se ficar claro que tem empresa: comente algo ESPECÍFICO e verdadeiro sobre o negócio/segmento dela e conecte com o que oferecemos — nada genérico, nada de "vi que você tem uma empresa".`,
       `- Se NÃO estiver claro que é empresária: diga de forma leve e humana que você busca se conectar com empresários, e PERGUNTE diretamente se ela é dona de empresa. Conduza conforme a resposta.`,
       `- NUNCA invente dados da empresa. Se a busca não trouxer nada concreto e verdadeiro, não afirme — pergunte.`,
-      `- NUNCA conte pro lead o que você fez nos bastidores. Proibido escrever coisas como "não achei nada sobre o perfil", "pesquisei", "vou perguntar direto", "dei uma olhada no seu perfil". A busca é interna: ou você usa o que achou pra personalizar, ou simplesmente puxa assunto/pergunta — sem explicar o motivo.`,
     ].join("") : "";
     const system = [
       agent.instructions || "Você é um atendente comercial.",
@@ -757,11 +923,11 @@ Deno.serve(async (req) => {
       agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
       knowledge ? `\n\nBASE DE CONHECIMENTO (use quando relevante, não invente):${knowledge}` : "",
       `\n\nData/hora atual (Brasília): ${nowBR}.`,
-      tools.length ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou.` : "",
+      tools.length ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou; (5) ANTES de chamar agendar_reuniao, você precisa do NOME, do E-MAIL e do TELEFONE/WhatsApp do lead — peça numa única mensagem curta o que faltar ("perfeito, fechei pra {horário}. Me confirma seu nome completo, e-mail e WhatsApp pra eu mandar o convite?") e só chame a ferramenta quando o lead responder; se você já sabe o nome dele pela conversa, não pergunte de novo — pergunte só o que falta; (6) passe email, telefone e nome_completo nos parâmetros de agendar_reuniao — eles vão pro cadastro do lead no CRM.` : "",
       confirmedTimeHint,
+      missingNameHint,
       igPersonalization,
       `\n\nVocê está respondendo uma conversa de ${channelLabel} com ${leadName}. Responda como mensagem: curta, humana, sem markdown, sem títulos, uma ideia por mensagem. NUNCA repita uma pergunta que o lead já respondeu — antes de perguntar, confira o histórico. Escreva a resposta UMA única vez, sem repetir o texto. Nunca revele que é uma IA. Se não souber algo, seja honesto e ofereça encaminhar para uma pessoa.`,
-      `\n\nREGRA DE OURO: a sua saída é EXATAMENTE o texto que o lead vai ler no celular dele. Escreva só a mensagem — nada de raciocínio, plano, justificativa, narração do que você fez ou vai fazer, nem menção a busca, perfil, ferramenta, sistema ou consulta. Se você não descobriu algo, apenas pergunte com naturalidade, sem dizer que não descobriu.`,
     ].join("");
 
     // Alternância user/assistant exigida pela API (mescla consecutivas, começa em user)
@@ -831,7 +997,7 @@ Deno.serve(async (req) => {
 
       const texts = content.filter((b: any) => b?.type === "text").map((b: any) => String(b.text));
       reply = [...new Set(texts)].join("").trim();
-      reply = stripMeta(unhalve(reply));
+      reply = unhalve(reply);
       // Pós-checagem anti-alucinação: se houve consulta de agenda e a resposta cita
       // horários fora da lista retornada, força UMA correção.
       const lastConsult = [...toolCalls].reverse().find((t) => t.startsWith("consultar_horarios"));

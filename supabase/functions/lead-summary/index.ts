@@ -128,6 +128,26 @@ serve(async (req) => {
       whatsappMessages = (msgs || []).filter((m: any) => (m.content || "").trim());
     }
 
+    // Direct do Instagram — a qualificação hoje acontece muito por aqui (agente de IA
+    // e SDR conversam no Direct). Sem isso, faturamento/dor ditos na DM não entravam
+    // no resumo nem na Qualificação do Lead.
+    const { data: igConvos } = await supabase
+      .from("instagram_conversations")
+      .select("id")
+      .eq("lead_id", leadId);
+    const igIds = (igConvos || []).map((c: any) => c.id);
+    let instagramMessages: any[] = [];
+    if (igIds.length > 0) {
+      const { data: igMsgs } = await supabase
+        .from("instagram_messages")
+        .select("direction, content, timestamp, is_ai")
+        .in("conversation_id", igIds)
+        .not("content", "is", null)
+        .order("timestamp", { ascending: true })
+        .limit(200);
+      instagramMessages = (igMsgs || []).filter((m: any) => (m.content || "").trim());
+    }
+
     // Instagram preenchido na aba Contato (campo customizado) — a Visão Geral
     // usa como fallback quando a coluna crm_leads.instagram está vazia.
     let customInstagram: string | null = null;
@@ -264,6 +284,14 @@ serve(async (req) => {
           autor: m.sender_name || null,
           texto: (m.content || "").substring(0, 600),
           data: m.created_at,
+        })),
+      },
+      instagram_direct: {
+        _description: "Mensagens trocadas no Direct do Instagram (agente de IA e SDR). MESMO PESO do WhatsApp para qualificação: extraia faturamento, investimento em tráfego, dores, objeções, sócio/decisor, horário combinado e qualquer número dito pelo cliente aqui.",
+        mensagens: instagramMessages.map((m: any) => ({
+          quem: m.direction === "outbound" ? (m.is_ai ? "UNV (agente de IA)" : "UNV") : "Cliente",
+          texto: (m.content || "").substring(0, 600),
+          data: m.timestamp,
         })),
       },
       ligacoes_discador: {

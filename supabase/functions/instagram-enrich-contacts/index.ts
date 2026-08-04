@@ -21,15 +21,51 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const limit = Math.min(Math.max(parseInt(String(body.limit ?? 40), 10) || 40, 1), 200);
 
-    // contatos sem nome (ou só com IGSID), com instância que tem token ativo
-    let query = supabase.from("instagram_contacts")
-      .select("id, instagram_user_id, name, username, instance_id, instance:instagram_instances(id, access_token, status)")
-      .or("name.is.null,username.is.null")
-      .limit(limit);
-    if (body.contact_id) query = supabase.from("instagram_contacts")
-      .select("id, instagram_user_id, name, username, instance_id, instance:instagram_instances(id, access_token, status)")
-      .eq("id", body.contact_id);
-    const { data: contacts } = await query;
+    // Só vale pedir o perfil de quem MANDOU mensagem (consentimento). Antes a
+    // consulta pegava os 40 primeiros contatos sem username — quase todos sem
+    // inbound — e a função nunca chegava em quem realmente conversou.
+    const SEL = "id, instagram_user_id, name, username, instance_id, instance:instagram_instances(id, access_token, status)";
+    let contacts: any[] = [];
+
+    if (body.contact_id) {
+      const { data } = await supabase.from("instagram_contacts").select(SEL).eq("id", body.contact_id);
+      contacts = data || [];
+    } else {
+      // conversas que têm pelo menos uma mensagem recebida (pagina de 1000 em 1000)
+      const inboundConvIds = new Set<string>();
+      for (let page = 0; page < 40; page++) {
+        const from = page * 1000;
+        const { data: rows } = await supabase
+          .from("instagram_messages")
+          .select("conversation_id")
+          .eq("direction", "inbound")
+          .order("id", { ascending: true })
+          .range(from, from + 999);
+        (rows || []).forEach((r: any) => r.conversation_id && inboundConvIds.add(r.conversation_id));
+        if (!rows || rows.length < 1000) break;
+      }
+
+      const contactIds = new Set<string>();
+      const convIdList = Array.from(inboundConvIds);
+      for (let i = 0; i < convIdList.length; i += 200) {
+        const { data: convs } = await supabase
+          .from("instagram_conversations")
+          .select("contact_id")
+          .in("id", convIdList.slice(i, i + 200));
+        (convs || []).forEach((c: any) => c.contact_id && contactIds.add(c.contact_id));
+      }
+
+      const idList = Array.from(contactIds);
+      for (let i = 0; i < idList.length && contacts.length < limit; i += 200) {
+        const { data } = await supabase
+          .from("instagram_contacts")
+          .select(SEL)
+          .in("id", idList.slice(i, i + 200))
+          .or("name.is.null,username.is.null");
+        contacts = contacts.concat(data || []);
+      }
+      contacts = contacts.slice(0, limit);
+    }
 
     let enriched = 0, leadsFixed = 0;
     const results: any[] = [];
