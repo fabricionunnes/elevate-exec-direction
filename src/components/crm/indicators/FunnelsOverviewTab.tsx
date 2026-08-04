@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Filter, Users, Wallet, CheckCircle2, XCircle, CalendarDays } from "lucide-react";
+import { Loader2, Filter, Users, Wallet, CheckCircle2, XCircle, CalendarDays, PieChart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,126 @@ interface AggRow { pipeline_id: string; stage_id: string; lead_count: number; va
 const fmtBRL = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(v);
 
+
+// ── Pizza 3D da qualidade dos leads que entraram no período ──────────────────
+const QUALITY_STYLE: Record<string, { color: string; dark: string; desc: string }> = {
+  "Qualificado": { color: "#3b82f6", dark: "#1d4ed8", desc: "avançou da etapa inicial ou teve reunião" },
+  "Ganho": { color: "#10b981", dark: "#047857", desc: "virou venda" },
+  "Fora do perfil": { color: "#f59e0b", dark: "#b45309", desc: "fora do ICP, sem fit ou etapa Pessoal" },
+  "Perdido": { color: "#ef4444", dark: "#b91c1c", desc: "perdido por outro motivo" },
+  "Aguardando triagem": { color: "#94a3b8", dark: "#64748b", desc: "ainda na etapa de entrada" },
+};
+const QUALITY_ORDER = ["Qualificado", "Ganho", "Fora do perfil", "Perdido", "Aguardando triagem"];
+
+const LeadQualityPie = ({ data }: { data: { categoria: string; total: number }[] }) => {
+  const rows = QUALITY_ORDER
+    .map((k) => ({ key: k, total: Number(data.find((d) => d.categoria === k)?.total || 0) }))
+    .filter((r) => r.total > 0);
+  const total = rows.reduce((s, r) => s + r.total, 0);
+  if (total === 0) return null;
+
+  // geometria do disco em perspectiva
+  const cx = 150, cy = 108, rx = 132, ry = 62, depth = 26;
+  const pt = (ang: number, r = 1) => [cx + rx * r * Math.cos(ang), cy + ry * r * Math.sin(ang)];
+
+  let acc = -Math.PI / 2; // começa no topo
+  const slices = rows.map((r) => {
+    const frac = r.total / total;
+    const start = acc;
+    const end = acc + frac * Math.PI * 2;
+    acc = end;
+    const [x1, y1] = pt(start), [x2, y2] = pt(end);
+    const large = end - start > Math.PI ? 1 : 0;
+    const st = QUALITY_STYLE[r.key];
+    return { ...r, frac, start, end, x1, y1, x2, y2, large, ...st };
+  });
+
+  // a lateral só aparece na metade da frente (sen > 0)
+  const sideSlices = slices.filter((s) => Math.sin(s.start) > 0 || Math.sin(s.end) > 0 || s.end - s.start > Math.PI);
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <PieChart className="h-4 w-4 text-primary" />
+          Qualidade dos leads do período
+          <Badge variant="secondary" className="text-[10px]">{total} leads</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col md:flex-row items-center gap-6">
+        <svg viewBox="0 0 300 220" className="w-full max-w-[340px] shrink-0">
+          <defs>
+            {slices.map((s, i) => (
+              <linearGradient key={i} id={`lq${i}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={s.color} />
+                <stop offset="100%" stopColor={s.dark} />
+              </linearGradient>
+            ))}
+            <radialGradient id="lqShine" cx="35%" cy="25%">
+              <stop offset="0%" stopColor="#fff" stopOpacity="0.35" />
+              <stop offset="70%" stopColor="#fff" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+
+          <ellipse cx={cx} cy={cy + depth + 8} rx={rx} ry={ry * 0.55} fill="#000" opacity={0.07} />
+
+          {/* espessura */}
+          {sideSlices.map((s, i) => (
+            <path
+              key={`side${i}`}
+              d={`M ${s.x1} ${s.y1} A ${rx} ${ry} 0 ${s.large} 1 ${s.x2} ${s.y2} L ${s.x2} ${s.y2 + depth} A ${rx} ${ry} 0 ${s.large} 0 ${s.x1} ${s.y1 + depth} Z`}
+              fill={s.dark}
+            />
+          ))}
+
+          {/* topo */}
+          {slices.map((s, i) => (
+            <path
+              key={`top${i}`}
+              d={`M ${cx} ${cy} L ${s.x1} ${s.y1} A ${rx} ${ry} 0 ${s.large} 1 ${s.x2} ${s.y2} Z`}
+              fill={`url(#lq${i})`}
+              stroke="#fff"
+              strokeWidth={1.2}
+            />
+          ))}
+          <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="url(#lqShine)" pointerEvents="none" />
+
+          {/* percentuais nas fatias com espaço */}
+          {slices.filter((s) => s.frac >= 0.07).map((s, i) => {
+            const mid = (s.start + s.end) / 2;
+            const [lx, ly] = pt(mid, 0.62);
+            return (
+              <text key={`lb${i}`} x={lx} y={ly + 4} textAnchor="middle" fontSize={13} fontWeight={800}
+                fill="#fff" style={{ paintOrder: "stroke" }} stroke={s.dark} strokeWidth={2.5}>
+                {(s.frac * 100).toFixed(0)}%
+              </text>
+            );
+          })}
+        </svg>
+
+        <div className="flex-1 w-full space-y-2">
+          {slices.map((s) => (
+            <div key={s.key} className="flex items-center gap-2.5">
+              <span className="h-3 w-3 rounded-sm shrink-0" style={{ background: s.color }} />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium leading-tight">
+                  {s.key} <span className="text-muted-foreground font-normal">— {s.desc}</span>
+                </p>
+              </div>
+              <span className="text-sm font-bold tabular-nums">{(s.frac * 100).toFixed(1)}%</span>
+              <span className="text-xs text-muted-foreground tabular-nums w-10 text-right">{s.total}</span>
+            </div>
+          ))}
+          <p className="text-[11px] text-muted-foreground pt-1">
+            Inclui os leads em etapas fora da contagem (ex: "Pessoal") — são justamente o fora do perfil, por isso o total
+            aqui pode ser maior que o card "Leads no CRM".
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 export const FunnelsOverviewTab = () => {
   const [loading, setLoading] = useState(true);
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
@@ -25,6 +145,7 @@ export const FunnelsOverviewTab = () => {
   // Período de ENTRADA do lead. Vazio = tudo (comportamento antigo).
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [quality, setQuality] = useState<{ categoria: string; total: number }[]>([]);
 
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   const applyQuick = (days: number) => {
@@ -53,6 +174,12 @@ export const FunnelsOverviewTab = () => {
         setPipelines(p.data || []);
         setStages((s.data as Stage[]) || []);
         setAgg((a.data as AggRow[]) || []);
+
+        const q = await (supabase as any).rpc("get_funnel_lead_quality", {
+          p_from: dateFrom || null,
+          p_to: dateTo || null,
+        });
+        setQuality((q.data as any[]) || []);
       } finally { setLoading(false); }
     })();
   }, [dateFrom, dateTo]);
@@ -151,6 +278,8 @@ export const FunnelsOverviewTab = () => {
         <SummaryCard icon={CheckCircle2} label="Ganhos" value={totals.won} color="#34d399" />
         <SummaryCard icon={XCircle} label="Perdidos" value={totals.lost} color="#f87171" />
       </div>
+
+      {!loading && quality.length > 0 && <LeadQualityPie data={quality} />}
 
       {loading && (
         <div className="flex items-center justify-center py-16">
