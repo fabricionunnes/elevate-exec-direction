@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Filter, Users, Wallet, CheckCircle2, XCircle, CalendarDays, PieChart } from "lucide-react";
+import { Loader2, Filter, Users, Wallet, CheckCircle2, XCircle, CalendarDays, PieChart, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { MultiSearchableSelect } from "@/components/crm/traffic/MultiSearchableSelect";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
@@ -28,7 +31,13 @@ const QUALITY_STYLE: Record<string, { color: string; dark: string; desc: string 
 };
 const QUALITY_ORDER = ["Qualificado", "Ganho", "Fora do perfil", "Perdido", "Aguardando triagem"];
 
-const LeadQualityPie = ({ data }: { data: { categoria: string; total: number }[] }) => {
+const LeadQualityPie = ({
+  data,
+  onSliceClick,
+}: {
+  data: { categoria: string; total: number }[];
+  onSliceClick: (categoria: string) => void;
+}) => {
   const rows = QUALITY_ORDER
     .map((k) => ({ key: k, total: Number(data.find((d) => d.categoria === k)?.total || 0) }))
     .filter((r) => r.total > 0);
@@ -97,7 +106,11 @@ const LeadQualityPie = ({ data }: { data: { categoria: string; total: number }[]
               fill={`url(#lq${i})`}
               stroke="#fff"
               strokeWidth={1.2}
-            />
+              className="cursor-pointer transition-opacity hover:opacity-80"
+              onClick={() => onSliceClick(s.key)}
+            >
+              <title>{`${s.key}: ${s.total} lead(s) — clique para ver`}</title>
+            </path>
           ))}
           <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="url(#lqShine)" pointerEvents="none" />
 
@@ -116,7 +129,11 @@ const LeadQualityPie = ({ data }: { data: { categoria: string; total: number }[]
 
         <div className="flex-1 w-full space-y-2">
           {slices.map((s) => (
-            <div key={s.key} className="flex items-center gap-2.5">
+            <div
+              key={s.key}
+              className="flex items-center gap-2.5 cursor-pointer rounded-md px-1 py-0.5 hover:bg-muted/60"
+              onClick={() => onSliceClick(s.key)}
+            >
               <span className="h-3 w-3 rounded-sm shrink-0" style={{ background: s.color }} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium leading-tight">
@@ -128,8 +145,8 @@ const LeadQualityPie = ({ data }: { data: { categoria: string; total: number }[]
             </div>
           ))}
           <p className="text-[11px] text-muted-foreground pt-1">
-            Inclui os leads em etapas fora da contagem (ex: "Pessoal") — são justamente o fora do perfil, por isso o total
-            aqui pode ser maior que o card "Leads no CRM".
+            Clique numa fatia para ver os leads dela. Inclui os leads em etapas fora da contagem (ex: "Pessoal") — são
+            justamente o fora do perfil, por isso o total aqui pode ser maior que o card "Leads no CRM".
           </p>
         </div>
       </CardContent>
@@ -146,6 +163,8 @@ export const FunnelsOverviewTab = () => {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [quality, setQuality] = useState<{ categoria: string; total: number }[]>([]);
+  const [pipeFilter, setPipeFilter] = useState<string[]>([]);
+  const [drill, setDrill] = useState<{ categoria: string; rows: any[]; loading: boolean } | null>(null);
 
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   const applyQuick = (days: number) => {
@@ -178,11 +197,12 @@ export const FunnelsOverviewTab = () => {
         const q = await (supabase as any).rpc("get_funnel_lead_quality", {
           p_from: dateFrom || null,
           p_to: dateTo || null,
+          p_pipeline_ids: pipeFilter.length ? pipeFilter : null,
         });
         setQuality((q.data as any[]) || []);
       } finally { setLoading(false); }
     })();
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, pipeFilter]);
 
   const byPipeline = useMemo(() => {
     const byStage = new Map(agg.map(r => [r.stage_id, r]));
@@ -208,9 +228,10 @@ export const FunnelsOverviewTab = () => {
       return { pipeline: p, rows, total, openCount, openValue, won, lost, maxCount };
     })
       // com filtro de data, só aparecem os funis que receberam lead no período
+      .filter(x => pipeFilter.length === 0 || pipeFilter.includes(x.pipeline.id))
       .filter(x => (dateFrom || dateTo) ? x.total > 0 : true)
       .sort((a, b) => b.total - a.total);
-  }, [pipelines, stages, agg, dateFrom, dateTo]);
+  }, [pipelines, stages, agg, dateFrom, dateTo, pipeFilter]);
 
   const totals = useMemo(() => ({
     leads: byPipeline.reduce((s, p) => s + p.total, 0),
@@ -235,6 +256,17 @@ export const FunnelsOverviewTab = () => {
     </Card>
   );
 
+  const openSlice = async (categoria: string) => {
+    setDrill({ categoria, rows: [], loading: true });
+    const { data } = await (supabase as any).rpc("get_funnel_leads_by_quality", {
+      p_from: dateFrom || null,
+      p_to: dateTo || null,
+      p_pipeline_ids: pipeFilter.length ? pipeFilter : null,
+      p_categoria: categoria,
+    });
+    setDrill({ categoria, rows: (data as any[]) || [], loading: false });
+  };
+
   const hasRange = !!(dateFrom || dateTo);
 
   return (
@@ -253,12 +285,23 @@ export const FunnelsOverviewTab = () => {
             <Label className="text-[10px] text-muted-foreground">Até</Label>
             <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 w-[150px]" />
           </div>
+          <div className="flex flex-col gap-1 min-w-[210px]">
+            <Label className="text-[10px] text-muted-foreground">Funil</Label>
+            <MultiSearchableSelect
+              values={pipeFilter}
+              onChange={setPipeFilter}
+              options={pipelines.map((p) => ({ value: p.id, label: p.name }))}
+              placeholder="Todos os funis"
+              allLabel="Todos os funis"
+              className="h-8"
+            />
+          </div>
           <div className="flex flex-wrap gap-1.5">
             <Button variant="outline" size="sm" className="h-8" onClick={() => applyQuick(0)}>Hoje</Button>
             <Button variant="outline" size="sm" className="h-8" onClick={() => applyQuick(7)}>7 dias</Button>
             <Button variant="outline" size="sm" className="h-8" onClick={() => applyQuick(30)}>30 dias</Button>
-            {hasRange && (
-              <Button variant="ghost" size="sm" className="h-8" onClick={() => { setDateFrom(""); setDateTo(""); }}>
+            {(hasRange || pipeFilter.length > 0) && (
+              <Button variant="ghost" size="sm" className="h-8" onClick={() => { setDateFrom(""); setDateTo(""); setPipeFilter([]); }}>
                 Limpar
               </Button>
             )}
@@ -279,7 +322,7 @@ export const FunnelsOverviewTab = () => {
         <SummaryCard icon={XCircle} label="Perdidos" value={totals.lost} color="#f87171" />
       </div>
 
-      {!loading && quality.length > 0 && <LeadQualityPie data={quality} />}
+      {!loading && quality.length > 0 && <LeadQualityPie data={quality} onSliceClick={openSlice} />}
 
       {loading && (
         <div className="flex items-center justify-center py-16">
@@ -338,6 +381,54 @@ export const FunnelsOverviewTab = () => {
           </Card>
         ))}
       </div>
+      <Dialog open={!!drill} onOpenChange={(o) => !o && setDrill(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {drill?.categoria}
+              {!drill?.loading && (
+                <Badge variant="secondary" className="text-[11px]">{drill?.rows.length} lead(s)</Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          {drill?.loading ? (
+            <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+          ) : drill?.rows.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-8 text-center">Nenhum lead nesta categoria.</p>
+          ) : (
+            <ScrollArea className="max-h-[60vh]">
+              <div className="space-y-1.5 pr-3">
+                {drill?.rows.map((l: any) => (
+                  <button
+                    key={l.id}
+                    type="button"
+                    onClick={() => window.open(`${window.location.origin}/#/crm/leads/${l.id}`, "_blank")}
+                    className="w-full text-left p-2.5 rounded-lg border bg-card hover:bg-muted/50 flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {l.name || "Sem nome"}{l.company ? ` — ${l.company}` : ""}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {l.pipeline_name} · {l.stage_name}
+                        {l.loss_reason ? ` · ${l.loss_reason}` : ""}
+                        {l.created_at ? ` · entrou em ${new Date(l.created_at).toLocaleDateString("pt-BR")}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {Number(l.opportunity_value) > 0 && (
+                        <span className="text-xs font-semibold tabular-nums">{fmtBRL(Number(l.opportunity_value))}</span>
+                      )}
+                      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <p className="text-[11px] text-muted-foreground">
         {hasRange ? "Com filtro de data, os números consideram só os leads que ENTRARAM no período — a etapa mostrada é a atual deles. " : ""}Barras comparam as etapas dentro do mesmo funil. Valor = soma do valor de oportunidade dos leads na etapa. "Xd média" = tempo médio que os leads atuais estão parados na etapa.
       </p>
