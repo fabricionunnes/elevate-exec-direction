@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Phone, Building2, Link2, Search } from "lucide-react";
+import { Phone, Building2, Link2, Search, Briefcase, ExternalLink } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { HubKPIMiniDashboard } from "./HubKPIMiniDashboard";
 import { Input } from "@/components/ui/input";
 import {
@@ -36,6 +37,7 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
   const [selectedCompany, setSelectedCompany] = useState<string>("none");
   const [selectedProject, setSelectedProject] = useState(conversation.project_id || "none");
   const [companySearch, setCompanySearch] = useState("");
+  const [crmLeads, setCrmLeads] = useState<any[]>([]);
   const [projectSearch, setProjectSearch] = useState("");
 
   // Fetch data only when conversation changes (not on project_id update)
@@ -44,6 +46,7 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
     setCompanySearch("");
     setProjectSearch("");
     fetchData();
+    fetchCrmLeads();
   }, [conversation.id]);
 
   // Sync selected project from prop without refetching
@@ -64,6 +67,15 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
       setSelectedCompany("none");
     }
   }, [conversation.id, conversation.project_id, projects]);
+
+  // Negócios do CRM Comercial do mesmo telefone — o contato pode ser um lead
+  // que ainda não virou cliente, então não tem empresa/projeto pra vincular.
+  const fetchCrmLeads = async () => {
+    const phone = conversation.contact_phone || "";
+    if (!phone) { setCrmLeads([]); return; }
+    const { data } = await (supabase as any).rpc("find_crm_leads_by_phone", { p_phone: phone });
+    setCrmLeads((data as any[]) || []);
+  };
 
   const fetchData = async () => {
     const [companiesRes, projectsRes] = await Promise.all([
@@ -149,6 +161,62 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
             <span className="text-sm">{conversation.contact_phone}</span>
           </div>
         </div>
+
+        {/* Negócios no CRM Comercial (lead ainda não convertido em cliente) */}
+        {crmLeads.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Briefcase className="h-4 w-4" />
+              Negócio no CRM
+              <Badge variant="secondary" className="text-[10px]">{crmLeads.length}</Badge>
+            </div>
+            <div className="space-y-1.5">
+              {crmLeads.map((l) => (
+                <button
+                  key={l.id}
+                  type="button"
+                  onClick={() => window.open(`${window.location.origin}/#/crm/leads/${l.id}`, "_blank")}
+                  className="w-full text-left p-2.5 rounded-lg border bg-card hover:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-medium leading-tight truncate">
+                      {l.name || "Sem nome"}
+                      {l.company ? <span className="text-muted-foreground"> — {l.company}</span> : null}
+                    </p>
+                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    {l.pipeline_name && (
+                      <Badge variant="outline" className="text-[10px]">{l.pipeline_name}</Badge>
+                    )}
+                    {l.stage_name && (
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${
+                          l.final_type === "won"
+                            ? "border-emerald-500/50 text-emerald-600"
+                            : l.final_type === "lost"
+                            ? "border-destructive/50 text-destructive"
+                            : ""
+                        }`}
+                      >
+                        {l.stage_name}
+                      </Badge>
+                    )}
+                    {Number(l.opportunity_value) > 0 && (
+                      <span className="text-[11px] font-semibold tabular-nums">
+                        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(Number(l.opportunity_value))}
+                      </span>
+                    )}
+                  </div>
+                  {l.owner_name && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Responsável: {l.owner_name}</p>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Company selector */}
         <div className="space-y-2">
