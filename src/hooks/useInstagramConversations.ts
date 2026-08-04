@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { WhatsAppConversation } from "./useWhatsAppConversations";
 import { RealtimeChannel } from "@supabase/supabase-js";
 
@@ -11,16 +12,19 @@ export function useInstagramConversations() {
     try {
       setLoading(true);
 
-      const { data, error } = await supabase
-        .from("instagram_conversations")
-        .select(`
-          *,
-          contact:instagram_contacts(id, instagram_user_id, name, username, profile_picture_url),
-          assigned_staff:onboarding_staff(id, name, avatar_url)
-        `)
-        .order("last_message_at", { ascending: false, nullsFirst: false });
-
-      if (error) throw error;
+      // pagina de 1000 em 1000 (limite do PostgREST) — ver useWhatsAppConversations
+      const data = await fetchAllRows<any>((from, to) =>
+        supabase
+          .from("instagram_conversations")
+          .select(`
+            *,
+            contact:instagram_contacts(id, instagram_user_id, name, username, profile_picture_url),
+            assigned_staff:onboarding_staff(id, name, avatar_url)
+          `)
+          .order("last_message_at", { ascending: false, nullsFirst: false })
+          .order("id", { ascending: true })
+          .range(from, to)
+      );
 
       // Map Instagram conversations to the WhatsAppConversation format
       const mapped: WhatsAppConversation[] = (data || []).map((conv: any) => ({

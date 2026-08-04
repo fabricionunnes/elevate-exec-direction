@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { RealtimeChannel } from "@supabase/supabase-js";
 
 export interface WhatsAppContact {
@@ -68,33 +69,28 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
     try {
       setLoading(true);
       
-      let query = supabase
-        .from('crm_whatsapp_conversations')
-        .select(`
-          *,
-          contact:crm_whatsapp_contacts(*),
-          lead:crm_leads(id, name, origin_id, stage_id),
-          assigned_staff:onboarding_staff(id, name, avatar_url),
-          instance:whatsapp_instances(id, instance_name, display_name),
-          official_instance:whatsapp_official_instances(id, display_name, phone_number)
-        `)
-        .order('last_message_at', { ascending: false, nullsFirst: false });
+      // PostgREST corta em 1000 linhas por resposta: sem paginar, as conversas mais
+      // antigas sumiam do Atendimento (o atendente via só parte da carteira dele).
+      const data = await fetchAllRows<any>((from, to) => {
+        let query = supabase
+          .from('crm_whatsapp_conversations')
+          .select(`
+            *,
+            contact:crm_whatsapp_contacts(*),
+            lead:crm_leads(id, name, origin_id, stage_id),
+            assigned_staff:onboarding_staff(id, name, avatar_url),
+            instance:whatsapp_instances(id, instance_name, display_name),
+            official_instance:whatsapp_official_instances(id, display_name, phone_number)
+          `)
+          .order('last_message_at', { ascending: false, nullsFirst: false })
+          .order('id', { ascending: true })
+          .range(from, to);
 
-      if (options.instanceId) {
-        query = query.eq('instance_id', options.instanceId);
-      }
-
-      if (options.status) {
-        query = query.eq('status', options.status);
-      }
-
-      if (options.assignedTo) {
-        query = query.eq('assigned_to', options.assignedTo);
-      }
-
-      const { data, error: fetchError } = await query;
-
-      if (fetchError) throw fetchError;
+        if (options.instanceId) query = query.eq('instance_id', options.instanceId);
+        if (options.status) query = query.eq('status', options.status);
+        if (options.assignedTo) query = query.eq('assigned_to', options.assignedTo);
+        return query;
+      });
 
       setConversations(data || []);
     } catch (err) {
