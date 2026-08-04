@@ -979,11 +979,14 @@ serve(async (req) => {
           if (sp.user_id) return json({ error: "Vendedor já possui login" }, 409);
 
           const password = c.body?.password || "123456";
+          // O mesmo caminho serve pra criar login de GERENTE a partir de um vendedor
+          // já cadastrado (o gerente é um vendedor com papel de gestão no portal).
+          const portalRole = c.body?.role === "gerente" ? "gerente" : "salesperson";
           const { data: created, error: authErr } = await c.supabase.auth.admin.createUser({
             email: sp.email,
             password,
             email_confirm: true,
-            user_metadata: { name: sp.name, salesperson_id: sp.id, company_id: sp.company_id, role: "salesperson" },
+            user_metadata: { name: sp.name, salesperson_id: sp.id, company_id: sp.company_id, role: portalRole },
           });
 
           let userId: string;
@@ -996,7 +999,7 @@ serve(async (req) => {
               const existing = (users || []).find((u: any) => u.email?.toLowerCase() === sp.email.toLowerCase());
               if (!existing) return json({ error: authErr.message }, 400);
               // Update password to default and link
-              await c.supabase.auth.admin.updateUserById(existing.id, { password, user_metadata: { name: sp.name, salesperson_id: sp.id, company_id: sp.company_id, role: "salesperson" } });
+              await c.supabase.auth.admin.updateUserById(existing.id, { password, user_metadata: { name: sp.name, salesperson_id: sp.id, company_id: sp.company_id, role: portalRole } });
               userId = existing.id;
             } else {
               return json({ error: authErr.message }, 400);
@@ -1006,6 +1009,34 @@ serve(async (req) => {
           }
 
           await c.supabase.from("company_salespeople").update({ user_id: userId }).eq("id", sp.id);
+
+          // Gerente: precisa existir em onboarding_users pra o portal do cliente
+          // resolver o papel e as permissões de menu dele.
+          const projectId = c.body?.project_id || null;
+          if (portalRole === "gerente" && projectId) {
+            const { data: already } = await c.supabase
+              .from("onboarding_users")
+              .select("id")
+              .eq("project_id", projectId)
+              .eq("user_id", userId)
+              .maybeSingle();
+            if (already?.id) {
+              await c.supabase.from("onboarding_users")
+                .update({ role: "gerente", salesperson_id: sp.id, name: sp.name, email: sp.email })
+                .eq("id", already.id);
+            } else {
+              await c.supabase.from("onboarding_users").insert({
+                project_id: projectId,
+                user_id: userId,
+                name: sp.name,
+                email: sp.email,
+                role: "gerente",
+                salesperson_id: sp.id,
+                temp_password: password,
+                password_changed: false,
+              });
+            }
+          }
           // E-mail de boas-vindas com credenciais (best-effort — não bloqueia)
           try {
             await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-welcome-email`, {
@@ -1014,7 +1045,7 @@ serve(async (req) => {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
               },
-              body: JSON.stringify({ to: sp.email, name: sp.name, role_label: "Vendedor", password }),
+              body: JSON.stringify({ to: sp.email, name: sp.name, role_label: portalRole === "gerente" ? "Gerente" : "Vendedor", password }),
             });
           } catch (e) { console.error("welcome email:", e); }
           return json({ success: true, user_id: userId });

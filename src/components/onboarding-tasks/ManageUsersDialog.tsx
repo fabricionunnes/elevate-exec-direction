@@ -73,7 +73,9 @@ export const ManageUsersDialog = ({
     { id: string; name: string; email: string | null; user_id: string | null; is_active: boolean }[]
   >([]);
   const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>("");
-  const isSalespersonType = (newUser.role as string) === "salesperson";
+  const isManagerType = (newUser.role as string) === "gerente";
+  // gerente entra pelo mesmo caminho do vendedor: escolhe alguém já cadastrado
+  const isSalespersonType = (newUser.role as string) === "salesperson" || isManagerType;
 
   const fetchSalespeople = async () => {
     const { data: proj } = await supabase
@@ -161,17 +163,21 @@ export const ManageUsersDialog = ({
           {
             method: "POST",
             headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ password: newUser.password.trim() }),
+            body: JSON.stringify({
+              password: newUser.password.trim(),
+              role: isManagerType ? "gerente" : "salesperson",
+              project_id: projectId,
+            }),
           },
         );
         const result = await res.json();
         if (result?.error) throw new Error(result.error);
-        toast.success(`Login criado pro vendedor ${sp.name}!`);
+        toast.success(isManagerType ? `Login de gerente criado pra ${sp.name}!` : `Login criado pro vendedor ${sp.name}!`);
         resetForm();
         fetchSalespeople();
         onUsersChanged();
       } catch (error: any) {
-        toast.error(error.message || "Erro ao criar login do vendedor");
+        toast.error(error.message || (isManagerType ? "Erro ao criar login do gerente" : "Erro ao criar login do vendedor"));
       } finally {
         setLoading(false);
       }
@@ -297,27 +303,6 @@ export const ManageUsersDialog = ({
     } catch (error: any) {
       console.error("Error deleting user:", error);
       toast.error("Erro ao remover usuário");
-    }
-  };
-
-  const handleDeleteSalespersonLogin = async (spId: string, spName: string) => {
-    if (!window.confirm(`Remover o acesso de ${spName}? O cadastro do vendedor e os KPIs continuam — só o login é apagado.`)) return;
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      if (!token) throw new Error("Sessão expirada — recarregue a página.");
-      const params = new URLSearchParams({ module: "salespeople", action: "delete_login", id: spId });
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/system-api?${params}`,
-        { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: "{}" },
-      );
-      const result = await res.json();
-      if (result?.error) throw new Error(result.error);
-      toast.success(`Acesso de ${spName} removido`);
-      fetchSalespeople();
-      onUsersChanged();
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao remover o acesso");
     }
   };
 
@@ -517,31 +502,20 @@ export const ManageUsersDialog = ({
                   </TableCell>
                   <TableCell>
                     {isAdmin && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => {
-                            setChangingSalespersonId(sp.id);
-                            setChangingPasswordUserId(null);
-                            setNewPassword("");
-                            setShowChangePassword(false);
-                          }}
-                          title="Alterar senha do vendedor"
-                        >
-                          <KeyRound className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteSalespersonLogin(sp.id, sp.name)}
-                          title="Remover o acesso deste vendedor (o cadastro e os KPIs permanecem)"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                          setChangingSalespersonId(sp.id);
+                          setChangingPasswordUserId(null);
+                          setNewPassword("");
+                          setShowChangePassword(false);
+                        }}
+                        title="Alterar senha do vendedor"
+                      >
+                        <KeyRound className="h-4 w-4" />
+                      </Button>
                     )}
                   </TableCell>
                 </TableRow>
@@ -587,6 +561,7 @@ export const ManageUsersDialog = ({
                       <SelectItem value="cs">CS (Customer Success)</SelectItem>
                       <SelectItem value="consultant">Consultor</SelectItem>
                       <SelectItem value="salesperson">Vendedor (já cadastrado)</SelectItem>
+                      <SelectItem value="gerente">Gerente (vendedor já cadastrado)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -595,7 +570,7 @@ export const ManageUsersDialog = ({
                   // Vendedor existente da empresa: escolhe e define a senha de acesso
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label>Selecionar Vendedor</Label>
+                      <Label>{isManagerType ? "Selecionar Vendedor que será Gerente" : "Selecionar Vendedor"}</Label>
                       <Select value={selectedSalespersonId} onValueChange={setSelectedSalespersonId}>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Selecione um vendedor da empresa" />
@@ -624,7 +599,7 @@ export const ManageUsersDialog = ({
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <Label>Senha do Vendedor</Label>
+                      <Label>{isManagerType ? "Senha do Gerente" : "Senha do Vendedor"}</Label>
                       <div className="relative">
                         <Input
                           type={showNewPassword ? "text" : "password"}
@@ -724,7 +699,7 @@ export const ManageUsersDialog = ({
                 <div className="flex justify-end pt-2">
                   <Button onClick={handleAddUser} disabled={loading}>
                     {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    {isSalespersonType ? "Criar Login do Vendedor" : isStaffRole(newUser.role) ? "Vincular ao Projeto" : "Criar Cliente"}
+                    {isManagerType ? "Criar Login do Gerente" : isSalespersonType ? "Criar Login do Vendedor" : isStaffRole(newUser.role) ? "Vincular ao Projeto" : "Criar Cliente"}
                   </Button>
                 </div>
               </div>
