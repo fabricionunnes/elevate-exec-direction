@@ -182,7 +182,11 @@ export default function WhatsAppConnectionsPage() {
     if (!accessFor) return;
     setSavingAccess(true);
     try {
+      // granted_by tem FK pra onboarding_staff(id) — precisa do id do STAFF,
+      // não do usuário de login (era a causa do erro de foreign key ao salvar).
       const { data: { user } } = await supabase.auth.getUser();
+      const { data: me } = await supabase
+        .from("onboarding_staff").select("id").eq("user_id", user?.id ?? "").maybeSingle();
       const rows = [...accessMap.values()];
       const keep = rows.filter((r) => r.can_view || r.can_send);
       const drop = rows.filter((r) => !r.can_view && !r.can_send).map((r) => r.staff_id);
@@ -191,7 +195,7 @@ export default function WhatsAppConnectionsPage() {
       }
       for (const r of keep) {
         const { error } = await supabase.from("whatsapp_instance_access").upsert(
-          { instance_id: accessFor.id, staff_id: r.staff_id, can_view: r.can_view, can_send: r.can_send, granted_by: user?.id },
+          { instance_id: accessFor.id, staff_id: r.staff_id, can_view: r.can_view, can_send: r.can_send, granted_by: me?.id ?? null },
           { onConflict: "instance_id,staff_id" },
         );
         if (error) throw error;
