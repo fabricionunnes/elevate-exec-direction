@@ -633,19 +633,18 @@ footer img{height:104px;margin:0 auto 14px;opacity:.85}
   });
 
   /* ── marquee tiles ── */
-  var POSTS = ["post-01","post-02","post-03","post-04","post-05","post-06","post-07","post-08",
-               "post-09","post-10","post-11","post-12","post-13","post-14","post-15","post-16"];
+  var POSTS = ["post-01", "post-02", "post-03", "post-04", "post-05", "post-06", "post-07", "post-08", "post-09", "post-10", "post-11", "post-12", "post-13", "post-14", "post-15", "post-16", "post-17", "post-18", "post-19", "post-20", "post-21", "post-22", "post-23", "post-24", "post-25", "post-26", "post-27", "post-28", "post-29", "post-30"];
   function fill(el, list){
     var html = "";
     for(var r=0;r<2;r++){
       list.forEach(function(f){
-        html += '<div class="pt"><img src="./'+f+'.jpg" alt="Post produzido pela UNV Social" loading="lazy" width="320" height="400" /></div>';
+        html += '<div class="pt"><img src="./'+f+'.jpg" alt="Post produzido pela UNV Social" loading="lazy" width="560" height="700" /></div>';
       });
     }
     el.innerHTML = html;
   }
-  fill(document.getElementById("mq1"), POSTS.slice(0,8));
-  fill(document.getElementById("mq2"), POSTS.slice(8));
+  fill(document.getElementById("mq1"), POSTS.slice(0,15));
+  fill(document.getElementById("mq2"), POSTS.slice(15));
 
   /* ── reels (lazy video) ── */
   var REELS = [
