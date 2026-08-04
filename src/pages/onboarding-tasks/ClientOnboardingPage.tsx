@@ -535,7 +535,7 @@ const ClientOnboardingPage = () => {
       ...(!(projectCompanyId === FACUNICAMPS_ID || projectId === FACUNICAMPS_PROJECT_ID)
         ? [{ id: "gestao_vista" as ViewType, icon: MonitorPlay, label: "Gestão à Vista", menuKey: CLIENT_MENU_KEYS.kpis }]
         : []),
-      ...(temCfin ? [{ id: "cfin_sistema" as ViewType, icon: Landmark, label: "Sistema" }] : []),
+      ...(temCfin ? [{ id: "cfin_sistema" as ViewType, icon: Landmark, label: "Sistema", menuKey: CLIENT_MENU_KEYS.cfin_sistema }] : []),
       {
         id: "trilha-group",
         icon: Map,

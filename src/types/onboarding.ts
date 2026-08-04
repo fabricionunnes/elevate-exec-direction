@@ -63,6 +63,8 @@ export const CLIENT_MENU_KEYS = {
   instagram: "instagram",
   diretor_comercial_ia: "diretor_comercial_ia",
   outros_servicos: "outros_servicos",
+  // Sistema da Loja (financeiro migrado de planilha — cfin_*)
+  cfin_sistema: "cfin_sistema",
   unv_social: "unv_social",
   contrato_rotina: "contrato_rotina",
   acoes_comerciais: "acoes_comerciais",
@@ -240,6 +242,11 @@ export const CLIENT_MENU_STRUCTURE = [
   {
     key: CLIENT_MENU_KEYS.outros_servicos,
     label: "Outros Serviços",
+    group: null,
+  },
+  {
+    key: CLIENT_MENU_KEYS.cfin_sistema,
+    label: "Sistema da Loja (financeiro)",
     group: null,
   },
   {

@@ -162,4 +162,5 @@ export const VIEW_TO_MENU_KEY: Record<string, ClientMenuKey> = {
   diagnostic: CLIENT_MENU_KEYS.diagnostico,
   unv_office: CLIENT_MENU_KEYS.unv_office,
   sf_comissoes: CLIENT_MENU_KEYS.sf_comissoes,
+  cfin_sistema: CLIENT_MENU_KEYS.cfin_sistema,
 };
