@@ -4,12 +4,13 @@
 // que também recusa criar/excluir pra quem não é admin/master).
 // Objetivo: o closer reconectar o próprio número sem depender do admin.
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, MessageSquare, QrCode, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { ArrowLeft, Loader2, MessageSquare, QrCode, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 
 interface Instance {
@@ -29,6 +30,7 @@ async function callApi(action: string, body: Record<string, unknown> = {}) {
 }
 
 export default function CRMWhatsAppConnectionPage() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [instances, setInstances] = useState<Instance[]>([]);
@@ -103,11 +105,16 @@ export default function CRMWhatsAppConnectionPage() {
   return (
     <div className="container max-w-4xl mx-auto py-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} title="Voltar">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <MessageSquare className="h-6 w-6 text-primary" /> Conexão WhatsApp
           </h1>
           <p className="text-sm text-muted-foreground">Conecte o seu número por aqui. Aparecem só as conexões liberadas pra você.</p>
+          </div>
         </div>
         <Button variant="outline" size="sm" className="gap-2" onClick={refresh} disabled={refreshing}>
           <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> Atualizar
