@@ -215,6 +215,41 @@ async function sendWhatsAppAlert(supabase: any, phone: string, text: string): Pr
   }
 }
 
+/** Transcreve áudio do lead (Whisper). O CDN da Meta assina a URL e ela expira,
+ * então transcrevemos na hora da resposta e guardamos pra não refazer. */
+async function transcribeAudio(url: string): Promise<string | null> {
+  try {
+    const key = Deno.env.get("OPENAI_API_KEY");
+    if (!key || !url) return null;
+    const media = await fetch(url);
+    if (!media.ok) {
+      console.error("[transcribe] download falhou:", media.status);
+      return null;
+    }
+    const blob = await media.blob();
+    if (blob.size > 24 * 1024 * 1024) return null;
+    const form = new FormData();
+    form.append("file", blob, "audio.mp4");
+    form.append("model", "whisper-1");
+    form.append("language", "pt");
+    const resp = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}` },
+      body: form,
+    });
+    if (!resp.ok) {
+      console.error("[transcribe] whisper falhou:", resp.status, (await resp.text()).slice(0, 200));
+      return null;
+    }
+    const data = await resp.json();
+    const text = String(data?.text || "").trim();
+    return text || null;
+  } catch (e) {
+    console.error("[transcribe] erro:", e);
+    return null;
+  }
+}
+
 async function runTool(supabase: any, agent: any, leadId: string | null, name: string, input: any): Promise<string> {
   try {
     // staff alvo da agenda: primeiro closer configurado
@@ -740,17 +775,50 @@ Deno.serve(async (req) => {
     async function processConversation(): Promise<Record<string, unknown>> {
     // 4) Histórico
     let msgs: { direction: string; content: string; ts: string }[] = [];
+    let rawHistory: any[] = [];
     if (isIG) {
       const { data: history } = await supabase.from("instagram_messages")
-        .select("direction, content, timestamp").eq("conversation_id", conversation_id)
+        .select("id, direction, content, timestamp, message_type, media_url, transcription")
+        .eq("conversation_id", conversation_id)
         .order("timestamp", { ascending: true }).limit(40);
-      msgs = (history || []).map((m: any) => ({ direction: m.direction, content: m.content || "", ts: m.timestamp }));
+      rawHistory = (history || []).map((m: any) => ({ ...m, ts: m.timestamp }));
     } else {
       const { data: history } = await supabase.from("crm_whatsapp_messages")
-        .select("direction, content, created_at").eq("conversation_id", conversation_id)
+        .select("id, direction, content, created_at, type, media_url, transcription")
+        .eq("conversation_id", conversation_id)
         .order("created_at", { ascending: true }).limit(40);
-      msgs = (history || []).map((m: any) => ({ direction: m.direction, content: m.content || "", ts: m.created_at }));
+      rawHistory = (history || []).map((m: any) => ({ ...m, message_type: m.type, ts: m.created_at }));
     }
+    // Áudio: o lead manda voz e a mensagem chega como "[audio]". Transcrevemos
+    // (até 4 dos mais recentes) pra o agente responder o que foi dito, em texto.
+    const isAudio = (m: any) =>
+      String(m.message_type || "").toLowerCase().includes("audio") ||
+      String(m.message_type || "").toLowerCase().includes("ptt") ||
+      /^\[(audio|áudio|voice)\]$/i.test(String(m.content || "").trim());
+
+    const audiosToDo = rawHistory
+      .filter((m) => isAudio(m) && !m.transcription && m.media_url)
+      .slice(-4);
+
+    for (const m of audiosToDo) {
+      const text = await transcribeAudio(m.media_url);
+      if (text) {
+        m.transcription = text;
+        const table = isIG ? "instagram_messages" : "crm_whatsapp_messages";
+        await supabase.from(table).update({ transcription: text }).eq("id", m.id);
+      }
+    }
+
+    msgs = rawHistory.map((m: any) => {
+      let content = m.content || "";
+      if (isAudio(m)) {
+        content = m.transcription
+          ? `(áudio do lead, transcrito) ${m.transcription}`
+          : "(o lead mandou um áudio que não consegui transcrever)";
+      }
+      return { direction: m.direction, content, ts: m.ts };
+    });
+
     msgs = msgs.filter((m) => m.content.trim().length > 0);
     // Higieniza histórico já poluído: (a) colapsa "texto+texto" dentro da mesma
     // mensagem; (b) remove cópia consecutiva idêntica (eco gravado em dobro).
@@ -927,6 +995,7 @@ Deno.serve(async (req) => {
       confirmedTimeHint,
       missingNameHint,
       igPersonalization,
+      `\n\nÁUDIO: quando a mensagem vier como "(áudio do lead, transcrito) ...", o lead FALOU aquilo — trate como se tivesse ouvido e responda normalmente, SEMPRE em texto. Nunca diga que não conseguiu ouvir e nunca peça pra ele repetir por escrito. Só se vier "(o lead mandou um áudio que não consegui transcrever)" é que você pede, com naturalidade, que ele reescreva.`,
       `\n\nVocê está respondendo uma conversa de ${channelLabel} com ${leadName}. Responda como mensagem: curta, humana, sem markdown, sem títulos, uma ideia por mensagem. NUNCA repita uma pergunta que o lead já respondeu — antes de perguntar, confira o histórico. Escreva a resposta UMA única vez, sem repetir o texto. Nunca revele que é uma IA. Se não souber algo, seja honesto e ofereça encaminhar para uma pessoa.`,
     ].join("");
 
