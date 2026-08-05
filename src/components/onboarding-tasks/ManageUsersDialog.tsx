@@ -73,6 +73,8 @@ export const ManageUsersDialog = ({
     { id: string; name: string; email: string | null; user_id: string | null; is_active: boolean }[]
   >([]);
   const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>("");
+  const [units, setUnits] = useState<{ id: string; name: string }[]>([]);
+  const [managerUnitIds, setManagerUnitIds] = useState<string[]>([]);
   const isManagerType = (newUser.role as string) === "gerente";
   // gerente entra pelo mesmo caminho do vendedor: escolhe alguém já cadastrado
   const isSalespersonType = (newUser.role as string) === "salesperson" || isManagerType;
@@ -90,6 +92,14 @@ export const ManageUsersDialog = ({
       .eq("company_id", proj.onboarding_company_id)
       .order("name");
     setSalespeople((data as any) || []);
+
+    const { data: unitRows } = await supabase
+      .from("company_units")
+      .select("id, name")
+      .eq("company_id", proj.onboarding_company_id)
+      .eq("is_active", true)
+      .order("name");
+    setUnits((unitRows as any) || []);
   };
 
   useEffect(() => {
@@ -172,6 +182,20 @@ export const ManageUsersDialog = ({
         );
         const result = await res.json();
         if (result?.error) throw new Error(result.error);
+        // Escopo de lojas do gerente: sem vínculo, ele enxerga a empresa inteira
+        if (isManagerType && managerUnitIds.length > 0) {
+          const { data: ou } = await supabase
+            .from("onboarding_users")
+            .select("id")
+            .eq("project_id", projectId)
+            .eq("salesperson_id", sp.id)
+            .maybeSingle();
+          if (ou?.id) {
+            await (supabase as any)
+              .from("client_user_units")
+              .insert(managerUnitIds.map((unitId) => ({ user_id: ou.id, unit_id: unitId })));
+          }
+        }
         toast.success(isManagerType ? `Login de gerente criado pra ${sp.name}!` : `Login criado pro vendedor ${sp.name}!`);
         resetForm();
         fetchSalespeople();
@@ -550,6 +574,7 @@ export const ManageUsersDialog = ({
                       setNewUser({ ...newUser, role: value as any, name: "", email: "", password: "" });
                       setSelectedStaffId("");
                       setSelectedSalespersonId("");
+                      setManagerUnitIds([]);
                       setShowNewPassword(false);
                     }}
                   >
@@ -598,6 +623,36 @@ export const ManageUsersDialog = ({
                         O login usa o e-mail do cadastro do vendedor. Quem já tem acesso aparece desabilitado.
                       </p>
                     </div>
+                    {isManagerType && (
+                      <div className="space-y-2">
+                        <Label>Lojas que o gerente enxerga</Label>
+                        <div className="rounded-md border p-2 max-h-40 overflow-y-auto space-y-1">
+                          {units.length === 0 ? (
+                            <p className="text-xs text-muted-foreground p-1">Nenhuma unidade cadastrada nesta empresa.</p>
+                          ) : (
+                            units.map((u) => (
+                              <label key={u.id} className="flex items-center gap-2 text-sm cursor-pointer p-1 rounded hover:bg-muted/50">
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4"
+                                  checked={managerUnitIds.includes(u.id)}
+                                  onChange={(e) =>
+                                    setManagerUnitIds((prev) =>
+                                      e.target.checked ? [...prev, u.id] : prev.filter((x) => x !== u.id)
+                                    )
+                                  }
+                                />
+                                {u.name}
+                              </label>
+                            ))
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Pode marcar mais de uma. Sem nenhuma marcada, ele enxerga todas as lojas da empresa.
+                        </p>
+                      </div>
+                    )}
+
                     <div className="space-y-2">
                       <Label>{isManagerType ? "Senha do Gerente" : "Senha do Vendedor"}</Label>
                       <div className="relative">
