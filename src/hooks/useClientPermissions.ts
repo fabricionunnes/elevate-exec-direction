@@ -126,7 +126,10 @@ export function useClientPermissions(projectId: string | undefined): UseClientPe
     hasPermission,
     hasAnyPermission,
     isFullAccess,
-    salespersonId: currentUser?.salesperson_id || null,
+    // Só o VENDEDOR entra na visão individual. O gerente também é vinculado a um
+    // cadastro de vendedor (pra lançar/identificar), mas enxerga a gestão da loja —
+    // senão o dashboard buscava a meta individual dele, que não existe.
+    salespersonId: currentUser?.role === "vendedor" ? (currentUser?.salesperson_id || null) : null,
   };
 }
 

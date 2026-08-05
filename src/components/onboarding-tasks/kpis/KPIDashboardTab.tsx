@@ -660,8 +660,11 @@ export const KPIDashboardTab = ({
       selectedUnit === "all" &&
       !unitScoped
     ) {
+      // só vendedores que o usuário enxerga (gerente de loja vê a meta da loja dele,
+      // não a soma da rede inteira)
+      const visibleSpIds = new Set(salespeople.map((sp) => sp.id));
       const spTargets = allMonthlyTargets.filter(
-        mt => mt.kpi_id === kpiId && mt.salesperson_id !== null
+        mt => mt.kpi_id === kpiId && mt.salesperson_id !== null && visibleSpIds.has(mt.salesperson_id)
       );
       if (spTargets.length > 0) {
         const sumByLevel: Record<string, number> = {};
