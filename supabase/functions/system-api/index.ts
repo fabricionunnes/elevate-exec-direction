@@ -1008,7 +1008,11 @@ serve(async (req) => {
             userId = created.user.id;
           }
 
-          await c.supabase.from("company_salespeople").update({ user_id: userId }).eq("id", sp.id);
+          // Vendedor: vincula o login ao cadastro (login dele cai na visão individual).
+          // Gerente: NÃO vincula — o vínculo fazia o login rotear pra página do vendedor.
+          if (portalRole !== "gerente") {
+            await c.supabase.from("company_salespeople").update({ user_id: userId }).eq("id", sp.id);
+          }
 
           // Gerente: precisa existir em onboarding_users pra o portal do cliente
           // resolver o papel e as permissões de menu dele.
@@ -1022,7 +1026,7 @@ serve(async (req) => {
               .maybeSingle();
             if (already?.id) {
               await c.supabase.from("onboarding_users")
-                .update({ role: "gerente", salesperson_id: sp.id, name: sp.name, email: sp.email })
+                .update({ role: "gerente", salesperson_id: null, name: sp.name, email: sp.email })
                 .eq("id", already.id);
             } else {
               await c.supabase.from("onboarding_users").insert({
@@ -1031,7 +1035,6 @@ serve(async (req) => {
                 name: sp.name,
                 email: sp.email,
                 role: "gerente",
-                salesperson_id: sp.id,
                 temp_password: password,
                 password_changed: false,
               });

@@ -250,6 +250,17 @@ const OnboardingLoginPage = () => {
           return;
         }
 
+        // Papel no PORTAL decide primeiro: gerente/cliente vão pro portal mesmo
+        // que o e-mail também esteja vinculado a um cadastro de vendedor —
+        // senão o gerente caía na visão individual do vendedor, toda zerada.
+        const { data: portalRoles } = await supabase
+          .from("onboarding_users")
+          .select("id, role, project_id")
+          .eq("user_id", data.user.id);
+        const managerOrClient = (portalRoles || []).find((u) =>
+          ["gerente", "client"].includes(u.role)
+        );
+
         // Check if user is a salesperson (company_salespeople.user_id)
         const { data: salesperson } = await supabase
           .from("company_salespeople")
@@ -258,7 +269,7 @@ const OnboardingLoginPage = () => {
           .eq("is_active", true)
           .maybeSingle();
 
-        if (salesperson) {
+        if (salesperson && !managerOrClient) {
           toast.success(`Bem-vindo, ${salesperson.name}!`);
           navigate(`/vendedor/${salesperson.id}/kpis`);
           return;
