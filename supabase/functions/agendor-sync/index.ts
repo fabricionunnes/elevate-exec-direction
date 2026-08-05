@@ -15,6 +15,10 @@ const KPI_FATURAMENTO = "43a48342-4902-4864-a891-9e344fa101a8";
 const KPI_VENDAS = "afc2f5d1-535a-4990-8735-6db6c0ec4051";
 const TAG = "[AGENDOR]";
 
+// Lote que a Marianna marcou como ganho em 04/08 mas e venda de JULHO
+// (decisao do Fabricio em 05/08): fica fora da sincronizacao.
+const EXCLUDED_DEAL_IDS = new Set<number>([36667346, 38469679, 38878819, 39441050, 40724641, 42249914, 42296881, 42309620, 42383151, 42424855, 42876272, 42901588, 42934121, 42934983, 43128053, 43215378, 43325273, 43423148, 43496341, 43514562, 43606664, 43755036, 43909324, 43997389, 44013217, 44013570, 44013626, 44017966, 44019809, 44019937, 44020438, 44020656, 44458724, 44459377, 44461318, 44463075]);
+
 function json(obj: unknown, status = 200) {
   return new Response(JSON.stringify(obj), {
     status,
@@ -96,6 +100,7 @@ Deno.serve(async (req: Request) => {
         if (upd && new Date(upd).getTime() >= cutoffMs) pageHasFresh = true;
         if (!d.wonAt) continue;
         if (new Date(d.wonAt).getTime() < cutoffMs) continue;
+        if (EXCLUDED_DEAL_IDS.has(d.id)) continue;
         won.push({
           date: brDate(d.wonAt),
           owner: d.owner?.name || "",
