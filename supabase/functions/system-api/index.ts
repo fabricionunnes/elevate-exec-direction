@@ -1029,7 +1029,7 @@ serve(async (req) => {
                 .update({ role: "gerente", salesperson_id: null, name: sp.name, email: sp.email })
                 .eq("id", already.id);
             } else {
-              await c.supabase.from("onboarding_users").insert({
+              const { data: created2 } = await c.supabase.from("onboarding_users").insert({
                 project_id: projectId,
                 user_id: userId,
                 name: sp.name,
@@ -1037,7 +1037,15 @@ serve(async (req) => {
                 role: "gerente",
                 temp_password: password,
                 password_changed: false,
-              });
+              }).select("id").single();
+              // Sem permissão de menu o portal abre em branco: gerente novo já
+              // nasce com o conjunto padrão de gestão de loja.
+              if (created2?.id) {
+                const defaults = ["kpis","kpis_dashboard","kpis_endomarketing","kpis_sales_links","jornada_trilha","jornada_lista","jornada_cronograma","rh","indicar"];
+                await c.supabase.from("client_user_permissions").insert(
+                  defaults.map((menu_key: string) => ({ user_id: created2.id, menu_key }))
+                );
+              }
             }
           }
           // E-mail de boas-vindas com credenciais (best-effort — não bloqueia)
