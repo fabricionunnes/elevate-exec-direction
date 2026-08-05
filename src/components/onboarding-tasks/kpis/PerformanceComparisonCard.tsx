@@ -130,7 +130,7 @@ export const PerformanceComparisonCard = ({
     () =>
       new Set(
         sectors
-          .filter(s => (s.name || "").toLowerCase().includes("lideran"))
+          .filter(s => /lideran|caixa/.test((s.name || "").toLowerCase()))
           .map(s => s.id)
       ),
     [sectors]

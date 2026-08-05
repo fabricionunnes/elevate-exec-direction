@@ -126,7 +126,7 @@ export const SalespersonDailyGoalCard = ({
 
       // Gerentes (setor Liderança) não entram no rateio nem herdam meta do escopo
       const leadershipSectorIds = (sectors || [])
-        .filter((s) => (s.name || "").toLowerCase().includes("lideran"))
+        .filter((s) => /lideran|caixa/.test((s.name || "").toLowerCase()))
         .map((s) => s.id);
       const isLeader = (sp?: { sector_id: string | null }) =>
         !!sp?.sector_id && leadershipSectorIds.includes(sp.sector_id);

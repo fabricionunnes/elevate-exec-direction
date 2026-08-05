@@ -529,9 +529,14 @@ export const KPIDashboardTab = ({
     return allMainGoalKpis.length > 0 ? allMainGoalKpis : monetaryKpis;
   };
 
-  // Gerentes (setor Liderança) não entram no rateio da meta nem herdam meta do escopo
+  // Gerentes (setor Liderança) e CAIXAS não entram no rateio da meta nem herdam
+  // meta do escopo — caixa vende (soma no realizado da loja) mas não tem meta.
   const leadershipSectorIds = sectors
-    .filter((s) => (s.name || "").toLowerCase().includes("lideran"))
+    .filter((s) => /lideran|caixa/.test((s.name || "").toLowerCase()))
+    .map((s) => s.id);
+  // Caixa também fica FORA do ranking (gerente continua aparecendo)
+  const caixaSectorIds = sectors
+    .filter((s) => (s.name || "").toLowerCase().includes("caixa"))
     .map((s) => s.id);
   const isLeaderSp = (sp?: { sector_id?: string | null }) =>
     !!sp?.sector_id && leadershipSectorIds.includes(sp.sector_id);
@@ -1288,6 +1293,8 @@ export const KPIDashboardTab = ({
   // Prepare ranking data - per KPI when multiple main goals
   const getRankingData = (forKpiId?: string) => {
     const filteredSalespeople = salespeople.filter(sp => {
+      // caixa vende mas não disputa ranking
+      if (sp.sector_id && caixaSectorIds.includes(sp.sector_id)) return false;
       if (selectedSalesperson !== "all" && sp.id !== selectedSalesperson) return false;
       if (selectedUnit !== "all" && sp.unit_id !== selectedUnit) return false;
       if (selectedTeam !== "all" && sp.team_id !== selectedTeam) return false;
@@ -2301,8 +2308,9 @@ export const KPIDashboardTab = ({
         selectedSalesperson={selectedSalesperson}
         sectorTeams={sectorTeams}
         leadershipSectorIds={sectors
-          .filter((s) => (s.name || "").toLowerCase().includes("lideran"))
+          .filter((s) => /lideran|caixa/.test((s.name || "").toLowerCase()))
           .map((s) => s.id)}
+        excludeFromRankingSectorIds={caixaSectorIds}
         isClientView={isSalespersonView}
         currentSalespersonRankPosition={isSalespersonView ? getMyRankingPosition : undefined}
         onSettingsChange={setDaySettings}

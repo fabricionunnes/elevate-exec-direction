@@ -63,6 +63,7 @@ interface DailyGoalCardProps {
   selectedSalesperson: string;
   sectorTeams: SectorTeam[];
   leadershipSectorIds?: string[];
+  excludeFromRankingSectorIds?: string[];
   isClientView?: boolean;
   currentSalespersonRankPosition?: (kpiId: string) => number | null;
   onSettingsChange?: (s: { includeSaturday: boolean; includeSunday: boolean; includeHolidays: boolean }) => void;
@@ -109,6 +110,7 @@ export const DailyGoalCard = ({
   selectedSalesperson,
   sectorTeams,
   leadershipSectorIds = [],
+  excludeFromRankingSectorIds = [],
   isClientView = false,
   currentSalespersonRankPosition,
   onSettingsChange,
@@ -375,6 +377,8 @@ export const DailyGoalCard = ({
 
       // Per-salesperson data for THIS KPI only
       const spData = filteredSalespeople
+        // caixa soma no realizado da loja, mas não entra no ranking por vendedor
+        .filter((sp: any) => !(sp.sector_id && excludeFromRankingSectorIds.includes(sp.sector_id)))
         .map((sp) => {
           const spTarget = getTarget(kpi.id, sp.id);
           const spEntries = entries.filter(
