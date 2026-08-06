@@ -42,6 +42,7 @@ import {
   ChevronDown,
   Contact,
   Mail as MailIcon,
+  Download,
 } from "lucide-react";
 import logoUnv from "@/assets/logo-unv-nexus.png";
 import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
@@ -387,6 +388,31 @@ export const CRMLayout = () => {
                       </DropdownMenuItem>
                     );
                   })}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <a
+                      href="https://unv-closer-install.pages.dev/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4 text-muted-foreground" />
+                      Baixar Copilot
+                    </a>
+                  </DropdownMenuItem>
+                  {canSettings && (
+                    <DropdownMenuItem asChild>
+                      <a
+                        href="https://unv-closer-gestor.pages.dev/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2"
+                      >
+                        <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                        Painel do Gestor (Copilot)
+                      </a>
+                    </DropdownMenuItem>
+                  )}
                   {canSettings && (
                     <>
                       <DropdownMenuSeparator />
