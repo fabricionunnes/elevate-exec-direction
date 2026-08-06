@@ -1,3 +1,4 @@
+// Painel de pagamento do lead — links Mercado Pago / Dom Pagamentos / Asaas
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
