@@ -5,8 +5,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { CreditCard, Copy, Loader2, ExternalLink, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+
+type ProviderKey = "mercadopago" | "dompagamentos" | "asaas";
+const PROVIDERS: { key: ProviderKey; name: string; sub: string }[] = [
+  { key: "mercadopago", name: "Mercado Pago", sub: "Cartão parcelado" },
+  { key: "dompagamentos", name: "Dom Pagamentos", sub: "Cartão parcelado" },
+  { key: "asaas", name: "Asaas", sub: "PIX · mensal" },
+];
+const GRID_COLS: Record<number, string> = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3" };
 
 interface Payment {
   id: string; amount_cents: number; description: string | null; status: string;
@@ -32,6 +42,34 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
   const [generating, setGenerating] = useState(false);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [enabled, setEnabled] = useState<Record<string, boolean>>({ mercadopago: true, dompagamentos: true, asaas: true });
+  const { isMaster } = useStaffPermissions();
+
+  useEffect(() => {
+    (supabase as any).from("crm_payment_provider_settings").select("provider, is_enabled")
+      .then(({ data }: any) => {
+        if (!data?.length) return;
+        const map: Record<string, boolean> = { mercadopago: true, dompagamentos: true, asaas: true };
+        data.forEach((r: any) => { map[r.provider] = r.is_enabled; });
+        setEnabled(map);
+      });
+  }, []);
+
+  const visibleProviders = isMaster ? PROVIDERS : PROVIDERS.filter((p) => enabled[p.key] !== false);
+  const enabledProviders = PROVIDERS.filter((p) => enabled[p.key] !== false);
+
+  useEffect(() => {
+    if (enabled[provider] === false && enabledProviders.length > 0) setProvider(enabledProviders[0].key);
+  }, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleProvider = async (key: ProviderKey, value: boolean) => {
+    const prev = enabled;
+    setEnabled({ ...enabled, [key]: value });
+    const { error } = await (supabase as any).from("crm_payment_provider_settings")
+      .update({ is_enabled: value, updated_at: new Date().toISOString() })
+      .eq("provider", key);
+    if (error) { setEnabled(prev); toast.error("Sem permissão para alterar"); }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -44,6 +82,7 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
   useEffect(() => { load(); }, [load]);
 
   const generate = async () => {
+    if (enabled[provider] === false || enabledProviders.length === 0) { toast.error("Esta forma de pagamento está desabilitada"); return; }
     const cents = Math.round(parseFloat(String(amount).replace(/\./g, "").replace(",", ".")) * 100);
     if (!cents || cents < 100) { toast.error("Informe um valor válido (mín. R$ 1,00)"); return; }
     setGenerating(true);
@@ -74,20 +113,29 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
         <h3 className="font-semibold flex items-center gap-2"><CreditCard className="h-4 w-4 text-emerald-500" /> Gerar link de pagamento</h3>
         <div>
           <Label className="text-xs">Forma</Label>
-          <div className="grid grid-cols-3 gap-2 mt-1">
-            <button type="button" onClick={() => setProvider("mercadopago")}
-              className={`rounded-md border p-2 text-xs text-left ${provider === "mercadopago" ? "border-primary bg-primary/5 font-medium" : "border-border"}`}>
-              Mercado Pago<br /><span className="text-[10px] text-muted-foreground">Cartão parcelado</span>
-            </button>
-            <button type="button" onClick={() => setProvider("dompagamentos")}
-              className={`rounded-md border p-2 text-xs text-left ${provider === "dompagamentos" ? "border-primary bg-primary/5 font-medium" : "border-border"}`}>
-              Dom Pagamentos<br /><span className="text-[10px] text-muted-foreground">Cartão parcelado</span>
-            </button>
-            <button type="button" onClick={() => setProvider("asaas")}
-              className={`rounded-md border p-2 text-xs text-left ${provider === "asaas" ? "border-primary bg-primary/5 font-medium" : "border-border"}`}>
-              Asaas<br /><span className="text-[10px] text-muted-foreground">PIX · mensal</span>
-            </button>
-          </div>
+          {visibleProviders.length === 0 ? (
+            <p className="text-sm text-muted-foreground mt-2">Nenhuma forma de pagamento habilitada no momento.</p>
+          ) : (
+            <div className={`grid ${GRID_COLS[visibleProviders.length] || "grid-cols-3"} gap-2 mt-1`}>
+              {visibleProviders.map((p) => {
+                const isOn = enabled[p.key] !== false;
+                return (
+                  <div key={p.key} className="relative">
+                    <button type="button" disabled={!isOn} onClick={() => setProvider(p.key)}
+                      className={`w-full rounded-md border p-2 text-xs text-left ${provider === p.key && isOn ? "border-primary bg-primary/5 font-medium" : "border-border"} ${!isOn ? "opacity-40 cursor-not-allowed" : ""}`}>
+                      {p.name}<br /><span className="text-[10px] text-muted-foreground">{p.sub}</span>
+                    </button>
+                    {isMaster && (
+                      <div className="absolute top-1.5 right-1.5" title={isOn ? "Desabilitar para todos" : "Habilitar para todos"}>
+                        <Switch checked={isOn} onCheckedChange={(v) => toggleProvider(p.key, v)} className="scale-[0.65] origin-top-right" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {isMaster && <p className="text-[10px] text-muted-foreground mt-1">Os interruptores habilitam/desabilitam cada forma para todo o time (visível só pra você).</p>}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -128,7 +176,7 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
           <Label className="text-xs">Descrição (opcional)</Label>
           <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={`Pagamento — ${leadName}`} />
         </div>
-        <Button onClick={generate} disabled={generating} className="w-full gap-2">
+        <Button onClick={generate} disabled={generating || enabledProviders.length === 0 || enabled[provider] === false} className="w-full gap-2">
           {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
           Gerar link de pagamento
         </Button>
