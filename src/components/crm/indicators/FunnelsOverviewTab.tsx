@@ -25,7 +25,7 @@ const fmtBRL = (v: number) =>
 const QUALITY_STYLE: Record<string, { color: string; dark: string; desc: string }> = {
   "Qualificado": { color: "#3b82f6", dark: "#1d4ed8", desc: "avançou da etapa inicial ou teve reunião" },
   "Ganho": { color: "#10b981", dark: "#047857", desc: "virou venda" },
-  "Fora do perfil": { color: "#f59e0b", dark: "#b45309", desc: "fora do ICP, sem fit ou etapa Pessoal" },
+  "Fora do perfil": { color: "#f59e0b", dark: "#b45309", desc: "fora do ICP ou sem fit" },
   "Perdido": { color: "#ef4444", dark: "#b91c1c", desc: "perdido por outro motivo" },
   "Aguardando triagem": { color: "#94a3b8", dark: "#64748b", desc: "ainda na etapa de entrada" },
 };
@@ -145,8 +145,8 @@ const LeadQualityPie = ({
             </div>
           ))}
           <p className="text-[11px] text-muted-foreground pt-1">
-            Clique numa fatia para ver os leads dela. Inclui os leads em etapas fora da contagem (ex: "Pessoal") — são
-            justamente o fora do perfil, por isso o total aqui pode ser maior que o card "Leads no CRM".
+            Clique numa fatia para ver os leads dela. Leads em etapas fora da contagem (ex: "Pessoal") são ignorados
+            por completo — não entram no total nem em nenhuma fatia.
           </p>
         </div>
       </CardContent>
@@ -160,19 +160,8 @@ export const FunnelsOverviewTab = () => {
   const [stages, setStages] = useState<Stage[]>([]);
   const [agg, setAgg] = useState<AggRow[]>([]);
   // Período de ENTRADA do lead. Vazio = tudo (comportamento antigo).
-  // Padrão: mês atual (a base inteira sem recorte não diz nada sobre qualidade)
-  const monthStartISO = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`; })();
-  const todayISO = new Date().toISOString().slice(0, 10);
-  const [dateFrom, setDateFrom] = useState(monthStartISO);
-  const [dateTo, setDateTo] = useState(todayISO);
-  const [campaignFilter, setCampaignFilter] = useState<string[]>([]);
-  const [adsetFilter, setAdsetFilter] = useState<string[]>([]);
-  const [adFilter, setAdFilter] = useState<string[]>([]);
-  const [metaOpts, setMetaOpts] = useState<{
-    campaigns: { value: string; label: string }[];
-    adsets: { value: string; label: string; campaign_id: string | null }[];
-    ads: { value: string; label: string; adset_id: string | null; campaign_id: string | null }[];
-  }>({ campaigns: [], adsets: [], ads: [] });
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [quality, setQuality] = useState<{ categoria: string; total: number }[]>([]);
   const [pipeFilter, setPipeFilter] = useState<string[]>([]);
   const [drill, setDrill] = useState<{ categoria: string; rows: any[]; loading: boolean } | null>(null);
@@ -188,39 +177,18 @@ export const FunnelsOverviewTab = () => {
 
   useEffect(() => {
     (async () => {
-      const [c, a, ad] = await Promise.all([
-        supabase.from("crm_meta_ads_campaigns").select("campaign_id, campaign_name").order("campaign_name"),
-        supabase.from("crm_meta_ads_adsets").select("adset_id, adset_name, campaign_id").order("adset_name"),
-        supabase.from("crm_meta_ads_ads").select("ad_id, ad_name, adset_id, campaign_id").order("ad_name"),
-      ]);
-      const uniq = <T,>(rows: T[], key: (r: T) => string) => {
-        const m = new Map<string, T>();
-        rows.forEach((r) => { const k = key(r); if (k && !m.has(k)) m.set(k, r); });
-        return Array.from(m.values());
-      };
-      setMetaOpts({
-        campaigns: uniq((c.data as any[]) || [], (r) => r.campaign_id).map((r: any) => ({ value: r.campaign_id, label: r.campaign_name || r.campaign_id })),
-        adsets: uniq((a.data as any[]) || [], (r) => r.adset_id).map((r: any) => ({ value: r.adset_id, label: r.adset_name || r.adset_id, campaign_id: r.campaign_id })),
-        ads: uniq((ad.data as any[]) || [], (r) => r.ad_id).map((r: any) => ({ value: r.ad_id, label: r.ad_name || r.ad_id, adset_id: r.adset_id, campaign_id: r.campaign_id })),
-      });
-    })();
-  }, []);
-
-  useEffect(() => {
-    (async () => {
       setLoading(true);
       try {
+        const hasRange = !!(dateFrom || dateTo);
         const [p, s, a] = await Promise.all([
           supabase.from("crm_pipelines").select("id, name").eq("is_active", true).order("name"),
           supabase.from("crm_stages").select("id, name, pipeline_id, sort_order, final_type, exclude_from_lead_count").order("sort_order"),
-          (supabase as any).rpc("get_funnels_overview", {
-            p_from: dateFrom || null,
-            p_to: dateTo || null,
-            p_pipeline_ids: pipeFilter.length ? pipeFilter : null,
-            p_campaign_ids: campaignFilter.length ? campaignFilter : null,
-            p_adset_ids: adsetFilter.length ? adsetFilter : null,
-            p_ad_ids: adFilter.length ? adFilter : null,
-          }),
+          hasRange
+            ? (supabase as any).rpc("get_funnels_overview", {
+                p_from: dateFrom || null,
+                p_to: dateTo || null,
+              })
+            : supabase.rpc("get_funnels_overview"),
         ]);
         setPipelines(p.data || []);
         setStages((s.data as Stage[]) || []);
@@ -230,14 +198,11 @@ export const FunnelsOverviewTab = () => {
           p_from: dateFrom || null,
           p_to: dateTo || null,
           p_pipeline_ids: pipeFilter.length ? pipeFilter : null,
-          p_campaign_ids: campaignFilter.length ? campaignFilter : null,
-          p_adset_ids: adsetFilter.length ? adsetFilter : null,
-          p_ad_ids: adFilter.length ? adFilter : null,
         });
         setQuality((q.data as any[]) || []);
       } finally { setLoading(false); }
     })();
-  }, [dateFrom, dateTo, pipeFilter, campaignFilter, adsetFilter, adFilter]);
+  }, [dateFrom, dateTo, pipeFilter]);
 
   const byPipeline = useMemo(() => {
     const byStage = new Map(agg.map(r => [r.stage_id, r]));
@@ -298,15 +263,11 @@ export const FunnelsOverviewTab = () => {
       p_to: dateTo || null,
       p_pipeline_ids: pipeFilter.length ? pipeFilter : null,
       p_categoria: categoria,
-      p_campaign_ids: campaignFilter.length ? campaignFilter : null,
-      p_adset_ids: adsetFilter.length ? adsetFilter : null,
-      p_ad_ids: adFilter.length ? adFilter : null,
     });
     setDrill({ categoria, rows: (data as any[]) || [], loading: false });
   };
 
   const hasRange = !!(dateFrom || dateTo);
-  const hasAdFilter = campaignFilter.length + adsetFilter.length + adFilter.length > 0;
 
   return (
     <div className="p-4 md:p-6 space-y-5">
@@ -339,59 +300,12 @@ export const FunnelsOverviewTab = () => {
             <Button variant="outline" size="sm" className="h-8" onClick={() => applyQuick(0)}>Hoje</Button>
             <Button variant="outline" size="sm" className="h-8" onClick={() => applyQuick(7)}>7 dias</Button>
             <Button variant="outline" size="sm" className="h-8" onClick={() => applyQuick(30)}>30 dias</Button>
-            {(hasRange || pipeFilter.length > 0 || hasAdFilter) && (
-              <Button variant="ghost" size="sm" className="h-8" onClick={() => { setDateFrom(""); setDateTo(""); setPipeFilter([]); setCampaignFilter([]); setAdsetFilter([]); setAdFilter([]); }}>
+            {(hasRange || pipeFilter.length > 0) && (
+              <Button variant="ghost" size="sm" className="h-8" onClick={() => { setDateFrom(""); setDateTo(""); setPipeFilter([]); }}>
                 Limpar
               </Button>
             )}
           </div>
-          <div className="w-full flex flex-wrap items-end gap-3 pt-1">
-            <div className="flex flex-col gap-1 min-w-[200px] flex-1">
-              <Label className="text-[10px] text-muted-foreground">Campanha</Label>
-              <MultiSearchableSelect
-                values={campaignFilter}
-                onChange={(v) => { setCampaignFilter(v); setAdsetFilter([]); setAdFilter([]); }}
-                options={metaOpts.campaigns}
-                placeholder="Todas as campanhas"
-                allLabel="Todas as campanhas"
-                className="h-8"
-              />
-            </div>
-            <div className="flex flex-col gap-1 min-w-[200px] flex-1">
-              <Label className="text-[10px] text-muted-foreground">Conjunto de anúncios</Label>
-              <MultiSearchableSelect
-                values={adsetFilter}
-                onChange={(v) => { setAdsetFilter(v); setAdFilter([]); }}
-                options={metaOpts.adsets
-                  .filter((a) => campaignFilter.length === 0 || (a.campaign_id && campaignFilter.includes(a.campaign_id)))
-                  .map(({ value, label }) => ({ value, label }))}
-                placeholder="Todos os conjuntos"
-                allLabel="Todos os conjuntos"
-                className="h-8"
-              />
-            </div>
-            <div className="flex flex-col gap-1 min-w-[200px] flex-1">
-              <Label className="text-[10px] text-muted-foreground">Anúncio</Label>
-              <MultiSearchableSelect
-                values={adFilter}
-                onChange={setAdFilter}
-                options={metaOpts.ads
-                  .filter((a) => campaignFilter.length === 0 || (a.campaign_id && campaignFilter.includes(a.campaign_id)))
-                  .filter((a) => adsetFilter.length === 0 || (a.adset_id && adsetFilter.includes(a.adset_id)))
-                  .map(({ value, label }) => ({ value, label }))}
-                placeholder="Todos os anúncios"
-                allLabel="Todos os anúncios"
-                className="h-8"
-              />
-            </div>
-          </div>
-
-          {hasAdFilter && (
-            <p className="w-full text-[11px] text-muted-foreground">
-              Filtro de anúncio considera só os leads com rastreamento da Meta — quem entrou sem UTM não aparece.
-            </p>
-          )}
-
           {hasRange && (
             <Badge variant="secondary" className="text-[11px] ml-auto">
               {byPipeline.length} funil{byPipeline.length === 1 ? "" : "s"} com lead no período
