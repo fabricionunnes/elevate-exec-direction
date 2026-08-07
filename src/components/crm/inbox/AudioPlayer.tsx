@@ -1,24 +1,60 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Play, Pause } from "lucide-react";
+import { Play, Pause, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AudioPlayerProps {
   src: string;
   onError?: () => void;
+  /** id da crm_whatsapp_messages: permite baixar a mídia pela API quando a URL do CDN do WhatsApp não toca */
+  messageId?: string;
 }
+
+// URL do CDN do WhatsApp é criptografada — o navegador não consegue tocar.
+const isUnplayable = (u: string) => !u || u.includes("whatsapp.net") || u.endsWith(".enc");
 
 const SPEED_OPTIONS = [1, 1.5, 2] as const;
 type SpeedOption = typeof SPEED_OPTIONS[number];
 
-export function AudioPlayer({ src, onError }: AudioPlayerProps) {
+export function AudioPlayer({ src, onError, messageId }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [speed, setSpeed] = useState<SpeedOption>(1);
   const [hasError, setHasError] = useState(false);
+  const [resolvedSrc, setResolvedSrc] = useState<string | null>(null);
+  const [resolving, setResolving] = useState(false);
+  const triedResolve = useRef(false);
+
+  const effectiveSrc = resolvedSrc || src;
+
+  const tryResolve = async () => {
+    if (!messageId || triedResolve.current) { setHasError(true); return; }
+    triedResolve.current = true;
+    setResolving(true);
+    try {
+      const { data } = await supabase.functions.invoke("wa-media-fetch", { body: { message_id: messageId } });
+      if (data?.ok && data.url) {
+        setHasError(false);
+        setResolvedSrc(data.url);
+      } else {
+        setHasError(true);
+      }
+    } catch {
+      setHasError(true);
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  // URL sabidamente não tocável: já tenta resolver pela API sem esperar o erro do <audio>.
+  useEffect(() => {
+    if (isUnplayable(src) && messageId && !triedResolve.current) tryResolve();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src, messageId]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -28,6 +64,7 @@ export function AudioPlayer({ src, onError }: AudioPlayerProps) {
     const handleDurationChange = () => setDuration(audio.duration);
     const handleEnded = () => setIsPlaying(false);
     const handleError = () => {
+      if (messageId && !triedResolve.current) { tryResolve(); return; }
       setHasError(true);
       onError?.();
     };
@@ -43,7 +80,8 @@ export function AudioPlayer({ src, onError }: AudioPlayerProps) {
       audio.removeEventListener("ended", handleEnded);
       audio.removeEventListener("error", handleError);
     };
-  }, [onError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onError, resolvedSrc, resolving, hasError]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -83,7 +121,15 @@ export function AudioPlayer({ src, onError }: AudioPlayerProps) {
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
-  if (hasError) {
+  if (resolving) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Carregando áudio...
+      </div>
+    );
+  }
+
+  if (hasError || (isUnplayable(effectiveSrc) && !resolving)) {
     return (
       <div className="text-sm text-muted-foreground italic">
         🎤 Áudio não disponível
@@ -93,7 +139,7 @@ export function AudioPlayer({ src, onError }: AudioPlayerProps) {
 
   return (
     <div className="flex items-center gap-2 min-w-[200px]">
-      <audio ref={audioRef} src={src} preload="metadata" />
+      <audio ref={audioRef} src={effectiveSrc} preload="metadata" />
       
       <Button
         variant="ghost"

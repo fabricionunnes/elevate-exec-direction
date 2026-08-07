@@ -964,6 +964,12 @@ export const CRMInboxPage = () => {
                           Agente de IA
                         </p>
                       )}
+                      {/* Enviada pelo sistema: mostra quem enviou. Sem sent_by = enviada do celular, fica normal. */}
+                      {message.direction === "outbound" && !(message as any).is_ai && (message as any).sender?.name && (
+                        <p className="text-[11px] font-semibold mb-1 text-primary/80">
+                          {(message as any).sender.name} · no sistema
+                        </p>
+                      )}
                       {/* Grupo de WhatsApp: mostra quem enviou a mensagem */}
                       {message.direction === "inbound" && message.sender_name && (
                         <p className="text-xs font-semibold mb-1" style={{ color: senderColor(message.sender_name) }}>
@@ -1018,8 +1024,8 @@ export const CRMInboxPage = () => {
                             <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                           )}
                         </div>
-                      ) : message.type === "audio" && message.media_url ? (
-                        <AudioPlayer src={message.media_url} />
+                      ) : message.type === "audio" ? (
+                        <AudioPlayer src={message.media_url || ""} messageId={message.id} />
                       ) : message.type === "document" && message.media_url ? (
                         <a 
                           href={message.media_url} 
