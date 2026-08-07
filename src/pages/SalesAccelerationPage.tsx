@@ -236,7 +236,7 @@ export default function SalesAccelerationPage() {
               Programa de 12 meses para treinar, acompanhar e acelerar seu time
               de vendas com método e previsibilidade.
             </p>
-            <BuyNowButton productId="sales-acceleration" productName="UNV Sales Acceleration" amountCents={2400000} priceLabel="R$ 24.000/ano" />
+            <BuyNowButton productId="sales-acceleration" productName="UNV Sales Acceleration" amountCents={3600000} priceLabel="R$ 36.000/ano" />
           </div>
         </div>
       </section>
@@ -568,10 +568,10 @@ export default function SalesAccelerationPage() {
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="heading-section text-foreground mb-6">Investimento</h2>
             <p className="text-4xl md:text-5xl font-display font-bold text-primary mb-4">
-              R$ 24.000
+              R$ 36.000
             </p>
             <p className="text-muted-foreground text-lg mb-2">
-              Programa anual • À vista ou parcelado
+              Programa anual • 12x de R$ 3.000
             </p>
             <p className="text-muted-foreground mb-6">
               Aplicação obrigatória
@@ -580,7 +580,7 @@ export default function SalesAccelerationPage() {
               Resultados variam conforme execução. Payback é projeção operacional,
               não garantia. UNV direciona e cobra — o cliente executa.
             </p>
-            <BuyNowButton productId="sales-acceleration" productName="UNV Sales Acceleration" amountCents={2400000} priceLabel="R$ 24.000/ano" />
+            <BuyNowButton productId="sales-acceleration" productName="UNV Sales Acceleration" amountCents={3600000} priceLabel="R$ 36.000/ano" />
           </div>
         </div>
       </section>
@@ -588,8 +588,8 @@ export default function SalesAccelerationPage() {
       {/* ROI Simulator */}
       <ROISimulator
         productName="UNV Sales Acceleration"
-        productPrice="R$ 24.000/ano"
-        productPriceValue={24000}
+        productPrice="R$ 36.000/ano"
+        productPriceValue={36000}
         productSlug="sales-acceleration"
         benefitDescription="Com direção comercial ativa, seu time vende mais com os mesmos leads. Payback projetado até o 3º mês. Conversão otimizada, ciclo de vendas menor, gestão estruturada."
         expectedConversionIncrease={7}

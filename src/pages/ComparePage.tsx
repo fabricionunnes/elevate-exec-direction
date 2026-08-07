@@ -110,7 +110,7 @@ const products: Product[] = [
     icp: "Empresas prontas para acelerar vendas",
     revenue: "R$ 150k–1M/mês",
     team: "3–20 vendedores",
-    price: "R$ 24.000",
+    price: "R$ 36.000",
     priceType: "/ano",
     link: "/sales-acceleration",
     keyDiff: "Produto principal — direção + treinamento + cobrança integrados por 12 meses",

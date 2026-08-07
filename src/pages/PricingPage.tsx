@@ -71,12 +71,12 @@ const products: ProductPrice[] = [
     tagline: "Aceleração com Acompanhamento Individual",
     icon: TrendingUp,
     color: "text-green-500 bg-green-500/10",
-    price: "R$ 24.000",
+    price: "R$ 36.000",
     priceType: "/ano",
-    priceNote: "À vista ou parcelado",
+    priceNote: "12x de R$ 3.000",
     link: "/sales-acceleration",
     category: "Trilha Principal",
-    amountCents: 2400000,
+    amountCents: 3600000,
   },
   // Operação Comercial
   {

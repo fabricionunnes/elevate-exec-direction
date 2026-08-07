@@ -171,7 +171,7 @@ export const productDetails: Record<string, ProductDetail> = {
     tagline: "Aceleração Comercial Completa",
     icon: TrendingUp,
     color: "bg-accent",
-    price: "R$ 24.000",
+    price: "R$ 36.000",
     priceType: "/ano",
     description: "Programa completo de 12 meses com direção, treinamento e cobrança integrados.",
     deliverables: [

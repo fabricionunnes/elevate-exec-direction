@@ -98,7 +98,7 @@ const mainTrail: Product[] = [
       "Programa anual de direção comercial. Treinamos, acompanhamos e cobramos seu time para crescimento acelerado e previsível.",
     icp: "Faturamento R$ 150k–1M/mês • 3+ vendedores",
     href: "/sales-acceleration",
-    investment: "R$ 24.000/ano",
+    investment: "R$ 36.000/ano",
     highlight: true,
   },
 ];
