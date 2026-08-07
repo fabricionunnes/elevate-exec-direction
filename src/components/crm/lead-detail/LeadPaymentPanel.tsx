@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { CreditCard, Copy, Loader2, ExternalLink, RefreshCw } from "lucide-react";
+import { CreditCard, Copy, Loader2, ExternalLink, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 
@@ -44,7 +44,8 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState<Record<string, boolean>>({ mercadopago: true, dompagamentos: true, asaas: true });
-  const { isMaster } = useStaffPermissions();
+  const { isMaster, currentStaff } = useStaffPermissions();
+  const canDelete = isMaster || currentStaff?.role === "admin";
 
   useEffect(() => {
     (supabase as any).from("crm_payment_provider_settings").select("provider, is_enabled")
@@ -107,6 +108,15 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
   };
 
   const copy = (t: string) => { navigator.clipboard.writeText(t); toast.success("Copiado"); };
+
+  const removePayment = async (p: Payment) => {
+    if (!canDelete) return;
+    if (!window.confirm(`Excluir o link de ${fmt(p.amount_cents)}? O link deixa de aparecer aqui, mas quem já o tiver aberto ainda consegue pagar por ele.`)) return;
+    const { error } = await supabase.from("crm_lead_payments").delete().eq("id", p.id);
+    if (error) { toast.error("Sem permissão para excluir"); return; }
+    toast.success("Link excluído");
+    load();
+  };
 
   return (
     <div className="p-4 space-y-5 overflow-auto h-full">
@@ -213,6 +223,9 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copy(p.url!)}><Copy className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.open(p.url!, "_blank")}><ExternalLink className="h-4 w-4" /></Button>
                     </>
+                  )}
+                  {canDelete && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Excluir link (master/admin)" onClick={() => removePayment(p)}><Trash2 className="h-4 w-4" /></Button>
                   )}
                 </div>
               );
