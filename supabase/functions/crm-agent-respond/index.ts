@@ -459,13 +459,22 @@ Deno.serve(async (req) => {
       const { agent_id, lead_id } = body0;
       const { data: ag } = await supabase.from("crm_ai_agents").select("*").eq("id", agent_id).maybeSingle();
       if (!ag || !ag.is_active) return j({ ok: true, skip: "agente inativo" });
-      const [{ data: waConvs }, { data: igConvs }] = await Promise.all([
+      const [{ data: waConvs }, { data: igConvs }, { data: agentChannels }] = await Promise.all([
         supabase.from("crm_whatsapp_conversations").select("id, instance_id, contact:crm_whatsapp_contacts(phone)").eq("lead_id", lead_id),
         supabase.from("instagram_conversations").select("id").eq("lead_id", lead_id),
+        supabase.from("crm_ai_agent_channels").select("channel, instance_id").eq("agent_id", agent_id),
       ]);
+      // O gatilho por etapa só ativa o agente nos CANAIS em que ele está
+      // configurado (crm_ai_agent_channels). Sem canal configurado, não ativa
+      // nada — fail-closed. Incidente 2026-08-06: agente de Instagram entrou
+      // no WhatsApp de lead real no meio da negociação da SDR.
+      const binds = agentChannels || [];
+      if (!binds.length) return j({ ok: true, skip: "agente sem canal configurado — gatilho por etapa não ativa" });
+      const allowsChannel = (channel: string, instanceId?: string | null) =>
+        binds.some((b: any) => b.channel === channel && (!b.instance_id || !instanceId || b.instance_id === instanceId));
       const targets: any[] = [
-        ...(waConvs || []).map((c: any) => ({ channel: "whatsapp", conv: c })),
-        ...(igConvs || []).map((c: any) => ({ channel: "instagram", conv: c })),
+        ...(waConvs || []).filter((c: any) => allowsChannel("whatsapp", c.instance_id)).map((c: any) => ({ channel: "whatsapp", conv: c })),
+        ...(igConvs || []).filter(() => allowsChannel("instagram")).map((c: any) => ({ channel: "instagram", conv: c })),
       ];
       let greeted = 0;
       for (const t of targets) {
