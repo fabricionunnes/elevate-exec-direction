@@ -547,8 +547,11 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
           .update({ last_message: text.substring(0, 255), last_message_at: new Date().toISOString() })
           .eq("id", activeConv.id);
       } else if (activeConv.channel === "instagram") {
-        toast.error("Envio pelo Instagram não está disponível no momento.");
-        return;
+        const { data, error } = await supabase.functions.invoke("instagram-send", {
+          body: { conversationId: activeConv.id, message: text, staffId },
+        });
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
       }
 
       setNewMessage("");
