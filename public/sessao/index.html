@@ -395,6 +395,14 @@
   !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");
   try { fbq("init", PIXEL); fbq("track", "PageView"); } catch(e){}
 
+  // ── ChatGPT Ads Pixel (OpenAI oaiq) ──
+  // Loader assincrono; se o script falhar, a pagina segue normal (mesmo padrao do fbq).
+  // O evento de conversao lead_created dispara na pagina de obrigado.
+  try {
+    !function(w,d,s,u){if(w.oaiq)return;var q=function(){q.q.push(arguments)};q.q=[];w.oaiq=q;var js=d.createElement(s);js.async=!0;js.src=u;var f=d.getElementsByTagName(s)[0];f.parentNode.insertBefore(js,f)}(window,document,"script","https://bzrcdn.openai.com/sdk/oaiq.min.js");
+    oaiq("init", { pixelId: "JSZXQhoDRV4Kjm8oms5nxV" });
+  } catch(e){}
+
   // ── Phone mask (BR) ──
   function maskPhone(v){
     var d = v.replace(/\D/g,"");

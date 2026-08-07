@@ -22,6 +22,20 @@ const SessaoEstrategicaObrigadoPage = () => {
     // Conversion event
     (window as any).fbq('track', 'Lead');
 
+    // ChatGPT Ads Pixel (OpenAI oaiq) — loader assincrono; se falhar, a pagina segue normal
+    try {
+      (function(w: any, d: any, s: any, u: any){
+        if (w.oaiq) return;
+        const q: any = function(){ q.q.push(arguments); };
+        q.q = []; w.oaiq = q;
+        const js = d.createElement(s); js.async = true; js.src = u;
+        const f = d.getElementsByTagName(s)[0]; f.parentNode.insertBefore(js, f);
+      })(window, document, 'script', 'https://bzrcdn.openai.com/sdk/oaiq.min.js');
+      (window as any).oaiq('init', { pixelId: 'JSZXQhoDRV4Kjm8oms5nxV' });
+      // Evento de conversao
+      (window as any).oaiq('measure', 'lead_created', { type: 'customer_action' });
+    } catch (e) { /* pixel nunca derruba a pagina */ }
+
     const noscript = document.createElement('noscript');
     const img = document.createElement('img');
     img.height = 1;
