@@ -46,6 +46,59 @@ export interface InvestimentoFormData {
   installments: number | null;
   contractValue: number;
   dueDay?: number | string | null;
+  /** Contrato comissionado: bônus por atingimento de meta (itens VI a XIV) */
+  isCommissioned?: boolean;
+  /** Valor do bônus por mês em que a meta é batida (padrão R$ 2.000,00) */
+  commissionValue?: number | null;
+}
+
+// Texto por extenso do bônus — o contrato precisa do valor escrito.
+function valorPorExtenso(v: number): string {
+  const n = Math.round(Number(v) || 0);
+  const unidades = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez",
+    "onze", "doze", "treze", "quatorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"];
+  const dezenas = ["", "", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"];
+  const centenas = ["", "cento", "duzentos", "trezentos", "quatrocentos", "quinhentos", "seiscentos", "setecentos", "oitocentos", "novecentos"];
+  const ate999 = (x: number): string => {
+    if (x === 0) return "";
+    if (x === 100) return "cem";
+    const c = Math.floor(x / 100), d = Math.floor((x % 100) / 10), u = x % 10;
+    const partes: string[] = [];
+    if (c) partes.push(centenas[c]);
+    if (x % 100 < 20 && x % 100 > 0) partes.push(unidades[x % 100]);
+    else {
+      if (d) partes.push(dezenas[d]);
+      if (u) partes.push(unidades[u]);
+    }
+    return partes.join(" e ");
+  };
+  if (n === 0) return "zero reais";
+  const milhares = Math.floor(n / 1000), resto = n % 1000;
+  const partes: string[] = [];
+  if (milhares === 1) partes.push("mil");
+  else if (milhares > 1) partes.push(`${ate999(milhares)} mil`);
+  if (resto) partes.push(ate999(resto));
+  return `${partes.join(" e ")} rea${n === 1 ? "l" : "is"}`;
+}
+
+// Itens VI a XIV da CLÁUSULA 5 — remuneração variável por performance.
+// Texto jurídico fornecido pela UNV; só o valor do bônus é dinâmico.
+export function buildComissionamentoContent(commissionValue: number): string {
+  const v = fmtBRL(commissionValue);
+  const ext = valorPorExtenso(commissionValue);
+  return [
+    `VI. Além da remuneração fixa prevista neste Contrato, a CONTRATADA fará jus ao recebimento de remuneração variável por performance no valor de ${v} (${ext}) para cada mês em que a CONTRATANTE atingir ou superar a meta comercial mensal estabelecida nos termos deste item.`,
+    `VII. A meta comercial mensal da CONTRATANTE será definida pela CONTRATADA após a conclusão do processo de onboarding e o devido preenchimento do Kick-off pela CONTRATANTE, considerando as informações, indicadores, histórico comercial, capacidade operacional e demais dados fornecidos pela própria CONTRATANTE.`,
+    `VIII. Após sua definição, a meta comercial será formalmente comunicada à CONTRATANTE por meio escrito, podendo ocorrer por e-mail, WhatsApp, plataforma, CRM, documento de planejamento, relatório ou outro canal oficial de comunicação utilizado entre as Partes, passando a integrar o presente Contrato para todos os fins.`,
+    `IX. Para definição do primeiro mês sujeito à remuneração variável, será considerada a data de assinatura deste Contrato, observando-se os seguintes critérios:`,
+    `1- caso o Contrato seja assinado até o dia 14 (quatorze), inclusive, o mês da assinatura será considerado para fins de apuração da meta comercial, sendo devido o bônus previsto neste item caso a CONTRATANTE atinja ou supere a meta estabelecida para aquele mês;`,
+    `2- caso o Contrato seja assinado a partir do dia 15 (quinze), inclusive, o mês da assinatura será integralmente desconsiderado para fins de apuração da remuneração variável, iniciando-se a primeira apuração de meta somente no mês calendário imediatamente subsequente ao da assinatura do Contrato.`,
+    `XI. Na hipótese prevista no inciso I do item VI.3, a meta referente ao mês da assinatura será aquela definida pela CONTRATADA após a realização do onboarding e o preenchimento do Kick-off pela CONTRATANTE.`,
+    `XII. Uma vez atingida ou superada a meta comercial aplicável ao respectivo mês, o bônus de performance no valor de ${v} (${ext}) será automaticamente devido, independentemente de solicitação, aviso, notificação ou qualquer outra formalidade por parte da CONTRATADA.`,
+    `XIII. O bônus de performance terá vencimento no dia 05 (cinco) do mês imediatamente subsequente ao mês em que houver o atingimento ou superação da meta, sendo cobrado de forma adicional à remuneração fixa e às demais obrigações financeiras previstas neste Contrato.`,
+    `XIV. A remuneração variável prevista neste item possui natureza adicional e cumulativa, não substituindo, compensando, reduzindo ou alterando o valor da remuneração fixa mensal contratada.`,
+    `XV. O resultado alcançado pela empresa deve ser adicionado ao sistema UNV Nexus através de API conectada no sistema da CONTRATANTE ou manualmente pela CONTRATANTE através do link que será disponibilizado pela CONTRATADA, caso não seja preenchido corretamente a CONTRATADA receberá o bônus de forma integral.`,
+  ].join("\n\n");
 }
 
 function fmtBRL(v: number): string {
@@ -77,6 +130,9 @@ export function buildInvestimentoContent(fd: InvestimentoFormData): string {
   parts.push(`III. Em caso de atraso no pagamento, incidirão multa moratória de 2% (dois por cento) e juros de mora de 1% (um por cento) ao mês sobre o valor em atraso.`);
   parts.push(`IV. Este contrato caracteriza-se como prestação de serviço com pagamento ${fd.isRecurring ? "recorrente" : fd.installments > 1 ? "parcelado" : "à vista"}. O não uso dos serviços não isenta a CONTRATANTE do pagamento dos valores acordados.`);
   parts.push(fd.paymentMethod === "card" ? RESCISAO_V_CARTAO : RESCISAO_V_PADRAO);
+  if (fd.isCommissioned) {
+    parts.push(buildComissionamentoContent(Number(fd.commissionValue) > 0 ? Number(fd.commissionValue) : 2000));
+  }
   return parts.join("\n\n");
 }
 

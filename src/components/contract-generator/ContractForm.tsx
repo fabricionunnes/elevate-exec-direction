@@ -48,6 +48,8 @@ export interface ContractFormData {
   paymentMethod: "card" | "pix" | "boleto";
   installments: number;
   isRecurring: boolean;
+  isCommissioned?: boolean;      // contrato comissionado: bônus por meta batida
+  commissionValue?: number;      // valor do bônus por mês (padrão R$ 2.000,00)
   dueDay: number | undefined; // Dia do mês para vencimento (1, 5, 10, 15, 20, 25)
   startDate: Date | undefined;
 }
@@ -481,6 +483,43 @@ export default function ContractForm({
             <Label htmlFor="isRecurring" className="text-sm font-medium cursor-pointer">
               Pagamento recorrente mensal (assinatura)
             </Label>
+          </div>
+
+          <div className="md:col-span-2 space-y-3 rounded-lg border p-3">
+            <div className="flex items-center space-x-3">
+              <Checkbox
+                id="isCommissioned"
+                checked={!!formData.isCommissioned}
+                onCheckedChange={(checked) => {
+                  onChange({
+                    ...formData,
+                    isCommissioned: checked === true,
+                    commissionValue: formData.commissionValue ?? 2000,
+                  });
+                }}
+              />
+              <Label htmlFor="isCommissioned" className="text-sm font-medium cursor-pointer">
+                Contrato comissionado (bônus por meta batida)
+              </Label>
+            </div>
+            {formData.isCommissioned && (
+              <div className="pl-7 space-y-1.5">
+                <Label htmlFor="commissionValue" className="text-xs">Valor do bônus por mês em que bater a meta</Label>
+                <div className="relative max-w-[220px]">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                  <Input
+                    id="commissionValue"
+                    className="pl-8"
+                    value={formData.commissionValue ?? 2000}
+                    onChange={(e) => updateField("commissionValue", parseFloat(String(e.target.value).replace(/\./g, "").replace(",", ".")) || 0)}
+                    placeholder="2000"
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Acrescenta os itens VI a XIV na Cláusula 5 (remuneração variável por performance).
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

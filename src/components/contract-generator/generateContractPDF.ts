@@ -316,6 +316,8 @@ export async function generateContractPDF({ formData, customClauses }: GenerateP
             installments: formData.installments,
             contractValue: formData.contractValue,
             dueDay: formData.dueDay,
+            isCommissioned: formData.isCommissioned,
+            commissionValue: formData.commissionValue,
           })
         : clause.content;
       const investimentoLines = wrapText(investimentoContent, contentWidth, 10);

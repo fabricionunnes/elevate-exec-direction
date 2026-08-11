@@ -355,6 +355,8 @@ export default function ContractGeneratorPage() {
       installments: formData.installments,
       contractValue: formData.contractValue,
       dueDay: formData.dueDay,
+      isCommissioned: formData.isCommissioned,
+      commissionValue: formData.commissionValue,
     });
 
   // Load saved template clauses
