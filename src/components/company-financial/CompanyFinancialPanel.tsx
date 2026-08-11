@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CreditCard, RefreshCw, Link2, History, Receipt } from "lucide-react";
+import { CreditCard, RefreshCw, Link2, History, Receipt, Trophy } from "lucide-react";
 import { CompanyChargeForm } from "./CompanyChargeForm";
 import { CompanyRecurringCharges } from "./CompanyRecurringCharges";
 import { CompanyPaymentLinks } from "./CompanyPaymentLinks";
 import { CompanyPaymentHistory } from "./CompanyPaymentHistory";
 import { CompanyInvoicesList } from "./CompanyInvoicesList";
 import { BillingBlockToggle } from "./BillingBlockToggle";
+import { CompanyCommissionRule } from "./CompanyCommissionRule";
 
 interface Props {
   companyId: string;
@@ -50,6 +51,10 @@ export function CompanyFinancialPanel({
             <CreditCard className="h-4 w-4" />
             <span className="hidden sm:inline">Cobrar</span>
           </TabsTrigger>
+          <TabsTrigger value="commission" className="gap-2 text-xs sm:text-sm">
+            <Trophy className="h-4 w-4" />
+            <span className="hidden sm:inline">Comissão</span>
+          </TabsTrigger>
           <TabsTrigger value="history" className="gap-2 text-xs sm:text-sm">
             <History className="h-4 w-4" />
             <span className="hidden sm:inline">Histórico</span>
@@ -86,6 +91,10 @@ export function CompanyFinancialPanel({
 
         <TabsContent value="links" className="mt-4">
           <CompanyPaymentLinks companyId={companyId} companyName={companyName} />
+        </TabsContent>
+
+        <TabsContent value="commission" className="mt-4">
+          <CompanyCommissionRule companyId={companyId} companyName={companyName} />
         </TabsContent>
 
         <TabsContent value="history" className="mt-4">
