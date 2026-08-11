@@ -125,6 +125,8 @@ const OnboardingTasksPage = () => {
   const [filterService, setFilterService] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [ragFilter, setRagFilter] = useState<"all" | "green" | "yellow" | "red">("all"); // semáforo de saúde do cliente
+  // empresas com comissão por resultado ativa (Financeiro → Comissão da empresa)
+  const [commissionCompanyIds, setCommissionCompanyIds] = useState<Set<string>>(new Set());
   const [consultants, setConsultants] = useState<Staff[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   
@@ -1034,6 +1036,12 @@ const OnboardingTasksPage = () => {
     return kpiTargetValue;
   };
 
+  useEffect(() => {
+    (supabase as any).from("company_commission_rules")
+      .select("company_id").eq("is_active", true)
+      .then(({ data }: any) => setCommissionCompanyIds(new Set((data || []).map((r: any) => r.company_id))));
+  }, []);
+
   // Calculate company goal projection ranges for the selected period (using company KPIs - same logic as DashboardMetrics)
   const companiesGoalRanges = useMemo(() => {
     const periodMonth = dateRange.start.getMonth() + 1;
@@ -1602,6 +1610,9 @@ const OnboardingTasksPage = () => {
         } else if (activeMetricFilter.type === "company" && activeMetricFilter.value === "no_consultant") {
           // Filter active companies without consultant
           matchesMetricFilter = company.status === "active" && !company.consultant_id;
+        } else if (activeMetricFilter.type === "company" && activeMetricFilter.value === "commission") {
+          // Empresas que pagam comissão por resultado pra UNV
+          matchesMetricFilter = commissionCompanyIds.has(company.id);
         } else if (activeMetricFilter.type === "projects_active") {
           // Filter companies that have at least one active project (exclude simulators)
           matchesMetricFilter = !company.is_simulator && (company.projects?.some(p => p.status === "active") ?? false);
