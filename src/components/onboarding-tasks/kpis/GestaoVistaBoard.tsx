@@ -267,11 +267,26 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
-  // Em tela cheia o quadro OCUPA a tela: largura total, blocos esticando na
-  // vertical e tipografia maior (é painel de parede, lido de longe). Nada de
-  // encolher o layout com zoom — antes ficava miúdo e sobrava buraco.
-  useEffect(() => { setScale(1); }, [isFull]);
-  // classe só no modo expandido
+  // Em tela cheia o quadro inteiro TEM que caber na tela (nada abaixo da
+  // dobra) e ocupar o máximo dela: mede o conteúdo e escala pra preencher —
+  // aumentando quando sobra espaço, que é o caso do painel de parede.
+  const FULL_W = 1360;
+  useEffect(() => {
+    if (!isFull) { setScale(1); return; }
+    const fit = () => {
+      const el = innerRef.current; if (!el) return;
+      const w = el.scrollWidth, h = el.scrollHeight;
+      if (!w || !h) return;
+      const s = Math.min(window.innerWidth / w, window.innerHeight / h);
+      if (s > 0 && isFinite(s)) setScale(Math.min(s, 2.4));
+    };
+    const id = window.setTimeout(fit, 120);
+    const id2 = window.setTimeout(fit, 600); // fontes/gráficos assentam depois
+    window.addEventListener("resize", fit);
+    return () => { window.clearTimeout(id); window.clearTimeout(id2); window.removeEventListener("resize", fit); };
+  }, [isFull, loading, kpis.length, notices.length, ranking.length, teamSales.length, weekly.length, editId, cfg]);
+  // classe só no modo expandido — a escala já cuida do tamanho, então aqui
+  // só entram ajustes de layout, nunca de fonte.
   const F = (full: string, normal = "") => (isFull ? full : normal);
 
   const showMeta = cfg.show_meta, showReal = cfg.show_realizado;
@@ -314,19 +329,20 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
   ) : null;
 
   return (
-    <div ref={boardRef} className={cn(isFull ? "fixed inset-0 z-[200] overflow-hidden bg-background" : "rounded-2xl border border-border overflow-hidden bg-card")}>
+    <div ref={boardRef} className={cn(isFull ? "fixed inset-0 z-[200] overflow-hidden bg-background flex items-center justify-center" : "rounded-2xl border border-border overflow-hidden bg-card")}>
       <div ref={innerRef}
-        className={cn(isFull ? "w-full h-full p-6 xl:p-8 flex flex-col gap-4 xl:gap-5 overflow-y-auto" : "p-4 sm:p-6 space-y-4 w-full min-h-full")}>
+        style={isFull ? { width: FULL_W, transform: `scale(${scale})`, transformOrigin: "center center" } : undefined}
+        className={cn("p-4 sm:p-6 space-y-4", isFull ? "shrink-0" : "w-full min-h-full")}>
         {/* Cabeçalho */}
-        <div className={cn("flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4", F("shrink-0"))}>
+        <div className={cn("flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4", "")}>
           <div className="flex items-center gap-3 min-w-0">
-            <img src="/unv-logo.png" alt="" className={cn("object-contain", F("h-14 w-14", "h-9 w-9"))} onError={(e) => (e.currentTarget.style.display = "none")} />
+            <img src="/unv-logo.png" alt="" className={cn("object-contain", "h-9 w-9")} onError={(e) => (e.currentTarget.style.display = "none")} />
             <div className="min-w-0">
-              <div className={cn("uppercase tracking-widest text-muted-foreground truncate", F("text-base", "text-[11px]"))}>{company?.name || "Cliente"}</div>
-              <h2 className={cn("font-black tracking-tight leading-tight text-foreground", F("text-4xl xl:text-5xl", "text-lg sm:text-2xl"))}>QUADRO DE GESTÃO À VISTA</h2>
+              <div className={cn("uppercase tracking-widest text-muted-foreground truncate", "text-[11px]")}>{company?.name || "Cliente"}</div>
+              <h2 className={cn("font-black tracking-tight leading-tight text-foreground", "text-lg sm:text-2xl")}>QUADRO DE GESTÃO À VISTA</h2>
             </div>
           </div>
-          <div className={cn("hidden lg:flex items-center gap-2 font-semibold uppercase tracking-widest text-muted-foreground", F("text-lg gap-3", "text-[11px]"))}>
+          <div className={cn("hidden lg:flex items-center gap-2 font-semibold uppercase tracking-widest text-muted-foreground", "text-[11px]")}>
             <span>Foco</span><span className="text-primary">·</span><span>Processo</span><span className="text-primary">·</span><span>Resultado</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -357,15 +373,15 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
           <>
             {/* Indicadores gerais */}
             {generalCards.length > 0 && (
-              <div className={cn("grid gap-3", F("gap-5 shrink-0"))} style={{ gridTemplateColumns: `repeat(auto-fit, minmax(${isFull ? 280 : 200}px, 1fr))` }}>
+              <div className={cn("grid gap-3", "")} style={{ gridTemplateColumns: `repeat(auto-fit, minmax(${200}px, 1fr))` }}>
                 {generalCards.map(k => (
-                  <div key={k.id} className={cn("rounded-xl border border-border bg-muted/40", F("p-6", "p-4"))}>
-                    <div className={cn("flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground mb-1", F("text-base gap-2 mb-2", "text-[11px]"))}>
-                      <Target className={F("h-5 w-5", "h-3.5 w-3.5")} /> <span className="truncate">{k.name}</span>
+                  <div key={k.id} className={cn("rounded-xl border border-border bg-muted/40", "p-4")}>
+                    <div className={cn("flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground mb-1", "text-[11px]")}>
+                      <Target className={"h-3.5 w-3.5"} /> <span className="truncate">{k.name}</span>
                     </div>
-                    <div className={cn("font-black", toneText(k.pct), F("text-6xl xl:text-7xl", "text-2xl sm:text-3xl"))}>{fmt(k.realizado, k.kpi_type)}</div>
-                    <div className={cn("text-muted-foreground mt-0.5", F("text-lg mt-2", "text-[11px]"))}>{showMeta && <>meta {fmt(k.meta, k.kpi_type)} · </>}<span className={toneText(k.pct)}>{k.pct.toFixed(0)}%</span></div>
-                    <div className={cn("rounded-full bg-muted mt-2 overflow-hidden", F("h-3 mt-3", "h-1.5"))}>
+                    <div className={cn("font-black", toneText(k.pct), "text-2xl sm:text-3xl")}>{fmt(k.realizado, k.kpi_type)}</div>
+                    <div className={cn("text-muted-foreground mt-0.5", "text-[11px]")}>{showMeta && <>meta {fmt(k.meta, k.kpi_type)} · </>}<span className={toneText(k.pct)}>{k.pct.toFixed(0)}%</span></div>
+                    <div className={cn("rounded-full bg-muted mt-2 overflow-hidden", "h-1.5")}>
                       <div className={cn("h-full rounded-full transition-all", toneClass(k.pct))} style={{ width: `${Math.min(100, k.pct)}%` }} />
                     </div>
                     {levelChips(k.levels, k.kpi_type)}
@@ -376,17 +392,17 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
 
             {/* Colunas de processo do mês */}
             {processCols.length > 0 && (
-              <div className={cn("grid gap-3", F("gap-5 shrink-0"))} style={{ gridTemplateColumns: `repeat(auto-fit, minmax(${isFull ? 240 : 180}px, 1fr))` }}>
+              <div className={cn("grid gap-3", "")} style={{ gridTemplateColumns: `repeat(auto-fit, minmax(${180}px, 1fr))` }}>
                 {processCols.map((p, i) => {
                   const k = p.kpi!;
                   return (
-                    <div key={i} className={cn("rounded-xl border border-border bg-muted/30", F("p-6", "p-4"))}>
-                      <div className={cn("font-bold text-foreground", F("text-2xl", "text-sm"))}>{i + 1}. {p.label}</div>
-                      <div className={cn("uppercase tracking-wide text-muted-foreground mb-3", F("text-sm mb-4", "text-[10px]"))}>{p.sub}</div>
-                      <div className={cn(F("space-y-3 text-2xl", "space-y-1.5 text-sm"))}>
+                    <div key={i} className={cn("rounded-xl border border-border bg-muted/30", "p-4")}>
+                      <div className={cn("font-bold text-foreground", "text-sm")}>{i + 1}. {p.label}</div>
+                      <div className={cn("uppercase tracking-wide text-muted-foreground mb-3", "text-[10px]")}>{p.sub}</div>
+                      <div className={cn("space-y-1.5 text-sm")}>
                         {showMeta && <div className="flex justify-between"><span className="text-muted-foreground">Meta</span><span className="font-semibold">{fmt(k.meta, k.kpi_type)}</span></div>}
                         <div className="flex justify-between"><span className="text-muted-foreground">Realizado</span><span className="font-semibold">{fmt(k.realizado, k.kpi_type)}</span></div>
-                        <div className={cn("flex justify-between border-t border-border", F("pt-3", "pt-1.5"))}><span className="text-muted-foreground">Taxa</span><span className={cn("font-bold", toneText(k.pct))}>{k.pct.toFixed(0)}%</span></div>
+                        <div className={cn("flex justify-between border-t border-border", "pt-1.5")}><span className="text-muted-foreground">Taxa</span><span className={cn("font-bold", toneText(k.pct))}>{k.pct.toFixed(0)}%</span></div>
                       </div>
                     </div>
                   );
@@ -394,59 +410,80 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
               </div>
             )}
 
-            <div className={cn("grid gap-4 lg:grid-cols-[1.4fr_1fr]", F("gap-5 flex-1"))}>
+            <div className={cn("grid gap-4 lg:grid-cols-[1.4fr_1fr]", "")}>
               {/* Metas do mês (todos os KPIs). Em coluna única (tela estreita /
                   aba do projeto no staff) o ranking sobe pra frente — senão ele
                   some lá no fundo e parece que "não aparece". */}
-              <div className={cn("rounded-xl border border-border bg-muted/20 order-2 lg:order-none", F("p-6 flex flex-col", "p-4"))}>
-                <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-3", F("text-2xl gap-3 mb-5 shrink-0", "text-sm"))}>
-                  <Flag className={cn("text-primary", F("h-6 w-6", "h-4 w-4"))} /> Metas do Mês
-                  <span className={cn("ml-auto font-normal text-muted-foreground", F("text-base", "text-[11px]"))}>{kpis.length} indicadores</span>
+              <div className="space-y-4 order-2 lg:order-none">
+              <div className={cn("rounded-xl border border-border bg-muted/20", "p-4")}>
+                <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-3", "text-sm")}>
+                  <Flag className={cn("text-primary", "h-4 w-4")} /> Metas do Mês
+                  <span className={cn("ml-auto font-normal text-muted-foreground", "text-[11px]")}>{kpis.length} indicadores</span>
                 </div>
-                <div className={cn("grid sm:grid-cols-2 gap-x-5 gap-y-3", F("gap-x-10 gap-y-8 content-center flex-1"))}>
+                <div className={cn("grid sm:grid-cols-2 gap-x-5 gap-y-3", "")}>
                   {kpis.map(k => (
                     <div key={k.id}>
-                      <div className={cn("flex items-baseline justify-between gap-2", F("text-3xl", "text-sm"))}>
+                      <div className={cn("flex items-baseline justify-between gap-2", "text-sm")}>
                         <span className="truncate text-foreground/90">{k.name}</span>
                         <span className={cn("font-bold tabular-nums", toneText(k.pct))}>{fmt(k.realizado, k.kpi_type)}</span>
                       </div>
-                      <div className={cn("flex items-center gap-2", F("gap-4 mt-3", "mt-1"))}>
-                        <div className={cn("flex-1 rounded-full bg-muted overflow-hidden", F("h-4", "h-2"))}>
+                      <div className={cn("flex items-center gap-2", "mt-1")}>
+                        <div className={cn("flex-1 rounded-full bg-muted overflow-hidden", "h-2")}>
                           <div className={cn("h-full rounded-full transition-all", toneClass(k.pct))} style={{ width: `${Math.min(100, k.pct)}%` }} />
                         </div>
-                        <span className={cn("font-semibold tabular-nums text-right", toneText(k.pct), F("text-2xl w-20", "text-[11px] w-9"))}>{k.pct.toFixed(0)}%</span>
+                        <span className={cn("font-semibold tabular-nums text-right", toneText(k.pct), "text-[11px] w-9")}>{k.pct.toFixed(0)}%</span>
                       </div>
-                      {showMeta && <div className={cn("text-muted-foreground mt-0.5", F("text-lg mt-1.5", "text-[10px]"))}>meta {fmt(k.meta, k.kpi_type)}</div>}
+                      {showMeta && <div className={cn("text-muted-foreground mt-0.5", "text-[10px]")}>meta {fmt(k.meta, k.kpi_type)}</div>}
                       {levelChips(k.levels, k.kpi_type)}
                     </div>
                   ))}
                 </div>
               </div>
+              {funnelStages.length < 2 && mainKpi && weekly.length > 0 && (
+                <div className={cn("rounded-xl border border-border bg-muted/20", "p-4")}>
+                  <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-2", "text-sm")}><TrendingUp className={cn("text-primary", "h-4 w-4")} /> Evolução Semanal — {mainKpi.name}</div>
+                  <ResponsiveContainer width="100%" height={190}>
+                    <BarChart data={weekly} margin={{ top: 5, right: 8, left: -8, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="week" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={44}
+                        tickFormatter={(v) => mainKpi.kpi_type === "monetary" ? `${(v / 1000).toFixed(0)}k` : v.toLocaleString("pt-BR")} />
+                      <Tooltip cursor={{ fill: "hsl(var(--muted))" }}
+                        contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 12, color: "hsl(var(--popover-foreground))" }}
+                        formatter={(v: number) => [fmt(v, mainKpi.kpi_type), "Realizado"]} />
+                      <Bar dataKey="real" radius={[6, 6, 0, 0]}>
+                        {weekly.map((_, i) => <Cell key={i} fill="hsl(var(--primary))" />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+              </div>
 
               {/* Coluna direita: ranking + equipes + funil */}
-              <div className={cn("space-y-4 order-1 lg:order-none", F("space-y-5 flex flex-col"))}>
+              <div className={cn("space-y-4 order-1 lg:order-none", "")}>
                 {cfg.show_ranking && ranking.length > 0 && (
-                  <div className={cn("rounded-xl border border-border bg-muted/20", F("p-6 flex flex-col", "p-4 overflow-hidden"))}>
-                    <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-5", F("text-2xl gap-3 shrink-0", "text-sm"))}><Trophy className={cn("text-amber-500", F("h-6 w-6", "h-4 w-4"))} /> Ranking do Time</div>
+                  <div className={cn("rounded-xl border border-border bg-muted/20", "p-4 overflow-hidden")}>
+                    <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-5", "text-sm")}><Trophy className={cn("text-amber-500", "h-4 w-4")} /> Ranking do Time</div>
                     {/* Pódio 3D — 2º, 1º, 3º */}
-                    <div className={cn("flex items-end justify-center gap-2 sm:gap-3", F("gap-5"))} style={{ perspective: "900px" }}>
+                    <div className={cn("flex items-end justify-center gap-2 sm:gap-3", "")} style={{ perspective: "900px" }}>
                       {[1, 0, 2].map((idx, pos) => {
                         const r = ranking[idx];
                         if (!r) return <div key={pos} className="flex-1" />;
                         const place = idx + 1;
-                        const h = (place === 1 ? 104 : place === 2 ? 76 : 56) * (isFull ? 1.6 : 1);
+                        const h = (place === 1 ? 104 : place === 2 ? 76 : 56) ;
                         const medal = place === 1 ? { face: "#fde047", front: "#b45309" }
                           : place === 2 ? { face: "#e2e8f0", front: "#64748b" }
                           : { face: "#fbbf24", front: "#92400e" };
                         return (
                           <div key={pos} className="flex-1 flex flex-col items-center min-w-0">
-                            {place === 1 && <Trophy className={cn("text-amber-400 mb-1 drop-shadow", F("h-10 w-10 mb-2", "h-6 w-6"))} />}
-                            <div className={cn("text-center mb-1.5 w-full min-w-0 px-0.5", F("mb-3"))}>
-                              <div className={cn("font-bold truncate text-foreground", F("text-2xl", "text-xs"))}>{r.name.split(" ")[0]}</div>
-                              {rankVal(r) && <div className={cn("font-semibold tabular-nums text-muted-foreground truncate", F("text-xl", "text-[11px]"))}>{rankVal(r)}</div>}
-                              {r.reached && <div className={cn("font-bold text-emerald-500 truncate", F("text-base", "text-[10px]"))}>✓ {r.reached}</div>}
+                            {place === 1 && <Trophy className={cn("text-amber-400 mb-1 drop-shadow", "h-6 w-6")} />}
+                            <div className={cn("text-center mb-1.5 w-full min-w-0 px-0.5", "")}>
+                              <div className={cn("font-bold truncate text-foreground", "text-xs")}>{r.name.split(" ")[0]}</div>
+                              {rankVal(r) && <div className={cn("font-semibold tabular-nums text-muted-foreground truncate", "text-[11px]")}>{rankVal(r)}</div>}
+                              {r.reached && <div className={cn("font-bold text-emerald-500 truncate", "text-[10px]")}>✓ {r.reached}</div>}
                             </div>
-                            <div className={cn("w-full rounded-t-md flex items-start justify-center pt-2 font-black text-black/70 relative", F("text-3xl pt-4", "text-lg"))}
+                            <div className={cn("w-full rounded-t-md flex items-start justify-center pt-2 font-black text-black/70 relative", "text-lg")}
                               style={{ height: h, background: `linear-gradient(180deg, ${medal.face}, ${medal.front})`, transform: "rotateX(20deg)", transformOrigin: "bottom", boxShadow: "0 10px 18px -6px rgba(0,0,0,.45), inset 0 2px 0 rgba(255,255,255,.4)" }}>
                               {place}º
                             </div>
@@ -455,12 +492,12 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                       })}
                     </div>
                     {ranking.length > 3 && (
-                      <div className={cn("mt-4 space-y-1.5 pt-3 border-t border-border", F("flex-1 flex flex-col justify-around mt-5 pt-5"))}>
+                      <div className={cn("mt-4 space-y-1.5 pt-3 border-t border-border", "")}>
                         {ranking.slice(3).map((r, i) => (
-                          <div key={r.name} className={cn("flex items-center gap-3", F("text-2xl gap-5", "text-sm"))}>
-                            <span className={cn("text-center font-bold text-muted-foreground", F("w-10", "w-5"))}>{i + 4}º</span>
+                          <div key={r.name} className={cn("flex items-center gap-3", "text-sm")}>
+                            <span className={cn("text-center font-bold text-muted-foreground", "w-5")}>{i + 4}º</span>
                             <span className="flex-1 truncate">{r.name}</span>
-                            {r.reached && <span className={cn("rounded bg-emerald-500/15 text-emerald-500 font-semibold shrink-0", F("text-base px-2 py-1", "text-[10px] px-1.5 py-0.5"))}>✓ {r.reached}</span>}
+                            {r.reached && <span className={cn("rounded bg-emerald-500/15 text-emerald-500 font-semibold shrink-0", "text-[10px] px-1.5 py-0.5")}>✓ {r.reached}</span>}
                             {rankVal(r) && <span className="font-bold tabular-nums text-foreground">{rankVal(r)}</span>}
                           </div>
                         ))}
@@ -470,11 +507,11 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                 )}
 
                 {teamSales.length > 0 && (
-                  <div className={cn("rounded-xl border border-border bg-muted/20", F("p-6 shrink-0", "p-4"))}>
-                    <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-3", F("text-2xl gap-3 mb-4", "text-sm"))}><Users className={cn("text-primary", F("h-6 w-6", "h-4 w-4"))} /> Vendas por Equipe</div>
-                    <div className={cn(F("space-y-3", "space-y-2"))}>
+                  <div className={cn("rounded-xl border border-border bg-muted/20", "p-4")}>
+                    <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-3", "text-sm")}><Users className={cn("text-primary", "h-4 w-4")} /> Vendas por Equipe</div>
+                    <div className={cn("space-y-2")}>
                       {teamSales.map((t) => (
-                        <div key={t.name} className={cn("flex items-center gap-3", F("text-2xl gap-5", "text-sm"))}>
+                        <div key={t.name} className={cn("flex items-center gap-3", "text-sm")}>
                           <span className="flex-1 truncate">{t.name}</span>
                           <span className="font-bold tabular-nums text-foreground">{fmt(t.value, t.type)}</span>
                         </div>
@@ -486,10 +523,10 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
             </div>
 
             {/* Funil 3D + Evolução semanal */}
-            <div className={cn("grid gap-4 lg:grid-cols-2", F("gap-5 flex-1"))}>
+            <div className={cn("grid gap-4 lg:grid-cols-2", "")}>
               {funnelStages.length >= 2 && (
-                <div className={cn("rounded-xl border border-border bg-muted/20", F("p-6 flex flex-col", "p-4"))}>
-                  <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-2", F("text-2xl gap-3 mb-4 shrink-0", "text-sm"))}><Filter className={cn("text-primary", F("h-6 w-6", "h-4 w-4"))} /> Funil de Vendas</div>
+                <div className={cn("rounded-xl border border-border bg-muted/20", "p-4")}>
+                  <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-2", "text-sm")}><Filter className={cn("text-primary", "h-4 w-4")} /> Funil de Vendas</div>
                   {(() => {
                     // Cone 3D estilo infográfico: discos empilhados + barras de rótulo atrás
                     const PAL = [
@@ -507,7 +544,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                     const W = 560;
                     const rAt = (i: number) => 112 - (86 * i) / n;
                     return (
-                      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="xMidYMid meet" style={{ maxHeight: isFull ? 460 : 320 }}>
+                      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="xMidYMid meet" style={{ maxHeight: 320 }}>
                         <defs>
                           {colors.map((c, i) => (
                             <linearGradient key={i} id={`gvf${i}`} x1="0" y1="0" x2="1" y2="0">
@@ -549,15 +586,14 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                 </div>
               )}
 
-              {mainKpi && weekly.length > 0 && (
-                <div className={cn("rounded-xl border border-border bg-muted/20", F("p-6 flex flex-col", "p-4"))}>
-                  <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-2", F("text-2xl gap-3 mb-4 shrink-0", "text-sm"))}><TrendingUp className={cn("text-primary", F("h-6 w-6", "h-4 w-4"))} /> Evolução Semanal — {mainKpi.name}</div>
-                  <div className={cn(F("flex-1"))}>
-                  <ResponsiveContainer width="100%" height={isFull ? 340 : 190}>
+              {funnelStages.length >= 2 && mainKpi && weekly.length > 0 && (
+                <div className={cn("rounded-xl border border-border bg-muted/20", "p-4")}>
+                  <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-2", "text-sm")}><TrendingUp className={cn("text-primary", "h-4 w-4")} /> Evolução Semanal — {mainKpi.name}</div>
+                  <ResponsiveContainer width="100%" height={190}>
                     <BarChart data={weekly} margin={{ top: 5, right: 8, left: -8, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <XAxis dataKey="week" tick={{ fontSize: isFull ? 18 : 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
-                      <YAxis tick={{ fontSize: isFull ? 16 : 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={isFull ? 70 : 44}
+                      <XAxis dataKey="week" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={44}
                         tickFormatter={(v) => mainKpi.kpi_type === "monetary" ? `${(v / 1000).toFixed(0)}k` : v.toLocaleString("pt-BR")} />
                       <Tooltip cursor={{ fill: "hsl(var(--muted))" }}
                         contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 12, color: "hsl(var(--popover-foreground))" }}
@@ -567,13 +603,12 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
-                  </div>
                 </div>
               )}
             </div>
 
             {/* Avisos importantes (cliente adiciona) */}
-            <div className={cn("rounded-xl border border-border bg-muted/20", F("p-6 shrink-0", "p-4"))}>
+            <div className={cn("rounded-xl border border-border bg-muted/20", "p-4")}>
               <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-3", isFull ? "text-2xl" : "text-sm")}><Megaphone className={cn("text-primary", isFull ? "h-6 w-6" : "h-4 w-4")} /> Avisos Importantes</div>
               {notices.length > 0 ? (
                 <ul className={cn("mb-3", isFull ? "space-y-3" : "space-y-1.5")}>
@@ -602,12 +637,12 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
               <div className="flex items-center gap-2">
                 <input value={newNotice} onChange={(e) => setNewNotice(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addNotice()}
                   placeholder="Novo aviso (ex: responder leads em até 15 min)"
-                  className={cn("flex-1 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-primary/30", F("px-4 py-3 text-xl", "px-3 py-1.5 text-sm"))} />
-                <button onClick={addNotice} className={cn("rounded-lg bg-primary text-primary-foreground hover:opacity-90", F("p-3", "p-2"))}><Plus className={F("h-6 w-6", "h-4 w-4")} /></button>
+                  className={cn("flex-1 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-primary/30", "px-3 py-1.5 text-sm")} />
+                <button onClick={addNotice} className={cn("rounded-lg bg-primary text-primary-foreground hover:opacity-90", "p-2")}><Plus className={"h-4 w-4"} /></button>
               </div>
             </div>
 
-            <div className={cn("text-center text-muted-foreground pt-1", F("text-base shrink-0", "text-[11px]"))}>Dados geram decisões · acompanhe, analise e aja com base nos números.</div>
+            <div className={cn("text-center text-muted-foreground pt-1", "text-[11px]")}>Dados geram decisões · acompanhe, analise e aja com base nos números.</div>
           </>
         )}
       </div>
