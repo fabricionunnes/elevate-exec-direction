@@ -62,19 +62,37 @@ async function sendGroupText(supabase: any, instanceId: string, groupJid: string
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+  let reservedLeadId: string | null = null; // pra soltar a reserva se algo explodir
   try {
     const body = await req.json().catch(() => ({}));
     const leadId: string = body.lead_id;
     const force: boolean = !!body.force;
     if (!leadId) return j({ ok: false, error: "lead_id obrigatório" }, 400);
 
-    // Idempotência: 1 notificação por lead (reganho não repete, salvo force)
-    const { data: already } = await supabase
-      .from("crm_won_notifications")
-      .select("lead_id")
-      .eq("lead_id", leadId)
-      .maybeSingle();
-    if (already && !force) return j({ ok: true, skip: "já notificado" });
+    // Idempotência: 1 notificação por lead (reganho não repete, salvo force).
+    // RESERVA a linha ANTES de enviar — ler-e-depois-gravar deixava passar duas
+    // mensagens quando dois caminhos davam ganho quase ao mesmo tempo (kanban +
+    // tela do lead): ambos liam "não notificado" antes de qualquer um gravar.
+    // A PK em lead_id garante que só uma execução consegue inserir.
+    if (!force) {
+      const { data: reserved, error: reserveErr } = await supabase
+        .from("crm_won_notifications")
+        .insert({ lead_id: leadId, sent_at: new Date().toISOString() })
+        .select("lead_id")
+        .maybeSingle();
+      if (reserveErr) {
+        if ((reserveErr as { code?: string }).code === "23505") return j({ ok: true, skip: "já notificado" });
+        return j({ ok: false, error: reserveErr.message }, 500);
+      }
+      if (!reserved) return j({ ok: true, skip: "já notificado" });
+      reservedLeadId = leadId;
+    }
+    // libera a reserva se a gente desistir/falhar antes de mandar
+    const releaseReservation = async () => {
+      if (force || !reservedLeadId) return;
+      await supabase.from("crm_won_notifications").delete().eq("lead_id", reservedLeadId);
+      reservedLeadId = null;
+    };
 
     // Config
     const { data: settings } = await supabase
@@ -88,6 +106,7 @@ Deno.serve(async (req) => {
     });
     if (cfg.won_notification_enabled !== "true") return j({ ok: true, skip: "desativado" });
     if (!cfg.won_notification_instance_id || !cfg.won_notification_group_jid) {
+      await releaseReservation();
       return j({ ok: false, error: "configuração incompleta" });
     }
 
@@ -104,7 +123,7 @@ Deno.serve(async (req) => {
       `)
       .eq("id", leadId)
       .maybeSingle();
-    if (!lead) return j({ ok: false, error: "lead não encontrado" });
+    if (!lead) { await releaseReservation(); return j({ ok: false, error: "lead não encontrado" }); }
 
     // SDR que agendou (evento) → fallback SDR do lead
     let schedulerSdrName: string | null = null;
@@ -188,8 +207,9 @@ Deno.serve(async (req) => {
     }
 
     const send = await sendGroupText(supabase, cfg.won_notification_instance_id, cfg.won_notification_group_jid, lines.join("\n"));
-    if (!send.ok) return j({ ok: false, error: send.error });
+    if (!send.ok) { await releaseReservation(); return j({ ok: false, error: send.error }); }
 
+    // confirma a reserva com o grupo/horário reais do envio
     await supabase.from("crm_won_notifications").upsert({
       lead_id: leadId,
       group_jid: cfg.won_notification_group_jid,
@@ -198,6 +218,10 @@ Deno.serve(async (req) => {
     return j({ ok: true, sent: true });
   } catch (e) {
     console.error("crm-won-notify", e);
+    // erro no meio do caminho: solta a reserva pra permitir nova tentativa
+    if (reservedLeadId) {
+      try { await supabase.from("crm_won_notifications").delete().eq("lead_id", reservedLeadId); } catch { /* noop */ }
+    }
     return j({ ok: false, error: String((e as Error).message || e) }, 500);
   }
 });

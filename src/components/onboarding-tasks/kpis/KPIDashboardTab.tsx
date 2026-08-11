@@ -489,19 +489,17 @@ export const KPIDashboardTab = ({
       selectedSector !== "all" ||
       selectedSalesperson !== "all";
 
-    // If there are multiple main goals, ALWAYS return ALL of them (regardless of type)
-    // Each one gets its own projection card
+    // "Meta Principal" é escolha explícita do cliente na configuração do KPI:
+    // ela MANDA, em qualquer quantidade e qualquer tipo. Antes, um principal
+    // numérico (ex.: Vendas) era atropelado por qualquer KPI monetário e a
+    // Projeção mostrava Faturamento dizendo "sem meta cadastrada".
     const allMainGoalKpis = filteredKpis.filter((k) => k.is_main_goal);
-    if (allMainGoalKpis.length > 1) {
+    if (allMainGoalKpis.length > 0) {
       return allMainGoalKpis;
     }
 
+    // Sem nenhum principal marcado: caem as heurísticas por KPI monetário.
     const monetaryKpis = filteredKpis.filter((k) => k.kpi_type === "monetary");
-    
-    // FALLBACK: If there are NO monetary KPIs at all, use the main goal KPI (even if numeric)
-    if (monetaryKpis.length === 0) {
-      return allMainGoalKpis;
-    }
 
     // When filtering by Sector (but not by a specific Team/Salesperson)
     if (
