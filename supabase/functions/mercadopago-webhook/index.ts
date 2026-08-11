@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     const feeCents = Math.max(0, gross - net);
 
     const { data: lp } = await supabase.from("crm_lead_payments")
-      .select("id, receivable_id, status, amount_cents").eq("id", extRef).maybeSingle();
+      .select("id, receivable_id, status, amount_cents, description, url, lead:crm_leads(name)").eq("id", extRef).maybeSingle();
     if (!lp) return new Response("ok");
 
     await supabase.from("crm_lead_payments").update({
@@ -61,6 +61,17 @@ Deno.serve(async (req) => {
         await supabase.from("financial_receivables").update({
           status: "paid", paid_date: today, paid_amount: net / 100, fee_amount: feeCents / 100, updated_at: new Date().toISOString(),
         }).eq("id", lp.receivable_id);
+      } else {
+        // Link não gera recebível ao ser criado — o lançamento nasce aqui,
+        // já pago, quando o dinheiro de fato entra.
+        const { data: rec } = await supabase.from("financial_receivables").insert({
+          description: lp.description || `Pagamento — ${(lp as any).lead?.name || "lead CRM"}`,
+          amount: (lp.amount_cents || gross) / 100, due_date: today,
+          status: "paid", paid_date: today, paid_amount: net / 100, fee_amount: feeCents / 100,
+          payment_method: "CREDIT_CARD", payment_link: lp.url || null, is_recurring: false,
+          notes: `CRM · lead ${(lp as any).lead?.name || ""}`.trim(),
+        }).select("id").single();
+        if (rec?.id) await supabase.from("crm_lead_payments").update({ receivable_id: rec.id }).eq("id", lp.id);
       }
       // Crédito no banco Mercado Pago (já com a taxa descontada)
       await supabase.from("financial_bank_transactions").insert({

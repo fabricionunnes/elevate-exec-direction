@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     try {
       const ASAAS_BANK = "9f9de213-46bf-49bf-ba6b-a5a1837b3092"; // financial_banks: Asaas
       const { data: lp } = await supabase.from("crm_lead_payments")
-        .select("id, receivable_id, status").eq("provider", "asaas").eq("provider_ref", String(paymentId)).limit(1).maybeSingle();
+        .select("id, receivable_id, status, description, url, recurring, lead:crm_leads(name)").eq("provider", "asaas").eq("provider_ref", String(paymentId)).limit(1).maybeSingle();
       if (lp && newStatus === "paid" && lp.status !== "paid") {
         const today = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
         const netCents = Math.round((paymentNetValue || paymentValue || 0) * 100);
@@ -98,6 +98,18 @@ Deno.serve(async (req) => {
           await supabase.from("financial_receivables").update({
             status: "paid", paid_date: today, paid_amount: netCents / 100, fee_amount: feeCents / 100, asaas_payment_id: String(paymentId), updated_at: new Date().toISOString(),
           }).eq("id", lp.receivable_id);
+        } else {
+          // Link/assinatura não gera recebível ao ser criado — o lançamento
+          // nasce aqui, já pago, quando o dinheiro de fato entra.
+          const { data: rec } = await supabase.from("financial_receivables").insert({
+            description: lp.description || `Pagamento — ${(lp as any).lead?.name || "lead CRM"}`,
+            amount: (paymentValue || 0), due_date: dueDate || today,
+            status: "paid", paid_date: today, paid_amount: netCents / 100, fee_amount: feeCents / 100,
+            payment_method: "PIX", payment_link: lp.url || null, is_recurring: !!lp.recurring,
+            asaas_payment_id: String(paymentId),
+            notes: `CRM · lead ${(lp as any).lead?.name || ""}`.trim(),
+          }).select("id").single();
+          if (rec?.id) await supabase.from("crm_lead_payments").update({ receivable_id: rec.id }).eq("id", lp.id);
         }
         await supabase.from("financial_bank_transactions").insert({
           bank_id: ASAAS_BANK, type: "credit", amount_cents: netCents, fee_cents: feeCents,

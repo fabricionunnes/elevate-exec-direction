@@ -83,15 +83,11 @@ Deno.serve(async (req) => {
   const url = domData.checkout_url || domData.payment_url || "";
   if (!url) return j({ ok: false, error: "Dom não retornou link de checkout" });
 
-  // Lançamento no Financeiro (a receber). Banco: Dom Pagamentos.
-  const { data: rec } = await supabase.from("financial_receivables").insert({
-    description, amount: amountCents / 100, due_date: new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10),
-    status: "pending", payment_method: "CREDIT_CARD", payment_link: url, is_recurring: false,
-    notes: `CRM · lead ${lead.name || lead_id}`,
-  }).select("id").single();
-
+  // O lançamento no Financeiro só acontece quando o pagamento é confirmado
+  // (dompagamentos-webhook cria o recebível já pago) — link gerado não polui
+  // o Contas a Receber.
   await supabase.from("crm_lead_payments").update({
-    provider_ref: domData.id ? String(domData.id) : null, url, receivable_id: rec?.id || null, updated_at: new Date().toISOString(),
+    provider_ref: domData.id ? String(domData.id) : null, url, updated_at: new Date().toISOString(),
   }).eq("id", row.id);
 
   return j({ ok: true, id: row.id, url, amount_cents: amountCents });

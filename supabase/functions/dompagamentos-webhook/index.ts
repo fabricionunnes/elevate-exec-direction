@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     try {
       const DOM_BANK = "bd12e32c-d943-40f9-9b25-27f9beaa987f"; // financial_banks: Dom Pagamentos
       const { data: lp } = await supabase.from("crm_lead_payments")
-        .select("id, receivable_id, status, amount_cents").eq("provider", "dompagamentos").eq("provider_ref", transactionId).limit(1).maybeSingle();
+        .select("id, receivable_id, status, amount_cents, description, url, lead:crm_leads(name)").eq("provider", "dompagamentos").eq("provider_ref", transactionId).limit(1).maybeSingle();
       if (lp) {
         await supabase.from("crm_lead_payments").update({
           status: newStatus === "paid" ? "paid" : newStatus,
@@ -78,6 +78,17 @@ Deno.serve(async (req) => {
             await supabase.from("financial_receivables").update({
               status: "paid", paid_date: today, paid_amount: net / 100, fee_amount: feeCents / 100, updated_at: new Date().toISOString(),
             }).eq("id", lp.receivable_id);
+          } else {
+            // Link não gera recebível ao ser criado — o lançamento nasce aqui,
+            // já pago, quando o dinheiro de fato entra.
+            const { data: rec } = await supabase.from("financial_receivables").insert({
+              description: lp.description || `Pagamento — ${(lp as any).lead?.name || "lead CRM"}`,
+              amount: lp.amount_cents / 100, due_date: today,
+              status: "paid", paid_date: today, paid_amount: net / 100, fee_amount: feeCents / 100,
+              payment_method: "CREDIT_CARD", payment_link: lp.url || null, is_recurring: false,
+              notes: `CRM · lead ${(lp as any).lead?.name || ""}`.trim(),
+            }).select("id").single();
+            if (rec?.id) await supabase.from("crm_lead_payments").update({ receivable_id: rec.id }).eq("id", lp.id);
           }
           await supabase.from("financial_bank_transactions").insert({
             bank_id: DOM_BANK, type: "credit", amount_cents: net, fee_cents: feeCents,

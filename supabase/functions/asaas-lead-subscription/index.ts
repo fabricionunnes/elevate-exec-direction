@@ -94,12 +94,10 @@ Deno.serve(async (req) => {
       if (pays?.data?.length) { url = pays.data[0].invoiceUrl || pays.data[0].bankSlipUrl || ""; firstPaymentId = String(pays.data[0].id || ""); }
     } catch { /* segue sem link imediato */ }
 
-    // 4) Lançamento no Financeiro (a receber, recorrente). Vinculado por asaas_payment_id.
-    const { data: rec } = await supabase.from("financial_receivables").insert({
-      description, amount: amountCents / 100, due_date: nextDueDate(dueDay),
-      status: "pending", payment_method: "PIX", payment_link: url, is_recurring: true,
-      asaas_payment_id: firstPaymentId || null, notes: `CRM · lead ${lead.name || lead_id}`,
-    }).select("id").single();
+    // 4) O lançamento no Financeiro só nasce quando a cobrança é paga de fato
+    // (asaas-webhook cria o recebível já pago) — link gerado não polui o
+    // Contas a Receber.
+    const rec: { id: string } | null = null;
 
     // 5) Registra o pagamento do lead
     const { data: row } = await supabase.from("crm_lead_payments").insert({
