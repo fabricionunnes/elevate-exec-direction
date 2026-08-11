@@ -972,6 +972,88 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Carimba o link do projeto na descrição de um evento que já existe no
+    // Google (ex.: reunião criada direto na agenda e depois vinculada ao
+    // projeto). Usa PATCH só na descrição — o update-event faz PUT e apagaria
+    // convidados/recorrência do evento.
+    if (action === "patch-description") {
+      const body = await req.json();
+      const { eventId, appendText, target_user_id } = body;
+      if (!eventId || !appendText) {
+        return new Response(JSON.stringify({ error: "Missing eventId or appendText" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const calendarUserId = target_user_id || user.id;
+      let calendarToken = tokenData;
+      if (target_user_id && target_user_id !== user.id) {
+        const { data: targetToken } = await supabase.from("user_google_tokens")
+          .select("*").eq("user_id", target_user_id).maybeSingle();
+        calendarToken = targetToken;
+      }
+      if (!calendarToken) {
+        return new Response(JSON.stringify({ error: "Not connected to Google Calendar", needsAuth: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      let accessToken = calendarToken.access_token;
+      if (calendarToken.token_expires_at && new Date(calendarToken.token_expires_at) < new Date()) {
+        const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
+        const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+        if (!calendarToken.refresh_token || !googleClientId || !googleClientSecret) {
+          return new Response(JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: googleClientId, client_secret: googleClientSecret,
+            refresh_token: calendarToken.refresh_token, grant_type: "refresh_token",
+          }),
+        });
+        if (!refreshResponse.ok) {
+          return new Response(JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const refreshData = await refreshResponse.json();
+        accessToken = refreshData.access_token;
+        await supabase.from("user_google_tokens").update({
+          access_token: accessToken,
+          token_expires_at: new Date(Date.now() + (refreshData.expires_in || 3600) * 1000).toISOString(),
+        }).eq("user_id", calendarUserId);
+      }
+
+      const getResp = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (!getResp.ok) {
+        return new Response(JSON.stringify({ error: "Evento não encontrado na agenda" }),
+          { status: getResp.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const current = await getResp.json();
+      const currentDesc: string = current.description || "";
+      // idempotente: se o link já está lá, não duplica
+      const linkMatch = appendText.match(/https?:\/\/\S+/);
+      if (linkMatch && currentDesc.includes(linkMatch[0])) {
+        return new Response(JSON.stringify({ success: true, skipped: "já tem o link" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const newDesc = currentDesc.trim() ? `${currentDesc.trim()}\n\n${appendText}` : appendText;
+
+      const patchResp = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ description: newDesc }),
+      });
+      if (!patchResp.ok) {
+        const errorText = await patchResp.text();
+        return new Response(JSON.stringify({ error: "Failed to patch description: " + errorText }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     if (action === "delete-event") {
       const body = await req.json();
       const { eventId, target_user_id } = body;

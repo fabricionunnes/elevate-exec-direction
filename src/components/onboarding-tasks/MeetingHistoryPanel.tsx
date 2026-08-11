@@ -463,9 +463,13 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
         // Filter events to only include meetings for this specific client
         const filteredEvents = filterEventsForClient(data.events, targetCompanyName);
         setCalendarEvents(filteredEvents);
-        
+
         // Auto-create meeting entries for past events that don't exist yet
         await createMeetingsFromCalendarEvents(filteredEvents);
+
+        // Carimba o link do projeto na agenda dos eventos que ainda não têm
+        // (reunião criada direto no Google e vinculada aqui pelo nome do cliente).
+        await stampProjectLinkOnEvents(filteredEvents, targetUserId, targetCompanyName);
       }
     } catch (error) {
       console.error("Error syncing calendar events:", error);
@@ -513,6 +517,30 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
         return regex.test(combined);
       });
     });
+  };
+
+  // Reunião do projeto TEM que abrir o projeto direto da agenda. Eventos
+  // criados fora do sistema (ou antes deste carimbo) não têm o link — aqui a
+  // gente completa a descrição no Google, sem tocar em convidados/horário.
+  const stampProjectLinkOnEvents = async (
+    events: CalendarEvent[],
+    targetUserId: string | null,
+    clientCompanyName?: string | null,
+  ) => {
+    if (!targetUserId || !projectId) return;
+    const link = `${getPublicBaseUrl()}/#/onboarding-tasks/${projectId}`;
+    const pending = events.filter(e => !(e.description || "").includes(link)).slice(0, 12);
+    for (const ev of pending) {
+      try {
+        await supabase.functions.invoke(`google-calendar?action=patch-description&target_user_id=${targetUserId}`, {
+          body: {
+            eventId: ev.id,
+            target_user_id: targetUserId,
+            appendText: `──────────────\n${clientCompanyName || companyName || "Projeto"}\n${link}`,
+          },
+        });
+      } catch { /* evento de outra agenda / sem permissão: segue o baile */ }
+    }
   };
 
   const createMeetingsFromCalendarEvents = async (events: CalendarEvent[]) => {
