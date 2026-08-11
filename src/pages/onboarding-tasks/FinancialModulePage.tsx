@@ -41,6 +41,7 @@ import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
 import { WhatsAppInstancePanel } from "@/components/financial/WhatsAppInstancePanel";
 import { FinancialInboxPanel } from "@/components/financial/FinancialInboxPanel";
 import { BankStatementFullPanel } from "@/components/financial/BankStatementFullPanel";
+import { ReconciliationPanel } from "@/components/financial/ReconciliationPanel";
 import { NfsePanel } from "@/components/financial/NfsePanel";
 import { GeneralStatementPanel } from "@/components/financial/GeneralStatementPanel";
 import { FinancialApiDocs } from "@/components/financial-api/FinancialApiDocs";
@@ -63,6 +64,7 @@ const TAB_PERMISSION_MAP: Record<string, string | null> = {
   inbox: "fin_inbox",
   "whatsapp-instance": "fin_whatsapp_instance",
   "bank-statement": "fin_bank_statement",
+  "reconciliation": "fin_bank_statement",
   "general-statement": null, // always visible
   "nfse": null, // always visible
   "api": "admin_master_only", // admin and master only
@@ -84,6 +86,7 @@ const ALL_TABS = [
   { id: "inbox", label: "Atendimentos", icon: Headphones },
   { id: "whatsapp-instance", label: "Instância", icon: MessageSquare },
   { id: "bank-statement", label: "Extrato Bancário", icon: FileText },
+  { id: "reconciliation", label: "Conciliação", icon: Link2 },
   { id: "general-statement", label: "Extrato Geral", icon: FileText },
   { id: "nfse", label: "NFS-e", icon: FileCheck },
   { id: "api", label: "API", icon: Code2 },
@@ -232,6 +235,10 @@ export default function FinancialModulePage() {
           <TabsContent value="whatsapp-instance" className="mt-0">
             <WhatsAppInstancePanel />
           </TabsContent>
+          <TabsContent value="reconciliation" className="mt-0">
+            <ReconciliationPanel />
+          </TabsContent>
+
           <TabsContent value="bank-statement" className="mt-0">
             <BankStatementFullPanel />
           </TabsContent>
