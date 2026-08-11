@@ -29,6 +29,7 @@ import {
   Cell,
   Area,
   AreaChart,
+  ComposedChart,
   CartesianGrid,
   Label,
 } from "recharts";
@@ -1370,7 +1371,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           </div>
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueEvolution} margin={{ top: 8, right: 20, left: 10, bottom: 5 }}>
+              <ComposedChart data={revenueEvolution} margin={{ top: 8, right: 20, left: 10, bottom: 5 }}>
                 <defs>
                   <linearGradient id="gradRevenue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#10B981" stopOpacity={0.42} />
@@ -1390,7 +1391,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                 <Line type="monotone" dataKey="meta" name="Meta" stroke="#EF4444" strokeWidth={1.5} dot={false} />
                 <Line type="monotone" dataKey="super" name="Super Meta" stroke="#F59E0B" strokeWidth={1.5} strokeDasharray="6 3" dot={false} />
                 <Line type="monotone" dataKey="hiper" name="Hiper Meta" stroke="#3B82F6" strokeWidth={1.5} strokeDasharray="6 3" dot={false} />
-              </AreaChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
