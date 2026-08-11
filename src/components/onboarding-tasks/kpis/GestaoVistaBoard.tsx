@@ -316,7 +316,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
   return (
     <div ref={boardRef} className={cn(isFull ? "fixed inset-0 z-[200] overflow-hidden bg-background" : "rounded-2xl border border-border overflow-hidden bg-card")}>
       <div ref={innerRef}
-        className={cn(isFull ? "w-full h-full p-6 xl:p-8 flex flex-col gap-4 xl:gap-5 overflow-hidden" : "p-4 sm:p-6 space-y-4 w-full min-h-full")}>
+        className={cn(isFull ? "w-full h-full p-6 xl:p-8 flex flex-col gap-4 xl:gap-5 overflow-y-auto" : "p-4 sm:p-6 space-y-4 w-full min-h-full")}>
         {/* Cabeçalho */}
         <div className={cn("flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4", F("shrink-0"))}>
           <div className="flex items-center gap-3 min-w-0">
@@ -394,16 +394,16 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
               </div>
             )}
 
-            <div className={cn("grid gap-4 lg:grid-cols-[1.4fr_1fr]", F("gap-5 flex-1 min-h-0"))}>
+            <div className={cn("grid gap-4 lg:grid-cols-[1.4fr_1fr]", F("gap-5 flex-1"))}>
               {/* Metas do mês (todos os KPIs). Em coluna única (tela estreita /
                   aba do projeto no staff) o ranking sobe pra frente — senão ele
                   some lá no fundo e parece que "não aparece". */}
-              <div className={cn("rounded-xl border border-border bg-muted/20 order-2 lg:order-none", F("p-6 flex flex-col min-h-0", "p-4"))}>
+              <div className={cn("rounded-xl border border-border bg-muted/20 order-2 lg:order-none", F("p-6 flex flex-col", "p-4"))}>
                 <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-3", F("text-2xl gap-3 mb-5 shrink-0", "text-sm"))}>
                   <Flag className={cn("text-primary", F("h-6 w-6", "h-4 w-4"))} /> Metas do Mês
                   <span className={cn("ml-auto font-normal text-muted-foreground", F("text-base", "text-[11px]"))}>{kpis.length} indicadores</span>
                 </div>
-                <div className={cn("grid sm:grid-cols-2 gap-x-5 gap-y-3", F("gap-x-10 gap-y-8 flex-1 min-h-0 content-around overflow-hidden"))}>
+                <div className={cn("grid sm:grid-cols-2 gap-x-5 gap-y-3", F("gap-x-10 gap-y-8 content-center flex-1"))}>
                   {kpis.map(k => (
                     <div key={k.id}>
                       <div className={cn("flex items-baseline justify-between gap-2", F("text-3xl", "text-sm"))}>
@@ -424,9 +424,9 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
               </div>
 
               {/* Coluna direita: ranking + equipes + funil */}
-              <div className={cn("space-y-4 order-1 lg:order-none", F("space-y-5 flex flex-col min-h-0"))}>
+              <div className={cn("space-y-4 order-1 lg:order-none", F("space-y-5 flex flex-col"))}>
                 {cfg.show_ranking && ranking.length > 0 && (
-                  <div className={cn("rounded-xl border border-border bg-muted/20 overflow-hidden", F("p-6 flex-1 min-h-0 flex flex-col", "p-4"))}>
+                  <div className={cn("rounded-xl border border-border bg-muted/20", F("p-6 flex flex-col", "p-4 overflow-hidden"))}>
                     <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-5", F("text-2xl gap-3 shrink-0", "text-sm"))}><Trophy className={cn("text-amber-500", F("h-6 w-6", "h-4 w-4"))} /> Ranking do Time</div>
                     {/* Pódio 3D — 2º, 1º, 3º */}
                     <div className={cn("flex items-end justify-center gap-2 sm:gap-3", F("gap-5"))} style={{ perspective: "900px" }}>
@@ -455,7 +455,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                       })}
                     </div>
                     {ranking.length > 3 && (
-                      <div className={cn("mt-4 space-y-1.5 pt-3 border-t border-border", F("flex-1 min-h-0 flex flex-col justify-around mt-5 pt-5 overflow-hidden"))}>
+                      <div className={cn("mt-4 space-y-1.5 pt-3 border-t border-border", F("flex-1 flex flex-col justify-around mt-5 pt-5"))}>
                         {ranking.slice(3).map((r, i) => (
                           <div key={r.name} className={cn("flex items-center gap-3", F("text-2xl gap-5", "text-sm"))}>
                             <span className={cn("text-center font-bold text-muted-foreground", F("w-10", "w-5"))}>{i + 4}º</span>
@@ -486,9 +486,9 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
             </div>
 
             {/* Funil 3D + Evolução semanal */}
-            <div className={cn("grid gap-4 lg:grid-cols-2", F("gap-5 flex-1 min-h-0"))}>
+            <div className={cn("grid gap-4 lg:grid-cols-2", F("gap-5 flex-1"))}>
               {funnelStages.length >= 2 && (
-                <div className={cn("rounded-xl border border-border bg-muted/20", F("p-6 flex flex-col min-h-0", "p-4"))}>
+                <div className={cn("rounded-xl border border-border bg-muted/20", F("p-6 flex flex-col", "p-4"))}>
                   <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-2", F("text-2xl gap-3 mb-4 shrink-0", "text-sm"))}><Filter className={cn("text-primary", F("h-6 w-6", "h-4 w-4"))} /> Funil de Vendas</div>
                   {(() => {
                     // Cone 3D estilo infográfico: discos empilhados + barras de rótulo atrás
@@ -507,7 +507,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                     const W = 560;
                     const rAt = (i: number) => 112 - (86 * i) / n;
                     return (
-                      <svg viewBox={`0 0 ${W} ${H}`} className={cn("w-full", F("flex-1 min-h-0"))} preserveAspectRatio="xMidYMid meet" style={isFull ? undefined : { maxHeight: 320 }}>
+                      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="xMidYMid meet" style={{ maxHeight: isFull ? 460 : 320 }}>
                         <defs>
                           {colors.map((c, i) => (
                             <linearGradient key={i} id={`gvf${i}`} x1="0" y1="0" x2="1" y2="0">
@@ -550,10 +550,10 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
               )}
 
               {mainKpi && weekly.length > 0 && (
-                <div className={cn("rounded-xl border border-border bg-muted/20", F("p-6 flex flex-col min-h-0", "p-4"))}>
+                <div className={cn("rounded-xl border border-border bg-muted/20", F("p-6 flex flex-col", "p-4"))}>
                   <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-2", F("text-2xl gap-3 mb-4 shrink-0", "text-sm"))}><TrendingUp className={cn("text-primary", F("h-6 w-6", "h-4 w-4"))} /> Evolução Semanal — {mainKpi.name}</div>
-                  <div className={cn(F("flex-1 min-h-0"))}>
-                  <ResponsiveContainer width="100%" height={isFull ? "100%" : 190}>
+                  <div className={cn(F("flex-1"))}>
+                  <ResponsiveContainer width="100%" height={isFull ? 340 : 190}>
                     <BarChart data={weekly} margin={{ top: 5, right: 8, left: -8, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                       <XAxis dataKey="week" tick={{ fontSize: isFull ? 18 : 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
