@@ -144,9 +144,14 @@ export function ConvertLeadToCompanyDialog({
 
       if (existingCompany) {
         companyId = existingCompany.id;
+        // Empresa que já existe: só completa o que está vazio. Antes o payload
+        // do lead sobrescrevia com null e apagava dado bom (ex.: Instagram).
+        const patch = Object.fromEntries(
+          Object.entries(companyPayload).filter(([, v]) => v !== null && v !== undefined && v !== "")
+        );
         const { error: updateCompanyError } = await supabase
           .from("onboarding_companies")
-          .update(companyPayload)
+          .update(patch)
           .eq("id", companyId);
 
         if (updateCompanyError) {
