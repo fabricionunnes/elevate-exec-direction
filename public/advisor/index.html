@@ -57,10 +57,12 @@
 .max{padding:0 0 0 24px;margin:0 0 30px;width:var(--prose);border-left:3px solid var(--red)}
 .max p{font-size:clamp(20px,2.5vw,26px);line-height:1.28;font-weight:700;letter-spacing:-.026em;margin:0 0 .4em;color:var(--ink)}
 .max p:last-child{margin-bottom:0}
+.topbar picture{display:block}
 .topbar img{height:38px;width:auto;display:block}
 .topbar .cta{color:#fff !important;background:var(--red) !important}
 .btn{background:var(--red) !important;color:#fff !important}
 .foot .in{display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.foot picture{display:block;flex:none}
 .foot img{height:44px;width:auto;opacity:.85}
 .foot p{max-width:60ch;margin:0}
 .xlinks{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:36px 0 0}
@@ -193,7 +195,7 @@ tr.hl td{background:var(--in-bg)}
 
 <div class="topbar">
   <div class="in">
-    <a href="/"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></a>
+    <a href="/"><picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture></a>
     <a class="cta" href="/sessao">Sessão estratégica</a>
   </div>
 </div>
@@ -748,7 +750,7 @@ tr.hl td{background:var(--in-bg)}
 
 <div class="foot">
   <div class="in">
-    <img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas">
+    <picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture>
     <p>
       <b>UNV Holdings</b> · Direção comercial terceirizada para pequenas e médias empresas.<br>
       Guia produzido pelo time da UNV a partir da nossa prática com times comerciais de PME.

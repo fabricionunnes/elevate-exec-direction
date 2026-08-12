@@ -63,6 +63,7 @@ a{color:var(--red)}
 
 .topbar{border-bottom:1px solid var(--rule);position:sticky;top:0;background:var(--ground);z-index:10}
 .topbar .in{max-width:1200px;margin:0 auto;padding:12px 26px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.topbar picture{display:block}
 .topbar img{height:38px;width:auto;display:block}
 .topbar .cta{font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#fff;background:var(--red);padding:10px 17px;border-radius:2px;text-decoration:none;font-weight:700;white-space:nowrap}
 
@@ -176,6 +177,7 @@ tr.hl td{background:var(--good-bg)}
 .btn:hover{filter:brightness(1.08)}
 .foot{border-top:1px solid var(--rule);background:var(--ground)}
 .foot .in{max-width:1200px;margin:0 auto;padding:34px 26px 50px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.foot picture{display:block;flex:none}
 .foot img{height:44px;width:auto;opacity:.85}
 .foot p{font-family:var(--mono);font-size:12px;line-height:1.8;color:var(--muted);margin:0;max-width:60ch}
 .foot b{color:var(--ink)}
@@ -191,7 +193,7 @@ tr.hl td{background:var(--good-bg)}
 
 <div class="topbar">
   <div class="in">
-    <a href="/"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></a>
+    <a href="/"><picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture></a>
     <a class="cta" href="/sessao">Sessão estratégica</a>
   </div>
 </div>
@@ -577,7 +579,7 @@ tr.hl td{background:var(--good-bg)}
 
 <div class="foot">
   <div class="in">
-    <img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas">
+    <picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture>
     <p>
       <b>UNV Holdings</b> · Direção comercial terceirizada para pequenas e médias empresas.<br>
       Guia produzido pelo time da UNV a partir da nossa prática com times comerciais de PME.
