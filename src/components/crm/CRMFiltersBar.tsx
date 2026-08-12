@@ -70,6 +70,9 @@ interface CRMFiltersBarProps {
   campaignOptions?: string[];
   adsetOptions?: string[];
   adOptions?: string[];
+  /** Exportar leads — só master/admin (a base de leads é dado sensível) */
+  canExport?: boolean;
+  onExport?: () => void;
 }
 
 export const CRMFiltersBar = ({
@@ -84,6 +87,8 @@ export const CRMFiltersBar = ({
   campaignOptions = [],
   adsetOptions = [],
   adOptions = [],
+  canExport = false,
+  onExport,
 }: CRMFiltersBarProps) => {
   const [dateOpen, setDateOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState("");
@@ -591,9 +596,17 @@ export const CRMFiltersBar = ({
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
             <RotateCcw className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-            <Download className="h-3.5 w-3.5" />
-          </Button>
+          {canExport && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={onExport}
+              title="Exportar leads filtrados (CSV)"
+            >
+              <Download className="h-3.5 w-3.5" />
+            </Button>
+          )}
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
             <Settings2 className="h-3.5 w-3.5" />
           </Button>

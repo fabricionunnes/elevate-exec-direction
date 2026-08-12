@@ -166,6 +166,15 @@ function buildTools(agent: any, hasLead: boolean): any[] {
   }
   if (agent.can_move_stage && hasLead) {
     tools.push({
+      name: "marcar_fora_do_perfil",
+      description: "Use quando ficar claro que o lead NÃO é do perfil que atendemos (fora do ICP): outro segmento, sem operação comercial, pessoa física buscando emprego, curioso, concorrente, ou qualquer caso que não faz sentido seguir. Move o negócio para a etapa Fora do ICP e registra o motivo. Não use por falta de orçamento momentâneo ou por 'quero pensar' — isso é objeção, não fora de perfil.",
+      input_schema: {
+        type: "object",
+        properties: { motivo: { type: "string", description: "Em uma frase, por que o lead está fora do perfil" } },
+        required: ["motivo"],
+      },
+    });
+    tools.push({
       name: "mover_etapa",
       description: "Move o negócio (lead) para outra etapa do funil dele. Use quando o estágio da conversa mudar (ex: lead qualificado, reunião agendada).",
       input_schema: {
@@ -282,6 +291,22 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
     }
 
     if (name === "agendar_reuniao") {
+      // TRAVA DE DUPLICIDADE: duas execuções quase simultâneas (o lead manda duas
+      // mensagens em sequência) chegavam aqui juntas — a primeira agendava e a
+      // segunda batia no conflito da agenda e dizia "esse horário já foi
+      // preenchido", desmarcando na cara do cliente uma reunião recém-confirmada.
+      if (leadId) {
+        const { data: jaTem } = await supabase.from("crm_activities")
+          .select("id, scheduled_at, created_at")
+          .eq("lead_id", leadId).eq("type", "meeting")
+          .not("status", "in", "(cancelled,canceled,no_show)")
+          .gte("scheduled_at", new Date().toISOString())
+          .order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (jaTem && Date.now() - new Date(jaTem.created_at).getTime() < 10 * 60 * 1000) {
+          const q = new Date(jaTem.scheduled_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+          return `Este lead JÁ TEM reunião agendada para ${q} (marcada há instantes). NÃO agende de novo, NÃO ofereça outros horários e NÃO diga que o horário ficou indisponível — apenas siga a conversa normalmente.`;
+        }
+      }
       const dt = String(input?.data_hora || "");
       const title = String(input?.titulo || "Reunião");
       const m = dt.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/);
@@ -418,6 +443,37 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
 
       const link = ev.event?.meetingLink ? ` Link da reunião: ${ev.event.meetingLink}` : "";
       return `Reunião agendada com ${staff.name} em ${m[1]} às ${m[2]}:${m[3]}.${link}`;
+    }
+
+    if (name === "marcar_fora_do_perfil") {
+      if (!leadId) return "Erro: conversa sem negócio vinculado.";
+      const motivo = String(input?.motivo || "").trim() || "fora do perfil identificado pelo agente";
+      const { data: lead } = await supabase.from("crm_leads").select("id, pipeline_id, notes, sdr_staff_id, owner_staff_id, closer_staff_id").eq("id", leadId).maybeSingle();
+      if (!lead?.pipeline_id) return "Erro: lead sem funil.";
+      const { data: stages } = await supabase.from("crm_stages").select("id, name").eq("pipeline_id", lead.pipeline_id);
+      // procura a etapa de fora do perfil pelo nome (Fora do ICP, Fora de perfil...)
+      const alvo = (stages || []).find((st: any) => /fora do icp|fora de icp|fora do perfil|fora de perfil|sem fit/i.test(st.name));
+      // Sempre registra a marcação (é ela que os indicadores leem). Mover de
+      // etapa só acontece se o funil tiver uma etapa de fora do perfil — sem
+      // etapa, não inventamos destino.
+      const patch: Record<string, unknown> = {
+        notes: [lead.notes, `[Agente IA] Fora do perfil: ${motivo}`].filter(Boolean).join("\n"),
+      };
+      if (alvo) { patch.stage_id = alvo.id; patch.stage_entered_at = new Date().toISOString(); }
+      await supabase.from("crm_leads").update(patch).eq("id", leadId);
+      // crm_meeting_events exige um responsável creditado: usa SDR > dono > closer.
+      // Sem ninguém atribuído, a marcação fica só na etapa/nota (não inventa crédito).
+      const creditado = lead.sdr_staff_id || lead.owner_staff_id || lead.closer_staff_id || null;
+      if (creditado) {
+        const { error: evErr } = await supabase.from("crm_meeting_events").insert({
+          lead_id: leadId, pipeline_id: lead.pipeline_id, stage_id: alvo?.id || null,
+          credited_staff_id: creditado, event_type: "out_of_icp", event_date: new Date().toISOString(),
+        });
+        if (evErr) console.error("marcar_fora_do_perfil: evento não registrado", evErr.message);
+      }
+      return alvo
+        ? `Negócio movido para "${alvo.name}" e marcado como fora do perfil. Encerre a conversa com educação, sem prometer retorno.`
+        : `Lead marcado como fora do perfil (este funil não tem etapa "Fora do ICP", então ele ficou onde está). Encerre a conversa com educação.`;
     }
 
     if (name === "mover_etapa") {
@@ -757,7 +813,7 @@ Deno.serve(async (req) => {
             .eq("conversation_id", conversation_id)
             .order(tsCol, { ascending: false }).limit(1).maybeSingle();
           if (!latest || latest.direction !== "inbound") return; // já respondida
-          if (triggerTs && new Date((latest as any)[tsCol]).getTime() > new Date(triggerTs).getTime() + 500) {
+          if (triggerTs && new Date((latest as any)[tsCol]).getTime() > new Date(triggerTs).getTime() + 3000) {
             return; // chegou mensagem mais nova: o run dela responde
           }
           const result = await processConversation();
@@ -1001,6 +1057,9 @@ Deno.serve(async (req) => {
       knowledge ? `\n\nBASE DE CONHECIMENTO (use quando relevante, não invente):${knowledge}` : "",
       `\n\nData/hora atual (Brasília): ${nowBR}.`,
       tools.length ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou; (5) ANTES de chamar agendar_reuniao, você precisa do NOME, do E-MAIL e do TELEFONE/WhatsApp do lead — peça numa única mensagem curta o que faltar ("perfeito, fechei pra {horário}. Me confirma seu nome completo, e-mail e WhatsApp pra eu mandar o convite?") e só chame a ferramenta quando o lead responder; se você já sabe o nome dele pela conversa, não pergunte de novo — pergunte só o que falta; (6) passe email, telefone e nome_completo nos parâmetros de agendar_reuniao — eles vão pro cadastro do lead no CRM.` : "",
+      tools.some((t: any) => t.name === "marcar_fora_do_perfil")
+        ? `\nFORA DO PERFIL: se durante a conversa ficar claro que o lead não é do nosso perfil (outro segmento, sem time comercial, pessoa procurando emprego, curioso, concorrente), chame marcar_fora_do_perfil com o motivo e encerre com educação — sem insistir e sem agendar. Falta de orçamento agora ou "vou pensar" NÃO é fora de perfil: isso você trabalha como objeção.`
+        : "",
       confirmedTimeHint,
       missingNameHint,
       igPersonalization,
@@ -1110,6 +1169,24 @@ Deno.serve(async (req) => {
 
     // 9) Envia (auto) ou guarda sugestão (copiloto)
     if (mode === "auto") {
+      // Última verificação antes de falar: se outra execução já respondeu esta
+      // conversa depois do meu gatilho, eu calo. Evita duas mensagens seguidas
+      // (e contraditórias) quando o lead manda tudo junto.
+      try {
+        const msgTable2 = isIG ? "instagram_messages" : "crm_whatsapp_messages";
+        const tsCol2 = isIG ? "timestamp" : "created_at";
+        const { data: ultimaSaida } = await supabase.from(msgTable2)
+          .select(`direction, ${tsCol2}`)
+          .eq("conversation_id", conversation_id).eq("direction", "outbound")
+          .order(tsCol2, { ascending: false }).limit(1).maybeSingle();
+        const saidaTs = ultimaSaida ? new Date((ultimaSaida as any)[tsCol2]).getTime() : 0;
+        const gatilhoTs = triggerTs ? new Date(triggerTs).getTime() : 0;
+        if (saidaTs && gatilhoTs && saidaTs > gatilhoTs) {
+          await logRun("skipped_duplicate");
+          return { ok: true, skip: "outra execução já respondeu esta conversa" };
+        }
+      } catch { /* se a checagem falhar, segue o fluxo normal */ }
+
       if (isIG) {
         const { error: sendErr } = await supabase.functions.invoke("instagram-send", {
           body: { conversationId: conversation_id, message: reply, staffId: null },

@@ -372,6 +372,47 @@ export const CRMPipelinePage = () => {
   }, [selectedPipeline]);
 
   // Filter leads
+  // Exporta em CSV o que está na tela (com os filtros aplicados). Restrito a
+  // master/admin — a base de leads é dado sensível do negócio.
+  const exportLeadsCsv = () => {
+    if (!(isMaster || isAdmin)) { toast.error("Sem permissão para exportar"); return; }
+    const linhas = filteredLeads;
+    if (!linhas.length) { toast.error("Nada para exportar com os filtros atuais"); return; }
+    const stageName = (id: string) => stages.find((st: any) => st.id === id)?.name || "";
+    const cols: { h: string; get: (l: any) => string }[] = [
+      { h: "Nome", get: (l) => l.name || "" },
+      { h: "Empresa", get: (l) => l.company || "" },
+      { h: "Telefone", get: (l) => l.phone || "" },
+      { h: "Email", get: (l) => l.email || "" },
+      { h: "Documento", get: (l) => l.document || "" },
+      { h: "Etapa", get: (l) => stageName(l.stage_id) },
+      { h: "Origem", get: (l) => l.origin?.name || "" },
+      { h: "Responsavel", get: (l) => l.owner?.name || "" },
+      { h: "Valor", get: (l) => (l.opportunity_value ?? "") === "" ? "" : String(l.opportunity_value).replace(".", ",") },
+      { h: "Criado em", get: (l) => l.created_at ? new Date(l.created_at).toLocaleString("pt-BR") : "" },
+      { h: "Ultima atividade", get: (l) => l.last_activity_at ? new Date(l.last_activity_at).toLocaleString("pt-BR") : "" },
+      { h: "Campanha", get: (l) => l.campaign_name || l.utm_campaign || "" },
+      { h: "Conjunto", get: (l) => l.adset_name || l.utm_term || "" },
+      { h: "Anuncio", get: (l) => l.ad_name || l.utm_content || "" },
+      { h: "Tags", get: (l) => (l.tags || []).map((t: any) => t.tag?.name).filter(Boolean).join(" | ") },
+    ];
+    const esc = (v: string) => `"${String(v).replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
+    const csv = [
+      cols.map((c) => esc(c.h)).join(";"),
+      ...linhas.map((l: any) => cols.map((c) => esc(c.get(l))).join(";")),
+    ].join("\r\n");
+    // BOM: o Excel em pt-BR precisa dele pra não quebrar os acentos
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const hoje = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `leads-${(selectedOriginName || "crm").toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${hoje}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${linhas.length} lead(s) exportado(s)`);
+  };
+
   const filteredLeads = useMemo(() => {
     return leads.filter(lead => {
       // Search filter
@@ -809,6 +850,8 @@ export const CRMPipelinePage = () => {
           campaignOptions={[...new Set(leads.map((l: any) => l.campaign_name || l.utm_campaign).filter(Boolean))].sort() as string[]}
           adsetOptions={[...new Set(leads.map((l: any) => l.adset_name || l.utm_term).filter(Boolean))].sort() as string[]}
           adOptions={[...new Set(leads.map((l: any) => l.ad_name || l.utm_content).filter(Boolean))].sort() as string[]}
+          canExport={isMaster || isAdmin}
+          onExport={exportLeadsCsv}
         />
       </div>
 
