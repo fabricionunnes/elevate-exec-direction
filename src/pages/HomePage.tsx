@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, CheckCircle, MessageCircle, Sparkles, Quote, Star, Users, Target, Trophy, TrendingUp, Building2, Award, Megaphone, Share2 } from "lucide-react";
+import { ArrowRight, CheckCircle, MessageCircle, Sparkles, Quote, Star, Users, Target, Trophy, TrendingUp, Award, Megaphone, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/layout/Layout";
 import {
@@ -181,7 +181,6 @@ const processSteps = [
 const stats = [
   { value: "20+", label: "Anos de experiência", icon: Award },
   { value: "R$ 1Bi+", label: "Em vendas realizadas", icon: TrendingUp },
-  { value: "500+", label: "Empresas atendidas", icon: Building2 },
   { value: "10+", label: "Anos como diretor comercial", icon: Trophy },
 ];
 
@@ -258,7 +257,7 @@ export default function HomePage() {
       <section className="py-8 sm:py-12 bg-card border-y border-border/50 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-glow opacity-20 pointer-events-none" />
         <div className="container-premium relative">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
             {stats.map((stat, i) => (
               <div key={i} className="text-center group">
                 <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/10 border border-primary/30 mb-3 sm:mb-4 group-hover:bg-primary/20 transition-colors duration-300">
@@ -416,7 +415,7 @@ export default function HomePage() {
                     <p className="text-[10px] sm:text-xs text-muted-foreground">Anos de experiência</p>
                   </div>
                   <div className="text-center p-3 sm:p-4 bg-card rounded-xl border border-border/50">
-                    <p className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-primary">500+</p>
+                    <p className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-primary">700+</p>
                     <p className="text-[10px] sm:text-xs text-muted-foreground">Empresas atendidas</p>
                   </div>
                   <div className="text-center p-3 sm:p-4 bg-card rounded-xl border border-border/50">

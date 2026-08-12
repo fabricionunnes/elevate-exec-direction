@@ -325,7 +325,7 @@ const SessaoEstrategicaPage = () => {
                 <div className="grid grid-cols-3 divide-x divide-white/10">
                   {[
                     { v: "+1 Bi", l: "em vendas" },
-                    { v: "+500", l: "empresas" },
+                    { v: "+700", l: "empresas" },
                     { v: "+20 anos", l: "no comercial" },
                   ].map((s, i) => (
                     <div key={s.l} className={`${i === 0 ? "pr-3" : i === 2 ? "pl-3" : "px-3"} text-center sm:text-left`}>
@@ -480,7 +480,7 @@ const SessaoEstrategicaPage = () => {
               <div className="grid grid-cols-3 gap-3 pt-4">
                 {[
                   { icon: TrendingUp, v: "+1 Bi", l: "vendas" },
-                  { icon: Users, v: "+500", l: "empresas" },
+                  { icon: Users, v: "+700", l: "empresas" },
                   { icon: Target, v: "+20", l: "anos" },
                 ].map((b) => (
                   <div key={b.l} className="text-center p-4 rounded-2xl bg-white/[0.03] border border-white/10">
