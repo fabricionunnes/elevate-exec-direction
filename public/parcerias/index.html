@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parcerias que funcionam — a regra dos 30% e o uso de marca | UNV</title>
+<meta name="description" content="Por que quase toda parceria comercial morre no terceiro mês, como testar se ela é relevante para o parceiro, e por que usar a marca dele vale mais que o time de vendas dele.">
+<link rel="icon" href="/favicon.ico">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Parcerias que funcionam — a regra dos 30%">
+<meta property="og:description" content="Por que quase toda parceria comercial morre no terceiro mês, como testar se ela é relevante para o parceiro, e por que usar a marca dele vale mais que o time de vendas dele.">
+<meta property="og:url" content="https://unvholdings.com.br/parcerias/">
+<meta property="og:image" content="https://unvholdings.com.br/images/unv-logo.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+
+:root{
+  --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#EDEFF3; --surface-3:#E2E6EC;
+  --ink:#0A1F45; --ink-2:#33415C; --muted:#5F6B80; --faint:#8B94A5;
+  --rule:#DCE1E9; --rule-2:#C3CBD7;
+  --navy:#0D2B5E; --red:#CC1B1B;
+  --good:#0F6B52; --good-bg:#E6F2EE;
+  --warn:#8A5B04; --warn-bg:#F7EEDC;
+  --bad:#B02318; --bad-bg:#FAEAE8;
+  --f1:#7A80DC; --f2:#3E5BA9; --f3:#0D2B5E;
+  --f1-bg:#EDEEFB; --f2-bg:#E4EAF6; --f3-bg:#DCE3F0;
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --prose:min(100%,62ch);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
+    --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+    --rule:#1E3557; --rule-2:#2C4770;
+    --navy:#7BA4E8; --red:#FF6B62;
+    --good:#43BF9C; --good-bg:#0F2D28;
+    --warn:#D9A03C; --warn-bg:#2E2716;
+    --bad:#FF7A6E; --bad-bg:#33191A;
+    --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
+    --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
+  --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+  --rule:#1E3557; --rule-2:#2C4770;
+  --navy:#7BA4E8; --red:#FF6B62;
+  --good:#43BF9C; --good-bg:#0F2D28;
+  --warn:#D9A03C; --warn-bg:#2E2716;
+  --bad:#FF7A6E; --bad-bg:#33191A;
+  --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
+  --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui);font-size:16.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin:0 auto;padding:0 26px 0}
+.prose{width:var(--prose)}
+p{margin:0 0 1em}
+strong{font-weight:680;color:var(--ink)}
+a{color:var(--red)}
+:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+
+.topbar{border-bottom:1px solid var(--rule);position:sticky;top:0;background:var(--ground);z-index:10}
+.topbar .in{max-width:1200px;margin:0 auto;padding:12px 26px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.topbar picture{display:block}
+.topbar img{height:38px;width:auto;display:block}
+.topbar .cta{font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#fff;background:var(--red);padding:10px 17px;border-radius:2px;text-decoration:none;font-weight:700;white-space:nowrap}
+
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.eyebrow .tc{color:var(--red);font-weight:600}
+.eyebrow .bar{width:26px;height:1px;background:var(--rule-2);flex:none}
+
+.hero{padding:70px 0 50px}
+.hero h1{font-size:clamp(38px,7vw,80px);line-height:.98;letter-spacing:-.042em;font-weight:820;margin:24px 0 0;text-wrap:balance;max-width:15ch}
+.hero .sub{font-size:clamp(17px,2vw,20px);line-height:1.5;color:var(--ink-2);max-width:60ch;margin:26px 0 0}
+
+.idx{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:42px 0 0}
+.idx a{background:var(--surface);padding:16px 18px;text-decoration:none;display:block}
+.idx a:hover{background:var(--surface-2)}
+.idx .n{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--red);display:block}
+.idx .t{font-size:14.5px;font-weight:640;color:var(--ink);margin-top:5px;display:block;line-height:1.3;letter-spacing:-.01em}
+
+.sec{padding:68px 0;border-top:1px solid var(--rule);scroll-margin-top:70px}
+h2{font-size:clamp(27px,4.2vw,45px);line-height:1.04;letter-spacing:-.032em;font-weight:800;margin:18px 0 24px;text-wrap:balance;max-width:19ch}
+h3{font-size:19px;font-weight:720;letter-spacing:-.012em;margin:40px 0 12px}
+h4{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 14px}
+
+.max{padding:0 0 0 24px;margin:0 0 30px;width:var(--prose);border-left:3px solid var(--red)}
+.max p{font-size:clamp(20px,2.5vw,26px);line-height:1.28;font-weight:700;letter-spacing:-.026em;margin:0 0 .4em;color:var(--ink)}
+.max p:last-child{margin-bottom:0}
+
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:24px 26px;margin:26px 0}
+.panel.nv{border-left:3px solid var(--navy)}
+.panel.rd{border-left:3px solid var(--red)}
+.panel>:last-child{margin-bottom:0}
+
+.tw{overflow-x:auto;margin:24px 0;border:1px solid var(--rule);border-radius:2px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:540px}
+th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+thead th{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface-2);white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.hl td{background:var(--good-bg)}
+
+.crit{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:26px 0}
+.cr{background:var(--surface);padding:22px}
+.cr .t{font-size:20px;font-weight:800;letter-spacing:-.025em;color:var(--red)}
+.cr .d{font-size:14px;color:var(--ink-2);line-height:1.5;margin-top:10px}
+.cr .q{font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:12px;padding-top:12px;border-top:1px solid var(--rule)}
+
+.pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:26px 0}
+.pl{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:22px;position:relative}
+.pl .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+.pl .t{font-size:21px;font-weight:780;letter-spacing:-.025em;margin:8px 0 10px}
+.pl .d{font-size:14px;color:var(--ink-2);line-height:1.5}
+.pl .m{margin-top:14px;padding-top:12px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.6}
+.pl.a{border-top:3px solid var(--f1)} .pl.b{border-top:3px solid var(--f2)} .pl.c{border-top:3px solid var(--f3)}
+
+.funnel{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:26px 0}
+.fl{background:var(--surface);padding:20px 22px;display:grid;grid-template-columns:130px 1fr;gap:20px;align-items:start}
+.fl .lb{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:700}
+.fl.t1 .lb{color:var(--f1)} .fl.t2 .lb{color:var(--f2)} .fl.t3 .lb{color:var(--f3)}
+.fl .lb small{display:block;font-size:10px;letter-spacing:.1em;color:var(--muted);font-weight:600;margin-top:5px}
+.fl dl{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.fl dt{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.fl dd{margin:4px 0 0;font-size:14px;line-height:1.4;color:var(--ink-2)}
+@media(max-width:640px){.fl{grid-template-columns:1fr;gap:12px}}
+
+.calc{background:var(--surface-2);border:1px solid var(--rule-2);border-radius:2px;padding:26px;margin:32px 0}
+.calc h4{color:var(--ink)}
+.calc .hint{font-size:14px;color:var(--muted);margin:0 0 20px;line-height:1.5;max-width:64ch}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px 24px;margin-bottom:22px}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.field input{font-family:var(--mono);font-size:16px;font-variant-numeric:tabular-nums;padding:10px 11px;border:1px solid var(--rule-2);border-radius:2px;background:var(--surface);color:var(--ink);width:100%}
+.field input[type=range]{padding:0;accent-color:var(--red);border:none;background:none}
+.rv{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--red)}
+.out{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:20px;padding-top:20px;border-top:1px solid var(--rule-2)}
+.o .ov{font-size:clamp(23px,3vw,31px);font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;display:block}
+.o .ol{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:7px;display:block}
+.verdict{margin-top:20px;padding:14px 16px;background:var(--surface);border:1px solid var(--rule);border-radius:2px;font-size:15px;line-height:1.55;color:var(--ink-2)}
+.verdict b{color:var(--red)}
+
+.scorer{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:20px 0}
+.srow{background:var(--surface);padding:14px 18px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+.srow .nm{font-size:15px;font-weight:640}
+.srow .ctrls{display:flex;gap:6px}
+.srow button{font-family:var(--mono);font-size:11.5px;padding:7px 11px;border:1px solid var(--rule-2);background:var(--surface);color:var(--muted);border-radius:2px;cursor:pointer;letter-spacing:.05em}
+.srow button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+:root[data-theme="dark"] .srow button[aria-pressed="true"],
+:root:not([data-theme="light"]) .srow button[aria-pressed="true"]{color:#08152B}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .srow button[aria-pressed="true"]{color:#fff}}
+
+.acts{list-style:none;padding:0;margin:24px 0 0;width:var(--prose)}
+.acts li{position:relative;padding:14px 0 14px 34px;border-top:1px solid var(--rule);font-size:15.5px;line-height:1.5;color:var(--ink-2)}
+.acts li:last-child{border-bottom:1px solid var(--rule)}
+.acts li::before{content:"→";position:absolute;left:0;top:14px;font-family:var(--mono);color:var(--red);font-size:14px}
+.acts li b{color:var(--ink)}
+
+.pull{border-top:3px solid var(--navy);border-bottom:3px solid var(--navy);padding:24px 0;margin:36px 0;width:var(--prose)}
+.pull p{font-size:20px;line-height:1.4;font-weight:640;letter-spacing:-.018em;margin:0;text-wrap:balance}
+.note{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--muted);width:var(--prose)}
+
+.xlinks{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:36px 0 0}
+.xlink{display:block;text-decoration:none;background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--red);border-radius:2px;padding:22px}
+.xlink:hover{background:var(--surface-2)}
+.xlink .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--red)}
+.xlink .t{font-size:19px;font-weight:760;letter-spacing:-.022em;color:var(--ink);margin-top:8px;line-height:1.2}
+.xlink .d{font-size:14px;color:var(--ink-2);margin-top:6px;line-height:1.45}
+
+.final{border-top:1px solid var(--rule);background:var(--surface)}
+.final .in{max-width:1200px;margin:0 auto;padding:70px 26px 74px}
+.final h2{margin-top:0;max-width:17ch}
+.final p{color:var(--ink-2);max-width:56ch;font-size:17.5px}
+.btn{display:inline-block;margin-top:14px;background:var(--red);color:#fff;font-weight:750;font-size:16px;padding:15px 28px;border-radius:2px;text-decoration:none;letter-spacing:-.01em}
+.btn:hover{filter:brightness(1.08)}
+.foot{border-top:1px solid var(--rule);background:var(--ground)}
+.foot .in{max-width:1200px;margin:0 auto;padding:34px 26px 50px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.foot picture{display:block;flex:none}
+.foot img{height:44px;width:auto;opacity:.85}
+.foot p{font-family:var(--mono);font-size:12px;line-height:1.8;color:var(--muted);margin:0;max-width:60ch}
+.foot b{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:640px){
+  .wrap,.final .in,.foot .in,.topbar .in{padding-left:18px;padding-right:18px}
+  .hero{padding:48px 0 36px}.sec{padding:50px 0}
+  .topbar img{height:30px}.topbar .cta{font-size:11px;padding:8px 12px}
+}
+
+.tnav{display:flex;align-items:center;gap:14px}
+.tnav .back{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);text-decoration:none;padding:10px 12px;border:1px solid var(--rule-2);border-radius:2px;white-space:nowrap}
+.tnav .back:hover{background:var(--surface-2);color:var(--ink)}
+.midcta{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--red);border-radius:2px;padding:26px 28px;margin:40px 0;display:flex;gap:24px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.midcta .tx{max-width:52ch}
+.midcta .tt{font-size:19px;font-weight:760;letter-spacing:-.018em;margin:0 0 6px}
+.midcta .dd{font-size:15px;color:var(--ink-2);margin:0;line-height:1.5}
+.midcta a{display:inline-block;background:var(--red);color:#fff;font-weight:750;font-size:15px;padding:13px 24px;border-radius:2px;text-decoration:none;white-space:nowrap}
+.midcta a:hover{filter:brightness(1.08)}
+.backblog{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);text-decoration:none;padding:12px 16px;border:1px solid var(--rule-2);border-radius:2px;margin-top:26px}
+.backblog:hover{background:var(--surface-2);color:var(--ink)}
+@media(max-width:640px){.tnav .back{padding:8px 9px;font-size:11px}.midcta{flex-direction:column;align-items:flex-start}}
+
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="in">
+    <a href="/"><picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture></a>
+    <nav class="tnav"><a class="back" href="/blog/">&larr; Blog</a><a class="cta" href="/sessao">Sessão estratégica</a></nav>
+  </div>
+</div>
+
+<div class="wrap">
+<header class="hero">
+  <p class="eyebrow"><span>Guia UNV</span><span class="bar"></span><span class="tc">Parcerias e canais</span></p>
+  <h1>Por que quase toda parceria comercial morre no terceiro mês</h1>
+  <p class="sub">
+    Você fecha o acordo, monta o comissionamento, treina o parceiro e nada acontece. Não é falta de
+    empenho dele. É que a conta nunca fez sentido do lado de lá. Este guia mostra a regra que decide se
+    uma parceria vai andar, e o que fazer quando ela não passa no teste.
+  </p>
+  <nav class="idx" aria-label="Índice">
+    <a href="#b1"><span class="n">01</span><span class="t">A regra dos 30%</span></a>
+    <a href="#b2"><span class="n">02</span><span class="t">Benefício, não canal</span></a>
+    <a href="#b3"><span class="n">03</span><span class="t">Use a marca, não o vendedor</span></a>
+    <a href="#b4"><span class="n">04</span><span class="t">O comportamento decide</span></a>
+    <a href="#b5"><span class="n">05</span><span class="t">Onde alocar o crescimento</span></a>
+  </nav>
+</header>
+
+<section class="sec" id="b1">
+  <p class="eyebrow"><span>01</span><span class="bar"></span><span>O teste</span></p>
+  <h2>A regra dos 30%</h2>
+  <div class="max"><p>Nunca é dinheiro bastante para o parceiro focar em fazer aquilo dar certo.</p></div>
+  <p class="prose">
+    Antes de montar qualquer parceria, faça uma conta do lado de lá. Pegue o faturamento do parceiro e
+    calcule quanto a sua parceria representaria para ele em um ano. O resultado decide tudo.
+  </p>
+  <p class="prose">
+    Se representa <strong>trinta por cento do que ele fatura</strong>, ele para o que está fazendo para te
+    ouvir, monta time, cobra resultado e a parceria anda. Se representa <strong>dois por cento</strong>,
+    ele acha a ideia legal, assina o contrato, avisa a equipe uma vez e volta para a rotina dele.
+    Não é má vontade. É priorização, e ele está certo.
+  </p>
+
+  <div class="calc" data-calc="rel">
+    <h4>Calculadora — a parceria é relevante para ele?</h4>
+    <p class="hint">Preencha com o faturamento do parceiro e com o que a parceria realistamente entregaria a ele em 12 meses.</p>
+    <div class="fields">
+      <div class="field"><label for="fatp">Faturamento anual do parceiro (R$)</label><input type="number" id="fatp" value="1000000" min="1" step="100000"></div>
+      <div class="field"><label for="gan">O que ele ganharia em 12 meses (R$)</label><input type="number" id="gan" value="20000" min="0" step="5000"></div>
+    </div>
+    <div class="out">
+      <div class="o"><span class="ov" id="r-pct">—</span><span class="ol">do faturamento dele</span></div>
+      <div class="o"><span class="ov" id="r-mes">—</span><span class="ol">por mês, para ele</span></div>
+      <div class="o"><span class="ov" id="r-alvo">—</span><span class="ol">precisaria render para chegar a 30%</span></div>
+    </div>
+    <div class="verdict" id="r-verdict"></div>
+  </div>
+</section>
+
+<section class="sec" id="b2">
+  <p class="eyebrow"><span>02</span><span class="bar"></span><span>O desenho certo</span></p>
+  <h2>Benefício é uma coisa. Canal de venda é outra.</h2>
+  <div class="max"><p>Se a parceria não passa no teste dos 30%, ela não é canal. Pode ser benefício, e benefício também vale.</p></div>
+  <p class="prose">
+    Existem três desenhos possíveis de parceria, e confundi-los é o erro que mata o acordo. Escolha o
+    desenho a partir do resultado do teste, não a partir do que você gostaria que fosse.
+  </p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Desenho</th><th>O que o parceiro faz</th><th>Quando usar</th><th>Métrica</th></tr></thead>
+      <tbody>
+        <tr class="hl"><td><strong>Benefício</strong></td><td>Oferece o seu produto como vantagem para o cliente dele, sem esforço de venda</td><td>Quando a parceria não é relevante no faturamento dele</td><td>Uso e satisfação, não venda</td></tr>
+        <tr><td><strong>Endosso</strong></td><td>Apresenta você ao cliente dele, com recomendação</td><td>Quando existe confiança e o cliente dele é o seu ICP</td><td>Apresentações qualificadas</td></tr>
+        <tr><td><strong>Canal de venda</strong></td><td>Prospecta, apresenta e vende o seu produto</td><td>Só quando passa no teste dos 30%</td><td>Vendas fechadas</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="panel rd">
+    <h4>Por que benefício embutido em fatura quase nunca converte</h4>
+    <p style="margin-bottom:0">
+      Colocar a sua oferta dentro da fatura ou do app de um parceiro grande parece ganho garantido e
+      quase sempre decepciona. Para converter, o cliente precisa de três coisas ao mesmo tempo:
+      frequência de contato com a sua marca, percepção de valor alta e demanda já existente naquele
+      momento. Uma linha numa fatura entrega zero das três.
+    </p>
+  </div>
+</section>
+
+
+  <div class="midcta">
+    <div class="tx">
+      <p class="tt">Quer isso rodando na sua empresa, não no papel?</p>
+      <p class="dd">A UNV assume a direção comercial, estrutura o time e cobra o número toda semana até a meta virar rotina.</p>
+    </div>
+    <a href="/sessao">Agendar sessão estratégica</a>
+  </div>
+
+<section class="sec" id="b3">
+  <p class="eyebrow"><span>03</span><span class="bar"></span><span>A virada</span></p>
+  <h2>Use a marca do parceiro, não o time de vendas dele</h2>
+  <div class="max"><p>Não espalhe o crescimento entre cem parceiros. Assuma o crescimento usando a marca deles.</p></div>
+  <p class="prose">
+    Essa é a inversão que faz parceria funcionar. Em vez de entregar o seu produto para o parceiro vender,
+    você <strong>pega a marca dele emprestada e vende você mesmo</strong>. Anuncia com o nome dele junto,
+    fala com a base dele com a chancela dele, opera os seus próprios canais com a credibilidade dele.
+  </p>
+  <p class="prose">
+    O efeito é medido em custo de aquisição. A mesma campanha, rodando com a marca de um parceiro
+    reconhecido ao lado da sua, custa menos e converte mais, porque a objeção de confiança já vem quebrada.
+    É comum o custo por cliente cair pela metade ou mais só com essa mudança.
+  </p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Espalhar o crescimento</th><th>Assumir o crescimento</th></tr></thead>
+      <tbody>
+        <tr><td>Cem parceiros, cada um responsável por fazer acontecer</td><td class="hl">Poucas marcas fortes, você operando</td></tr>
+        <tr><td>Depende da prioridade de terceiros</td><td class="hl">Depende da sua execução</td></tr>
+        <tr><td>Resultado imprevisível e difícil de medir</td><td class="hl">Custo por cliente medido campanha a campanha</td></tr>
+        <tr><td>Você paga com comissão</td><td class="hl">Você paga com licenciamento ou contrapartida</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="panel nv">
+    <h4>A pergunta que substitui "quanto de comissão?"</h4>
+    <p style="margin-bottom:0">
+      Pare de perguntar quanto vai comissionar e comece a perguntar: <strong>quanto custa plugar essa
+      marca, quanto ela derruba o meu custo de aquisição e quanto ela encurta o meu ciclo de venda?</strong>
+      Se a conta fecha, é acordo de marca, não de canal. E acordo de marca não depende de ninguém do outro
+      lado acordar motivado.
+    </p>
+  </div>
+</section>
+
+<section class="sec" id="b4">
+  <p class="eyebrow"><span>04</span><span class="bar"></span><span>Timing</span></p>
+  <h2>O comportamento de compra decide o canal</h2>
+  <div class="max"><p>Estar no lugar certo não adianta se for na hora errada.</p></div>
+  <p class="prose">
+    Muita parceria falha por um motivo que não tem nada a ver com o acordo: o cliente é abordado num
+    momento em que ele ainda não tem a dor. Produto que se compra na urgência não vende em canal de
+    planejamento, por mais que o público seja o mesmo.
+  </p>
+  <p class="prose">
+    Antes de escolher onde estar, mapeie <strong>em que momento exato o seu cliente decide comprar</strong>
+    e o que ele está fazendo naquela hora. Depois procure o canal que ocupa aquele instante, não o canal
+    que ocupa o mesmo assunto.
+  </p>
+  <div class="panel">
+    <h4>Três perguntas antes de fechar qualquer canal</h4>
+    <p>Em que momento da jornada o cliente sente a dor que eu resolvo?</p>
+    <p>Esse canal está presente nesse momento, ou semanas antes dele?</p>
+    <p style="margin-bottom:0">O que o cliente está tentando resolver quando encontra esse canal, e a minha oferta ajuda ou atrapalha aquilo?</p>
+  </div>
+</section>
+
+<section class="sec" id="b5">
+  <p class="eyebrow"><span>05</span><span class="bar"></span><span>Alocação</span></p>
+  <h2>Crescer o que existe ou criar o próximo</h2>
+  <p class="prose">
+    Toda empresa que já tem um negócio funcionando chega nesta encruzilhada: colocar energia para tirar o
+    principal de quarenta para cinquenta, ou usar a mesma energia para criar um segundo negócio do zero
+    até dez. A resposta não é filosófica, é aritmética.
+  </p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Pergunta</th><th>Como responder</th></tr></thead>
+      <tbody>
+        <tr><td>Quanto custa e quanto demora tirar o principal de 40 para 50?</td><td>Custo de mídia, time e tempo para os últimos dez, que são sempre os mais caros</td></tr>
+        <tr><td>Quanto custa e quanto demora levar um novo do zero a 10?</td><td>Custo de construir marca, canal e operação novos</td></tr>
+        <tr><td>O que já está pronto e pode ser reaproveitado?</td><td>Plataforma, fornecedor, time, marca. Reaproveitamento muda a conta inteira</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="pull">
+    <p>
+      Uma divisão que funciona bem na prática: entre sessenta e setenta por cento da energia no negócio
+      principal, e trinta a quarenta por cento nos satélites. Se ao longo do caminho ficar claro que ir do
+      zero aos dez custa menos que ir dos quarenta aos cinquenta, você inverte a proporção com dado na mão,
+      não por intuição.
+    </p>
+  </div>
+  <h3>Por onde começar</h3>
+  <ol class="acts">
+    <li>Liste as suas parcerias atuais e rode <b>o teste dos 30%</b> em cada uma. As que não passam, reclassifique como benefício ou endosso hoje mesmo.</li>
+    <li>Pare de esperar venda de quem foi montado como benefício. Cobre <b>o que aquele desenho realmente entrega</b>.</li>
+    <li>Escolha <b>uma marca forte</b> do seu mercado e negocie uso conjunto em campanha, não comissionamento.</li>
+    <li>Meça o <b>custo por cliente com e sem a marca do parceiro</b>. É esse número que justifica o acordo.</li>
+    <li>Mapeie <b>o momento exato da decisão de compra</b> e escolha canais por horário, não por tema.</li>
+  </ol>
+
+  <div class="xlinks">
+    <a class="xlink" href="/marketing/"><span class="k">Guia UNV</span><span class="t">Marketing complexo</span><span class="d">Os quatro critérios de priorização, os três pilares e o mapa de canais.</span></a>
+    <a class="xlink" href="/escalar_servico/"><span class="k">Guia UNV</span><span class="t">Como escalar uma empresa de serviços</span><span class="d">Arquitetura financeira, preço por resultado e cadência.</span></a>
+  </div>
+  <a class="backblog" href="/blog/">&larr; Voltar para todos os guias</a>
+</section>
+
+</div>
+
+<div class="final">
+  <div class="in">
+    <h2>Parceria enche o funil. Processo comercial fecha.</h2>
+    <p>
+      De nada adianta acertar o desenho da parceria se do outro lado não tem time treinado, meta clara e
+      alguém cobrando número toda semana. É isso que a UNV faz: assumimos a direção comercial da sua
+      empresa, estruturamos o time e colocamos a operação para bater meta todo mês.
+    </p>
+    <a class="btn" href="/sessao">Agendar uma sessão estratégica</a>
+  </div>
+</div>
+<div class="foot">
+  <div class="in">
+    <picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture>
+    <p>
+      <b>UNV Holdings</b> · Direção comercial terceirizada para pequenas e médias empresas.<br>
+      Guia produzido pelo time da UNV a partir da nossa prática com times comerciais de PME.
+      <a href="/">unvholdings.com.br</a>
+    </p>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $=function(i){return document.getElementById(i);};
+  var BRL=function(n){return "R$ "+Math.round(n).toLocaleString("pt-BR");};
+  var f=$("fatp"), g=$("gan"); if(!f) return;
+  function upd(){
+    var F=Math.max(1,+f.value||1), G=Math.max(0,+g.value||0);
+    var pct=G/F*100, alvo=F*0.3;
+    $("r-pct").textContent=pct.toFixed(1).replace(".",",")+"%";
+    $("r-mes").textContent=BRL(G/12);
+    $("r-alvo").textContent=BRL(alvo);
+    $("r-pct").style.color = pct>=30?"var(--good)":pct>=10?"var(--warn)":"var(--bad)";
+    var v;
+    if(pct>=30) v="<b>Passa no teste.</b> Nessa proporção o parceiro tem motivo real para colocar time e cobrar resultado. Aqui faz sentido montar como canal de venda.";
+    else if(pct>=10) v="Zona cinzenta. Ele vai dar atenção no começo e provavelmente esfriar. Vale montar como <b>endosso</b>, com meta de apresentações e não de vendas.";
+    else v="<b>Não passa.</b> "+BRL(G/12)+" por mês não muda o ponteiro de quem fatura "+BRL(F/12)+" por mês. Para virar canal de venda, a parceria precisaria render "+BRL(alvo)+" ao ano para ele. Monte como <b>benefício</b> e cobre uso, não venda.";
+    $("r-verdict").innerHTML=v;
+  }
+  [f,g].forEach(function(e){e.addEventListener("input",upd);}); upd();
+})();
+</script>
+</body>
+</html>
