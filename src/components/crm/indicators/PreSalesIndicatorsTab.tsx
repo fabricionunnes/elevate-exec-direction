@@ -380,8 +380,8 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       const totalQualifications = (dailyActivities || []).reduce((sum, a) => sum + (a.qualifications || 0), 0);
 
       // Call-management metrics remain on scheduled_calls; meeting KPIs are canonical from meeting events
-      const totalCancelled = (calls || []).filter(c => c.status === "cancelled").length;
-      const totalRescheduled = (calls || []).filter(c => c.status === "rescheduled").length;
+      const totalCancelled = (meetingActivities || []).filter((a: any) => a.status === "cancelled" || a.status === "canceled").length;
+      const totalRescheduled = (meetingActivities || []).filter((a: any) => a.status === "rescheduled").length;
 
       // Reunião ÚNICA = mesmo lead + mesmo tipo + mesmo horário (ao minuto).
       // Um mesmo agendamento gera várias linhas de evento (crédito p/ SDR, closer,
@@ -521,7 +521,8 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       // Calculate SDR metrics from canonical meeting events
       const sdrMetricsList: SDRMetrics[] = (sdrStaff || []).map(sdr => {
         const sdrActivities = (dailyActivities || []).filter(a => a.staff_id === sdr.id);
-        const sdrCalls = (calls || []).filter(c => c.scheduled_by === sdr.id);
+        // cancelamento/reagendamento por SDR: agenda do lead atribuído a ele
+        const sdrCalls = attributedMeetingActivities.filter((a: any) => a.attributed_sdr_id === sdr.id);
         // Deduplica as reuniões deste SDR pela mesma chave (lead+tipo+horário),
         // pra ele nunca contar a mesma reunião duas vezes.
         // Atribuição = SDR do lead (attributed_sdr_id), a MESMA régua do card de
@@ -558,7 +559,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         const connections = sdrActivities.reduce((sum, a) => sum + (a.connections || 0), 0);
         const scheduled = sdrActivities.reduce((sum, a) => sum + (a.scheduled || 0), 0);
         const qualified = sdrActivities.reduce((sum, a) => sum + (a.qualifications || 0), 0);
-        const cancelled = sdrCalls.filter(c => c.status === "cancelled").length;
+        const cancelled = sdrCalls.filter((c: any) => c.status === "cancelled" || c.status === "canceled").length;
         const rescheduled = sdrCalls.filter(c => c.status === "rescheduled").length;
         const callsScheduled = sdrEventsScheduled;
         const noShow = sdrEventsNoShow;
@@ -599,24 +600,47 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       }
       setDailyMeetingsData(dailyMeetings);
 
-      // Calculate no show evolution
+      // Evolução do No Show e Agendadas x Realizadas saem dos EVENTOS de reunião
+      // (mesma fonte dos números de cima). Antes liam crm_scheduled_calls, que
+      // não é mais alimentada — por isso os dois gráficos viviam zerados.
+      const eventDay = (e: { event_date?: string | null }) =>
+        e.event_date ? differenceInDays(new Date(e.event_date), periodStart) + 1 : -1;
+      const eventsByDay = new Map<number, { scheduled: number; realized: number; noShow: number }>();
+      uniqueByLead.forEach((e: any) => {
+        const d = eventDay(e);
+        if (d < 1 || d > totalDaysInPeriod) return;
+        if (!eventsByDay.has(d)) eventsByDay.set(d, { scheduled: 0, realized: 0, noShow: 0 });
+        const slot = eventsByDay.get(d)!;
+        if (e.event_type === "scheduled") slot.scheduled++;
+        else if (e.event_type === "realized") slot.realized++;
+        else if (e.event_type === "no_show") slot.noShow++;
+      });
+
+      // cancelamento/reagendamento vêm da agenda (crm_activities do tipo reunião)
+      const activityDay = (a: { scheduled_at?: string | null }) =>
+        a.scheduled_at ? differenceInDays(new Date(a.scheduled_at), periodStart) + 1 : -1;
+      const cancelByDay = new Map<number, number>();
+      const reschedByDay = new Map<number, number>();
+      (meetingActivities || []).forEach((a: any) => {
+        const d = activityDay(a);
+        if (d < 1 || d > totalDaysInPeriod) return;
+        if (a.status === "cancelled" || a.status === "canceled") cancelByDay.set(d, (cancelByDay.get(d) || 0) + 1);
+        if (a.status === "rescheduled") reschedByDay.set(d, (reschedByDay.get(d) || 0) + 1);
+      });
+
       const noShowEvolution: { day: number; noShow: number; avg: number }[] = [];
       let cumulativeNoShow = 0;
       let cumulativeTotal = 0;
       for (let day = 1; day <= totalDaysInPeriod; day++) {
-        const dayCalls = (calls || []).filter(c => {
-          const callDate = new Date(c.scheduled_at);
-          const dayOfPeriod = differenceInDays(callDate, periodStart) + 1;
-          return dayOfPeriod === day;
-        });
-        const dayNoShow = dayCalls.filter(c => c.status === "no_show").length;
-        cumulativeNoShow += dayNoShow;
-        cumulativeTotal += dayCalls.length;
-        const avgNoShow = cumulativeTotal > 0 ? (cumulativeNoShow / cumulativeTotal) * 100 : 0;
+        const slot = eventsByDay.get(day) || { scheduled: 0, realized: 0, noShow: 0 };
+        // base do dia = reuniões que tiveram desfecho (realizada ou no-show)
+        const dayTotal = slot.realized + slot.noShow;
+        cumulativeNoShow += slot.noShow;
+        cumulativeTotal += dayTotal;
         noShowEvolution.push({
           day,
-          noShow: dayCalls.length > 0 ? (dayNoShow / dayCalls.length) * 100 : 0,
-          avg: avgNoShow,
+          noShow: dayTotal > 0 ? (slot.noShow / dayTotal) * 100 : 0,
+          avg: cumulativeTotal > 0 ? (cumulativeNoShow / cumulativeTotal) * 100 : 0,
         });
       }
       setNoShowData(noShowEvolution);
@@ -624,17 +648,13 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       // Calculate calls vs completed by day
       const callsComparison: { day: number; agendamentos: number; reunioes: number; cancelamentos: number; reagendamentos: number }[] = [];
       for (let day = 1; day <= totalDaysInPeriod; day++) {
-        const dayCalls = (calls || []).filter(c => {
-          const callDate = new Date(c.scheduled_at);
-          const dayOfPeriod = differenceInDays(callDate, periodStart) + 1;
-          return dayOfPeriod === day;
-        });
+        const slot = eventsByDay.get(day) || { scheduled: 0, realized: 0, noShow: 0 };
         callsComparison.push({
           day,
-          agendamentos: dayCalls.length,
-          reunioes: dayCalls.filter(c => c.status === "completed").length,
-          cancelamentos: dayCalls.filter(c => c.status === "cancelled").length,
-          reagendamentos: dayCalls.filter(c => c.status === "rescheduled").length,
+          agendamentos: slot.scheduled,
+          reunioes: slot.realized,
+          cancelamentos: cancelByDay.get(day) || 0,
+          reagendamentos: reschedByDay.get(day) || 0,
         });
       }
       setCallsVsCompletedData(callsComparison);
