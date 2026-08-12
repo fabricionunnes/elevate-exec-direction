@@ -628,10 +628,9 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
   /* arquétipo */
   (function(){
     var a1=$("a1"),a2=$("a2"); if(!a1) return;
-    function cap(s){s=s.trim();return s?s.charAt(0).toUpperCase()+s.slice(1):"";}
     function upd(){
-      var w1=a1.value.trim(), w2=a2.value.trim();
-      var full = (w1||w2) ? ("O "+cap(w1)+(w2?" "+w2.toLowerCase():"")).trim() : "—";
+      var w1=a1.value.trim().toLowerCase(), w2=a2.value.trim().toLowerCase();
+      var full = (w1||w2) ? ("O "+w1+(w2?" "+w2:"")).trim() : "—";
       $("a-out").textContent = full;
       var words=(w1+" "+w2).trim().split(/\s+/).filter(Boolean).length;
       var tests=[
