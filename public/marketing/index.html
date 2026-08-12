@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marketing complexo — como estruturar o marketing de uma empresa | UNV</title>
+<meta name="description" content="Para quem você vende, por qual canal e em que etapa da jornada. Os quatro critérios de priorização, os três pilares do marketing complexo e o mapa de canais.">
+<link rel="icon" href="/favicon.ico">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Marketing complexo — como estruturar o marketing de uma empresa">
+<meta property="og:description" content="Todo mundo pode te comprar. Você não vende para todo mundo. Um guia da UNV Holdings.">
+<meta property="og:url" content="https://unvholdings.com.br/marketing/">
+<meta property="og:image" content="https://unvholdings.com.br/images/unv-logo.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+:root{
+  --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#EDEFF3; --surface-3:#E2E6EC;
+  --ink:#0A1F45; --ink-2:#33415C; --muted:#5F6B80; --faint:#8B94A5;
+  --rule:#DCE1E9; --rule-2:#C3CBD7;
+  --navy:#0D2B5E; --red:#CC1B1B;
+  --good:#0F6B52; --good-bg:#E6F2EE;
+  --warn:#8A5B04; --warn-bg:#F7EEDC;
+  --bad:#B02318; --bad-bg:#FAEAE8;
+  --f1:#7A80DC; --f2:#3E5BA9; --f3:#0D2B5E;
+  --f1-bg:#EDEEFB; --f2-bg:#E4EAF6; --f3-bg:#DCE3F0;
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --prose:min(100%,62ch);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
+    --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+    --rule:#1E3557; --rule-2:#2C4770;
+    --navy:#7BA4E8; --red:#FF6B62;
+    --good:#43BF9C; --good-bg:#0F2D28;
+    --warn:#D9A03C; --warn-bg:#2E2716;
+    --bad:#FF7A6E; --bad-bg:#33191A;
+    --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
+    --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
+  --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+  --rule:#1E3557; --rule-2:#2C4770;
+  --navy:#7BA4E8; --red:#FF6B62;
+  --good:#43BF9C; --good-bg:#0F2D28;
+  --warn:#D9A03C; --warn-bg:#2E2716;
+  --bad:#FF7A6E; --bad-bg:#33191A;
+  --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
+  --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui);font-size:16.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin:0 auto;padding:0 26px 0}
+.prose{width:var(--prose)}
+p{margin:0 0 1em}
+strong{font-weight:680;color:var(--ink)}
+a{color:var(--red)}
+:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+
+.topbar{border-bottom:1px solid var(--rule);position:sticky;top:0;background:var(--ground);z-index:10}
+.topbar .in{max-width:1200px;margin:0 auto;padding:12px 26px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.topbar img{height:38px;width:auto;display:block}
+.topbar .cta{font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#fff;background:var(--red);padding:10px 17px;border-radius:2px;text-decoration:none;font-weight:700;white-space:nowrap}
+
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.eyebrow .tc{color:var(--red);font-weight:600}
+.eyebrow .bar{width:26px;height:1px;background:var(--rule-2);flex:none}
+
+.hero{padding:70px 0 50px}
+.hero h1{font-size:clamp(38px,7vw,80px);line-height:.98;letter-spacing:-.042em;font-weight:820;margin:24px 0 0;text-wrap:balance;max-width:15ch}
+.hero .sub{font-size:clamp(17px,2vw,20px);line-height:1.5;color:var(--ink-2);max-width:60ch;margin:26px 0 0}
+
+.idx{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:42px 0 0}
+.idx a{background:var(--surface);padding:16px 18px;text-decoration:none;display:block}
+.idx a:hover{background:var(--surface-2)}
+.idx .n{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--red);display:block}
+.idx .t{font-size:14.5px;font-weight:640;color:var(--ink);margin-top:5px;display:block;line-height:1.3;letter-spacing:-.01em}
+
+.sec{padding:68px 0;border-top:1px solid var(--rule);scroll-margin-top:70px}
+h2{font-size:clamp(27px,4.2vw,45px);line-height:1.04;letter-spacing:-.032em;font-weight:800;margin:18px 0 24px;text-wrap:balance;max-width:19ch}
+h3{font-size:19px;font-weight:720;letter-spacing:-.012em;margin:40px 0 12px}
+h4{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 14px}
+
+.max{padding:0 0 0 24px;margin:0 0 30px;width:var(--prose);border-left:3px solid var(--red)}
+.max p{font-size:clamp(20px,2.5vw,26px);line-height:1.28;font-weight:700;letter-spacing:-.026em;margin:0 0 .4em;color:var(--ink)}
+.max p:last-child{margin-bottom:0}
+
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:24px 26px;margin:26px 0}
+.panel.nv{border-left:3px solid var(--navy)}
+.panel.rd{border-left:3px solid var(--red)}
+.panel>:last-child{margin-bottom:0}
+
+.tw{overflow-x:auto;margin:24px 0;border:1px solid var(--rule);border-radius:2px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:540px}
+th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+thead th{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface-2);white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.hl td{background:var(--good-bg)}
+
+.crit{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:26px 0}
+.cr{background:var(--surface);padding:22px}
+.cr .t{font-size:20px;font-weight:800;letter-spacing:-.025em;color:var(--red)}
+.cr .d{font-size:14px;color:var(--ink-2);line-height:1.5;margin-top:10px}
+.cr .q{font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:12px;padding-top:12px;border-top:1px solid var(--rule)}
+
+.pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:26px 0}
+.pl{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:22px;position:relative}
+.pl .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+.pl .t{font-size:21px;font-weight:780;letter-spacing:-.025em;margin:8px 0 10px}
+.pl .d{font-size:14px;color:var(--ink-2);line-height:1.5}
+.pl .m{margin-top:14px;padding-top:12px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.6}
+.pl.a{border-top:3px solid var(--f1)} .pl.b{border-top:3px solid var(--f2)} .pl.c{border-top:3px solid var(--f3)}
+
+.funnel{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:26px 0}
+.fl{background:var(--surface);padding:20px 22px;display:grid;grid-template-columns:130px 1fr;gap:20px;align-items:start}
+.fl .lb{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:700}
+.fl.t1 .lb{color:var(--f1)} .fl.t2 .lb{color:var(--f2)} .fl.t3 .lb{color:var(--f3)}
+.fl .lb small{display:block;font-size:10px;letter-spacing:.1em;color:var(--muted);font-weight:600;margin-top:5px}
+.fl dl{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.fl dt{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.fl dd{margin:4px 0 0;font-size:14px;line-height:1.4;color:var(--ink-2)}
+@media(max-width:640px){.fl{grid-template-columns:1fr;gap:12px}}
+
+.calc{background:var(--surface-2);border:1px solid var(--rule-2);border-radius:2px;padding:26px;margin:32px 0}
+.calc h4{color:var(--ink)}
+.calc .hint{font-size:14px;color:var(--muted);margin:0 0 20px;line-height:1.5;max-width:64ch}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px 24px;margin-bottom:22px}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.field input{font-family:var(--mono);font-size:16px;font-variant-numeric:tabular-nums;padding:10px 11px;border:1px solid var(--rule-2);border-radius:2px;background:var(--surface);color:var(--ink);width:100%}
+.field input[type=range]{padding:0;accent-color:var(--red);border:none;background:none}
+.rv{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--red)}
+.out{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:20px;padding-top:20px;border-top:1px solid var(--rule-2)}
+.o .ov{font-size:clamp(23px,3vw,31px);font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;display:block}
+.o .ol{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:7px;display:block}
+.verdict{margin-top:20px;padding:14px 16px;background:var(--surface);border:1px solid var(--rule);border-radius:2px;font-size:15px;line-height:1.55;color:var(--ink-2)}
+.verdict b{color:var(--red)}
+
+.scorer{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:20px 0}
+.srow{background:var(--surface);padding:14px 18px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+.srow .nm{font-size:15px;font-weight:640}
+.srow .ctrls{display:flex;gap:6px}
+.srow button{font-family:var(--mono);font-size:11.5px;padding:7px 11px;border:1px solid var(--rule-2);background:var(--surface);color:var(--muted);border-radius:2px;cursor:pointer;letter-spacing:.05em}
+.srow button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+:root[data-theme="dark"] .srow button[aria-pressed="true"],
+:root:not([data-theme="light"]) .srow button[aria-pressed="true"]{color:#08152B}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .srow button[aria-pressed="true"]{color:#fff}}
+
+.acts{list-style:none;padding:0;margin:24px 0 0;width:var(--prose)}
+.acts li{position:relative;padding:14px 0 14px 34px;border-top:1px solid var(--rule);font-size:15.5px;line-height:1.5;color:var(--ink-2)}
+.acts li:last-child{border-bottom:1px solid var(--rule)}
+.acts li::before{content:"→";position:absolute;left:0;top:14px;font-family:var(--mono);color:var(--red);font-size:14px}
+.acts li b{color:var(--ink)}
+
+.pull{border-top:3px solid var(--navy);border-bottom:3px solid var(--navy);padding:24px 0;margin:36px 0;width:var(--prose)}
+.pull p{font-size:20px;line-height:1.4;font-weight:640;letter-spacing:-.018em;margin:0;text-wrap:balance}
+.note{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--muted);width:var(--prose)}
+
+.xlinks{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:36px 0 0}
+.xlink{display:block;text-decoration:none;background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--red);border-radius:2px;padding:22px}
+.xlink:hover{background:var(--surface-2)}
+.xlink .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--red)}
+.xlink .t{font-size:19px;font-weight:760;letter-spacing:-.022em;color:var(--ink);margin-top:8px;line-height:1.2}
+.xlink .d{font-size:14px;color:var(--ink-2);margin-top:6px;line-height:1.45}
+
+.final{border-top:1px solid var(--rule);background:var(--surface)}
+.final .in{max-width:1200px;margin:0 auto;padding:70px 26px 74px}
+.final h2{margin-top:0;max-width:17ch}
+.final p{color:var(--ink-2);max-width:56ch;font-size:17.5px}
+.btn{display:inline-block;margin-top:14px;background:var(--red);color:#fff;font-weight:750;font-size:16px;padding:15px 28px;border-radius:2px;text-decoration:none;letter-spacing:-.01em}
+.btn:hover{filter:brightness(1.08)}
+.foot{border-top:1px solid var(--rule);background:var(--ground)}
+.foot .in{max-width:1200px;margin:0 auto;padding:34px 26px 50px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.foot img{height:44px;width:auto;opacity:.85}
+.foot p{font-family:var(--mono);font-size:12px;line-height:1.8;color:var(--muted);margin:0;max-width:60ch}
+.foot b{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:640px){
+  .wrap,.final .in,.foot .in,.topbar .in{padding-left:18px;padding-right:18px}
+  .hero{padding:48px 0 36px}.sec{padding:50px 0}
+  .topbar img{height:30px}.topbar .cta{font-size:11px;padding:8px 12px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="in">
+    <a href="/"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></a>
+    <a class="cta" href="/sessao">Sessão estratégica</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+<header class="hero">
+  <p class="eyebrow"><span>Guia UNV</span><span class="bar"></span><span class="tc">Estrutura de marketing</span></p>
+  <h1>Todo mundo pode te comprar. Você não vende para todo mundo.</h1>
+  <p class="sub">
+    A maioria das empresas com produto amplo trata isso como vantagem. É o contrário: quando serve para todo
+    mundo, você não sabe onde colocar dinheiro, energia e time. Este guia é o método para decidir para quem
+    vender, por qual canal e em que etapa da jornada.
+  </p>
+
+  <nav class="idx" aria-label="Índice">
+    <a href="#b1"><span class="n">01</span><span class="t">Os quatro critérios</span></a>
+    <a href="#b2"><span class="n">02</span><span class="t">Parceiro não é vendedor</span></a>
+    <a href="#b3"><span class="n">03</span><span class="t">O que a marca faz</span></a>
+    <a href="#b4"><span class="n">04</span><span class="t">Marketing complexo</span></a>
+    <a href="#b5"><span class="n">05</span><span class="t">O mapa de canais</span></a>
+    <a href="#b6"><span class="n">06</span><span class="t">Rede de influência</span></a>
+  </nav>
+</header>
+
+<!-- 1 -->
+<section class="sec" id="b1">
+  <p class="eyebrow"><span>01</span><span class="bar"></span><span>Priorização</span></p>
+  <h2>Fácil, rápido, barato, escalável</h2>
+
+  <div class="max">
+    <p>Todo mundo pode te comprar. Você não vende para todo mundo.</p>
+  </div>
+
+  <p class="prose">
+    São duas perguntas diferentes e quase ninguém separa: <strong>para quem eu vendo</strong> e
+    <strong>quem compra de mim</strong>. A primeira decide onde vai o dinheiro, a energia e o time.
+    A segunda acontece sozinha quando a marca está no lugar certo.
+  </p>
+  <p class="prose">
+    Para escolher onde colocar esforço, existem quatro critérios. Passe cada público e cada canal por eles.
+    Onde os quatro se encontram, você achou o foco.
+  </p>
+
+  <div class="crit">
+    <div class="cr">
+      <div class="t">Fácil</div>
+      <div class="d">Decisão rápida, menos objeção, menos esforço de convencimento.</div>
+      <div class="q">Quem já usa algo parecido com o que você vende?</div>
+    </div>
+    <div class="cr">
+      <div class="t">Rápido</div>
+      <div class="d">Ciclo curto entre o primeiro contato e o fechamento. Onde é rápido, normalmente é escalável.</div>
+      <div class="q">Para quem a conta fecha em uma conversa?</div>
+    </div>
+    <div class="cr">
+      <div class="t">Barato</div>
+      <div class="d">Custo de aquisição baixo. É o critério que mais gente ignora e o que mais quebra empresa.</div>
+      <div class="q">Existe um público concentrado, com formador de opinião dentro?</div>
+    </div>
+    <div class="cr">
+      <div class="t">Escalável</div>
+      <div class="d">Cresce sem que o custo cresça na mesma proporção.</div>
+      <div class="q">Para dobrar, eu preciso dobrar time e mídia?</div>
+    </div>
+  </div>
+
+  <div class="panel rd">
+    <h4>A regra que decide se você pode ignorar o "barato"</h4>
+    <p>
+      Quem tem retorno alto e rápido pode priorizar fácil, rápido e escalável, e deixar o custo em segundo
+      plano. O dinheiro do cliente volta antes de a conta apertar.
+    </p>
+    <p style="margin-bottom:0">
+      Quem tem retorno que demora a voltar não tem essa liberdade. Se você paga trezentos para adquirir e
+      ganha mil ao longo do tempo, o negócio é saudável no papel. Mas se o dinheiro leva dez meses para
+      voltar, o problema deixa de ser marketing e vira fôlego de caixa.
+      <strong>Quem tem ciclo longo precisa ser mais inteligente no marketing, não mais agressivo.</strong>
+    </p>
+  </div>
+
+  <div class="calc" data-calc="cac">
+    <h4>Calculadora — quanto de caixa o seu crescimento consome</h4>
+    <p class="hint">O ponto não é se o retorno compensa. É quanto dinheiro fica parado até ele voltar.</p>
+    <div class="fields">
+      <div class="field"><label for="cac">Custo por cliente adquirido (R$)</label><input type="number" id="cac" value="300" min="1" step="50"></div>
+      <div class="field"><label for="tic">Receita mensal por cliente (R$)</label><input type="number" id="tic" value="100" min="1" step="10"></div>
+      <div class="field"><label for="nov">Clientes novos por mês</label><input type="number" id="nov" value="50" min="1"></div>
+    </div>
+    <div class="out">
+      <div class="o"><span class="ov" id="c-pay">—</span><span class="ol">meses para recuperar o investimento</span></div>
+      <div class="o"><span class="ov" id="c-buraco">—</span><span class="ol">caixa preso no pior momento</span></div>
+      <div class="o"><span class="ov" id="c-mes">—</span><span class="ol">investimento por mês</span></div>
+    </div>
+    <div class="verdict" id="c-verdict"></div>
+  </div>
+
+  <h3>Passe os seus públicos pelo filtro</h3>
+  <p class="prose">Marque cada critério que o público atende. O que pontuar mais é onde você começa.</p>
+  <div class="scorer" id="scorer"></div>
+  <div class="verdict" id="s-verdict" style="margin-top:0"></div>
+</section>
+
+<!-- 2 -->
+<section class="sec" id="b2">
+  <p class="eyebrow"><span>02</span><span class="bar"></span><span>Canais alternativos</span></p>
+  <h2>Parceiro não vira seu vendedor. Vira seu endosso.</h2>
+
+  <div class="max">
+    <p>Você não precisa que o parceiro venda por você. Precisa que ele te coloque na frente do cliente dele.</p>
+  </div>
+
+  <p class="prose">
+    Esse é o erro mais comum de programa de canais. A empresa monta comissionamento para o contador, o
+    advogado, o despachante, e espera que ele vire vendedor. Ele não vira. A comissão que ele ganharia é
+    receita marginal perto do que ele já fatura, então ele não muda a rotina por isso.
+  </p>
+  <p class="prose">
+    A troca certa é outra. Ele não quer a sua comissão, ele quer <strong>mais cliente para o negócio dele</strong>.
+    Se você ajuda o parceiro a conseguir cliente, isso vale muito mais para ele do que qualquer percentual
+    sobre o que ele te indicar. E o que fica para você continua sendo maior.
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Como quase todo mundo monta</th><th>Como funciona de verdade</th></tr></thead>
+      <tbody>
+        <tr><td>Parceiro recebe comissão por venda indicada</td><td class="hl">Parceiro recebe apoio de marketing e clientes para o negócio dele</td></tr>
+        <tr><td>Espera que ele prospecte e apresente o produto</td><td class="hl">Espera só que ele te apresente com endosso</td></tr>
+        <tr><td>Métrica: quanto ele vendeu</td><td class="hl">Métrica: quantos leads endossados ele colocou na sua frente</td></tr>
+        <tr><td>Ele trata como renda extra e esquece</td><td class="hl">Ele trata como benefício do próprio negócio e mantém</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel nv">
+    <h4>Onde procurar canal alternativo</h4>
+    <p style="margin-bottom:0">
+      Procure quem já tem a confiança do seu cliente e fala com ele por outro motivo: contador, advogado,
+      associação, cooperativa de crédito, franqueadora, sindicato, administradora de shopping, distribuidora
+      com rede de revenda. E procure grupo concentrado, onde existe formador de opinião dentro. Convencer dez
+      pessoas certas num grupo fechado é mais barato que convencer mil pessoas soltas.
+    </p>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="sec" id="b3">
+  <p class="eyebrow"><span>03</span><span class="bar"></span><span>Marca</span></p>
+  <h2>O que a marca faz é te livrar do esforço de venda</h2>
+
+  <div class="max">
+    <p>Marca é o que faz o cliente te comprar sem você precisar vender.</p>
+  </div>
+
+  <p class="prose">
+    Existe um público que você nunca vai alcançar com ligação, prospecção e mídia paga. Ou está longe demais,
+    ou tem objeção demais, ou o custo de chegar até ele não fecha. Esse público não compra porque você vendeu.
+    Compra porque te conhece, te respeita e te procura.
+  </p>
+  <p class="prose">
+    Isso é trabalho de marca: posicionamento, preço coerente, comissão coerente e canal certo, para que
+    outros te comprem. E é diferente de colocar esforço de venda, que significa time, ligação, prospecção e
+    mídia. <strong>Esforço de venda é caro e para de funcionar no dia em que você para de pagar.</strong>
+  </p>
+
+  <h3>Como a estrutura de marketing evolui</h3>
+  <p class="prose">
+    Praticamente toda empresa passa pelas mesmas camadas, nesta ordem. Saber em qual você está evita tentar
+    resolver o problema da camada errada.
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th class="n">#</th><th>Camada</th><th>O que significa</th></tr></thead>
+      <tbody>
+        <tr><td class="n">1</td><td><strong>Pelos fundadores</strong></td><td>A empresa é a cara do dono. Cresce rápido e trava no tempo dele.</td></tr>
+        <tr><td class="n">2</td><td><strong>Pelo setor</strong></td><td>A empresa se posiciona como referência de uma categoria.</td></tr>
+        <tr><td class="n">3</td><td><strong>Editorial</strong></td><td>A empresa se apropria de temas e usa cada um como porta de entrada.</td></tr>
+        <tr><td class="n">4</td><td><strong>Regional</strong></td><td>Marketing por praça: quais cases, quais segmentos, qual evento, qual mídia daquela região.</td></tr>
+        <tr><td class="n">5</td><td><strong>Setorial</strong></td><td>Marketing por vertical, com time e narrativa próprios por setor.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="prose">
+    Marketing regional é o pulo mais subestimado da lista, porque é o mais fácil de executar.
+    Escolha uma praça e responda: quais cases eu já tenho aqui, quais segmentos são mais fortes aqui,
+    qual evento existe aqui, qual mídia local pesa aqui. Isso já é uma estratégia de marca.
+  </p>
+</section>
+
+<!-- 4 -->
+<section class="sec" id="b4">
+  <p class="eyebrow"><span>04</span><span class="bar"></span><span>Os três pilares</span></p>
+  <h2>Marketing complexo</h2>
+
+  <p class="prose">
+    Marketing hoje não é uma coisa só. São três jogos diferentes, com indicadores diferentes, tocados ao
+    mesmo tempo. Empresa que só joga um deles fica presa: ou compra caro para sempre, ou fica esperando o
+    conteúdo maturar e não paga a conta do mês.
+  </p>
+
+  <div class="pillars">
+    <div class="pl a">
+      <div class="k">Pilar 1</div>
+      <div class="t">Institucional</div>
+      <div class="d">Jogo de autoridade. Não vende sozinho e não é medido em venda. O que ele faz é apoiar a jornada inteira e conectar os outros dois.</div>
+      <div class="m">Indicador: presença, percepção, cobertura</div>
+    </div>
+    <div class="pl b">
+      <div class="k">Pilar 2</div>
+      <div class="t">Audiência</div>
+      <div class="d">Jogo de conteúdo, colaboração, live, workshop, campanha. É onde se vende barato.</div>
+      <div class="m">Custo baixo · jornada longa</div>
+    </div>
+    <div class="pl c">
+      <div class="k">Pilar 3</div>
+      <div class="t">Performance</div>
+      <div class="d">Engenharia de campanha, oferta, chamada e mídia paga. É onde se vende rápido.</div>
+      <div class="m">Custo alto · jornada curta</div>
+    </div>
+  </div>
+
+  <div class="pull">
+    <p>
+      Performance vende rápido e caro. Audiência vende barato e devagar. O institucional é o que segura os
+      dois de pé. Precisa dos três, e a habilidade que separa quem escala é conseguir tocar os dois extremos
+      ao mesmo tempo.
+    </p>
+  </div>
+
+  <div class="panel nv">
+    <h4>Como a educação entra nessa conta</h4>
+    <p style="margin-bottom:0">
+      Um dos jeitos mais eficientes de baixar custo de aquisição é usar educação como marketing: cria-se um
+      evento, busca-se patrocínio para o evento, e o patrocínio subsidia o próprio marketing. Você fica com o
+      público qualificado, o parceiro fica com o acesso a ele, e o custo do canal cai. Vale para evento,
+      workshop, curso e material.
+    </p>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="sec" id="b5">
+  <p class="eyebrow"><span>05</span><span class="bar"></span><span>Execução</span></p>
+  <h2>O mapa de canais</h2>
+
+  <p class="prose">
+    O trabalho mais correto seria desenhar a jornada de cada cliente e decidir o que fazer em cada etapa.
+    É também o mais trabalhoso, e por isso quase ninguém faz. O atalho honesto é o funil, desde que você
+    responda <strong>cinco perguntas em cada camada</strong>, não só escolha o canal.
+  </p>
+
+  <div class="funnel">
+    <div class="fl t1">
+      <div class="lb">Topo<small>público-alvo</small></div>
+      <dl>
+        <dt>Objetivo</dt><dd>Dominar percepção. Ser conhecido e conectar com a audiência.</dd>
+        <dt>Mensagem</dt><dd>Ampla, sem oferta. Fala com quem ainda não sabe que tem o problema.</dd>
+        <dt>Para onde joga</dt><dd>Para o próprio conteúdo. Nunca direto para o vendedor.</dd>
+        <dt>Indicador</dt><dd>Alcance e custo por visualização, não venda.</dd>
+      </dl>
+    </div>
+    <div class="fl t2">
+      <div class="lb">Meio<small>ICP</small></div>
+      <dl>
+        <dt>Objetivo</dt><dd>Frequência. Educar, provar e mudar a perspectiva do cliente.</dd>
+        <dt>Mensagem</dt><dd>Prova social, quebra de objeção, oferta.</dd>
+        <dt>Para onde joga</dt><dd>Para a conversa. Direct, grupo, lista, atendimento.</dd>
+        <dt>Indicador</dt><dd>Conversa iniciada e qualificada.</dd>
+      </dl>
+    </div>
+    <div class="fl t3">
+      <div class="lb">Fundo<small>lead</small></div>
+      <dl>
+        <dt>Objetivo</dt><dd>Conversão.</dd>
+        <dt>Mensagem</dt><dd>Direta, específica, com condição e prazo.</dd>
+        <dt>Para onde joga</dt><dd>Para o canal de maior proximidade: visita, evento pequeno, reunião presencial.</dd>
+        <dt>Indicador</dt><dd>Taxa de fechamento e ciclo de venda.</dd>
+      </dl>
+    </div>
+  </div>
+
+  <p class="prose">
+    Tempo e proximidade são o que faz o fundo de funil converter. Quanto mais perto e mais tempo com o
+    cliente, mais você entende dele e mais chance tem de contornar a objeção. Por isso receber o cliente,
+    visitar a empresa dele ou fazer um encontro pequeno converte melhor que qualquer anúncio.
+  </p>
+
+  <div class="max">
+    <p>Lead morno que você joga num formulário vira lead frio.</p>
+  </div>
+
+  <p class="prose">
+    Esse é o erro mais caro da execução digital. A pessoa comentou, reagiu, respondeu a caixinha — ela já
+    está no meio do funil. Se você a manda para um link preencher um formulário que cai numa fila, você
+    acabou de esfriar um lead que estava quente e devolveu ele para o topo.
+  </p>
+  <p class="prose">
+    O caminho certo é puxar essa pessoa para a conversa ali mesmo, criar empatia e entregar para o vendedor
+    <strong>pegando na mão</strong>. Isso exige gente dedicada ao atendimento das mensagens — e é
+    provavelmente a contratação de maior retorno que existe em marketing digital hoje.
+  </p>
+
+  <div class="panel rd">
+    <h4>Cada formato tem uma camada, e isso não é opinião</h4>
+    <p style="margin-bottom:0">
+      Vídeo curto é entregue para quem não te segue, então é topo. Foto e carrossel são entregues mais para
+      quem já te segue, então é meio. Stories só alcança quem já te acompanha e é o público mais engajado
+      que você tem, então é meio de funil puro. Consequência prática: <strong>não coloque conteúdo viral no
+      stories.</strong> Coloque profundidade e consistência, porque quem está ali já passou da fase de
+      descobrir que você existe.
+    </p>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="sec" id="b6">
+  <p class="eyebrow"><span>06</span><span class="bar"></span><span>Rede de influência</span></p>
+  <h2>Faça marca para quem influencia o seu cliente</h2>
+
+  <div class="max">
+    <p>Marca não é só para quem compra. É para quem valida.</p>
+  </div>
+
+  <p class="prose">
+    Você não faz marca só para o seu cliente. Faz também para quem influencia ele, para quem leva informação
+    até ele e para quem quebra a objeção dele. Se a pessoa em quem ele confia valida o seu produto, o seu
+    ciclo de venda encurta sem você gastar mais nada.
+  </p>
+  <p class="prose">
+    Isso muda quem você considera público. O contador do seu cliente, o consultor dele, o fornecedor dele, o
+    amigo empresário que ele consulta antes de decidir — todos entram no mapa. Nenhum deles vai comprar de
+    você, e todos podem fazer a venda acontecer.
+  </p>
+
+  <div class="pull">
+    <p>
+      Marketing não é sair vendendo. É construir consciência no seu público e dominar a frequência com que
+      você fala com ele. Quem domina o próprio canal de comunicação não precisa pagar toda vez que quer
+      falar com o cliente. Com o preço da mídia subindo todo ano, é isso que decide quem vence no longo prazo.
+    </p>
+  </div>
+
+  <h3>Por onde começar</h3>
+  <ol class="acts">
+    <li>Liste os seus públicos e passe cada um pelos <b>quatro critérios</b>. Escolha um para focar neste trimestre.</li>
+    <li>Escolha <b>uma praça</b> e monte o marketing regional dela: cases locais, segmento forte, evento, mídia.</li>
+    <li>Monte o <b>mapa de canais</b>: para cada camada do funil, defina canal, mensagem, destino e indicador.</li>
+    <li>Corte todo <b>link que joga lead morno em formulário</b>. Troque por conversa com gente do outro lado.</li>
+    <li>Escolha <b>três parceiros de endosso</b> e ofereça apoio ao negócio deles, não comissão.</li>
+    <li>Defina o que é <b>institucional, audiência e performance</b> no seu orçamento. Se um dos três está zerado, ali está o gargalo.</li>
+  </ol>
+
+  <div class="xlinks">
+    <a class="xlink" href="/advisor/">
+      <span class="k">Guia UNV</span>
+      <span class="t">Como escalar uma empresa de serviços</span>
+      <span class="d">Arquitetura financeira, preço por resultado, expansão de receita e cadência.</span>
+    </a>
+    <a class="xlink" href="/posicionamento/">
+      <span class="k">Guia UNV</span>
+      <span class="t">Posicionamento é uma decisão</span>
+      <span class="d">Arquétipo, formatos, grade de conteúdo e a hierarquia de métricas que prevê venda.</span>
+    </a>
+  </div>
+</section>
+
+</div>
+
+<div class="final">
+  <div class="in">
+    <h2>Marketing enche o funil. Processo comercial fecha.</h2>
+    <p>
+      Não adianta acertar canal e mensagem se do outro lado não tem time treinado, meta clara e alguém
+      cobrando número toda semana. É isso que a UNV faz: assumimos a direção comercial da sua empresa,
+      estruturamos o time e colocamos a operação para bater meta todo mês.
+    </p>
+    <a class="btn" href="/sessao">Agendar uma sessão estratégica</a>
+  </div>
+</div>
+
+<div class="foot">
+  <div class="in">
+    <img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas">
+    <p>
+      <b>UNV Holdings</b> · Direção comercial terceirizada para pequenas e médias empresas.<br>
+      Guia produzido pelo time da UNV a partir da nossa prática com times comerciais de PME.
+      <a href="/">unvholdings.com.br</a>
+    </p>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $=function(i){return document.getElementById(i);};
+  var BRL=function(n){return "R$ "+Math.round(n).toLocaleString("pt-BR");};
+
+  /* payback / caixa */
+  (function(){
+    var cac=$("cac"),tic=$("tic"),nov=$("nov"); if(!cac) return;
+    function upd(){
+      var c=Math.max(1,+cac.value||1), t=Math.max(1,+tic.value||1), n=Math.max(1,+nov.value||1);
+      var meses=c/t;
+      var invMes=c*n;
+      // caixa preso no pico: soma do investimento ainda nao recuperado durante o payback
+      var preso=invMes*meses - (invMes*(meses-1)/2);
+      $("c-pay").textContent=meses.toFixed(1).replace(".",",");
+      $("c-buraco").textContent=BRL(preso);
+      $("c-mes").textContent=BRL(invMes);
+      $("c-pay").style.color = meses>=8?"var(--bad)":meses>=4?"var(--warn)":"var(--good)";
+      var v;
+      if(meses>=8) v="<b>Ciclo longo.</b> Crescer nesse ritmo prende cerca de "+BRL(preso)+" de caixa antes do dinheiro começar a voltar. Aqui o critério barato deixa de ser opcional: sem canal barato, o crescimento vira problema financeiro, não de marketing.";
+      else if(meses>=4) v="Retorno em "+meses.toFixed(1).replace(".",",")+" meses. Dá para crescer, mas o caixa sente. Vale trabalhar canal de endosso e conteúdo em paralelo à mídia paga.";
+      else v="Retorno rápido. Nessa faixa você pode priorizar fácil, rápido e escalável, e tratar o custo como segundo critério.";
+      $("c-verdict").innerHTML=v;
+    }
+    [cac,tic,nov].forEach(function(e){e.addEventListener("input",upd);}); upd();
+  })();
+
+  /* scorer de públicos */
+  (function(){
+    var box=$("scorer"); if(!box) return;
+    var CRIT=["fácil","rápido","barato","escalável"];
+    var rows=[
+      {nm:"Público A — o que você mais atende hoje", s:[]},
+      {nm:"Público B — o que dá o maior ticket", s:[]},
+      {nm:"Público C — o que você ainda não explorou", s:[]}
+    ];
+    function render(){
+      box.innerHTML=rows.map(function(r,i){
+        return '<div class="srow"><span class="nm">'+r.nm+'</span><span class="ctrls">'+
+          CRIT.map(function(c,j){
+            return '<button type="button" data-r="'+i+'" data-c="'+j+'" aria-pressed="'+(r.s.indexOf(j)>=0)+'">'+c+'</button>';
+          }).join("")+'</span></div>';
+      }).join("");
+      box.querySelectorAll("button").forEach(function(b){
+        b.addEventListener("click",function(){
+          var r=+b.dataset.r, c=+b.dataset.c, k=rows[r].s.indexOf(c);
+          if(k>=0) rows[r].s.splice(k,1); else rows[r].s.push(c);
+          render();
+        });
+      });
+      var best=rows.slice().sort(function(a,b){return b.s.length-a.s.length;})[0];
+      var v=$("s-verdict");
+      if(best.s.length===0) v.innerHTML="Marque os critérios que cada público atende.";
+      else if(best.s.length===4) v.innerHTML="<b>"+best.nm.split(" — ")[0]+" atende os quatro critérios.</b> É aí que o foco deveria estar. Público que é fácil, rápido, barato e escalável ao mesmo tempo é raro, e quando aparece o resto vira distração.";
+      else if(best.s.length===3) v.innerHTML="<b>"+best.nm.split(" — ")[0]+" atende três de quatro.</b> Bom candidato. Vale entender qual critério falta: se for o barato e o seu retorno demora a voltar, cuidado com o caixa.";
+      else v.innerHTML="Nenhum público seu passa em mais de dois critérios. Isso costuma significar que o recorte ainda está largo demais. Tente quebrar por segmento, por região ou por porte até achar um grupo concentrado.";
+    }
+    render();
+  })();
+})();
+</script>
+</body>
+</html>

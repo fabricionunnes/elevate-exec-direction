@@ -13,28 +13,59 @@
 <meta name="twitter:card" content="summary_large_image">
 <style>
 :root{
-  --ground:#0F0F13; --surface:#1A1A1F; --surface-2:#22222A;
-  --ink:#EFEDEA; --ink-2:#C6C3CC; --muted:#948F9C; --faint:#6E6A77;
-  --rule:#2C2C36; --rule-2:#3C3B47;
-  --brass:#D9A441; --brass-dim:#8A6A2E;
-  --unv:#E24A44;
-  --in:#4FBF9A; --in-bg:#132622;
-  --out:#E2574C; --out-bg:#2A1918;
+  --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#EDEFF3; --surface-3:#E2E6EC;
+  --ink:#0A1F45; --ink-2:#33415C; --muted:#5F6B80; --faint:#8B94A5;
+  --rule:#DCE1E9; --rule-2:#C3CBD7;
+  --navy:#0D2B5E; --red:#CC1B1B; --unv:#CC1B1B;
+  --brass:#CC1B1B; --brass-dim:#0D2B5E;
+  --ok:#0F6B52; --ok-bg:#E6F2EE; --in:#0F6B52; --in-bg:#E6F2EE; --good:#0F6B52; --good-bg:#E6F2EE;
+  --signal:#B02318; --signal-bg:#FAEAE8; --out:#B02318; --out-bg:#FAEAE8; --bad:#B02318; --bad-bg:#FAEAE8;
+  --warn:#8A5B04; --warn-bg:#F7EEDC;
+  --f1:#7A80DC; --f2:#3E5BA9; --f3:#0D2B5E;
+  --f1-bg:#EDEEFB; --f2-bg:#E4EAF6; --f3-bg:#DCE3F0;
   --ui:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
   --prose:min(100%,62ch);
 }
-@media (prefers-color-scheme:light){
-  :root:not([data-theme="dark"]){
-    --ground:#F4F3F0; --surface:#FAFAF8; --surface-2:#EDEBE7;
-    --ink:#16161A; --ink-2:#3A3A44; --muted:#63626C; --faint:#8C8A94;
-    --rule:#DBD8D2; --rule-2:#C6C2B9;
-    --brass:#8A6A12; --brass-dim:#B49A5C;
-    --unv:#CC1B1B;
-    --in:#0F6B52; --in-bg:#E6F2EE;
-    --out:#C0392B; --out-bg:#FBECEA;
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
+    --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+    --rule:#1E3557; --rule-2:#2C4770;
+    --navy:#7BA4E8; --red:#FF6B62; --unv:#FF6B62;
+    --brass:#FF6B62; --brass-dim:#7BA4E8;
+    --ok:#43BF9C; --ok-bg:#0F2D28; --in:#43BF9C; --in-bg:#0F2D28; --good:#43BF9C; --good-bg:#0F2D28;
+    --signal:#FF7A6E; --signal-bg:#33191A; --out:#FF7A6E; --out-bg:#33191A; --bad:#FF7A6E; --bad-bg:#33191A;
+    --warn:#D9A03C; --warn-bg:#2E2716;
+    --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
+    --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
   }
 }
+:root[data-theme="dark"]{
+  --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
+  --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+  --rule:#1E3557; --rule-2:#2C4770;
+  --navy:#7BA4E8; --red:#FF6B62; --unv:#FF6B62;
+  --brass:#FF6B62; --brass-dim:#7BA4E8;
+  --ok:#43BF9C; --ok-bg:#0F2D28; --in:#43BF9C; --in-bg:#0F2D28; --good:#43BF9C; --good-bg:#0F2D28;
+  --signal:#FF7A6E; --signal-bg:#33191A; --out:#FF7A6E; --out-bg:#33191A; --bad:#FF7A6E; --bad-bg:#33191A;
+  --warn:#D9A03C; --warn-bg:#2E2716;
+  --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
+  --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
+}
+
+.max{padding:0 0 0 24px;margin:0 0 30px;width:var(--prose);border-left:3px solid var(--red)}
+.max p{font-size:clamp(20px,2.5vw,26px);line-height:1.28;font-weight:700;letter-spacing:-.026em;margin:0 0 .4em;color:var(--ink)}
+.max p:last-child{margin-bottom:0}
+.topbar img{height:38px;width:auto;display:block}
+.topbar .cta{color:#fff !important;background:var(--red) !important}
+.btn{background:var(--red) !important;color:#fff !important}
+.foot .in{display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.foot img{height:44px;width:auto;opacity:.85}
+.foot p{max-width:60ch;margin:0}
+.xlinks{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:36px 0 0}
+@media (max-width:640px){.topbar img{height:30px}}
+
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui);font-size:16.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
@@ -162,7 +193,7 @@ tr.hl td{background:var(--in-bg)}
 
 <div class="topbar">
   <div class="in">
-    <a class="wordmark" href="/">UN<i>V</i></a>
+    <a href="/"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></a>
     <a class="cta" href="/sessao">Sessão estratégica</a>
   </div>
 </div>
@@ -177,12 +208,6 @@ tr.hl td{background:var(--in-bg)}
     Mesmo assim, a maior parte das empresas de serviço vive apertada, com o dono dentro da entrega
     e o crescimento financiado pelo dinheiro mais caro do mercado. Este guia é o método para sair disso —
     arquitetura financeira, preço por resultado, expansão de receita e cadência.
-  </p>
-  <p class="credit">
-    <b>SOBRE A FONTE:</b> este material é a nossa sistematização do quadro Advisor de
-    <b>Alfredo Soares</b> (G4 Educação), no episódio sobre como escalar uma empresa de serviços.
-    Recomendamos assistir ao original — o que está aqui é o método organizado para execução,
-    não um substituto do episódio.
   </p>
 
   <nav class="idx" aria-label="Índice">
@@ -200,10 +225,9 @@ tr.hl td{background:var(--in-bg)}
   <p class="eyebrow"><span>01</span><span class="bar"></span><span>Dinheiro</span></p>
   <h2>O sócio de 50% que não trabalha</h2>
 
-  <blockquote class="q">
-    <p>"Não faz sentido você ter um negócio de serviço em que você recebe antes de trabalhar — ou seja, você tem o dinheiro antes de ter o custo — e mesmo assim antecipa."</p>
-    <div class="who">Alfredo Soares</div>
-  </blockquote>
+  <div class="max">
+    <p>Serviço é o único negócio que recebe antes de trabalhar. Antecipar joga essa vantagem fora e ainda cobra por isso.</p>
+  </div>
 
   <p class="prose">
     Antecipar recebível custa em torno de 10%. Se a sua margem líquida está em 25%, você acabou de dar
@@ -250,10 +274,9 @@ tr.hl td{background:var(--in-bg)}
   <p class="eyebrow"><span>02</span><span class="bar"></span><span>Dinheiro</span></p>
   <h2>Toque pelo que entra, não pelo que fatura</h2>
 
-  <blockquote class="q">
-    <p>"Não é sobre o quanto eu faturo, é sobre o quanto entra de dinheiro. Essa é a dinâmica."</p>
-    <div class="who">Alfredo Soares</div>
-  </blockquote>
+  <div class="max">
+    <p>Faturamento não paga conta. Caixa paga.</p>
+  </div>
 
   <p class="prose">
     O teste é simples e quase ninguém faz: coloque lado a lado, mês a mês pelos próximos doze,
@@ -281,10 +304,9 @@ tr.hl td{background:var(--in-bg)}
   <p class="eyebrow"><span>03</span><span class="bar"></span><span>Dinheiro</span></p>
   <h2>Orçamento de cabeça para baixo</h2>
 
-  <blockquote class="q">
-    <p>"Você define a tua margem e cria o orçamento. Você não fatura para ver o quanto sobra — você define quanto você quer."</p>
-    <div class="who">Alfredo Soares</div>
-  </blockquote>
+  <div class="max">
+    <p>Lucro não é o que sobra. É o que sai da conta antes de tudo.</p>
+  </div>
 
   <p class="prose">
     A analogia é de salário. O organizado recebe dez mil, separa dois mil de investimento e vive com oito.
@@ -320,10 +342,9 @@ tr.hl td{background:var(--in-bg)}
   <p class="eyebrow"><span>04</span><span class="bar"></span><span>O buraco</span></p>
   <h2>Ego e bolso: o que você não botou na conta</h2>
 
-  <blockquote class="q">
-    <p>"Ele não botou na conta o cancelamento, a redução de contrato, a inadimplência. Quando vê, perdeu o negócio pro dinheiro. Um negócio que você tocou pelo ego e não pelo bolso."</p>
-    <div class="who">Alfredo Soares</div>
-  </blockquote>
+  <div class="max">
+    <p>Cancelamento, redução e inadimplência não são imprevisto. São linha do orçamento.</p>
+  </div>
 
   <p class="prose">
     O erro clássico: projetar receita bruta e comprometer gasto em cima dela. Vende oitenta milhões no ano,
@@ -366,10 +387,9 @@ tr.hl td{background:var(--in-bg)}
   <p class="eyebrow"><span>05</span><span class="bar"></span><span>Preço</span></p>
   <h2>Suporte, serviço e gestão são três preços diferentes</h2>
 
-  <blockquote class="q">
-    <p>"Suporte, eu te ajudo. Serviço, eu faço para você. Gestão, eu cuido para você de quem faz."</p>
-    <div class="who">Alfredo Soares</div>
-  </blockquote>
+  <div class="max">
+    <p>Suporte é ajudar. Serviço é fazer. Gestão é responder pelo resultado. Três coisas, três preços.</p>
+  </div>
 
   <p class="prose">
     Três camadas, três preços, três níveis de responsabilidade. E o erro mais comum em serviço é
@@ -405,11 +425,10 @@ tr.hl td{background:var(--in-bg)}
   <p class="eyebrow"><span>06</span><span class="bar"></span><span>A maior alavanca</span></p>
   <h2>Cobrar pelo resultado, não pela mão de obra</h2>
 
-  <blockquote class="q">
-    <p>"O segredo não é ser caro, é ter o preço certo. O preço certo é um preço com a margem que você decidiu, não o preço que o cliente paga para você ver quanto sobra."</p>
-    <p>"O mesmo cliente pode te pagar cem — só que ele vai pagar cem feliz, porque está pagando em cima do resultado."</p>
-    <div class="who">Alfredo Soares</div>
-  </blockquote>
+  <div class="max">
+    <p>Não é sobre ser caro. É sobre ter o preço certo.</p>
+    <p>Preço certo nasce da margem que você decidiu, não do que sobrou no fim do mês.</p>
+  </div>
 
   <p class="prose">
     O método tem três passos. Liste as <strong>métricas de resultado</strong> que o seu trabalho move.
@@ -464,10 +483,9 @@ tr.hl td{background:var(--in-bg)}
   <p class="eyebrow"><span>07</span><span class="bar"></span><span>Expansão de receita</span></p>
   <h2>As quatro avenidas em cima da sua base</h2>
 
-  <blockquote class="q">
-    <p>"O que faz sentido você fazer e vender? O que faz sentido indicar e ganhar? E o que faz sentido só indicar?"</p>
-    <div class="who">Alfredo Soares</div>
-  </blockquote>
+  <div class="max">
+    <p>Do que o seu cliente precisa: o que você faz, o que você terceiriza, o que você indica e ganha, e o que você indica só para gerar valor.</p>
+  </div>
 
   <p class="prose">
     Todo cliente seu precisa de uma pilha de coisas que você não vende. Essa base é um ativo que você pagou
@@ -515,10 +533,9 @@ tr.hl td{background:var(--in-bg)}
   <p class="eyebrow"><span>08</span><span class="bar"></span><span>Produto</span></p>
   <h2>Educação é canal de aquisição, não produto separado</h2>
 
-  <blockquote class="q">
-    <p>"Não vai vender imersão separado. Quanto cobraria a tua imersão? Então o teu produto agora vale isso a mais — e tu acabou de melhorar a entrega do teu serviço."</p>
-    <div class="who">Alfredo Soares</div>
-  </blockquote>
+  <div class="max">
+    <p>Educação separada vira mais um produto para vender. Educação embutida vira ticket maior e cliente que chega pronto.</p>
+  </div>
 
   <p class="prose">
     Esse movimento resolve três problemas de uma vez: <strong>sobe o ticket</strong>, porque o comprador
@@ -578,10 +595,9 @@ tr.hl td{background:var(--in-bg)}
   <p class="eyebrow"><span>10</span><span class="bar"></span><span>Produto</span></p>
   <h2>O produto que você vende mas não anuncia</h2>
 
-  <blockquote class="q">
-    <p>"Nem todo produto que você tem precisa estar anunciado. Tem produto que você pode ter e você escolhe para quem vender."</p>
-    <div class="who">Alfredo Soares</div>
-  </blockquote>
+  <div class="max">
+    <p>Nem todo produto precisa estar no site. Tem produto que você escolhe para quem oferecer.</p>
+  </div>
 
   <p class="prose">
     Um produto de alto valor não precisa estar no site. Você olha a base, aplica um critério de
@@ -599,10 +615,9 @@ tr.hl td{background:var(--in-bg)}
   <p class="eyebrow"><span>11</span><span class="bar"></span><span>O dono</span></p>
   <h2>As quatro caixinhas do fundador</h2>
 
-  <blockquote class="q">
-    <p>"Na camada de serviço, quanto menos for você e mais for a sua empresa, mais chance de você ter sucesso no longo prazo."</p>
-    <div class="who">Alfredo Soares</div>
-  </blockquote>
+  <div class="max">
+    <p>Quanto menos a entrega depender de você, mais a empresa vale.</p>
+  </div>
 
   <p class="prose">
     O tempo do dono se divide em quatro caixas. O trabalho não é zerar nenhuma — é saber quanto tem em cada
@@ -657,10 +672,9 @@ tr.hl td{background:var(--in-bg)}
   <p class="eyebrow"><span>13</span><span class="bar"></span><span>Cadência</span></p>
   <h2>O executor afobado atropela a própria oportunidade</h2>
 
-  <blockquote class="q">
-    <p>"Se você ficar soltando todas as cartas de uma vez, é capaz de tomar um truco no final com uma carta baixa."</p>
-    <div class="who">Alfredo Soares</div>
-  </blockquote>
+  <div class="max">
+    <p>Quem solta todas as cartas de uma vez chega no fim da mão sem nada na manga.</p>
+  </div>
 
   <p class="prose">
     Esse é o alerta mais difícil de aceitar para quem executa bem. Ter capacidade de fazer não é razão para
@@ -711,11 +725,10 @@ tr.hl td{background:var(--in-bg)}
     <li>"O executor é afobado e atropela a própria oportunidade."</li>
   </ul>
 
-  <a class="xlink" href="/posicionamento/">
-    <span class="k">Próximo guia</span>
-    <span class="t">Posicionamento é uma decisão, não um resultado</span>
-    <span class="d">O outro lado da mesma conta: arquétipo, formatos, grade de conteúdo, stories e a hierarquia de métricas que prevê venda.</span>
-  </a>
+  <div class="xlinks">
+    <a class="xlink" href="/posicionamento/"><span class="k">Guia UNV</span><span class="t">Posicionamento é uma decisão</span><span class="d">Arquétipo, formatos, grade de conteúdo e a hierarquia de métricas que prevê venda.</span></a>
+    <a class="xlink" href="/marketing/"><span class="k">Guia UNV</span><span class="t">Marketing complexo</span><span class="d">Os quatro critérios de priorização, os três pilares e o mapa de canais.</span></a>
+  </div>
 </section>
 
 </div>
@@ -735,12 +748,10 @@ tr.hl td{background:var(--in-bg)}
 
 <div class="foot">
   <div class="in">
+    <img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas">
     <p>
-      <b>Fonte:</b> quadro Advisor do canal de Alfredo Soares (G4 Educação), episódio sobre como escalar uma
-      empresa de serviços. Este guia é uma sistematização editorial do método, publicada pela UNV Holdings
-      para uso dos nossos clientes e da comunidade empresarial. Os créditos do método e das citações são dos
-      autores originais.<br>
-      <b>UNV Holdings</b> · Direção comercial terceirizada para pequenas e médias empresas ·
+      <b>UNV Holdings</b> · Direção comercial terceirizada para pequenas e médias empresas.<br>
+      Guia produzido pelo time da UNV a partir da nossa prática com times comerciais de PME.
       <a href="/">unvholdings.com.br</a>
     </p>
   </div>

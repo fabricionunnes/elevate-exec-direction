@@ -13,32 +13,59 @@
 <meta name="twitter:card" content="summary_large_image">
 <style>
 :root{
-  --ground:#0F0F13; --surface:#1A1A1F; --surface-2:#22222A;
-  --ink:#EFEDEA; --ink-2:#C6C3CC; --muted:#948F9C; --faint:#6E6A77;
-  --rule:#2C2C36; --rule-2:#3C3B47;
-  --brass:#D9A441; --brass-dim:#8A6A2E;
-  --unv:#E24A44;
-  --signal:#E2574C; --signal-bg:#2A1918;
-  --ok:#4FBF9A; --ok-bg:#132622;
-  --f1:#B4BAF2; --f2:#8286E4; --f3:#5A56CE;
-  --f1-bg:#1F2033; --f2-bg:#1C1D30; --f3-bg:#1A192C;
+  --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#EDEFF3; --surface-3:#E2E6EC;
+  --ink:#0A1F45; --ink-2:#33415C; --muted:#5F6B80; --faint:#8B94A5;
+  --rule:#DCE1E9; --rule-2:#C3CBD7;
+  --navy:#0D2B5E; --red:#CC1B1B; --unv:#CC1B1B;
+  --brass:#CC1B1B; --brass-dim:#0D2B5E;
+  --ok:#0F6B52; --ok-bg:#E6F2EE; --in:#0F6B52; --in-bg:#E6F2EE; --good:#0F6B52; --good-bg:#E6F2EE;
+  --signal:#B02318; --signal-bg:#FAEAE8; --out:#B02318; --out-bg:#FAEAE8; --bad:#B02318; --bad-bg:#FAEAE8;
+  --warn:#8A5B04; --warn-bg:#F7EEDC;
+  --f1:#7A80DC; --f2:#3E5BA9; --f3:#0D2B5E;
+  --f1-bg:#EDEEFB; --f2-bg:#E4EAF6; --f3-bg:#DCE3F0;
   --ui:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
   --prose:min(100%,62ch);
 }
-@media (prefers-color-scheme:light){
-  :root:not([data-theme="dark"]){
-    --ground:#F4F3F0; --surface:#FAFAF8; --surface-2:#EDEBE7;
-    --ink:#16161A; --ink-2:#3A3A44; --muted:#63626C; --faint:#8C8A94;
-    --rule:#DBD8D2; --rule-2:#C6C2B9;
-    --brass:#8A6A12; --brass-dim:#B49A5C;
-    --unv:#CC1B1B;
-    --signal:#C0392B; --signal-bg:#FBECEA;
-    --ok:#0F6B52; --ok-bg:#E6F2EE;
-    --f1:#7A80DC; --f2:#5A5ECC; --f3:#3B3BA2;
-    --f1-bg:#EDEEFB; --f2-bg:#E6E7F8; --f3-bg:#DFDFF3;
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
+    --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+    --rule:#1E3557; --rule-2:#2C4770;
+    --navy:#7BA4E8; --red:#FF6B62; --unv:#FF6B62;
+    --brass:#FF6B62; --brass-dim:#7BA4E8;
+    --ok:#43BF9C; --ok-bg:#0F2D28; --in:#43BF9C; --in-bg:#0F2D28; --good:#43BF9C; --good-bg:#0F2D28;
+    --signal:#FF7A6E; --signal-bg:#33191A; --out:#FF7A6E; --out-bg:#33191A; --bad:#FF7A6E; --bad-bg:#33191A;
+    --warn:#D9A03C; --warn-bg:#2E2716;
+    --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
+    --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
   }
 }
+:root[data-theme="dark"]{
+  --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
+  --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+  --rule:#1E3557; --rule-2:#2C4770;
+  --navy:#7BA4E8; --red:#FF6B62; --unv:#FF6B62;
+  --brass:#FF6B62; --brass-dim:#7BA4E8;
+  --ok:#43BF9C; --ok-bg:#0F2D28; --in:#43BF9C; --in-bg:#0F2D28; --good:#43BF9C; --good-bg:#0F2D28;
+  --signal:#FF7A6E; --signal-bg:#33191A; --out:#FF7A6E; --out-bg:#33191A; --bad:#FF7A6E; --bad-bg:#33191A;
+  --warn:#D9A03C; --warn-bg:#2E2716;
+  --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
+  --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
+}
+
+.max{padding:0 0 0 24px;margin:0 0 30px;width:var(--prose);border-left:3px solid var(--red)}
+.max p{font-size:clamp(20px,2.5vw,26px);line-height:1.28;font-weight:700;letter-spacing:-.026em;margin:0 0 .4em;color:var(--ink)}
+.max p:last-child{margin-bottom:0}
+.topbar img{height:38px;width:auto;display:block}
+.topbar .cta{color:#fff !important;background:var(--red) !important}
+.btn{background:var(--red) !important;color:#fff !important}
+.foot .in{display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.foot img{height:44px;width:auto;opacity:.85}
+.foot p{max-width:60ch;margin:0}
+.xlinks{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:36px 0 0}
+@media (max-width:640px){.topbar img{height:30px}}
+
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui);font-size:16.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
@@ -171,13 +198,18 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
   .hero{padding:52px 0 38px}.sec{padding:52px 0}
   .topbar .cta{font-size:11px;padding:8px 12px}
 }
+.xlink{display:block;text-decoration:none;background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--red);border-radius:2px;padding:22px}
+.xlink:hover{background:var(--surface-2)}
+.xlink .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--red);display:block}
+.xlink .t{font-size:19px;font-weight:760;letter-spacing:-.022em;color:var(--ink);margin-top:8px;line-height:1.2;display:block}
+.xlink .d{font-size:14px;color:var(--ink-2);margin-top:6px;line-height:1.45;display:block}
 </style>
 </head>
 <body>
 
 <div class="topbar">
   <div class="in">
-    <a class="wordmark" href="/">UN<i>V</i></a>
+    <a href="/"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></a>
     <a class="cta" href="/sessao">Sessão estratégica</a>
   </div>
 </div>
@@ -192,12 +224,6 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
     Quem escala trata como produto — arquétipo definido, formatos fixos, grade diária e métrica na ordem certa.
     Este guia é o método completo, do jeito que ele funciona na prática.
   </p>
-  <p class="credit">
-    <b>SOBRE A FONTE:</b> este material é a nossa sistematização do quadro Advisor de
-    <b>Alfredo Soares</b> (G4 Educação) com <b>Bruno Nardon</b>, sobre estratégia de conteúdo e posicionamento.
-    Recomendamos assistir ao episódio na íntegra — o que está aqui é o método organizado para execução,
-    não um substituto do original.
-  </p>
 </header>
 
 <!-- 1 -->
@@ -205,10 +231,9 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
   <p class="eyebrow"><span>01</span><span class="bar"></span><span>O arquétipo</span></p>
   <h2>Identidade é quem você é. Posicionamento é o que você decide mostrar.</h2>
 
-  <blockquote class="q">
-    <p>"Mas nerd rico é muito ruim." — "Não é sobre ruim, é sobre dar resultado."</p>
-    <div class="who">Bruno Nardon e Alfredo Soares</div>
-  </blockquote>
+  <div class="max">
+    <p>Arquétipo bom incomoda um pouco. Se soar confortável demais, provavelmente não diz nada.</p>
+  </div>
 
   <p class="prose">
     Quase todo mundo mistura três coisas diferentes. <strong>Identidade</strong> é quem você é de fato —
@@ -223,14 +248,14 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
 
   <div class="exs">
     <div class="ex">
-      <div class="who">Alfredo Soares</div>
-      <div class="arch">O vendedor gente boa</div>
-      <div class="b">Movimento, carinho, criatividade, conexão, família. "Vendedor" é o rótulo que o mercado usaria de forma pejorativa. "Gente boa" desarma e prova.</div>
+      <div class="who">Quem vende gestão comercial</div>
+      <div class="arch">O chato da meta</div>
+      <div class="b">Chato é o rótulo que o mercado usaria de forma pejorativa. Meta é a prova de que o rótulo funciona. E o dono de PME sabe que precisa desse chato dentro da empresa.</div>
     </div>
     <div class="ex">
-      <div class="who">Bruno Nardon</div>
-      <div class="arch">O nerd rico</div>
-      <div class="b">Técnico, disciplinado, obcecado por dados. "Nerd" era o rótulo negativo. "Rico" é a prova de que o rótulo funciona.</div>
+      <div class="who">Quem vende serviço premium</div>
+      <div class="arch">O caro que sai barato</div>
+      <div class="b">Caro é a objeção número um do seu mercado. Colar a prova do lado transforma a objeção em argumento antes mesmo de o cliente levantar ela.</div>
     </div>
     <div class="ex">
       <div class="who">O seu</div>
@@ -259,8 +284,8 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
   </div>
 
   <p class="note">
-    Se o seu arquétipo soar desconfortável, isso é sinal de que ele tem tensão — não de que está errado.
-    No episódio original, o Nardon rejeita "nerd" três vezes e o Alfredo não recua nenhuma.
+    Se o seu arquétipo soar desconfortável, isso é sinal de que ele tem tensão, não de que está errado.
+    Quase todo dono rejeita o próprio arquétipo na primeira vez que ouve. Rejeitar não é argumento.
   </p>
 </section>
 
@@ -269,10 +294,9 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
   <p class="eyebrow"><span>02</span><span class="bar"></span><span>Produtificar</span></p>
   <h2>Três formatos por camada. Nunca mais inventar post.</h2>
 
-  <blockquote class="q">
-    <p>"O que eu faço pra escalar conteúdo? Eu produtifico. Não tem que inventar."</p>
-    <div class="who">Alfredo Soares</div>
-  </blockquote>
+  <div class="max">
+    <p>Conteúdo que depende de inspiração para. Formato fixo não para.</p>
+  </div>
 
   <p class="prose">
     A estrutura é rígida de propósito: <strong>três formatos de topo, três de meio, três de fundo.</strong>
@@ -315,10 +339,10 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
   <div class="panel br">
     <h4>O ativo que você já tem e não empacotou</h4>
     <p style="margin-bottom:0">
-      No episódio, o Alfredo descobre que o Nardon tem milhares de estudos de caso guardados e não usa nenhum
-      como conteúdo — e transforma isso num formato fixo na hora. Todo empresário tem o equivalente:
-      os problemas que já resolveu, os números que já entregou, as situações que já viu repetidas.
-      Não é conteúdo novo. É conteúdo que existe e nunca virou formato.
+      Quase todo empresário está sentado em cima de um acervo que nunca virou conteúdo: os problemas que já
+      resolveu, os números que já entregou, as situações que viu se repetirem dezenas de vezes.
+      Isso não é conteúdo novo para produzir. É conteúdo que já existe e nunca foi empacotado em formato.
+      Escolha um desses acervos e transforme em formato fixo. A partir daí ele alimenta a grade sozinho.
     </p>
   </div>
 </section>
@@ -329,7 +353,7 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
   <h2>3-3-3: a grade que substitui a inspiração</h2>
 
   <p class="prose">
-    A grade prescrita no episódio é simples: <strong>três blocos por dia — manhã, tarde e noite — e em cada
+    A grade que funciona é simples: <strong>três blocos por dia — manhã, tarde e noite — e em cada
     bloco um post de topo, um de meio e um de fundo.</strong> O de meio leva para automação na DM. O de fundo
     leva para a oferta. O de topo não pede nada.
   </p>
@@ -376,10 +400,9 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
   <p class="eyebrow"><span>04</span><span class="bar"></span><span>Stories</span></p>
   <h2>O feed carrega a estratégia. O stories carrega a identidade.</h2>
 
-  <blockquote class="q">
-    <p>"Dias de poucos posts é mais alcance, dias de muitos posts é mais venda."</p>
-    <div class="who">Alfredo Soares</div>
-  </blockquote>
+  <div class="max">
+    <p>Postar pouco entrega alcance. Postar muito entrega venda.</p>
+  </div>
 
   <p class="prose">
     Se o feed é onde você executa a grade, o stories é onde você prova o arquétipo. É lá que a pessoa vê que
@@ -406,10 +429,9 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
   <p class="eyebrow"><span>05</span><span class="bar"></span><span>Frequência</span></p>
   <h2>Não é sobre muita gente ver. É sobre te verem muito.</h2>
 
-  <blockquote class="q">
-    <p>"Se eu faço cinco vídeos de 20 mil visualizações, alcancei 100 mil. Só que às vezes eu alcancei o mesmo cara cinco vezes — e isso vende muito mais."</p>
-    <div class="who">Alfredo Soares</div>
-  </blockquote>
+  <div class="max">
+    <p>Não é sobre muita gente te ver uma vez. É sobre a mesma pessoa te ver cinco.</p>
+  </div>
 
   <p class="prose">
     Essa é a inversão mais útil do método para quem vende serviço de ticket alto. Alcance amplo e raso é
@@ -504,10 +526,9 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
   <p class="eyebrow"><span>08</span><span class="bar"></span><span>Arquitetura de canal</span></p>
   <h2>Um canal principal. O resto alimenta.</h2>
 
-  <blockquote class="q">
-    <p>"Eu não quero que ele produza conteúdo pro YouTube. Eu quero que quem já o conhece consuma mais dele no YouTube."</p>
-    <div class="who">Alfredo Soares</div>
-  </blockquote>
+  <div class="max">
+    <p>Ninguém descobre você no YouTube. Quem já te conhece vai lá se convencer.</p>
+  </div>
 
   <p class="prose">
     A distinção é sutil e decisiva: <strong>um canal é aquisição, o outro é aprofundamento.</strong>
@@ -590,6 +611,11 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
     <li><b>Semana 3.</b> Ligue a câmera nas reuniões que já acontecem. Comece a grade no volume decidido, alternando imagem e vídeo. Ajuste o stories para os dois destinos.</li>
     <li><b>Semana 4.</b> Instale o ritual semanal na hierarquia certa: venda, MQL, lead, encaminhamento. E pare de reportar seguidores em reunião de gestão.</li>
   </ol>
+
+  <div class="xlinks">
+    <a class="xlink" href="/advisor/"><span class="k">Guia UNV</span><span class="t">Como escalar uma empresa de serviços</span><span class="d">Arquitetura financeira, preço por resultado, expansão de receita e cadência.</span></a>
+    <a class="xlink" href="/marketing/"><span class="k">Guia UNV</span><span class="t">Marketing complexo</span><span class="d">Para quem você vende, por qual canal e em que etapa da jornada.</span></a>
+  </div>
 </section>
 
 </div>
@@ -608,12 +634,10 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
 
 <div class="foot">
   <div class="in">
+    <img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas">
     <p>
-      <b>Fonte:</b> quadro Advisor do canal de Alfredo Soares (G4 Educação), episódio sobre estratégia de
-      conteúdo e posicionamento com Bruno Nardon. Este guia é uma sistematização editorial do método,
-      publicada pela UNV Holdings para uso dos nossos clientes e da comunidade empresarial.
-      Os créditos do método e das citações são dos autores originais.<br>
-      <b>UNV Holdings</b> · Direção comercial terceirizada para pequenas e médias empresas ·
+      <b>UNV Holdings</b> · Direção comercial terceirizada para pequenas e médias empresas.<br>
+      Guia produzido pelo time da UNV a partir da nossa prática com times comerciais de PME.
       <a href="/">unvholdings.com.br</a>
     </p>
   </div>
@@ -709,7 +733,7 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
       3:"<b>Respeitado.</b> Seu histórico sustenta o que você fala. O problema do respeito é que ele não converte sozinho: faz a pessoa concordar com você, não comprar de você.",
       4:"<b>Admirado.</b> A pessoa quer ter o que você tem. Exige mostrar resultado, não só raciocínio — ponderação sozinha admira um público pequeno.",
       5:"<b>Desejado — é o alvo.</b> A pessoa quer <i>ser</i> você. É o degrau que converte. Sobe-se mostrando que o método funciona na sua própria vida, não só na teoria.",
-      6:"<b>Idolatrado.</b> Desaconselhado no episódio original: você é herói por tanto tempo até virar vilão. Alto risco de reputação e nenhum ganho de conversão sobre o degrau anterior."
+      6:"<b>Idolatrado.</b> Não persiga esse degrau. Você é herói por tanto tempo até virar vilão. Alto risco de reputação e nenhum ganho de conversão sobre o degrau anterior."
     };
     var b=[].slice.call(l.querySelectorAll(".rung"));
     function sel(i){
