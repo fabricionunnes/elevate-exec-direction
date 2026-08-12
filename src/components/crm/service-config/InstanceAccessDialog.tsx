@@ -7,21 +7,23 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Loader2, MessageCircle } from "lucide-react";
+import { Loader2, MessageCircle, Instagram } from "lucide-react";
+
+type ChannelType = "evolution" | "official" | "instagram";
 
 interface WhatsAppInstance {
   id: string;
   instance_name: string;
   display_name: string;
   status: string;
-  type: "evolution" | "official";
+  type: ChannelType;
 }
 
 interface InstanceAccess {
   instance_id: string;
   can_view: boolean;
   can_send: boolean;
-  type: "evolution" | "official";
+  type: ChannelType;
 }
 
 interface InstanceAccessDialogProps {
@@ -87,6 +89,21 @@ export function InstanceAccessDialog({
         });
       });
 
+      // Contas de Instagram — mesmo controle de acesso do WhatsApp
+      const { data: igData } = await supabase
+        .from("instagram_instances")
+        .select("id, instance_name, instagram_username, status")
+        .order("instance_name");
+      (igData || []).forEach((i: any) => {
+        allInstances.push({
+          id: `instagram:${i.id}`,
+          instance_name: i.instagram_username || i.instance_name,
+          display_name: i.instance_name || `@${i.instagram_username}`,
+          status: i.status === "active" ? "connected" : "disconnected",
+          type: "instagram",
+        });
+      });
+
       setInstances(allInstances);
 
       // Load Evolution API access
@@ -99,6 +116,11 @@ export function InstanceAccessDialog({
       const { data: officialAccess } = await supabase
         .from("whatsapp_official_instance_access")
         .select("instance_id, can_view, can_send")
+        .eq("staff_id", staffId);
+
+      const { data: igAccess } = await supabase
+        .from("instagram_instance_access")
+        .select("instance_id, can_view, can_reply")
         .eq("staff_id", staffId);
 
       const map: Record<string, InstanceAccess> = {};
@@ -121,6 +143,15 @@ export function InstanceAccessDialog({
         };
       });
       
+      (igAccess || []).forEach((a: any) => {
+        map[`instagram:${a.instance_id}`] = {
+          instance_id: a.instance_id,
+          can_view: a.can_view,
+          can_send: a.can_reply,
+          type: "instagram",
+        };
+      });
+
       setAccessMap(map);
     } catch (error) {
       console.error("Error loading data:", error);
@@ -130,10 +161,8 @@ export function InstanceAccessDialog({
     }
   };
 
-  const toggleAccess = (instanceId: string, type: "evolution" | "official") => {
-    const realId = instanceId.startsWith("official:") 
-      ? instanceId.replace("official:", "") 
-      : instanceId;
+  const toggleAccess = (instanceId: string, type: ChannelType) => {
+    const realId = instanceId.includes(":") ? instanceId.split(":").slice(1).join(":") : instanceId;
       
     setAccessMap((prev) => {
       const current = prev[instanceId];
@@ -172,10 +201,17 @@ export function InstanceAccessDialog({
         .delete()
         .eq("staff_id", staffId);
 
+      // Delete all current Instagram access for this staff
+      await supabase
+        .from("instagram_instance_access")
+        .delete()
+        .eq("staff_id", staffId);
+
       // Separate entries by type
       const entries = Object.values(accessMap);
       const evolutionEntries = entries.filter((e) => e.type === "evolution");
       const officialEntries = entries.filter((e) => e.type === "official");
+      const instagramEntries = entries.filter((e) => e.type === "instagram");
 
       // Insert Evolution API access entries
       if (evolutionEntries.length > 0) {
@@ -204,6 +240,22 @@ export function InstanceAccessDialog({
 
         const { error } = await supabase
           .from("whatsapp_official_instance_access")
+          .insert(toInsert);
+
+        if (error) throw error;
+      }
+
+      // Insert Instagram access entries (a coluna de resposta chama can_reply)
+      if (instagramEntries.length > 0) {
+        const toInsert = instagramEntries.map((e) => ({
+          staff_id: staffId,
+          instance_id: e.instance_id,
+          can_view: e.can_view,
+          can_reply: e.can_send,
+        }));
+
+        const { error } = await supabase
+          .from("instagram_instance_access")
           .insert(toInsert);
 
         if (error) throw error;
@@ -241,7 +293,7 @@ export function InstanceAccessDialog({
         ) : (
           <>
             <p className="text-sm text-muted-foreground mb-4">
-              Selecione as conexões WhatsApp que este usuário pode acessar:
+              Selecione as conexões de WhatsApp e Instagram que este usuário pode acessar:
             </p>
 
             <ScrollArea className="max-h-[300px] pr-4">
@@ -254,6 +306,7 @@ export function InstanceAccessDialog({
                   instances.map((instance) => {
                     const hasAccess = !!accessMap[instance.id];
                     const isOfficial = instance.type === "official";
+                    const isInstagram = instance.type === "instagram";
                     return (
                       <div
                         key={instance.id}
@@ -270,11 +323,13 @@ export function InstanceAccessDialog({
                         />
                         <div className="flex items-center gap-2 flex-1">
                           <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                            isOfficial ? "bg-blue-100" : "bg-green-100"
+                            isInstagram ? "bg-pink-100" : isOfficial ? "bg-blue-100" : "bg-green-100"
                           }`}>
-                            <MessageCircle className={`h-4 w-4 ${
-                              isOfficial ? "text-blue-600" : "text-green-600"
-                            }`} />
+                            {isInstagram ? (
+                              <Instagram className="h-4 w-4 text-pink-600" />
+                            ) : (
+                              <MessageCircle className={`h-4 w-4 ${isOfficial ? "text-blue-600" : "text-green-600"}`} />
+                            )}
                           </div>
                           <div className="flex-1">
                             <p className="font-medium text-sm">
@@ -282,6 +337,9 @@ export function InstanceAccessDialog({
                             </p>
                             {isOfficial && (
                               <p className="text-xs text-blue-600">API Oficial</p>
+                            )}
+                            {isInstagram && (
+                              <p className="text-xs text-pink-600">Instagram · Direct</p>
                             )}
                           </div>
                           {getStatusBadge(instance.status)}
