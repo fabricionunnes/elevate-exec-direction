@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blog UNV — guias de gestão comercial para donos de PME</title>
+<meta name="description" content="Guias práticos da UNV sobre modelo de negócio, posicionamento, conteúdo e estrutura de marketing. Método, não teoria.">
+<link rel="icon" href="/favicon.ico">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Blog UNV — guias de gestão comercial">
+<meta property="og:description" content="Guias práticos sobre modelo de negócio, posicionamento, conteúdo e marketing para donos de PME.">
+<meta property="og:url" content="https://unvholdings.com.br/blog/">
+<meta property="og:image" content="https://unvholdings.com.br/images/unv-logo.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+:root{
+  --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#EDEFF3;
+  --ink:#0A1F45; --ink-2:#33415C; --muted:#5F6B80; --faint:#8B94A5;
+  --rule:#DCE1E9; --rule-2:#C3CBD7;
+  --navy:#0D2B5E; --red:#CC1B1B;
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D;
+    --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+    --rule:#1E3557; --rule-2:#2C4770;
+    --navy:#7BA4E8; --red:#FF6B62;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D;
+  --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+  --rule:#1E3557; --rule-2:#2C4770;
+  --navy:#7BA4E8; --red:#FF6B62;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui);font-size:16.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin:0 auto;padding:0 26px}
+p{margin:0 0 1em}
+strong{font-weight:680;color:var(--ink)}
+a{color:var(--red)}
+:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+
+.topbar{border-bottom:1px solid var(--rule);position:sticky;top:0;background:var(--ground);z-index:10}
+.topbar .in{max-width:1200px;margin:0 auto;padding:12px 26px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.topbar picture{display:block}
+.topbar img{height:38px;width:auto;display:block}
+.topbar .cta{font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#fff;background:var(--red);padding:10px 17px;border-radius:2px;text-decoration:none;font-weight:700;white-space:nowrap}
+
+.hero{padding:74px 0 44px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0}
+.hero h1{font-size:clamp(40px,7vw,80px);line-height:.98;letter-spacing:-.042em;font-weight:820;margin:22px 0 0;text-wrap:balance;max-width:15ch}
+.hero .sub{font-size:clamp(17px,2vw,20px);line-height:1.5;color:var(--ink-2);max-width:62ch;margin:24px 0 0}
+
+.list{border-top:1px solid var(--rule);margin-top:52px}
+.post{display:grid;grid-template-columns:96px 1fr 200px;gap:34px;padding:38px 0;border-bottom:1px solid var(--rule);align-items:start}
+.post .num{font-family:var(--mono);font-size:12px;letter-spacing:.16em;color:var(--red);font-weight:600;padding-top:6px}
+.post h2{font-size:clamp(24px,3.2vw,33px);line-height:1.08;letter-spacing:-.028em;font-weight:800;margin:0 0 12px;text-wrap:balance;max-width:22ch}
+.post h2 a{color:var(--ink);text-decoration:none}
+.post h2 a:hover{color:var(--red)}
+.post .brief{font-size:16px;line-height:1.55;color:var(--ink-2);margin:0 0 16px;max-width:62ch}
+.post .tags{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px}
+.post .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);padding:3px 8px;border-radius:2px}
+.post .side{padding-top:6px}
+.post .meta{font-family:var(--mono);font-size:11.5px;line-height:1.7;color:var(--muted);margin-bottom:14px}
+.post .go{display:inline-block;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:#fff;background:var(--navy);padding:11px 18px;border-radius:2px;text-decoration:none;white-space:nowrap}
+.post .go:hover{filter:brightness(1.15)}
+@media (max-width:860px){
+  .post{grid-template-columns:1fr;gap:16px;padding:32px 0}
+  .post .num{padding-top:0}
+  .post .side{padding-top:0}
+}
+
+.soon{padding:34px 0 0;border-bottom:1px solid var(--rule);padding-bottom:34px}
+.soon .k{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.soon p{color:var(--ink-2);max-width:62ch;margin:0}
+
+.final{background:var(--surface);border-top:1px solid var(--rule);margin-top:0}
+.final .in{max-width:1200px;margin:0 auto;padding:72px 26px 78px}
+.final h2{font-size:clamp(27px,4vw,42px);line-height:1.05;letter-spacing:-.03em;font-weight:800;margin:0 0 18px;max-width:18ch;text-wrap:balance}
+.final p{color:var(--ink-2);max-width:56ch;font-size:17.5px}
+.btn{display:inline-block;margin-top:14px;background:var(--red);color:#fff;font-weight:750;font-size:16px;padding:15px 28px;border-radius:2px;text-decoration:none;letter-spacing:-.01em}
+.btn:hover{filter:brightness(1.08)}
+.foot{border-top:1px solid var(--rule);background:var(--ground)}
+.foot .in{max-width:1200px;margin:0 auto;padding:34px 26px 50px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.foot picture{display:block;flex:none}
+.foot img{height:44px;width:auto;opacity:.85}
+.foot p{font-family:var(--mono);font-size:12px;line-height:1.8;color:var(--muted);margin:0;max-width:60ch}
+.foot b{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:640px){
+  .wrap,.final .in,.foot .in,.topbar .in{padding-left:18px;padding-right:18px}
+  .hero{padding:48px 0 32px}
+  .topbar img{height:30px}.topbar .cta{font-size:11px;padding:8px 12px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="in">
+    <a href="/"><picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture></a>
+    <a class="cta" href="/sessao">Sessão estratégica</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <header class="hero">
+    <p class="eyebrow">Blog UNV</p>
+    <h1>Guias de gestão comercial para quem toca o negócio</h1>
+    <p class="sub">
+      Cada guia aqui é método que a gente usa dentro das empresas que atende. Sem teoria solta, sem
+      motivação. Modelo de negócio, preço, posicionamento, conteúdo e marketing, do jeito que precisa ser
+      executado por quem tem meta para bater no fim do mês.
+    </p>
+  </header>
+
+  <div class="list">
+
+    <article class="post">
+      <div class="num">01</div>
+      <div>
+        <div class="tags"><span class="tag">Modelo de negócio</span><span class="tag">Preço</span><span class="tag">Caixa</span></div>
+        <h2><a href="/escalar_servico/">Como escalar uma empresa de serviços de verdade</a></h2>
+        <p class="brief">
+          Serviço é o negócio de maior margem que existe: você recebe antes de trabalhar. Mesmo assim a
+          maioria vive apertada, com o dono dentro da entrega. Este guia mostra por que isso acontece e
+          como sair: o custo financeiro que ninguém enxerga no DRE, o orçamento montado a partir da margem
+          em vez do que sobra, as três camadas de preço que quase todo mundo mistura, e como parar de
+          cobrar por mão de obra e começar a cobrar por resultado.
+        </p>
+      </div>
+      <div class="side">
+        <p class="meta">13 blocos<br>4 calculadoras<br>Checklist de 90 dias</p>
+        <a class="go" href="/escalar_servico/">Ler o guia</a>
+      </div>
+    </article>
+
+    <article class="post">
+      <div class="num">02</div>
+      <div>
+        <div class="tags"><span class="tag">Marca pessoal</span><span class="tag">Conteúdo</span><span class="tag">Métricas</span></div>
+        <h2><a href="/posicionamento/">Posicionamento é uma decisão, não um resultado</a></h2>
+        <p class="brief">
+          A maior parte dos donos trata conteúdo como inspiração: senta, pensa no que postar, posta. Quem
+          escala trata como produto. Aqui está o método completo: como montar o seu arquétipo, travar nove
+          formatos fixos para nunca mais inventar post, montar a grade diária, usar stories do jeito certo,
+          e por que frequência sobre a mesma pessoa vende mais que alcance amplo. Fecha com a hierarquia de
+          métricas que realmente prevê venda.
+        </p>
+      </div>
+      <div class="side">
+        <p class="meta">10 blocos<br>4 interativos<br>Checklist de 30 dias</p>
+        <a class="go" href="/posicionamento/">Ler o guia</a>
+      </div>
+    </article>
+
+    <article class="post">
+      <div class="num">03</div>
+      <div>
+        <div class="tags"><span class="tag">Marketing</span><span class="tag">Canais</span><span class="tag">CAC</span></div>
+        <h2><a href="/marketing/">Marketing complexo: como estruturar o marketing de uma empresa</a></h2>
+        <p class="brief">
+          Ter um produto que serve para todo mundo parece vantagem e é o contrário: você não sabe onde
+          colocar dinheiro, energia e time. Este guia dá os quatro critérios para decidir para quem vender,
+          explica por que tratar parceiro como vendedor não funciona e o que funciona no lugar, mostra os
+          três pilares que sustentam marketing maduro, e ensina a montar o mapa de canais por camada do
+          funil.
+        </p>
+      </div>
+      <div class="side">
+        <p class="meta">6 blocos<br>2 interativos<br>Checklist de execução</p>
+        <a class="go" href="/marketing/">Ler o guia</a>
+      </div>
+    </article>
+
+  </div>
+
+  <div class="soon">
+    <p class="k">Em produção</p>
+    <p>
+      Novos guias entram aqui conforme saem. Os próximos tratam de estrutura de time comercial,
+      remuneração variável e rotina de gestão à vista.
+    </p>
+  </div>
+
+</div>
+
+<div class="final">
+  <div class="in">
+    <h2>Ler é a parte fácil</h2>
+    <p>
+      O que trava a maioria das empresas não é falta de método. É falta de alguém dentro da operação, toda
+      semana, cobrando número e destravando o que emperrou. É isso que a UNV faz: assumimos a direção
+      comercial, estruturamos o time e colocamos a empresa para bater meta todo mês.
+    </p>
+    <a class="btn" href="/sessao">Agendar uma sessão estratégica</a>
+  </div>
+</div>
+
+<div class="foot">
+  <div class="in">
+    <picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture>
+    <p>
+      <b>UNV Holdings</b> · Direção comercial terceirizada para pequenas e médias empresas.<br>
+      <a href="/">unvholdings.com.br</a>
+    </p>
+  </div>
+</div>
+
+</body>
+</html>

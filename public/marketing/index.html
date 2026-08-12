@@ -187,6 +187,19 @@ tr.hl td{background:var(--good-bg)}
   .hero{padding:48px 0 36px}.sec{padding:50px 0}
   .topbar img{height:30px}.topbar .cta{font-size:11px;padding:8px 12px}
 }
+
+.tnav{display:flex;align-items:center;gap:14px}
+.tnav .back{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);text-decoration:none;padding:10px 12px;border:1px solid var(--rule-2);border-radius:2px;white-space:nowrap}
+.tnav .back:hover{background:var(--surface-2);color:var(--ink)}
+.midcta{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--red);border-radius:2px;padding:26px 28px;margin:40px 0;display:flex;gap:24px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.midcta .tx{max-width:52ch}
+.midcta .tt{font-size:19px;font-weight:760;letter-spacing:-.018em;margin:0 0 6px}
+.midcta .dd{font-size:15px;color:var(--ink-2);margin:0;line-height:1.5}
+.midcta a{display:inline-block;background:var(--red);color:#fff;font-weight:750;font-size:15px;padding:13px 24px;border-radius:2px;text-decoration:none;white-space:nowrap}
+.midcta a:hover{filter:brightness(1.08)}
+.backblog{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);text-decoration:none;padding:12px 16px;border:1px solid var(--rule-2);border-radius:2px;margin-top:26px}
+.backblog:hover{background:var(--surface-2);color:var(--ink)}
+@media(max-width:640px){.tnav .back{padding:8px 9px;font-size:11px}.midcta{flex-direction:column;align-items:flex-start}}
 </style>
 </head>
 <body>
@@ -194,7 +207,7 @@ tr.hl td{background:var(--good-bg)}
 <div class="topbar">
   <div class="in">
     <a href="/"><picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture></a>
-    <a class="cta" href="/sessao">Sessão estratégica</a>
+    <nav class="tnav"><a class="back" href="/blog/">&larr; Blog</a><a class="cta" href="/sessao">Sessão estratégica</a></nav>
   </div>
 </div>
 
@@ -387,6 +400,15 @@ tr.hl td{background:var(--good-bg)}
 </section>
 
 <!-- 4 -->
+
+  <div class="midcta">
+    <div class="tx">
+      <p class="tt">Quer isso rodando na sua empresa, não no papel?</p>
+      <p class="dd">A UNV assume a direção comercial, estrutura o time e cobra o número toda semana até a meta virar rotina.</p>
+    </div>
+    <a href="/sessao">Agendar sessão estratégica</a>
+  </div>
+
 <section class="sec" id="b4">
   <p class="eyebrow"><span>04</span><span class="bar"></span><span>Os três pilares</span></p>
   <h2>Marketing complexo</h2>
@@ -550,7 +572,7 @@ tr.hl td{background:var(--good-bg)}
   </ol>
 
   <div class="xlinks">
-    <a class="xlink" href="/advisor/">
+    <a class="xlink" href="/escalar_servico/">
       <span class="k">Guia UNV</span>
       <span class="t">Como escalar uma empresa de serviços</span>
       <span class="d">Arquitetura financeira, preço por resultado, expansão de receita e cadência.</span>
@@ -561,6 +583,8 @@ tr.hl td{background:var(--good-bg)}
       <span class="d">Arquétipo, formatos, grade de conteúdo e a hierarquia de métricas que prevê venda.</span>
     </a>
   </div>
+
+  <a class="backblog" href="/blog/">&larr; Voltar para todos os guias</a>
 </section>
 
 </div>
