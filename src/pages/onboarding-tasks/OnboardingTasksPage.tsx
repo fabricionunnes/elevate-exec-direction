@@ -36,6 +36,8 @@ import {
   DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import {
   Select,
   SelectContent,
@@ -127,6 +129,7 @@ const OnboardingTasksPage = () => {
   const [ragFilter, setRagFilter] = useState<"all" | "green" | "yellow" | "red">("all"); // semáforo de saúde do cliente
   // empresas com comissão por resultado ativa (Financeiro → Comissão da empresa)
   const [commissionCompanyIds, setCommissionCompanyIds] = useState<Set<string>>(new Set());
+  const [companyMenuOpen, setCompanyMenuOpen] = useState(false);
   const [consultants, setConsultants] = useState<Staff[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   
@@ -2210,79 +2213,71 @@ const OnboardingTasksPage = () => {
 
           {/* Desktop Navigation — clean grouped nav */}
           <div className="hidden sm:flex flex-wrap items-center gap-x-0.5 gap-y-1 border-b border-border/50 pb-2">
-            {/* Empresas dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            {/* Empresas — busca de verdade (cmdk): dentro de DropdownMenu o Radix
+                rouba as teclas pro atalho de item e o cursor saía do campo na
+                primeira letra. Popover + Command resolve e ainda mostra o nome
+                inteiro da empresa. */}
+            <Popover open={companyMenuOpen} onOpenChange={(v) => { setCompanyMenuOpen(v); if (!v) setCompanySearchTerm(""); }}>
+              <PopoverTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60">
                   <Building2 className="h-4 w-4" />
                   Empresas
                   <ChevronDown className="h-3.5 w-3.5" />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-72">
-                {canCreateCompany && (
-                  <>
-                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies/new")}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Nova Empresa
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-                <div className="px-2 py-2">
-                  <Input
-                    placeholder="Buscar empresa..."
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-[420px] p-0">
+                <Command shouldFilter={false}>
+                  <CommandInput
+                    placeholder="Buscar empresa pelo nome..."
                     value={companySearchTerm}
-                    onChange={(e) => setCompanySearchTerm(e.target.value)}
-                    className="h-8"
-                    onClick={(e) => e.stopPropagation()}
+                    onValueChange={setCompanySearchTerm}
+                    autoFocus
                   />
-                </div>
-                <DropdownMenuSeparator />
-                {companies.length > 0 ? (
-                  <ScrollArea className="max-h-64">
-                    {companies
-                      .filter((c) => {
-                        // Filter by search term
-                        const matchesSearch = c.name.toLowerCase().includes(companySearchTerm.toLowerCase());
-                        // Consultants only see their companies
-                        if (currentUserRole === "consultant" && currentStaffId) {
-                          return matchesSearch && (c.consultant_id === currentStaffId || c.cs_id === currentStaffId);
-                        }
-                        return matchesSearch;
-                      })
-                      .slice(0, 20)
-                      .map((company) => (
-                        <DropdownMenuItem
-                          key={company.id}
-                          onClick={() => navigate(`/onboarding-tasks/companies/${company.id}`)}
-                          className="flex items-center justify-between"
+                  <CommandList className="max-h-[60vh]">
+                    <CommandEmpty>Nenhuma empresa encontrada.</CommandEmpty>
+                    {canCreateCompany && (
+                      <CommandGroup>
+                        <CommandItem
+                          value="__nova__"
+                          onSelect={() => { setCompanyMenuOpen(false); navigate("/onboarding-tasks/companies/new"); }}
                         >
-                          <span className="truncate">{company.name}</span>
-                          <Badge variant={company.status === "active" ? "default" : "secondary"} className="ml-2 text-xs">
-                            {company.status === "active" ? "Ativa" : company.status}
-                          </Badge>
-                        </DropdownMenuItem>
-                      ))}
-                    {companies.filter((c) => {
-                      const matchesSearch = c.name.toLowerCase().includes(companySearchTerm.toLowerCase());
-                      if (currentUserRole === "consultant" && currentStaffId) {
-                        return matchesSearch && (c.consultant_id === currentStaffId || c.cs_id === currentStaffId);
-                      }
-                      return matchesSearch;
-                    }).length === 0 && (
-                      <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                        Nenhuma empresa encontrada
-                      </div>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Nova Empresa
+                        </CommandItem>
+                      </CommandGroup>
                     )}
-                  </ScrollArea>
-                ) : (
-                  <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                    Nenhuma empresa cadastrada
-                  </div>
-                )}
-            </DropdownMenuContent>
-            </DropdownMenu>
+                    {(() => {
+                      const termo = companySearchTerm.trim().toLowerCase();
+                      const lista = companies.filter((c) => {
+                        const bate = !termo || c.name.toLowerCase().includes(termo);
+                        if (currentUserRole === "consultant" && currentStaffId) {
+                          return bate && (c.consultant_id === currentStaffId || c.cs_id === currentStaffId);
+                        }
+                        return bate;
+                      });
+                      if (!lista.length) return null;
+                      return (
+                        <CommandGroup heading={`${lista.length} empresa${lista.length > 1 ? "s" : ""}`}>
+                          {lista.map((company) => (
+                            <CommandItem
+                              key={company.id}
+                              value={company.id}
+                              onSelect={() => { setCompanyMenuOpen(false); navigate(`/onboarding-tasks/companies/${company.id}`); }}
+                              className="flex items-start justify-between gap-2"
+                            >
+                              <span className="flex-1 whitespace-normal break-words leading-snug">{company.name}</span>
+                              <Badge variant={company.status === "active" ? "default" : "secondary"} className="text-xs shrink-0 mt-0.5">
+                                {company.status === "active" ? "Ativa" : company.status}
+                              </Badge>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      );
+                    })()}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             
             {canCreateCompany && (
               <Button size="sm" className="gap-1.5 ml-1" onClick={() => setShowCreateDialog(true)}>
