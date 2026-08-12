@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A grade — como transformar posicionamento em conteúdo que vende | UNV</title>
+<meta name="description" content="O método completo de posicionamento e produção de conteúdo para founders: arquétipo, formatos, grade diária, stories, frequência e a hierarquia de métricas que realmente prevê venda.">
+<link rel="icon" href="/favicon.ico">
+<meta property="og:type" content="article">
+<meta property="og:title" content="A grade — como transformar posicionamento em conteúdo que vende">
+<meta property="og:description" content="Arquétipo, formatos, grade diária, stories, frequência e a hierarquia de métricas que prevê venda. Um guia da UNV Holdings.">
+<meta property="og:url" content="https://unvholdings.com.br/posicionamento/">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+:root{
+  --ground:#0F0F13; --surface:#1A1A1F; --surface-2:#22222A;
+  --ink:#EFEDEA; --ink-2:#C6C3CC; --muted:#948F9C; --faint:#6E6A77;
+  --rule:#2C2C36; --rule-2:#3C3B47;
+  --brass:#D9A441; --brass-dim:#8A6A2E;
+  --unv:#E24A44;
+  --signal:#E2574C; --signal-bg:#2A1918;
+  --ok:#4FBF9A; --ok-bg:#132622;
+  --f1:#B4BAF2; --f2:#8286E4; --f3:#5A56CE;
+  --f1-bg:#1F2033; --f2-bg:#1C1D30; --f3-bg:#1A192C;
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --prose:min(100%,62ch);
+}
+@media (prefers-color-scheme:light){
+  :root:not([data-theme="dark"]){
+    --ground:#F4F3F0; --surface:#FAFAF8; --surface-2:#EDEBE7;
+    --ink:#16161A; --ink-2:#3A3A44; --muted:#63626C; --faint:#8C8A94;
+    --rule:#DBD8D2; --rule-2:#C6C2B9;
+    --brass:#8A6A12; --brass-dim:#B49A5C;
+    --unv:#CC1B1B;
+    --signal:#C0392B; --signal-bg:#FBECEA;
+    --ok:#0F6B52; --ok-bg:#E6F2EE;
+    --f1:#7A80DC; --f2:#5A5ECC; --f3:#3B3BA2;
+    --f1-bg:#EDEEFB; --f2-bg:#E6E7F8; --f3-bg:#DFDFF3;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui);font-size:16.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin:0 auto;padding:0 26px 0}
+.prose{width:var(--prose)}
+p{margin:0 0 1em}
+strong{font-weight:680;color:var(--ink)}
+a{color:var(--brass)}
+:focus-visible{outline:2px solid var(--brass);outline-offset:3px}
+
+.topbar{border-bottom:1px solid var(--rule);position:sticky;top:0;background:var(--ground);z-index:10}
+.topbar .in{max-width:1200px;margin:0 auto;padding:14px 26px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.wordmark{font-weight:850;letter-spacing:-.05em;font-size:22px;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:3px}
+.wordmark i{color:var(--unv);font-style:normal}
+.topbar .cta{font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--ground);background:var(--brass);padding:9px 16px;border-radius:2px;text-decoration:none;font-weight:700;white-space:nowrap}
+
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.eyebrow .tc{color:var(--brass);font-weight:600}
+.eyebrow .bar{width:26px;height:1px;background:var(--rule-2);flex:none}
+
+.hero{padding:76px 0 54px}
+.hero h1{font-size:clamp(38px,7.2vw,84px);line-height:.96;letter-spacing:-.042em;font-weight:820;margin:26px 0 0;text-wrap:balance;max-width:14ch}
+.hero .sub{font-size:clamp(17px,2vw,20px);line-height:1.5;color:var(--ink-2);max-width:60ch;margin:26px 0 0}
+.credit{margin-top:34px;padding-top:18px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:12px;line-height:1.75;color:var(--muted);max-width:74ch}
+.credit b{color:var(--ink)}
+
+.sec{padding:70px 0;border-top:1px solid var(--rule)}
+h2{font-size:clamp(27px,4.2vw,45px);line-height:1.04;letter-spacing:-.032em;font-weight:800;margin:18px 0 24px;text-wrap:balance;max-width:19ch}
+h3{font-size:19px;font-weight:720;letter-spacing:-.012em;margin:40px 0 12px}
+h4{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 14px}
+
+.q{padding:0 0 0 26px;margin:0 0 30px;width:var(--prose);border-left:1px solid var(--brass)}
+.q p{font-size:clamp(19px,2.4vw,24px);line-height:1.34;font-weight:330;letter-spacing:-.018em;margin:0}
+.q .who{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-top:14px}
+
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:24px 26px;margin:26px 0}
+.panel.br{border-color:var(--brass-dim);border-left-width:3px}
+.panel>:last-child{margin-bottom:0}
+
+.exs{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);margin:26px 0;border-radius:2px;overflow:hidden}
+.ex{background:var(--surface);padding:22px}
+.ex .who{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.ex .arch{font-size:24px;font-weight:800;letter-spacing:-.03em;margin:8px 0 10px;color:var(--brass)}
+.ex .b{font-size:14px;color:var(--ink-2);line-height:1.5}
+
+.tw{overflow-x:auto;margin:24px 0;border:1px solid var(--rule);border-radius:2px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:540px}
+th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+thead th{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface-2);white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.sched{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:26px 0}
+.slot{background:var(--surface);padding:18px 20px}
+.slot .h{font-family:var(--mono);font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--brass);margin-bottom:12px}
+.slot ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+.slot li{font-size:14px;line-height:1.4;color:var(--ink-2);padding-left:16px;position:relative}
+.slot li::before{content:"";position:absolute;left:0;top:7px;width:7px;height:7px;border-radius:2px}
+.slot li.t1::before{background:var(--f1)}.slot li.t2::before{background:var(--f2)}.slot li.t3::before{background:var(--f3)}
+
+.feed{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:520px}
+.cell{aspect-ratio:1;border-radius:2px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--rule)}
+.cell.t1{background:var(--f1-bg);border-color:var(--f1)}
+.cell.t2{background:var(--f2-bg);border-color:var(--f2)}
+.cell.t3{background:var(--f3-bg);border-color:var(--f3)}
+.cell .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase}
+.cell.t1 .k{color:var(--f1)}.cell.t2 .k{color:var(--f2)}.cell.t3 .k{color:var(--f3)}
+.cell .v{font-size:13.5px;font-weight:620;line-height:1.25;color:var(--ink)}
+.flegend{display:flex;gap:22px;flex-wrap:wrap;margin:18px 0 0}
+.flegend span{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-2)}
+.flegend i{width:11px;height:11px;border-radius:2px;flex:none}
+
+.ladder{display:flex;gap:4px;margin:28px 0 8px;flex-wrap:wrap}
+.rung{flex:1 1 130px;background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:14px;cursor:pointer;text-align:left;color:inherit;font:inherit}
+.rung:hover{background:var(--surface-2)}
+.rung .i{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.1em;display:block}
+.rung .t{font-size:15px;font-weight:700;letter-spacing:-.015em;margin-top:6px;display:block}
+.rung[aria-pressed="true"]{border-color:var(--brass)}
+.rung[aria-pressed="true"] .t{color:var(--brass)}
+.rungout{background:var(--surface-2);border:1px solid var(--rule);border-radius:2px;padding:18px 20px;font-size:15.5px;line-height:1.55;color:var(--ink-2);min-height:74px}
+.rungout b{color:var(--ink)}
+
+.calc{background:var(--surface-2);border:1px solid var(--rule-2);border-radius:2px;padding:26px;margin:32px 0}
+.calc h4{color:var(--ink)}
+.calc .hint{font-size:14px;color:var(--muted);margin:0 0 20px;line-height:1.5;max-width:64ch}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:18px 26px;margin-bottom:22px}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.field input{font-family:var(--mono);font-size:16px;font-variant-numeric:tabular-nums;padding:10px 11px;border:1px solid var(--rule-2);border-radius:2px;background:var(--surface);color:var(--ink);width:100%}
+.field input[type=range]{padding:0;accent-color:var(--brass);border:none;background:none}
+.rv{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--brass)}
+.seg{display:flex;gap:4px;flex-wrap:wrap}
+.seg button{font-family:var(--mono);font-size:12.5px;padding:9px 15px;border:1px solid var(--rule-2);background:var(--surface);color:var(--ink-2);border-radius:2px;cursor:pointer;letter-spacing:.04em}
+.seg button[aria-pressed="true"]{background:var(--brass);color:var(--ground);border-color:var(--brass);font-weight:700}
+.out{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:20px;padding-top:20px;border-top:1px solid var(--rule-2)}
+.o .ov{font-size:clamp(23px,3vw,31px);font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;display:block}
+.o .ol{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:7px;display:block}
+.verdict{margin-top:20px;padding:14px 16px;background:var(--surface);border:1px solid var(--rule);border-radius:2px;font-size:15px;line-height:1.55;color:var(--ink-2)}
+.verdict b{color:var(--brass)}
+.archout{margin-top:20px;padding:20px;background:var(--surface);border:1px solid var(--brass-dim);border-radius:2px}
+.archout .big{font-size:clamp(24px,4vw,36px);font-weight:820;letter-spacing:-.035em;line-height:1.05;color:var(--brass);word-break:break-word}
+.archout .tests{margin:16px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.archout .tests li{font-size:14.5px;color:var(--ink-2);padding-left:24px;position:relative;line-height:1.45}
+.archout .tests li::before{position:absolute;left:0;top:0;font-family:var(--mono);font-size:13px}
+.archout .tests li.y::before{content:"✓";color:var(--ok)}
+.archout .tests li.n::before{content:"×";color:var(--signal)}
+
+.acts{list-style:none;padding:0;margin:24px 0 0;width:var(--prose)}
+.acts li{position:relative;padding:14px 0 14px 34px;border-top:1px solid var(--rule);font-size:15.5px;line-height:1.5;color:var(--ink-2)}
+.acts li:last-child{border-bottom:1px solid var(--rule)}
+.acts li::before{content:"→";position:absolute;left:0;top:14px;font-family:var(--mono);color:var(--brass);font-size:14px}
+.acts li b{color:var(--ink)}
+
+.pull{border-top:1px solid var(--brass);border-bottom:1px solid var(--brass);padding:24px 0;margin:36px 0;width:var(--prose)}
+.pull p{font-size:20px;line-height:1.4;font-weight:640;letter-spacing:-.018em;margin:0;text-wrap:balance}
+.note{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--muted);width:var(--prose)}
+
+.final{border-top:1px solid var(--rule);background:var(--surface);margin-top:0}
+.final .in{max-width:1200px;margin:0 auto;padding:74px 26px 78px}
+.final h2{margin-top:0;max-width:17ch}
+.final p{color:var(--ink-2);max-width:56ch;font-size:17.5px}
+.btn{display:inline-block;margin-top:14px;background:var(--brass);color:var(--ground);font-weight:750;font-size:16px;padding:15px 28px;border-radius:2px;text-decoration:none;letter-spacing:-.01em}
+.btn:hover{filter:brightness(1.07)}
+.foot{border-top:1px solid var(--rule);background:var(--ground)}
+.foot .in{max-width:1200px;margin:0 auto;padding:38px 26px 52px;font-family:var(--mono);font-size:12px;line-height:1.85;color:var(--muted)}
+.foot b{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:640px){
+  .wrap,.final .in,.foot .in,.topbar .in{padding-left:18px;padding-right:18px}
+  .hero{padding:52px 0 38px}.sec{padding:52px 0}
+  .topbar .cta{font-size:11px;padding:8px 12px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="in">
+    <a class="wordmark" href="/">UN<i>V</i></a>
+    <a class="cta" href="/sessao">Sessão estratégica</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+<header class="hero">
+  <p class="eyebrow"><span>Guia UNV</span><span class="bar"></span><span class="tc">Marca pessoal &amp; conteúdo</span></p>
+  <h1>Posicionamento é uma decisão, não um resultado</h1>
+  <p class="sub">
+    A maior parte dos empresários trata conteúdo como inspiração: senta, pensa no que postar, posta.
+    Quem escala trata como produto — arquétipo definido, formatos fixos, grade diária e métrica na ordem certa.
+    Este guia é o método completo, do jeito que ele funciona na prática.
+  </p>
+  <p class="credit">
+    <b>SOBRE A FONTE:</b> este material é a nossa sistematização do quadro Advisor de
+    <b>Alfredo Soares</b> (G4 Educação) com <b>Bruno Nardon</b>, sobre estratégia de conteúdo e posicionamento.
+    Recomendamos assistir ao episódio na íntegra — o que está aqui é o método organizado para execução,
+    não um substituto do original.
+  </p>
+</header>
+
+<!-- 1 -->
+<section class="sec">
+  <p class="eyebrow"><span>01</span><span class="bar"></span><span>O arquétipo</span></p>
+  <h2>Identidade é quem você é. Posicionamento é o que você decide mostrar.</h2>
+
+  <blockquote class="q">
+    <p>"Mas nerd rico é muito ruim." — "Não é sobre ruim, é sobre dar resultado."</p>
+    <div class="who">Bruno Nardon e Alfredo Soares</div>
+  </blockquote>
+
+  <p class="prose">
+    Quase todo mundo mistura três coisas diferentes. <strong>Identidade</strong> é quem você é de fato —
+    seus traços, sua história, sua rotina. <strong>Posicionamento</strong> é a fatia disso que você
+    escolhe colocar na frente das pessoas. <strong>Conteúdo</strong> é só a distribuição dessa escolha.
+  </p>
+  <p class="prose">
+    O arquétipo é o nome curto do seu posicionamento. E a engenharia que funciona é sempre a mesma:
+    <strong>pegue o traço que alguém usaria para te criticar e cole nele uma prova de resultado.</strong>
+    A tensão entre as duas palavras é o que faz a pessoa lembrar de você.
+  </p>
+
+  <div class="exs">
+    <div class="ex">
+      <div class="who">Alfredo Soares</div>
+      <div class="arch">O vendedor gente boa</div>
+      <div class="b">Movimento, carinho, criatividade, conexão, família. "Vendedor" é o rótulo que o mercado usaria de forma pejorativa. "Gente boa" desarma e prova.</div>
+    </div>
+    <div class="ex">
+      <div class="who">Bruno Nardon</div>
+      <div class="arch">O nerd rico</div>
+      <div class="b">Técnico, disciplinado, obcecado por dados. "Nerd" era o rótulo negativo. "Rico" é a prova de que o rótulo funciona.</div>
+    </div>
+    <div class="ex">
+      <div class="who">O seu</div>
+      <div class="arch" style="color:var(--muted)">?</div>
+      <div class="b">Precisa ser algo que você <strong>já é</strong> — nunca algo que você vai passar a fazer. Arquétipo que exige atuação não sobrevive a seis meses de rotina.</div>
+    </div>
+  </div>
+
+  <div class="calc">
+    <h4>Monte o seu arquétipo</h4>
+    <p class="hint">Duas palavras. A primeira é o traço que soaria como defeito. A segunda é a prova de que ele funciona.</p>
+    <div class="fields">
+      <div class="field">
+        <label for="a1">O traço que te criticariam</label>
+        <input type="text" id="a1" value="chato" maxlength="24" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="a2">A prova de resultado</label>
+        <input type="text" id="a2" value="da meta" maxlength="24" autocomplete="off">
+      </div>
+    </div>
+    <div class="archout">
+      <div class="big" id="a-out">O chato da meta</div>
+      <ul class="tests" id="a-tests"></ul>
+    </div>
+  </div>
+
+  <p class="note">
+    Se o seu arquétipo soar desconfortável, isso é sinal de que ele tem tensão — não de que está errado.
+    No episódio original, o Nardon rejeita "nerd" três vezes e o Alfredo não recua nenhuma.
+  </p>
+</section>
+
+<!-- 2 -->
+<section class="sec">
+  <p class="eyebrow"><span>02</span><span class="bar"></span><span>Produtificar</span></p>
+  <h2>Três formatos por camada. Nunca mais inventar post.</h2>
+
+  <blockquote class="q">
+    <p>"O que eu faço pra escalar conteúdo? Eu produtifico. Não tem que inventar."</p>
+    <div class="who">Alfredo Soares</div>
+  </blockquote>
+
+  <p class="prose">
+    A estrutura é rígida de propósito: <strong>três formatos de topo, três de meio, três de fundo.</strong>
+    Formato, não tema. A diferença é o que permite delegar — o time recebe um briefing de formato e sai
+    executando sem depender de você toda vez.
+  </p>
+  <p class="prose">
+    Na prática, isso significa transformar o que você já faz em padrão reconhecível. Se você sempre está no
+    carro falando ao telefone, isso é um formato. Se a sala vive cheia de gente, isso é um formato. O time
+    para de caçar ideia e passa a caçar a cena.
+  </p>
+
+  <div class="sched">
+    <div class="slot">
+      <div class="h">Topo · saber que você existe</div>
+      <ul>
+        <li class="t1">Bastidor de deslocamento e chegada no cliente</li>
+        <li class="t1">Vida e família — foto-dump de 2 a 3 imagens com uma frase</li>
+        <li class="t1">Opinião sobre notícia do seu mercado, print mais fala</li>
+      </ul>
+    </div>
+    <div class="slot">
+      <div class="h">Meio · saber quem você é e o que faz</div>
+      <ul>
+        <li class="t2">Quadro branco: uma conta do seu negócio resolvida em 60 segundos</li>
+        <li class="t2">O erro que você já viu em dezenas de empresas</li>
+        <li class="t2">Bastidor de gestão — reunião, painel, rotina do time</li>
+      </ul>
+    </div>
+    <div class="slot">
+      <div class="h">Fundo · saber o que você vende</div>
+      <ul>
+        <li class="t3">Case com número: antes, depois, em quanto tempo</li>
+        <li class="t3">Seu método, uma etapa por post</li>
+        <li class="t3">Corte de aula ou de diagnóstico, com chamada</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="panel br">
+    <h4>O ativo que você já tem e não empacotou</h4>
+    <p style="margin-bottom:0">
+      No episódio, o Alfredo descobre que o Nardon tem milhares de estudos de caso guardados e não usa nenhum
+      como conteúdo — e transforma isso num formato fixo na hora. Todo empresário tem o equivalente:
+      os problemas que já resolveu, os números que já entregou, as situações que já viu repetidas.
+      Não é conteúdo novo. É conteúdo que existe e nunca virou formato.
+    </p>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="sec">
+  <p class="eyebrow"><span>03</span><span class="bar"></span><span>A grade</span></p>
+  <h2>3-3-3: a grade que substitui a inspiração</h2>
+
+  <p class="prose">
+    A grade prescrita no episódio é simples: <strong>três blocos por dia — manhã, tarde e noite — e em cada
+    bloco um post de topo, um de meio e um de fundo.</strong> O de meio leva para automação na DM. O de fundo
+    leva para a oferta. O de topo não pede nada.
+  </p>
+  <p class="prose">
+    E tem um detalhe operacional que quase passa batido: quem roda 12 posts por dia <strong>não produz 12
+    peças</strong>. Produz três e preenche doze slots. A maior parte é reaproveitamento.
+  </p>
+
+  <div class="calc">
+    <h4>Construtor de grade</h4>
+    <p class="hint">Escolha o volume que você consegue sustentar por 90 dias seguidos — cadência importa mais que pico.</p>
+    <div class="seg" role="group" aria-label="Volume diário" id="seg-vol">
+      <button type="button" data-v="3" aria-pressed="false">3 por dia</button>
+      <button type="button" data-v="6" aria-pressed="true">6 por dia</button>
+      <button type="button" data-v="9" aria-pressed="false">9 por dia</button>
+      <button type="button" data-v="12" aria-pressed="false">12 por dia</button>
+    </div>
+    <div class="out" style="margin-top:24px">
+      <div class="o"><span class="ov" id="g-sem">42</span><span class="ol">posts por semana</span></div>
+      <div class="o"><span class="ov" id="g-mes">180</span><span class="ol">posts por mês</span></div>
+      <div class="o"><span class="ov" id="g-novo">2</span><span class="ol">peças novas por dia</span></div>
+      <div class="o"><span class="ov" id="g-reuso">4</span><span class="ol">reaproveitadas por dia</span></div>
+    </div>
+    <div class="verdict" id="g-verdict"></div>
+  </div>
+
+  <h4>Como o feed fica num dia de nove</h4>
+  <div class="feed" id="feedgrid"></div>
+  <div class="flegend">
+    <span><i style="background:var(--f1)"></i> Topo — alcance</span>
+    <span><i style="background:var(--f2)"></i> Meio — automação na DM</span>
+    <span><i style="background:var(--f3)"></i> Fundo — chamada de venda</span>
+  </div>
+
+  <div class="panel">
+    <h4>Duas regras que valem mais que o volume</h4>
+    <p><strong>Alterne formato.</strong> Uma imagem, um reels, uma imagem, um reels. Sequência do mesmo tipo o algoritmo trata como repetição.</p>
+    <p style="margin-bottom:0"><strong>Respeite o horário.</strong> Conteúdo gravado de manhã publica de manhã. Pode ser amanhã ou daqui a um mês, mas de manhã. Coerência de luz e de contexto é o que faz a audiência sentir que aquilo é rotina, não estoque.</p>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="sec">
+  <p class="eyebrow"><span>04</span><span class="bar"></span><span>Stories</span></p>
+  <h2>O feed carrega a estratégia. O stories carrega a identidade.</h2>
+
+  <blockquote class="q">
+    <p>"Dias de poucos posts é mais alcance, dias de muitos posts é mais venda."</p>
+    <div class="who">Alfredo Soares</div>
+  </blockquote>
+
+  <p class="prose">
+    Se o feed é onde você executa a grade, o stories é onde você prova o arquétipo. É lá que a pessoa vê que
+    você é mesmo aquilo — e as regras aqui são as mais táticas do método inteiro.
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Regra</th><th>Por quê</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Dois destinos: DM e link</strong></td><td>Link tira a pessoa do app e derruba sua entrega. DM mantém e aumenta. Use a DM como padrão e o link como exceção.</td></tr>
+        <tr><td><strong>Chamada sem link</strong></td><td>Dez mil visualizações e cento e cinquenta cliques não mudam nada no destino e queimam a entrega do stories. Quando a marca é conhecida, "está no meu perfil" converte melhor que o link.</td></tr>
+        <tr><td><strong>Um destino só na bio</strong></td><td>Cada link a mais é uma chance de a pessoa escolher errado e uma taxa de clique diluída.</td></tr>
+        <tr><td><strong>Dia bom, poste pouco no seguinte</strong></td><td>Deixe o conteúdo que performou circular em vez de atropelar com o próximo.</td></tr>
+        <tr><td><strong>Nunca marque publicamente</strong></td><td>Marcação escondida o algoritmo lê como link. Publique e mencione depois, pelo botão — aí ele entende como ferramenta.</td></tr>
+        <tr><td><strong>Caixinha de pergunta vira roteiro</strong></td><td>Pergunta boa é pauta pronta e prova de demanda. Salve e transforme em vídeo.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="sec">
+  <p class="eyebrow"><span>05</span><span class="bar"></span><span>Frequência</span></p>
+  <h2>Não é sobre muita gente ver. É sobre te verem muito.</h2>
+
+  <blockquote class="q">
+    <p>"Se eu faço cinco vídeos de 20 mil visualizações, alcancei 100 mil. Só que às vezes eu alcancei o mesmo cara cinco vezes — e isso vende muito mais."</p>
+    <div class="who">Alfredo Soares</div>
+  </blockquote>
+
+  <p class="prose">
+    Essa é a inversão mais útil do método para quem vende serviço de ticket alto. Alcance amplo e raso é
+    métrica de creator. <strong>Frequência sobre a mesma pessoa é métrica de quem precisa formar opinião
+    antes de vender.</strong> Cada impacto derruba uma objeção — e quem compra caro tem muitas.
+  </p>
+  <p class="prose">
+    Vale também entender o comportamento do comprador empresário: ele não curte, não comenta e muitas vezes
+    nem segue. Ele vê algo bom e <strong>encaminha para o time</strong>. Por isso encaminhamento é uma das
+    métricas mais preditivas que existem nesse jogo.
+  </p>
+
+  <div class="calc">
+    <h4>Alcance raso contra frequência</h4>
+    <p class="hint">Mesmo esforço, duas leituras. Preencha com os seus números.</p>
+    <div class="fields">
+      <div class="field"><label for="f-posts">Posts por dia</label><input type="number" id="f-posts" value="9" min="1" max="30"></div>
+      <div class="field"><label for="f-views">Visualizações médias por post</label><input type="number" id="f-views" value="1500" min="50" step="100"></div>
+      <div class="field"><label for="f-seg">Seu número de seguidores</label><input type="number" id="f-seg" value="10000" min="100" step="500"></div>
+      <div class="field"><label for="f-freq">Impactos até formar opinião — <span class="rv" id="f-freq-v">5</span></label><input type="range" id="f-freq" min="1" max="12" value="5"></div>
+    </div>
+    <div class="out">
+      <div class="o"><span class="ov" id="f-imp">—</span><span class="ol">impressões por mês</span></div>
+      <div class="o"><span class="ov" id="f-pess">—</span><span class="ol">pessoas com opinião formada</span></div>
+      <div class="o"><span class="ov" id="f-seg-x">—</span><span class="ol">vezes que cada seguidor te vê no mês</span></div>
+    </div>
+    <div class="verdict" id="f-verdict"></div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="sec">
+  <p class="eyebrow"><span>06</span><span class="bar"></span><span>Métricas</span></p>
+  <h2>A hierarquia que quase ninguém segue</h2>
+
+  <p class="prose">
+    A ordem em que você olha os números decide as suas escolhas de conteúdo. E a ordem correta, para quem
+    vende, é praticamente o inverso da que todo mundo usa.
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th class="n">#</th><th>Métrica</th><th>Por que nessa posição</th></tr></thead>
+      <tbody>
+        <tr><td class="n">1</td><td><strong>Vendas</strong></td><td>É a única que paga a conta. Se você não consegue amarrar conteúdo a venda, todo o resto é palpite.</td></tr>
+        <tr><td class="n">2</td><td><strong>MQL</strong></td><td>Lead que declarou interesse no que você vende. Sem separar de lead, você confunde volume com demanda.</td></tr>
+        <tr><td class="n">3</td><td><strong>Lead</strong></td><td>Contato capturado. Importa, mas isca genérica traz lead frio em quantidade e distorce a leitura.</td></tr>
+        <tr><td class="n">4</td><td><strong>Encaminhamento</strong></td><td>Quando alguém encaminha, está mandando para o time executar ou para o chefe aprovar. É a métrica de comportamento de compra.</td></tr>
+        <tr><td class="n">5</td><td>Alcance</td><td>Quantas pessoas foram atingidas. Útil, mas raso sozinho.</td></tr>
+        <tr><td class="n">6</td><td>Engajamento</td><td>Curtida e comentário vêm de fã, não de comprador de ticket alto.</td></tr>
+        <tr><td class="n">7</td><td>Seguidores</td><td>A métrica mais visível e a menos importante. Hoje se consome conteúdo sem seguir.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pull">
+    <p>
+      Se a sua reunião de marketing começa por seguidores e alcance, ela está lendo a lista de trás para a
+      frente. Comece por venda e desça. O que não puder ser respondido nos dois primeiros degraus é o seu
+      próximo projeto de instrumentação, não de conteúdo.
+    </p>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="sec">
+  <p class="eyebrow"><span>07</span><span class="bar"></span><span>A ordem</span></p>
+  <h2>Quantidade, depois qualidade, depois métrica, depois arquitetura</h2>
+
+  <p class="prose">
+    Quase todo mundo faz ao contrário: discute se vai para o TikTok, se contrata editor, se o design está
+    bom — antes de decidir quantos posts precisa entregar por dia.
+  </p>
+  <p class="prose">
+    A ordem importa porque cada etapa dimensiona a seguinte. <strong>Quantidade define o time necessário.
+    O time define o custo. O custo define o orçamento.</strong> E só depois de tudo isso definido faz sentido
+    discutir em quantos canais você quer estar.
+  </p>
+
+  <div class="panel br">
+    <h4>O teste rápido</h4>
+    <p style="margin-bottom:0">
+      Se você não consegue dizer em voz alta quantos posts a sua empresa entrega por dia, você ainda não tem
+      estratégia de conteúdo — tem produção sob demanda. E produção sob demanda sempre para quando a semana
+      aperta.
+    </p>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="sec">
+  <p class="eyebrow"><span>08</span><span class="bar"></span><span>Arquitetura de canal</span></p>
+  <h2>Um canal principal. O resto alimenta.</h2>
+
+  <blockquote class="q">
+    <p>"Eu não quero que ele produza conteúdo pro YouTube. Eu quero que quem já o conhece consuma mais dele no YouTube."</p>
+    <div class="who">Alfredo Soares</div>
+  </blockquote>
+
+  <p class="prose">
+    A distinção é sutil e decisiva: <strong>um canal é aquisição, o outro é aprofundamento.</strong>
+    Instagram é onde as pessoas te descobrem. YouTube é onde quem já te descobriu vai se convencer.
+    Tratar os dois como aquisição é o erro mais caro dessa etapa.
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Canal</th><th>Papel</th><th>Regra</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Instagram</strong></td><td>Aquisição, arquétipo e frequência</td><td>Recebe o esforço principal até a grade rodar sozinha.</td></tr>
+        <tr><td><strong>YouTube</strong></td><td>Aprofundamento e insumo</td><td>Dois conteúdos por semana. Alimenta a grade do Instagram.</td></tr>
+        <tr><td><strong>Podcast</strong></td><td>Fábrica de conteúdo</td><td>Existe para gerar material, não para gerar descoberta.</td></tr>
+        <tr><td><strong>Perfil da empresa</strong></td><td>Prova institucional</td><td>Volume baixo e constante. Existe para quando o comprador for checar se a empresa é real.</td></tr>
+        <tr><td><strong>LinkedIn, TikTok</strong></td><td>—</td><td>Depois. Não por serem ruins, mas porque abrir canal antes de dominar o principal espalha em vez de resolver.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h4>O atalho que quase ninguém usa</h4>
+    <p style="margin-bottom:0">
+      Você não precisa construir audiência só produzindo. Aceitar convite de canais e podcasts do seu nicho —
+      grandes, médios e pequenos — faz o seu rosto virar o resultado padrão quando alguém pesquisa o seu tema.
+      É o caminho mais barato que existe para sair de desconhecido a reconhecido.
+    </p>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="sec">
+  <p class="eyebrow"><span>09</span><span class="bar"></span><span>A escada</span></p>
+  <h2>De respeitado a desejado</h2>
+
+  <p class="prose">
+    Existe uma escada de percepção, e cada degrau converte de um jeito. Clique para ver o que muda em cada um.
+  </p>
+
+  <div class="ladder" id="ladder">
+    <button class="rung" type="button" data-i="1" aria-pressed="false"><span class="i">01</span><span class="t">Conhecido</span></button>
+    <button class="rung" type="button" data-i="2" aria-pressed="false"><span class="i">02</span><span class="t">Reconhecido</span></button>
+    <button class="rung" type="button" data-i="3" aria-pressed="true"><span class="i">03</span><span class="t">Respeitado</span></button>
+    <button class="rung" type="button" data-i="4" aria-pressed="false"><span class="i">04</span><span class="t">Admirado</span></button>
+    <button class="rung" type="button" data-i="5" aria-pressed="false"><span class="i">05 · alvo</span><span class="t">Desejado</span></button>
+    <button class="rung" type="button" data-i="6" aria-pressed="false"><span class="i">06</span><span class="t">Idolatrado</span></button>
+  </div>
+  <div class="rungout" id="rungout"></div>
+
+  <div class="panel br">
+    <h4>Como se sobe</h4>
+    <p style="margin-bottom:0">
+      Não é com mais conteúdo técnico. É tangibilizando que o seu método funciona na sua própria vida.
+      Não precisa ser relógio, carro ou casa — pode ser o time batendo meta sem você, a rotina que se
+      sustenta, a família. O desejo do seu comprador quase nunca é ficar rico. É <strong>parar de ser o
+      melhor vendedor da própria empresa.</strong> Mostre que você já resolveu isso.
+    </p>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="sec">
+  <p class="eyebrow"><span>10</span><span class="bar"></span><span>Produção</span></p>
+  <h2>30% produzir, 70% reaproveitar</h2>
+
+  <p class="prose">
+    O obstáculo que todo empresário levanta é o mesmo: <em>não cabe na rotina.</em> A resposta do método não é
+    trabalhar mais — é <strong>gravar o que já acontece.</strong>
+  </p>
+  <p class="prose">
+    Reunião de diagnóstico. Call de gestão semanal. Treinamento interno. Reunião do próprio time comercial.
+    Análise de painel. Cada uma dessas rende de cinco a quinze peças. O gargalo nunca foi ideia —
+    é ninguém apertando o rec.
+  </p>
+
+  <h3>Checklist de 30 dias</h3>
+  <ol class="acts">
+    <li><b>Semana 1.</b> Escolha o arquétipo — uma expressão, escrita, definitiva. Escreva os nove formatos. Defina a quantidade diária. Reduza a bio a um destino.</li>
+    <li><b>Semana 2.</b> Separe lead de MQL no seu CRM. Padronize a marcação de origem em todo destino. Amarre a origem à etapa de fechamento.</li>
+    <li><b>Semana 3.</b> Ligue a câmera nas reuniões que já acontecem. Comece a grade no volume decidido, alternando imagem e vídeo. Ajuste o stories para os dois destinos.</li>
+    <li><b>Semana 4.</b> Instale o ritual semanal na hierarquia certa: venda, MQL, lead, encaminhamento. E pare de reportar seguidores em reunião de gestão.</li>
+  </ol>
+</section>
+
+</div>
+
+<div class="final">
+  <div class="in">
+    <h2>Estratégia de conteúdo sem processo comercial não vira receita</h2>
+    <p>
+      Conteúdo enche o topo do funil. O que transforma isso em contrato é ter time, processo, meta e gestão
+      do outro lado. É exatamente o que a UNV faz: assumimos a direção comercial da sua empresa, estruturamos
+      o time e colocamos a operação para bater meta todo mês.
+    </p>
+    <a class="btn" href="/sessao">Agendar uma sessão estratégica</a>
+  </div>
+</div>
+
+<div class="foot">
+  <div class="in">
+    <p>
+      <b>Fonte:</b> quadro Advisor do canal de Alfredo Soares (G4 Educação), episódio sobre estratégia de
+      conteúdo e posicionamento com Bruno Nardon. Este guia é uma sistematização editorial do método,
+      publicada pela UNV Holdings para uso dos nossos clientes e da comunidade empresarial.
+      Os créditos do método e das citações são dos autores originais.<br>
+      <b>UNV Holdings</b> · Direção comercial terceirizada para pequenas e médias empresas ·
+      <a href="/">unvholdings.com.br</a>
+    </p>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $=function(i){return document.getElementById(i);};
+  var nf=function(n){return Math.round(n).toLocaleString("pt-BR");};
+
+  /* arquétipo */
+  (function(){
+    var a1=$("a1"),a2=$("a2"); if(!a1) return;
+    function cap(s){s=s.trim();return s?s.charAt(0).toUpperCase()+s.slice(1):"";}
+    function upd(){
+      var w1=a1.value.trim(), w2=a2.value.trim();
+      var full = (w1||w2) ? ("O "+cap(w1)+(w2?" "+w2.toLowerCase():"")).trim() : "—";
+      $("a-out").textContent = full;
+      var words=(w1+" "+w2).trim().split(/\s+/).filter(Boolean).length;
+      var tests=[
+        [w1.length>0 && w2.length>0, "Tem os dois elementos: o traço e a prova"],
+        [words<=4, "Cabe em quatro palavras — se não cabe, ninguém repete"],
+        [w1.length>0 && w1.toLowerCase()!==w2.toLowerCase(), "As duas partes puxam para lados diferentes — é a tensão que faz lembrar"],
+        [full.length<=32, "Curto o suficiente para virar apelido"]
+      ];
+      $("a-tests").innerHTML = tests.map(function(t){
+        return '<li class="'+(t[0]?"y":"n")+'">'+t[1]+'</li>';
+      }).join("");
+    }
+    [a1,a2].forEach(function(e){e.addEventListener("input",upd);});
+    upd();
+  })();
+
+  /* grade */
+  (function(){
+    var seg=$("seg-vol"); if(!seg) return;
+    var btns=[].slice.call(seg.querySelectorAll("button"));
+    function upd(v){
+      btns.forEach(function(b){b.setAttribute("aria-pressed", b.dataset.v===String(v)?"true":"false");});
+      var novo=Math.max(1,Math.round(v*0.3));
+      $("g-sem").textContent=nf(v*7); $("g-mes").textContent=nf(v*30);
+      $("g-novo").textContent=novo; $("g-reuso").textContent=v-novo;
+      var m;
+      if(v===3) m="Piso viável: um post por camada, uma vez ao dia. <b>É o mínimo que sustenta a estratégia</b> — abaixo disso não dá para ocupar as três camadas do funil todo dia.";
+      else if(v===6) m="Dois blocos de três, manhã e tarde. <b>É o ponto de partida realista</b> para quem ainda não tem time dedicado, aproveitando reunião gravada.";
+      else if(v===9) m="A grade completa: <b>três blocos de três</b>, manhã, tarde e noite. Exige alguém dedicado a conteúdo dentro da empresa.";
+      else m="O patamar avançado — quatro blocos de quatro. <b>Só funciona com time de conteúdo montado</b> e uma máquina de reaproveitamento rodando.";
+      $("g-verdict").innerHTML=m;
+    }
+    btns.forEach(function(b){b.addEventListener("click",function(){upd(+b.dataset.v);});});
+    upd(6);
+  })();
+
+  /* feed */
+  (function(){
+    var g=$("feedgrid"); if(!g) return;
+    var s=[
+      ["t1","Manhã · topo","Bastidor de cliente"],["t2","Manhã · meio","Quadro branco: a conta"],["t3","Manhã · fundo","Case com número"],
+      ["t1","Tarde · topo","Opinião sobre notícia"],["t2","Tarde · meio","O erro que vi em 200 empresas"],["t3","Tarde · fundo","Uma etapa do método"],
+      ["t1","Noite · topo","Vida e família"],["t2","Noite · meio","Gestão à vista do time"],["t3","Noite · fundo","Corte de diagnóstico + chamada"]
+    ];
+    g.innerHTML=s.map(function(x){return '<div class="cell '+x[0]+'"><span class="k">'+x[1]+'</span><span class="v">'+x[2]+'</span></div>';}).join("");
+  })();
+
+  /* frequência */
+  (function(){
+    var p=$("f-posts"),v=$("f-views"),sg=$("f-seg"),f=$("f-freq"); if(!p) return;
+    function upd(){
+      var np=Math.max(1,+p.value||1), nv=Math.max(1,+v.value||1),
+          ns=Math.max(1,+sg.value||1), fr=Math.max(1,+f.value||1);
+      $("f-freq-v").textContent=fr;
+      var imp=np*nv*30, pes=imp/fr, porSeg=imp/ns;
+      $("f-imp").textContent=nf(imp);
+      $("f-pess").textContent=nf(pes);
+      $("f-seg-x").textContent=porSeg.toFixed(1).replace(".",",")+"×";
+      $("f-verdict").innerHTML=
+        "Com essa grade, <b>"+nf(pes)+" pessoas por mês</b> te veem "+fr+" vezes — o suficiente para formar "+
+        "opinião e quebrar objeção antes da conversa comercial. E se toda a entrega caísse na sua base, cada "+
+        "seguidor te veria <b>"+porSeg.toFixed(1).replace(".",",")+" vezes por mês</b>. "+
+        (porSeg>=5 ? "Esse é o patamar em que você domina a frequência."
+                   : "Ainda é pouco: abaixo de cinco impactos por mês, a frequência não sustenta venda de ticket alto.");
+    }
+    [p,v,sg,f].forEach(function(e){e.addEventListener("input",upd);});
+    upd();
+  })();
+
+  /* escada */
+  (function(){
+    var l=$("ladder"), out=$("rungout"); if(!l) return;
+    var t={
+      1:"<b>Conhecido.</b> As pessoas já viram seu rosto, mas não sabem dizer o que você faz. Métrica de alcance. É o degrau mais fácil e o menos valioso.",
+      2:"<b>Reconhecido.</b> Te associam a um tema. Quando alguém pensa naquele problema, seu nome aparece. É aqui que o arquétipo começa a fazer efeito.",
+      3:"<b>Respeitado.</b> Seu histórico sustenta o que você fala. O problema do respeito é que ele não converte sozinho: faz a pessoa concordar com você, não comprar de você.",
+      4:"<b>Admirado.</b> A pessoa quer ter o que você tem. Exige mostrar resultado, não só raciocínio — ponderação sozinha admira um público pequeno.",
+      5:"<b>Desejado — é o alvo.</b> A pessoa quer <i>ser</i> você. É o degrau que converte. Sobe-se mostrando que o método funciona na sua própria vida, não só na teoria.",
+      6:"<b>Idolatrado.</b> Desaconselhado no episódio original: você é herói por tanto tempo até virar vilão. Alto risco de reputação e nenhum ganho de conversão sobre o degrau anterior."
+    };
+    var b=[].slice.call(l.querySelectorAll(".rung"));
+    function sel(i){
+      b.forEach(function(x){x.setAttribute("aria-pressed", x.dataset.i===String(i)?"true":"false");});
+      out.innerHTML=t[i];
+    }
+    b.forEach(function(x){x.addEventListener("click",function(){sel(+x.dataset.i);});});
+    sel(3);
+  })();
+})();
+</script>
+</body>
+</html>
