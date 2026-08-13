@@ -74,6 +74,13 @@ export default function InstagramOAuthCallback() {
       }
     }
 
+    // Ponte do UNV Sales (ver OAuthRedirectHandler): se o state é do UNV Sales,
+    // este domínio é só o ponto de retorno aceito pela Meta — repassa e sai.
+    if ((decodedState as any)?.flow === "unv-sales") {
+      window.location.replace(`https://app.unvsales.com.br/auth/instagram/callback${searchParams}`);
+      return;
+    }
+
     window.history.replaceState({}, document.title, window.location.origin + "/#/auth/instagram/callback");
 
     if (error) {

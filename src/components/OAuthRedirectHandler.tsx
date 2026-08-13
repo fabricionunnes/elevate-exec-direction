@@ -37,6 +37,14 @@ export function OAuthRedirectHandler() {
         try {
           const decodedState = JSON.parse(atob(state));
 
+          // Ponte do UNV Sales: a Meta só aceita redirect neste domínio, então o
+          // OAuth do Instagram do UNV Sales volta aqui e é repassado com a query
+          // intacta pro app dele, que troca o code pelo token no projeto certo.
+          if (decodedState.flow === "unv-sales") {
+            window.location.replace(`https://app.unvsales.com.br/auth/instagram/callback${queryString}`);
+            return;
+          }
+
           if (decodedState.flow === "meta_ads" || decodedState.flow === "crm_meta_ads") {
             const callbackUrl = `/meta-ads-callback${queryString}`;
             window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
