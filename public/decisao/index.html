@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Informação em decisão estratégica — o intervalo entre saber e agir | UNV</title>
+<meta name="description" content="Por que dono trava mesmo tendo o dado, como antecipar a jornada do cliente, a arquitetura social da venda B2B e quando diversificar sem furar o foco.">
+<meta name="author" content="Fabrício Nunnes — CEO da UNV Holdings, Universidade Nacional de Vendas">
+<link rel="canonical" href="https://unvholdings.com.br/decisao/">
+<link rel="icon" href="/favicon.ico">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Você já tem a informação. O que falta é a decisão.">
+<meta property="og:description" content="Por que dono trava mesmo tendo o dado, como antecipar a jornada do cliente, a arquitetura social da venda B2B e quando diversificar sem furar o foco.">
+<meta property="og:url" content="https://unvholdings.com.br/decisao/">
+<meta property="og:image" content="https://unvholdings.com.br/images/unv-logo.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+
+:root{
+  --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#EDEFF3; --surface-3:#E2E6EC;
+  --ink:#0A1F45; --ink-2:#33415C; --muted:#5F6B80; --faint:#8B94A5;
+  --rule:#DCE1E9; --rule-2:#C3CBD7;
+  --navy:#0D2B5E; --red:#CC1B1B;
+  --good:#0F6B52; --good-bg:#E6F2EE;
+  --warn:#8A5B04; --warn-bg:#F7EEDC;
+  --bad:#B02318; --bad-bg:#FAEAE8;
+  --f1:#7A80DC; --f2:#3E5BA9; --f3:#0D2B5E;
+  --f1-bg:#EDEEFB; --f2-bg:#E4EAF6; --f3-bg:#DCE3F0;
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --prose:min(100%,62ch);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
+    --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+    --rule:#1E3557; --rule-2:#2C4770;
+    --navy:#7BA4E8; --red:#FF6B62;
+    --good:#43BF9C; --good-bg:#0F2D28;
+    --warn:#D9A03C; --warn-bg:#2E2716;
+    --bad:#FF7A6E; --bad-bg:#33191A;
+    --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
+    --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
+  --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+  --rule:#1E3557; --rule-2:#2C4770;
+  --navy:#7BA4E8; --red:#FF6B62;
+  --good:#43BF9C; --good-bg:#0F2D28;
+  --warn:#D9A03C; --warn-bg:#2E2716;
+  --bad:#FF7A6E; --bad-bg:#33191A;
+  --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
+  --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui);font-size:16.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin:0 auto;padding:0 26px 0}
+.prose{width:var(--prose)}
+p{margin:0 0 1em}
+strong{font-weight:680;color:var(--ink)}
+a{color:var(--red)}
+:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+
+.topbar{border-bottom:1px solid var(--rule);position:sticky;top:0;background:var(--ground);z-index:10}
+.topbar .in{max-width:1200px;margin:0 auto;padding:12px 26px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.topbar picture{display:block}
+.topbar img{height:38px;width:auto;display:block}
+.topbar .cta{font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#fff;background:var(--red);padding:10px 17px;border-radius:2px;text-decoration:none;font-weight:700;white-space:nowrap}
+
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.eyebrow .tc{color:var(--red);font-weight:600}
+.eyebrow .bar{width:26px;height:1px;background:var(--rule-2);flex:none}
+
+.hero{padding:70px 0 50px}
+.hero h1{font-size:clamp(38px,7vw,80px);line-height:.98;letter-spacing:-.042em;font-weight:820;margin:24px 0 0;text-wrap:balance;max-width:15ch}
+.hero .sub{font-size:clamp(17px,2vw,20px);line-height:1.5;color:var(--ink-2);max-width:60ch;margin:26px 0 0}
+
+.idx{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:42px 0 0}
+.idx a{background:var(--surface);padding:16px 18px;text-decoration:none;display:block}
+.idx a:hover{background:var(--surface-2)}
+.idx .n{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--red);display:block}
+.idx .t{font-size:14.5px;font-weight:640;color:var(--ink);margin-top:5px;display:block;line-height:1.3;letter-spacing:-.01em}
+
+.sec{padding:68px 0;border-top:1px solid var(--rule);scroll-margin-top:70px}
+h2{font-size:clamp(27px,4.2vw,45px);line-height:1.04;letter-spacing:-.032em;font-weight:800;margin:18px 0 24px;text-wrap:balance;max-width:19ch}
+h3{font-size:19px;font-weight:720;letter-spacing:-.012em;margin:40px 0 12px}
+h4{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 14px}
+
+.max{padding:0 0 0 24px;margin:0 0 30px;width:var(--prose);border-left:3px solid var(--red)}
+.max p{font-size:clamp(20px,2.5vw,26px);line-height:1.28;font-weight:700;letter-spacing:-.026em;margin:0 0 .4em;color:var(--ink)}
+.max p:last-child{margin-bottom:0}
+
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:24px 26px;margin:26px 0}
+.panel.nv{border-left:3px solid var(--navy)}
+.panel.rd{border-left:3px solid var(--red)}
+.panel>:last-child{margin-bottom:0}
+
+.tw{overflow-x:auto;margin:24px 0;border:1px solid var(--rule);border-radius:2px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:540px}
+th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+thead th{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface-2);white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.hl td{background:var(--good-bg)}
+
+.crit{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:26px 0}
+.cr{background:var(--surface);padding:22px}
+.cr .t{font-size:20px;font-weight:800;letter-spacing:-.025em;color:var(--red)}
+.cr .d{font-size:14px;color:var(--ink-2);line-height:1.5;margin-top:10px}
+.cr .q{font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:12px;padding-top:12px;border-top:1px solid var(--rule)}
+
+.pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:26px 0}
+.pl{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:22px;position:relative}
+.pl .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+.pl .t{font-size:21px;font-weight:780;letter-spacing:-.025em;margin:8px 0 10px}
+.pl .d{font-size:14px;color:var(--ink-2);line-height:1.5}
+.pl .m{margin-top:14px;padding-top:12px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.6}
+.pl.a{border-top:3px solid var(--f1)} .pl.b{border-top:3px solid var(--f2)} .pl.c{border-top:3px solid var(--f3)}
+
+.funnel{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:26px 0}
+.fl{background:var(--surface);padding:20px 22px;display:grid;grid-template-columns:130px 1fr;gap:20px;align-items:start}
+.fl .lb{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:700}
+.fl.t1 .lb{color:var(--f1)} .fl.t2 .lb{color:var(--f2)} .fl.t3 .lb{color:var(--f3)}
+.fl .lb small{display:block;font-size:10px;letter-spacing:.1em;color:var(--muted);font-weight:600;margin-top:5px}
+.fl dl{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.fl dt{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.fl dd{margin:4px 0 0;font-size:14px;line-height:1.4;color:var(--ink-2)}
+@media(max-width:640px){.fl{grid-template-columns:1fr;gap:12px}}
+
+.calc{background:var(--surface-2);border:1px solid var(--rule-2);border-radius:2px;padding:26px;margin:32px 0}
+.calc h4{color:var(--ink)}
+.calc .hint{font-size:14px;color:var(--muted);margin:0 0 20px;line-height:1.5;max-width:64ch}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px 24px;margin-bottom:22px}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.field input{font-family:var(--mono);font-size:16px;font-variant-numeric:tabular-nums;padding:10px 11px;border:1px solid var(--rule-2);border-radius:2px;background:var(--surface);color:var(--ink);width:100%}
+.field input[type=range]{padding:0;accent-color:var(--red);border:none;background:none}
+.rv{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--red)}
+.out{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:20px;padding-top:20px;border-top:1px solid var(--rule-2)}
+.o .ov{font-size:clamp(23px,3vw,31px);font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;display:block}
+.o .ol{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:7px;display:block}
+.verdict{margin-top:20px;padding:14px 16px;background:var(--surface);border:1px solid var(--rule);border-radius:2px;font-size:15px;line-height:1.55;color:var(--ink-2)}
+.verdict b{color:var(--red)}
+
+.scorer{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:20px 0}
+.srow{background:var(--surface);padding:14px 18px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+.srow .nm{font-size:15px;font-weight:640}
+.srow .ctrls{display:flex;gap:6px}
+.srow button{font-family:var(--mono);font-size:11.5px;padding:7px 11px;border:1px solid var(--rule-2);background:var(--surface);color:var(--muted);border-radius:2px;cursor:pointer;letter-spacing:.05em}
+.srow button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+:root[data-theme="dark"] .srow button[aria-pressed="true"],
+:root:not([data-theme="light"]) .srow button[aria-pressed="true"]{color:#08152B}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .srow button[aria-pressed="true"]{color:#fff}}
+
+.acts{list-style:none;padding:0;margin:24px 0 0;width:var(--prose)}
+.acts li{position:relative;padding:14px 0 14px 34px;border-top:1px solid var(--rule);font-size:15.5px;line-height:1.5;color:var(--ink-2)}
+.acts li:last-child{border-bottom:1px solid var(--rule)}
+.acts li::before{content:"→";position:absolute;left:0;top:14px;font-family:var(--mono);color:var(--red);font-size:14px}
+.acts li b{color:var(--ink)}
+
+.pull{border-top:3px solid var(--navy);border-bottom:3px solid var(--navy);padding:24px 0;margin:36px 0;width:var(--prose)}
+.pull p{font-size:20px;line-height:1.4;font-weight:640;letter-spacing:-.018em;margin:0;text-wrap:balance}
+.note{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--muted);width:var(--prose)}
+
+.xlinks{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:36px 0 0}
+.xlink{display:block;text-decoration:none;background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--red);border-radius:2px;padding:22px}
+.xlink:hover{background:var(--surface-2)}
+.xlink .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--red)}
+.xlink .t{font-size:19px;font-weight:760;letter-spacing:-.022em;color:var(--ink);margin-top:8px;line-height:1.2}
+.xlink .d{font-size:14px;color:var(--ink-2);margin-top:6px;line-height:1.45}
+
+.final{border-top:1px solid var(--rule);background:var(--surface)}
+.final .in{max-width:1200px;margin:0 auto;padding:70px 26px 74px}
+.final h2{margin-top:0;max-width:17ch}
+.final p{color:var(--ink-2);max-width:56ch;font-size:17.5px}
+.btn{display:inline-block;margin-top:14px;background:var(--red);color:#fff;font-weight:750;font-size:16px;padding:15px 28px;border-radius:2px;text-decoration:none;letter-spacing:-.01em}
+.btn:hover{filter:brightness(1.08)}
+.foot{border-top:1px solid var(--rule);background:var(--ground)}
+.foot .in{max-width:1200px;margin:0 auto;padding:34px 26px 50px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.foot picture{display:block;flex:none}
+.foot img{height:44px;width:auto;opacity:.85}
+.foot p{font-family:var(--mono);font-size:12px;line-height:1.8;color:var(--muted);margin:0;max-width:60ch}
+.foot b{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:640px){
+  .wrap,.final .in,.foot .in,.topbar .in{padding-left:18px;padding-right:18px}
+  .hero{padding:48px 0 36px}.sec{padding:50px 0}
+  .topbar img{height:30px}.topbar .cta{font-size:11px;padding:8px 12px}
+}
+
+.tnav{display:flex;align-items:center;gap:14px}
+.tnav .back{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);text-decoration:none;padding:10px 12px;border:1px solid var(--rule-2);border-radius:2px;white-space:nowrap}
+.tnav .back:hover{background:var(--surface-2);color:var(--ink)}
+.midcta{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--red);border-radius:2px;padding:26px 28px;margin:40px 0;display:flex;gap:24px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.midcta .tx{max-width:52ch}
+.midcta .tt{font-size:19px;font-weight:760;letter-spacing:-.018em;margin:0 0 6px}
+.midcta .dd{font-size:15px;color:var(--ink-2);margin:0;line-height:1.5}
+.midcta a{display:inline-block;background:var(--red);color:#fff;font-weight:750;font-size:15px;padding:13px 24px;border-radius:2px;text-decoration:none;white-space:nowrap}
+.midcta a:hover{filter:brightness(1.08)}
+.backblog{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);text-decoration:none;padding:12px 16px;border:1px solid var(--rule-2);border-radius:2px;margin-top:26px}
+.backblog:hover{background:var(--surface-2);color:var(--ink)}
+@media(max-width:640px){.tnav .back{padding:8px 9px;font-size:11px}.midcta{flex-direction:column;align-items:flex-start}}
+
+
+.byline{display:flex;gap:14px;align-items:center;margin:26px 0 0;padding:16px 0 0;border-top:1px solid var(--rule);flex-wrap:wrap}
+.byline .av{width:44px;height:44px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;letter-spacing:-.02em;flex:none}
+.byline .tx{font-size:14px;line-height:1.5;color:var(--muted)}
+.byline .tx b{color:var(--ink);font-weight:700}
+.autorbox{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--navy);border-radius:2px;padding:26px 28px;margin:44px 0 0;display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+.autorbox .av{width:64px;height:64px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:21px;letter-spacing:-.02em;flex:none}
+.autorbox .c{flex:1 1 300px}
+.autorbox .n{font-size:19px;font-weight:780;letter-spacing:-.02em;margin:0}
+.autorbox .r{font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--red);margin:5px 0 10px}
+.autorbox .b{font-size:14.5px;line-height:1.55;color:var(--ink-2);margin:0}
+.autorbox .b a{color:var(--red)}
+</style>
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "Organization",
+   "@id": "https://unvholdings.com.br/#org",
+   "name": "UNV Holdings",
+   "alternateName": [
+    "Universidade Nacional de Vendas",
+    "UNV"
+   ],
+   "url": "https://unvholdings.com.br/",
+   "logo": {
+    "@type": "ImageObject",
+    "url": "https://unvholdings.com.br/images/unv-logo.png"
+   },
+   "description": "Direção comercial terceirizada para pequenas e médias empresas.",
+   "founder": {
+    "@id": "https://unvholdings.com.br/#fabricio"
+   },
+   "areaServed": "BR",
+   "knowsAbout": [
+    "gestão comercial",
+    "direção comercial terceirizada",
+    "estruturação de time de vendas",
+    "previsibilidade de receita",
+    "marketing para PME"
+   ]
+  },
+  {
+   "@type": "Person",
+   "@id": "https://unvholdings.com.br/#fabricio",
+   "name": "Fabrício Nunnes",
+   "alternateName": "Fabrício Nunes",
+   "jobTitle": [
+    "CEO",
+    "Diretor Comercial"
+   ],
+   "description": "CEO e fundador da UNV Holdings (Universidade Nacional de Vendas). Diretor comercial terceirizado para pequenas e médias empresas, com mais de 20 anos em vendas e mais de R$ 1 bilhão em vendas geradas.",
+   "worksFor": {
+    "@id": "https://unvholdings.com.br/#org"
+   },
+   "url": "https://unvholdings.com.br/",
+   "sameAs": [
+    "https://www.instagram.com/ofabricionunnes/",
+    "https://www.instagram.com/universidadevendas/",
+    "https://unvholdings.com.br/"
+   ],
+   "knowsAbout": [
+    "gestão comercial",
+    "vendas B2B",
+    "estruturação de time comercial",
+    "posicionamento",
+    "marketing"
+   ]
+  },
+  {
+   "@type": "BlogPosting",
+   "headline": "Informação em decisão estratégica — o intervalo entre saber e agir",
+   "description": "Por que dono trava mesmo tendo o dado, como antecipar a jornada do cliente, a arquitetura social da venda B2B e quando diversificar sem furar o foco.",
+   "url": "https://unvholdings.com.br/decisao/",
+   "inLanguage": "pt-BR",
+   "author": {
+    "@id": "https://unvholdings.com.br/#fabricio"
+   },
+   "publisher": {
+    "@id": "https://unvholdings.com.br/#org"
+   },
+   "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://unvholdings.com.br/decisao/"
+   },
+   "image": "https://unvholdings.com.br/images/unv-logo.png",
+   "datePublished": "2026-08-12",
+   "dateModified": "2026-08-12"
+  }
+ ]
+}
+</script>
+</head>
+<body>
+<div class="topbar">
+  <div class="in">
+    <a href="/"><picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture></a>
+    <nav class="tnav"><a class="back" href="/blog/">&larr; Blog</a><a class="cta" href="/sessao">Sessão estratégica</a></nav>
+  </div>
+</div>
+<div class="wrap">
+<header class="hero">
+  <p class="eyebrow"><span>Guia UNV</span><span class="bar"></span><span class="tc">Decisão e acesso</span></p>
+  <h1>Você já tem a informação. O que falta é a decisão.</h1>
+  <p class="sub">
+    Quase nenhum dono trava por falta de dado. Trava por não transformar o que já sabe em movimento.
+    Este guia é sobre esse intervalo, e sobre a parte que quase ninguém trabalha na venda para empresa
+    grande: como chegar na pessoa certa do jeito certo.
+  </p>
+  <div class="byline"><span class="av">FN</span><span class="tx">Por <b>Fabrício Nunnes</b>, CEO da UNV Holdings e diretor comercial terceirizado para pequenas e médias empresas.<br>Universidade Nacional de Vendas · mais de 20 anos em vendas e mais de R$ 1 bilhão gerados.</span></div>
+  <nav class="idx" aria-label="Índice">
+    <a href="#b1"><span class="n">01</span><span class="t">O teste da informação parada</span></a>
+    <a href="#b2"><span class="n">02</span><span class="t">Antecipar a jornada</span></a>
+    <a href="#b3"><span class="n">03</span><span class="t">Arquitetura social</span></a>
+    <a href="#b4"><span class="n">04</span><span class="t">Traga o cliente até você</span></a>
+    <a href="#b5"><span class="n">05</span><span class="t">Diversificar sem furar o foco</span></a>
+  </nav>
+</header>
+
+<section class="sec" id="b1">
+  <p class="eyebrow"><span>01</span><span class="bar"></span><span>O intervalo</span></p>
+  <h2>O teste da informação parada</h2>
+  <div class="max"><p>Você sabe quem precisa sair do time e não tirou. Sabe quem precisa entrar e não contratou. A informação está lá. A decisão não.</p></div>
+  <p class="prose">
+    Faça o teste em voz alta: se todo mundo concorda que uma mudança grande está vindo no seu mercado,
+    quantas decisões você tomou nos últimos noventa dias por causa dela? Na maioria das empresas a resposta
+    é nenhuma. Não é falta de informação, é falta de tradução da informação em ação.
+  </p>
+  <p class="prose">
+    E isso quase nunca se resolve sozinho, porque o dono é a pessoa com menos incentivo para se cobrar.
+    Todo mundo ao redor depende dele, ninguém puxa. O que destrava costuma ser <strong>ambiente</strong>:
+    estar perto de gente que olha para a sua situação de fora e pergunta por que você ainda não fez nada.
+  </p>
+  <div class="calc" data-calc="dec">
+    <h4>Inventário de decisões pendentes</h4>
+    <p class="hint">Marque o que você já sabe que precisa fazer e ainda não fez. Sem justificar, só marcar.</p>
+    <div class="scorer" id="dec-list"></div>
+    <div class="verdict" id="dec-verdict"></div>
+  </div>
+</section>
+
+<section class="sec" id="b2">
+  <p class="eyebrow"><span>02</span><span class="bar"></span><span>Timing</span></p>
+  <h2>Antecipar a jornada</h2>
+  <div class="max"><p>Quando o cliente chega até você, a decisão muitas vezes já foi tomada por outra pessoa.</p></div>
+  <p class="prose">
+    Existe um padrão que quebra muita empresa boa: você é ótimo no seu produto, mas aparece tarde demais
+    na jornada. Quando o comprador chega no seu balcão, ele já contratou alguém que decide por ele, e a
+    sua venda virou uma disputa de preço com quem já está lá dentro.
+  </p>
+  <p class="prose">
+    A saída é aparecer <strong>no momento da dúvida, não no momento da compra</strong>. Quem resolve a
+    dúvida entra na decisão. E resolver dúvida quase sempre custa mais barato do que disputar a compra.
+  </p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Momento</th><th>O que o cliente está fazendo</th><th>Quem ganha a venda</th></tr></thead>
+      <tbody>
+        <tr class="hl"><td><strong>Dúvida</strong></td><td>Procurando entender como se resolve o problema dele</td><td>Quem ensina. Vira referência e influencia todo o resto.</td></tr>
+        <tr><td>Escolha</td><td>Comparando fornecedores</td><td>Quem foi indicado por quem ensinou</td></tr>
+        <tr class="bad"><td>Compra</td><td>Negociando preço e prazo</td><td>Quem já estava dentro. O resto disputa desconto.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="panel nv">
+    <h4>Como isso se aplica na prática</h4>
+    <p style="margin-bottom:0">
+      Se o seu cliente contrata um intermediário antes de chegar em você, existem dois caminhos. O primeiro
+      é <strong>virar o intermediário</strong>: você passa a ser quem orienta e escolhe. O segundo é
+      <strong>ser quem ensina o intermediário</strong>, e ganhar a preferência dele. O que não funciona é
+      continuar competindo no último passo da jornada, quando já não há mais decisão para influenciar.
+    </p>
+  </div>
+</section>
+
+
+  <div class="midcta">
+    <div class="tx">
+      <p class="tt">Quer isso rodando na sua empresa, não no papel?</p>
+      <p class="dd">A UNV assume a direção comercial, estrutura o time e cobra o número toda semana até a meta virar rotina.</p>
+    </div>
+    <a href="/sessao">Agendar sessão estratégica</a>
+  </div>
+
+<section class="sec" id="b3">
+  <p class="eyebrow"><span>03</span><span class="bar"></span><span>Acesso</span></p>
+  <h2>Arquitetura social: como se chega, não a quem se chega</h2>
+  <div class="max"><p>Chegar na pessoa qualquer um chega. A diferença está em chegar com endosso e no momento certo.</p></div>
+  <p class="prose">
+    Em venda para empresa grande, o problema raramente é encontrar o contato. É chegar de um jeito que a
+    conversa comece diferente. E existem dois caminhos que funcionam melhor que abordagem direta.
+  </p>
+  <div class="funnel">
+    <div class="fl t1">
+      <div class="lb">Caminho 1<small>fornecedor</small></div>
+      <dl>
+        <dt>Quem é</dt><dd>Alguém que já vende para a empresa que você quer, com acesso e confiança estabelecidos.</dd>
+        <dt>O que você faz</dt><dd>Financia um momento de relacionamento e pede a passagem de bastão.</dd>
+        <dt>Por que funciona</dt><dd>Você chega endossado por quem já provou valor lá dentro.</dd>
+      </dl>
+    </div>
+    <div class="fl t2">
+      <div class="lb">Caminho 2<small>conselheiro</small></div>
+      <dl>
+        <dt>Quem é</dt><dd>Conselheiro ou consultor profissional que participa das decisões daquela empresa.</dd>
+        <dt>O que você faz</dt><dd>Contrata para palestra, conselho ou projeto no seu negócio.</dd>
+        <dt>Por que funciona</dt><dd>Vira alguém que te conhece por dentro e pode abrir a porta naturalmente.</dd>
+      </dl>
+    </div>
+  </div>
+  <div class="panel alert">
+    <h4>O erro que anula os dois caminhos</h4>
+    <p>
+      Tratar essas pessoas como vendedores. <strong>Elas não vão vender por você.</strong> Elas conectam.
+      Pedir que apresentem já é muito, pedir que vendam queima a relação.
+    </p>
+    <p style="margin-bottom:0">
+      E existe uma forma mais elegante que pedir indicação: <strong>criar a ocasião</strong>. Em vez de
+      "você me apresenta ao fulano", é "vai ter esse encontro, esse jogo, esse evento, e eu queria muito
+      que o fulano estivesse lá. Você não quer convidar?" Você não pediu nada, criou uma situação em que
+      vai estar do lado da pessoa certa.
+    </p>
+  </div>
+</section>
+
+<section class="sec" id="b4">
+  <p class="eyebrow"><span>04</span><span class="bar"></span><span>Conversão</span></p>
+  <h2>Traga o cliente até você</h2>
+  <div class="max"><p>Depois de algumas reuniões sem decisão, a próxima só acontece na sua casa. Quem se desloca demonstra interesse.</p></div>
+  <p class="prose">
+    Existe um momento na negociação longa em que continuar indo até o cliente vira desvantagem: você
+    entrega informação, ele acumula, e nada avança. Inverter o deslocamento faz duas coisas ao mesmo tempo.
+    Mede se o interesse é real, e muda quem está em posição de conceder.
+  </p>
+  <p class="prose">
+    Além disso, converter no seu ambiente é sempre mais fácil. Você controla o contexto, mostra a
+    operação, apresenta o time e cria uma experiência que nenhuma reunião na sala do cliente reproduz.
+  </p>
+  <div class="panel rd">
+    <h4>Detalhes que parecem pequenos e mudam conversão</h4>
+    <p><strong>O formato da mesa.</strong> Reta, em U ou quadrada mudam quem fala, quanto fala e para quem olha. Vale testar e medir.</p>
+    <p><strong>Quem senta ao lado de quem.</strong> Colocar um cliente satisfeito ao lado de um indeciso faz o trabalho que nenhuma apresentação faz.</p>
+    <p style="margin-bottom:0"><strong>O que a pessoa vê no caminho até a sala.</strong> Time trabalhando, quadro de metas, prêmio na parede. Tudo isso comunica antes de você abrir a boca.</p>
+  </div>
+  <p class="prose">
+    Nada disso é talento. É <strong>tempo gasto pensando</strong> em algo que a maioria trata como
+    detalhe operacional. Transformar comportamento em estratégia é o que separa venda consultiva boa de
+    venda consultiva média.
+  </p>
+</section>
+
+<section class="sec" id="b5">
+  <p class="eyebrow"><span>05</span><span class="bar"></span><span>Foco</span></p>
+  <h2>Diversificar sem furar o foco</h2>
+  <div class="max"><p>O que mata na diversificação não é a ideia nova. É tirar energia do que estava funcionando para tentar ela.</p></div>
+  <p class="prose">
+    Existe uma diferença que quase ninguém separa. Uma coisa é <strong>usar o seu negócio para abrir outro
+    negócio</strong>. Outra é <strong>usar um produto novo para ganhar mais dentro do negócio que você já
+    tem</strong>. A primeira exige sócio, estrutura e gestão próprias. A segunda é só mais uma linha de
+    receita e cabe na operação atual.
+  </p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Pergunta</th><th>Se a resposta for sim</th></tr></thead>
+      <tbody>
+        <tr><td>Isso precisa de time, marca e gestão próprios?</td><td>É outro negócio. Só avance se houver quem toque.</td></tr>
+        <tr><td>Isso vende para o mesmo cliente que já é meu?</td><td class="hl">É linha de receita. Cabe dentro do que existe.</td></tr>
+        <tr><td>Para fazer isso, algo que funciona vai receber menos atenção?</td><td>Não avance. Isso é cobertor curto, não diversificação.</td></tr>
+        <tr><td>Consigo empilhar isso sem parar nada que já roda?</td><td class="hl">Pode avançar. É acúmulo, não troca.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="pull">
+    <p>
+      Diversificação só é segura quando existe gestão. Sem gestão, toda oportunidade nova é uma troca
+      disfarçada: entra a novidade, sai a atenção do que pagava a conta. Com gestão, é acúmulo, e aí a
+      empresa cresce em mais de uma direção ao mesmo tempo.
+    </p>
+  </div>
+  <h3>Por onde começar</h3>
+  <ol class="acts">
+    <li>Escreva <b>as decisões que você já sabe que precisa tomar</b> e não tomou. Coloque data em cada uma.</li>
+    <li>Mapeie <b>em que momento da jornada</b> você aparece hoje e o que precisaria para aparecer antes.</li>
+    <li>Liste <b>três fornecedores ou conselheiros</b> que já têm acesso a quem você quer atender.</li>
+    <li>Na próxima negociação travada, <b>convide o cliente para a sua casa</b> em vez de marcar mais uma visita.</li>
+    <li>Antes de qualquer frente nova, responda: <b>isso é acúmulo ou é troca?</b></li>
+    <li>Coloque-se num <b>ambiente que cobra</b>. A informação você já tem; o que falta é quem pergunte por que você ainda não agiu.</li>
+  </ol>
+
+  <a class="backblog" href="/blog/">&larr; Voltar para todos os guias</a>
+</section>
+
+
+<div class="autorbox">
+  <span class="av">FN</span>
+  <div class="c">
+    <p class="n">Fabrício Nunnes</p>
+    <p class="r">CEO e fundador · UNV Holdings · Universidade Nacional de Vendas</p>
+    <p class="b">Diretor comercial terceirizado para pequenas e médias empresas. Mais de 20 anos em vendas, mais de 10 como diretor comercial e mais de R$ 1 bilhão em vendas geradas ao longo da carreira. À frente da UNV Holdings, assume a direção comercial de empresas que precisam estruturar time, processo e meta para crescer com previsibilidade. <a href="/sessao">Fale com o Fabrício</a>.</p>
+  </div>
+</div>
+</div>
+<div class="final">
+  <div class="in">
+    <h2>Método enche o funil. Processo comercial fecha.</h2>
+    <p>
+      De nada adianta acertar a estratégia se do outro lado não tem time treinado, meta clara e alguém
+      cobrando número toda semana. É isso que a UNV faz: assumimos a direção comercial da sua empresa,
+      estruturamos o time e colocamos a operação para bater meta todo mês.
+    </p>
+    <a class="btn" href="/sessao">Agendar uma sessão estratégica</a>
+  </div>
+</div>
+<div class="foot">
+  <div class="in">
+    <picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture>
+    <p>
+      <b>UNV Holdings</b> · Direção comercial terceirizada para pequenas e médias empresas.<br>
+      Guia produzido pelo time da UNV a partir da nossa prática com times comerciais de PME.
+      <a href="/">unvholdings.com.br</a>
+    </p>
+  </div>
+</div>
+<script>(function(){
+  "use strict";
+  var $=function(i){return document.getElementById(i);};
+  var box=$("dec-list"); if(!box) return;
+  var ITENS=[
+    "Tem alguém no time que precisa sair e ainda não saiu",
+    "Tem uma posição que precisa ser contratada e não foi",
+    "Tem cliente dando prejuízo que continua na base",
+    "Tem produto que não dá resultado e segue no portfólio",
+    "Tem preço defasado que você sabe que precisa subir",
+    "Tem processo que só funciona porque você está no meio",
+    "Tem conversa difícil com sócio ou parceiro sendo adiada"
+  ];
+  var st=ITENS.map(function(){return false;});
+  function render(){
+    box.innerHTML=ITENS.map(function(t,i){
+      return '<div class="srow"><span class="nm">'+t+'</span><span class="ctrls">'+
+        '<button type="button" data-i="'+i+'" aria-pressed="'+st[i]+'">'+(st[i]?"pendente":"marcar")+'</button></span></div>';
+    }).join("");
+    box.querySelectorAll("button").forEach(function(b){
+      b.addEventListener("click",function(){ st[+b.dataset.i]=!st[+b.dataset.i]; render(); });
+    });
+    var n=st.filter(Boolean).length;
+    var v=$("dec-verdict"), m;
+    if(n===0) m="Marque o que se aplica. Quase toda empresa tem pelo menos três.";
+    else if(n<=2) m="<b>"+n+" decisão"+(n>1?"ões":"")+" parada"+(n>1?"s":"")+".</b> Coloque data nas duas e resolva esta semana. Decisão pequena adiada vira problema grande.";
+    else if(n<=4) m="<b>"+n+" decisões paradas.</b> Esse é o intervalo entre o que você sabe e o que você faz, e ele custa caro em silêncio. Escolha a mais desconfortável e comece por ela.";
+    else m="<b>"+n+" decisões paradas.</b> Aqui o problema já não é informação nem tempo: é ambiente. Você precisa de gente por perto cobrando, porque sozinho o adiamento não quebra.";
+    v.innerHTML=m;
+  }
+  render();
+})();
+</script>
+</body>
+</html>
