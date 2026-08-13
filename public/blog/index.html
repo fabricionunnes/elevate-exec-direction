@@ -263,7 +263,8 @@ a{color:var(--red)}
 (function(){
   "use strict";
   var $=function(i){return document.getElementById(i);};
-  var POR_PAGINA=10, dados=[], filtro="", tag="", pagina=1;
+  var POR_PAGINA=10, dados=[], tag="", pagina=1;
+  var filtro=(new URLSearchParams(location.search).get("q")||"");
 
   function norm(s){return (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");}
 
@@ -340,7 +341,7 @@ a{color:var(--red)}
 
   fetch("/blog/posts.json?v="+Date.now()).then(function(r){return r.json();}).then(function(d){
     dados=(d.posts||[]).sort(function(a,b){return b.ts-a.ts;});
-    montarChips(); render();
+    montarChips(); if(filtro){$("q").value=filtro;} render();
   }).catch(function(){
     $("lista").innerHTML='<p class="vazio">Não foi possível carregar a lista agora. Recarregue a página.</p>';
   });
