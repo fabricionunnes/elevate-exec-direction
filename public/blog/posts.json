@@ -1,5 +1,5 @@
 {
- "gerado_em": "2026-08-13T13:26:40",
+ "gerado_em": "2026-08-13T13:28:03",
  "posts": [
   {
    "slug": "suporte-servico-gestao-tres-precos",
@@ -37,7 +37,7 @@
    "slug": "produto-que-sangra-cliente-e-passivo",
    "url": "/blog/produto-que-sangra-cliente-e-passivo/",
    "titulo": "Produto que perde a maioria dos clientes não é portfólio, é passivo",
-   "resumo": "Quando a maioria sai, o problema não é entrega pontual. É promessa errada desde o começo.",
+   "resumo": "Se a maioria cancela ou não volta, você tem um problema estrutural que não se resolve com mais vendedor. Ou conserta a entrega, ou reprecifica conforme o que vale, ou para de vender.",
    "tags": [
     "produto",
     "retenção",
@@ -52,12 +52,13 @@
   {
    "slug": "cliente-bom-nao-e-so-quem-paga",
    "url": "/blog/cliente-bom-nao-e-so-quem-paga/",
-   "titulo": "Cliente bom não é só quem paga em dia",
-   "resumo": "Você só escala vendas se escolher com quem trabalha. Cliente ruim contamina processo, queima time e impede que você estruture de verdade.",
+   "titulo": "Cliente que te faz trabalhar contra você é custo disfarçado",
+   "resumo": "Escolher quem atender define se a operação vai escalar ou virar refém. Cliente errado consome margem, time e foco que deveriam ir para quem faz o negócio crescer.",
    "tags": [
     "qualificação",
     "perfil de cliente",
-    "operação comercial",
+    "margem",
+    "estrutura comercial",
     "diagnóstico"
    ],
    "tipo": "diario",
@@ -98,15 +99,14 @@
   {
    "slug": "ponta-errada-do-funil",
    "url": "/blog/ponta-errada-do-funil/",
-   "titulo": "Você é o dono e está na ponta errada do funil",
-   "resumo": "Por que o dono atende o primeiro contato do lead e some da negociação que decide o mês. A conta do pior vendedor e o que muda quando ele sai da entrada do funil.",
+   "titulo": "Dono em treinamento de vendedor é sinal de que não tem treino",
+   "resumo": "Se o dono precisa estar no treinamento toda vez, o vendedor nunca vai aprender a vender sozinho. E se ele não vende sozinho, você não tem área comercial, tem assistente.",
    "tags": [
-    "gestão",
-    "time comercial",
-    "funil",
-    "dono",
+    "treino de vendedor",
+    "estrutura comercial",
     "delegação",
-    "método crescer"
+    "meta mensal",
+    "sistema"
    ],
    "tipo": "diario",
    "data": "2026-08-12",
