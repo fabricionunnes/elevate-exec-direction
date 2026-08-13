@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cliente não sai por preço sai por promessa quebrada | UNV</title>
-<meta name="description" content="Cancelamento em serviço quase nunca é disputa de valor. É gap entre o que foi vendido e o que foi entregue. Quando a venda promete uma coisa e a operação entrega outra, o churn vira questão de tempo.">
+<meta name="description" content="Empresa de serviço sangra cliente pela entrega, não pela cobrança. O que foi prometido na venda precisa acontecer na operação, ou o churn come a margem.">
 <meta name="author" content="Fabrício Nunnes — CEO da UNV Holdings, Universidade Nacional de Vendas">
 <link rel="canonical" href="https://unvholdings.com.br/blog/cliente-nao-sai-por-preco-sai-por-promessa-quebrada/">
 <link rel="icon" href="/favicon.ico">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Cliente não sai por preço sai por promessa quebrada">
-<meta property="og:description" content="Cancelamento em serviço quase nunca é disputa de valor. É gap entre o que foi vendido e o que foi entregue. Quando a venda promete uma coisa e a operação entrega outra, o churn vira questão de tempo.">
+<meta property="og:description" content="Empresa de serviço sangra cliente pela entrega, não pela cobrança. O que foi prometido na venda precisa acontecer na operação, ou o churn come a margem.">
 <meta property="og:url" content="https://unvholdings.com.br/blog/cliente-nao-sai-por-preco-sai-por-promessa-quebrada/">
 <meta property="og:image" content="https://unvholdings.com.br/images/unv-logo.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -234,7 +234,7 @@ tr.hl td{background:var(--good-bg)}
     "@type": "ImageObject",
     "url": "https://unvholdings.com.br/images/unv-logo.png"
    },
-   "description": "Cancelamento em serviço quase nunca é disputa de valor. É gap entre o que foi vendido e o que foi entregue. Quando a venda promete uma coisa e a operação entrega outra, o churn vira questão de tempo.",
+   "description": "Empresa de serviço sangra cliente pela entrega, não pela cobrança. O que foi prometido na venda precisa acontecer na operação, ou o churn come a margem.",
    "founder": {
     "@id": "https://unvholdings.com.br/#fabricio"
    },
@@ -306,99 +306,139 @@ tr.hl td{background:var(--good-bg)}
   </div>
 </div>
 <div class="wrap">
-
+<style>
+.bl{margin:26px 0}
+.bl h4{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 14px}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.cmp .hd{background:var(--surface-2);padding:12px 16px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+.cmp .hd.e{color:var(--bad)}.cmp .hd.d{color:var(--good)}
+.cmp .cl{background:var(--surface);padding:13px 16px;font-size:14.5px;line-height:1.45;color:var(--ink-2)}
+.gr{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:22px}
+.gr .row{display:grid;grid-template-columns:minmax(90px,32%) 1fr;gap:14px;align-items:center;padding:7px 0;font-size:14px}
+.gr .tk{background:var(--surface-2);height:18px;border-radius:2px;overflow:hidden}
+.gr .fl{height:100%;border-radius:2px}
+.gr .lg{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:12px;padding-top:12px;border-top:1px solid var(--rule);line-height:1.5}
+.ck{background:var(--surface);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.ck button{width:100%;text-align:left;background:var(--surface);border:none;border-bottom:1px solid var(--rule);padding:14px 18px;font:inherit;font-size:14.5px;color:var(--ink-2);cursor:pointer;display:flex;gap:12px;align-items:center}
+.ck button:last-of-type{border-bottom:none}
+.ck button::before{content:"";width:17px;height:17px;border:1.5px solid var(--rule-2);border-radius:3px;flex:none}
+.ck button[aria-pressed="true"]{color:var(--ink);font-weight:600}
+.ck button[aria-pressed="true"]::before{background:var(--red);border-color:var(--red)}
+.ck .vd{padding:16px 18px;background:var(--surface-2);font-size:14.5px;line-height:1.5;color:var(--ink-2);border-top:1px solid var(--rule)}
+.ps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.ps .p{background:var(--surface);padding:20px}
+.ps .n{font-family:var(--mono);font-size:22px;font-weight:800;color:var(--red);line-height:1}
+.ps .t{font-size:15.5px;font-weight:720;margin:8px 0 6px;letter-spacing:-.015em}
+.ps .x{font-size:14px;color:var(--ink-2);line-height:1.45}
+.pl2{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.pl2 .i{background:var(--surface);padding:22px}
+.pl2 .n{font-size:26px;font-weight:820;letter-spacing:-.03em;color:var(--red);line-height:1}
+.pl2 .r{font-size:14px;color:var(--ink-2);line-height:1.45;margin-top:9px}
+</style>
 <header class="hero">
   <p class="eyebrow"><span>Diário UNV</span><span class="bar"></span><span class="tc">Método CRESCER</span><span class="bar"></span><span>13/08/2026</span></p>
   <h1>Cliente não sai por preço sai por promessa quebrada</h1>
-  <p class="sub">Cancelamento em serviço quase nunca é disputa de valor. É gap entre o que foi vendido e o que foi entregue. Quando a venda promete uma coisa e a operação entrega outra, o churn vira questão de tempo.</p>
+  <p class="sub">Empresa de serviço sangra cliente pela entrega, não pela cobrança. O que foi prometido na venda precisa acontecer na operação, ou o churn come a margem.</p>
 </header>
 <section class="sec">
   <p class="eyebrow"><span>C</span><span class="bar"></span><span>Cenário</span></p>
-  <h2>O que se vê quando cliente cancela</h2>
-  <div class="max"><p>Sistema bem estruturado escala, improviso não escala — e isso vale para vender e entregar</p></div>
-  <p class="prose">Cliente cancela. Vendedor diz que foi preço. Gestor acredita. Baixa ticket ou cria promoção para segurar base.</p>
-  <p class="prose">Só que não resolve. Mês seguinte cancela outro. E outro. E a conta não fecha.</p>
-  <p class="prose">Quando a gente senta com quem saiu e pergunta direito, a história muda. Preço aparece como justificativa, mas a raiz está em outro lugar.</p>
-  <p class="prose">O cliente contratou esperando uma coisa. Recebeu outra. Prazo diferente. Escopo diferente. Atenção diferente.</p>
-  <p class="prose">Aí qualquer orçamento mais barato vira desculpa boa para sair. Porque a relação já estava quebrada antes da conversa de preço.</p>
+  <h2>O dono acha que o problema é preço</h2>
+  <div class="max"><p>Venda é consequência, não pressão.</p></div>
+  <p class="prose">Cliente sai, dono olha pro preço. Concorrente cobra menos, então a conclusão parece óbvia. Baixa o valor, roda campanha, tenta recuperar quem saiu.</p>
+  <p class="prose">Não funciona. A base continua vazando. O que entra não compensa o que sai. Margem aperta, caixa fica curto, e o comercial vira porta giratória.</p>
+  <p class="prose">O problema quase nunca é o preço. É o que foi prometido na venda e não aconteceu na entrega. Cliente de serviço aguenta pagar mais, não aguenta ser enganado.</p>
+  <div class="bl"><h4>O que o dono vê versus o que o cliente vê</h4><div class="cmp"><div class="hd e">O jeito errado</div><div class="hd d">O jeito certo</div><div class="cl">Cliente saiu, deve ter achado caro</div><div class="cl">Cliente saiu porque o que prometemos não aconteceu</div><div class="cl">Vou baixar o preço e correr atrás de volume</div><div class="cl">Vou alinhar o que a gente vende com o que a gente entrega</div><div class="cl">Problema resolvido quando a venda fechar</div><div class="cl">Problema resolvido quando o cliente renovar</div><div class="cl">Vendedor cobra, operação entrega</div><div class="cl">Vendedor cobra o que a operação consegue entregar</div></div></div>
 </section>
 
 <section class="sec">
-  <p class="eyebrow"><span>R</span><span class="bar"></span><span>Resultado</span></p>
-  <h2>Como deveria funcionar</h2>
+  <p class="eyebrow"><span>R</span><span class="bar"></span><span>Resultado ideal</span></p>
+  <h2>Cliente sai quando percebe que foi enganado</h2>
   
-  <p class="prose">Cliente precisa receber exatamente o que foi prometido na venda. Não mais. Não menos. Igual.</p>
-  <p class="prose">Quando isso acontece, renovação vira conversa de continuidade. Não de defesa.</p>
-  <p class="prose">Preço passa a ser investimento, não custo. Porque o valor percebido está alinhado com o valor entregue.</p>
-  <p class="prose">E quando surge concorrente mais barato, cliente não sai. Porque sabe que trocar é risco.</p>
+  <p class="prose">Teve empresa que vendia suporte técnico com atendimento em até quatro horas. Vendedor fechava, operação demorava dois dias. Cliente não reclamava de preço, reclamava de promessa quebrada.</p>
+  <p class="prose">O churn era alto, a base não crescia, e o dono achava que era concorrência. Não era. Era desencontro entre o que o comercial prometia e o que a operação conseguia cumprir.</p>
+  <p class="prose">Cliente de serviço raramente sai por preço. Sai porque o que foi vendido não correspondeu ao que foi entregue. O problema não é cobrar, é prometer errado.</p>
+  
 </section>
 
 <section class="sec">
   <p class="eyebrow"><span>E</span><span class="bar"></span><span>Estrutura</span></p>
-  <h2>O que precisa existir para entregar igual ao vendido</h2>
+  <h2>Promessa errada nasce no comercial mal estruturado</h2>
   
-  <p class="prose">Vendedor precisa saber o que operação consegue entregar. Não o que ele acha que ela deveria entregar.</p>
-  <p class="prose">Operação precisa ter processo documentado. Se cada cliente recebe de um jeito, promessa vira loteria.</p>
-  <p class="prose">Tem que ter contrato claro. Escopo detalhado. Expectativa escrita. Se ficou subentendido, vai dar problema.</p>
-  <p class="prose">Onboarding não pode ser só boas vindas. Tem que reforçar o que foi vendido e alinhar o que vem pela frente.</p>
-  <p class="prose">Gestor comercial e gestor de operação precisam falar a mesma língua. Se cada um tem meta isolada, cliente fica no meio do fogo cruzado.</p>
+  <p class="prose">Vendedor sem processo vende o que fecha. Não o que a operação consegue fazer, o que o cliente quer ouvir. Prazo irreal, escopo inflado, expectativa descalibrada.</p>
+  <p class="prose">Quando não tem rotina de alinhamento entre comercial e operação, cada um joga o próprio jogo. Vendedor quer bater meta, operação quer entregar dentro do possível. Cliente fica no meio, pagando por uma coisa e recebendo outra.</p>
+  <p class="prose">Eu falo isso em toda reunião: o vendedor não pode vender o que a empresa não consegue entregar. E o dono não pode deixar o comercial solto, inventando promessa que a operação vai ter que quebrar depois.</p>
+  <div class="bl"><h4>O seu comercial promete o que a operação entrega?</h4><div class="ck" id="ckx6n460" data-baixo="Cliente está saindo porque a empresa vende uma coisa e entrega outra. O churn é sintoma, a causa é falta de alinhamento." data-alto="A estrutura está calibrada. Cliente sabe o que esperar, operação sabe o que cumprir, vendedor vende o que a empresa consegue entregar."><button type="button" aria-pressed="false">Vendedor sabe exatamente o que a operação consegue cumprir antes de prometer pro cliente</button><button type="button" aria-pressed="false">Tem documento ou briefing de passagem entre venda e entrega, sem telefone sem fio</button><button type="button" aria-pressed="false">Operação participa da construção da oferta e valida o que pode ser prometido</button><button type="button" aria-pressed="false">Cliente recebe expectativa calibrada desde a primeira conversa, não surpresa no meio do contrato</button><button type="button" aria-pressed="false">Quando a entrega atrasa ou falha, comercial é avisado antes do cliente reclamar</button><button type="button" aria-pressed="false">A meta do vendedor inclui renovação, não só venda nova</button><button type="button" aria-pressed="false">Tem rotina semanal entre comercial e operação para alinhar o que está sendo vendido e o que está sendo entregue</button><div class="vd">Marque o que se aplica ao seu comercial.</div></div></div>
 </section>
 
 <section class="sec">
   <p class="eyebrow"><span>S</span><span class="bar"></span><span>Sistema</span></p>
-  <h2>Como executar o alinhamento entre venda e entrega</h2>
+  <h2>Sistema de passagem entre venda e entrega</h2>
   
-  <p class="prose">Cria checklist de promessas na venda. O que foi dito no comercial precisa estar registrado e acessível para quem entrega.</p>
-  <p class="prose">Revisão semanal de novos contratos entre comercial e operação. Time de entrega valida se consegue cumprir o que foi vendido antes de virar oficial.</p>
-  <p class="prose">Cliente recebe documento de kickoff que repete exatamente o que foi combinado na venda. Sem surpresa. Sem interpretação.</p>
-  <p class="prose">Operação reporta desvio na hora. Se algo saiu diferente do prometido, comercial precisa saber no mesmo dia. Para corrigir antes de virar motivo de saída.</p>
-  <p class="prose">Métrica de aderência. Quantos clientes receberam conforme o prometido. Se esse número cai, churn sobe.</p>
+  <p class="prose">Atendi um dono que achava que o problema era concorrência. Quando a gente abriu, não era. Cliente saía no terceiro mês porque o que foi vendido não batia com o que chegava na mão dele.</p>
+  <p class="prose">A gente estruturou um documento de passagem. Vendedor fecha, preenche o que foi prometido, operação recebe e valida antes de começar. Se não der pra cumprir, volta pro comercial recalibrar com o cliente.</p>
+  <p class="prose">Churn caiu. Não porque mudou preço, porque parou de prometer o que não ia acontecer. Cliente renova quando recebe o que pagou, não quando paga barato e recebe pela metade.</p>
+  
 </section>
 
 <section class="sec">
   <p class="eyebrow"><span>C</span><span class="bar"></span><span>Conversão</span></p>
-  <h2>O que sustenta a entrega alinhada</h2>
+  <h2>Vendedor que vende errado não converte, empurra problema</h2>
   
-  <p class="prose">Cultura de responsabilidade compartilhada. Venda que promete errado quebra operação. Operação que entrega errado quebra venda.</p>
-  <p class="prose">Meta de renovação precisa pesar tanto quanto meta de entrada. Se só mede aquisição, ninguém cuida da base.</p>
-  <p class="prose">Sistema de CRM com campo de promessa registrada. O que foi dito precisa estar visível para todo mundo que toca o cliente.</p>
-  <p class="prose">Treinamento conjunto. Comercial precisa passar um dia na operação. Operação precisa acompanhar reunião de venda. Para entender o que acontece do outro lado.</p>
+  <p class="prose">Venda que depende de promessa exagerada não é conversão, é bomba relógio. Cliente assina, recebe diferente, cancela. O custo de aquisição foi jogado fora, e ainda queimou a marca.</p>
+  <p class="prose">Conversão real acontece quando o cliente compra sabendo exatamente o que vai receber. Expectativa calibrada desde o início, sem surpresa no meio do caminho.</p>
+  <p class="prose">Vendedor treinado vende dentro do que a operação entrega. Vendedor solto inventa o que fecha. A diferença entre os dois é ter alguém cobrando o número toda semana, com processo e treino por trás.</p>
+  <div class="bl"><h4>Como alinhar promessa e entrega</h4><div class="ps"><div class="p"><div class="n">1</div><div class="t">Mapeie o que a operação consegue cumprir</div><div class="x">Prazo real, escopo possível, condição de entrega. Sem margem de erro, sem achismo. O que a operação faz todo mês sem falhar.</div></div><div class="p"><div class="n">2</div><div class="t">Defina o que o comercial pode prometer</div><div class="x">Vendedor vende dentro do mapeado. Qualquer promessa fora disso precisa de validação da operação antes de fechar com o cliente.</div></div><div class="p"><div class="n">3</div><div class="t">Crie a passagem entre venda e entrega</div><div class="x">Documento ou briefing que o vendedor preenche e a operação valida. Cliente só entra na fila de entrega depois de validado.</div></div></div></div>
 </section>
 
 <section class="sec">
   <p class="eyebrow"><span>E</span><span class="bar"></span><span>Escala</span></p>
-  <h2>O que muda quando estrutura funciona</h2>
+  <h2>Escala sem alinhamento é churn em escala</h2>
   
-  <p class="prose">Churn cai sem mexer em preço. Porque o problema nunca foi preço.</p>
-  <p class="prose">Vendedor para de prometer além. Porque sabe que vai cobrar dele depois.</p>
-  <p class="prose">Operação para de entregar menos. Porque ficou claro o que é esperado.</p>
-  <p class="prose">Cliente vira promotor. Porque recebeu o que foi prometido. E isso é raro no mercado.</p>
+  <p class="prose">Empresa que cresce sem alinhar comercial e operação não escala, só acelera o problema. Mais vendedor vendendo errado, mais cliente entrando e saindo, mais caixa queimado em aquisição que não retém.</p>
+  <p class="prose">Sistema bem estruturado escala, improviso não escala. Quando a promessa bate com a entrega, cliente renova, indicação sobe, custo de aquisição cai. O contrário disso é porta giratória.</p>
+  <p class="prose">Você é o dono, você devia estar na outra ponta. Não acompanhando venda, acompanhando se o cliente que entrou esse mês ainda está pagando daqui a três. Se não está, o problema não é preço.</p>
+  
 </section>
 
 <section class="sec">
   <p class="eyebrow"><span>R</span><span class="bar"></span><span>Revisão</span></p>
-  <h2>Como acompanhar se está funcionando</h2>
+  <h2>Churn alto é sintoma, causa é promessa quebrada</h2>
   
-  <p class="prose">Taxa de aderência promessa versus entrega. Quantos clientes receberam conforme o combinado. Meta: todo mês acima de determinado patamar.</p>
-  <p class="prose">Motivo real de cancelamento. Pergunta direta: o que faltou. Se a resposta for preço, aprofunda. Se for entrega, documenta.</p>
-  <p class="prose">Tempo entre venda e primeiro desvio reportado. Quanto mais rápido identificar, menor o dano.</p>
-  <p class="prose">NPS segmentado por etapa. Satisfação logo após venda. Satisfação após primeiro mês. Satisfação em renovação. Se cai no meio, o gap está na entrega.</p>
+  <p class="prose">Cliente que sai reclamando de preço quase sempre está reclamando de entrega. Ele não fala isso direto, mas o movimento é claro. Pagaria mais se recebesse o que foi prometido.</p>
+  <p class="prose">Revisar churn é revisar o alinhamento entre comercial e operação. O que está sendo vendido corresponde ao que está sendo entregue? Se não corresponde, o problema não é no cliente, é na estrutura.</p>
+  <p class="prose">Meta que não é acompanhada é só um número bonito no papel. E venda que não retém cliente é só custo jogado fora. O que separa quem cresce de quem sangra é ter alguém cobrando renovação toda semana, não só venda nova.</p>
+  <div class="bl"><h4>O custo real da promessa quebrada</h4><div class="pl2"><div class="i"><div class="n">metade</div><div class="r">dos clientes que saem pagariam mais se a entrega correspondesse ao prometido</div></div><div class="i"><div class="n">a maioria</div><div class="r">do churn em serviço acontece nos três primeiros meses, quando a diferença entre promessa e entrega fica clara</div></div><div class="i"><div class="n">1 em 3</div><div class="r">empresas que crescem rápido e morrem rápido têm comercial desalinhado da operação</div></div></div></div>
 </section>
 <section class="sec">
   <p class="eyebrow"><span>Execução</span></p>
-  <h2>O que fazer esta semana</h2>
-  <ol class="acts"><li>Reunir comercial e operação para listar as cinco promessas mais comuns na venda e validar se operação consegue entregar todas</li><li>Criar documento de handoff que o vendedor preenche após fechar e entrega para quem vai executar com as promessas registradas</li><li>Pegar os últimos cinco cancelamentos e ligar para cada um perguntando o motivo real sem aceitar só preço como resposta</li><li>Definir métrica de aderência promessa versus entrega e começar a medir semanalmente</li><li>Colocar meta de renovação no comercial e meta de satisfação na operação para forçar alinhamento</li></ol>
+  <h2>As decisões desta semana</h2>
+  <ol class="acts"><li>Separe uma hora essa semana para sentar comercial e operação na mesma sala e listar o que pode ser prometido sem margem de erro</li><li>Defina quem valida a entrega antes do cliente entrar na fila, e crie o documento de passagem entre venda e operação</li><li>Olhe o churn dos últimos três meses e identifique quantos saíram por preço e quantos saíram porque o prometido não correspondeu ao entregue</li><li>Decida se a meta do vendedor vai continuar sendo só venda nova ou se vai incluir renovação do que ele vendeu</li><li>Escolha um cliente que saiu recentemente e ligue para ele perguntando o que faltou, sem tentar vender de novo</li></ol>
 </section>
+<section class="sec">
+  <p class="eyebrow"><span>Continue por aqui</span></p>
+  <a class="xlink" href="/blog/produto-que-sangra-cliente-e-passivo/">
+    <span class="k">Próximo assunto</span>
+    <span class="t">Produto que perde a maioria dos clientes não é portfólio, é passivo</span>
+    <span class="d">Cliente que sai por promessa quebrada quase sempre está saindo de um produto que a empresa não deveria estar vendendo.</span>
+  </a>
+</section><script>
+document.querySelectorAll(".ck").forEach(function(c){
+  var bs=[].slice.call(c.querySelectorAll("button")), vd=c.querySelector(".vd");
+  bs.forEach(function(b){b.addEventListener("click",function(){
+    b.setAttribute("aria-pressed", b.getAttribute("aria-pressed")!=="true");
+    var n=bs.filter(function(x){return x.getAttribute("aria-pressed")==="true";}).length;
+    vd.textContent = n===0 ? "Marque o que se aplica ao seu comercial."
+      : n<=Math.ceil(bs.length/2) ? c.dataset.baixo : c.dataset.alto;
+  });});
+});
+</script>
 </div>
+
 <div class="final">
   <div class="in">
-    <h2>Método enche o funil. Processo comercial fecha.</h2>
-    <p>
-      De nada adianta acertar a estratégia se do outro lado não tem time treinado, meta clara e alguém
-      cobrando número toda semana. É isso que a UNV faz: assumimos a direção comercial da sua empresa,
-      estruturamos o time e colocamos a operação para bater meta todo mês.
-    </p>
-    <a class="btn" href="/sessao">Agendar uma sessão estratégica</a>
+    <h2>Alinhamento entre venda e entrega não acontece sozinho</h2>
+    <p>A gente é diretor comercial terceirizado das empresas que a gente atende. Estrutura o comercial, treina o vendedor e acompanha toda semana até o time bater meta todo mês sem sangrar cliente.</p>
+    <a class="btn" href="/sessao">Alinhar comercial e operação</a>
   </div>
 </div>
 <div class="foot">
