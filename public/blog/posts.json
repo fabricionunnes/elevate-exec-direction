@@ -1,6 +1,37 @@
 {
- "gerado_em": "2026-08-12T21:47:14",
+ "gerado_em": "2026-08-13T01:30:24",
  "posts": [
+  {
+   "slug": "orcamento-pela-margem-nao-sobra",
+   "url": "/blog/orcamento-pela-margem-nao-sobra/",
+   "titulo": "Orçamento pela margem em vez do que sobra",
+   "resumo": "Empresa que aloca verba comercial pelo resto nunca cresce de verdade. Reservar percentual fixo da receita antes de gastar qualquer coisa é o que separa quem escala de quem sobrevive.",
+   "tags": [
+    "orçamento",
+    "margem",
+    "previsibilidade",
+    "estrutura"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-13",
+   "ts": 2002
+  },
+  {
+   "slug": "cliente-nao-sai-por-preco-sai-por-promessa-quebrada",
+   "url": "/blog/cliente-nao-sai-por-preco-sai-por-promessa-quebrada/",
+   "titulo": "Cliente não sai por preço sai por promessa quebrada",
+   "resumo": "Cancelamento em serviço quase nunca é disputa de valor. É gap entre o que foi vendido e o que foi entregue. Quando a venda promete uma coisa e a operação entrega outra, o churn vira questão de tempo.",
+   "tags": [
+    "churn",
+    "alinhamento",
+    "entrega",
+    "retenção",
+    "promessa"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-13",
+   "ts": 2001
+  },
   {
    "slug": "ponta-errada-do-funil",
    "url": "/blog/ponta-errada-do-funil/",
