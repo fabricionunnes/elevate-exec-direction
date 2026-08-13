@@ -104,11 +104,13 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
       const { data: staff } = await (supabase as any)
         .from("onboarding_staff")
         .select("id, role")
-        .eq("auth_user_id", user.id)
+        .eq("user_id", user.id)
         .maybeSingle();
       const sid = staff?.id ?? null;
       setStaffId(sid);
-      const master = staff?.role === "master";
+      // admin enxerga todas as conexões (igual master); os demais ficam restritos
+      // às conexões liberadas em "Vincular Conexões".
+      const master = staff?.role === "master" || staff?.role === "admin";
       setIsMaster(master);
 
       if (!master && sid) {

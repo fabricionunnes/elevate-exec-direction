@@ -150,7 +150,9 @@ async function fetchGroupsFromInstance(apiBaseUrl: string, apiHeaders: HeadersIn
 
   for (const endpoint of endpoints) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000); // 8s timeout per endpoint
+    // fetchAllGroups leva ~22s numa conta com muitos grupos — com 8s ele abortava
+    // sempre, caía nos endpoints seguintes (que não existem) e devolvia 404.
+    const timer = setTimeout(() => controller.abort(), 60000);
     try {
       const response = await fetch(`${apiBaseUrl}${endpoint}`, {
         method: 'GET',
