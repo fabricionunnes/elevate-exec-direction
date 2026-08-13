@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-08-13T11:04:03",
+ "gerado_em": "2026-08-13T11:16:40",
  "posts": [
+  {
+   "slug": "suporte-servico-gestao-tres-precos",
+   "url": "/blog/suporte-servico-gestao-tres-precos/",
+   "titulo": "Suporte, serviço e gestão são três preços diferentes",
+   "resumo": "A empresa cobra um, entrega outro e sangra no terceiro. Quando tudo vira a mesma conta, o resultado mensal vira loteria.",
+   "tags": [
+    "preço",
+    "margem",
+    "estrutura comercial",
+    "oferta",
+    "produto"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-13",
+   "ts": 2006
+  },
   {
    "slug": "empresa-de-vendas-que-nao-vende",
    "url": "/blog/empresa-de-vendas-que-nao-vende/",
