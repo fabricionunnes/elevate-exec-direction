@@ -110,6 +110,21 @@ a{color:var(--red)}
 .autorbox .r{font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--red);margin:5px 0 10px}
 .autorbox .b{font-size:14.5px;line-height:1.55;color:var(--ink-2);margin:0}
 .autorbox .b a{color:var(--red)}
+
+.tools{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:40px 0 0;padding:18px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.tools input[type=search]{flex:1 1 280px;font-size:16px;padding:13px 15px;border:1px solid var(--rule-2);border-radius:2px;background:var(--surface);color:var(--ink);font-family:inherit}
+.tools .cnt{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
+.chips button{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:6px 11px;border:1px solid var(--rule-2);background:var(--surface);color:var(--muted);border-radius:2px;cursor:pointer}
+.chips button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+.badge{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;padding:2px 7px;border-radius:2px;font-weight:700}
+.badge.guia{background:var(--surface-2);color:var(--navy)}
+.badge.diario{background:var(--surface-2);color:var(--red)}
+.pager{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;padding:44px 0 0}
+.pager button{font-family:var(--mono);font-size:13px;padding:10px 15px;border:1px solid var(--rule-2);background:var(--surface);color:var(--ink-2);border-radius:2px;cursor:pointer;min-width:44px}
+.pager button[aria-current="true"]{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+.pager button:disabled{opacity:.35;cursor:default}
+.vazio{padding:52px 0;text-align:center;color:var(--muted);font-size:16px}
 </style>
 <script type="application/ld+json">
 {
@@ -205,208 +220,23 @@ a{color:var(--red)}
 
   <header class="hero">
     <p class="eyebrow">Blog UNV</p>
-    <h1>Guias de gestão comercial para quem toca o negócio</h1>
+    <h1>Gestão comercial na prática, todo dia</h1>
     <p class="sub">
-      Cada guia aqui é método que a gente usa dentro das empresas que atende. Sem teoria solta, sem
-      motivação. Modelo de negócio, preço, posicionamento, conteúdo e marketing, do jeito que precisa ser
-      executado por quem tem meta para bater no fim do mês.
+      Guias longos sobre modelo de negócio, posicionamento e marketing, e o diário com o que sai das
+      minhas reuniões de diagnóstico com donos de empresa. Método CRESCER aplicado, sem teoria solta.
     </p>
-  <div class="byline"><span class="av">FN</span><span class="tx">Por <b>Fabrício Nunnes</b>, CEO da UNV Holdings e diretor comercial terceirizado para pequenas e médias empresas.<br>Universidade Nacional de Vendas · mais de 20 anos em vendas e mais de R$ 1 bilhão gerados.</span></div>
   </header>
 
-  <div class="list">
-
-    <article class="post">
-      <div class="num">01</div>
-      <div>
-        <div class="tags"><span class="tag">Modelo de negócio</span><span class="tag">Preço</span><span class="tag">Caixa</span></div>
-        <h2><a href="/escalar_servico/">Como escalar uma empresa de serviços de verdade</a></h2>
-        <p class="brief">
-          Serviço é o negócio de maior margem que existe: você recebe antes de trabalhar. Mesmo assim a
-          maioria vive apertada, com o dono dentro da entrega. Este guia mostra por que isso acontece e
-          como sair: o custo financeiro que ninguém enxerga no DRE, o orçamento montado a partir da margem
-          em vez do que sobra, as três camadas de preço que quase todo mundo mistura, e como parar de
-          cobrar por mão de obra e começar a cobrar por resultado.
-        </p>
-      </div>
-      <div class="side">
-        <p class="meta">13 blocos<br>4 calculadoras<br>Checklist de 90 dias</p>
-        <a class="go" href="/escalar_servico/">Ler o guia</a>
-      </div>
-    </article>
-
-    <article class="post">
-      <div class="num">02</div>
-      <div>
-        <div class="tags"><span class="tag">Marca pessoal</span><span class="tag">Conteúdo</span><span class="tag">Métricas</span></div>
-        <h2><a href="/posicionamento/">Posicionamento é uma decisão, não um resultado</a></h2>
-        <p class="brief">
-          A maior parte dos donos trata conteúdo como inspiração: senta, pensa no que postar, posta. Quem
-          escala trata como produto. Aqui está o método completo: como montar o seu arquétipo, travar nove
-          formatos fixos para nunca mais inventar post, montar a grade diária, usar stories do jeito certo,
-          e por que frequência sobre a mesma pessoa vende mais que alcance amplo. Fecha com a hierarquia de
-          métricas que realmente prevê venda.
-        </p>
-      </div>
-      <div class="side">
-        <p class="meta">10 blocos<br>4 interativos<br>Checklist de 30 dias</p>
-        <a class="go" href="/posicionamento/">Ler o guia</a>
-      </div>
-    </article>
-
-    <article class="post">
-      <div class="num">03</div>
-      <div>
-        <div class="tags"><span class="tag">Marketing</span><span class="tag">Canais</span><span class="tag">CAC</span></div>
-        <h2><a href="/marketing/">Marketing complexo: como estruturar o marketing de uma empresa</a></h2>
-        <p class="brief">
-          Ter um produto que serve para todo mundo parece vantagem e é o contrário: você não sabe onde
-          colocar dinheiro, energia e time. Este guia dá os quatro critérios para decidir para quem vender,
-          explica por que tratar parceiro como vendedor não funciona e o que funciona no lugar, mostra os
-          três pilares que sustentam marketing maduro, e ensina a montar o mapa de canais por camada do
-          funil.
-        </p>
-      </div>
-      <div class="side">
-        <p class="meta">6 blocos<br>2 interativos<br>Checklist de execução</p>
-        <a class="go" href="/marketing/">Ler o guia</a>
-      </div>
-    </article>
-
-
-    <article class="post">
-      <div class="num">04</div>
-      <div>
-        <div class="tags"><span class="tag">Parcerias</span><span class="tag">Canais</span><span class="tag">Marca</span></div>
-        <h2><a href="/parcerias/">Por que quase toda parceria comercial morre no terceiro mês</a></h2>
-        <p class="brief">
-          Você fecha o acordo, monta o comissionamento, treina o parceiro e nada acontece. Não é falta de
-          empenho dele: é que a conta nunca fez sentido do lado de lá. Aqui está o teste que diz se uma
-          parceria vai andar antes de você investir nela, a diferença entre benefício, endosso e canal de
-          venda, e por que usar a marca do parceiro vale muito mais que usar o time de vendas dele.
-        </p>
-      </div>
-      <div class="side">
-        <p class="meta">5 blocos<br>1 calculadora<br>Checklist de execução</p>
-        <a class="go" href="/parcerias/">Ler o guia</a>
-      </div>
-    </article>
-
-    <article class="post">
-      <div class="num">05</div>
-      <div>
-        <div class="tags"><span class="tag">Networking</span><span class="tag">Indicação</span><span class="tag">CAC</span></div>
-        <h2><a href="/networking/">Networking não é trocar cartão. É montar canal.</a></h2>
-        <p class="brief">
-          Todo dono conhece gente. Quase nenhum transforma isso em receita previsível. A diferença está em
-          desenhar a troca de um jeito que faça o outro lado querer participar. Aqui está a mecânica: por
-          que pedir que o parceiro venda nunca funciona e pedir que ele apresente quase sempre funciona,
-          o formato de encontro que vira canal de aquisição, a conta que diz quanto cabe pagar por uma
-          apresentação, e os três pedidos que você nunca fez aos seus fornecedores.
-        </p>
-      </div>
-      <div class="side">
-        <p class="meta">5 blocos<br>1 calculadora<br>Checklist de execução</p>
-        <a class="go" href="/networking/">Ler o guia</a>
-      </div>
-    </article>
-
-    <article class="post">
-      <div class="num">06</div>
-      <div>
-        <div class="tags"><span class="tag">Foco</span><span class="tag">Gestão</span><span class="tag">Cadência</span></div>
-        <h2><a href="/foco/">Muito empreendedor e pouco gestor</a></h2>
-        <p class="brief">
-          O dono que executa rápido tem uma armadilha só dele: pegar uma coisa ótima e transformar em
-          várias coisas boas. Nenhuma delas quebra a empresa, e juntas elas travam o crescimento, porque o
-          custo não aparece no balanço — é custo de atenção. Aqui estão os quatro sinais desse quadro, por
-          que cadência ganha de pico, como usar a identidade como filtro de decisão e o exercício de
-          limpeza que reduz tudo a três frentes.
-        </p>
-      </div>
-      <div class="side">
-        <p class="meta">5 blocos<br>1 calculadora<br>Checklist de limpeza</p>
-        <a class="go" href="/foco/">Ler o guia</a>
-      </div>
-    </article>
-
-    <article class="post">
-      <div class="num">07</div>
-      <div>
-        <div class="tags"><span class="tag">Ecossistema</span><span class="tag">Receita</span><span class="tag">Base de clientes</span></div>
-        <h2><a href="/ecossistema/">A sua base de clientes vale mais do que o serviço que você vende para ela</a></h2>
-        <p class="brief">
-          Se você atende empresas, tem em mãos o que grandes marcas gastam fortunas para alcançar: acesso,
-          confiança e frequência com donos de negócio. Este guia mostra as três alavancas escondidas em
-          qualquer carteira B2B — funcionário, caixa e transação — como dividir o ganho com o cliente para
-          que a parceria não pareça venda, e o filtro que separa o que é exponencial do que é só mais um
-          serviço para operar.
-        </p>
-      </div>
-      <div class="side">
-        <p class="meta">5 blocos<br>1 calculadora<br>Checklist de execução</p>
-        <a class="go" href="/ecossistema/">Ler o guia</a>
-      </div>
-    </article>
-
-    <article class="post">
-      <div class="num">08</div>
-      <div>
-        <div class="tags"><span class="tag">Decisão</span><span class="tag">Venda B2B</span><span class="tag">Acesso</span></div>
-        <h2><a href="/decisao/">Você já tem a informação. O que falta é a decisão.</a></h2>
-        <p class="brief">
-          Quase nenhum dono trava por falta de dado. Trava por não transformar o que já sabe em movimento:
-          sabe quem precisa sair do time e não tira, sabe qual preço precisa subir e não sobe. Este guia
-          trata desse intervalo e da parte que quase ninguém trabalha na venda para empresa grande — como
-          chegar na pessoa certa com endosso, por que trazer o cliente até você converte mais, e quando
-          diversificar é acúmulo e quando é troca disfarçada.
-        </p>
-      </div>
-      <div class="side">
-        <p class="meta">5 blocos<br>1 inventário interativo<br>Checklist de execução</p>
-        <a class="go" href="/decisao/">Ler o guia</a>
-      </div>
-    </article>
-
-    <article class="post">
-      <div class="num">09</div>
-      <div>
-        <div class="tags"><span class="tag">Gestão</span><span class="tag">Valuation</span><span class="tag">Caixa</span></div>
-        <h2><a href="/valor/">O negócio que enriquece o dono não se torna gigante</a></h2>
-        <p class="brief">
-          Existe diferença entre ter uma empresa que dá dinheiro e ter uma empresa que vale dinheiro. A
-          primeira paga a sua conta enquanto você estiver nela; a segunda pode ser vendida e sobrevive à
-          sua ausência. Este guia trata de separar patrimônio de operação, medir o quanto do faturamento
-          ainda passa por você, decidir a margem antes do orçamento, inverter quem financia o capital de
-          giro e montar a jornada que faz o time evoluir por método.
-        </p>
-      </div>
-      <div class="side">
-        <p class="meta">5 blocos<br>1 calculadora<br>Checklist de execução</p>
-        <a class="go" href="/valor/">Ler o guia</a>
-      </div>
-    </article>
+  <div class="tools">
+    <input type="search" id="q" placeholder="Buscar por tema: preço, time, tráfego, meta, churn..." aria-label="Buscar conteúdo">
+    <span class="cnt" id="cnt">—</span>
   </div>
+  <div class="chips" id="chips"></div>
 
-  <div class="soon">
-    <p class="k">Em produção</p>
-    <p>
-      Novos guias entram aqui conforme saem. Os próximos tratam de estrutura de time comercial,
-      remuneração variável e rotina de gestão à vista.
-    </p>
-  </div>
+  <div class="list" id="lista"></div>
+  <div class="pager" id="pager"></div>
 
-
-<div class="autorbox">
-  <span class="av">FN</span>
-  <div class="c">
-    <p class="n">Fabrício Nunnes</p>
-    <p class="r">CEO e fundador · UNV Holdings · Universidade Nacional de Vendas</p>
-    <p class="b">Diretor comercial terceirizado para pequenas e médias empresas. Mais de 20 anos em vendas, mais de 10 como diretor comercial e mais de R$ 1 bilhão em vendas geradas ao longo da carreira. À frente da UNV Holdings, assume a direção comercial de empresas que precisam estruturar time, processo e meta para crescer com previsibilidade. <a href="/sessao">Fale com o Fabrício</a>.</p>
-  </div>
 </div>
-</div>
-
 <div class="final">
   <div class="in">
     <h2>Ler é a parte fácil</h2>
@@ -429,5 +259,97 @@ a{color:var(--red)}
   </div>
 </div>
 
+<script>
+(function(){
+  "use strict";
+  var $=function(i){return document.getElementById(i);};
+  var POR_PAGINA=10, dados=[], filtro="", tag="", pagina=1;
+
+  function norm(s){return (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");}
+
+  function filtrados(){
+    var f=norm(filtro);
+    return dados.filter(function(p){
+      if(tag && p.tags.indexOf(tag)<0) return false;
+      if(!f) return true;
+      return norm(p.titulo+" "+p.resumo+" "+p.tags.join(" ")).indexOf(f)>=0;
+    });
+  }
+
+  function render(){
+    var arr=filtrados();
+    var tot=Math.max(1,Math.ceil(arr.length/POR_PAGINA));
+    if(pagina>tot) pagina=tot;
+    var ini=(pagina-1)*POR_PAGINA;
+    var pag=arr.slice(ini,ini+POR_PAGINA);
+
+    $("cnt").textContent = arr.length===0 ? "nenhum resultado"
+      : arr.length+(arr.length===1?" conteúdo":" conteúdos")+(tot>1?" · página "+pagina+" de "+tot:"");
+
+    $("lista").innerHTML = pag.length===0
+      ? '<p class="vazio">Nada encontrado para esse termo. Tente outra palavra, como preço, time, meta ou tráfego.</p>'
+      : pag.map(function(p,i){
+          var n=String(arr.length-(ini+i)).padStart(2,"0");
+          return '<article class="post">'+
+            '<div class="num">'+n+'</div>'+
+            '<div>'+
+              '<div class="tags"><span class="badge '+p.tipo+'">'+(p.tipo==="guia"?"Guia":"Diário")+'</span>'+
+              p.tags.slice(0,3).map(function(t){return '<span class="tag">'+t+'</span>';}).join("")+'</div>'+
+              '<h2><a href="'+p.url+'">'+p.titulo+'</a></h2>'+
+              '<p class="brief">'+p.resumo+'</p>'+
+            '</div>'+
+            '<div class="side">'+
+              '<p class="meta">'+p.data.split("-").reverse().join("/")+'</p>'+
+              '<a class="go" href="'+p.url+'">Ler</a>'+
+            '</div>'+
+          '</article>';
+        }).join("");
+
+    var ph="";
+    if(tot>1){
+      ph+='<button type="button" data-p="'+(pagina-1)+'"'+(pagina===1?" disabled":"")+'>anterior</button>';
+      for(var i=1;i<=tot;i++){
+        if(tot>7 && i>2 && i<tot-1 && Math.abs(i-pagina)>1){ if(i===3) ph+='<span class="cnt">…</span>'; continue; }
+        ph+='<button type="button" data-p="'+i+'" aria-current="'+(i===pagina)+'">'+i+'</button>';
+      }
+      ph+='<button type="button" data-p="'+(pagina+1)+'"'+(pagina===tot?" disabled":"")+'>próxima</button>';
+    }
+    $("pager").innerHTML=ph;
+    $("pager").querySelectorAll("button[data-p]").forEach(function(b){
+      b.addEventListener("click",function(){
+        pagina=+b.dataset.p; render();
+        document.querySelector(".tools").scrollIntoView({behavior:"smooth",block:"start"});
+      });
+    });
+  }
+
+  function montarChips(){
+    var c={};
+    dados.forEach(function(p){p.tags.forEach(function(t){c[t]=(c[t]||0)+1;});});
+    var top=Object.keys(c).sort(function(a,b){return c[b]-c[a];}).slice(0,10);
+    $("chips").innerHTML='<button type="button" data-t="" aria-pressed="true">todos</button>'+
+      top.map(function(t){return '<button type="button" data-t="'+t+'" aria-pressed="false">'+t+'</button>';}).join("");
+    $("chips").querySelectorAll("button").forEach(function(b){
+      b.addEventListener("click",function(){
+        tag=b.dataset.t; pagina=1;
+        $("chips").querySelectorAll("button").forEach(function(x){x.setAttribute("aria-pressed", x===b);});
+        render();
+      });
+    });
+  }
+
+  fetch("/blog/posts.json?v="+Date.now()).then(function(r){return r.json();}).then(function(d){
+    dados=(d.posts||[]).sort(function(a,b){return b.ts-a.ts;});
+    montarChips(); render();
+  }).catch(function(){
+    $("lista").innerHTML='<p class="vazio">Não foi possível carregar a lista agora. Recarregue a página.</p>';
+  });
+
+  var t;
+  $("q").addEventListener("input",function(e){
+    clearTimeout(t); t=setTimeout(function(){ filtro=e.target.value; pagina=1; render(); },150);
+  });
+})();
+</script>
 </body>
 </html>
