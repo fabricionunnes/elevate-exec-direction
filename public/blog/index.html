@@ -277,8 +277,21 @@ a{color:var(--red)}
     });
   }
 
+  function resultados(){
+    var r=filtrados();
+    if(r.length||!filtro) return r;
+    // nada exato: procura por qualquer palavra relevante do termo
+    var ps=norm(filtro).split(/\s+/).filter(function(w){return w.length>3;});
+    if(!ps.length) return r;
+    return dados.map(function(p){
+      var t=norm(p.titulo+" "+p.resumo+" "+p.tags.join(" "));
+      return {p:p, s:ps.filter(function(w){return t.indexOf(w)>=0;}).length};
+    }).filter(function(x){return x.s>0;})
+      .sort(function(a,b){return b.s-a.s;}).map(function(x){return x.p;});
+  }
+
   function render(){
-    var arr=filtrados();
+    var arr=resultados();
     var tot=Math.max(1,Math.ceil(arr.length/POR_PAGINA));
     if(pagina>tot) pagina=tot;
     var ini=(pagina-1)*POR_PAGINA;
@@ -288,7 +301,7 @@ a{color:var(--red)}
       : arr.length+(arr.length===1?" conteúdo":" conteúdos")+(tot>1?" · página "+pagina+" de "+tot:"");
 
     $("lista").innerHTML = pag.length===0
-      ? '<p class="vazio">Nada encontrado para esse termo. Tente outra palavra, como preço, time, meta ou tráfego.</p>'
+      ? '<p class="vazio">Nada com esse termo ainda. Tente preço, time, meta, vendedor ou tráfego.</p>'
       : pag.map(function(p,i){
           var n=String(arr.length-(ini+i)).padStart(2,"0");
           return '<article class="post">'+
