@@ -25,7 +25,23 @@ const cors = {
 const COMPANY_ID = "8ec159d5-c560-4556-85e5-b69a04bc7f21"; // 2M Gestão e Treinamentos
 const KPI_VENDAS = "416c53be-bf98-4f75-ab09-8ece021d1e9c";
 const KPI_FATURAMENTO = "a4cbe40a-9b6d-4e71-98f8-1b0b21111b4c";
+const KPI_ATENDIMENTOS = "8a198fcc-72c5-4e8c-aec3-ab69283b21a1";
+const KPI_PROSPECCOES = "d3656e6d-2bf2-49bc-84df-3339aedd0576";
+const KPI_REATIVACAO = "3ee04645-1643-4701-aab9-9d0df96b9313";
+const KPI_PROPOSTAS = "232efc96-cf50-4ba3-95f6-c252dfcd21f3";
 const TAG = "[BITRIX]";
+
+/** etapa do funil da 2M -> KPI que ela alimenta. Conta a ENTRADA na etapa, no
+ *  dia em que aconteceu: é fluxo (quantos passaram), não foto do momento.
+ *  As duas etapas de prospecção somam no mesmo KPI. */
+const ETAPA_KPI: Record<string, string> = {
+  "UC_HUCFAW": KPI_PROSPECCOES,        // Prospecção Clientes Novos
+  "FINAL_INVOICE": KPI_PROSPECCOES,    // Prospeção
+  "UC_J7WV61": KPI_REATIVACAO,         // Reativação de Clientes
+  "UC_RXF7Y2": KPI_ATENDIMENTOS,       // Mensagens Enviadas
+  "PREPAYMENT_INVOICE": KPI_PROPOSTAS, // Propostas Enviadas
+};
+const KPIS_DE_ETAPA = [...new Set(Object.values(ETAPA_KPI))];
 
 function json(obj: unknown, status = 200) {
   return new Response(JSON.stringify(obj), {
@@ -96,8 +112,10 @@ async function bxList(base: string, method: string, params: Record<string, unkno
   let start = 0;
   for (let i = 0; i < 200; i++) {
     const data = await bx(base, method, { ...params, start });
-    const rows = data?.result || [];
-    out.push(...(Array.isArray(rows) ? rows : []));
+    const bruto = data?.result;
+    // crm.deal.list devolve array; crm.stagehistory.list devolve { items: [...] }
+    const rows = Array.isArray(bruto) ? bruto : (bruto?.items || []);
+    out.push(...rows);
     if (data?.next === undefined || data?.next === null) break;
     start = Number(data.next);
     if (!Number.isFinite(start)) break;
@@ -165,6 +183,23 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // --- diagnóstico de volume (quantos negócios e quantas mudanças de etapa)
+    if (action === "diag") {
+      const totDeals = await bx(base, "crm.deal.list", { select: ["ID"] });
+      const hist = await bx(base, "crm.stagehistory.list", {
+        entityTypeId: 2,
+        filter: { ">=CREATED_TIME": String(body.since || "2024-08-01") },
+        select: ["ID", "OWNER_ID", "CREATED_TIME", "STAGE_ID"],
+      });
+      return json({
+        ok: true,
+        negocios_total: totDeals?.total ?? null,
+        mudancas_de_etapa_na_janela: hist?.total ?? null,
+        formato_result: Array.isArray(hist?.result) ? "array" : typeof hist?.result,
+        amostra: JSON.stringify(hist?.result).slice(0, 400),
+      });
+    }
+
     // --- funis e etapas (pra conferir o que o portal considera "ganho")
     if (action === "stages") {
       const cats = await bxList(base, "crm.dealcategory.list", {});
@@ -185,13 +220,22 @@ Deno.serve(async (req: Request) => {
       (days > 0
         ? new Date(Date.now() - days * 86400000).toISOString().slice(0, 10)
         : new Date(Date.now() - 4 * 86400000).toISOString().slice(0, 10));
+    const untilStr: string | null = body.until || null;
+    // o Bitrix recusa "<=DATA T23:59:59"; o jeito aceito é "< dia seguinte T00:00:00"
+    const untilExcl = untilStr
+      ? new Date(new Date(`${untilStr}T00:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10)
+      : null;
     const dryRun = !!body.dry_run;
 
     // 1) negócios GANHOS fechados dentro da janela.
     //    STAGE_SEMANTIC_ID = "S" é o marcador de sucesso do Bitrix — pega o
     //    ganho de qualquer funil, sem depender do nome da etapa.
     const deals = await bxList(base, "crm.deal.list", {
-      filter: { STAGE_SEMANTIC_ID: "S", ">=CLOSEDATE": `${sinceStr}T00:00:00` },
+      filter: {
+        STAGE_SEMANTIC_ID: "S",
+        ">=CLOSEDATE": `${sinceStr}T00:00:00`,
+        ...(untilExcl ? { "<CLOSEDATE": `${untilExcl}T00:00:00` } : {}),
+      },
       select: ["ID", "TITLE", "OPPORTUNITY", "CURRENCY_ID", "CLOSEDATE", "ASSIGNED_BY_ID", "CATEGORY_ID"],
       order: { CLOSEDATE: "DESC" },
     });
@@ -204,7 +248,7 @@ Deno.serve(async (req: Request) => {
         userId: String(d.ASSIGNED_BY_ID || ""),
         moeda: d.CURRENCY_ID || null,
       }))
-      .filter((d) => d.date >= sinceStr);
+      .filter((d) => d.date >= sinceStr && (!untilStr || d.date <= untilStr));
 
     // 2) nome do responsável de cada negócio
     const userIds = [...new Set(won.map((w) => w.userId).filter(Boolean))];
@@ -220,11 +264,13 @@ Deno.serve(async (req: Request) => {
     }
 
     // 3) vendedores do Nexus
+    // inclui inativos de propósito: quem saiu da empresa continua dono do
+    // histórico dele. Filtrar por is_active jogaria fora anos de dado assim que
+    // alguém fosse desativado no painel.
     const { data: sellers } = await supabase
       .from("company_salespeople")
       .select("id, name, unit_id, team_id, sector_id")
-      .eq("company_id", COMPANY_ID)
-      .eq("is_active", true);
+      .eq("company_id", COMPANY_ID);
 
     // sem vendedor cadastrado não dá pra gravar; na simulação segue assim mesmo,
     // porque o resultado (tudo em "nao_mapeados") é justamente a distribuição de
@@ -259,6 +305,65 @@ Deno.serve(async (req: Request) => {
       agg.set(key, cur);
     }
 
+    // 4b) entradas em cada etapa do funil (prospecção, reativação, mensagens,
+    //     propostas). O Bitrix guarda cada mudança de etapa com data — é isso
+    //     que vira o número diário. O responsável vem do negócio.
+    const aggEtapa = new Map<string, { spId: string; date: string; kpiId: string; count: number }>();
+    let mudancas = 0;
+    if (body.etapas !== false) {
+      const hist = await bxList(base, "crm.stagehistory.list", {
+        entityTypeId: 2,
+        filter: {
+          ">=CREATED_TIME": `${sinceStr}T00:00:00`,
+          ...(untilExcl ? { "<CREATED_TIME": `${untilExcl}T00:00:00` } : {}),
+        },
+        select: ["ID", "OWNER_ID", "CREATED_TIME", "STAGE_ID"],
+      });
+      const naJanela = hist.filter((h: any) => {
+        const d = dayOf(h.CREATED_TIME);
+        return d >= sinceStr && (!untilStr || d <= untilStr) && ETAPA_KPI[String(h.STAGE_ID)];
+      });
+      mudancas = naJanela.length;
+
+      // responsável de cada negócio citado no histórico (em lotes de 50)
+      const dealIds = [...new Set(naJanela.map((h: any) => String(h.OWNER_ID)))];
+      const donoDoDeal = new Map<string, string>();
+      for (let i = 0; i < dealIds.length; i += 50) {
+        const lote = dealIds.slice(i, i + 50);
+        const rows = await bxList(base, "crm.deal.list", {
+          filter: { ID: lote },
+          select: ["ID", "ASSIGNED_BY_ID"],
+        });
+        for (const r of rows) donoDoDeal.set(String(r.ID), String(r.ASSIGNED_BY_ID || ""));
+      }
+
+      // nomes que ainda não foram resolvidos no passo das vendas
+      const faltando = [...new Set([...donoDoDeal.values()].filter((u) => u && !nomePorId.has(u)))];
+      for (let i = 0; i < faltando.length; i += 50) {
+        const users = await bxList(base, "user.get", { FILTER: { ID: faltando.slice(i, i + 50) } });
+        for (const u of users) {
+          nomePorId.set(String(u.ID), `${u.NAME || ""} ${u.LAST_NAME || ""}`.trim() || u.EMAIL || `ID ${u.ID}`);
+        }
+      }
+
+      for (const h of naJanela) {
+        const kpiId = ETAPA_KPI[String(h.STAGE_ID)];
+        const userId = donoDoDeal.get(String(h.OWNER_ID)) || "";
+        const nome = nomePorId.get(userId) || "";
+        const sp = sellers && sellers.length ? matchByName(nome, sellers as any[]) : null;
+        if (!sp) {
+          const chave = nome || `ID ${userId}`;
+          unmatched.set(chave, (unmatched.get(chave) || 0) + 1);
+          continue;
+        }
+        const date = dayOf(h.CREATED_TIME);
+        const key = `${sp.id}|${date}|${kpiId}`;
+        const cur = aggEtapa.get(key) || { spId: sp.id, date, kpiId, count: 0 };
+        cur.count += 1;
+        aggEtapa.set(key, cur);
+      }
+    }
+
     if (dryRun) {
       return json({
         ok: true,
@@ -266,6 +371,15 @@ Deno.serve(async (req: Request) => {
         since: sinceStr,
         negocios_ganhos: won.length,
         dias_vendedor: agg.size,
+        mudancas_de_etapa: mudancas,
+        etapas_por_kpi: Array.from(aggEtapa.values()).reduce((acc: Record<string, number>, e) => {
+          const nome = e.kpiId === KPI_PROSPECCOES ? "Prospecções"
+            : e.kpiId === KPI_REATIVACAO ? "Reativação de Clientes"
+            : e.kpiId === KPI_ATENDIMENTOS ? "Atendimentos"
+            : e.kpiId === KPI_PROPOSTAS ? "Propostas Enviadas" : e.kpiId;
+          acc[nome] = (acc[nome] || 0) + e.count;
+          return acc;
+        }, {}),
         moedas: [...moedas],
         nao_mapeados: Object.fromEntries(unmatched),
         resumo: Array.from(agg.values()).map((a) => ({
@@ -299,6 +413,21 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    for (const e of aggEtapa.values()) {
+      const sp = spById.get(e.spId);
+      linhas.push({
+        company_id: COMPANY_ID,
+        kpi_id: e.kpiId,
+        salesperson_id: e.spId,
+        entry_date: e.date,
+        value: e.count,
+        unit_id: sp?.unit_id ?? null,
+        team_id: sp?.team_id ?? null,
+        sector_id: sp?.sector_id ?? null,
+        observations: `${TAG} sync automático do Bitrix24`,
+      });
+    }
+
     // apaga o que já existia nessas combinações, em paralelo por blocos
     const CONC = 25;
     for (let i = 0; i < alvos.length; i += CONC) {
@@ -308,6 +437,16 @@ Deno.serve(async (req: Request) => {
           .in("kpi_id", [KPI_FATURAMENTO, KPI_VENDAS])
           .eq("salesperson_id", a.spId)
           .eq("entry_date", a.date)
+      ));
+    }
+    const alvosEtapa = Array.from(aggEtapa.values());
+    for (let i = 0; i < alvosEtapa.length; i += CONC) {
+      await Promise.all(alvosEtapa.slice(i, i + CONC).map((e) =>
+        supabase.from("kpi_entries").delete()
+          .eq("company_id", COMPANY_ID)
+          .eq("kpi_id", e.kpiId)
+          .eq("salesperson_id", e.spId)
+          .eq("entry_date", e.date)
       ));
     }
 
@@ -324,6 +463,7 @@ Deno.serve(async (req: Request) => {
       ok: true,
       since: sinceStr,
       negocios_ganhos: won.length,
+      mudancas_de_etapa: mudancas,
       lancamentos_gravados: written,
       moedas: [...moedas],
       nao_mapeados: Object.fromEntries(unmatched),
