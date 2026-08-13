@@ -28,6 +28,7 @@ export interface OnboardingUser {
   user_id?: string;
   salesperson_id?: string | null;
   temp_password?: string;
+  dialer_enabled?: boolean;
 }
 
 // Menu permission keys for client portal

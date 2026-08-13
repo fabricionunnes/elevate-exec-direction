@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -314,6 +315,19 @@ export const ManageUsersDialog = ({
     setShowNewPassword(false);
   };
 
+  // Discador: liberar/bloquear por usuário do cliente. Fica desligado por
+  // padrão — só quem o Fabrício liberar consegue abrir o discador no portal.
+  const toggleDialer = async (user: OnboardingUser) => {
+    const novo = !user.dialer_enabled;
+    const { error } = await (supabase as any)
+      .from("onboarding_users")
+      .update({ dialer_enabled: novo })
+      .eq("id", user.id);
+    if (error) { toast.error("Não foi possível alterar o acesso ao discador"); return; }
+    toast.success(novo ? `Discador liberado para ${user.name}` : `Discador bloqueado para ${user.name}`);
+    onUsersChanged();
+  };
+
   const handleDeleteUser = async (userId: string) => {
     try {
       const { error } = await supabase
@@ -440,6 +454,7 @@ export const ManageUsersDialog = ({
                 <TableHead>Email</TableHead>
                 <TableHead>Perfil</TableHead>
                 <TableHead>Senha Temp.</TableHead>
+                <TableHead className="w-[110px]">Discador</TableHead>
                 <TableHead className="w-[100px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -481,6 +496,22 @@ export const ManageUsersDialog = ({
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {user.role === "client" ? (
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={!!user.dialer_enabled}
+                          onCheckedChange={() => toggleDialer(user)}
+                          title={user.dialer_enabled ? "Bloquear discador" : "Liberar discador"}
+                        />
+                        <span className="text-[11px] text-muted-foreground">
+                          {user.dialer_enabled ? "Liberado" : "Bloqueado"}
+                        </span>
                       </div>
                     ) : (
                       <span className="text-muted-foreground text-sm">—</span>

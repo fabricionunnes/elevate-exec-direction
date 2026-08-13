@@ -17,6 +17,9 @@ const ASAAS_KEY = Deno.env.get("ASAAS_API_KEY") || "";
 const ASAAS_BASE = "https://api.asaas.com/v3";
 const ASAAS_BANK_ID = "6e9a3135-5826-4633-adf1-a63ef5b70e96"; // financial_banks: Asaas
 const AVISO_FALLBACK = "5531989840003";
+// Conciliação é assunto do Financeiro: o aviso sai pela instância do setor,
+// não pela pessoal do Fabrício.
+const AVISO_INSTANCE = "financeirounv";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -58,8 +61,8 @@ async function avisar(supabase: any, texto: string) {
   try {
     const { data: inst } = await supabase.from("whatsapp_instances")
       .select("api_url, api_key, instance_name, provider_type")
-      .eq("instance_name", "fabricionunnes").maybeSingle();
-    if (!inst?.api_url || !inst?.api_key) return { sent: false, reason: "instância do Fabrício indisponível" };
+      .eq("instance_name", AVISO_INSTANCE).maybeSingle();
+    if (!inst?.api_url || !inst?.api_key) return { sent: false, reason: `instância ${AVISO_INSTANCE} indisponível` };
     const base = String(inst.api_url).replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
     let isV2 = inst.provider_type === "manager_v2";
     try { if (!isV2) isV2 = new URL(base).hostname.toLowerCase().endsWith(".stevo.chat"); } catch { /* legado */ }
