@@ -1,5 +1,5 @@
 {
- "gerado_em": "2026-08-13T13:22:54",
+ "gerado_em": "2026-08-13T13:25:28",
  "posts": [
   {
    "slug": "suporte-servico-gestao-tres-precos",
@@ -52,12 +52,13 @@
   {
    "slug": "cliente-bom-nao-e-so-quem-paga",
    "url": "/blog/cliente-bom-nao-e-so-quem-paga/",
-   "titulo": "Cliente bom não é só quem paga em dia",
-   "resumo": "Você só escala vendas se escolher com quem trabalha. Cliente ruim contamina processo, queima time e impede que você estruture de verdade.",
+   "titulo": "Cliente que te faz trabalhar contra você é custo disfarçado",
+   "resumo": "Escolher quem atender define se a operação vai escalar ou virar refém. Cliente errado consome margem, time e foco que deveriam ir para quem faz o negócio crescer.",
    "tags": [
     "qualificação",
     "perfil de cliente",
-    "operação comercial",
+    "margem",
+    "estrutura comercial",
     "diagnóstico"
    ],
    "tipo": "diario",
