@@ -39,7 +39,7 @@ import {
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
   ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
   TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays, Bell, Truck, MessageSquare, ChevronDown, ChevronRight, Headphones, Split,
-  ArrowUpDown, ArrowUp, ArrowDown, FileCheck, Link2, DollarSign, Scale,
+  ArrowUpDown, ArrowUp, ArrowDown, FileCheck, Link2, DollarSign, Scale, Crosshair,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -50,6 +50,7 @@ import FinancialDashboardTab from "./financial/FinancialDashboardTab";
 import FinancialCategoriesTab from "./financial/FinancialCategoriesTab";
 import FinancialDRETab from "./financial/FinancialDRETab";
 import FinancialDFCTab from "./financial/FinancialDFCTab";
+import FinancialBreakEvenTab from "./financial/FinancialBreakEvenTab";
 import FinancialBalancoTab from "./financial/FinancialBalancoTab";
 import FinancialRelatorioExecutivoTab from "./financial/FinancialRelatorioExecutivoTab";
 import FinancialNegativacaoTab from "./financial/FinancialNegativacaoTab";
@@ -169,6 +170,7 @@ const NAV_ITEMS = [
   { key: "categories", label: "Categorias", icon: FolderTree, permKey: FINANCIAL_PERMISSION_KEYS.fin_categories },
   { key: "dre", label: "DRE", icon: FileText, permKey: FINANCIAL_PERMISSION_KEYS.fin_dre },
   { key: "dfc", label: "DFC", icon: ArrowRightLeft, permKey: FINANCIAL_PERMISSION_KEYS.fin_dfc },
+  { key: "breakeven", label: "Ponto de Equilíbrio", icon: Crosshair, permKey: FINANCIAL_PERMISSION_KEYS.fin_dfc },
   { key: "balanco", label: "Balanço Patrimonial", icon: Scale, permKey: FINANCIAL_PERMISSION_KEYS.fin_balanco },
   { key: "relatorio-executivo", label: "Relatório Executivo", icon: FileCheck, permKey: FINANCIAL_PERMISSION_KEYS.fin_relatorio_executivo },
   { key: "planejamento", label: "Planejamento", icon: Target, permKey: FINANCIAL_PERMISSION_KEYS.fin_dre },
@@ -2391,6 +2393,11 @@ export default function AllRecurringChargesPage() {
           {/* DFC */}
           {activeTab === "dfc" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_dfc) && (
             <FinancialDFCTab invoices={invoices} payables={payables} banks={banks} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
+          )}
+
+          {/* Ponto de Equilíbrio */}
+          {activeTab === "breakeven" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_dfc) && (
+            <FinancialBreakEvenTab invoices={invoices} payables={payables} formatCurrency={formatCurrency} />
           )}
 
           {/* Balanço Patrimonial */}

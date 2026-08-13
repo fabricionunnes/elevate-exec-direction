@@ -23,6 +23,7 @@ interface Category {
   group_name: string;
   dre_line: string | null;
   dfc_section: string | null;
+  cost_type: string | null;
   sort_order: number;
   is_active: boolean;
 }
@@ -59,7 +60,7 @@ export default function FinancialCategoriesTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [dialog, setDialog] = useState<{ open: boolean; category: Category | null }>({ open: false, category: null });
   const [form, setForm] = useState({
-    name: "", type: "despesa", group_name: "", dre_line: "none", dfc_section: "operacional", sort_order: "0",
+    name: "", type: "despesa", group_name: "", dre_line: "none", dfc_section: "operacional", cost_type: "fixo", sort_order: "0",
   });
 
   // Cost centers state
@@ -89,6 +90,7 @@ export default function FinancialCategoriesTab() {
       group_name: form.group_name || "Outros",
       dre_line: form.dre_line !== "none" ? form.dre_line : null,
       dfc_section: form.dfc_section,
+      cost_type: form.type === "despesa" ? form.cost_type : null,
       sort_order: parseInt(form.sort_order) || 0,
     };
 
@@ -113,7 +115,7 @@ export default function FinancialCategoriesTab() {
   };
 
   const openCreate = () => {
-    setForm({ name: "", type: "despesa", group_name: "", dre_line: "none", dfc_section: "operacional", sort_order: "0" });
+    setForm({ name: "", type: "despesa", group_name: "", dre_line: "none", dfc_section: "operacional", cost_type: "fixo", sort_order: "0" });
     setDialog({ open: true, category: null });
   };
 
@@ -121,6 +123,7 @@ export default function FinancialCategoriesTab() {
     setForm({
       name: cat.name, type: cat.type, group_name: cat.group_name,
       dre_line: cat.dre_line || "none", dfc_section: cat.dfc_section || "operacional",
+      cost_type: cat.cost_type || "fixo",
       sort_order: String(cat.sort_order),
     });
     setDialog({ open: true, category: cat });
@@ -215,6 +218,7 @@ export default function FinancialCategoriesTab() {
                       <TableHead>Tipo</TableHead>
                       <TableHead>Linha DRE</TableHead>
                       <TableHead>Seção DFC</TableHead>
+                      <TableHead>Classificação</TableHead>
                       <TableHead>Ordem</TableHead>
                       <TableHead className="w-20" />
                     </TableRow>
@@ -234,6 +238,15 @@ export default function FinancialCategoriesTab() {
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {DFC_SECTIONS.find(s => s.value === cat.dfc_section)?.label || "-"}
+                        </TableCell>
+                        <TableCell>
+                          {cat.type === "despesa" ? (
+                            <Badge variant="outline" className={`text-xs ${cat.cost_type === "variavel" ? "border-amber-500 text-amber-600" : "border-border text-muted-foreground"}`}>
+                              {cat.cost_type === "variavel" ? "Variável" : "Fixa"}
+                            </Badge>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm">{cat.sort_order}</TableCell>
                         <TableCell>
@@ -402,9 +415,23 @@ export default function FinancialCategoriesTab() {
                 </Select>
               </div>
             </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">Ordem</label>
-              <Input type="number" value={form.sort_order} onChange={(e) => setForm(p => ({ ...p, sort_order: e.target.value }))} className="w-24" />
+            <div className="grid grid-cols-2 gap-3">
+              {form.type === "despesa" && (
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Classificação</label>
+                  <Select value={form.cost_type} onValueChange={(v) => setForm(p => ({ ...p, cost_type: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fixo">Fixa (existe mesmo sem vender)</SelectItem>
+                      <SelectItem value="variavel">Variável (cresce com a venda)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div>
+                <label className="text-sm font-medium mb-1 block">Ordem</label>
+                <Input type="number" value={form.sort_order} onChange={(e) => setForm(p => ({ ...p, sort_order: e.target.value }))} className="w-24" />
+              </div>
             </div>
           </div>
           <AlertDialogFooter>

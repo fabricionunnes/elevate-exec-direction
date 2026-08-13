@@ -1,15 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+import { Fragment, useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowRightLeft, CalendarIcon } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from "recharts";
-import { format, parse } from "date-fns";
+import { ArrowRightLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FinCategory, isVariableCategory, dfcSectionOf, monthKey, monthRange } from "./financeClassification";
 
 interface Props {
   invoices: any[];
@@ -19,16 +16,34 @@ interface Props {
   formatCurrencyCents: (v: number) => string;
 }
 
-export default function FinancialDFCTab({ invoices, payables, banks, formatCurrency, formatCurrencyCents }: Props) {
-  const [categories, setCategories] = useState<any[]>([]);
+interface DfcRow {
+  id: string;
+  label: string;
+  values: number[]; // por mês, em reais (despesas negativas)
+  children?: DfcRow[];
+  kind: "section" | "detail" | "total" | "percent" | "final";
+  highlight?: boolean;
+}
+
+const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
+const addInto = (map: Map<string, number[]>, key: string, idx: number, val: number, nMonths: number) => {
+  if (!map.has(key)) map.set(key, new Array(nMonths).fill(0));
+  map.get(key)![idx] += val;
+};
+
+export default function FinancialDFCTab({ invoices, payables, banks, formatCurrency }: Props) {
+  const [categories, setCategories] = useState<FinCategory[]>([]);
   const [entries, setEntries] = useState<any[]>([]);
   const [view, setView] = useState<"realizado" | "projetado">("realizado");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set(["receitas", "variaveis", "fixas"]));
+
   const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+  const [startMonth, setStartMonth] = useState(format(subMonths(now, 4), "yyyy-MM"));
+  const [endMonth, setEndMonth] = useState(format(now, "yyyy-MM"));
 
   useEffect(() => {
     Promise.all([
-      supabase.from("staff_financial_categories").select("*").eq("is_active", true),
+      supabase.from("staff_financial_categories").select("*").eq("is_active", true).order("sort_order"),
       supabase.from("staff_financial_entries").select("*"),
     ]).then(([catRes, entRes]) => {
       if (catRes.data) setCategories(catRes.data as any);
@@ -36,97 +51,230 @@ export default function FinancialDFCTab({ invoices, payables, banks, formatCurre
     });
   }, []);
 
-  const selectedDate = parse(selectedMonth, "yyyy-MM", new Date());
+  const monthOptions = useMemo(() => {
+    const opts: string[] = [];
+    for (let i = 23; i >= -12; i--) opts.push(format(subMonths(now, i), "yyyy-MM"));
+    return opts;
+  }, []);
 
-  const handleDateSelect = (date: Date | undefined) => {
-    if (date) {
-      setSelectedMonth(format(date, "yyyy-MM"));
+  const months = useMemo(() => monthRange(startMonth, endMonth), [startMonth, endMonth]);
+
+  const model = useMemo(() => {
+    const n = months.length;
+    const idxOf = new Map(months.map((m, i) => [m, i]));
+    const isPaid = view === "realizado";
+    const catById = new Map(categories.map((c) => [c.id, c]));
+
+    // ---------- Receitas (faturas + recebíveis + lançamentos manuais) ----------
+    const revenueByCat = new Map<string, number[]>();
+    const feesByMonth = new Array(n).fill(0);
+
+    invoices.forEach((inv: any) => {
+      const mk = monthKey(isPaid ? inv.paid_at : inv.due_date);
+      if (mk == null || !idxOf.has(mk)) return;
+      if (isPaid && inv.status !== "paid") return;
+      const idx = idxOf.get(mk)!;
+      const val = (isPaid ? inv.paid_amount_cents ?? inv.amount_cents : inv.amount_cents) / 100;
+      const cat = inv.category_id ? catById.get(inv.category_id) : null;
+      addInto(revenueByCat, cat ? cat.id : "__uncat_rev__", idx, val, n);
+      if (isPaid) feesByMonth[idx] += (inv.payment_fee_cents || 0) / 100;
+    });
+
+    entries.forEach((e: any) => {
+      if (e.type !== "receita") return;
+      if (isPaid && e.status !== "paid") return;
+      const mk = monthKey(isPaid ? e.paid_at || e.due_date : e.due_date);
+      if (mk == null || !idxOf.has(mk)) return;
+      const val = (isPaid ? e.paid_amount_cents ?? e.amount_cents : e.amount_cents) / 100;
+      addInto(revenueByCat, e.category_id && catById.has(e.category_id) ? e.category_id : "__uncat_rev__", idxOf.get(mk)!, val, n);
+    });
+
+    // ---------- Despesas (contas a pagar + lançamentos manuais) ----------
+    // buckets: variavel | fixa (por grupo) | investimento | financiamento — sempre por categoria
+    const expenseByCat = new Map<string, number[]>();
+    const pushExpense = (categoryId: string | null, costType: string | null, mk: string | null, val: number) => {
+      if (mk == null || !idxOf.has(mk) || !val) return;
+      const cat = categoryId ? catById.get(categoryId) : null;
+      const key = cat ? cat.id : costType === "variavel" ? "__uncat_var__" : "__uncat_fix__";
+      addInto(expenseByCat, key, idxOf.get(mk)!, val, n);
+    };
+
+    payables.forEach((p: any) => {
+      if (isPaid) {
+        if (p.status !== "paid") return;
+        pushExpense(p.category_id, p.cost_type, monthKey(p.paid_date), p.paid_amount ?? p.amount ?? 0);
+      } else {
+        const mk = monthKey(p.due_date) ?? (p.reference_month ? String(p.reference_month).substring(0, 7) : null);
+        pushExpense(p.category_id, p.cost_type, mk, p.amount ?? 0);
+      }
+    });
+
+    entries.forEach((e: any) => {
+      if (e.type !== "despesa") return;
+      if (isPaid && e.status !== "paid") return;
+      const mk = monthKey(isPaid ? e.paid_at || e.due_date : e.due_date);
+      const val = (isPaid ? e.paid_amount_cents ?? e.amount_cents : e.amount_cents) / 100;
+      pushExpense(e.category_id, null, mk, val);
+    });
+
+    // ---------- Montagem das linhas ----------
+    const catLabel = (key: string) =>
+      key === "__uncat_rev__" ? "Sem categoria" :
+      key === "__uncat_var__" ? "Sem categoria" :
+      key === "__uncat_fix__" ? "Sem categoria" :
+      catById.get(key)?.name || "Sem categoria";
+
+    const revenueChildren: DfcRow[] = [...revenueByCat.entries()]
+      .sort((a, b) => sum(b[1]) - sum(a[1]))
+      .map(([key, values]) => ({ id: `rev:${key}`, label: catLabel(key), values, kind: "detail" as const }));
+    const receitas = months.map((_, i) => sum([...revenueByCat.values()].map((v) => v[i])));
+
+    const varChildren: DfcRow[] = [];
+    const fixedByGroup = new Map<string, DfcRow[]>();
+    const investChildren: DfcRow[] = [];
+    const finChildren: DfcRow[] = [];
+
+    if (feesByMonth.some((v) => v > 0)) {
+      varChildren.push({ id: "var:fees", label: "Taxas de Cartão / Gateway", values: feesByMonth.map((v) => -v), kind: "detail" });
     }
+
+    [...expenseByCat.entries()].forEach(([key, values]) => {
+      const cat = catById.get(key);
+      const row: DfcRow = { id: `exp:${key}`, label: catLabel(key), values: values.map((v) => -v), kind: "detail" };
+      if (key === "__uncat_var__") { varChildren.push(row); return; }
+      if (key === "__uncat_fix__") {
+        if (!fixedByGroup.has("Sem categoria")) fixedByGroup.set("Sem categoria", []);
+        fixedByGroup.get("Sem categoria")!.push(row);
+        return;
+      }
+      const section = dfcSectionOf(cat);
+      if (section === "investimento") { investChildren.push(row); return; }
+      if (section === "financiamento") { finChildren.push(row); return; }
+      if (isVariableCategory(cat)) { varChildren.push(row); return; }
+      const group = cat?.group_name || "Outros";
+      if (!fixedByGroup.has(group)) fixedByGroup.set(group, []);
+      fixedByGroup.get(group)!.push(row);
+    });
+
+    const sortRows = (rows: DfcRow[]) => rows.sort((a, b) => sum(a.values) - sum(b.values));
+    sortRows(varChildren);
+    sortRows(investChildren);
+    sortRows(finChildren);
+
+    const fixedGroupRows: DfcRow[] = [...fixedByGroup.entries()]
+      .map(([group, rows]) => ({
+        id: `fixgrp:${group}`,
+        label: group,
+        values: months.map((_, i) => sum(rows.map((r) => r.values[i]))),
+        children: sortRows(rows),
+        kind: "detail" as const,
+      }))
+      .sort((a, b) => sum(a.values) - sum(b.values));
+
+    const totalOf = (rows: DfcRow[]) => months.map((_, i) => sum(rows.map((r) => r.values[i])));
+    const variaveis = totalOf(varChildren);
+    const fixas = totalOf(fixedGroupRows);
+    const investimento = totalOf(investChildren);
+    const financiamento = totalOf(finChildren);
+
+    const margemContrib = months.map((_, i) => receitas[i] + variaveis[i]);
+    const resultadoOp = months.map((_, i) => margemContrib[i] + fixas[i]);
+    const variacaoCaixa = months.map((_, i) => resultadoOp[i] + investimento[i] + financiamento[i]);
+
+    const rows: DfcRow[] = [
+      { id: "receitas", label: "RECEITAS OPERACIONAIS (A)", values: receitas, children: revenueChildren, kind: "section" },
+      { id: "variaveis", label: "CUSTOS VARIÁVEIS (B)", values: variaveis, children: varChildren, kind: "section" },
+      { id: "mc", label: "MARGEM DE CONTRIBUIÇÃO (A+B)", values: margemContrib, kind: "total", highlight: true },
+      { id: "mcpct", label: "% ((A+B)÷A)", values: margemContrib, kind: "percent" },
+      { id: "fixas", label: "DESPESAS FIXAS / OPERACIONAIS (C)", values: fixas, children: fixedGroupRows, kind: "section" },
+      { id: "ro", label: "RESULTADO OPERACIONAL (A+B+C=D)", values: resultadoOp, kind: "total", highlight: true },
+      { id: "invest", label: "ATIVIDADE DE INVESTIMENTO (E)", values: investimento, children: investChildren, kind: "section" },
+      { id: "fin", label: "ATIVIDADE DE FINANCIAMENTO (F)", values: financiamento, children: finChildren, kind: "section" },
+      { id: "var", label: "VARIAÇÃO DE CAIXA (D+E+F)", values: variacaoCaixa, kind: "final", highlight: true },
+    ];
+
+    const saldoAtual = banks.reduce((s: number, b: any) => s + (b.current_balance_cents || 0), 0) / 100;
+    return { rows, receitas, saldoAtual };
+  }, [invoices, payables, entries, categories, banks, months, view]);
+
+  const toggle = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   };
 
-  const monthLabel = format(selectedDate, "MMMM yyyy", { locale: ptBR }).replace(/^./, c => c.toUpperCase());
+  const fmtCell = (v: number) => {
+    if (Math.abs(v) < 0.005) return "0";
+    const abs = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(Math.abs(v));
+    return v < 0 ? `(${abs})` : abs;
+  };
 
-  const dfcData = useMemo(() => {
-    const isPaid = view === "realizado";
+  const avPct = (v: number, monthIdx: number | null) => {
+    const base = monthIdx == null ? sum(model.receitas) : model.receitas[monthIdx];
+    if (!base) return "-";
+    return `${Math.round((Math.abs(v) / base) * 100)}%`;
+  };
 
-    // Inflows
-    const monthInvoices = invoices.filter(i => {
-      if (isPaid) return i.status === "paid" && i.paid_at?.startsWith(selectedMonth);
-      return i.due_date?.startsWith(selectedMonth);
-    });
-    const recebimentos = monthInvoices.reduce((s: number, i: any) => 
-      s + (isPaid ? (i.paid_amount_cents || i.amount_cents) : i.amount_cents), 0) / 100;
+  const renderRow = (row: DfcRow, depth: number): JSX.Element[] => {
+    const hasChildren = !!row.children?.length;
+    const isOpen = expanded.has(row.id);
+    const total = sum(row.values);
 
-    // Manual revenue entries
-    const monthRevenueEntries = entries.filter(e => 
-      e.due_date?.startsWith(selectedMonth) && e.type === "receita" && (isPaid ? e.status === "paid" : true)
-    );
-    const receitaManual = monthRevenueEntries.reduce((s: number, e: any) => 
-      s + (isPaid ? (e.paid_amount_cents || e.amount_cents) : e.amount_cents), 0) / 100;
+    const labelCls =
+      row.kind === "section" ? "font-semibold" :
+      row.kind === "total" || row.kind === "final" ? "font-bold" :
+      "text-muted-foreground";
+    const rowBg =
+      row.kind === "final" ? "bg-primary/10" :
+      row.highlight ? "bg-primary/5" :
+      row.kind === "section" ? "bg-muted/50" : "";
 
-    // Outflows by section
-    const monthPayablesFiltered = payables.filter((p: any) => {
-      if (isPaid) return p.status === "paid" && p.paid_date?.startsWith(selectedMonth);
-      return p.due_date?.startsWith(selectedMonth) || p.reference_month === selectedMonth;
-    });
-    const pagamentos = monthPayablesFiltered.reduce((s: number, p: any) => 
-      s + (isPaid ? (p.paid_amount || p.amount || 0) : (p.amount || 0)), 0);
+    const isPct = row.kind === "percent";
 
-    // Manual expense entries by DFC section
-    const monthExpenseEntries = entries.filter(e => 
-      e.due_date?.startsWith(selectedMonth) && e.type === "despesa" && (isPaid ? e.status === "paid" : true)
-    );
+    const out: JSX.Element[] = [
+      <tr key={row.id} className={`border-b ${rowBg}`}>
+        <td
+          className={`sticky left-0 z-10 whitespace-nowrap px-3 py-2 text-sm ${labelCls} ${rowBg || "bg-card"}`}
+          style={{ paddingLeft: `${12 + depth * 20}px` }}
+        >
+          {hasChildren ? (
+            <button onClick={() => toggle(row.id)} className="inline-flex items-center gap-1 hover:text-primary transition-colors">
+              {isOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
+              {row.label}
+            </button>
+          ) : (
+            <span className={hasChildren ? "" : "pl-[18px] inline-block"}>{row.label}</span>
+          )}
+        </td>
+        {row.values.map((v, i) => (
+          <Fragment key={i}>
+            <td className={`px-2 py-2 text-right text-sm tabular-nums whitespace-nowrap ${v < 0 ? "text-destructive" : v > 0 ? (row.kind !== "detail" ? "text-emerald-600" : "") : "text-muted-foreground"}`}>
+              {isPct ? avPct(v, i) : fmtCell(v)}
+            </td>
+            <td className="px-1 py-2 text-right text-[11px] text-muted-foreground tabular-nums border-r border-border/50">
+              {isPct ? "" : avPct(v, i)}
+            </td>
+          </Fragment>
+        ))}
+        <td className={`px-2 py-2 text-right text-sm font-medium tabular-nums whitespace-nowrap ${total < 0 ? "text-destructive" : total > 0 ? "text-emerald-600" : "text-muted-foreground"}`}>
+          {isPct ? avPct(total, null) : fmtCell(total)}
+        </td>
+        <td className="px-1 py-2 text-right text-[11px] text-muted-foreground tabular-nums">
+          {isPct ? "" : avPct(total, null)}
+        </td>
+      </tr>,
+    ];
 
-    let operacionalOut = 0, investimentoOut = 0, financiamentoOut = 0;
-    monthExpenseEntries.forEach((e: any) => {
-      const cat = categories.find(c => c.id === e.category_id);
-      const val = (isPaid ? (e.paid_amount_cents || e.amount_cents) : e.amount_cents) / 100;
-      if (cat?.dfc_section === "investimento") investimentoOut += val;
-      else if (cat?.dfc_section === "financiamento") financiamentoOut += val;
-      else operacionalOut += val;
-    });
+    if (hasChildren && isOpen) row.children!.forEach((c) => out.push(...renderRow(c, depth + 1)));
+    return out;
+  };
 
-    const totalEntradas = recebimentos + receitaManual;
-    const totalSaidasOp = pagamentos + operacionalOut;
-    const fluxoOperacional = totalEntradas - totalSaidasOp;
-    const fluxoInvestimento = -investimentoOut;
-    const fluxoFinanciamento = -financiamentoOut;
-    const variacaoLiquida = fluxoOperacional + fluxoInvestimento + fluxoFinanciamento;
-    const saldoInicial = banks.reduce((s: number, b: any) => s + (b.current_balance_cents || 0), 0) / 100;
-
-    return {
-      sections: [
-        { label: "ATIVIDADES OPERACIONAIS", isHeader: true },
-        { label: "  (+) Recebimentos de Clientes (Faturas)", value: recebimentos },
-        { label: "  (+) Receitas Manuais", value: receitaManual },
-        { label: "  (-) Pagamentos Operacionais", value: -totalSaidasOp },
-        { label: "", isSeparator: true },
-        { label: "= Fluxo de Caixa Operacional", value: fluxoOperacional, isTotal: true },
-        { label: "", isSeparator: true },
-        { label: "ATIVIDADES DE INVESTIMENTO", isHeader: true },
-        { label: "  (-) Aquisição de Ativos / Equipamentos", value: fluxoInvestimento },
-        { label: "", isSeparator: true },
-        { label: "= Fluxo de Caixa de Investimento", value: fluxoInvestimento, isTotal: true },
-        { label: "", isSeparator: true },
-        { label: "ATIVIDADES DE FINANCIAMENTO", isHeader: true },
-        { label: "  (-) Pagamento de Juros / Empréstimos", value: fluxoFinanciamento },
-        { label: "", isSeparator: true },
-        { label: "= Fluxo de Caixa de Financiamento", value: fluxoFinanciamento, isTotal: true },
-        { label: "", isSeparator: true },
-        { label: "= VARIAÇÃO LÍQUIDA DE CAIXA", value: variacaoLiquida, isTotal: true, highlight: true },
-        { label: "", isSeparator: true },
-        { label: "Saldo Bancário Atual", value: saldoInicial, isFinal: true },
-      ],
-      chartData: { operacional: fluxoOperacional, investimento: fluxoInvestimento, financiamento: fluxoFinanciamento, liquida: variacaoLiquida },
-    };
-  }, [invoices, payables, entries, categories, banks, selectedMonth, view]);
-
-  const chartBars = [
-    { name: "Operacional", valor: dfcData.chartData.operacional },
-    { name: "Investimento", valor: dfcData.chartData.investimento },
-    { name: "Financiamento", valor: dfcData.chartData.financiamento },
-    { name: "Variação Líquida", valor: dfcData.chartData.liquida },
-  ];
+  const monthLabel = (m: string) => {
+    const [y, mo] = m.split("-");
+    return `${format(new Date(Number(y), Number(mo) - 1, 1), "MMM", { locale: ptBR })}/${y.substring(2)}`;
+  };
 
   return (
     <div className="space-y-4">
@@ -134,101 +282,72 @@ export default function FinancialDFCTab({ invoices, payables, banks, formatCurre
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <ArrowRightLeft className="h-5 w-5 text-primary" />
-            DFC - Demonstração do Fluxo de Caixa
+            DFC - Análise Vertical
           </h2>
-          <p className="text-sm text-muted-foreground">Entradas e saídas por atividade</p>
+          <p className="text-sm text-muted-foreground">Fluxo de caixa mensal por categoria, com % sobre a receita (AV%)</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           <Tabs value={view} onValueChange={(v) => setView(v as any)}>
             <TabsList>
               <TabsTrigger value="realizado">Realizado</TabsTrigger>
               <TabsTrigger value="projetado">Projetado</TabsTrigger>
             </TabsList>
           </Tabs>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="w-[220px] justify-start text-left font-normal">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {monthLabel}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={handleDateSelect}
-                locale={ptBR}
-                captionLayout="dropdown-buttons"
-                fromYear={2020}
-                toYear={2030}
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
+          <Select value={startMonth} onValueChange={setStartMonth}>
+            <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
+            <SelectContent className="max-h-72">
+              {monthOptions.map((m) => <SelectItem key={m} value={m}>{monthLabel(m)}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground">até</span>
+          <Select value={endMonth} onValueChange={setEndMonth}>
+            <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
+            <SelectContent className="max-h-72">
+              {monthOptions.map((m) => <SelectItem key={m} value={m}>{monthLabel(m)}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardContent className="p-0">
-            <div className="divide-y">
-              {dfcData.sections.map((line: any, i) => {
-                if (line.isSeparator) return <div key={i} className="h-px" />;
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b bg-muted/70">
+                  <th className="sticky left-0 z-10 bg-muted/70 px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide backdrop-blur">Resultados</th>
+                  {months.map((m) => (
+                    <Fragment key={m}>
+                      <th className="px-2 py-2.5 text-right text-xs font-semibold whitespace-nowrap">{monthLabel(m)}</th>
+                      <th className="px-1 py-2.5 text-right text-[10px] font-medium text-muted-foreground border-r border-border/50">AV%</th>
+                    </Fragment>
+                  ))}
+                  <th className="px-2 py-2.5 text-right text-xs font-semibold">Total</th>
+                  <th className="px-1 py-2.5 text-right text-[10px] font-medium text-muted-foreground">AV%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {model.rows.flatMap((r) => renderRow(r, 0))}
+                <tr className="bg-muted/30">
+                  <td className="sticky left-0 z-10 bg-muted/30 px-3 py-2.5 text-sm font-medium">Saldo Bancário Atual</td>
+                  <td colSpan={months.length * 2} />
+                  <td className={`px-2 py-2.5 text-right text-sm font-bold tabular-nums ${model.saldoAtual >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                    {fmtCell(model.saldoAtual)}
+                  </td>
+                  <td />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
-                return (
-                  <div
-                    key={i}
-                    className={`flex items-center justify-between px-6 py-3 ${
-                      line.isHeader ? "bg-muted/50 font-semibold" : ""
-                    } ${line.isTotal ? "font-bold" : ""} ${
-                      line.highlight ? "bg-primary/5 text-base" : ""
-                    } ${line.isFinal ? "bg-muted/30" : ""} ${
-                      !line.isHeader && !line.isTotal && !line.highlight && !line.isFinal ? "text-sm pl-4" : ""
-                    }`}
-                  >
-                    <span>{line.label}</span>
-                    {line.value !== undefined && (
-                      <span className={`tabular-nums ${
-                        line.value >= 0 ? "text-emerald-600" : "text-destructive"
-                      }`}>
-                        {formatCurrency(line.value)}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Fluxo por Atividade</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartBars} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis type="number" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} className="text-xs" />
-                <YAxis type="category" dataKey="name" width={100} className="text-xs" />
-                <Tooltip 
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
-                />
-                <ReferenceLine x={0} className="stroke-muted-foreground" />
-                <Bar 
-                  dataKey="valor" 
-                  fill="hsl(var(--primary))" 
-                  radius={[0, 4, 4, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <p className="text-xs text-muted-foreground text-center">
-        * {view === "realizado" ? "Mostrando apenas movimentações efetivamente pagas/recebidas." : "Mostrando todas as movimentações previstas, independente do pagamento."}
+      <p className="text-xs text-muted-foreground">
+        * Valores em R$. Despesas entre parênteses. AV% = participação sobre a receita do mês.{" "}
+        {view === "realizado"
+          ? "Mostrando apenas movimentações efetivamente pagas/recebidas."
+          : "Mostrando todas as movimentações previstas, independente do pagamento."}{" "}
+        Custos variáveis seguem a classificação Fixa/Variável definida em Categorias.
       </p>
     </div>
   );
