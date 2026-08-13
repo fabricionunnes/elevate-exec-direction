@@ -1,6 +1,21 @@
 {
- "gerado_em": "2026-08-13T01:30:24",
+ "gerado_em": "2026-08-13T10:39:13",
  "posts": [
+  {
+   "slug": "cliente-bom-nao-e-so-quem-paga",
+   "url": "/blog/cliente-bom-nao-e-so-quem-paga/",
+   "titulo": "Cliente bom não é só quem paga em dia",
+   "resumo": "Você só escala vendas se escolher com quem trabalha. Cliente ruim contamina processo, queima time e impede que você estruture de verdade.",
+   "tags": [
+    "qualificação",
+    "perfil de cliente",
+    "operação comercial",
+    "diagnóstico"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-13",
+   "ts": 2003
+  },
   {
    "slug": "orcamento-pela-margem-nao-sobra",
    "url": "/blog/orcamento-pela-margem-nao-sobra/",
