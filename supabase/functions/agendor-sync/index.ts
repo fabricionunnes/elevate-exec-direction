@@ -99,10 +99,21 @@ Deno.serve(async (req: Request) => {
         const upd = d.updatedAt || d.wonAt || d.createdAt;
         if (upd && new Date(upd).getTime() >= cutoffMs) pageHasFresh = true;
         if (!d.wonAt) continue;
-        if (new Date(d.wonAt).getTime() < cutoffMs) continue;
+        // A venda conta na DATA DE FECHAMENTO do negócio (endTime) — é a régua
+        // que o painel do Agendor usa e o que a cliente enxerga. Antes usávamos
+        // a data em que o ganho foi marcado (wonAt): quem marcasse um lote
+        // retroativo jogava tudo no dia do clique (foi o caso do lote de julho
+        // da Marianna, que precisou de exclusão manual). Sem endTime, cai no
+        // wonAt como antes.
+        // endTime é DATA pura (vem 00:00Z): usar direto, sem converter fuso —
+        // brDate() subtrai 3h e jogaria a venda pro dia anterior. Só o wonAt,
+        // que é instante real, precisa da conversão pra Brasília.
+        const refData = d.endTime || d.wonAt;
+        const dataVenda = d.endTime ? String(d.endTime).slice(0, 10) : brDate(d.wonAt);
+        if (new Date(refData).getTime() < cutoffMs) continue;
         if (EXCLUDED_DEAL_IDS.has(d.id)) continue;
         won.push({
-          date: brDate(d.wonAt),
+          date: dataVenda,
           owner: d.owner?.name || "",
           value: Number(d.value) || 0,
           id: d.id,

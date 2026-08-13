@@ -139,12 +139,14 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
   const fetchGroups = async () => {
     setLoadingGroups(true);
     try {
-      // Só grupos de instâncias autorizadas: visíveis no Atendimento
-      // (Dispositivos > coluna Atendimento); não-master ainda cruza com o acesso dele.
+      // Grupos de TODAS as conexões conectadas — inclusive as internas (Fabrício,
+      // Marcelo, Yasmim), que não aparecem no Atendimento. Antes o filtro era só
+      // show_in_inbox e os grupos novos dessas instâncias nunca apareciam aqui.
+      // Não-master continua limitado às conexões que ele tem acesso.
       const { data: vis } = await (supabase as any)
         .from("whatsapp_instances")
         .select("id")
-        .eq("show_in_inbox", true);
+        .eq("status", "connected");
       let instIds = ((vis || []) as any[]).map((i) => i.id);
       if (!isMaster && allowedWaInstanceIds !== null) {
         instIds = instIds.filter((id) => allowedWaInstanceIds.includes(id));
