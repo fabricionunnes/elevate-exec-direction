@@ -41,6 +41,14 @@ export function OAuthRedirectHandler() {
           // OAuth do Instagram do UNV Sales volta aqui e é repassado com a query
           // intacta pro app dele, que troca o code pelo token no projeto certo.
           if (decodedState.flow === "unv-sales") {
+            try {
+              fetch("https://fvruacjgxojjayvjulmd.supabase.co/functions/v1/instagram-oauth", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "client_debug", step: "bridge_hit", detail: { at: "handler" } }),
+                keepalive: true,
+              }).catch(() => {});
+            } catch { /* diagnóstico nunca atrapalha */ }
             window.location.replace(`https://app.unvsales.com.br/auth/instagram/callback${queryString}`);
             return;
           }

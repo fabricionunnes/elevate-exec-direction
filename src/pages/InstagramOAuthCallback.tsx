@@ -77,6 +77,14 @@ export default function InstagramOAuthCallback() {
     // Ponte do UNV Sales (ver OAuthRedirectHandler): se o state é do UNV Sales,
     // este domínio é só o ponto de retorno aceito pela Meta — repassa e sai.
     if ((decodedState as any)?.flow === "unv-sales") {
+      try {
+        fetch("https://fvruacjgxojjayvjulmd.supabase.co/functions/v1/instagram-oauth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "client_debug", step: "bridge_hit", detail: { at: "callback_page" } }),
+          keepalive: true,
+        }).catch(() => {});
+      } catch { /* diagnóstico nunca atrapalha */ }
       window.location.replace(`https://app.unvsales.com.br/auth/instagram/callback${searchParams}`);
       return;
     }
