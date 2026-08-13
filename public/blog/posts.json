@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-08-13T10:39:13",
+ "gerado_em": "2026-08-13T10:59:33",
  "posts": [
+  {
+   "slug": "produto-que-sangra-cliente-e-passivo",
+   "url": "/blog/produto-que-sangra-cliente-e-passivo/",
+   "titulo": "Produto que perde a maioria dos clientes não é portfólio, é passivo",
+   "resumo": "Se a maioria cancela ou não volta, você tem um problema estrutural que não se resolve com mais vendedor. Ou conserta a entrega, ou reprecifica conforme o que vale, ou para de vender.",
+   "tags": [
+    "produto",
+    "retenção",
+    "estrutura comercial",
+    "oferta",
+    "margem"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-13",
+   "ts": 2004
+  },
   {
    "slug": "cliente-bom-nao-e-so-quem-paga",
    "url": "/blog/cliente-bom-nao-e-so-quem-paga/",
