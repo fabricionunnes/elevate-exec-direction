@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITULO}} | UNV</title>
+<meta name="description" content="{{RESUMO}}">
+<meta name="author" content="Fabrício Nunnes — CEO da UNV Holdings, Universidade Nacional de Vendas">
+<link rel="canonical" href="https://unvholdings.com.br/blog/{{SLUG}}/">
+<link rel="icon" href="/favicon.ico">
+<meta property="og:type" content="article">
+<meta property="og:title" content="{{TITULO}}">
+<meta property="og:description" content="{{RESUMO}}">
+<meta property="og:url" content="https://unvholdings.com.br/blog/{{SLUG}}/">
+<meta property="og:image" content="https://unvholdings.com.br/images/unv-logo.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+
+:root{
+  --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#EDEFF3; --surface-3:#E2E6EC;
+  --ink:#0A1F45; --ink-2:#33415C; --muted:#5F6B80; --faint:#8B94A5;
+  --rule:#DCE1E9; --rule-2:#C3CBD7;
+  --navy:#0D2B5E; --red:#CC1B1B;
+  --good:#0F6B52; --good-bg:#E6F2EE;
+  --warn:#8A5B04; --warn-bg:#F7EEDC;
+  --bad:#B02318; --bad-bg:#FAEAE8;
+  --f1:#7A80DC; --f2:#3E5BA9; --f3:#0D2B5E;
+  --f1-bg:#EDEEFB; --f2-bg:#E4EAF6; --f3-bg:#DCE3F0;
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --prose:min(100%,62ch);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
+    --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+    --rule:#1E3557; --rule-2:#2C4770;
+    --navy:#7BA4E8; --red:#FF6B62;
+    --good:#43BF9C; --good-bg:#0F2D28;
+    --warn:#D9A03C; --warn-bg:#2E2716;
+    --bad:#FF7A6E; --bad-bg:#33191A;
+    --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
+    --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
+  --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+  --rule:#1E3557; --rule-2:#2C4770;
+  --navy:#7BA4E8; --red:#FF6B62;
+  --good:#43BF9C; --good-bg:#0F2D28;
+  --warn:#D9A03C; --warn-bg:#2E2716;
+  --bad:#FF7A6E; --bad-bg:#33191A;
+  --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
+  --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui);font-size:16.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin:0 auto;padding:0 26px 0}
+.prose{width:var(--prose)}
+p{margin:0 0 1em}
+strong{font-weight:680;color:var(--ink)}
+a{color:var(--red)}
+:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+
+.topbar{border-bottom:1px solid var(--rule);position:sticky;top:0;background:var(--ground);z-index:10}
+.topbar .in{max-width:1200px;margin:0 auto;padding:12px 26px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.topbar picture{display:block}
+.topbar img{height:38px;width:auto;display:block}
+.topbar .cta{font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#fff;background:var(--red);padding:10px 17px;border-radius:2px;text-decoration:none;font-weight:700;white-space:nowrap}
+
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.eyebrow .tc{color:var(--red);font-weight:600}
+.eyebrow .bar{width:26px;height:1px;background:var(--rule-2);flex:none}
+
+.hero{padding:70px 0 50px}
+.hero h1{font-size:clamp(38px,7vw,80px);line-height:.98;letter-spacing:-.042em;font-weight:820;margin:24px 0 0;text-wrap:balance;max-width:15ch}
+.hero .sub{font-size:clamp(17px,2vw,20px);line-height:1.5;color:var(--ink-2);max-width:60ch;margin:26px 0 0}
+
+.idx{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:42px 0 0}
+.idx a{background:var(--surface);padding:16px 18px;text-decoration:none;display:block}
+.idx a:hover{background:var(--surface-2)}
+.idx .n{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--red);display:block}
+.idx .t{font-size:14.5px;font-weight:640;color:var(--ink);margin-top:5px;display:block;line-height:1.3;letter-spacing:-.01em}
+
+.sec{padding:68px 0;border-top:1px solid var(--rule);scroll-margin-top:70px}
+h2{font-size:clamp(27px,4.2vw,45px);line-height:1.04;letter-spacing:-.032em;font-weight:800;margin:18px 0 24px;text-wrap:balance;max-width:19ch}
+h3{font-size:19px;font-weight:720;letter-spacing:-.012em;margin:40px 0 12px}
+h4{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 14px}
+
+.max{padding:0 0 0 24px;margin:0 0 30px;width:var(--prose);border-left:3px solid var(--red)}
+.max p{font-size:clamp(20px,2.5vw,26px);line-height:1.28;font-weight:700;letter-spacing:-.026em;margin:0 0 .4em;color:var(--ink)}
+.max p:last-child{margin-bottom:0}
+
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:24px 26px;margin:26px 0}
+.panel.nv{border-left:3px solid var(--navy)}
+.panel.rd{border-left:3px solid var(--red)}
+.panel>:last-child{margin-bottom:0}
+
+.tw{overflow-x:auto;margin:24px 0;border:1px solid var(--rule);border-radius:2px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:540px}
+th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+thead th{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface-2);white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.hl td{background:var(--good-bg)}
+
+.crit{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:26px 0}
+.cr{background:var(--surface);padding:22px}
+.cr .t{font-size:20px;font-weight:800;letter-spacing:-.025em;color:var(--red)}
+.cr .d{font-size:14px;color:var(--ink-2);line-height:1.5;margin-top:10px}
+.cr .q{font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:12px;padding-top:12px;border-top:1px solid var(--rule)}
+
+.pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:26px 0}
+.pl{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:22px;position:relative}
+.pl .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+.pl .t{font-size:21px;font-weight:780;letter-spacing:-.025em;margin:8px 0 10px}
+.pl .d{font-size:14px;color:var(--ink-2);line-height:1.5}
+.pl .m{margin-top:14px;padding-top:12px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.6}
+.pl.a{border-top:3px solid var(--f1)} .pl.b{border-top:3px solid var(--f2)} .pl.c{border-top:3px solid var(--f3)}
+
+.funnel{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:26px 0}
+.fl{background:var(--surface);padding:20px 22px;display:grid;grid-template-columns:130px 1fr;gap:20px;align-items:start}
+.fl .lb{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:700}
+.fl.t1 .lb{color:var(--f1)} .fl.t2 .lb{color:var(--f2)} .fl.t3 .lb{color:var(--f3)}
+.fl .lb small{display:block;font-size:10px;letter-spacing:.1em;color:var(--muted);font-weight:600;margin-top:5px}
+.fl dl{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.fl dt{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.fl dd{margin:4px 0 0;font-size:14px;line-height:1.4;color:var(--ink-2)}
+@media(max-width:640px){.fl{grid-template-columns:1fr;gap:12px}}
+
+.calc{background:var(--surface-2);border:1px solid var(--rule-2);border-radius:2px;padding:26px;margin:32px 0}
+.calc h4{color:var(--ink)}
+.calc .hint{font-size:14px;color:var(--muted);margin:0 0 20px;line-height:1.5;max-width:64ch}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px 24px;margin-bottom:22px}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.field input{font-family:var(--mono);font-size:16px;font-variant-numeric:tabular-nums;padding:10px 11px;border:1px solid var(--rule-2);border-radius:2px;background:var(--surface);color:var(--ink);width:100%}
+.field input[type=range]{padding:0;accent-color:var(--red);border:none;background:none}
+.rv{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--red)}
+.out{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:20px;padding-top:20px;border-top:1px solid var(--rule-2)}
+.o .ov{font-size:clamp(23px,3vw,31px);font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;display:block}
+.o .ol{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:7px;display:block}
+.verdict{margin-top:20px;padding:14px 16px;background:var(--surface);border:1px solid var(--rule);border-radius:2px;font-size:15px;line-height:1.55;color:var(--ink-2)}
+.verdict b{color:var(--red)}
+
+.scorer{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:20px 0}
+.srow{background:var(--surface);padding:14px 18px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+.srow .nm{font-size:15px;font-weight:640}
+.srow .ctrls{display:flex;gap:6px}
+.srow button{font-family:var(--mono);font-size:11.5px;padding:7px 11px;border:1px solid var(--rule-2);background:var(--surface);color:var(--muted);border-radius:2px;cursor:pointer;letter-spacing:.05em}
+.srow button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+:root[data-theme="dark"] .srow button[aria-pressed="true"],
+:root:not([data-theme="light"]) .srow button[aria-pressed="true"]{color:#08152B}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .srow button[aria-pressed="true"]{color:#fff}}
+
+.acts{list-style:none;padding:0;margin:24px 0 0;width:var(--prose)}
+.acts li{position:relative;padding:14px 0 14px 34px;border-top:1px solid var(--rule);font-size:15.5px;line-height:1.5;color:var(--ink-2)}
+.acts li:last-child{border-bottom:1px solid var(--rule)}
+.acts li::before{content:"→";position:absolute;left:0;top:14px;font-family:var(--mono);color:var(--red);font-size:14px}
+.acts li b{color:var(--ink)}
+
+.pull{border-top:3px solid var(--navy);border-bottom:3px solid var(--navy);padding:24px 0;margin:36px 0;width:var(--prose)}
+.pull p{font-size:20px;line-height:1.4;font-weight:640;letter-spacing:-.018em;margin:0;text-wrap:balance}
+.note{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--muted);width:var(--prose)}
+
+.xlinks{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:36px 0 0}
+.xlink{display:block;text-decoration:none;background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--red);border-radius:2px;padding:22px}
+.xlink:hover{background:var(--surface-2)}
+.xlink .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--red)}
+.xlink .t{font-size:19px;font-weight:760;letter-spacing:-.022em;color:var(--ink);margin-top:8px;line-height:1.2}
+.xlink .d{font-size:14px;color:var(--ink-2);margin-top:6px;line-height:1.45}
+
+.final{border-top:1px solid var(--rule);background:var(--surface)}
+.final .in{max-width:1200px;margin:0 auto;padding:70px 26px 74px}
+.final h2{margin-top:0;max-width:17ch}
+.final p{color:var(--ink-2);max-width:56ch;font-size:17.5px}
+.btn{display:inline-block;margin-top:14px;background:var(--red);color:#fff;font-weight:750;font-size:16px;padding:15px 28px;border-radius:2px;text-decoration:none;letter-spacing:-.01em}
+.btn:hover{filter:brightness(1.08)}
+.foot{border-top:1px solid var(--rule);background:var(--ground)}
+.foot .in{max-width:1200px;margin:0 auto;padding:34px 26px 50px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.foot picture{display:block;flex:none}
+.foot img{height:44px;width:auto;opacity:.85}
+.foot p{font-family:var(--mono);font-size:12px;line-height:1.8;color:var(--muted);margin:0;max-width:60ch}
+.foot b{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:640px){
+  .wrap,.final .in,.foot .in,.topbar .in{padding-left:18px;padding-right:18px}
+  .hero{padding:48px 0 36px}.sec{padding:50px 0}
+  .topbar img{height:30px}.topbar .cta{font-size:11px;padding:8px 12px}
+}
+
+.tnav{display:flex;align-items:center;gap:14px}
+.tnav .back{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);text-decoration:none;padding:10px 12px;border:1px solid var(--rule-2);border-radius:2px;white-space:nowrap}
+.tnav .back:hover{background:var(--surface-2);color:var(--ink)}
+.midcta{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--red);border-radius:2px;padding:26px 28px;margin:40px 0;display:flex;gap:24px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.midcta .tx{max-width:52ch}
+.midcta .tt{font-size:19px;font-weight:760;letter-spacing:-.018em;margin:0 0 6px}
+.midcta .dd{font-size:15px;color:var(--ink-2);margin:0;line-height:1.5}
+.midcta a{display:inline-block;background:var(--red);color:#fff;font-weight:750;font-size:15px;padding:13px 24px;border-radius:2px;text-decoration:none;white-space:nowrap}
+.midcta a:hover{filter:brightness(1.08)}
+.backblog{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);text-decoration:none;padding:12px 16px;border:1px solid var(--rule-2);border-radius:2px;margin-top:26px}
+.backblog:hover{background:var(--surface-2);color:var(--ink)}
+@media(max-width:640px){.tnav .back{padding:8px 9px;font-size:11px}.midcta{flex-direction:column;align-items:flex-start}}
+
+
+.byline{display:flex;gap:14px;align-items:center;margin:26px 0 0;padding:16px 0 0;border-top:1px solid var(--rule);flex-wrap:wrap}
+.byline .av{width:44px;height:44px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;letter-spacing:-.02em;flex:none}
+.byline .tx{font-size:14px;line-height:1.5;color:var(--muted)}
+.byline .tx b{color:var(--ink);font-weight:700}
+.autorbox{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--navy);border-radius:2px;padding:26px 28px;margin:44px 0 0;display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+.autorbox .av{width:64px;height:64px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:21px;letter-spacing:-.02em;flex:none}
+.autorbox .c{flex:1 1 300px}
+.autorbox .n{font-size:19px;font-weight:780;letter-spacing:-.02em;margin:0}
+.autorbox .r{font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--red);margin:5px 0 10px}
+.autorbox .b{font-size:14.5px;line-height:1.55;color:var(--ink-2);margin:0}
+.autorbox .b a{color:var(--red)}
+</style>
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "Organization",
+   "@id": "https://unvholdings.com.br/#org",
+   "name": "UNV Holdings",
+   "alternateName": [
+    "Universidade Nacional de Vendas",
+    "UNV"
+   ],
+   "url": "https://unvholdings.com.br/",
+   "logo": {
+    "@type": "ImageObject",
+    "url": "https://unvholdings.com.br/images/unv-logo.png"
+   },
+   "description": "{{RESUMO}}",
+   "founder": {
+    "@id": "https://unvholdings.com.br/#fabricio"
+   },
+   "areaServed": "BR",
+   "knowsAbout": [
+    "gestão comercial",
+    "direção comercial terceirizada",
+    "estruturação de time de vendas",
+    "previsibilidade de receita",
+    "marketing para PME"
+   ]
+  },
+  {
+   "@type": "Person",
+   "@id": "https://unvholdings.com.br/#fabricio",
+   "name": "Fabrício Nunnes",
+   "alternateName": "Fabrício Nunes",
+   "jobTitle": [
+    "CEO",
+    "Diretor Comercial"
+   ],
+   "description": "CEO e fundador da UNV Holdings (Universidade Nacional de Vendas). Diretor comercial terceirizado para pequenas e médias empresas, com mais de 20 anos em vendas e mais de R$ 1 bilhão em vendas geradas.",
+   "worksFor": {
+    "@id": "https://unvholdings.com.br/#org"
+   },
+   "url": "https://unvholdings.com.br/",
+   "sameAs": [
+    "https://www.instagram.com/ofabricionunnes/",
+    "https://www.instagram.com/universidadevendas/",
+    "https://unvholdings.com.br/"
+   ],
+   "knowsAbout": [
+    "gestão comercial",
+    "vendas B2B",
+    "estruturação de time comercial",
+    "posicionamento",
+    "marketing"
+   ]
+  },
+  {
+   "@type": "BlogPosting",
+   "headline": "{{TITULO}}",
+   "description": "Por que o dono atende o primeiro contato do lead e some da negociação que decide o mês. A conta do pior vendedor e o que muda quando ele sai da entrada do funil.",
+   "url": "https://unvholdings.com.br/blog/{{SLUG}}/",
+   "inLanguage": "pt-BR",
+   "author": {
+    "@id": "https://unvholdings.com.br/#fabricio"
+   },
+   "publisher": {
+    "@id": "https://unvholdings.com.br/#org"
+   },
+   "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://unvholdings.com.br/blog/{{SLUG}}/"
+   },
+   "image": "https://unvholdings.com.br/images/unv-logo.png",
+   "datePublished": "2026-08-12",
+   "dateModified": "2026-08-12"
+  }
+ ]
+}
+</script>
+</head>
+<body>
+<div class="topbar">
+  <div class="in">
+    <a href="/"><picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture></a>
+    <nav class="tnav"><a class="back" href="/blog/">&larr; Blog</a><a class="cta" href="/sessao">Sessão estratégica</a></nav>
+  </div>
+</div>
+<div class="wrap">
+{{CORPO}}
+</div>
+<div class="final">
+  <div class="in">
+    <h2>Método enche o funil. Processo comercial fecha.</h2>
+    <p>
+      De nada adianta acertar a estratégia se do outro lado não tem time treinado, meta clara e alguém
+      cobrando número toda semana. É isso que a UNV faz: assumimos a direção comercial da sua empresa,
+      estruturamos o time e colocamos a operação para bater meta todo mês.
+    </p>
+    <a class="btn" href="/sessao">Agendar uma sessão estratégica</a>
+  </div>
+</div>
+<div class="foot">
+  <div class="in">
+    <picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture>
+    <p>
+      <b>UNV Holdings</b> · Direção comercial terceirizada para pequenas e médias empresas.<br>
+      Guia produzido pelo time da UNV a partir da nossa prática com times comerciais de PME.
+      <a href="/">unvholdings.com.br</a>
+    </p>
+  </div>
+</div>
+
+</body>
+</html>
