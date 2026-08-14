@@ -28,6 +28,7 @@ interface Cadence {
   is_active: boolean;
   stop_on_reply: boolean;
   stop_on_stage_change: boolean;
+  advance_stage_on_first_message?: boolean;
   window_start: string | null;
   window_end: string | null;
   window_weekdays: number[] | null;
@@ -81,6 +82,7 @@ export function CadenceEditorDialog({ open, onOpenChange, editing, onSaved }: Pr
   const [stageId, setStageId] = useState<string | null>(null);
   const [stopOnReply, setStopOnReply] = useState(true);
   const [stopOnStageChange, setStopOnStageChange] = useState(true);
+  const [advanceStage, setAdvanceStage] = useState(false);
   const [useCustomWindow, setUseCustomWindow] = useState(false);
   const [windowStart, setWindowStart] = useState("09:00");
   const [windowEnd, setWindowEnd] = useState("18:00");
@@ -137,6 +139,7 @@ export function CadenceEditorDialog({ open, onOpenChange, editing, onSaved }: Pr
       setStageId(editing.stage_id);
       setStopOnReply(editing.stop_on_reply);
       setStopOnStageChange(editing.stop_on_stage_change);
+      setAdvanceStage(!!editing.advance_stage_on_first_message);
       const hasWin = !!(editing.window_start && editing.window_end);
       setUseCustomWindow(hasWin);
       setWindowStart(editing.window_start || "09:00");
@@ -160,7 +163,7 @@ export function CadenceEditorDialog({ open, onOpenChange, editing, onSaved }: Pr
     } else {
       setName(""); setDescription(""); setScope("stage");
       setPipelineId(null); setStageId(null);
-      setStopOnReply(true); setStopOnStageChange(true);
+      setStopOnReply(true); setStopOnStageChange(true); setAdvanceStage(false);
       setUseCustomWindow(false); setWindowStart("09:00"); setWindowEnd("18:00");
       setSteps([emptyStep(0)]);
     }
@@ -197,6 +200,7 @@ export function CadenceEditorDialog({ open, onOpenChange, editing, onSaved }: Pr
         stage_id: scope === "stage" ? stageId : null,
         stop_on_reply: stopOnReply,
         stop_on_stage_change: stopOnStageChange,
+        advance_stage_on_first_message: advanceStage,
         window_start: useCustomWindow ? windowStart : null,
         window_end: useCustomWindow ? windowEnd : null,
       };
@@ -300,6 +304,13 @@ export function CadenceEditorDialog({ open, onOpenChange, editing, onSaved }: Pr
             <div className="flex items-center justify-between gap-2">
               <Label className="text-sm">Parar se mudar de etapa</Label>
               <Switch checked={stopOnStageChange} onCheckedChange={setStopOnStageChange} />
+            </div>
+            <div className="flex items-center justify-between gap-2 md:col-span-2">
+              <div>
+                <Label className="text-sm">Mover pra próxima etapa após a 1ª mensagem</Label>
+                <p className="text-xs text-muted-foreground">Enviou a primeira mensagem → o lead avança uma etapa no funil. A cadência continua os próximos passos normalmente.</p>
+              </div>
+              <Switch checked={advanceStage} onCheckedChange={setAdvanceStage} />
             </div>
           </div>
 
