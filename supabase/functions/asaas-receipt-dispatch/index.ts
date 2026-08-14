@@ -291,6 +291,69 @@ Deno.serve(async (req: Request) => {
       return json({ ok, grupo: groupJid, instancia: instName });
     }
 
+    // ── lote de envio (17h, ou manual com {since}) ──────────────────────────
+    if (action === "send_ready") {
+      if (!groupJid) return json({ error: "ASAAS_RECEIPT_GROUP_JID não configurado" }, 400);
+      if (!inst) return json({ error: `instância ${instName} indisponível` }, 500);
+      const ini = String(body.since || "").slice(0, 10) || desde;
+      const rows: any[] = [];
+      for (let page = 0; page < 12; page++) {
+        const d = await asaas(apiKey, `/financialTransactions?limit=100&offset=${page * 100}&startDate=${ini}`);
+        rows.push(...(d?.data || []));
+        if (!d?.hasMore) break;
+      }
+      const debs = rows.filter((t) =>
+        Math.round((t.value || 0) * 100) < 0 && PAY_TYPES.has(String(t.type || t.transactionType || "")));
+      const contagem = new Map<number, number>();
+      for (const t of debs) {
+        const v = Math.round((t.value || 0) * 100);
+        contagem.set(v, (contagem.get(v) || 0) + 1);
+      }
+      const idsAll = debs.map((t) => String(t.id));
+      const { data: fila } = idsAll.length
+        ? await supabase.from("asaas_receipt_queue").select("asaas_payment_id, status").in("asaas_payment_id", idsAll)
+        : { data: [] };
+      const statusPorId = new Map((fila || []).map((e: any) => [e.asaas_payment_id, e.status]));
+
+      let mandados = 0, pulados = 0, semBaixaCt = 0;
+      for (const t of debs) {
+        const txId = String(t.id);
+        if (statusPorId.get(txId) === "sent") { pulados++; continue; }
+        const valueCents = Math.round((t.value || 0) * 100);
+        const payDate = String(t.date || "").slice(0, 10) || null;
+        const { forma, beneficiario } = parseDescricao(String(t.description || ""), String(t.type || ""));
+        const baixa = await findBaixaPagar(supabase, txId, valueCents, payDate, (contagem.get(valueCents) || 0) > 1)
+          || matchRule(rules, beneficiario);
+        if (!baixa) { semBaixaCt++; continue; }
+
+        const oficial = payDate ? await officialReceipt(apiKey, valueCents, payDate) : null;
+        const pdf = oficial || await buildReceiptPdf({
+          account: baixa.account, beneficiario, valueCents, forma, paymentDate: payDate, txId,
+        });
+        const caption =
+          `${baixa.account}\n` +
+          `${brl(valueCents)} · ${forma} · ${brDate(payDate)}` +
+          (beneficiario ? `\nPago a: ${beneficiario}` : "");
+        const ok = await sendPdf(inst, groupJid, b64(pdf), `comprovante-${txId.replace(/[^\w-]/g, "")}.pdf`, caption);
+        if (ok) {
+          const registro = {
+            asaas_payment_id: txId, value_cents: valueCents, billing_type: forma,
+            payment_date: payDate, customer_name: beneficiario || null,
+            account_desc: baixa.account, status: "sent",
+            sent_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+          };
+          if (statusPorId.has(txId)) {
+            await supabase.from("asaas_receipt_queue").update(registro).eq("asaas_payment_id", txId);
+          } else {
+            await supabase.from("asaas_receipt_queue").insert(registro);
+          }
+          mandados++;
+          await new Promise((r) => setTimeout(r, 1500)); // respiro entre mensagens no grupo
+        }
+      }
+      return json({ ok: true, desde: ini, enviados: mandados, ja_enviados_antes: pulados, sem_baixa: semBaixaCt });
+    }
+
     // ── ciclo normal ─────────────────────────────────────────────────────────
     const debitos = await fetchDebitos();
 
@@ -357,29 +420,10 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      if (!groupJid || !inst) {
-        await supabase.from("asaas_receipt_queue")
-          .update({ status: "ready", account_desc: baixa.account, updated_at: new Date().toISOString() })
-          .eq("asaas_payment_id", txId);
-        continue;
-      }
-
-      const oficial = payDate ? await officialReceipt(apiKey, valueCents, payDate) : null;
-      const pdf = oficial || await buildReceiptPdf({
-        account: baixa.account, beneficiario, valueCents, forma, paymentDate: payDate, txId,
-      });
-      const caption =
-        `Comprovante de pagamento\n\n` +
-        `${baixa.account}\n` +
-        `${brl(valueCents)} · ${forma} · ${brDate(payDate)}` +
-        (beneficiario ? `\nPago a: ${beneficiario}` : "");
-      const ok = await sendPdf(inst, groupJid, b64(pdf), `comprovante-pagamento-${txId.replace(/[^\w-]/g, "")}.pdf`, caption);
-      if (ok) {
-        await supabase.from("asaas_receipt_queue")
-          .update({ status: "sent", sent_at: new Date().toISOString(), account_desc: baixa.account, updated_at: new Date().toISOString() })
-          .eq("asaas_payment_id", txId);
-        enviados++;
-      }
+      // com baixa: fica pronto; quem envia é o lote diário das 17h (send_ready)
+      await supabase.from("asaas_receipt_queue")
+        .update({ status: "ready", account_desc: baixa.account, updated_at: new Date().toISOString() })
+        .eq("asaas_payment_id", txId);
     }
 
     // um aviso só, com todos os pagamentos sem baixa deste ciclo
