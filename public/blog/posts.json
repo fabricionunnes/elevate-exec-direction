@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-08-14T10:01:08",
+ "gerado_em": "2026-08-14T15:01:09",
  "posts": [
+  {
+   "slug": "acesso-centralizado-nao-e-luxo-e-rotina",
+   "url": "/blog/acesso-centralizado-nao-e-luxo-e-rotina/",
+   "titulo": "Acesso centralizado não é luxo é rotina de cobrança",
+   "resumo": "Quando cada vendedor mexe só no computador dele, você não consegue acompanhar. Centralizar acesso é o mínimo para quem precisa cobrar meta toda semana.",
+   "tags": [
+    "estrutura comercial",
+    "sistema",
+    "rotina de cobrança",
+    "meta mensal",
+    "acompanhamento"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-14",
+   "ts": 2009
+  },
   {
    "slug": "ferramenta-nao-resolve-falta-de-processo",
    "url": "/blog/ferramenta-nao-resolve-falta-de-processo/",
