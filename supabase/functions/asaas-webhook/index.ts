@@ -60,6 +60,33 @@ Deno.serve(async (req) => {
     const event = body.event;
     const payment = body.payment;
 
+    // === Transferência / pague contas concluída: guarda o link do comprovante
+    // oficial pro lote das 17h anexar no grupo do BPO ===
+    const transferLike = body.transfer || body.bill || null;
+    if (event && transferLike && /^(TRANSFER|BILL_PAYMENT)_/.test(String(event))) {
+      try {
+        if (/_DONE$|_PAID$|_SUCCESS/.test(String(event)) || transferLike.status === "DONE") {
+          const supabaseSvc = createClient(
+            Deno.env.get("SUPABASE_URL")!,
+            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+          );
+          const vc = Math.round(Math.abs(Number(transferLike.value || 0)) * 100);
+          const dt = String(transferLike.effectiveDate || transferLike.transferDate || transferLike.scheduleDate || transferLike.paymentDate || "").slice(0, 10) || null;
+          await supabaseSvc.from("asaas_transfer_receipts").upsert({
+            transfer_id: String(transferLike.id),
+            value_cents: vc,
+            transfer_date: dt,
+            receipt_url: transferLike.transactionReceiptUrl || null,
+            raw: transferLike,
+          }, { onConflict: "transfer_id" });
+          console.log(`[Asaas Webhook] Comprovante de transferência guardado: ${transferLike.id} R$${vc / 100} ${dt} url=${!!transferLike.transactionReceiptUrl}`);
+        }
+      } catch (e) { console.error("[Asaas Webhook] transfer receipt error", e); }
+      return new Response(JSON.stringify({ received: true, transfer_event: event }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (!event || !payment) {
       console.log("[Asaas Webhook] Missing event or payment, ignoring");
       return new Response(JSON.stringify({ received: true }), {

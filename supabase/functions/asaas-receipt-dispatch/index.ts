@@ -109,16 +109,39 @@ function b64(bytes: Uint8Array): string {
   return btoa(s);
 }
 
-/** tenta o comprovante oficial do Asaas (precisa da permissão de saque na
- *  chave); sem ele, gera o recibo UNV com os dados do pagamento. */
-async function officialReceipt(apiKey: string, valueCents: number, date: string): Promise<Uint8Array | null> {
+/** comprovante oficial do Asaas. Fontes, em ordem:
+ *  1) asaas_transfer_receipts — alimentada pelo webhook TRANSFER_DONE/BILL_PAYMENT
+ *  2) API /transfers (se a chave ganhar a permissão de saque)
+ *  Sem oficial em PDF, cai no recibo UNV gerado. */
+async function fetchAsPdf(url: string): Promise<Uint8Array | null> {
+  try {
+    for (const u of [url.replace(/\/$/, "") + "/pdf", url]) {
+      const r = await fetch(u, { redirect: "follow", headers: { Accept: "application/pdf" } });
+      const ct = r.headers.get("content-type") || "";
+      if (r.ok && ct.includes("pdf")) return new Uint8Array(await r.arrayBuffer());
+    }
+  } catch { /* segue */ }
+  return null;
+}
+
+async function officialReceipt(supabase: any, apiKey: string, valueCents: number, date: string): Promise<Uint8Array | null> {
+  // 1) webhook já entregou o comprovante desta transferência?
+  const { data: wr } = await supabase.from("asaas_transfer_receipts")
+    .select("receipt_url").eq("value_cents", Math.abs(valueCents))
+    .gte("transfer_date", new Date(new Date(date).getTime() - 86400000).toISOString().slice(0, 10))
+    .lte("transfer_date", new Date(new Date(date).getTime() + 86400000).toISOString().slice(0, 10))
+    .not("receipt_url", "is", null).limit(2);
+  if (wr?.length === 1) {
+    const pdf = await fetchAsPdf(wr[0].receipt_url);
+    if (pdf) return pdf;
+  }
+  // 2) API direta (precisa da permissão de saque na chave)
   try {
     const d = await asaas(apiKey, `/transfers?dateCreated%5Bge%5D=${date}&dateCreated%5Ble%5D=${date}&limit=50`);
     const alvo = (d?.data || []).find((t: any) => Math.round((t.value || 0) * 100) === Math.abs(valueCents));
     if (alvo?.transactionReceiptUrl) {
-      const r = await fetch(alvo.transactionReceiptUrl, { redirect: "follow" });
-      const ct = r.headers.get("content-type") || "";
-      if (r.ok && ct.includes("pdf")) return new Uint8Array(await r.arrayBuffer());
+      const pdf = await fetchAsPdf(alvo.transactionReceiptUrl);
+      if (pdf) return pdf;
     }
   } catch { /* sem permissão de saque: segue com o recibo gerado */ }
   return null;
@@ -326,7 +349,7 @@ Deno.serve(async (req: Request) => {
           || matchRule(rules, beneficiario);
         if (!baixa) { semBaixaCt++; continue; }
 
-        const oficial = payDate ? await officialReceipt(apiKey, valueCents, payDate) : null;
+        const oficial = payDate ? await officialReceipt(supabase, apiKey, valueCents, payDate) : null;
         const pdf = oficial || await buildReceiptPdf({
           account: baixa.account, beneficiario, valueCents, forma, paymentDate: payDate, txId,
         });
