@@ -222,7 +222,10 @@ export default function WhatsAppConnectionsPage() {
     );
   }
 
-  const connected = (s: string | null) => s === "connected" || s === "connecting";
+  // "connecting" NÃO é conectada: é instância sem WhatsApp pareado, esperando QR.
+  // Tratar como conectada escondia o botão do QR e travava o pareamento.
+  const connected = (s: string | null) => s === "connected";
+  const waitingQr = (s: string | null) => s === "connecting";
 
   return (
     <div className="container max-w-5xl mx-auto py-6 space-y-6">
@@ -266,7 +269,9 @@ export default function WhatsAppConnectionsPage() {
                     : <Badge className="bg-amber-500/15 text-amber-600 border-amber-500/30 text-xs">Stevo — migrar</Badge>}
                   {connected(inst.status)
                     ? <Badge className="bg-emerald-500 text-white border-0 text-xs">Conectada</Badge>
-                    : <Badge variant="destructive" className="text-xs">Desconectada</Badge>}
+                    : waitingQr(inst.status)
+                      ? <Badge className="bg-amber-500 text-white border-0 text-xs">Aguardando QR</Badge>
+                      : <Badge variant="destructive" className="text-xs">Desconectada</Badge>}
                 </div>
               </div>
               <CardDescription className="font-mono text-xs">
