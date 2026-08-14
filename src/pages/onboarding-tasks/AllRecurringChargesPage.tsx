@@ -10,7 +10,7 @@ import { syncEntryToContaAzul, syncPaymentToContaAzul } from "@/utils/contaAzulS
 import { PeriodNavigator, getDateRangeForPeriod, type PeriodType } from "@/components/financial/PeriodNavigator";
 import { sendPaymentNotification } from "@/utils/paymentNotification";
 import { getDefaultWhatsAppInstance } from "@/utils/whatsapp-defaults";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,7 @@ import {
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
   ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
   TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays, Bell, Truck, MessageSquare, ChevronDown, ChevronRight, Headphones, Split,
-  ArrowUpDown, ArrowUp, ArrowDown, FileCheck, Link2, DollarSign, Scale, Crosshair,
+  ArrowUpDown, ArrowUp, ArrowDown, FileCheck, Link2, DollarSign, Scale,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -50,7 +50,6 @@ import FinancialDashboardTab from "./financial/FinancialDashboardTab";
 import FinancialCategoriesTab from "./financial/FinancialCategoriesTab";
 import FinancialDRETab from "./financial/FinancialDRETab";
 import FinancialDFCTab from "./financial/FinancialDFCTab";
-import FinancialBreakEvenTab from "./financial/FinancialBreakEvenTab";
 import FinancialBalancoTab from "./financial/FinancialBalancoTab";
 import FinancialRelatorioExecutivoTab from "./financial/FinancialRelatorioExecutivoTab";
 import FinancialNegativacaoTab from "./financial/FinancialNegativacaoTab";
@@ -74,6 +73,7 @@ import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
 import { WhatsAppInstancePanel } from "@/components/financial/WhatsAppInstancePanel";
 import { FinancialInboxPanel } from "@/components/financial/FinancialInboxPanel";
 import { BankStatementFullPanel } from "@/components/financial/BankStatementFullPanel";
+import { ReconciliationPanel } from "@/components/financial/ReconciliationPanel";
 import { NfsePanel } from "@/components/financial/NfsePanel";
 import { TenantIntegrationsSettings } from "@/components/whitelabel/TenantIntegrationsSettings";
 import { SupplierAutocomplete } from "@/components/financial/SupplierAutocomplete";
@@ -170,7 +170,6 @@ const NAV_ITEMS = [
   { key: "categories", label: "Categorias", icon: FolderTree, permKey: FINANCIAL_PERMISSION_KEYS.fin_categories },
   { key: "dre", label: "DRE", icon: FileText, permKey: FINANCIAL_PERMISSION_KEYS.fin_dre },
   { key: "dfc", label: "DFC", icon: ArrowRightLeft, permKey: FINANCIAL_PERMISSION_KEYS.fin_dfc },
-  { key: "breakeven", label: "Ponto de Equilíbrio", icon: Crosshair, permKey: FINANCIAL_PERMISSION_KEYS.fin_dfc },
   { key: "balanco", label: "Balanço Patrimonial", icon: Scale, permKey: FINANCIAL_PERMISSION_KEYS.fin_balanco },
   { key: "relatorio-executivo", label: "Relatório Executivo", icon: FileCheck, permKey: FINANCIAL_PERMISSION_KEYS.fin_relatorio_executivo },
   { key: "planejamento", label: "Planejamento", icon: Target, permKey: FINANCIAL_PERMISSION_KEYS.fin_dre },
@@ -185,6 +184,7 @@ const NAV_ITEMS = [
   { key: "whatsapp-instance", label: "Instância", icon: MessageSquare, permKey: FINANCIAL_PERMISSION_KEYS.fin_whatsapp_instance },
   { key: "integrations", label: "Integrações", icon: Link2, permKey: null },
   { key: "bank-statement", label: "Extrato Bancário", icon: FileText, permKey: FINANCIAL_PERMISSION_KEYS.fin_bank_statement },
+  { key: "reconciliation", label: "Conciliação", icon: Link2, permKey: FINANCIAL_PERMISSION_KEYS.fin_bank_statement },
   { key: "nfse", label: "NFS-e", icon: FileCheck, permKey: FINANCIAL_PERMISSION_KEYS.fin_nfse },
 ] as const;
 
@@ -232,7 +232,9 @@ export default function AllRecurringChargesPage() {
   const finPerms = useFinancialPermissions();
   const [isLoading, setIsLoading] = useState(!false);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [searchParams] = useSearchParams();
+  // ?tab=... abre a seção direto (o aviso da conciliação no WhatsApp usa isso)
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dashboardMenuOpen, setDashboardMenuOpen] = useState(true);
 
@@ -438,24 +440,12 @@ export default function AllRecurringChargesPage() {
     let from = 0;
     let hasMore = true;
     while (hasMore) {
-      let data: any[] | null = null;
-      let error: any = null;
-      // Retry por página: uma falha transitória aqui zerava DFC/relatórios inteiros
-      for (let attempt = 0; attempt < 3; attempt++) {
-        const res = await (supabase as any)
-          .from(table)
-          .select("*")
-          .order(orderCol, { ascending: true })
-          .range(from, from + PAGE_SIZE - 1);
-        data = res.data;
-        error = res.error;
-        if (!error) break;
-        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
-      }
-      if (error) {
-        toast.error(`Erro ao carregar ${table} — recarregue a página`);
-        return { data: null, error };
-      }
+      const { data, error } = await (supabase as any)
+        .from(table)
+        .select("*")
+        .order(orderCol, { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) return { data: null, error };
       allData = allData.concat(data || []);
       hasMore = (data?.length || 0) === PAGE_SIZE;
       from += PAGE_SIZE;
@@ -2407,11 +2397,6 @@ export default function AllRecurringChargesPage() {
             <FinancialDFCTab invoices={invoices} payables={payables} banks={banks} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
           )}
 
-          {/* Ponto de Equilíbrio */}
-          {activeTab === "breakeven" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_dfc) && (
-            <FinancialBreakEvenTab invoices={invoices} payables={payables} formatCurrency={formatCurrency} />
-          )}
-
           {/* Balanço Patrimonial */}
           {activeTab === "balanco" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_balanco) && (
             <FinancialBalancoTab invoices={invoices} payables={payables} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
@@ -2536,6 +2521,9 @@ export default function AllRecurringChargesPage() {
           )}
           {activeTab === "bank-statement" && (
             <BankStatementFullPanel />
+          )}
+          {activeTab === "reconciliation" && (
+            <ReconciliationPanel />
           )}
           {activeTab === "nfse" && (
             <NfsePanel />

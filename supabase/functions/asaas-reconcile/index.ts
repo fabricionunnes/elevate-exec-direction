@@ -273,7 +273,7 @@ Deno.serve(async (req) => {
           conciliados.length ? "\n*Baixados automaticamente:*\n" + conciliados.slice(0, 8).map(s => `• ${s}`).join("\n") : "",
           revisar.length ? "\n*Aguardando você decidir:*\n" + revisar.slice(0, 8).map(s => `• ${s}`).join("\n") : "",
           revisar.length > 8 ? `…e mais ${revisar.length - 8}` : "",
-          "\nRevise aqui: unvholdings.com.br/#/onboarding-tasks/financeiro?tab=reconciliation",
+          "\nRevise aqui: unvholdings.com.br/#/onboarding-tasks/financeiro/recorrencias?tab=reconciliation",
         ].filter(Boolean);
         aviso = await avisar(supabase, linhas.join("\n"));
       } else {
