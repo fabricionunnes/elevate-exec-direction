@@ -1,22 +1,26 @@
-// asaas-receipt-dispatch: quando um pagamento é RECEBIDO no Asaas, identifica de
-// que conta se trata (fatura de cliente ou conta a receber já baixada no Nexus)
-// e envia o comprovante em PDF no grupo de WhatsApp do BPO/consultoria.
+// asaas-receipt-dispatch: vigia as CONTAS A PAGAR pagas pelo Asaas (Pix,
+// transferência, boleto), identifica de que conta se trata no Nexus e envia o
+// comprovante em PDF no grupo de WhatsApp do BPO (BPO UNI VENDAS).
 //
 // Regra do Fabrício: o comprovante SÓ vai pro grupo depois da baixa no sistema.
-//   - baixa já existe (webhook deu baixa automática ou baixa manual) → envia.
+//   - baixa existe em financial_payables → envia o comprovante identificado.
 //   - sem baixa → avisa o Fabrício uma única vez pra dar baixa; o cron fica
-//     vigiando e, quando a baixa aparecer, envia o comprovante identificado.
+//     vigiando e envia assim que a baixa aparecer.
+// Só dinheiro SAINDO. Contas a receber ficam de fora (decisão de 13/08/2026).
 //
-// Não mexe no asaas-webhook (que movimenta dinheiro): roda como vigia separado,
-// via cron, lendo os pagamentos recebidos direto da API do Asaas.
+// Fonte: extrato do Asaas (/financialTransactions), débitos TRANSFER e
+// BILL_PAYMENT — a chave de API atual não tem permissão de "saque", então a
+// lista de transferências (/transfers) fica indisponível; se essa permissão
+// for liberada no painel do Asaas, o comprovante oficial passa a ser anexado
+// automaticamente no lugar do recibo gerado.
 //
 // Entradas:
-//   {}                          → ciclo normal (cron)
-//   { action: "diag" }          → testa a API e o formato do comprovante, sem enviar
-//   { action: "test_group" }    → manda mensagem de teste no grupo configurado
+//   {}                       → ciclo normal (cron 87, a cada 15 min)
+//   { action: "diag" }       → resumo do extrato recente, sem enviar nada
+//   { action: "test_group" } → mensagem de teste no grupo configurado
 //
-// Secrets: ASAAS_API_KEY (já existe) · ASAAS_RECEIPT_GROUP_JID (grupo destino)
-//          ASAAS_RECEIPT_INSTANCE (opcional; padrão financeirounv)
+// Secrets: ASAAS_API_KEY (existe) · ASAAS_RECEIPT_GROUP_JID (grupo destino)
+//          ASAAS_RECEIPT_INSTANCE (padrão financeirounv)
 import { createClient } from "@supabase/supabase-js";
 import { PDFDocument, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
 
@@ -28,6 +32,9 @@ const cors = {
 const AVISO_NUMERO = "5531989840003"; // Fabrício — mesmo destino dos avisos da conciliação
 const AVISO_INSTANCE = "financeirounv";
 
+// débitos do extrato que são pagamento de verdade (taxas e antecipação ficam fora)
+const PAY_TYPES = new Set(["TRANSFER", "BILL_PAYMENT", "PIX_TRANSACTION_DEBIT"]);
+
 function json(obj: unknown, status = 200) {
   return new Response(JSON.stringify(obj), {
     status,
@@ -36,7 +43,7 @@ function json(obj: unknown, status = 200) {
 }
 
 const brl = (cents: number) =>
-  (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  (Math.abs(cents) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const brDate = (iso: string | null) => {
   if (!iso) return "-";
@@ -44,11 +51,16 @@ const brDate = (iso: string | null) => {
   return `${d}/${m}/${y}`;
 };
 
-const FORMA: Record<string, string> = {
-  PIX: "PIX", BOLETO: "Boleto", CREDIT_CARD: "Cartão de crédito",
-  DEBIT_CARD: "Cartão de débito", TRANSFER: "Transferência", DEPOSIT: "Depósito",
-  RECEIVED_IN_CASH: "Recebido em dinheiro",
-};
+/** "Transação via Pix com chave para FULANO DA SILVA" → { forma, beneficiario } */
+function parseDescricao(descr: string, entryType: string) {
+  const d = descr || "";
+  const m = d.match(/\bpara\s+(.{3,60})$/i);
+  const beneficiario = m ? m[1].trim() : "";
+  let forma = "Transferência";
+  if (/pix/i.test(d)) forma = "Pix";
+  else if (entryType === "BILL_PAYMENT" || /pagamento de conta|boleto/i.test(d)) forma = "Boleto / pagamento de conta";
+  return { forma, beneficiario };
+}
 
 async function asaas(apiKey: string, path: string) {
   const resp = await fetch(`https://www.asaas.com/api/v3${path}`, {
@@ -97,19 +109,25 @@ function b64(bytes: Uint8Array): string {
   return btoa(s);
 }
 
-/** Comprovante em PDF: usa o oficial do Asaas se ele vier como PDF; senão gera
- *  um recibo UNV com os dados + link do comprovante oficial. */
-async function buildReceiptPdf(p: {
-  receiptUrl: string | null; customer: string; account: string;
-  valueCents: number; billingType: string; paymentDate: string | null; paymentId: string;
-}): Promise<Uint8Array> {
-  if (p.receiptUrl) {
-    try {
-      const r = await fetch(p.receiptUrl, { redirect: "follow" });
+/** tenta o comprovante oficial do Asaas (precisa da permissão de saque na
+ *  chave); sem ele, gera o recibo UNV com os dados do pagamento. */
+async function officialReceipt(apiKey: string, valueCents: number, date: string): Promise<Uint8Array | null> {
+  try {
+    const d = await asaas(apiKey, `/transfers?dateCreated%5Bge%5D=${date}&dateCreated%5Ble%5D=${date}&limit=50`);
+    const alvo = (d?.data || []).find((t: any) => Math.round((t.value || 0) * 100) === Math.abs(valueCents));
+    if (alvo?.transactionReceiptUrl) {
+      const r = await fetch(alvo.transactionReceiptUrl, { redirect: "follow" });
       const ct = r.headers.get("content-type") || "";
       if (r.ok && ct.includes("pdf")) return new Uint8Array(await r.arrayBuffer());
-    } catch { /* cai no gerado */ }
-  }
+    }
+  } catch { /* sem permissão de saque: segue com o recibo gerado */ }
+  return null;
+}
+
+async function buildReceiptPdf(p: {
+  account: string; beneficiario: string; valueCents: number;
+  forma: string; paymentDate: string | null; txId: string;
+}): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const page = doc.addPage([420, 560]);
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -118,8 +136,8 @@ async function buildReceiptPdf(p: {
   const grey = rgb(0.35, 0.39, 0.45);
 
   page.drawRectangle({ x: 0, y: 500, width: 420, height: 60, color: navy });
-  page.drawText("UNV — Comprovante de recebimento", { x: 24, y: 524, size: 15, font: bold, color: rgb(1, 1, 1) });
-  page.drawText("Asaas · confirmado", { x: 24, y: 508, size: 9, font, color: rgb(0.75, 0.8, 0.9) });
+  page.drawText("UNV — Comprovante de pagamento", { x: 24, y: 524, size: 15, font: bold, color: rgb(1, 1, 1) });
+  page.drawText("Asaas · débito confirmado no extrato", { x: 24, y: 508, size: 9, font, color: rgb(0.75, 0.8, 0.9) });
 
   let y = 460;
   const row = (label: string, value: string, big = false) => {
@@ -132,52 +150,40 @@ async function buildReceiptPdf(p: {
     }
     y = yy - 8;
   };
-  row("Valor", brl(p.valueCents), true);
+  row("Valor pago", brl(p.valueCents), true);
   row("Referente a", p.account || "—");
-  row("Pagador", p.customer || "—");
-  row("Forma de pagamento", FORMA[p.billingType] || p.billingType || "—");
+  row("Pago a", p.beneficiario || "—");
+  row("Forma", p.forma);
   row("Data do pagamento", brDate(p.paymentDate));
-  row("Identificador Asaas", p.paymentId);
-  if (p.receiptUrl) {
-    page.drawText("Comprovante oficial:", { x: 24, y: 60, size: 8, font, color: grey });
-    page.drawText(p.receiptUrl.slice(0, 70), { x: 24, y: 46, size: 8, font, color: navy });
-  }
+  row("Identificador (extrato Asaas)", p.txId);
+  page.drawText("Pagador: UNV Holdings — conta Asaas", { x: 24, y: 46, size: 8, font, color: grey });
   return await doc.save();
 }
 
-/** A baixa existe? Devolve a descrição da conta quando sim. */
-async function findBaixa(supabase: any, paymentId: string, valueCents: number, paymentDate: string | null) {
-  // 1) fatura de cliente (o webhook grava o payment id em pagarme_charge_id)
-  const { data: inv } = await supabase.from("company_invoices")
-    .select("id, description, installment_number, total_installments, status, company:onboarding_companies(name)")
-    .eq("pagarme_charge_id", paymentId).eq("status", "paid").limit(1).maybeSingle();
-  if (inv) {
-    const parc = inv.installment_number && inv.total_installments
-      ? ` (parcela ${inv.installment_number}/${inv.total_installments})` : "";
-    return {
-      customer: inv.company?.name || "",
-      account: `${inv.description || "Fatura"}${parc} — ${inv.company?.name || "cliente"}`,
-    };
+/** A baixa da conta a pagar existe? Devolve a descrição quando sim. */
+async function findBaixaPagar(supabase: any, txId: string, valueCents: number, payDate: string | null) {
+  // 1) já vinculada a este débito do extrato
+  const { data: linked } = await supabase.from("financial_payables")
+    .select("id, supplier_name, description")
+    .eq("asaas_transaction_id", txId).eq("status", "paid").limit(1).maybeSingle();
+  if (linked) {
+    return { account: [linked.description, linked.supplier_name].filter(Boolean).join(" — ") || "Conta a pagar" };
   }
-  // 2) conta a receber com o payment id gravado
-  const { data: rec } = await supabase.from("financial_receivables")
-    .select("id, description, notes, status, custom_receiver_name")
-    .eq("asaas_payment_id", paymentId).eq("status", "paid").limit(1).maybeSingle();
-  if (rec) {
-    return { customer: rec.custom_receiver_name || "", account: rec.description || "Conta a receber" };
-  }
-  // 3) baixa manual sem o payment id: valor exato + data de pagamento igual
-  if (paymentDate) {
-    const { data: manual } = await supabase.from("financial_receivables")
-      .select("id, description, custom_receiver_name")
-      .eq("status", "paid").eq("paid_date", paymentDate)
-      .gte("paid_amount", (valueCents - 1) / 100).lte("paid_amount", (valueCents + 1) / 100)
-      .is("asaas_payment_id", null).limit(2);
-    if (manual?.length === 1) {
-      // grava o vínculo pra próxima rodada não depender da heurística
-      await supabase.from("financial_receivables")
-        .update({ asaas_payment_id: paymentId }).eq("id", manual[0].id);
-      return { customer: manual[0].custom_receiver_name || "", account: manual[0].description || "Conta a receber" };
+  // 2) baixa manual: valor pago igual e data de pagamento igual (ou véspera —
+  //    baixa lançada no dia seguinte ao débito é comum)
+  if (payDate) {
+    const abs = Math.abs(valueCents);
+    const { data: cands } = await supabase.from("financial_payables")
+      .select("id, supplier_name, description, paid_date")
+      .eq("status", "paid").is("asaas_transaction_id", null)
+      .gte("paid_amount", (abs - 1) / 100).lte("paid_amount", (abs + 1) / 100)
+      .gte("paid_date", new Date(new Date(payDate).getTime() - 86400000).toISOString().slice(0, 10))
+      .lte("paid_date", new Date(new Date(payDate).getTime() + 2 * 86400000).toISOString().slice(0, 10))
+      .limit(2);
+    if (cands?.length === 1) {
+      await supabase.from("financial_payables")
+        .update({ asaas_transaction_id: txId }).eq("id", cands[0].id);
+      return { account: [cands[0].description, cands[0].supplier_name].filter(Boolean).join(" — ") || "Conta a pagar" };
     }
   }
   return null;
@@ -200,25 +206,30 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({} as any));
     const action = String(body.action || "run");
 
-    if (action === "diag") {
-      const hoje = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
-      const d = await asaas(apiKey, `/payments?status=RECEIVED&limit=3&paymentDate%5Bge%5D=${hoje}`);
-      const first = d?.data?.[0] || null;
-      let receiptContentType: string | null = null;
-      if (first?.transactionReceiptUrl) {
-        try {
-          const r = await fetch(first.transactionReceiptUrl, { redirect: "follow" });
-          receiptContentType = r.headers.get("content-type");
-        } catch (e) { receiptContentType = `erro: ${String(e).slice(0, 80)}`; }
+    // extrato dos últimos 3 dias (BRT)
+    const desde = new Date(Date.now() - 3 * 3600000 - 3 * 86400000).toISOString().slice(0, 10);
+    const fetchDebitos = async () => {
+      const rows: any[] = [];
+      for (let page = 0; page < 6; page++) {
+        const d = await asaas(apiKey, `/financialTransactions?limit=100&offset=${page * 100}&startDate=${desde}`);
+        const data = d?.data || [];
+        rows.push(...data);
+        if (!d?.hasMore) break;
       }
+      return rows.filter((t) =>
+        Math.round((t.value || 0) * 100) < 0 && PAY_TYPES.has(String(t.type || t.transactionType || "")));
+    };
+
+    if (action === "diag") {
+      const deb = await fetchDebitos();
       return json({
         ok: true,
-        recebidos_hoje: d?.totalCount ?? 0,
-        exemplo: first ? {
-          id: first.id, value: first.value, billingType: first.billingType,
-          paymentDate: first.paymentDate, tem_comprovante_url: !!first.transactionReceiptUrl,
-        } : null,
-        comprovante_content_type: receiptContentType,
+        janela_desde: desde,
+        debitos_de_pagamento: deb.length,
+        exemplos: deb.slice(0, 4).map((t) => ({
+          id: t.id, valor: t.value, tipo: t.type || t.transactionType,
+          data: t.date, descricao: String(t.description || "").slice(0, 70),
+        })),
         grupo_configurado: !!groupJid,
         instancia: instName,
       });
@@ -230,123 +241,114 @@ Deno.serve(async (req: Request) => {
     if (action === "test_group") {
       if (!groupJid) return json({ error: "ASAAS_RECEIPT_GROUP_JID não configurado" }, 400);
       if (!inst) return json({ error: `instância ${instName} indisponível` }, 500);
-      const ok = await sendText(inst, groupJid, "Teste do envio automático de comprovantes Asaas — UNV Nexus. Pode ignorar.");
+      const ok = await sendText(inst, groupJid, "Teste do envio automático de comprovantes de pagamento (Asaas) — UNV Nexus. Pode ignorar.");
       return json({ ok, grupo: groupJid, instancia: instName });
     }
 
     // ── ciclo normal ─────────────────────────────────────────────────────────
-    // 1) pagamentos recebidos nos últimos 2 dias (BRT)
-    const desde = new Date(Date.now() - 3 * 3600000 - 2 * 86400000).toISOString().slice(0, 10);
-    const recebidos: any[] = [];
-    for (const st of ["RECEIVED", "RECEIVED_IN_CASH"]) {
-      let offset = 0;
-      for (let i = 0; i < 6; i++) {
-        const d = await asaas(apiKey, `/payments?status=${st}&limit=100&offset=${offset}&paymentDate%5Bge%5D=${desde}`);
-        recebidos.push(...(d?.data || []));
-        if (!d?.hasMore) break;
-        offset += 100;
-      }
-    }
+    const debitos = await fetchDebitos();
 
-    // 2) fila: o que ainda não foi visto entra; o que está aguardando é re-checado
-    const ids = recebidos.map((p) => String(p.id));
+    const ids = debitos.map((t) => String(t.id));
     const { data: existentes } = ids.length
       ? await supabase.from("asaas_receipt_queue").select("asaas_payment_id, status").in("asaas_payment_id", ids)
       : { data: [] };
     const jaVistos = new Map((existentes || []).map((e: any) => [e.asaas_payment_id, e.status]));
 
-    let enviados = 0, avisados = 0, aguardando = 0;
-    const processar: { p: any; row: any | null }[] = [];
-
-    for (const p of recebidos) {
-      const st = jaVistos.get(String(p.id));
+    const processar: { t: any; novo: boolean }[] = [];
+    for (const t of debitos) {
+      const st = jaVistos.get(String(t.id));
       if (st === "sent") continue;
-      processar.push({ p, row: st ? { status: st } : null });
+      processar.push({ t, novo: !st });
     }
-    // também re-checa itens antigos ainda aguardando baixa (fora da janela de 2 dias)
+    // re-checa pendências antigas fora da janela
+    const naJanela = new Set(processar.map((x) => String(x.t.id)));
     const { data: pendentes } = await supabase.from("asaas_receipt_queue")
-      .select("asaas_payment_id").eq("status", "awaiting_baixa");
-    const naJanela = new Set(processar.map((x) => String(x.p.id)));
+      .select("asaas_payment_id, value_cents, payment_date, account_desc, customer_name, billing_type")
+      .in("status", ["awaiting_baixa", "ready"]);
     for (const pend of pendentes || []) {
       if (naJanela.has(pend.asaas_payment_id)) continue;
-      try {
-        const p = await asaas(apiKey, `/payments/${pend.asaas_payment_id}`);
-        processar.push({ p, row: { status: "awaiting_baixa" } });
-      } catch { /* pagamento sumiu; deixa quieto */ }
+      processar.push({
+        t: {
+          id: pend.asaas_payment_id, value: pend.value_cents / 100, date: pend.payment_date,
+          type: "TRANSFER", description: pend.customer_name ? `para ${pend.customer_name}` : "",
+        }, novo: false,
+      });
     }
 
-    for (const { p, row } of processar) {
-      const paymentId = String(p.id);
-      const valueCents = Math.round((p.value || 0) * 100);
-      const payDate = p.paymentDate || p.clientPaymentDate || null;
+    let enviados = 0, avisados = 0, aguardando = 0;
+    const semBaixa: { qId: string; linha: string }[] = [];
+    for (const { t, novo } of processar) {
+      const txId = String(t.id);
+      const valueCents = Math.round((t.value || 0) * 100);
+      const payDate = String(t.date || "").slice(0, 10) || null;
+      const { forma, beneficiario } = parseDescricao(String(t.description || ""), String(t.type || ""));
 
-      const baixa = await findBaixa(supabase, paymentId, valueCents, payDate);
+      const baixa = await findBaixaPagar(supabase, txId, valueCents, payDate);
 
-      // nome do pagador (só busca quando ainda não sabemos por outra via)
-      let customer = baixa?.customer || "";
-      if (!customer && p.customer) {
-        try { customer = (await asaas(apiKey, `/customers/${p.customer}`))?.name || ""; } catch { /* segue sem nome */ }
-      }
-
-      if (!row) {
+      if (novo) {
         await supabase.from("asaas_receipt_queue").insert({
-          asaas_payment_id: paymentId, value_cents: valueCents,
-          billing_type: p.billingType || null, payment_date: payDate,
-          customer_name: customer || null, account_desc: baixa?.account || null,
-          receipt_url: p.transactionReceiptUrl || null,
+          asaas_payment_id: txId, value_cents: valueCents,
+          billing_type: forma, payment_date: payDate,
+          customer_name: beneficiario || null, account_desc: baixa?.account || null,
           status: baixa ? "ready" : "awaiting_baixa",
         });
       }
 
       if (!baixa) {
-        // sem baixa: avisa o Fabrício uma única vez
         const { data: q } = await supabase.from("asaas_receipt_queue")
-          .select("id, notified_at").eq("asaas_payment_id", paymentId).maybeSingle();
-        if (q && !q.notified_at && instAviso) {
-          const ok = await sendText(instAviso, AVISO_NUMERO,
-            `Recebimento no Asaas SEM baixa no Nexus:\n\n` +
-            `${brl(valueCents)} · ${FORMA[p.billingType] || p.billingType || "-"} · ${brDate(payDate)}\n` +
-            `Pagador: ${customer || "não identificado"}\n\n` +
-            `Dá a baixa no financeiro que eu envio o comprovante no grupo em seguida.`);
-          if (ok) {
-            await supabase.from("asaas_receipt_queue")
-              .update({ notified_at: new Date().toISOString(), customer_name: customer || null, updated_at: new Date().toISOString() })
-              .eq("id", q.id);
-            avisados++;
-          }
+          .select("id, notified_at").eq("asaas_payment_id", txId).maybeSingle();
+        if (q && !q.notified_at) {
+          // acumula pra avisar tudo numa mensagem só no fim do ciclo
+          semBaixa.push({ qId: q.id, linha: `• ${brl(valueCents)} · ${forma} · ${brDate(payDate)}${beneficiario ? ` · ${beneficiario}` : ""}` });
         }
         aguardando++;
         continue;
       }
 
-      // baixa existe: envia no grupo (se o grupo já estiver configurado)
       if (!groupJid || !inst) {
         await supabase.from("asaas_receipt_queue")
-          .update({ status: "ready", account_desc: baixa.account, customer_name: customer || null, updated_at: new Date().toISOString() })
-          .eq("asaas_payment_id", paymentId);
+          .update({ status: "ready", account_desc: baixa.account, updated_at: new Date().toISOString() })
+          .eq("asaas_payment_id", txId);
         continue;
       }
 
-      const pdf = await buildReceiptPdf({
-        receiptUrl: p.transactionReceiptUrl || null, customer,
-        account: baixa.account, valueCents, billingType: p.billingType || "",
-        paymentDate: payDate, paymentId,
+      const oficial = payDate ? await officialReceipt(apiKey, valueCents, payDate) : null;
+      const pdf = oficial || await buildReceiptPdf({
+        account: baixa.account, beneficiario, valueCents, forma, paymentDate: payDate, txId,
       });
       const caption =
-        `Comprovante de recebimento\n\n` +
+        `Comprovante de pagamento\n\n` +
         `${baixa.account}\n` +
-        `${brl(valueCents)} · ${FORMA[p.billingType] || p.billingType || "-"} · ${brDate(payDate)}` +
-        (customer ? `\nPagador: ${customer}` : "");
-      const ok = await sendPdf(inst, groupJid, b64(pdf), `comprovante-${paymentId}.pdf`, caption);
+        `${brl(valueCents)} · ${forma} · ${brDate(payDate)}` +
+        (beneficiario ? `\nPago a: ${beneficiario}` : "");
+      const ok = await sendPdf(inst, groupJid, b64(pdf), `comprovante-pagamento-${txId.replace(/[^\w-]/g, "")}.pdf`, caption);
       if (ok) {
         await supabase.from("asaas_receipt_queue")
-          .update({ status: "sent", sent_at: new Date().toISOString(), account_desc: baixa.account, customer_name: customer || null, updated_at: new Date().toISOString() })
-          .eq("asaas_payment_id", paymentId);
+          .update({ status: "sent", sent_at: new Date().toISOString(), account_desc: baixa.account, updated_at: new Date().toISOString() })
+          .eq("asaas_payment_id", txId);
         enviados++;
       }
     }
 
-    return json({ ok: true, recebidos_na_janela: recebidos.length, enviados, avisados_sem_baixa: avisados, aguardando_baixa: aguardando, grupo_configurado: !!groupJid });
+    // um aviso só, com todos os pagamentos sem baixa deste ciclo
+    if (semBaixa.length && instAviso) {
+      const cab = semBaixa.length === 1
+        ? "Pagamento no Asaas SEM baixa no contas a pagar:"
+        : `${semBaixa.length} pagamentos no Asaas SEM baixa no contas a pagar:`;
+      const ok = await sendText(instAviso, AVISO_NUMERO,
+        `${cab}\n\n${semBaixa.map((x) => x.linha).join("\n")}\n\n` +
+        `Dá a baixa no financeiro que eu envio os comprovantes no grupo do BPO em seguida.`);
+      if (ok) {
+        for (const x of semBaixa) {
+          await supabase.from("asaas_receipt_queue")
+            .update({ notified_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+            .eq("id", x.qId);
+        }
+        avisados = semBaixa.length;
+      }
+    }
+
+    return json({ ok: true, debitos_na_janela: debitos.length, enviados, avisados_sem_baixa: avisados, aguardando_baixa: aguardando, grupo_configurado: !!groupJid });
   } catch (err) {
     console.error("[asaas-receipt-dispatch] erro:", (err as Error)?.message || err);
     return json({ error: String((err as Error)?.message || err) }, 500);
