@@ -438,12 +438,24 @@ export default function AllRecurringChargesPage() {
     let from = 0;
     let hasMore = true;
     while (hasMore) {
-      const { data, error } = await (supabase as any)
-        .from(table)
-        .select("*")
-        .order(orderCol, { ascending: true })
-        .range(from, from + PAGE_SIZE - 1);
-      if (error) return { data: null, error };
+      let data: any[] | null = null;
+      let error: any = null;
+      // Retry por página: uma falha transitória aqui zerava DFC/relatórios inteiros
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const res = await (supabase as any)
+          .from(table)
+          .select("*")
+          .order(orderCol, { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+        data = res.data;
+        error = res.error;
+        if (!error) break;
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+      }
+      if (error) {
+        toast.error(`Erro ao carregar ${table} — recarregue a página`);
+        return { data: null, error };
+      }
       allData = allData.concat(data || []);
       hasMore = (data?.length || 0) === PAGE_SIZE;
       from += PAGE_SIZE;

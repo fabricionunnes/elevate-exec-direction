@@ -103,20 +103,25 @@ export default function FinancialBreakEvenTab({ invoices, payables, formatCurren
     baseline.current = null;
   };
 
-  // Seed inicial: localStorage > dados reais
+  // Seed inicial: localStorage > dados reais.
+  // Espera invoices E payables chegarem — senão o seed sai zerado e fica salvo errado.
   useEffect(() => {
-    if (seeded || categories.length === 0 || invoices.length === 0) return;
+    if (seeded || categories.length === 0 || invoices.length === 0 || payables.length === 0) return;
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
         const s = JSON.parse(saved);
-        setVarRows(s.varRows || []);
-        setFixRows(s.fixRows || []);
-        setDebtRows(s.debtRows || []);
-        setIncludeDebts(s.includeDebts ?? true);
-        setFaturamentoAtual(s.faturamentoAtual || Math.round(realData.receitaMedia));
-        setSeeded(true);
-        return;
+        const savedFixTotal = (s.fixRows || []).reduce((acc: number, r: any) => acc + (r.value || 0), 0);
+        // Cenário salvo zerado com dado real disponível = seed antigo quebrado; recarrega do real
+        if (savedFixTotal > 0 || realData.fixAvgs.length === 0) {
+          setVarRows(s.varRows || []);
+          setFixRows(s.fixRows || []);
+          setDebtRows(s.debtRows || []);
+          setIncludeDebts(s.includeDebts ?? true);
+          setFaturamentoAtual(s.faturamentoAtual || Math.round(realData.receitaMedia));
+          setSeeded(true);
+          return;
+        }
       } catch { /* cai no seed real */ }
     }
     seedFromReal();
