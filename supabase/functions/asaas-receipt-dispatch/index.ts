@@ -347,22 +347,26 @@ Deno.serve(async (req: Request) => {
         const { forma, beneficiario } = parseDescricao(String(t.description || ""), String(t.type || ""));
         const baixa = await findBaixaPagar(supabase, txId, valueCents, payDate, (contagem.get(valueCents) || 0) > 1)
           || matchRule(rules, beneficiario);
-        if (!baixa) { semBaixaCt++; continue; }
+        // include_pending: manda também o que ainda não tem baixa (o texto fica
+        // com o beneficiário do extrato no lugar da conta interna)
+        if (!baixa && !body.include_pending) { semBaixaCt++; continue; }
 
+        const rotulo = baixa?.account || beneficiario || forma;
         const oficial = payDate ? await officialReceipt(supabase, apiKey, valueCents, payDate) : null;
         const pdf = oficial || await buildReceiptPdf({
-          account: baixa.account, beneficiario, valueCents, forma, paymentDate: payDate, txId,
+          account: baixa?.account || `Pagamento a ${beneficiario || "beneficiário não identificado"}`,
+          beneficiario, valueCents, forma, paymentDate: payDate, txId,
         });
         const caption =
-          `${baixa.account}\n` +
+          `${rotulo}\n` +
           `${brl(valueCents)} · ${forma} · ${brDate(payDate)}` +
-          (beneficiario ? `\nPago a: ${beneficiario}` : "");
+          (baixa && beneficiario ? `\nPago a: ${beneficiario}` : "");
         const ok = await sendPdf(inst, groupJid, b64(pdf), `comprovante-${txId.replace(/[^\w-]/g, "")}.pdf`, caption);
         if (ok) {
           const registro = {
             asaas_payment_id: txId, value_cents: valueCents, billing_type: forma,
             payment_date: payDate, customer_name: beneficiario || null,
-            account_desc: baixa.account, status: "sent",
+            account_desc: baixa?.account || null, status: "sent",
             sent_at: new Date().toISOString(), updated_at: new Date().toISOString(),
           };
           if (statusPorId.has(txId)) {
