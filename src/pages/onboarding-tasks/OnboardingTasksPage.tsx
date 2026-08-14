@@ -2635,6 +2635,12 @@ const OnboardingTasksPage = () => {
                     </DropdownMenuItem>
                   )}
                   {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/blog-comentarios")}>
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Comentários do Blog
+                    </DropdownMenuItem>
+                  )}
+                  {isAdmin && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/roi-clientes")}>
                       <TrendingUp className="h-4 w-4 mr-2" />
                       ROI dos Clientes

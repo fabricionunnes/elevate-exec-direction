@@ -208,6 +208,7 @@ const MRRDashboardPage = lazy(() => import("./pages/onboarding-tasks/MRRDashboar
 const SignaturesAdminPage = lazy(() => import("./pages/onboarding-tasks/SignaturesAdminPage"));
 const FacunicampsDashboardPage = lazy(() => import("./pages/onboarding-tasks/FacunicampsDashboardPage"));
 const JuridicoPage = lazy(() => import("./pages/onboarding-tasks/JuridicoPage"));
+const BlogCommentsPage = lazy(() => import("./pages/onboarding-tasks/BlogCommentsPage"));
 const ROIClientePage = lazy(() => import("./pages/onboarding-tasks/ROIClientePage"));
 const RenovacoesPage = lazy(() => import("./pages/onboarding-tasks/RenovacoesPage"));
 const PontoDeEncontroPage = lazy(() => import("./pages/ponto-de-encontro/PontoDeEncontroPage"));
@@ -539,6 +540,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/processos" element={<ProcessosPage />} />
               <Route path="/onboarding-tasks/automations" element={<AutomationsPage />} />
               <Route path="/onboarding-tasks/juridico" element={<JuridicoPage />} />
+              <Route path="/onboarding-tasks/blog-comentarios" element={<BlogCommentsPage />} />
               <Route path="/onboarding-tasks/roi-clientes" element={<ROIClientePage />} />
               <Route path="/onboarding-tasks/renovacoes" element={<RenovacoesPage />} />
               <Route path="/onboarding-tasks/b2b-prospection" element={<B2BProspectionPage />} />
