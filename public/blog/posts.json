@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-08-13T21:01:20",
+ "gerado_em": "2026-08-14T10:01:08",
  "posts": [
+  {
+   "slug": "ferramenta-nao-resolve-falta-de-processo",
+   "url": "/blog/ferramenta-nao-resolve-falta-de-processo/",
+   "titulo": "Ferramenta não resolve falta de processo",
+   "resumo": "Você contrata o CRM mais caro do mercado e continua sem bater meta. O problema não era a ferramenta.",
+   "tags": [
+    "estrutura comercial",
+    "sistema",
+    "treino de vendedor",
+    "meta mensal",
+    "diagnostico"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-14",
+   "ts": 2008
+  },
   {
    "slug": "arquetipo-como-filtro-de-conteudo",
    "url": "/blog/arquetipo-como-filtro-de-conteudo/",
