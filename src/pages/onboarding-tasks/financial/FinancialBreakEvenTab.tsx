@@ -56,8 +56,9 @@ export default function FinancialBreakEvenTab({ invoices, payables, formatCurren
     let debts = 0;
     payables.forEach((p: any) => {
       const mk = monthKey(p.paid_date);
-      if (p.status !== "paid" || !mk || !last3.includes(mk)) return;
-      const val = p.paid_amount ?? p.amount ?? 0;
+      const isPago = p.status === "paid" || (p.status === "partial" && p.paid_amount);
+      if (!isPago || !mk || !last3.includes(mk)) return;
+      const val = (p.status === "partial" ? p.paid_amount : p.paid_amount ?? p.amount) || 0;
       const cat = p.category_id ? catById.get(p.category_id) : null;
       const section = dfcSectionOf(cat);
       if (section === "financiamento") { debts += val; return; }
