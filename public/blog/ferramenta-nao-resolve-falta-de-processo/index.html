@@ -216,6 +216,31 @@ tr.hl td{background:var(--good-bg)}
 .autorbox .r{font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--red);margin:5px 0 10px}
 .autorbox .b{font-size:14.5px;line-height:1.55;color:var(--ink-2);margin:0}
 .autorbox .b a{color:var(--red)}
+
+.cmt{border-top:1px solid var(--rule);margin-top:16px;padding-top:44px}
+.cmt h2{font-size:clamp(22px,3vw,30px);margin:0 0 8px}
+.cmt .sb{font-size:15px;color:var(--muted);margin:0 0 26px;max-width:56ch}
+.cmt .lista{display:flex;flex-direction:column;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin-bottom:30px}
+.cmt .c{background:var(--surface);padding:20px 22px}
+.cmt .c .top{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}
+.cmt .c .nm{font-weight:720;letter-spacing:-.01em}
+.cmt .c .mt{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.cmt .c .tx{font-size:15px;line-height:1.55;color:var(--ink-2);white-space:pre-wrap}
+.cmt .c .rp{margin-top:14px;padding:14px 16px;background:var(--surface-2);border-left:3px solid var(--red);border-radius:2px}
+.cmt .c .rp .who{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:6px}
+.cmt .c .rp .tx{font-size:14.5px}
+.cmt form{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:24px;position:relative}
+.cmt .gr2{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:14px}
+.cmt label{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:7px}
+.cmt input,.cmt textarea{width:100%;font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--rule-2);border-radius:2px;background:var(--ground);color:var(--ink)}
+.cmt textarea{min-height:120px;resize:vertical;line-height:1.5}
+.cmt .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.cmt .send{margin-top:16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.cmt button{background:var(--red);color:#fff;font:inherit;font-weight:720;font-size:15px;padding:13px 26px;border:none;border-radius:2px;cursor:pointer}
+.cmt button:disabled{opacity:.5;cursor:default}
+.cmt .msg{font-size:14px;line-height:1.45}
+.cmt .msg.ok{color:var(--good)}.cmt .msg.err{color:var(--bad)}
+.cmt .nota{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:14px;line-height:1.6}
 </style>
 <script type="application/ld+json">
 {
@@ -433,6 +458,29 @@ document.querySelectorAll(".ck").forEach(function(c){
   });});
 });
 </script>
+
+
+<section class="cmt" id="unv-coments">
+  <h2>Comentários</h2>
+  <p class="sb">Se isso bate com o que você vive na sua empresa, ou se discorda, escreve aí. Eu leio e respondo.</p>
+  <div class="lista" id="cmt-lista" hidden></div>
+  <form id="cmt-form" autocomplete="on">
+    <div class="gr2">
+      <div><label for="cmt-nome">Seu nome</label><input id="cmt-nome" name="nome" maxlength="80" required></div>
+      <div><label for="cmt-emp">Empresa (opcional)</label><input id="cmt-emp" name="empresa" maxlength="80"></div>
+      <div><label for="cmt-mail">E-mail (opcional, não aparece)</label><input id="cmt-mail" name="email" type="email" maxlength="120"></div>
+    </div>
+    <label for="cmt-txt">Comentário</label>
+    <textarea id="cmt-txt" name="texto" maxlength="2000" required placeholder="O que isso mudaria no seu comercial?"></textarea>
+    <input class="hp" tabindex="-1" autocomplete="off" id="cmt-hp" name="website" aria-hidden="true">
+    <div class="send">
+      <button type="submit" id="cmt-btn">Enviar comentário</button>
+      <span class="msg" id="cmt-msg"></span>
+    </div>
+    <p class="nota">Os comentários passam por aprovação antes de aparecer.</p>
+  </form>
+</section>
+
 </div>
 
 <div class="final">
@@ -452,6 +500,46 @@ document.querySelectorAll(".ck").forEach(function(c){
     </p>
   </div>
 </div>
+
+
+<script>
+(function(){
+  var API="https://xrncvhzxjmddqluxoosu.supabase.co/functions/v1/blog-comments";
+  var KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
+  var slug=location.pathname.replace(/\/+$/,"").split("/").pop();
+  var $=function(i){return document.getElementById(i);};
+  if(!$("cmt-form")) return;
+  function api(p){return fetch(API,{method:"POST",headers:{"Authorization":"Bearer "+KEY,"Content-Type":"application/json"},body:JSON.stringify(p)}).then(function(r){return r.json();});}
+  function esc(s){var d=document.createElement("div");d.textContent=s==null?"":s;return d.innerHTML;}
+  function dt(s){try{return new Date(s).toLocaleDateString("pt-BR");}catch(e){return "";}}
+  api({acao:"listar",slug:slug}).then(function(d){
+    var cs=d.comentarios||[]; if(!cs.length) return;
+    $("cmt-lista").hidden=false;
+    $("cmt-lista").innerHTML=cs.map(function(c){
+      return '<div class="c"><div class="top"><span class="nm">'+esc(c.nome)+'</span>'+
+        (c.empresa?'<span class="mt">'+esc(c.empresa)+'</span>':'')+
+        '<span class="mt">'+dt(c.created_at)+'</span></div>'+
+        '<div class="tx">'+esc(c.texto)+'</div>'+
+        (c.resposta?'<div class="rp"><div class="who">Resposta do Fabrício</div><div class="tx">'+esc(c.resposta)+'</div></div>':'')+
+        '</div>';
+    }).join("");
+  }).catch(function(){});
+  $("cmt-form").addEventListener("submit",function(e){
+    e.preventDefault();
+    var b=$("cmt-btn"), m=$("cmt-msg");
+    b.disabled=true; m.className="msg"; m.textContent="Enviando...";
+    api({acao:"enviar",slug:slug,nome:$("cmt-nome").value,empresa:$("cmt-emp").value,
+         email:$("cmt-mail").value,texto:$("cmt-txt").value,website:$("cmt-hp").value})
+      .then(function(d){
+        if(d.erro){m.className="msg err";m.textContent=d.erro;b.disabled=false;return;}
+        m.className="msg ok"; m.textContent=d.aviso||"Comentário enviado.";
+        $("cmt-form").reset();
+        setTimeout(function(){b.disabled=false;m.textContent="";},6000);
+      })
+      .catch(function(){m.className="msg err";m.textContent="Não deu para enviar agora. Tente de novo.";b.disabled=false;});
+  });
+})();
+</script>
 
 </body>
 </html>
