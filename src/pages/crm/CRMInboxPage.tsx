@@ -106,6 +106,7 @@ export const CRMInboxPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<ConversationFiltersData>(defaultFilters);
   const [showMobileInfo, setShowMobileInfo] = useState(false);
+  const [igSending, setIgSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesScrollAreaRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
@@ -401,11 +402,34 @@ export const CRMInboxPage = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || sending) return;
-    
+    if (!newMessage.trim() || !selectedConversation || sending || igSending) return;
+
+    // Conversa de Instagram não tem dispositivo de WhatsApp — envia pela
+    // instagram-send (mesmo caminho da aba Conversas do lead).
+    if (isInstagramConversation) {
+      const messageToSend = newMessage.trim();
+      setNewMessage("");
+      setIgSending(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("instagram-send", {
+          body: { conversationId: selectedConversation.id, message: messageToSend, staffId },
+        });
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+        refetchMessages();
+      } catch (error: any) {
+        console.error("Error sending IG message:", error);
+        setNewMessage(messageToSend);
+        toast.error(error.message || "Erro ao enviar mensagem no Instagram");
+      } finally {
+        setIgSending(false);
+      }
+      return;
+    }
+
     const isOfficialAPI = !!selectedConversation.official_instance_id && !selectedConversation.instance_id;
     const isEvolutionAPI = !!selectedConversation.instance_id;
-    
+
     if (!isOfficialAPI && !isEvolutionAPI) {
       toast.error("Conversa sem dispositivo associado");
       return;
@@ -474,7 +498,12 @@ export const CRMInboxPage = () => {
 
   const handleSendMedia = async (file: File, type: "image" | "video" | "audio" | "document") => {
     if (!selectedConversation) return;
-    
+
+    if (isInstagramConversation) {
+      toast.error("Envio de mídia pelo Instagram ainda não é suportado — só texto.");
+      return;
+    }
+
     const isOfficialAPI = !!selectedConversation.official_instance_id && !selectedConversation.instance_id;
     const isEvolutionAPI = !!selectedConversation.instance_id;
     
@@ -1085,6 +1114,10 @@ export const CRMInboxPage = () => {
               />
               <AudioRecorder
                 onSend={async (file) => {
+                  if (isInstagramConversation) {
+                    toast.error("Áudio pelo Instagram ainda não é suportado — só texto.");
+                    return;
+                  }
                   if (!selectedConversation?.instance_id) {
                     toast.error("Conversa sem dispositivo associado");
                     return;
