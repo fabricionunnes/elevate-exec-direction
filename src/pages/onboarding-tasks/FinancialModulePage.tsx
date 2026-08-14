@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, lazy, Suspense } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   LayoutDashboard, 
   ArrowDownCircle, 
@@ -113,14 +114,35 @@ export default function FinancialModulePage() {
     });
   }, [isMaster, hasFinancialPermission]);
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("");
+  const [pendingReview, setPendingReview] = useState(0);
 
-  // Set default tab to first visible tab
+  // Aba inicial: respeita ?tab=... (o aviso da conciliação no WhatsApp manda o
+  // link direto; com 19 abas numa barra rolável, achar na mão é sofrido).
   useEffect(() => {
-    if (!loading && visibleTabs.length > 0 && !activeTab) {
-      setActiveTab(visibleTabs[0].id);
-    }
-  }, [loading, visibleTabs, activeTab]);
+    if (loading || visibleTabs.length === 0 || activeTab) return;
+    const fromUrl = searchParams.get("tab");
+    const valid = fromUrl && visibleTabs.some((t) => t.id === fromUrl);
+    setActiveTab(valid ? fromUrl! : visibleTabs[0].id);
+  }, [loading, visibleTabs, activeTab, searchParams]);
+
+  const changeTab = (id: string) => {
+    setActiveTab(id);
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", id);
+    setSearchParams(next, { replace: true });
+  };
+
+  // Quantos lançamentos do extrato esperam decisão — vira selo na aba
+  useEffect(() => {
+    if (loading) return;
+    (supabase as any)
+      .from("financial_statement_entries")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "review")
+      .then(({ count }: { count: number | null }) => setPendingReview(count || 0));
+  }, [loading, activeTab]);
 
   if (loading) {
     return (
@@ -174,7 +196,7 @@ export default function FinancialModulePage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs value={activeTab} onValueChange={changeTab} className="space-y-6">
           <div className="overflow-x-auto pb-2">
             <TabsList className="inline-flex h-auto p-1 bg-muted/50">
               {visibleTabs.map((tab) => {
@@ -187,6 +209,11 @@ export default function FinancialModulePage() {
                   >
                     <Icon className="h-4 w-4" />
                     <span className="hidden sm:inline">{tab.label}</span>
+                    {tab.id === "reconciliation" && pendingReview > 0 && (
+                      <span className="ml-1 rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold leading-none text-destructive-foreground">
+                        {pendingReview}
+                      </span>
+                    )}
                   </TabsTrigger>
                 );
               })}
