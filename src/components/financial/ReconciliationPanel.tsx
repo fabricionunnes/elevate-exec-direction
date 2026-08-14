@@ -19,7 +19,7 @@ interface Run {
   id: string; created_at: string; imported: number; auto_matched: number; needs_review: number;
   provider_balance_cents: number | null; system_balance_cents: number | null; diff_cents: number | null;
 }
-interface Candidate { id: string; description: string | null; amount: number; due_date: string | null; status: string }
+interface Candidate { id: string; description: string | null; amount: number; due_date: string | null; status: string; party: string | null }
 
 const brl = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const dt = (d: string) => d.split("-").reverse().join("/");
@@ -40,12 +40,18 @@ export function ReconciliationPanel() {
   const [linking, setLinking] = useState<Entry | null>(null);
   const [cands, setCands] = useState<Candidate[]>([]);
   const [search, setSearch] = useState("");
+  const [candFrom, setCandFrom] = useState("");
+  const [candTo, setCandTo] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     let q = (supabase as any).from("financial_statement_entries")
       .select("*").eq("provider", "asaas").order("entry_date", { ascending: false }).limit(300);
     if (filter !== "all") q = q.eq("status", filter);
+    if (dateFrom) q = q.gte("entry_date", dateFrom);
+    if (dateTo) q = q.lte("entry_date", dateTo);
     const [entRes, runRes] = await Promise.all([
       q,
       (supabase as any).from("financial_reconciliation_runs").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle(),
@@ -53,7 +59,7 @@ export function ReconciliationPanel() {
     setEntries((entRes.data as Entry[]) || []);
     setLastRun((runRes.data as Run) || null);
     setLoading(false);
-  }, [filter]);
+  }, [filter, dateFrom, dateTo]);
   useEffect(() => { load(); }, [load]);
 
   const run = async () => {
@@ -74,11 +80,20 @@ export function ReconciliationPanel() {
 
   const openLink = async (e: Entry) => {
     setLinking(e); setSearch(""); setCands([]);
-    const table = e.kind === "credit" ? "financial_receivables" : "financial_payables";
+    const isCredit = e.kind === "credit";
+    const table = isCredit ? "financial_receivables" : "financial_payables";
+    // Nome real de quem paga/recebe: sem ele a lista vira "Venda 1704012" e não
+    // dá pra saber de quem é o título.
+    const cols = isCredit
+      ? "id, description, amount, due_date, status, custom_receiver_name, company:onboarding_companies(name)"
+      : "id, description, amount, due_date, status, supplier_name";
     const { data } = await (supabase as any).from(table)
-      .select("id, description, amount, due_date, status").neq("status", "paid")
-      .order("due_date", { ascending: false }).limit(200);
-    setCands((data as Candidate[]) || []);
+      .select(cols).neq("status", "paid")
+      .order("due_date", { ascending: false }).limit(400);
+    setCands(((data as any[]) || []).map((r) => ({
+      id: r.id, description: r.description, amount: r.amount, due_date: r.due_date, status: r.status,
+      party: isCredit ? (r.custom_receiver_name || r.company?.name || null) : (r.supplier_name || null),
+    })));
   };
 
   const confirmLink = async (c: Candidate) => {
@@ -93,7 +108,7 @@ export function ReconciliationPanel() {
     const { data: { user } } = await supabase.auth.getUser();
     await (supabase as any).from("financial_statement_entries").update({
       status: "matched", match_kind: e.kind === "credit" ? "receivable" : "payable", match_id: c.id,
-      match_confidence: "manual", match_reason: `vinculado manualmente (${c.description || ""})`.trim(),
+      match_confidence: "manual", match_reason: `vinculado manualmente (${[c.party, c.description].filter(Boolean).join(" — ")})`.trim(),
       auto_settled: false, reviewed_by: user?.id || null, reviewed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq("id", e.id);
@@ -126,8 +141,15 @@ export function ReconciliationPanel() {
     load();
   };
 
-  const filtered = cands.filter(c =>
-    !search.trim() || (c.description || "").toLowerCase().includes(search.toLowerCase()) || String(c.amount).includes(search));
+  const filtered = cands.filter((c) => {
+    const q = search.trim().toLowerCase();
+    if (q && !(c.description || "").toLowerCase().includes(q)
+          && !(c.party || "").toLowerCase().includes(q)
+          && !String(c.amount).includes(q)) return false;
+    if (candFrom && (!c.due_date || c.due_date < candFrom)) return false;
+    if (candTo && (!c.due_date || c.due_date > candTo)) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-4">
@@ -169,6 +191,16 @@ export function ReconciliationPanel() {
                 <SelectItem value="all">Todos</SelectItem>
               </SelectContent>
             </Select>
+            <div className="flex items-center gap-1.5">
+              <Input type="date" value={dateFrom} onChange={(ev) => setDateFrom(ev.target.value)}
+                className="w-[145px]" title="Lançamentos a partir de" />
+              <span className="text-muted-foreground text-sm">até</span>
+              <Input type="date" value={dateTo} onChange={(ev) => setDateTo(ev.target.value)}
+                className="w-[145px]" title="Lançamentos até" />
+              {(dateFrom || dateTo) && (
+                <Button variant="ghost" size="sm" onClick={() => { setDateFrom(""); setDateTo(""); }}>Limpar</Button>
+              )}
+            </div>
             <Button onClick={run} disabled={running} className="gap-2">
               {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Conciliar agora
             </Button>
@@ -237,7 +269,16 @@ export function ReconciliationPanel() {
             </DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground -mt-2">{linking?.description}</p>
-          <Input placeholder="Buscar por descrição ou valor..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input placeholder="Buscar por nome, descrição ou valor..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Vencimento</span>
+            <Input type="date" value={candFrom} onChange={(e) => setCandFrom(e.target.value)} className="h-8 w-[140px]" />
+            <span className="text-muted-foreground text-xs">até</span>
+            <Input type="date" value={candTo} onChange={(e) => setCandTo(e.target.value)} className="h-8 w-[140px]" />
+            {(candFrom || candTo) && (
+              <Button variant="ghost" size="sm" className="h-8" onClick={() => { setCandFrom(""); setCandTo(""); }}>Limpar</Button>
+            )}
+          </div>
           <div className="max-h-[380px] overflow-auto space-y-1.5">
             {filtered.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">Nenhum título em aberto encontrado.</p>
@@ -246,7 +287,12 @@ export function ReconciliationPanel() {
                 className="w-full text-left border rounded-md p-2.5 hover:border-primary hover:bg-primary/5 transition">
                 <div className="flex items-center gap-3">
                   <span className="font-semibold tabular-nums">{c.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
-                  <span className="flex-1 truncate text-sm">{c.description}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block truncate text-sm font-medium">{c.party || c.description || "(sem nome)"}</span>
+                    {c.party && c.description && (
+                      <span className="block truncate text-xs text-muted-foreground">{c.description}</span>
+                    )}
+                  </span>
                   {c.due_date && <span className="text-xs text-muted-foreground">venc. {dt(c.due_date)}</span>}
                 </div>
               </button>
