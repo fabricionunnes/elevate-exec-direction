@@ -401,11 +401,11 @@ Deno.serve(async (req) => {
           });
           sent++;
 
-          // Regra do funil: recebeu a PRIMEIRA mensagem da cadência → lead sobe
-          // pra etapa seguinte. O trigger de mudança de etapa para o enrollment
-          // (stop_on_stage_change); reativamos em seguida pra cadência continuar
-          // os próximos steps normalmente.
-          if (enr.current_step_index === 0 && (lead as any).stage_id) {
+          // Avanço de etapa após a 1ª mensagem é OPT-IN por cadência
+          // (advance_stage_on_first_message). Era incondicional e movia lead de
+          // etapa de compra pra fora (caso Ingressos Evento, 14/08). Só as
+          // cadências de "Primeira mensagem" mantêm o comportamento.
+          if ((cadence as any).advance_stage_on_first_message && enr.current_step_index === 0 && (lead as any).stage_id) {
             try {
               const { data: curStage } = await supabase.from("crm_stages")
                 .select("pipeline_id, sort_order").eq("id", (lead as any).stage_id).maybeSingle();
