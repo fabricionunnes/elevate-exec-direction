@@ -161,7 +161,7 @@ async function buildReceiptPdf(p: {
 }
 
 /** A baixa da conta a pagar existe? Devolve a descrição quando sim. */
-async function findBaixaPagar(supabase: any, txId: string, valueCents: number, payDate: string | null) {
+async function findBaixaPagar(supabase: any, txId: string, valueCents: number, payDate: string | null, ambiguous = false) {
   // 1) já vinculada a este débito do extrato
   const { data: linked } = await supabase.from("financial_payables")
     .select("id, supplier_name, description")
@@ -170,8 +170,10 @@ async function findBaixaPagar(supabase: any, txId: string, valueCents: number, p
     return { account: [linked.description, linked.supplier_name].filter(Boolean).join(" — ") || "Conta a pagar" };
   }
   // 2) baixa manual: valor pago igual e data de pagamento igual (ou véspera —
-  //    baixa lançada no dia seguinte ao débito é comum)
-  if (payDate) {
+  //    baixa lançada no dia seguinte ao débito é comum). Com DOIS débitos de
+  //    mesmo valor na janela, não arrisca: já amarrou processo trabalhista no
+  //    Pix do Facebook (05/08, dois Pix de R$ 1.500 no mesmo dia).
+  if (payDate && !ambiguous) {
     const abs = Math.abs(valueCents);
     const { data: cands } = await supabase.from("financial_payables")
       .select("id, supplier_name, description, paid_date")
@@ -187,6 +189,16 @@ async function findBaixaPagar(supabase: any, txId: string, valueCents: number, p
     }
   }
   return null;
+}
+
+/** contas agregadas (pró-labore, verba de tráfego): uma conta a pagar baixada
+ *  no total do mês ↔ várias transferências parciais no extrato. O casamento é
+ *  pelo beneficiário, via asaas_receipt_rules. */
+function matchRule(rules: { beneficiary_pattern: string; account_label: string }[], beneficiario: string) {
+  const b = (beneficiario || "").toLowerCase();
+  if (!b) return null;
+  const r = rules.find((x) => b.includes(x.beneficiary_pattern.toLowerCase()));
+  return r ? { account: r.account_label } : null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -219,6 +231,40 @@ Deno.serve(async (req: Request) => {
       return rows.filter((t) =>
         Math.round((t.value || 0) * 100) < 0 && PAY_TYPES.has(String(t.type || t.transactionType || "")));
     };
+
+    const { data: rulesData } = await supabase.from("asaas_receipt_rules")
+      .select("beneficiary_pattern, account_label").eq("active", true);
+    const rules = (rulesData || []) as { beneficiary_pattern: string; account_label: string }[];
+
+    if (action === "list") {
+      // lista os pagamentos desde uma data, com a conta identificada quando houver baixa
+      const ini = String(body.since || "").slice(0, 10) || desde;
+      const rows: any[] = [];
+      for (let page = 0; page < 12; page++) {
+        const d = await asaas(apiKey, `/financialTransactions?limit=100&offset=${page * 100}&startDate=${ini}`);
+        rows.push(...(d?.data || []));
+        if (!d?.hasMore) break;
+      }
+      const debs = rows.filter((t) =>
+        Math.round((t.value || 0) * 100) < 0 && PAY_TYPES.has(String(t.type || t.transactionType || "")));
+      const contagem = new Map<number, number>();
+      for (const t of debs) {
+        const v = Math.round((t.value || 0) * 100);
+        contagem.set(v, (contagem.get(v) || 0) + 1);
+      }
+      const out = [];
+      for (const t of debs) {
+        const txId = String(t.id);
+        const valueCents = Math.round((t.value || 0) * 100);
+        const payDate = String(t.date || "").slice(0, 10) || null;
+        const { forma, beneficiario } = parseDescricao(String(t.description || ""), String(t.type || ""));
+        const baixa = await findBaixaPagar(supabase, txId, valueCents, payDate, (contagem.get(valueCents) || 0) > 1)
+          || matchRule(rules, beneficiario);
+        out.push({ id: txId, valor_cents: valueCents, data: payDate, forma, beneficiario,
+                   conta: baixa?.account || null, tem_baixa: !!baixa });
+      }
+      return json({ ok: true, desde: ini, pagamentos: out });
+    }
 
     if (action === "diag") {
       const deb = await fetchDebitos();
@@ -277,13 +323,19 @@ Deno.serve(async (req: Request) => {
 
     let enviados = 0, avisados = 0, aguardando = 0;
     const semBaixa: { qId: string; linha: string }[] = [];
+    const contagem = new Map<number, number>();
+    for (const { t } of processar) {
+      const v = Math.round((t.value || 0) * 100);
+      contagem.set(v, (contagem.get(v) || 0) + 1);
+    }
     for (const { t, novo } of processar) {
       const txId = String(t.id);
       const valueCents = Math.round((t.value || 0) * 100);
       const payDate = String(t.date || "").slice(0, 10) || null;
       const { forma, beneficiario } = parseDescricao(String(t.description || ""), String(t.type || ""));
 
-      const baixa = await findBaixaPagar(supabase, txId, valueCents, payDate);
+      const baixa = await findBaixaPagar(supabase, txId, valueCents, payDate, (contagem.get(valueCents) || 0) > 1)
+        || matchRule(rules, beneficiario);
 
       if (novo) {
         await supabase.from("asaas_receipt_queue").insert({
