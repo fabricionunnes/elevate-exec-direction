@@ -218,18 +218,16 @@ Deno.serve(async (req) => {
         }
       } else {
         console.warn(`[crm-activity-notifications] No connected WhatsApp instance configured for activity ${activity.id}`);
-        shouldMarkAsNotified = false;
       }
 
-      // 3) Mark as notified
-      if (shouldMarkAsNotified) {
-        await supabase
-          .from("crm_activities")
-          .update({ notified_at: now })
-          .eq("id", activity.id);
-
-        notifiedCount++;
-      }
+      // 3) Mark as notified — SEMPRE. A notificação do painel já foi criada;
+      // WhatsApp é melhor-esforço. Segurar a marcação por falha de envio fazia
+      // o cron de 5 min repetir o mesmo aviso o dia inteiro (367 numa tarde).
+      await supabase
+        .from("crm_activities")
+        .update({ notified_at: now })
+        .eq("id", activity.id);
+      notifiedCount++;
     }
 
     return new Response(
