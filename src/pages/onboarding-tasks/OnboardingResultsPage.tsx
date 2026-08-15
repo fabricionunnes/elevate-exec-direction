@@ -79,6 +79,7 @@ const OnboardingResultsPage = () => {
   const [filterGoals, setFilterGoals] = useState<string>(() => searchParams.get("goals") || "all");
   const [filterResults, setFilterResults] = useState<string>(() => searchParams.get("results") || "all");
   const [filterProjection, setFilterProjection] = useState<string>(() => searchParams.get("projection") || "all");
+  const [excludedActive, setExcludedActive] = useState<{ name: string; motivo: string }[]>([]);
   
   // Month filter - default to current month
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
@@ -202,6 +203,10 @@ const OnboardingResultsPage = () => {
       
       // Filter out simulator companies and goal_not_required companies from the results
       const realCompanies = (companiesRes.data || []).filter(c => !c.is_simulator && !c.goal_not_required);
+      // ativas que NÃO entram na tela — mostrar o motivo em vez de sumir calado
+      setExcludedActive((companiesRes.data || [])
+        .filter(c => c.is_simulator || c.goal_not_required)
+        .map(c => ({ name: c.name, motivo: c.is_simulator ? "simulador" : "meta dispensada" })));
 
       setCompanies(realCompanies);
       setConsultants((staffRes.data || []).filter(s => s.role === "consultant" || s.role === "cs"));
@@ -500,7 +505,9 @@ const OnboardingResultsPage = () => {
   // Helper to check projection range
   const getProjectionRange = (companyId: string): string | null => {
     const projection = companyProjections.get(companyId);
-    if (projection === undefined) return null;
+    // lançou mas não tem meta do mês: bucket próprio, senão a soma dos cards
+    // nunca fecha com o "Com lançamentos" (23 vs 19 em ago/2026)
+    if (projection === undefined) return companiesWithResults[companyId] ? "no_goal" : null;
     if (projection >= 100) return "above_100";
     if (projection >= 70) return "70_99";
     if (projection >= 50) return "50_69";
@@ -649,6 +656,7 @@ const OnboardingResultsPage = () => {
         const proj = companyProjections.get(c.id);
         return proj !== undefined && proj < 50;
       }).length,
+      semMeta: companiesWithResultsList.filter(c => companyProjections.get(c.id) === undefined).length,
     };
   }, [baseFilteredCompanies, companiesWithResults, companyProjections]);
 
@@ -778,7 +786,7 @@ const OnboardingResultsPage = () => {
           /* Company List */
           <>
             {/* Results Summary Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
               {/* With Results */}
               <Card 
                 className={`cursor-pointer transition-colors ${filterResults === "with_results" && filterProjection === "all" ? "ring-2 ring-primary" : "hover:bg-muted/50"}`}
@@ -916,6 +924,30 @@ const OnboardingResultsPage = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Lançou mas não tem meta do mês — sem este card a soma dos
+                  buckets não fecha com o "Com lançamentos" */}
+              <Card
+                className={`cursor-pointer transition-colors ${filterProjection === "no_goal" ? "ring-2 ring-slate-400" : "hover:bg-muted/50"}`}
+                onClick={() => {
+                  setFilterResults("all");
+                  setFilterProjection(filterProjection === "no_goal" ? "all" : "no_goal");
+                }}
+              >
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-slate-500/10 flex items-center justify-center">
+                      <Target className="h-4 w-4 text-slate-500" />
+                    </div>
+                    <div>
+                      <p className="text-xl font-bold">{projectionCounts.semMeta}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">
+                        Sem meta do mês
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Filters */}
@@ -1045,9 +1077,25 @@ const OnboardingResultsPage = () => {
               </Card>
             ) : (
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground mb-4">
-                  {filteredCompanies.length} empresa{filteredCompanies.length !== 1 ? 's' : ''} encontrada{filteredCompanies.length !== 1 ? 's' : ''}
-                </p>
+                <div className="mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    {filteredCompanies.length} empresa{filteredCompanies.length !== 1 ? 's' : ''} encontrada{filteredCompanies.length !== 1 ? 's' : ''}
+                  </p>
+                  {excludedActive.length > 0 && (
+                    <details className="mt-1">
+                      <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                        {excludedActive.length} ativa{excludedActive.length !== 1 ? "s" : ""} fora desta tela (meta dispensada ou simulador)
+                      </summary>
+                      <div className="mt-1.5 pl-3 space-y-0.5">
+                        {excludedActive.map((e) => (
+                          <p key={e.name} className="text-xs text-muted-foreground">
+                            {e.name} — {e.motivo}
+                          </p>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </div>
                 {filteredCompanies.map((company) => {
                   const project = getProjectForCompany(company.id);
                   const consultantName = getConsultantName(company.consultant_id);

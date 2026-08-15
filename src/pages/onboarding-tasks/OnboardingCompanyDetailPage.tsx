@@ -43,11 +43,11 @@ import {
   UserCircle,
   Trophy,
   DollarSign,
-  Loader2,
-} from "lucide-react";
+  Loader2, Crown } from "lucide-react";
 import { format } from "date-fns";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
 import { SegmentSelect } from "@/components/ui/segment-select";
+import { MastermindPanel } from "@/components/onboarding-tasks/MastermindPanel";
 import { ContactsContractsPanel } from "@/components/onboarding-tasks/ContactsContractsPanel";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { CompanyFinancialPanel } from "@/components/company-financial/CompanyFinancialPanel";
@@ -697,6 +697,13 @@ const OnboardingCompanyDetailPage = () => {
                     <span className="sm:hidden">Pts</span>
                   </TabsTrigger>
                 )}
+                {!isNew && (
+                  <TabsTrigger value="mastermind" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                    <Crown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Mastermind</span>
+                    <span className="sm:hidden">MM</span>
+                  </TabsTrigger>
+                )}
                 {!isNew && canViewCompanyFinancial && (
                   <TabsTrigger value="financial" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
                     <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -1213,12 +1220,17 @@ const OnboardingCompanyDetailPage = () => {
 
             {/* Contacts Tab */}
             {!isNew && companyId && (
-              <TabsContent value="contacts">
-                <ContactsContractsPanel 
-                  companyId={companyId} 
-                  isAdmin={canEditCompany}
-                />
-              </TabsContent>
+              <>
+                <TabsContent value="mastermind">
+                  <MastermindPanel companyId={companyId} canEdit={canEditCompany} />
+                </TabsContent>
+                <TabsContent value="contacts">
+                  <ContactsContractsPanel
+                    companyId={companyId}
+                    isAdmin={canEditCompany}
+                  />
+                </TabsContent>
+              </>
             )}
 
             {/* Contract Tab */}
