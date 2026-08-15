@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-08-14T21:01:12",
+ "gerado_em": "2026-08-15T10:01:10",
  "posts": [
+  {
+   "slug": "nove-formatos-fixos-no-lugar-de-inspiracao",
+   "url": "/blog/nove-formatos-fixos-no-lugar-de-inspiracao/",
+   "titulo": "Nove formatos fixos no lugar de inspiração",
+   "resumo": "Criar conteúdo sem estrutura fixa vira improviso todo dia. A gente documentou nove formatos que resolvem isso.",
+   "tags": [
+    "conteúdo",
+    "sistema",
+    "estrutura comercial",
+    "processo",
+    "delegação"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-15",
+   "ts": 2011
+  },
   {
    "slug": "custo-financeiro-escondido-em-despesa-administrativa",
    "url": "/blog/custo-financeiro-escondido-em-despesa-administrativa/",
