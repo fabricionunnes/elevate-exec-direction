@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-08-15T21:01:10",
+ "gerado_em": "2026-08-16T10:01:24",
  "posts": [
+  {
+   "slug": "base-pequena-fiel-vale-mais-que-rotatividade",
+   "url": "/blog/base-pequena-fiel-vale-mais-que-rotatividade/",
+   "titulo": "Base pequena e fiel vale mais que base grande com rotatividade",
+   "resumo": "A empresa que troca cliente o tempo inteiro parece que cresce, mas queima margem e tempo do time. A conta só fecha quando você olha quanto custa repor.",
+   "tags": [
+    "retenção",
+    "base de clientes",
+    "estrutura comercial",
+    "margem",
+    "meta mensal"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-16",
+   "ts": 2014
+  },
   {
    "slug": "tempo-separado-nao-e-opcional-e-estrutura",
    "url": "/blog/tempo-separado-nao-e-opcional-e-estrutura/",
