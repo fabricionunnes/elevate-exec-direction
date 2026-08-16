@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-08-16T15:01:02",
+ "gerado_em": "2026-08-16T21:01:19",
  "posts": [
+  {
+   "slug": "preco-transparente-ou-preco-negociado",
+   "url": "/blog/preco-transparente-ou-preco-negociado/",
+   "titulo": "Preço transparente ou preço negociado muda quem compra",
+   "resumo": "Mostrar o preço antes da reunião filtra quem está disposto a pagar. Esconder o preço atrai quem quer barganha, não cliente.",
+   "tags": [
+    "preço",
+    "qualificação",
+    "estrutura comercial",
+    "oferta",
+    "meta mensal"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-16",
+   "ts": 2016
+  },
   {
    "slug": "facil-rapido-barato-escalavel-filtro-decisao",
    "url": "/blog/facil-rapido-barato-escalavel-filtro-decisao/",
