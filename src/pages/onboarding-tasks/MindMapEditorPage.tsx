@@ -151,7 +151,7 @@ function MMNodeView({ id, data, selected }: NodeProps) {
         width: d.isRoot ? 220 : NODE_W, minHeight: d.isRoot ? 52 : NODE_H,
         borderColor: color, background: d.isRoot ? color : "#fff",
       }}
-      onDoubleClick={() => d.startEdit(id)}
+      onDoubleClick={(e) => { e.stopPropagation(); d.startEdit(id); }}
     >
       <Handle type="target" position={Position.Left} id="l" className="!opacity-0 !w-2 !h-2" />
       <Handle type="target" position={Position.Right} id="r" className="!opacity-0 !w-2 !h-2" />
@@ -492,7 +492,9 @@ function Editor() {
           nodes={nodes} edges={edges} nodeTypes={nodeTypes}
           nodesDraggable={false} nodesConnectable={false} elementsSelectable
           onNodeClick={(_, n) => setSelectedId(n.id)}
+          onNodeDoubleClick={(_, n) => { if (canEdit) { setSelectedId(n.id); setEditSeed(null); setEditingId(n.id); } }}
           onPaneClick={() => { setEditingId(null); }}
+          zoomOnDoubleClick={false}
           fitView minZoom={0.2} maxZoom={2.5}
           proOptions={{ hideAttribution: true }}
         >
@@ -502,7 +504,7 @@ function Editor() {
         </ReactFlow>
       </div>
       <div className="px-3 py-1.5 border-t text-[11px] text-muted-foreground bg-background">
-        <b>Tab</b> filho · <b>Enter</b> irmão · <b>Delete</b> apagar · <b>F2</b> ou duplo clique editar · <b>Espaço</b> colapsar · <b>Ctrl+Z</b> desfazer · digitar em cima do nó já edita
+        <b>Duplo clique</b> edita o texto · <b>Tab</b> filho · <b>Enter</b> irmão · <b>Delete</b> apagar · <b>Espaço</b> colapsar · <b>Ctrl+Z</b> desfazer
       </div>
     </div>
   );
