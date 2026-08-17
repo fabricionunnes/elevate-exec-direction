@@ -12,7 +12,12 @@ import "@xyflow/react/dist/style.css";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Loader2, Save, Plus, Trash2, Undo2, Redo2, ChevronsUpDown, Palette } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Plus, Trash2, Undo2, Redo2, ChevronsUpDown, Palette, Download, LayoutTemplate } from "lucide-react";
+import { toPng } from "html-to-image";
+import { jsPDF } from "jspdf";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -25,9 +30,19 @@ export interface MMNode {
   color?: string;
   note?: string;
 }
-interface MMData { root: MMNode }
+type LayoutKind = "radial" | "right" | "tree";
+interface MMData { root: MMNode; layout?: LayoutKind; theme?: string }
 
-const PALETTE = ["#0D2B5E", "#CC1B1B", "#1B7F4B", "#B7791F", "#7C3AED", "#0E7490", "#BE185D", "#4B5563"];
+// temas de cor prontos (a cor de um ramo pode ser trocada por cima)
+const THEMES: Record<string, { name: string; root: string; palette: string[] }> = {
+  unv:     { name: "UNV",       root: "#0D2B5E", palette: ["#0D2B5E", "#CC1B1B", "#1B7F4B", "#B7791F", "#7C3AED", "#0E7490", "#BE185D", "#4B5563"] },
+  vivid:   { name: "Vibrante",  root: "#111827", palette: ["#EF4444", "#F59E0B", "#10B981", "#3B82F6", "#8B5CF6", "#EC4899", "#14B8A6", "#F97316"] },
+  pastel:  { name: "Pastel",    root: "#475569", palette: ["#F87171", "#FBBF24", "#34D399", "#60A5FA", "#A78BFA", "#F472B6", "#2DD4BF", "#FB923C"] },
+  mono:    { name: "Monocromo", root: "#111827", palette: ["#1F2937", "#374151", "#4B5563", "#6B7280", "#9CA3AF", "#374151", "#4B5563", "#6B7280"] },
+  gold:    { name: "Mansão",    root: "#0A0A0A", palette: ["#C9A84C", "#E8D5A3", "#8B7332", "#C9A84C", "#E8D5A3", "#8B7332", "#C9A84C", "#E8D5A3"] },
+};
+
+const PALETTE = THEMES.unv.palette;
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 function clone<T>(x: T): T { return JSON.parse(JSON.stringify(x)); }
@@ -51,38 +66,65 @@ function subtreeHeight(n: MMNode): number {
   return Math.max(NODE_H, h);
 }
 
-function layout(root: MMNode) {
+function layout(root: MMNode, kind: LayoutKind = "radial", theme = "unv") {
+  const pal = (THEMES[theme] || THEMES.unv).palette;
+  const rootColor = (THEMES[theme] || THEMES.unv).root;
   const nodes: Node[] = [];
   const edges: Edge[] = [];
+  const kids = root.collapsed ? [] : root.children;
+
+  if (kind === "tree") {
+    // organograma: raiz em cima, filhos abaixo, ramos descem
+    const W = NODE_W + 24, GY = 70;
+    const width = (n: MMNode): number => (n.collapsed || !n.children.length) ? W
+      : Math.max(W, n.children.reduce((s, c) => s + width(c), 0));
+    nodes.push({ id: root.id, type: "mm", position: { x: -110, y: 0 }, data: { node: root, isRoot: true, depth: 0, side: 0, rootColor } });
+    const place = (children: MMNode[], parent: MMNode, cx: number, py: number, depth: number, color?: string, idx = 0) => {
+      const total = children.reduce((s, c) => s + width(c), 0);
+      let x = cx - total / 2;
+      children.forEach((c, i) => {
+        const w = width(c);
+        const ncx = x + w / 2;
+        const ny = py + GY + NODE_H;
+        const col = c.color || color || pal[(depth === 1 ? i : idx) % pal.length];
+        nodes.push({ id: c.id, type: "mm", position: { x: ncx - NODE_W / 2, y: ny }, data: { node: c, isRoot: false, depth, side: 0, color: col, rootColor } });
+        edges.push({ id: `${parent.id}-${c.id}`, source: parent.id, target: c.id, sourceHandle: "b", targetHandle: "t",
+          type: "smoothstep", style: { stroke: col, strokeWidth: Math.max(1.5, 3.5 - depth * 0.7) } });
+        if (!c.collapsed) place(c.children, c, ncx, ny, depth + 1, col, depth === 1 ? i : idx);
+        x += w;
+      });
+    };
+    place(kids, root, 0, 0, 1);
+    return { nodes, edges };
+  }
+
+  // radial (dois lados) ou direita (um lado só)
   const cx = 0, cy = 0;
   nodes.push({ id: root.id, type: "mm", position: { x: cx - 110, y: cy - NODE_H / 2 },
-    data: { node: root, isRoot: true, depth: 0, side: 0 } });
+    data: { node: root, isRoot: true, depth: 0, side: 0, rootColor } });
+  const right = kind === "right" ? kids : kids.filter((_, i) => i % 2 === 0);
+  const left = kind === "right" ? [] : kids.filter((_, i) => i % 2 === 1);
 
-  // divide os filhos do root: metade direita, metade esquerda
-  const kids = root.collapsed ? [] : root.children;
-  const right = kids.filter((_, i) => i % 2 === 0);
-  const left = kids.filter((_, i) => i % 2 === 1);
-
-  const place = (children: MMNode[], side: 1 | -1, parent: MMNode, px: number, py: number, depth: number, color?: string) => {
+  const place = (children: MMNode[], side: 1 | -1, parent: MMNode, px: number, py: number, depth: number, color?: string, baseIdx = 0) => {
     if (!children.length) return;
     const total = children.reduce((s, c) => s + subtreeHeight(c), 0) + GAP_Y * (children.length - 1);
     let y = py - total / 2;
-    for (const c of children) {
+    children.forEach((c, i) => {
       const h = subtreeHeight(c);
       const ny = y + h / 2;
       const nx = px + side * (NODE_W + GAP_X);
-      const col = c.color || color || PALETTE[0];
+      const col = c.color || color || pal[(baseIdx + i) % pal.length];
       nodes.push({ id: c.id, type: "mm", position: { x: nx - NODE_W / 2, y: ny - NODE_H / 2 },
-        data: { node: c, isRoot: false, depth, side, color: col } });
+        data: { node: c, isRoot: false, depth, side, color: col, rootColor } });
       edges.push({ id: `${parent.id}-${c.id}`, source: parent.id, target: c.id,
         sourceHandle: side === 1 ? "r" : "l", targetHandle: side === 1 ? "l" : "r",
         type: "smoothstep", style: { stroke: col, strokeWidth: Math.max(1.5, 3.5 - depth * 0.7) } });
-      if (!c.collapsed) place(c.children, side, c, nx, ny, depth + 1, col);
+      if (!c.collapsed) place(c.children, side, c, nx, ny, depth + 1, col, baseIdx + i);
       y += h + GAP_Y;
-    }
+    });
   };
-  place(right, 1, root, cx, cy, 1);
-  place(left, -1, root, cx, cy, 1);
+  place(right, 1, root, cx, cy, 1, undefined, 0);
+  place(left, -1, root, cx, cy, 1, undefined, right.length);
   return { nodes, edges };
 }
 
@@ -90,7 +132,7 @@ function layout(root: MMNode) {
 function MMNodeView({ id, data, selected }: NodeProps) {
   const d = data as any;
   const n: MMNode = d.node;
-  const color: string = d.isRoot ? "#0D2B5E" : d.color;
+  const color: string = d.isRoot ? (d.rootColor || "#0D2B5E") : d.color;
   const editing = d.editingId === id;
   const [txt, setTxt] = useState(n.text);
   useEffect(() => setTxt(n.text), [n.text]);
@@ -113,6 +155,8 @@ function MMNodeView({ id, data, selected }: NodeProps) {
       <Handle type="target" position={Position.Right} id="r" className="!opacity-0 !w-2 !h-2" />
       <Handle type="source" position={Position.Left} id="l" className="!opacity-0 !w-2 !h-2" />
       <Handle type="source" position={Position.Right} id="r" className="!opacity-0 !w-2 !h-2" />
+      <Handle type="target" position={Position.Top} id="t" className="!opacity-0 !w-2 !h-2" />
+      <Handle type="source" position={Position.Bottom} id="b" className="!opacity-0 !w-2 !h-2" />
       {editing ? (
         <input
           autoFocus
@@ -234,8 +278,53 @@ function Editor() {
   }, [mutate]);
 
   const setColor = useCallback((id: string, color: string) => {
-    mutate((root) => { const f = findNode(root, id); if (f) f.node.color = color; });
+    mutate((root) => { const f = findNode(root, id); if (!f) return; if (color) f.node.color = color; else delete f.node.color; });
   }, [mutate]);
+
+  const setLayoutKind = (kind: LayoutKind) => { if (!canEdit) return; push({ ...clone(data), layout: kind }); setTimeout(() => rf.fitView({ padding: 0.3, duration: 300 }), 30); };
+  const setTheme = (theme: string) => { if (!canEdit) return; push({ ...clone(data), theme }); };
+
+  // exportação: renderiza só o viewport do canvas em PNG e (opcional) embrulha em PDF
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+  const exportImage = async (format: "png" | "pdf") => {
+    const el = canvasRef.current?.querySelector(".react-flow__viewport") as HTMLElement | null;
+    const wrap = canvasRef.current;
+    if (!el || !wrap) return;
+    setExporting(true);
+    try {
+      // enquadra tudo antes de fotografar
+      await rf.fitView({ padding: 0.15, duration: 0 });
+      await new Promise((r) => setTimeout(r, 120));
+      const dataUrl = await toPng(wrap, {
+        backgroundColor: "#ffffff", pixelRatio: 2,
+        filter: (n) => !(n as HTMLElement).classList?.contains("react-flow__minimap")
+                    && !(n as HTMLElement).classList?.contains("react-flow__controls"),
+      });
+      const fname = (title || "mapa").replace(/[^\w\-]+/g, "_");
+      if (format === "png") {
+        const a = document.createElement("a"); a.href = dataUrl; a.download = `${fname}.png`; a.click();
+      } else {
+        const img = new Image(); img.src = dataUrl; await img.decode();
+        const landscape = img.width >= img.height;
+        const pdf = new jsPDF({ orientation: landscape ? "landscape" : "portrait", unit: "pt", format: "a4" });
+        const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
+        const m = 28;
+        const scale = Math.min((pw - 2 * m) / img.width, (ph - 2 * m - 30) / img.height);
+        const w = img.width * scale, h = img.height * scale;
+        pdf.setFont("helvetica", "bold"); pdf.setFontSize(14); pdf.setTextColor(13, 43, 94);
+        pdf.text(title || "Mapa mental", m, m + 4);
+        pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(120);
+        pdf.text(`UNV Nexus · ${new Date().toLocaleDateString("pt-BR")}`, pw - m, m + 4, { align: "right" });
+        pdf.addImage(dataUrl, "PNG", (pw - w) / 2, m + 22, w, h);
+        pdf.save(`${fname}.pdf`);
+      }
+    } catch (e: any) {
+      toast.error("Não consegui exportar: " + (e?.message || e));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const doUndo = () => { const p = undo.current.pop(); if (!p) return; redo.current.push(clone(data)); setData(p); setDirty(true); };
   const doRedo = () => { const p = redo.current.pop(); if (!p) return; undo.current.push(clone(data)); setData(p); setDirty(true); };
@@ -293,7 +382,7 @@ function Editor() {
   }, [dirty, data, title, mapId, save]);
 
   const { nodes, edges } = useMemo(() => {
-    const l = layout(data.root);
+    const l = layout(data.root, data.layout || "radial", data.theme || "unv");
     return {
       nodes: l.nodes.map((n) => ({
         ...n, selected: n.id === selectedId,
@@ -327,12 +416,53 @@ function Editor() {
           {sel && selectedId !== "root" && canEdit && (
             <div className="flex items-center gap-1 ml-2 pl-2 border-l">
               <Palette className="h-3.5 w-3.5 text-muted-foreground" />
-              {PALETTE.map((c) => (
+              {(THEMES[data.theme || "unv"] || THEMES.unv).palette.slice(0, 8).map((c) => (
                 <button key={c} className={cn("h-4 w-4 rounded-full border", sel.color === c && "ring-2 ring-offset-1 ring-primary")}
-                  style={{ background: c }} onClick={() => setColor(selectedId, c)} />
+                  style={{ background: c }} onClick={() => setColor(selectedId, c)} title={c} />
               ))}
+              {/* cor livre: qualquer cor, não só a paleta */}
+              <label className="h-5 w-5 rounded-full border-2 border-dashed border-muted-foreground/50 cursor-pointer overflow-hidden relative" title="Cor personalizada">
+                <input type="color" value={sel.color || "#0D2B5E"} onChange={(e) => setColor(selectedId, e.target.value)}
+                  className="absolute inset-0 opacity-0 cursor-pointer" />
+                <span className="absolute inset-0 flex items-center justify-center text-[10px] text-muted-foreground">+</span>
+              </label>
+              {sel.color && (
+                <button className="text-[10px] text-muted-foreground hover:text-foreground ml-1" onClick={() => setColor(selectedId, "")}>limpar</button>
+              )}
             </div>
           )}
+          <div className="flex items-center gap-1 ml-2 pl-2 border-l">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1.5" disabled={!canEdit}><LayoutTemplate className="h-3.5 w-3.5" /> {({ radial: "Radial", right: "Direita", tree: "Organograma" } as any)[data.layout || "radial"]}</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuLabel>Tipo de mapa</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setLayoutKind("radial")}>Radial — ramos dos dois lados</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLayoutKind("right")}>Direita — todos os ramos à direita</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLayoutKind("tree")}>Organograma — de cima pra baixo</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Tema de cores</DropdownMenuLabel>
+                {Object.entries(THEMES).map(([k, t]) => (
+                  <DropdownMenuItem key={k} onClick={() => setTheme(k)} className="gap-2">
+                    <span className="flex gap-0.5">{t.palette.slice(0, 5).map((c) => <span key={c} className="h-3 w-3 rounded-full" style={{ background: c }} />)}</span>
+                    {t.name}{(data.theme || "unv") === k ? " ✓" : ""}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1.5" disabled={exporting}>
+                  {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => exportImage("pdf")}>Baixar PDF</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportImage("png")}>Baixar imagem (PNG)</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
           {!canEdit && <span className="text-amber-600">somente leitura — mapa de outra pessoa</span>}
@@ -346,7 +476,7 @@ function Editor() {
       </div>
 
       {/* canvas */}
-      <div className="flex-1">
+      <div className="flex-1" ref={canvasRef}>
         <ReactFlow
           nodes={nodes} edges={edges} nodeTypes={nodeTypes}
           nodesDraggable={false} nodesConnectable={false} elementsSelectable
