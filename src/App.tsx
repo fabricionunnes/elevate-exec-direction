@@ -41,6 +41,8 @@ const UNVStartClientsPage = lazy(() => import("./pages/onboarding-tasks/UNVStart
 const ProcessosPage = lazy(() => import("./pages/onboarding-tasks/ProcessosPage"));
 const CertificateVerifyPage = lazy(() => import("./pages/CertificateVerifyPage"));
 const GlobalGraphPage = lazy(() => import("./pages/onboarding-tasks/GlobalGraphPage"));
+const MindMapsPage = lazy(() => import("./pages/onboarding-tasks/MindMapsPage"));
+const MindMapEditorPage = lazy(() => import("./pages/onboarding-tasks/MindMapEditorPage"));
 const AcademyCertificatesPage = lazy(() => import("./pages/academy/AcademyCertificatesPage"));
 const CRMAgentsPage = lazy(() => import("./pages/crm/CRMAgentsPage"));
 const SalesOpsPage = lazy(() => import("./pages/SalesOpsPage"));
@@ -208,7 +210,6 @@ const MRRDashboardPage = lazy(() => import("./pages/onboarding-tasks/MRRDashboar
 const SignaturesAdminPage = lazy(() => import("./pages/onboarding-tasks/SignaturesAdminPage"));
 const FacunicampsDashboardPage = lazy(() => import("./pages/onboarding-tasks/FacunicampsDashboardPage"));
 const JuridicoPage = lazy(() => import("./pages/onboarding-tasks/JuridicoPage"));
-const BlogCommentsPage = lazy(() => import("./pages/onboarding-tasks/BlogCommentsPage"));
 const ROIClientePage = lazy(() => import("./pages/onboarding-tasks/ROIClientePage"));
 const RenovacoesPage = lazy(() => import("./pages/onboarding-tasks/RenovacoesPage"));
 const PontoDeEncontroPage = lazy(() => import("./pages/ponto-de-encontro/PontoDeEncontroPage"));
@@ -536,11 +537,12 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/copiloto" element={<CopilotPage />} />
               <Route path="/onboarding-tasks/cerebro" element={<CerebroPage />} />
               <Route path="/onboarding-tasks/grafo" element={<GlobalGraphPage />} />
+              <Route path="/onboarding-tasks/mapas" element={<MindMapsPage />} />
+              <Route path="/onboarding-tasks/mapas/:id" element={<MindMapEditorPage />} />
               <Route path="/processos" element={<ProcessosPage />} />
               <Route path="/onboarding-tasks/processos" element={<ProcessosPage />} />
               <Route path="/onboarding-tasks/automations" element={<AutomationsPage />} />
               <Route path="/onboarding-tasks/juridico" element={<JuridicoPage />} />
-              <Route path="/onboarding-tasks/blog-comentarios" element={<BlogCommentsPage />} />
               <Route path="/onboarding-tasks/roi-clientes" element={<ROIClientePage />} />
               <Route path="/onboarding-tasks/renovacoes" element={<RenovacoesPage />} />
               <Route path="/onboarding-tasks/b2b-prospection" element={<B2BProspectionPage />} />
