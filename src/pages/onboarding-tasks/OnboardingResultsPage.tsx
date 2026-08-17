@@ -80,6 +80,7 @@ const OnboardingResultsPage = () => {
   const [filterResults, setFilterResults] = useState<string>(() => searchParams.get("results") || "all");
   const [filterProjection, setFilterProjection] = useState<string>(() => searchParams.get("projection") || "all");
   const [excludedActive, setExcludedActive] = useState<{ name: string; motivo: string }[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   
   // Month filter - default to current month
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
@@ -187,6 +188,7 @@ const OnboardingResultsPage = () => {
       const currentDay = isCurrentMonth ? now.getDate() : daysInMonth;
       const timeElapsedPercent = currentDay / daysInMonth;
 
+      setLoadError(null);
       const startDate = format(startOfMonth(selectedMonthDate), "yyyy-MM-dd");
       // For current month: até hoje. For past months: até fim do mês
       const endDate = isCurrentMonth 
@@ -494,8 +496,11 @@ const OnboardingResultsPage = () => {
       console.log("Companies with KPIs configured:", Object.keys(companyIdsWithGoalsRecord));
       console.log("Companies with results:", Object.keys(companyIdsWithResultsRecord));
       console.log("Company projections:", Object.fromEntries(projectionsMap));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching data:", error);
+      // banner fixo: o toast some antes de dar pra ler e a tela fica toda
+      // zerada sem explicação (caso de 15/08/2026)
+      setLoadError(String(error?.message || error).slice(0, 300));
       toast.error("Erro ao carregar dados");
     } finally {
       setLoading(false);
@@ -785,6 +790,12 @@ const OnboardingResultsPage = () => {
         ) : (
           /* Company List */
           <>
+            {loadError && (
+              <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3">
+                <p className="text-sm font-medium text-destructive">Erro ao carregar os resultados — os números abaixo estão incompletos.</p>
+                <p className="text-xs text-muted-foreground mt-1 font-mono break-all">{loadError}</p>
+              </div>
+            )}
             {/* Results Summary Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
               {/* With Results */}

@@ -41,6 +41,27 @@ export function MastermindPanel({ companyId, canEdit }: { companyId: string; can
   const [newPhone, setNewPhone] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Primeira abertura sem contatos: traz sozinho o dono e os stakeholders da
+  // aba Informações (dá pra remover ou completar depois).
+  const autoImport = useCallback(async () => {
+    const { data: comp } = await (supabase as any).from("onboarding_companies")
+      .select("owner_name, owner_phone, phone, stakeholders").eq("id", companyId).maybeSingle();
+    if (!comp) return false;
+    const rows: { name: string; phone: string | null }[] = [];
+    if (comp.owner_name) rows.push({ name: comp.owner_name, phone: (comp.owner_phone || comp.phone || "").replace(/\D/g, "") || null });
+    for (const st of (Array.isArray(comp.stakeholders) ? comp.stakeholders : [])) {
+      const nome = st?.name || st?.nome;
+      if (nome && !rows.some((r) => r.name === nome)) {
+        rows.push({ name: nome, phone: String(st?.phone || st?.telefone || "").replace(/\D/g, "") || null });
+      }
+    }
+    if (!rows.length) return false;
+    const { error } = await (supabase as any).from("mastermind_members").insert(
+      rows.map((r) => ({ company_id: companyId, name: r.name, phone: r.phone, status: "active", source: "auto" })));
+    if (!error) toast.success(`${rows.length} contato${rows.length > 1 ? "s" : ""} da empresa importado${rows.length > 1 ? "s" : ""} automaticamente`);
+    return !error;
+  }, [companyId]);
+
   const load = useCallback(async () => {
     setLoading(true);
     const [mRes, cRes] = await Promise.all([
@@ -51,10 +72,17 @@ export function MastermindPanel({ companyId, canEdit }: { companyId: string; can
         .select("id, direction, kind, summary, message_at, member_id, member:mastermind_members!mastermind_contributions_member_id_fkey(name), counterpart_company:onboarding_companies!mastermind_contributions_counterpart_company_id_fkey(name)")
         .eq("company_id", companyId).order("message_at", { ascending: false }).limit(200),
     ]);
-    setMembers((mRes.data as Member[]) || []);
+    let membros = (mRes.data as Member[]) || [];
+    if (membros.length === 0 && (await autoImport())) {
+      const { data: again } = await (supabase as any).from("mastermind_members")
+        .select("id, name, phone, status, created_at")
+        .eq("company_id", companyId).neq("status", "removed").order("created_at");
+      membros = (again as Member[]) || [];
+    }
+    setMembers(membros);
     setContribs((cRes.data as Contribution[]) || []);
     setLoading(false);
-  }, [companyId]);
+  }, [companyId, autoImport]);
   useEffect(() => { load(); }, [load]);
 
   const addMember = async () => {
