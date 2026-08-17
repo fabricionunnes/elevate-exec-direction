@@ -136,6 +136,8 @@ function MMNodeView({ id, data, selected }: NodeProps) {
   const editing = d.editingId === id;
   const [txt, setTxt] = useState(n.text);
   useEffect(() => setTxt(n.text), [n.text]);
+  // se a edição começou por uma tecla (digitou em cima do nó), começa por ela
+  useEffect(() => { if (editing && d.seed !== undefined) setTxt(d.seed === null ? n.text : d.seed); }, [editing]); // eslint-disable-line
   const hasKids = n.children.length > 0;
 
   return (
@@ -160,15 +162,18 @@ function MMNodeView({ id, data, selected }: NodeProps) {
       {editing ? (
         <input
           autoFocus
-          className="w-full bg-transparent outline-none py-2"
+          className="nodrag nopan w-full bg-transparent outline-none py-2"
           value={txt}
+          onFocus={(e) => { const v = e.target.value; e.target.setSelectionRange(v.length, v.length); }}
           onChange={(e) => setTxt(e.target.value)}
           onBlur={() => d.commitEdit(id, txt)}
+          onMouseDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => {
-            if (e.key === "Enter") { e.preventDefault(); d.commitEdit(id, txt); d.addSibling(id); }
-            if (e.key === "Tab") { e.preventDefault(); d.commitEdit(id, txt); d.addChild(id); }
-            if (e.key === "Escape") { d.commitEdit(id, n.text); }
+            // o campo é dono do teclado enquanto edita — nada sobe pro canvas
             e.stopPropagation();
+            if (e.key === "Enter") { e.preventDefault(); d.commitEdit(id, txt); d.addSibling(id); }
+            else if (e.key === "Tab") { e.preventDefault(); d.commitEdit(id, txt); d.addChild(id); }
+            else if (e.key === "Escape") { e.preventDefault(); d.commitEdit(id, n.text); }
           }}
         />
       ) : (
@@ -176,8 +181,10 @@ function MMNodeView({ id, data, selected }: NodeProps) {
       )}
       {hasKids && !d.isRoot && (
         <button
-          className="absolute -right-2.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full border bg-white text-[10px] font-bold flex items-center justify-center shadow"
-          style={{ borderColor: color, color, [d.side === -1 ? "left" : "right"]: -10 } as any}
+          className="nodrag absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full border bg-white text-[10px] font-bold flex items-center justify-center shadow z-10"
+          style={{ borderColor: color, color,
+            ...(d.side === 0 ? { left: "50%", top: "auto", bottom: -12, transform: "translateX(-50%)" }
+              : d.side === -1 ? { left: -12 } : { right: -12 }) }}
           onClick={(e) => { e.stopPropagation(); d.toggle(id); }}
           title={n.collapsed ? "Expandir" : "Colapsar"}
         >
@@ -199,6 +206,7 @@ function Editor() {
   const [data, setData] = useState<MMData>({ root: { id: "root", text: "Ideia central", children: [] } });
   const [selectedId, setSelectedId] = useState<string>("root");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editSeed, setEditSeed] = useState<string | null>(null); // 1ª letra digitada em cima do nó
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [canEdit, setCanEdit] = useState(true);
@@ -242,7 +250,7 @@ function Editor() {
       f.node.collapsed = false;
       f.node.children.push({ id: nid, text: "", children: [] });
     });
-    setSelectedId(nid); setEditingId(nid);
+    setSelectedId(nid); setEditSeed(""); setEditingId(nid);
   }, [mutate]);
 
   const addSibling = useCallback((id: string) => {
@@ -253,7 +261,7 @@ function Editor() {
       const i = f.parent.children.findIndex((c) => c.id === id);
       f.parent.children.splice(i + 1, 0, { id: nid, text: "", children: [] });
     });
-    setSelectedId(nid); setEditingId(nid);
+    setSelectedId(nid); setEditSeed(""); setEditingId(nid);
   }, [mutate, addChild]);
 
   const removeNode = useCallback((id: string) => {
@@ -269,7 +277,7 @@ function Editor() {
   }, [mutate]);
 
   const commitEdit = useCallback((id: string, text: string) => {
-    setEditingId(null);
+    setEditingId(null); setEditSeed(null);
     mutate((root) => { const f = findNode(root, id); if (f) f.node.text = text.trim(); });
   }, [mutate]);
 
@@ -332,18 +340,20 @@ function Editor() {
   // teclado global
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
-      if (editingId) return;
+      if (editingId) return; // o input do nó é dono do teclado
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
       if (e.key === "Tab") { e.preventDefault(); addChild(selectedId); }
       else if (e.key === "Enter") { e.preventDefault(); addSibling(selectedId); }
       else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); removeNode(selectedId); }
-      else if (e.key === "F2") { e.preventDefault(); setEditingId(selectedId); }
+      else if (e.key === "F2") { e.preventDefault(); setEditSeed(null); setEditingId(selectedId); }
       else if (e.key === " ") { e.preventDefault(); toggle(selectedId); }
       else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? doRedo() : doUndo(); }
       else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") { e.preventDefault(); save(); }
       else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) {
         // começou a digitar em cima de um nó: entra em edição já com a letra
+        e.preventDefault();
+        setEditSeed(e.key);
         setEditingId(selectedId);
       }
     };
@@ -386,12 +396,13 @@ function Editor() {
     return {
       nodes: l.nodes.map((n) => ({
         ...n, selected: n.id === selectedId,
-        data: { ...n.data, editingId, startEdit: (id: string) => canEdit && setEditingId(id),
+        data: { ...n.data, editingId, seed: n.id === editingId ? editSeed : undefined,
+          startEdit: (id: string) => { if (!canEdit) return; setEditSeed(null); setEditingId(id); },
           commitEdit, addChild, addSibling, toggle },
       })),
       edges: l.edges,
     };
-  }, [data, selectedId, editingId, commitEdit, addChild, addSibling, toggle, canEdit]);
+  }, [data, selectedId, editingId, editSeed, commitEdit, addChild, addSibling, toggle, canEdit]);
 
   useEffect(() => { if (!loading) setTimeout(() => rf.fitView({ padding: 0.3, duration: 300 }), 50); }, [loading]); // eslint-disable-line
 
