@@ -73,7 +73,6 @@ import { useCRMContext } from "./CRMLayout";
 import { createStageActivities } from "@/hooks/useStageActions";
 import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
 import { trackMeetingEventOnStageChange } from "@/hooks/useMeetingEventTracker";
-import { sendWonLeadNotification } from "@/hooks/useSendWonNotification";
 import {
   LeadActivitiesTab,
   LeadCustomFieldsTab,
@@ -594,21 +593,10 @@ export const CRMLeadDetailPage = () => {
         }
       }
 
-      // Enviar notificação para o grupo de WhatsApp (não bloqueia o fluxo principal)
-      sendWonLeadNotification(lead.id)
-        .then((result) => {
-          console.log("[WON NOTIFICATION] Result:", JSON.stringify(result));
-          if (result.success) {
-            toast.success("📱 Notificação enviada para o grupo!");
-          } else {
-            // Só loga no console — não exibe erro para o usuário pois a venda já foi registrada
-            console.warn("[WON NOTIFICATION] Falha ao notificar grupo:", result.error);
-          }
-        })
-        .catch((e) => {
-          // Falha silenciosa — instância WhatsApp pode estar desconectada
-          console.error("[WON NOTIFICATION] Exception:", e);
-        });
+      // A notificação de venda no grupo é disparada pelo BANCO (trigger
+      // crm_won_notify → crm-won-notify, idempotente por lead). Mandar daqui
+      // também gerava a mensagem em dobro no grupo (17/08/2026, Cr Sublime).
+      toast.success("📱 O grupo será avisado da venda");
 
       setWonDialogOpen(false);
       loadLead();

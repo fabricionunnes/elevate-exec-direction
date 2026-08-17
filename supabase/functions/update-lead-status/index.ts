@@ -233,41 +233,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 6. If won, send notification (optional, best-effort)
-    if (status === 'won') {
-      try {
-        const { data: settings } = await supabase
-          .from('crm_settings')
-          .select('setting_key, setting_value')
-          .in('setting_key', [
-            'won_notification_enabled',
-            'won_notification_instance_id',
-            'won_notification_group_jid',
-          ]);
-
-        const config: Record<string, string | null> = {};
-        (settings || []).forEach(s => {
-          config[s.setting_key] = s.setting_value as string;
-        });
-
-        if (config.won_notification_enabled === 'true' && config.won_notification_instance_id && config.won_notification_group_jid) {
-          const valueStr = paid_value ? `\n💵 *Valor pago:* R$ ${Number(paid_value).toLocaleString('pt-BR')}` : 
-                          (finalValue ? `\n💵 *Valor:* R$ ${Number(finalValue).toLocaleString('pt-BR')}` : '');
-          const bankStr = bankName ? `\n🏦 *Banco:* ${bankName}` : '';
-
-          await supabase.functions.invoke('evolution-api', {
-            body: {
-              action: 'sendGroupText',
-              instanceId: config.won_notification_instance_id,
-              groupId: config.won_notification_group_jid,
-              message: `🎉 *NOVA VENDA FECHADA (via API)!*\n\n👤 *Lead:* ${lead.name || 'N/A'}\n📱 *Telefone:* ${lead.phone || 'N/A'}\n🏢 *Empresa:* ${lead.company || 'N/A'}${valueStr}${bankStr}`,
-            },
-          });
-        }
-      } catch (notifError) {
-        console.error('[update-lead-status] Notification error (non-blocking):', notifError);
-      }
-    }
+    // 6. Notificação de venda no grupo: NÃO manda daqui. O trigger do banco
+    //    (crm_won_notify → crm-won-notify, idempotente por lead) já dispara
+    //    quando o stage_id vira etapa de ganho. Mandar aqui também duplicava
+    //    a mensagem no grupo (17/08/2026).
 
     return new Response(JSON.stringify({ 
       success: true, 
