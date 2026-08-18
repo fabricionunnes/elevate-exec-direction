@@ -153,13 +153,22 @@ export const RealtimeNotifications = () => {
     toast.success("Todas as notificações marcadas como lidas");
   };
 
+  // Pra onde a notificação leva: se a referência é um lead do CRM (formulário
+  // de dados contratuais, etc.), abre o card do lead — ainda não é projeto.
+  const notificationTarget = (n: Notification): { path: string; label: string } | null => {
+    if (n.reference_type === "crm_lead" && n.reference_id) {
+      return { path: `/crm/leads/${n.reference_id}`, label: "Ver Lead" };
+    }
+    if (n.project_id) return { path: `/onboarding-tasks/${n.project_id}`, label: "Ver Projeto" };
+    return null;
+  };
+
   const handleGoToNotification = async (notification: Notification) => {
     await handleMarkAsRead(notification.id);
     setShowPopup(false);
     setSheetOpen(false);
-    if (notification.project_id) {
-      navigate(`/onboarding-tasks/${notification.project_id}`);
-    }
+    const t = notificationTarget(notification);
+    if (t) navigate(t.path);
   };
 
   const handleDismissPopup = async () => {
@@ -201,10 +210,12 @@ export const RealtimeNotifications = () => {
                 <Button variant="outline" onClick={handleDismissPopup}>
                   Dispensar
                 </Button>
-                <Button onClick={() => handleGoToNotification(currentNotification)}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Ver Projeto
-                </Button>
+                {notificationTarget(currentNotification) && (
+                  <Button onClick={() => handleGoToNotification(currentNotification)}>
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    {notificationTarget(currentNotification)!.label}
+                  </Button>
+                )}
               </div>
             </div>
           )}

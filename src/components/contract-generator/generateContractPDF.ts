@@ -308,7 +308,16 @@ export async function generateContractPDF({ formData, customClauses }: GenerateP
       const isAutoGerada = /O valor (total )?do presente contrato será de/i.test(clause.content);
       // Edição manual do consultor SEMPRE vence — a heurística por texto
       // descartava edições que mantinham a frase padrão de valor.
-      const isDefault = !clause.manuallyEdited && (isPlaceholder || isAutoGerada);
+      // Flag "manual" só vale se o texto NÃO for idêntico a uma geração automática
+      // (qualquer forma de pagamento, com/sem comissão) — senão é flag presa e o
+      // PDF sairia com cláusula de outra forma de pagamento.
+      const looksAuto = (["card", "pix", "boleto"] as const).some((pm) =>
+        [false, true].some((com) => buildInvestimentoContent({
+          paymentMethod: pm, isRecurring: formData.isRecurring, installments: formData.installments,
+          contractValue: formData.contractValue, dueDay: formData.dueDay,
+          isCommissioned: com, commissionValue: formData.commissionValue,
+        }) === clause.content));
+      const isDefault = (!clause.manuallyEdited || looksAuto) && (isPlaceholder || isAutoGerada || looksAuto);
       const investimentoContent = isDefault
         ? buildInvestimentoContent({
             paymentMethod: formData.paymentMethod,
