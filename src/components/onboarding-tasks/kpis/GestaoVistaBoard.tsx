@@ -73,12 +73,17 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
   const innerRef = useRef<HTMLDivElement>(null);
 
   const refDate = useMemo(() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + monthOffset); return d; }, [monthOffset]);
+  const [tick, setTick] = useState(0);            // Realtime/poll batem aqui pra recarregar
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastSync, setLastSync] = useState<Date | null>(null);
+  const firstLoad = useRef(true);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       if (!companyId) return;
-      setLoading(true);
+      // 1ª carga mostra o loader; as recargas ao vivo trocam os números por baixo
+      if (firstLoad.current) setLoading(true); else setRefreshing(true);
       const mKey = monthKey(refDate);
       const start = `${mKey}-01`;
       const endD = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0);
@@ -225,10 +230,36 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
       setWeekly(wk);
       setNotices((noticeRes.data as Notice[]) || []);
       if (cfgRes.data) setCfg(cfgRes.data as any);
-      setLoading(false);
+      setLoading(false); setRefreshing(false); setLastSync(new Date());
+      firstLoad.current = false;
     })();
     return () => { alive = false; };
-  }, [companyId, refDate]);
+  }, [companyId, refDate, tick]);
+
+  // ── AO VIVO: qualquer lançamento/meta/aviso da empresa (manual, planilha,
+  //    Agendor, WinDash, Bitrix, ERP) chega em kpi_entries e o Postgres avisa
+  //    o quadro na hora. Coalescência de 800ms: um lote de integração com 200
+  //    linhas vira 1 recarga, não 200. Poll de 5 min é rede de segurança pra
+  //    TV que ficou dias ligada e perdeu o socket.
+  useEffect(() => {
+    if (!companyId) return;
+    let t: number | undefined;
+    const bump = () => { window.clearTimeout(t); t = window.setTimeout(() => setTick((x) => x + 1), 800); };
+    const ch = supabase
+      .channel(`gestao-vista-${companyId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "kpi_entries", filter: `company_id=eq.${companyId}` }, bump)
+      .on("postgres_changes", { event: "*", schema: "public", table: "kpi_monthly_targets", filter: `company_id=eq.${companyId}` }, bump)
+      .on("postgres_changes", { event: "*", schema: "public", table: "gestao_vista_notices", filter: `company_id=eq.${companyId}` }, bump)
+      .subscribe();
+    const poll = window.setInterval(() => setTick((x) => x + 1), 5 * 60 * 1000);
+    const onVisible = () => { if (document.visibilityState === "visible") bump(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearTimeout(t); window.clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisible);
+      supabase.removeChannel(ch);
+    };
+  }, [companyId]);
 
   const saveCfg = async (patch: Partial<typeof cfg>) => {
     const next = { ...cfg, ...patch };
@@ -363,6 +394,10 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
               <span className="text-xs font-semibold capitalize px-1 min-w-[92px] text-center">{monthLabel(refDate)}</span>
               <button onClick={() => setMonthOffset(o => o + 1)} disabled={monthOffset >= 0} className="p-1 rounded hover:bg-background disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
             </div>
+            <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground" title={lastSync ? `Atualizado às ${lastSync.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : "Ao vivo"}>
+              <span className={cn("h-2 w-2 rounded-full", refreshing ? "bg-amber-500 animate-pulse" : "bg-emerald-500")} />
+              {refreshing ? "atualizando" : "ao vivo"}
+            </span>
             <button onClick={toggleFull} className="p-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary" title="Tela cheia">
               {isFull ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </button>
