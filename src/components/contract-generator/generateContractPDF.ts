@@ -311,12 +311,15 @@ export async function generateContractPDF({ formData, customClauses }: GenerateP
       // Flag "manual" só vale se o texto NÃO for idêntico a uma geração automática
       // (qualquer forma de pagamento, com/sem comissão) — senão é flag presa e o
       // PDF sairia com cláusula de outra forma de pagamento.
+      const shape = (t: string) => t.replace(/[\d.,]+/g, "#").replace(/\([^)]*\)/g, "()").replace(/\s+/g, " ").trim();
+      const target = shape(clause.content);
       const looksAuto = (["card", "pix", "boleto"] as const).some((pm) =>
-        [false, true].some((com) => buildInvestimentoContent({
-          paymentMethod: pm, isRecurring: formData.isRecurring, installments: formData.installments,
-          contractValue: formData.contractValue, dueDay: formData.dueDay,
-          isCommissioned: com, commissionValue: formData.commissionValue,
-        }) === clause.content));
+        [false, true].some((com) => [true, false].some((rec) => [1, formData.installments || 1].some((inst) =>
+          shape(buildInvestimentoContent({
+            paymentMethod: pm, isRecurring: rec, installments: inst,
+            contractValue: formData.contractValue, dueDay: formData.dueDay,
+            isCommissioned: com, commissionValue: formData.commissionValue,
+          })) === target))));
       const isDefault = (!clause.manuallyEdited || looksAuto) && (isPlaceholder || isAutoGerada || looksAuto);
       const investimentoContent = isDefault
         ? buildInvestimentoContent({
