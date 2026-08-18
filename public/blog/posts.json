@@ -1,17 +1,33 @@
 {
- "gerado_em": "2026-08-18T00:03:49",
+ "gerado_em": "2026-08-18T00:04:57",
  "posts": [
   {
-   "slug": "preco-mensal-ou-anual-muda-quem-fecha",
-   "url": "/blog/preco-mensal-ou-anual-muda-quem-fecha/",
-   "titulo": "Preço mensal ou anual muda quem fecha com você",
-   "resumo": "A forma como você apresenta o preço não é só financeira. É filtro de qualificação e alinhamento de expectativa desde o primeiro contato.",
+   "slug": "dono-que-opera-nao-escala-lideranca",
+   "url": "/blog/dono-que-opera-nao-escala-lideranca/",
+   "titulo": "Dono que opera não escala nem a loja nem a liderança",
+   "resumo": "O dono precisa sair da operação para desenvolver quem fica no lugar dele. Enquanto ele resolve problema de loja, ninguém estrutura o comercial para crescer.",
    "tags": [
-    "preço",
-    "qualificação",
+    "delegação",
     "estrutura comercial",
-    "retenção",
-    "oferta"
+    "treino de liderança",
+    "meta mensal",
+    "sistema"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-18",
+   "ts": 2020
+  },
+  {
+   "slug": "trafego-pago-sozinho-nao-fecha-venda",
+   "url": "/blog/trafego-pago-sozinho-nao-fecha-venda/",
+   "titulo": "Tráfego pago sozinho não fecha venda nem bate meta",
+   "resumo": "Dono que coloca dinheiro em anúncio sem ter quem atenda está queimando caixa. O que converte não é quem clica, é quem pega o lead depois.",
+   "tags": [
+    "tráfego pago",
+    "estrutura comercial",
+    "meta mensal",
+    "treino de vendedor",
+    "conversão"
    ],
    "tipo": "diario",
    "data": "2026-08-18",
