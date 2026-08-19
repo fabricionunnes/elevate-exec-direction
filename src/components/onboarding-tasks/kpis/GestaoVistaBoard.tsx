@@ -553,13 +553,10 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                 </div>
                 <div className={cn("rounded-xl border border-amber-500/30 bg-amber-500/5 p-4", CARD)}>
                   <div className={cn("flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground mb-1", "text-[11px]")}>
-                    <Trophy className="h-3.5 w-3.5 text-amber-500" /> Destaque do dia
+                    <Trophy className="h-3.5 w-3.5 text-amber-500" /> Maior faturamento do dia
                   </div>
                   {today.top ? (
-                    <>
-                      <div className="font-black text-foreground text-xl sm:text-2xl truncate" title={today.top.name}>{today.top.name}</div>
-                      <div className="text-sm font-semibold text-amber-600 mt-0.5">{fmt(today.top.value, today.revenueType as KpiType)}</div>
-                    </>
+                    <div className="font-black text-foreground text-xl sm:text-2xl truncate" title={today.top.name}>{today.top.name}</div>
                   ) : (
                     <div className="text-sm text-muted-foreground mt-2">Ninguém vendeu ainda hoje</div>
                   )}
