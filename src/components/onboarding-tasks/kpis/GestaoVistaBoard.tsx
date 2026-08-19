@@ -66,6 +66,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
   const [today, setToday] = useState<{
     revenue: number; revenueType: string; sales: number | null;
     top: { name: string; value: number } | null;
+    topSales: { name: string; count: number } | null;   // quem mais vendeu em quantidade
     isRecord: boolean;            // maior dia do mês (faturamento ou nº de vendas)
   } | null>(null);
   // fila das últimas 5 vendas (1 linha = 1 venda, do feed do banco)
@@ -255,6 +256,8 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
             });
           }
           const ranked = [...revByPerson.entries()].filter(([, r]) => r.value > 0).sort((a, b) => b[1].value - a[1].value);
+          const rankedSales = [...salesByPerson.entries()].filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+          const topSales = rankedSales[0] ? { name: nameOf.get(rankedSales[0][0]) || "—", count: rankedSales[0][1] } : null;
           const top = ranked[0] ? { name: nameOf.get(ranked[0][0]) || "—", value: ranked[0][1].value } : null;
           // recorde do mês: hoje é o maior dia em faturamento (ou em nº de vendas,
           // se a empresa conta vendas) entre os dias do mês com lançamento
@@ -268,7 +271,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
           const maxOtherRev = daysWithData.length ? Math.max(...daysWithData.map(d => byDayRev.get(d) || 0)) : 0;
           const maxOtherSales = [...byDaySales.keys()].filter(d => d !== todayKey).reduce((m, d) => Math.max(m, byDaySales.get(d) || 0), 0);
           const isRecord = daysWithData.length > 0 && revenue > 0 && (revenue > maxOtherRev || (sales !== null && sales > maxOtherSales));
-          setToday({ revenue, revenueType: main.kpi_type, sales, top, isRecord });
+          setToday({ revenue, revenueType: main.kpi_type, sales, top, topSales, isRecord });
         } else {
           setToday(null);
         }
@@ -561,6 +564,15 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                     <div className="text-sm text-muted-foreground mt-2">Ninguém vendeu ainda hoje</div>
                   )}
                 </div>
+                {today.topSales && (
+                  <div className={cn("rounded-xl border border-sky-500/30 bg-sky-500/5 p-4", CARD)}>
+                    <div className={cn("flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground mb-1", "text-[11px]")}>
+                      <Zap className="h-3.5 w-3.5 text-sky-500" /> Mais vendas do dia
+                    </div>
+                    <div className="font-black text-foreground text-xl sm:text-2xl truncate" title={today.topSales.name}>{today.topSales.name}</div>
+                    <div className="text-sm font-semibold text-sky-600 mt-0.5">{today.topSales.count.toLocaleString("pt-BR")} venda{today.topSales.count === 1 ? "" : "s"}</div>
+                  </div>
+                )}
                 <div className={cn("rounded-xl border border-border bg-muted/40 p-4", CARD)}>
                   <div className={cn("flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground mb-2", "text-[11px]")}>
                     <Flag className="h-3.5 w-3.5 text-primary" /> Últimas vendas de hoje
