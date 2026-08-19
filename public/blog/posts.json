@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-08-19T15:01:20",
+ "gerado_em": "2026-08-19T21:01:08",
  "posts": [
+  {
+   "slug": "consultoria-sem-implementacao-nao-vende",
+   "url": "/blog/consultoria-sem-implementacao-nao-vende/",
+   "titulo": "Consultoria sem implementação não vende mais nem retém cliente",
+   "resumo": "Você entende o diagnóstico. O cliente também. Mas na hora de executar sozinho, trava. E aí vira custo, não investimento.",
+   "tags": [
+    "implementação",
+    "entrega",
+    "retenção",
+    "estrutura comercial",
+    "treino"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-19",
+   "ts": 2026
+  },
   {
    "slug": "venda-distancia-confianca-estrutura-nao-carisma",
    "url": "/blog/venda-distancia-confianca-estrutura-nao-carisma/",
