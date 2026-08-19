@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Loader2, Maximize2, Minimize2, ChevronLeft, ChevronRight, Target, TrendingUp, Trophy, Flag,
+  Loader2, Maximize2, Minimize2, ChevronLeft, ChevronRight, Target, TrendingUp, Trophy, Flag, Zap,
   Eye, EyeOff, Users, Megaphone, Plus, X, Filter, Check, Pencil, Trash2,
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from "recharts";
@@ -60,6 +60,13 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
   const [ranking, setRanking] = useState<{ name: string; value: number; type: string; pct: number; levels: Level[]; reached: string | null }[]>([]);
   const [teamSales, setTeamSales] = useState<{ name: string; value: number; type: string }[]>([]);
   const [weekly, setWeekly] = useState<{ week: string; real: number }[]>([]);
+  // bloco "Hoje": total do dia (KPI principal + nº de vendas), campeã do dia e
+  // últimas vendedoras que lançaram venda hoje
+  const [today, setToday] = useState<{
+    revenue: number; revenueType: string; sales: number | null;
+    top: { name: string; value: number } | null;
+    latest: { name: string; value: number; sales: number | null; at: string }[];
+  } | null>(null);
   const [mainKpi, setMainKpi] = useState<KpiRow | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [newNotice, setNewNotice] = useState("");
@@ -93,7 +100,7 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
         supabase.from("onboarding_companies").select("name, owner_name").eq("id", companyId).maybeSingle(),
         supabase.from("company_kpis").select("id, name, kpi_type, periodicity, target_value, is_main_goal, sort_order").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
         supabase.from("kpi_monthly_targets").select("kpi_id, target_value, level_order, level_name, salesperson_id, unit_id, team_id, sector_id").eq("company_id", companyId).eq("month_year", mKey),
-        supabase.from("kpi_entries").select("kpi_id, salesperson_id, value, entry_date").eq("company_id", companyId).gte("entry_date", start).lte("entry_date", end),
+        supabase.from("kpi_entries").select("kpi_id, salesperson_id, value, entry_date, updated_at").eq("company_id", companyId).gte("entry_date", start).lte("entry_date", end),
         supabase.from("company_salespeople").select("id, name, team_id").eq("company_id", companyId).eq("is_active", true),
         supabase.from("company_teams").select("id, name").eq("company_id", companyId).eq("is_active", true),
         supabase.from("company_daily_goal_settings").select("include_saturday, include_sunday, include_holidays").eq("company_id", companyId).maybeSingle(),
@@ -208,6 +215,47 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
       }
       const teamRows = teams.map(t => ({ name: t.name, value: teamAgg.get(t.id) || 0, type: main?.kpi_type || "monetary" }))
         .filter(t => t.value > 0).sort((a, b) => b.value - a.value);
+
+      // ── Hoje ─────────────────────────────────────────────────────────────
+      // O KPI grava agregado por vendedora e dia (não tem hora de cada venda):
+      // "últimas 5" = as últimas vendedoras que lançaram venda hoje, pela hora
+      // em que o lançamento entrou (updated_at). Total/campeã saem do KPI
+      // principal (faturamento); nº de vendas, do KPI "Vendas" se existir.
+      {
+        const todayKey = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; })();
+        const isThisMonth = todayKey.startsWith(mKey);
+        const salesKpi = rows.find(r => r.kpi_type !== "monetary" && /venda/i.test(r.name)) || null;
+        const nameOf = new Map(people.map(p => [p.id, p.name]));
+        const todayEntries = isThisMonth ? entries.filter(e => e.entry_date === todayKey) : [];
+        if (main && isThisMonth) {
+          const revByPerson = new Map<string, { value: number; at: string }>();
+          let revenue = 0;
+          todayEntries.filter(e => e.kpi_id === main.id).forEach(e => {
+            const v = Number(e.value || 0); revenue += v;
+            if (e.salesperson_id) {
+              const cur = revByPerson.get(e.salesperson_id);
+              revByPerson.set(e.salesperson_id, { value: (cur?.value || 0) + v, at: (e as any).updated_at > (cur?.at || "") ? (e as any).updated_at : (cur?.at || "") });
+            }
+          });
+          const salesByPerson = new Map<string, number>();
+          let sales: number | null = null;
+          if (salesKpi) {
+            sales = 0;
+            todayEntries.filter(e => e.kpi_id === salesKpi.id).forEach(e => {
+              const v = Number(e.value || 0); sales! += v;
+              if (e.salesperson_id) salesByPerson.set(e.salesperson_id, (salesByPerson.get(e.salesperson_id) || 0) + v);
+            });
+          }
+          const ranked = [...revByPerson.entries()].filter(([, r]) => r.value > 0).sort((a, b) => b[1].value - a[1].value);
+          const top = ranked[0] ? { name: nameOf.get(ranked[0][0]) || "—", value: ranked[0][1].value } : null;
+          const latest = [...revByPerson.entries()].filter(([, r]) => r.value > 0)
+            .sort((a, b) => (b[1].at || "").localeCompare(a[1].at || "")).slice(0, 5)
+            .map(([pid, r]) => ({ name: nameOf.get(pid) || "—", value: r.value, sales: salesKpi ? (salesByPerson.get(pid) ?? 0) : null, at: r.at }));
+          setToday({ revenue, revenueType: main.kpi_type, sales, top, latest });
+        } else {
+          setToday(null);
+        }
+      }
 
       // evolução semanal da meta principal
       let wk: { week: string; real: number }[] = [];
@@ -411,6 +459,54 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
         ) : (
           <>
           <div className={cn(isFull ? "[columns:3] [column-gap:1rem] mt-4" : "space-y-4")}>
+            {/* Hoje: total do dia · campeã do dia · últimas vendas */}
+            {today && (
+              <div className={GRID("grid gap-3")} style={isFull ? undefined : { gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+                <div className={cn("rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4", CARD)}>
+                  <div className={cn("flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground mb-1", "text-[11px]")}>
+                    <Zap className="h-3.5 w-3.5 text-emerald-500" /> Vendas de hoje
+                  </div>
+                  <div className="font-black text-emerald-600 text-2xl sm:text-3xl">{fmt(today.revenue, today.revenueType as KpiType)}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {today.sales !== null ? `${today.sales.toLocaleString("pt-BR")} venda${today.sales === 1 ? "" : "s"} · ` : ""}
+                    {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" })}
+                  </div>
+                </div>
+                <div className={cn("rounded-xl border border-amber-500/30 bg-amber-500/5 p-4", CARD)}>
+                  <div className={cn("flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground mb-1", "text-[11px]")}>
+                    <Trophy className="h-3.5 w-3.5 text-amber-500" /> Destaque do dia
+                  </div>
+                  {today.top ? (
+                    <>
+                      <div className="font-black text-foreground text-xl sm:text-2xl truncate" title={today.top.name}>{today.top.name}</div>
+                      <div className="text-sm font-semibold text-amber-600 mt-0.5">{fmt(today.top.value, today.revenueType as KpiType)}</div>
+                    </>
+                  ) : (
+                    <div className="text-sm text-muted-foreground mt-2">Ninguém vendeu ainda hoje</div>
+                  )}
+                </div>
+                <div className={cn("rounded-xl border border-border bg-muted/40 p-4", CARD)}>
+                  <div className={cn("flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground mb-2", "text-[11px]")}>
+                    <Flag className="h-3.5 w-3.5 text-primary" /> Últimas vendas de hoje
+                  </div>
+                  {today.latest.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">Sem vendas lançadas hoje</div>
+                  ) : (
+                    <ol className="space-y-1">
+                      {today.latest.map((l, i) => (
+                        <li key={i} className="flex items-center justify-between gap-2 text-sm">
+                          <span className="truncate font-medium">{l.name}</span>
+                          <span className="tabular-nums text-muted-foreground whitespace-nowrap">
+                            {l.sales !== null ? `${l.sales} · ` : ""}{fmt(l.value, today.revenueType as KpiType)}
+                            {l.at ? <span className="ml-1 opacity-60">{new Date(l.at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span> : null}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              </div>
+            )}
             {/* Indicadores gerais */}
             {generalCards.length > 0 && (
               <div className={GRID("grid gap-3")} style={isFull ? undefined : { gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
