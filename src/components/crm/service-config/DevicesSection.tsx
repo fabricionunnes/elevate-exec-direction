@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -155,12 +155,30 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
     }
   };
 
+  // Trava anti-rajada: 7 instâncias foram criadas em 2 min (18/08) por cliques
+  // repetidos enquanto a criação falhava — cada uma abria uma sessão nova no
+  // servidor, e sessão em rajada é o que põe os números em risco no WhatsApp.
+  const lastCreateRef = useRef<number>(0);
+  const creatingRef = useRef(false);
+
   const handleCreateDevice = async () => {
     if (!newName.trim()) {
       toast.error("Informe um nome para o dispositivo");
       return;
     }
+    if (creatingRef.current) return; // já tem uma criação em andamento
+    const since = Date.now() - lastCreateRef.current;
+    if (since < 60_000) {
+      toast.error(`Aguarde ${Math.ceil((60_000 - since) / 1000)}s antes de criar outro dispositivo — criar vários em sequência põe os números em risco no WhatsApp.`);
+      return;
+    }
+    if (instances.filter((i) => i.status !== "connected").length >= 2) {
+      toast.error("Já existem dispositivos criados e não conectados. Conecte ou exclua antes de criar outro.");
+      return;
+    }
 
+    creatingRef.current = true;
+    lastCreateRef.current = Date.now();
     setSaving(true);
     try {
       const instanceName = `crm_${Date.now()}`;
@@ -200,7 +218,11 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
         is_default: instances.length === 0,
       });
 
-      if (error) throw error;
+      if (error) {
+        // desfaz no servidor — senão fica uma sessão órfã pedindo QR
+        try { await supabase.functions.invoke('evolution-api', { body: { action: 'delete-instance', instanceName } }); } catch { /* noop */ }
+        throw error;
+      }
       
       toast.success("Dispositivo criado");
       setShowNewDevice(false);
@@ -211,6 +233,7 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar dispositivo");
     } finally {
+      creatingRef.current = false;
       setSaving(false);
     }
   };
