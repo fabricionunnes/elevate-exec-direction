@@ -51,3 +51,54 @@ export const playNotificationSound = async () => {
     console.log('Could not play notification sound:', error);
   }
 };
+
+// Som de comemoração (venda nova no Quadro de Gestão à Vista): fanfarra curta
+// sintetizada — arpejo maior ascendente + "brilho" no fim. Sem arquivo externo,
+// então toca na TV mesmo offline. Respeita a política do navegador: precisa de
+// um clique na página antes (o primeiro clique em qualquer lugar libera).
+export const playCelebrationSound = async () => {
+  try {
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    if (audioContext.state === "suspended") await audioContext.resume();
+    const ctx = audioContext;
+    const now = ctx.currentTime;
+    const master = ctx.createGain();
+    master.gain.value = 0.6;
+    master.connect(ctx.destination);
+
+    // fanfarra: C5 E5 G5 C6 (arpejo) + acorde final sustentado
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((f, i) => {
+      const t = now + i * 0.11;
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type = "triangle"; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.5, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+      o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.3);
+    });
+    // acorde final (C6 + E6 + G6) com brilho
+    const tEnd = now + 0.46;
+    [1046.5, 1318.5, 1568.0].forEach((f) => {
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(0, tEnd);
+      g.gain.linearRampToValueAtTime(0.35, tEnd + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.001, tEnd + 0.9);
+      o.connect(g); g.connect(master); o.start(tEnd); o.stop(tEnd + 0.95);
+    });
+    // "chuva de brilho": ruído curto filtrado em agudos
+    const len = Math.floor(ctx.sampleRate * 0.5);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 5000;
+    const ng = ctx.createGain(); ng.gain.value = 0.18;
+    src.connect(hp); hp.connect(ng); ng.connect(master); src.start(tEnd); src.stop(tEnd + 0.5);
+  } catch (e) {
+    console.warn("celebration sound:", e);
+  }
+};

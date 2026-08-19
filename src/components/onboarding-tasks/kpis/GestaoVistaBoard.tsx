@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from "recharts";
 import { cn } from "@/lib/utils";
+import { playCelebrationSound } from "@/lib/notificationSound";
 import { toast } from "sonner";
 
 /**
@@ -65,8 +66,15 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
   const [today, setToday] = useState<{
     revenue: number; revenueType: string; sales: number | null;
     top: { name: string; value: number } | null;
-    latest: { name: string; value: number; sales: number | null; at: string }[];
+    isRecord: boolean;            // maior dia do mês (faturamento ou nº de vendas)
   } | null>(null);
+  // fila das últimas 5 vendas (1 linha = 1 venda, do feed do banco)
+  const [salesFeed, setSalesFeed] = useState<{ id: string; name: string; at: string }[]>([]);
+  const feedSeen = useRef<Set<string>>(new Set());
+  const feedPrimed = useRef(false);
+  // splash de comemoração: nome da vendedora em tela cheia por alguns segundos
+  const [celebrate, setCelebrate] = useState<{ name: string; key: number } | null>(null);
+  const celebrateTimer = useRef<number | undefined>(undefined);
   const [mainKpi, setMainKpi] = useState<KpiRow | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [newNotice, setNewNotice] = useState("");
@@ -248,10 +256,19 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
           }
           const ranked = [...revByPerson.entries()].filter(([, r]) => r.value > 0).sort((a, b) => b[1].value - a[1].value);
           const top = ranked[0] ? { name: nameOf.get(ranked[0][0]) || "—", value: ranked[0][1].value } : null;
-          const latest = [...revByPerson.entries()].filter(([, r]) => r.value > 0)
-            .sort((a, b) => (b[1].at || "").localeCompare(a[1].at || "")).slice(0, 5)
-            .map(([pid, r]) => ({ name: nameOf.get(pid) || "—", value: r.value, sales: salesKpi ? (salesByPerson.get(pid) ?? 0) : null, at: r.at }));
-          setToday({ revenue, revenueType: main.kpi_type, sales, top, latest });
+          // recorde do mês: hoje é o maior dia em faturamento (ou em nº de vendas,
+          // se a empresa conta vendas) entre os dias do mês com lançamento
+          const byDayRev = new Map<string, number>();
+          const byDaySales = new Map<string, number>();
+          entries.forEach(e => {
+            if (e.kpi_id === main.id) byDayRev.set(e.entry_date, (byDayRev.get(e.entry_date) || 0) + Number(e.value || 0));
+            if (salesKpi && e.kpi_id === salesKpi.id) byDaySales.set(e.entry_date, (byDaySales.get(e.entry_date) || 0) + Number(e.value || 0));
+          });
+          const daysWithData = [...byDayRev.keys()].filter(d => d !== todayKey && (byDayRev.get(d) || 0) > 0);
+          const maxOtherRev = daysWithData.length ? Math.max(...daysWithData.map(d => byDayRev.get(d) || 0)) : 0;
+          const maxOtherSales = [...byDaySales.keys()].filter(d => d !== todayKey).reduce((m, d) => Math.max(m, byDaySales.get(d) || 0), 0);
+          const isRecord = daysWithData.length > 0 && revenue > 0 && (revenue > maxOtherRev || (sales !== null && sales > maxOtherSales));
+          setToday({ revenue, revenueType: main.kpi_type, sales, top, isRecord });
         } else {
           setToday(null);
         }
@@ -283,6 +300,50 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
     })();
     return () => { alive = false; };
   }, [companyId, refDate, tick]);
+
+  // ── Feed de vendas do dia (fila real: 1 linha por venda). Carrega as 5 últimas
+  //    e ouve INSERT ao vivo: a nova entra em 1º, a 5ª sai. Venda nova toca o
+  //    som de comemoração (só depois da carga inicial, pra não tocar ao abrir).
+  useEffect(() => {
+    if (!companyId) return;
+    let alive = true;
+    const todayKey = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; })();
+    const nameCache = new Map<string, string>();
+    const resolveName = async (pid: string | null) => {
+      if (!pid) return "Vendedor";
+      if (nameCache.has(pid)) return nameCache.get(pid)!;
+      const { data } = await supabase.from("company_salespeople").select("name").eq("id", pid).maybeSingle();
+      const n = (data as any)?.name || "Vendedor"; nameCache.set(pid, n); return n;
+    };
+    (async () => {
+      const { data } = await (supabase as any).from("kpi_sales_feed")
+        .select("id, salesperson_id, created_at")
+        .eq("company_id", companyId).eq("entry_date", todayKey)
+        .order("created_at", { ascending: false }).limit(5);
+      if (!alive) return;
+      const rows = await Promise.all(((data || []) as any[]).map(async (r) => ({ id: r.id, name: await resolveName(r.salesperson_id), at: r.created_at })));
+      rows.forEach((r) => feedSeen.current.add(r.id));
+      setSalesFeed(rows);
+      feedPrimed.current = true;
+    })();
+    const ch = supabase
+      .channel(`sales-feed-${companyId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "kpi_sales_feed", filter: `company_id=eq.${companyId}` }, async (payload) => {
+        const r = payload.new as any;
+        if (r.entry_date !== todayKey || feedSeen.current.has(r.id)) return;
+        feedSeen.current.add(r.id);
+        const name = await resolveName(r.salesperson_id);
+        setSalesFeed((prev) => [{ id: r.id, name, at: r.created_at }, ...prev].slice(0, 5));
+        if (feedPrimed.current) {
+          playCelebrationSound();
+          setCelebrate({ name, key: Date.now() });
+          window.clearTimeout(celebrateTimer.current);
+          celebrateTimer.current = window.setTimeout(() => setCelebrate(null), 6000);
+        }
+      })
+      .subscribe();
+    return () => { alive = false; window.clearTimeout(celebrateTimer.current); supabase.removeChannel(ch); };
+  }, [companyId]);
 
   // ── AO VIVO: qualquer lançamento/meta/aviso da empresa (manual, planilha,
   //    Agendor, WinDash, Bitrix, ERP) chega em kpi_entries e o Postgres avisa
@@ -458,6 +519,19 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
           <div className="text-center py-24 text-muted-foreground">Nenhum KPI configurado para este cliente ainda.</div>
         ) : (
           <>
+          {celebrate && (
+            <div key={celebrate.key} className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none"
+              onClick={() => setCelebrate(null)}>
+              <div className="absolute inset-0 bg-black/35 animate-in fade-in duration-300" />
+              <div className="relative text-center px-10 py-8 rounded-3xl bg-white shadow-2xl border-4 border-emerald-500 animate-in zoom-in-75 fade-in duration-500"
+                style={{ transform: `scale(${isFull ? scale : 1})` }}>
+                <div className="text-6xl mb-2">🎉</div>
+                <div className="text-sm font-bold uppercase tracking-[0.3em] text-emerald-600 mb-1">Venda nova</div>
+                <div className="text-4xl sm:text-5xl font-black text-foreground leading-tight">{celebrate.name}</div>
+                <div className="mt-3 text-base text-muted-foreground">Parabéns! Bora pra próxima.</div>
+              </div>
+            </div>
+          )}
           <div className={cn(isFull ? "[columns:3] [column-gap:1rem] mt-4" : "space-y-4")}>
             {/* Hoje: total do dia · campeã do dia · últimas vendas */}
             {today && (
@@ -467,6 +541,11 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                     <Zap className="h-3.5 w-3.5 text-emerald-500" /> Vendas de hoje
                   </div>
                   <div className="font-black text-emerald-600 text-2xl sm:text-3xl">{fmt(today.revenue, today.revenueType as KpiType)}</div>
+                  {today.isRecord && (
+                    <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-amber-400/20 border border-amber-400/60 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-amber-700 animate-pulse">
+                      <Trophy className="h-3 w-3" /> Recorde do mês
+                    </div>
+                  )}
                   <div className="text-xs text-muted-foreground mt-1">
                     {today.sales !== null ? `${today.sales.toLocaleString("pt-BR")} venda${today.sales === 1 ? "" : "s"} · ` : ""}
                     {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" })}
@@ -489,16 +568,18 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
                   <div className={cn("flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground mb-2", "text-[11px]")}>
                     <Flag className="h-3.5 w-3.5 text-primary" /> Últimas vendas de hoje
                   </div>
-                  {today.latest.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">Sem vendas lançadas hoje</div>
+                  {salesFeed.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">Sem vendas registradas hoje</div>
                   ) : (
                     <ol className="space-y-1">
-                      {today.latest.map((l, i) => (
-                        <li key={i} className="flex items-center justify-between gap-2 text-sm">
-                          <span className="truncate font-medium">{l.name}</span>
-                          <span className="tabular-nums text-muted-foreground whitespace-nowrap">
-                            {l.sales !== null ? `${l.sales} · ` : ""}{fmt(l.value, today.revenueType as KpiType)}
-                            {l.at ? <span className="ml-1 opacity-60">{new Date(l.at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span> : null}
+                      {salesFeed.map((l, i) => (
+                        <li key={l.id} className={cn("flex items-center justify-between gap-2 text-sm rounded-md px-1.5 py-0.5 transition-colors", i === 0 && "bg-emerald-500/10 font-semibold")}>
+                          <span className="flex items-center gap-2 truncate">
+                            <span className={cn("text-[10px] w-4 text-center tabular-nums", i === 0 ? "text-emerald-600" : "text-muted-foreground")}>{i + 1}º</span>
+                            <span className="truncate">{l.name}</span>
+                          </span>
+                          <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">
+                            {new Date(l.at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </li>
                       ))}
