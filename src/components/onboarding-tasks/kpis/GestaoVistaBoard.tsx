@@ -304,6 +304,30 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
     return () => { alive = false; };
   }, [companyId, refDate, tick]);
 
+  // ── Auto-atualização de versão: o quadro fica aberto na TV por dias, então o
+  //    código carregado envelhece a cada deploy (foi o caso do dia 20/08: a TV
+  //    ainda mostrava a lista antiga). A cada 10 min compara o script principal
+  //    do index.html com o que está rodando; mudou, recarrega a página.
+  useEffect(() => {
+    const currentSrc = () => {
+      const el = [...document.querySelectorAll("script[src]")]
+        .map((s) => (s as HTMLScriptElement).src)
+        .find((src) => /\/assets\/index-[^/]+\.js$/.test(src));
+      return el ? el.split("/").pop() || "" : "";
+    };
+    const mine = currentSrc();
+    if (!mine) return;
+    const check = async () => {
+      try {
+        const html = await (await fetch(`/?v=${Date.now()}`, { cache: "no-store" })).text();
+        const m = html.match(/\/assets\/(index-[A-Za-z0-9._-]+\.js)/);
+        if (m && m[1] && m[1] !== mine) window.location.reload();
+      } catch { /* offline: tenta de novo no próximo ciclo */ }
+    };
+    const id = window.setInterval(check, 10 * 60 * 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
   // ── Feed de vendas do dia (fila real: 1 linha por venda). Carrega as 5 últimas
   //    e ouve INSERT ao vivo: a nova entra em 1º, a 5ª sai. Venda nova toca o
   //    som de comemoração (só depois da carga inicial, pra não tocar ao abrir).
