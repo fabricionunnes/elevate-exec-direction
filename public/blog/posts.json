@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-08-19T21:01:08",
+ "gerado_em": "2026-08-20T21:01:20",
  "posts": [
+  {
+   "slug": "automacao-sem-processo-nao-escala-comercial",
+   "url": "/blog/automacao-sem-processo-nao-escala-comercial/",
+   "titulo": "Automação sem processo definido não escala o comercial",
+   "resumo": "Ferramenta resolve o que já está estruturado. Se o processo não existe, o que você automatiza é a bagunça.",
+   "tags": [
+    "automação",
+    "estrutura comercial",
+    "sistema",
+    "processo",
+    "treino de vendedor"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-20",
+   "ts": 2027
+  },
   {
    "slug": "consultoria-sem-implementacao-nao-vende",
    "url": "/blog/consultoria-sem-implementacao-nao-vende/",
