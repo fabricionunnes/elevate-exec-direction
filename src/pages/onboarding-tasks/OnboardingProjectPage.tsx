@@ -21,6 +21,7 @@ import {
   Circle,
   Clock,
   MonitorPlay,
+  Rocket,
   Users,
   MessageSquare,
   Calendar,
@@ -57,6 +58,7 @@ import { TaskDetailsDialog } from "@/components/onboarding-tasks/TaskDetailsDial
 import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
 import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
 import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBriefingPanel";
+import { OnboardingPlanPanel } from "@/components/onboarding-tasks/OnboardingPlanPanel";
 import { CurriculumPanel } from "@/components/onboarding-tasks/CurriculumPanel";
 import { ProjectGraphPanel } from "@/components/onboarding-tasks/ProjectGraphPanel";
 import { GraduationCap, Network } from "lucide-react";
@@ -1606,6 +1608,7 @@ const OnboardingProjectPage = () => {
                   <TabsTrigger key="curriculum" value="curriculum"><GraduationCap className="h-3.5 w-3.5 shrink-0" />Grade</TabsTrigger>,
                   <TabsTrigger key="graph" value="graph"><Network className="h-3.5 w-3.5 shrink-0" />Grafo</TabsTrigger>,
                   <TabsTrigger key="diagnostic" value="diagnostic"><Sparkles className="h-3.5 w-3.5 shrink-0" />Diagnóstico</TabsTrigger>,
+                  <TabsTrigger key="onboarding_plan" value="onboarding_plan"><Rocket className="h-3.5 w-3.5 shrink-0" />Onboarding</TabsTrigger>,
                   <TabsTrigger key="tasks" value="tasks"><CheckCircle2 className="h-3.5 w-3.5 shrink-0" />Jornada</TabsTrigger>,
                   <TabsTrigger key="ai-coach" value="ai-coach"><Sparkles className="h-3.5 w-3.5 shrink-0" />IA</TabsTrigger>,
                 ],
@@ -1902,6 +1905,10 @@ const OnboardingProjectPage = () => {
             <div className="mt-6">
               <AdsBriefingSection projectId={projectId!} />
             </div>
+          </TabsContent>
+
+          <TabsContent value="onboarding_plan">
+            <OnboardingPlanPanel projectId={projectId!} userRole={currentUserRole} />
           </TabsContent>
 
           <TabsContent value="curriculum">
