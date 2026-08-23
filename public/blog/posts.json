@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-08-22T21:01:09",
+ "gerado_em": "2026-08-23T10:01:07",
  "posts": [
+  {
+   "slug": "implementacao-separa-quem-bate-meta-quem-nao-bate",
+   "url": "/blog/implementacao-separa-quem-bate-meta-quem-nao-bate/",
+   "titulo": "Implementação separa quem bate meta de quem não bate",
+   "resumo": "A diferença entre empresa que cresce e empresa que estagna não está em saber o que fazer. Está em implementar o que foi decidido.",
+   "tags": [
+    "implementação",
+    "estrutura comercial",
+    "treino de vendedor",
+    "meta mensal",
+    "rotina de cobrança"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-23",
+   "ts": 2034
+  },
   {
    "slug": "dono-vende-visao-antes-de-vender-produto",
    "url": "/blog/dono-vende-visao-antes-de-vender-produto/",
