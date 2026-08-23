@@ -1594,22 +1594,25 @@ const OnboardingProjectPage = () => {
 
               const subTabs: Record<string, React.ReactNode[]> = {
                 principal: [
-                  ...(currentUserRole !== "client" ? [
-                    <TabsTrigger key="brain" value="brain"><Brain className="h-3.5 w-3.5 shrink-0" />Cérebro</TabsTrigger>
-                  ] : []),
+                  // ordem definida pelo Fabrício: começa pelo caminho do cliente
+                  // (Onboarding → Briefing → Diagnóstico → Grade → Jornada) e só
+                  // depois os números e as ferramentas internas.
+                  <TabsTrigger key="onboarding_plan" value="onboarding_plan"><Rocket className="h-3.5 w-3.5 shrink-0" />Onboarding</TabsTrigger>,
+                  <TabsTrigger key="briefing" value="briefing"><Building2 className="h-3.5 w-3.5 shrink-0" />Briefing</TabsTrigger>,
+                  <TabsTrigger key="diagnostic" value="diagnostic"><Sparkles className="h-3.5 w-3.5 shrink-0" />Diagnóstico</TabsTrigger>,
+                  <TabsTrigger key="curriculum" value="curriculum"><GraduationCap className="h-3.5 w-3.5 shrink-0" />Grade</TabsTrigger>,
+                  <TabsTrigger key="tasks" value="tasks"><CheckCircle2 className="h-3.5 w-3.5 shrink-0" />Jornada</TabsTrigger>,
                   ...(project?.onboarding_company_id === FACUNICAMPS_ID ? [
                     <TabsTrigger key="indicadores" value="indicadores"><BarChart3 className="h-3.5 w-3.5 shrink-0" />Indicadores</TabsTrigger>
                   ] : [
                     <TabsTrigger key="kpis" value="kpis"><BarChart3 className="h-3.5 w-3.5 shrink-0" />KPIs</TabsTrigger>,
                     <TabsTrigger key="gestao_vista" value="gestao_vista"><MonitorPlay className="h-3.5 w-3.5 shrink-0" />Gestão à Vista</TabsTrigger>
                   ]),
-                  <TabsTrigger key="ligacoes" value="ligacoes"><Phone className="h-3.5 w-3.5 shrink-0" />Ligações</TabsTrigger>,
-                  <TabsTrigger key="briefing" value="briefing"><Building2 className="h-3.5 w-3.5 shrink-0" />Briefing</TabsTrigger>,
-                  <TabsTrigger key="curriculum" value="curriculum"><GraduationCap className="h-3.5 w-3.5 shrink-0" />Grade</TabsTrigger>,
                   <TabsTrigger key="graph" value="graph"><Network className="h-3.5 w-3.5 shrink-0" />Grafo</TabsTrigger>,
-                  <TabsTrigger key="diagnostic" value="diagnostic"><Sparkles className="h-3.5 w-3.5 shrink-0" />Diagnóstico</TabsTrigger>,
-                  <TabsTrigger key="onboarding_plan" value="onboarding_plan"><Rocket className="h-3.5 w-3.5 shrink-0" />Onboarding</TabsTrigger>,
-                  <TabsTrigger key="tasks" value="tasks"><CheckCircle2 className="h-3.5 w-3.5 shrink-0" />Jornada</TabsTrigger>,
+                  ...(currentUserRole !== "client" ? [
+                    <TabsTrigger key="brain" value="brain"><Brain className="h-3.5 w-3.5 shrink-0" />Cérebro</TabsTrigger>
+                  ] : []),
+                  <TabsTrigger key="ligacoes" value="ligacoes"><Phone className="h-3.5 w-3.5 shrink-0" />Ligações</TabsTrigger>,
                   <TabsTrigger key="ai-coach" value="ai-coach"><Sparkles className="h-3.5 w-3.5 shrink-0" />IA</TabsTrigger>,
                 ],
                 relacionamento: [

@@ -16,9 +16,12 @@ import {
 import {
   Loader2, Sparkles, Save, Pencil, X, Plus, Trash2, ChevronUp, ChevronDown,
   Rocket, Target, CheckCircle2, Flag, Presentation, ListChecks, Download, Handshake,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, addDays } from "date-fns";
+import { generateOnboardingDeck } from "./onboardingDeckPdf";
+import logoUnv from "@/assets/logo-unv-nexus.png";
 import { ptBR } from "date-fns/locale";
 
 interface Phase {
@@ -88,6 +91,8 @@ export function OnboardingPlanPanel({ projectId, userRole }: { projectId: string
   const [tasksOpen, setTasksOpen] = useState(false);
   const [taskSel, setTaskSel] = useState<Record<string, boolean>>({});
   const [creatingTasks, setCreatingTasks] = useState(false);
+  const [companyName, setCompanyName] = useState("");
+  const [slide, setSlide] = useState(0);
   const printRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -103,6 +108,18 @@ export function OnboardingPlanPanel({ projectId, userRole }: { projectId: string
     setLoading(false);
   }, [projectId]);
   useEffect(() => { load(); }, [load]);
+
+  // nome da empresa: aparece no rodapé dos slides e no nome do arquivo
+  useEffect(() => {
+    (async () => {
+      const { data: proj } = await (supabase as any).from("onboarding_projects")
+        .select("onboarding_company_id").eq("id", projectId).maybeSingle();
+      if (!proj?.onboarding_company_id) return;
+      const { data: c } = await (supabase as any).from("onboarding_companies")
+        .select("name").eq("id", proj.onboarding_company_id).maybeSingle();
+      if (c?.name) setCompanyName(c.name);
+    })();
+  }, [projectId]);
 
   const generate = async (force = false) => {
     setGenerating(true);
@@ -218,28 +235,26 @@ export function OnboardingPlanPanel({ projectId, userRole }: { projectId: string
     } finally { setCreatingTasks(false); }
   };
 
+  const [pdfLoading, setPdfLoading] = useState(false);
   const exportPdf = async () => {
-    if (!printRef.current) return;
+    if (!view) return;
+    setPdfLoading(true);
     try {
-      const [{ toPng }, { default: jsPDF }] = await Promise.all([import("html-to-image"), import("jspdf")]);
-      const dataUrl = await toPng(printRef.current, { backgroundColor: "#ffffff", pixelRatio: 2 });
-      const img = new Image();
-      img.src = dataUrl;
-      await new Promise((r) => { img.onload = r; });
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pw = 210, ph = 297, margin = 8;
-      const w = pw - margin * 2;
-      const h = (img.height * w) / img.width;
-      let left = h, pos = 0;
-      while (left > 0) {
-        if (pos > 0) pdf.addPage();
-        pdf.addImage(dataUrl, "PNG", margin, margin - pos, w, h);
-        pos += ph - margin * 2;
-        left -= ph - margin * 2;
-      }
-      pdf.save(`onboarding-${(view?.title || "plano").replace(/[^\w]+/g, "-").toLowerCase()}.pdf`);
+      await generateOnboardingDeck({
+        title: view.title,
+        subtitle: view.subtitle,
+        intro: view.intro,
+        phases: view.phases,
+        expectations: view.expectations,
+        success_metrics: view.success_metrics,
+        clientName: companyName || view.title,
+      });
+      toast.success("Apresentação baixada");
     } catch (e: any) {
-      toast.error("Não consegui gerar o PDF");
+      console.error("[onboarding pdf]", e);
+      toast.error(`Não consegui gerar o PDF: ${e?.message || "erro desconhecido"}`);
+    } finally {
+      setPdfLoading(false);
     }
   };
 
@@ -378,11 +393,11 @@ export function OnboardingPlanPanel({ projectId, userRole }: { projectId: string
           {plan?.source?.ia === false && <Badge variant="outline" className="text-[10px]">modelo padrão</Badge>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setPresent(true)}>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setSlide(0); setPresent(true); }}>
             <Presentation className="h-3.5 w-3.5" /> Apresentar
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={exportPdf}>
-            <Download className="h-3.5 w-3.5" /> PDF
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={exportPdf} disabled={pdfLoading}>
+            {pdfLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} PDF
           </Button>
           {canEdit && !editing && (
             <>
@@ -521,13 +536,156 @@ export function OnboardingPlanPanel({ projectId, userRole }: { projectId: string
         </div>
       )}
 
-      {/* modo apresentação */}
-      <Dialog open={present} onOpenChange={setPresent}>
-        <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto p-0">
-          <DialogHeader className="sr-only"><DialogTitle>{view.title}</DialogTitle></DialogHeader>
-          {Presentation_}
-        </DialogContent>
-      </Dialog>
+      {/* modo apresentação: slides com o branding UNV (navy + vermelho + logo),
+          setas/espaço navegam, Esc sai */}
+      {present && (() => {
+        const slides: React.ReactNode[] = [
+          // capa
+          <div key="capa" className="h-full w-full flex flex-col justify-center px-16" style={{ background: "#0D2B5E" }}>
+            <img src={logoUnv} alt="UNV" className="h-16 w-auto object-contain self-start mb-12 brightness-0 invert" />
+            {view.subtitle && <p className="text-sm font-bold uppercase tracking-[0.3em] text-red-300 mb-4">{view.subtitle}</p>}
+            <h1 className="text-5xl font-black text-white leading-tight max-w-4xl">{view.title}</h1>
+            <p className="mt-6 text-lg text-slate-300">Plano de trabalho e caminho para o resultado</p>
+          </div>,
+          // abertura
+          <div key="intro" className="h-full w-full px-16 py-14 flex flex-col bg-white">
+            <p className="text-xs font-bold uppercase tracking-[0.25em]" style={{ color: "#CC1B1B" }}>O que vamos construir juntos</p>
+            <h2 className="text-4xl font-black mt-3" style={{ color: "#0D2B5E" }}>O caminho</h2>
+            <p className="mt-8 text-xl leading-relaxed text-slate-800 max-w-5xl">{view.intro}</p>
+            <div className="mt-auto flex items-start gap-2">
+              {view.phases.map((ph, i) => (
+                <div key={i} className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-full flex items-center justify-center text-xs font-black text-white shrink-0"
+                      style={{ background: i === 0 ? "#CC1B1B" : "#0D2B5E" }}>{i + 1}</div>
+                    {i < view.phases.length - 1 && <div className="h-[2px] flex-1 bg-slate-200" />}
+                  </div>
+                  <p className="text-xs font-semibold mt-2 pr-3" style={{ color: "#0D2B5E" }}>{ph.title}</p>
+                </div>
+              ))}
+            </div>
+          </div>,
+          // uma fase por slide
+          ...view.phases.map((ph, i) => (
+            <div key={`f${i}`} className="h-full w-full px-16 py-12 flex flex-col bg-white">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-full flex items-center justify-center text-xl font-black text-white shrink-0" style={{ background: "#CC1B1B" }}>{i + 1}</div>
+                <div>
+                  <h2 className="text-3xl font-black leading-tight" style={{ color: "#0D2B5E" }}>{ph.title}</h2>
+                  {ph.period && <p className="text-sm text-slate-500">{ph.period}</p>}
+                </div>
+              </div>
+              {ph.objective && <p className="mt-6 text-lg text-slate-800 max-w-5xl">{ph.objective}</p>}
+              <div className="mt-6 grid gap-6 sm:grid-cols-2 flex-1 min-h-0">
+                {!!(ph.deliverables || []).filter(Boolean).length && (
+                  <div className="rounded-xl bg-slate-50 p-6">
+                    <p className="text-[11px] font-bold uppercase tracking-wider mb-3" style={{ color: "#0D2B5E" }}>A UNV entrega</p>
+                    <ul className="space-y-2.5">
+                      {ph.deliverables.filter(Boolean).map((d, x) => (
+                        <li key={x} className="flex gap-2.5 text-base text-slate-800">
+                          <span className="mt-2 h-1.5 w-1.5 rounded-full shrink-0" style={{ background: "#0D2B5E" }} />{d}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {!!(ph.client_actions || []).filter(Boolean).length && (
+                  <div className="rounded-xl bg-red-50/60 p-6">
+                    <p className="text-[11px] font-bold uppercase tracking-wider mb-3" style={{ color: "#CC1B1B" }}>O que precisamos de você</p>
+                    <ul className="space-y-2.5">
+                      {ph.client_actions.filter(Boolean).map((d, x) => (
+                        <li key={x} className="flex gap-2.5 text-base text-slate-800">
+                          <span className="mt-2 h-1.5 w-1.5 rounded-full shrink-0" style={{ background: "#CC1B1B" }} />{d}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              {ph.outcome && (
+                <div className="mt-6 rounded-lg px-6 py-4 text-white" style={{ background: "#0D2B5E" }}>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-red-200 mr-2">No fim desta fase</span>
+                  <span className="text-base">{ph.outcome}</span>
+                </div>
+              )}
+            </div>
+          )),
+          // métricas + combinado
+          ...((view.success_metrics.length || view.expectations?.unv?.length || view.expectations?.cliente?.length) ? [
+            <div key="metricas" className="h-full w-full px-16 py-12 bg-white flex flex-col">
+              <p className="text-xs font-bold uppercase tracking-[0.25em]" style={{ color: "#CC1B1B" }}>Como vamos medir</p>
+              <h2 className="text-4xl font-black mt-3 mb-8" style={{ color: "#0D2B5E" }}>Sucesso e combinado</h2>
+              <div className="grid gap-10 sm:grid-cols-2 flex-1 min-h-0">
+                {!!view.success_metrics.length && (
+                  <div>
+                    {view.success_metrics.map((m, i) => (
+                      <div key={i} className="flex items-center justify-between gap-4 border-b py-3">
+                        <span className="text-lg text-slate-800">{m.label}</span>
+                        <span className="text-lg font-bold" style={{ color: "#CC1B1B" }}>{m.target || "a definir no kick-off"}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="space-y-6">
+                  {!!view.expectations?.unv?.filter(Boolean).length && (
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "#0D2B5E" }}>Da UNV</p>
+                      <ul className="space-y-2">{view.expectations.unv.filter(Boolean).map((e, i) => (
+                        <li key={i} className="flex gap-2.5 text-base text-slate-800"><span className="mt-2 h-1.5 w-1.5 rounded-full shrink-0" style={{ background: "#0D2B5E" }} />{e}</li>))}
+                      </ul>
+                    </div>
+                  )}
+                  {!!view.expectations?.cliente?.filter(Boolean).length && (
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "#CC1B1B" }}>De você</p>
+                      <ul className="space-y-2">{view.expectations.cliente.filter(Boolean).map((e, i) => (
+                        <li key={i} className="flex gap-2.5 text-base text-slate-800"><span className="mt-2 h-1.5 w-1.5 rounded-full shrink-0" style={{ background: "#CC1B1B" }} />{e}</li>))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>,
+          ] : []),
+          // fechamento
+          <div key="fim" className="h-full w-full flex flex-col items-center justify-center" style={{ background: "#0D2B5E" }}>
+            <img src={logoUnv} alt="UNV" className="h-20 w-auto object-contain mb-10 brightness-0 invert" />
+            <p className="text-4xl font-black text-white">Bora pra cima.</p>
+            <p className="mt-3 text-slate-300">Universidade Nacional de Vendas</p>
+          </div>,
+        ];
+        const go = (d: number) => setSlide((x) => Math.min(Math.max(x + d, 0), slides.length - 1));
+        return (
+          <div className="fixed inset-0 z-[95] bg-black flex flex-col"
+            tabIndex={0} autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); go(1); }
+              if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(-1); }
+              if (e.key === "Escape") setPresent(false);
+            }}>
+            <div className="flex-1 min-h-0 flex items-center justify-center p-4">
+              <div className="w-full max-w-[1280px] aspect-video shadow-2xl overflow-hidden relative bg-white">
+                {slides[slide]}
+                {/* rodapé da marca nos slides claros */}
+                {slide !== 0 && slide !== slides.length - 1 && (
+                  <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-16 py-3 border-t bg-white">
+                    <span className="text-xs text-slate-400">{companyName}</span>
+                    <span className="text-xs text-slate-400">{slide}/{slides.length - 1}</span>
+                    <img src={logoUnv} alt="UNV" className="h-5 w-auto object-contain opacity-70" />
+                  </div>
+                )}
+                <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ background: slide === 0 || slide === slides.length - 1 ? "transparent" : "#0D2B5E" }} />
+              </div>
+            </div>
+            <div className="flex items-center justify-center gap-3 pb-5 text-white/80">
+              <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" onClick={() => go(-1)} disabled={slide === 0}><ChevronLeft className="h-5 w-5" /></Button>
+              <span className="text-sm tabular-nums">{slide + 1} / {slides.length}</span>
+              <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" onClick={() => go(1)} disabled={slide === slides.length - 1}><ChevronRight className="h-5 w-5" /></Button>
+              <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 ml-4" onClick={() => setPresent(false)}>Sair (Esc)</Button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* criar tarefas */}
       <Dialog open={tasksOpen} onOpenChange={setTasksOpen}>
