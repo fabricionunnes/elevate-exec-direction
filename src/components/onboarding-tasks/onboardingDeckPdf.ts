@@ -28,11 +28,11 @@ export interface DeckData {
   clientName?: string;
 }
 
-async function loadLogo(): Promise<{ data: string; w: number; h: number } | null> {
+async function loadLogo(src = "/images/unv-logo.png"): Promise<{ data: string; w: number; h: number } | null> {
   try {
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.src = "/images/unv-logo-contract.png";
+    img.src = src;
     await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
     const c = document.createElement("canvas");
     c.width = img.naturalWidth; c.height = img.naturalHeight;
@@ -43,12 +43,14 @@ async function loadLogo(): Promise<{ data: string; w: number; h: number } | null
 
 export async function generateOnboardingDeck(plan: DeckData): Promise<void> {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: [W, H] });
-  const logo = await loadLogo();
+  const logo = await loadLogo("/images/unv-logo.png");           // colorida, fundo transparente
+  const logoW = await loadLogo("/images/unv-logo-white.png");     // branca, para os slides navy
 
-  const logoAt = (x: number, y: number, maxW: number) => {
-    if (!logo) return;
-    const h = (logo.h * maxW) / logo.w;
-    doc.addImage(logo.data, "PNG", x, y, maxW, h);
+  const logoAt = (x: number, y: number, maxW: number, branca = false) => {
+    const l = branca ? (logoW || logo) : logo;
+    if (!l) return;
+    const h = (l.h * maxW) / l.w;
+    doc.addImage(l.data, "PNG", x, y, maxW, h);
   };
 
   /** moldura padrão de todo slide de conteúdo */
@@ -73,7 +75,7 @@ export async function generateOnboardingDeck(plan: DeckData): Promise<void> {
   // ── CAPA ───────────────────────────────────────────────────────────────
   doc.setFillColor(...NAVY); doc.rect(0, 0, W, H, "F");
   doc.setFillColor(...RED); doc.rect(0, H - 6, W, 6, "F");
-  logoAt(24, 22, 46);
+  logoAt(24, 20, 44, true);
   doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(255, 210, 210);
   if (plan.subtitle) doc.text(plan.subtitle.toUpperCase(), 24, 84);
   doc.setFontSize(34); doc.setTextColor(255, 255, 255);
@@ -216,7 +218,7 @@ export async function generateOnboardingDeck(plan: DeckData): Promise<void> {
   doc.addPage([W, H], "landscape");
   doc.setFillColor(...NAVY); doc.rect(0, 0, W, H, "F");
   doc.setFillColor(...RED); doc.rect(0, H - 6, W, 6, "F");
-  logoAt(W / 2 - 23, H / 2 - 40, 46);
+  logoAt(W / 2 - 22, H / 2 - 42, 44, true);
   doc.setFont("helvetica", "bold"); doc.setFontSize(26); doc.setTextColor(255, 255, 255);
   doc.text("Bora pra cima.", W / 2, H / 2 + 16, { align: "center" });
   doc.setFont("helvetica", "normal"); doc.setFontSize(12); doc.setTextColor(205, 214, 230);
