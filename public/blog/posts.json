@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-08-24T10:01:13",
+ "gerado_em": "2026-08-24T21:01:14",
  "posts": [
+  {
+   "slug": "crm-sozinho-nao-organiza-vendedor-sem-rotina",
+   "url": "/blog/crm-sozinho-nao-organiza-vendedor-sem-rotina/",
+   "titulo": "CRM sozinho não organiza vendedor sem rotina de cobrança",
+   "resumo": "Sistema serve para executar processo, não para inventar um. Se o comercial não tem rotina definida, ferramenta vira gaveta cara.",
+   "tags": [
+    "crm",
+    "sistema",
+    "estrutura comercial",
+    "rotina de cobrança",
+    "treino de vendedor"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-24",
+   "ts": 2038
+  },
   {
    "slug": "pos-venda-estruturado-sustenta-preco-mais-alto",
    "url": "/blog/pos-venda-estruturado-sustenta-preco-mais-alto/",
