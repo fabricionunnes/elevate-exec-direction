@@ -41,7 +41,14 @@ Deno.serve(async (req) => {
     }
 
     // Get transcription content - check notes, transcript, or manual_transcript
-    const transcriptionContent = meeting.transcript || meeting.manual_transcript || meeting.notes || "";
+    const bruto = meeting.transcript || meeting.manual_transcript || meeting.notes || "";
+    // Notas muito longas (reunião de 30k+ caracteres) espremem o espaço da
+    // resposta e o JSON volta cortado. Mantém início e fim, que é onde ficam
+    // contexto e encaminhamentos.
+    const LIMITE = 24000;
+    const transcriptionContent = bruto.length > LIMITE
+      ? `${bruto.slice(0, LIMITE * 0.6)}\n\n[...trecho do meio omitido por tamanho...]\n\n${bruto.slice(-LIMITE * 0.4)}`
+      : bruto;
     
     if (!transcriptionContent || transcriptionContent.trim().length < 50) {
       return new Response(
@@ -56,7 +63,7 @@ Deno.serve(async (req) => {
       .select(`
         *,
         consultant:onboarding_staff!consultant_id (id, name),
-        company:onboarding_companies!onboarding_company_id (id, name, segment)
+        company:onboarding_companies!onboarding_company_id (id, name, segment, owner_name)
       `)
       .eq("id", projectId)
       .single();
@@ -64,6 +71,7 @@ Deno.serve(async (req) => {
     const companyName = project?.company?.name || "Cliente";
     const consultantName = project?.consultant?.name || "Consultor";
     const segment = project?.company?.segment || "";
+    const ownerName = project?.company?.owner_name || "";
 
     // Time da empresa: âncora pra detectar transcrição anexada no cliente errado
     // (caso real: reunião da Terra Passos transcrita dentro da Vitale gerou
@@ -97,7 +105,10 @@ CONSULTOR RESPONSÁVEL: ${consultantName}
 DATA DA REUNIÃO: ${meeting.meeting_date}
 
 VERIFICAÇÃO DE PERTENCIMENTO (obrigatória antes de extrair ações):
-Confira se a transcrição realmente pertence a ${companyName}. Sinais de que NÃO pertence: as pessoas citadas não batem com o time cadastrado acima, o segmento do negócio discutido é claramente outro (ex.: fala de dentistas numa empresa de estética), ou o nome de outra empresa aparece como dona da reunião. Se concluir que a reunião é de OUTRA empresa, NÃO extraia ações — retorne exatamente: {"mismatch": true, "motivo": "1 frase explicando"}.`;
+Antes de extrair, confirme que a reunião pertence a ${companyName}${ownerName ? ` (dono: ${ownerName})` : ""}${segment ? `, do ramo de ${segment}` : ""}.
+ATENÇÃO — só marque como outra empresa se houver evidência FORTE, por exemplo: o nome de outra empresa cliente aparece como dona da reunião, ou o ramo discutido é claramente incompatível com o da empresa acima.
+NÃO é sinal de outra empresa: a reunião ser só com o dono ou com um gestor; nenhum vendedor da lista aparecer (reunião de diretoria é assim); nomes de participantes que você não reconhece; o consultor da UNV conduzindo sozinho.
+Na dúvida, EXTRAIA as ações normalmente. Só se tiver certeza de que é outra empresa retorne: {"mismatch": true, "motivo": "1 frase explicando"}.`;
 
     const userPrompt = `Analise a seguinte transcrição/notas da reunião e extraia as ações a serem realizadas:
 
@@ -181,9 +192,28 @@ IMPORTANTE:
       throw new Error("Falha ao interpretar resposta da IA");
     }
 
-    // Validate structure
+    // A IA pode concluir que a reunião é de OUTRA empresa — é uma resposta
+    // legítima, prevista no prompt. Devolve 200 pro front avisar direito.
+    if (parsedActions?.mismatch) {
+      return new Response(
+        JSON.stringify({ mismatch: true, motivo: parsedActions.motivo || "" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Sem ações: pode ser reunião sem encaminhamento nenhum. Também é 200, com
+    // a lista vazia, em vez de estourar erro genérico.
     if (!parsedActions.actions || !Array.isArray(parsedActions.actions)) {
-      throw new Error("Formato de resposta inválido");
+      console.error("[meeting-actions] resposta sem 'actions':", JSON.stringify(parsedActions).slice(0, 400));
+      return new Response(
+        JSON.stringify({
+          meeting: { id: meeting.id, subject: meeting.subject, date: meeting.meeting_date },
+          phase_name: meeting.subject || "Ações da Reunião",
+          actions: [],
+          aviso: "A IA não encontrou ações claras nesta reunião. Revise as notas ou crie as tarefas manualmente.",
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Add meeting context to response

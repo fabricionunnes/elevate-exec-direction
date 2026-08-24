@@ -13,7 +13,23 @@ interface SignupBody {
   email: string;
   password: string;
   company_name?: string;
+  cnpj?: string;
   phone?: string;
+}
+
+/** valida CNPJ pelos dígitos verificadores — barra 00000000000000 e digitação errada */
+function cnpjValido(raw: string): boolean {
+  const c = (raw || "").replace(/\D/g, "");
+  if (c.length !== 14) return false;
+  if (/^(\d)\1{13}$/.test(c)) return false;
+  const calc = (base: string, pesos: number[]) => {
+    const soma = base.split("").reduce((acc, d, i) => acc + Number(d) * pesos[i], 0);
+    const r = soma % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  const d1 = calc(c.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const d2 = calc(c.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return d1 === Number(c[12]) && d2 === Number(c[13]);
 }
 
 Deno.serve(async (req: Request) => {
@@ -27,7 +43,8 @@ Deno.serve(async (req: Request) => {
     const name = (body.name || "").trim();
     const email = (body.email || "").trim().toLowerCase();
     const password = body.password || "";
-    const companyName = (body.company_name || name || "Minha Empresa").trim();
+    const companyName = (body.company_name || "").trim();
+    const cnpj = (body.cnpj || "").replace(/\D/g, "");
     const phone = (body.phone || "").trim();
 
     if (!name || !email || !password) {
@@ -48,12 +65,40 @@ Deno.serve(async (req: Request) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    // Empresa e CNPJ são obrigatórios: sem eles o cliente entrava cadastrado com
+    // o nome da própria pessoa e ninguém sabia de que negócio era o chamado.
+    if (companyName.length < 2) {
+      return new Response(
+        JSON.stringify({ error: "Informe o nome da empresa." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!cnpjValido(cnpj)) {
+      return new Response(
+        JSON.stringify({ error: "CNPJ inválido. Confira os números e tente de novo." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { persistSession: false } }
     );
+
+    // CNPJ já cadastrado: manda pedir acesso em vez de duplicar a empresa
+    const { data: jaExiste } = await supabase
+      .from("onboarding_companies")
+      .select("id, name")
+      .or(`cnpj.eq.${cnpj},cnpj.eq.${cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")}`)
+      .limit(1)
+      .maybeSingle();
+    if (jaExiste?.id) {
+      return new Response(
+        JSON.stringify({ error: `Este CNPJ já está cadastrado (${jaExiste.name}). Peça acesso a quem administra a conta.` }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // 1. Cria usuário no auth (auto-confirmado)
     const { data: created, error: createErr } = await supabase.auth.admin.createUser({
@@ -81,6 +126,7 @@ Deno.serve(async (req: Request) => {
       .from("onboarding_companies")
       .insert({
         name: companyName,
+        cnpj,
         email,
         phone: phone || null,
         status: "active",

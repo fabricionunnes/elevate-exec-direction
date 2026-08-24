@@ -13,6 +13,29 @@ import { toast } from "sonner";
 import logoNexus from "@/assets/logo-unv-nexus.png";
 import { isClientRole } from "@/types/onboarding";
 
+/** máscara 00.000.000/0000-00 */
+const mascaraCnpj = (v: string) => {
+  const d = v.replace(/\D/g, "").slice(0, 14);
+  return d
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1/$2")
+    .replace(/(\d{4})(\d)/, "$1-$2");
+};
+
+/** valida CNPJ de verdade (dígitos verificadores) */
+const cnpjValido = (raw: string) => {
+  const c = raw.replace(/\D/g, "");
+  if (c.length !== 14 || /^(\d)\1{13}$/.test(c)) return false;
+  const calc = (base: string, pesos: number[]) => {
+    const soma = base.split("").reduce((acc, d, i) => acc + Number(d) * pesos[i], 0);
+    const r = soma % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  return calc(c.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]) === Number(c[12])
+      && calc(c.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]) === Number(c[13]);
+};
+
 const OnboardingLoginPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -29,6 +52,7 @@ const OnboardingLoginPage = () => {
   const [signupName, setSignupName] = useState("");
   const [signupCompany, setSignupCompany] = useState("");
   const [signupPhone, setSignupPhone] = useState("");
+  const [signupCnpj, setSignupCnpj] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupPasswordConfirm, setSignupPasswordConfirm] = useState("");
@@ -315,6 +339,14 @@ const OnboardingLoginPage = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!signupCompany.trim()) {
+      toast.error("Informe o nome da empresa");
+      return;
+    }
+    if (!cnpjValido(signupCnpj)) {
+      toast.error("Informe um CNPJ válido");
+      return;
+    }
     if (!signupName || !signupEmail || !signupPassword || !signupPhone) {
       toast.error("Preencha nome, telefone, email e senha");
       return;
@@ -340,7 +372,8 @@ const OnboardingLoginPage = () => {
           name: signupName.trim(),
           email: signupEmail.trim().toLowerCase(),
           password: signupPassword,
-          company_name: signupCompany.trim() || signupName.trim(),
+          company_name: signupCompany.trim(),
+          cnpj: signupCnpj.replace(/\D/g, ""),
           phone: phoneDigits,
         },
       });
@@ -515,7 +548,7 @@ const OnboardingLoginPage = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-company" className="text-slate-300">Empresa (opcional)</Label>
+                    <Label htmlFor="signup-company" className="text-slate-300">Empresa *</Label>
                     <Input
                       id="signup-company"
                       type="text"
@@ -525,6 +558,23 @@ const OnboardingLoginPage = () => {
                       className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
                       disabled={signupLoading}
                       maxLength={150}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-cnpj" className="text-slate-300">CNPJ *</Label>
+                    <Input
+                      id="signup-cnpj"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="00.000.000/0000-00"
+                      value={signupCnpj}
+                      onChange={(e) => setSignupCnpj(mascaraCnpj(e.target.value))}
+                      className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                      disabled={signupLoading}
+                      maxLength={18}
+                      required
                     />
                   </div>
 
