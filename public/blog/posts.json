@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-08-24T21:01:14",
+ "gerado_em": "2026-08-25T18:49:11",
  "posts": [
+  {
+   "slug": "implementacao-rapida-separa-dono-resolve-dono-enrola",
+   "url": "/blog/implementacao-rapida-separa-dono-resolve-dono-enrola/",
+   "titulo": "Implementação rápida separa dono que resolve de dono que enrola",
+   "resumo": "A maioria dos donos sabe o que precisa fazer mas não faz. O que muda o resultado é a velocidade entre diagnóstico e execução.",
+   "tags": [
+    "implementação",
+    "estrutura comercial",
+    "decisão",
+    "treino de vendedor",
+    "meta mensal"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-25",
+   "ts": 2039
+  },
   {
    "slug": "crm-sozinho-nao-organiza-vendedor-sem-rotina",
    "url": "/blog/crm-sozinho-nao-organiza-vendedor-sem-rotina/",
