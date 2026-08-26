@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-08-26T10:01:13",
+ "gerado_em": "2026-08-26T15:01:16",
  "posts": [
+  {
+   "slug": "produto-recorrente-estrutura-caixa-maior",
+   "url": "/blog/produto-recorrente-estrutura-caixa-maior/",
+   "titulo": "Produto recorrente estrutura caixa maior que produto único",
+   "resumo": "Negócio bom travado na entrega única deixa dinheiro na mesa. Recorrência organiza previsibilidade e libera o dono para crescer.",
+   "tags": [
+    "recorrência",
+    "produto",
+    "estrutura comercial",
+    "caixa",
+    "margem"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-26",
+   "ts": 2043
+  },
   {
    "slug": "oferta-errada-para-cliente-certo-trava-conversao",
    "url": "/blog/oferta-errada-para-cliente-certo-trava-conversao/",
