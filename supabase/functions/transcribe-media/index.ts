@@ -102,6 +102,24 @@ async function coletar(supabase: any, id: string, jobId: string) {
 
   // resumo é bônus: se falhar, a transcrição continua salva
   try { await resumir(supabase, id); } catch (e) { console.error("[transcribe-media] resumo:", e); }
+
+  // Gravação de reunião passa de 1 GB. Com o texto salvo, o arquivo não tem mais
+  // uso — apagamos do bucket pra não pagar armazenamento à toa. Só depois do
+  // texto estar gravado, nunca antes.
+  try {
+    const { data: linha } = await supabase.from("media_transcriptions")
+      .select("file_path, text").eq("id", id).maybeSingle();
+    if (linha?.file_path && linha?.text) {
+      const { error: delErr } = await supabase.storage.from("transcricoes").remove([linha.file_path]);
+      if (!delErr) {
+        await supabase.from("media_transcriptions")
+          .update({ media_deleted: true, updated_at: new Date().toISOString() }).eq("id", id);
+      } else {
+        console.error("[transcribe-media] nao consegui apagar a midia:", delErr.message);
+      }
+    }
+  } catch (e) { console.error("[transcribe-media] limpeza:", e); }
+
   return { ok: true, status: "done" };
 }
 

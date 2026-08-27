@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   ArrowLeft, Loader2, Copy, Download, Search, Sparkles, Target, ListChecks, User,
+  Pencil, Check, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -30,11 +31,14 @@ export default function TranscricaoDetalhePage() {
   const [midia, setMidia] = useState<string | null>(null);
   const [busca, setBusca] = useState("");
   const [resumindo, setResumindo] = useState(false);
+  const [editandoNome, setEditandoNome] = useState(false);
+  const [nome, setNome] = useState("");
   const playerRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
 
   const carregar = useCallback(async () => {
     const { data } = await (supabase as any).from("media_transcriptions").select("*").eq("id", id).maybeSingle();
     setT(data as Transcricao);
+    setNome(data?.title || "");
     if (data?.file_path) {
       const { data: signed } = await supabase.storage.from("transcricoes").createSignedUrl(data.file_path, 60 * 60 * 3);
       setMidia(signed?.signedUrl || null);
@@ -42,6 +46,17 @@ export default function TranscricaoDetalhePage() {
     setLoading(false);
   }, [id]);
   useEffect(() => { carregar(); }, [carregar]);
+
+  const salvarNome = async () => {
+    const novo = nome.trim();
+    if (!novo) { toast.error("O nome não pode ficar vazio"); return; }
+    const { error } = await (supabase as any).from("media_transcriptions")
+      .update({ title: novo, updated_at: new Date().toISOString() }).eq("id", id);
+    if (error) { toast.error("Não consegui salvar o nome"); return; }
+    setT((x) => (x ? { ...x, title: novo } : x));
+    setEditandoNome(false);
+    toast.success("Nome atualizado");
+  };
 
   const irPara = (ms: number) => {
     if (playerRef.current) {
@@ -108,7 +123,25 @@ export default function TranscricaoDetalhePage() {
       <div className="flex items-start gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks/transcricoes")}><ArrowLeft className="h-4 w-4" /></Button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold truncate">{t.title}</h1>
+          {editandoNome ? (
+            <div className="flex items-center gap-2">
+              <Input autoFocus value={nome} onChange={(e) => setNome(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") salvarNome();
+                  if (e.key === "Escape") { setNome(t.title); setEditandoNome(false); }
+                }}
+                className="text-xl font-bold h-10" />
+              <Button size="icon" className="h-9 w-9 shrink-0" onClick={salvarNome}><Check className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0"
+                onClick={() => { setNome(t.title); setEditandoNome(false); }}><X className="h-4 w-4" /></Button>
+            </div>
+          ) : (
+            <h1 className="text-2xl font-bold truncate flex items-center gap-2 group cursor-pointer"
+              title="Clique para renomear" onClick={() => setEditandoNome(true)}>
+              <span className="truncate">{t.title}</span>
+              <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition shrink-0" />
+            </h1>
+          )}
           <p className="text-sm text-muted-foreground">
             {duracao(t.duration_seconds) && `${duracao(t.duration_seconds)} · `}
             {format(new Date(t.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
@@ -118,6 +151,12 @@ export default function TranscricaoDetalhePage() {
         <Button variant="outline" size="sm" className="gap-1.5" onClick={copiar}><Copy className="h-3.5 w-3.5" /> Copiar</Button>
         <Button variant="outline" size="sm" className="gap-1.5" onClick={baixar}><Download className="h-3.5 w-3.5" /> Baixar</Button>
       </div>
+
+      {!midia && (t as any).media_deleted && (
+        <Card><CardContent className="py-3 text-sm text-muted-foreground text-center">
+          A gravação foi removida do servidor depois da transcrição — o texto abaixo fica guardado.
+        </CardContent></Card>
+      )}
 
       {midia && (
         <Card><CardContent className="p-3">

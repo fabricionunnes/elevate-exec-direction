@@ -32,7 +32,7 @@ export interface Transcricao {
   created_at: string;
 }
 
-const MAX_MB = 500;
+const MAX_GB = 5;   // limite do bucket; acima disso o servidor recusa
 
 export const duracao = (s?: number | null) => {
   if (!s) return "";
@@ -85,36 +85,62 @@ export default function TranscricoesPage() {
   };
 
   const enviarArquivo = async (file: File) => {
-    if (file.size > MAX_MB * 1024 * 1024) {
-      toast.error(`Arquivo de ${Math.round(file.size / 1048576)} MB — o limite é ${MAX_MB} MB. Comprima ou envie só o áudio.`);
+    if (file.size > MAX_GB * 1024 * 1024 * 1024) {
+      toast.error(`Arquivo de ${(file.size / 1073741824).toFixed(1)} GB — o limite é ${MAX_GB} GB. Envie só o áudio da gravação.`);
       return;
     }
-    setEnviando(true); setProgresso(8);
+    setEnviando(true); setProgresso(1);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
       const { data: staff } = await (supabase as any).from("onboarding_staff")
-        .select("id").eq("user_id", user?.id).maybeSingle();
+        .select("id").eq("user_id", session?.user?.id).maybeSingle();
+      if (!staff?.id) throw new Error("Seu usuário não tem cadastro de staff");
 
       const ext = file.name.split(".").pop() || "bin";
-      const caminho = `${new Date().getFullYear()}/${crypto.randomUUID()}.${ext}`;
-      setProgresso(20);
-      const { error: upErr } = await supabase.storage.from("transcricoes")
-        .upload(caminho, file, { contentType: file.type || undefined, upsert: false });
-      if (upErr) throw upErr;
-      setProgresso(75);
+      const caminho = `${staff.id}/${new Date().getFullYear()}/${crypto.randomUUID()}.${ext}`;
+
+      // upload retomável (protocolo TUS): manda em pedaços de 6 MB, aguenta
+      // gravação de 1-2 GB e continua de onde parou se a internet oscilar
+      const { Upload } = await import("tus-js-client");
+      await new Promise<void>((resolve, reject) => {
+        const up = new Upload(file, {
+          endpoint: `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/upload/resumable`,
+          retryDelays: [0, 3000, 6000, 12000, 24000],
+          headers: {
+            authorization: `Bearer ${session?.access_token}`,
+            "x-upsert": "true",
+          },
+          uploadDataDuringCreation: true,
+          removeFingerprintOnSuccess: true,
+          metadata: {
+            bucketName: "transcricoes",
+            objectName: caminho,
+            contentType: file.type || "application/octet-stream",
+            cacheControl: "3600",
+          },
+          chunkSize: 6 * 1024 * 1024, // exigido pelo Supabase Storage
+          onError: reject,
+          onProgress: (enviado, total) => setProgresso(Math.round((enviado / total) * 92)),
+          onSuccess: () => resolve(),
+        });
+        up.findPreviousUploads().then((anteriores) => {
+          if (anteriores.length) up.resumeFromPreviousUpload(anteriores[0]);
+          up.start();
+        });
+      });
 
       const { data: linha, error: insErr } = await (supabase as any).from("media_transcriptions").insert({
         title: file.name.replace(/\.[^.]+$/, ""),
         file_path: caminho, file_name: file.name, file_size: file.size,
         media_kind: file.type.startsWith("video") ? "video" : "audio",
-        language: "pt", status: "queued", created_by: staff?.id ?? null,
+        language: "pt", status: "queued", created_by: staff.id,
       }).select("id").single();
       if (insErr) throw insErr;
 
-      setProgresso(90);
+      setProgresso(97);
       await disparar(linha.id);
       setProgresso(100);
-      toast.success("Arquivo enviado — a transcrição já começou");
+      toast.success("Gravação enviada — a transcrição já começou");
       carregar();
     } catch (e: any) {
       toast.error(e?.message || "Não consegui enviar o arquivo");
@@ -181,6 +207,7 @@ export default function TranscricoesPage() {
           </h1>
           <p className="text-sm text-muted-foreground">
             Suba a gravação de uma call ou reunião e receba o texto por falante, com resumo e o que ficou combinado.
+            A gravação é apagada do servidor assim que a transcrição fica pronta — o texto continua aqui.
           </p>
         </div>
         <Button variant="outline" className="gap-2" onClick={() => setLinkOpen(true)}>
@@ -204,14 +231,15 @@ export default function TranscricoesPage() {
             <div className="max-w-sm mx-auto space-y-3">
               <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
               <Progress value={progresso} />
-              <p className="text-sm text-muted-foreground">Enviando a gravação...</p>
+              <p className="text-sm text-muted-foreground">Enviando a gravação... {progresso}%</p>
+              <p className="text-xs text-muted-foreground">Arquivo grande pode levar alguns minutos. Se a internet cair, o envio continua de onde parou.</p>
             </div>
           ) : (
             <>
               <Upload className="h-10 w-10 mx-auto mb-3 text-primary/40" />
               <p className="font-medium">Arraste o áudio ou vídeo aqui</p>
               <p className="text-sm text-muted-foreground mt-1 mb-4">
-                MP3, M4A, WAV, MP4, MOV — até {MAX_MB} MB
+                MP3, M4A, WAV, MP4, MOV — até {MAX_GB} GB
               </p>
               <Button onClick={() => inputRef.current?.click()} className="gap-2">
                 <Upload className="h-4 w-4" /> Escolher arquivo
