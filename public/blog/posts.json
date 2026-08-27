@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-08-26T21:01:17",
+ "gerado_em": "2026-08-27T10:01:01",
  "posts": [
+  {
+   "slug": "velocidade-implementacao-muda-resultado-mesmo-processo",
+   "url": "/blog/velocidade-implementacao-muda-resultado-mesmo-processo/",
+   "titulo": "Velocidade de implementação muda o resultado no mesmo processo",
+   "resumo": "O método é o mesmo, mas a rapidez com que o dono implementa determina se ele bate meta em 30 ou 90 dias. Nicho ajuda, estrutura decide.",
+   "tags": [
+    "implementação",
+    "estrutura comercial",
+    "decisão",
+    "nicho",
+    "meta mensal"
+   ],
+   "tipo": "diario",
+   "data": "2026-08-27",
+   "ts": 2044
+  },
   {
    "slug": "reuniao-sem-rotina-vira-excecao-nao-sistema",
    "url": "/blog/reuniao-sem-rotina-vira-excecao-nao-sistema/",
