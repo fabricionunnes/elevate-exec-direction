@@ -92,13 +92,20 @@ Deno.serve(async (req) => {
         .single();
 
       if (leadData) {
-        const { data: triagemStage } = await supabase
-          .from('crm_stages')
-          .select('id')
-          .eq('pipeline_id', leadData.pipeline_id)
-          .order('sort_order', { ascending: true })
-          .range(1, 1)
+        const { data: formCfg } = await supabase
+          .from('crm_pipeline_forms')
+          .select('target_stage_id')
+          .eq('form_token', form_token)
           .maybeSingle();
+        const { data: triagemStage } = formCfg?.target_stage_id
+          ? { data: { id: formCfg.target_stage_id } }
+          : await supabase
+              .from('crm_stages')
+              .select('id')
+              .eq('pipeline_id', leadData.pipeline_id)
+              .order('sort_order', { ascending: true })
+              .range(1, 1)
+              .maybeSingle();
 
         if (triagemStage) {
           await supabase
@@ -149,7 +156,7 @@ Deno.serve(async (req) => {
 
     const { data: form } = await supabase
       .from('crm_pipeline_forms')
-      .select('id, pipeline_id, origin_name, is_active')
+      .select('id, pipeline_id, origin_name, is_active, target_stage_id')
       .eq('form_token', form_token)
       .maybeSingle();
 
@@ -232,13 +239,15 @@ Deno.serve(async (req) => {
     }
 
     // ── New lead: create normally ──
-    const { data: stage } = await supabase
-      .from('crm_stages')
-      .select('id')
-      .eq('pipeline_id', form.pipeline_id)
-      .order('sort_order', { ascending: true })
-      .limit(1)
-      .maybeSingle();
+    const { data: stage } = form.target_stage_id
+      ? { data: { id: form.target_stage_id } }
+      : await supabase
+          .from('crm_stages')
+          .select('id')
+          .eq('pipeline_id', form.pipeline_id)
+          .order('sort_order', { ascending: true })
+          .limit(1)
+          .maybeSingle();
 
     if (!stage) return jsonResponse({ error: 'Pipeline sem etapas configuradas' }, 500);
 

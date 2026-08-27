@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain, Network } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain, Network, AudioLines } from "lucide-react";
 import { GlobalAccessControlPanel } from "@/components/onboarding-tasks/GlobalAccessControlPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -2321,6 +2321,9 @@ const OnboardingTasksPage = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/mapas")}>
                   <Network className="h-4 w-4 mr-2" /> Mapas Mentais
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/transcricoes")}>
+                  <AudioLines className="h-4 w-4 mr-2" /> Transcrições
                 </DropdownMenuItem>
                 {/* Escritório 3D dos agentes IA — somente master */}
                 {isMaster && (

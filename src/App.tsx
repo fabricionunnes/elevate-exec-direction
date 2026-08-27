@@ -41,6 +41,8 @@ const UNVStartClientsPage = lazy(() => import("./pages/onboarding-tasks/UNVStart
 const ProcessosPage = lazy(() => import("./pages/onboarding-tasks/ProcessosPage"));
 const CertificateVerifyPage = lazy(() => import("./pages/CertificateVerifyPage"));
 const GlobalGraphPage = lazy(() => import("./pages/onboarding-tasks/GlobalGraphPage"));
+const TranscricoesPage = lazy(() => import("./pages/onboarding-tasks/TranscricoesPage"));
+const TranscricaoDetalhePage = lazy(() => import("./pages/onboarding-tasks/TranscricaoDetalhePage"));
 const MindMapsPage = lazy(() => import("./pages/onboarding-tasks/MindMapsPage"));
 const MindMapEditorPage = lazy(() => import("./pages/onboarding-tasks/MindMapEditorPage"));
 const AcademyCertificatesPage = lazy(() => import("./pages/academy/AcademyCertificatesPage"));
@@ -537,6 +539,8 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/copiloto" element={<CopilotPage />} />
               <Route path="/onboarding-tasks/cerebro" element={<CerebroPage />} />
               <Route path="/onboarding-tasks/grafo" element={<GlobalGraphPage />} />
+              <Route path="/onboarding-tasks/transcricoes" element={<TranscricoesPage />} />
+              <Route path="/onboarding-tasks/transcricoes/:id" element={<TranscricaoDetalhePage />} />
               <Route path="/onboarding-tasks/mapas" element={<MindMapsPage />} />
               <Route path="/onboarding-tasks/mapas/:id" element={<MindMapEditorPage />} />
               <Route path="/processos" element={<ProcessosPage />} />
