@@ -84,6 +84,8 @@ export function NfsePanel() {
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
+  // Diagnóstico da emissão: sem isso a tela ficava vazia sem dizer o motivo
+  const [conexao, setConexao] = useState<any>({ carregando: true });
   const [emitDialogOpen, setEmitDialogOpen] = useState(false);
   const [emitting, setEmitting] = useState(false);
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("all");
@@ -247,9 +249,20 @@ export function NfsePanel() {
     return result;
   };
 
+  const verificarConexao = async () => {
+    setConexao({ carregando: true });
+    try {
+      const d = await invokeNfseFunction({ action: "connection-status" });
+      setConexao({ carregando: false, ...d });
+    } catch (e: any) {
+      setConexao({ carregando: false, connected: false, reason: "erro", message: e?.message || "Não consegui verificar a conexão" });
+    }
+  };
+
   const loadNfeioCompanies = async () => {
     setLoadingCompanies(true);
     try {
+      verificarConexao();
       const data = await invokeNfseFunction({ action: "list-companies" });
       const list = data?.companies || data?.data || [];
       setCompanies(Array.isArray(list) ? list : []);
@@ -834,6 +847,40 @@ export function NfsePanel() {
           </Dialog>
         </div>
       </div>
+
+      {/* Situação da emissão */}
+      {!conexao.carregando && !conexao.connected && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4">
+          <p className="font-semibold text-amber-700 flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" /> A emissão ainda não está conectada
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">{conexao.message}</p>
+          {conexao.reason === "sem_chave" && (
+            <ol className="text-sm text-muted-foreground mt-3 space-y-1 list-decimal list-inside">
+              <li>Criar a conta na NFE.io e gerar a chave de API</li>
+              <li>Cadastrar o CNPJ com inscrição municipal e enviar o certificado digital A1 lá</li>
+              <li>Salvar a chave no sistema (segredo NFEIO_API_KEY) e voltar aqui</li>
+            </ol>
+          )}
+          <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={verificarConexao}>
+            <RefreshCw className="h-3.5 w-3.5" /> Verificar de novo
+          </Button>
+        </div>
+      )}
+      {!conexao.carregando && conexao.connected && !!conexao.empresas?.length && (
+        <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3 text-sm">
+          <span className="font-semibold text-emerald-700">Emissão conectada</span>
+          <span className="text-muted-foreground"> — {conexao.empresas.map((e: any) =>
+            `${e.nome}${e.cidade ? ` (${e.cidade}${e.uf ? "/" + e.uf : ""})` : ""}${e.tem_certificado ? "" : " · sem certificado"}`
+          ).join(" · ")}</span>
+        </div>
+      )}
+      {!conexao.carregando && conexao.connected && !conexao.empresas?.length && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
+          <span className="font-semibold text-amber-700">Chave válida, falta cadastrar o CNPJ na NFE.io</span>
+          <span className="text-muted-foreground"> — com inscrição municipal e certificado digital A1.</span>
+        </div>
+      )}
 
       {/* Filter */}
       <div className="flex gap-3 items-center">

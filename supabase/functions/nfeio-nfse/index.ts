@@ -263,6 +263,54 @@ Deno.serve(async (req) => {
     const { action, ...params } = await req.json();
 
     switch (action) {
+      // Diagnóstico da conexão: em vez de falhar calado, diz exatamente o que
+      // falta pra conseguir emitir (chave, empresa cadastrada, certificado).
+      case "connection-status": {
+        const apiKey = Deno.env.get("NFEIO_API_KEY");
+        if (!apiKey) {
+          return new Response(JSON.stringify({
+            connected: false, reason: "sem_chave",
+            message: "A chave da NFE.io ainda não foi cadastrada no sistema.",
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const res = await fetch(`${NFEIO_BASE}/companies`, {
+          headers: { Authorization: apiKey, "Content-Type": "application/json" },
+        });
+        if (res.status === 401 || res.status === 403) {
+          return new Response(JSON.stringify({
+            connected: false, reason: "chave_invalida",
+            message: "A NFE.io recusou a chave cadastrada. Gere uma nova no painel dela.",
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        if (!res.ok) {
+          return new Response(JSON.stringify({
+            connected: false, reason: "erro",
+            message: `NFE.io respondeu ${res.status}: ${(await res.text()).slice(0, 200)}`,
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const data = await res.json();
+        const lista = data?.companies || data?.data || [];
+        const empresas = (Array.isArray(lista) ? lista : []).map((c: any) => ({
+          id: c.id,
+          nome: c.name || c.tradeName || "",
+          cnpj: c.federalTaxNumber || "",
+          cidade: c?.address?.city?.name || c?.address?.city || "",
+          uf: c?.address?.state || "",
+          inscricao_municipal: c.municipalTaxNumber || "",
+          regime: c.taxRegime || "",
+          certificado_vence: c?.certificate?.expiresOn || c?.certificate?.expiration || null,
+          tem_certificado: !!c?.certificate,
+          habilitada: c?.status === "Active" || c?.enable === true || null,
+        }));
+        return new Response(JSON.stringify({
+          connected: true,
+          empresas,
+          message: empresas.length
+            ? `${empresas.length} empresa(s) cadastrada(s) na NFE.io.`
+            : "Chave válida, mas nenhuma empresa cadastrada na NFE.io ainda.",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
       case "list-companies": {
         const data = await nfeioRequest("/companies");
         return new Response(JSON.stringify(data), {
