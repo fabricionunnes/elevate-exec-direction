@@ -35,7 +35,13 @@ export function NfseGovDialog({ aberto, onOpenChange, onEmitida }: {
   const [salvando, setSalvando] = useState(false);
   const [emitindo, setEmitindo] = useState(false);
 
+  const [origem, setOrigem] = useState<"cliente" | "avulsa">("cliente");
+  const [empresas, setEmpresas] = useState<any[]>([]);
+  const [empresaId, setEmpresaId] = useState("");
+  const [parcelas, setParcelas] = useState<any[]>([]);
+  const [parcelaId, setParcelaId] = useState("");
   const [descricao, setDescricao] = useState("");
+  const [servNota, setServNota] = useState({ codigo: "", nbs: "" });   // vazio = usa o padrão
   const [valor, setValor] = useState("");
   const [tomador, setTomador] = useState({
     nome: "", documento: "", email: "", cep: "", municipio: "", logradouro: "", numero: "", bairro: "",
@@ -45,13 +51,56 @@ export function NfseGovDialog({ aberto, onOpenChange, onEmitida }: {
     const { data } = await (supabase as any).from("nfse_emitter_config").select("*").limit(1).maybeSingle();
     setCfg(data || {
       cnpj: "", razao_social: "", codigo_municipio: "3144805", inscricao_municipal: "",
-      codigo_servico: "", aliquota_iss: "", op_simples_nacional: "1", regime_especial: "0",
+      codigo_servico: "170601", codigo_nbs: "114011100", aliquota_iss: "", op_simples_nacional: "1", regime_especial: "0",
       tipo_retencao_iss: "1", serie: "1", proximo_numero: 1, ambiente: "2",
     });
     setModoConfig(!data?.codigo_servico);   // sem dados fiscais, começa pela configuração
     setCarregando(false);
   }, []);
   useEffect(() => { if (aberto) carregar(); }, [aberto, carregar]);
+
+  // clientes ativos: a maioria das notas sai de uma cobrança já lançada
+  useEffect(() => {
+    if (!aberto) return;
+    (async () => {
+      const { data } = await (supabase as any).from("onboarding_companies")
+        .select("id, name, cnpj, email, address_city, address_state, address_zipcode, address, address_number, address_neighborhood")
+        .eq("status", "active").order("name");
+      setEmpresas(data || []);
+    })();
+  }, [aberto]);
+
+  // parcelas da empresa escolhida
+  useEffect(() => {
+    if (!empresaId) { setParcelas([]); setParcelaId(""); return; }
+    (async () => {
+      const { data } = await (supabase as any).from("company_invoices")
+        .select("id, description, amount_cents, due_date, status, installment_number, total_installments")
+        .eq("company_id", empresaId).order("due_date", { ascending: false }).limit(40);
+      setParcelas(data || []);
+    })();
+  }, [empresaId]);
+
+  // ao escolher a parcela, preenche a nota com o que já está no sistema
+  useEffect(() => {
+    const p = parcelas.find((x) => x.id === parcelaId);
+    const emp = empresas.find((e) => e.id === empresaId);
+    if (!p || !emp) return;
+    setValor(((p.amount_cents || 0) / 100).toFixed(2).replace(".", ","));
+    const parc = p.installment_number && p.total_installments
+      ? ` (parcela ${p.installment_number}/${p.total_installments})` : "";
+    setDescricao(`${p.description || "Prestação de serviços"}${parc}`);
+    setTomador({
+      nome: emp.name || "",
+      documento: emp.cnpj || "",
+      email: emp.email || "",
+      cep: emp.address_zipcode || "",
+      municipio: "",
+      logradouro: emp.address || "",
+      numero: emp.address_number || "",
+      bairro: emp.address_neighborhood || "",
+    });
+  }, [parcelaId, parcelas, empresaId, empresas]);
 
   const salvarConfig = async () => {
     if (!cfg.cnpj || !cfg.razao_social) { toast.error("Informe CNPJ e razão social"); return; }
@@ -86,7 +135,13 @@ export function NfseGovDialog({ aberto, onOpenChange, onEmitida }: {
     setEmitindo(true);
     try {
       const { data, error } = await supabase.functions.invoke("nfse-emitir", {
-        body: { descricao, valor: v, tomador },
+        body: {
+          descricao, valor: v, tomador,
+          codigo_servico: servNota.codigo.trim() || undefined,
+          codigo_nbs: servNota.nbs.trim() || undefined,
+          company_id: origem === "cliente" ? empresaId || null : null,
+          invoice_id: origem === "cliente" ? parcelaId || null : null,
+        },
       });
       if (error) {
         const detalhe = await (error as any).context?.json?.().catch(() => null);
@@ -98,7 +153,7 @@ export function NfseGovDialog({ aberto, onOpenChange, onEmitida }: {
         ? `Nota de teste gerada (homologação). Chave: ${d.chave_acesso || "—"}`
         : `NFS-e emitida! Chave: ${d.chave_acesso}`);
       onOpenChange(false); onEmitida?.();
-      setDescricao(""); setValor("");
+      setDescricao(""); setValor(""); setServNota({ codigo: "", nbs: "" });
       setTomador({ nome: "", documento: "", email: "", cep: "", municipio: "", logradouro: "", numero: "", bairro: "" });
     } catch (e: any) {
       toast.error(e?.message || "Não consegui emitir", { duration: 12000 });
@@ -139,8 +194,9 @@ export function NfseGovDialog({ aberto, onOpenChange, onEmitida }: {
             {campo("razao_social", "Razão social *")}
             <div className="grid gap-3 sm:grid-cols-2">
               {campo("codigo_municipio", "Código IBGE do município *")}
-              {campo("codigo_servico", "Código do serviço (6 dígitos) *", { placeholder: "ex: 170100" })}
+              {campo("codigo_servico", "Código do serviço (6 dígitos) *", { placeholder: "170601" })}
             </div>
+            {campo("codigo_nbs", "Código NBS (9 dígitos)", { placeholder: "114011100" })}
             <div className="grid gap-3 sm:grid-cols-3">
               <div>
                 <Label className="text-xs">Regime</Label>
@@ -179,6 +235,43 @@ export function NfseGovDialog({ aberto, onOpenChange, onEmitida }: {
           </div>
         ) : (
           <div className="space-y-3">
+            <div className="flex gap-2">
+              <Button type="button" size="sm" variant={origem === "cliente" ? "default" : "outline"}
+                onClick={() => setOrigem("cliente")}>Para um cliente</Button>
+              <Button type="button" size="sm" variant={origem === "avulsa" ? "default" : "outline"}
+                onClick={() => { setOrigem("avulsa"); setEmpresaId(""); setParcelaId(""); }}>Avulsa</Button>
+            </div>
+
+            {origem === "cliente" && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <Label className="text-xs">Cliente</Label>
+                  <Select value={empresaId} onValueChange={setEmpresaId}>
+                    <SelectTrigger><SelectValue placeholder="Escolha o cliente" /></SelectTrigger>
+                    <SelectContent className="max-h-64">
+                      {empresas.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Parcela / cobrança</Label>
+                  <Select value={parcelaId} onValueChange={setParcelaId} disabled={!empresaId}>
+                    <SelectTrigger><SelectValue placeholder={empresaId ? "Escolha a parcela" : "Escolha o cliente antes"} /></SelectTrigger>
+                    <SelectContent className="max-h-64">
+                      {parcelas.length === 0 && <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhuma cobrança lançada</div>}
+                      {parcelas.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {new Date(`${p.due_date}T12:00:00`).toLocaleDateString("pt-BR")} · R$ {((p.amount_cents || 0) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          {p.installment_number ? ` · ${p.installment_number}/${p.total_installments}` : ""}
+                          {p.status === "paid" ? " · paga" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
             <div>
               <Label className="text-xs">Descrição do serviço *</Label>
               <Textarea rows={3} value={descricao} onChange={(e) => setDescricao(e.target.value)}
@@ -208,6 +301,22 @@ export function NfseGovDialog({ aberto, onOpenChange, onEmitida }: {
                 <Input value={tomador.cep} onChange={(e) => setTomador({ ...tomador, cep: e.target.value })} />
               </div>
             </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs">Código do serviço nesta nota</Label>
+                <Input value={servNota.codigo} onChange={(e) => setServNota({ ...servNota, codigo: e.target.value })}
+                  placeholder={cfg?.codigo_servico || "170601"} />
+              </div>
+              <div>
+                <Label className="text-xs">NBS nesta nota</Label>
+                <Input value={servNota.nbs} onChange={(e) => setServNota({ ...servNota, nbs: e.target.value })}
+                  placeholder={cfg?.codigo_nbs || "114011100"} />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Em branco usa o padrão dos dados fiscais. Preencha só quando esta nota for de outro serviço.
+            </p>
+
             <div className="grid gap-3 sm:grid-cols-4">
               <div className="sm:col-span-2">
                 <Label className="text-xs">Endereço</Label>

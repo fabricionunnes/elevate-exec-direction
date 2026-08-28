@@ -120,7 +120,9 @@ function montarDps(cfg: any, dados: any, numero: number) {
     blocoPessoa("toma", dados.tomador) +
     `<serv><locPrest><cLocPrestacao>${so(dados.municipio_servico || cfg.codigo_municipio)}</cLocPrestacao></locPrest>` +
       `<cServ><cTribNac>${esc(dados.codigo_servico || cfg.codigo_servico)}</cTribNac>` +
-      `<xDescServ>${esc(dados.descricao)}</xDescServ></cServ></serv>` +
+      `<xDescServ>${esc(dados.descricao)}</xDescServ>` +
+      ((dados.codigo_nbs || cfg.codigo_nbs) ? `<cNBS>${esc(dados.codigo_nbs || cfg.codigo_nbs)}</cNBS>` : "") +
+      `</cServ></serv>` +
     `<valores><vServPrest><vServ>${dec2(dados.valor)}</vServ></vServPrest>` +
       `<trib><tribMun><tribISSQN>1</tribISSQN>` +
       `${aliq}<tpRetISSQN>${cfg.tipo_retencao_iss}</tpRetISSQN></tribMun>` +
@@ -218,6 +220,7 @@ Deno.serve(async (req: Request) => {
     await supabase.from("nfse_emitter_config").update({ proximo_numero: numero + 1 }).eq("id", cfg.id);
     const { data: salvo } = await supabase.from("nfse_records").insert({
       company_id: body.company_id ?? null,
+      invoice_id: body.invoice_id ?? null,
       service_description: body.descricao,
       amount: body.valor,
       customer_name: body.tomador?.nome,
