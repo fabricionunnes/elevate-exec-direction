@@ -365,6 +365,7 @@ Regras: promessas VENCIDAS e riscos vêm primeiro nas listas. Máximo 6 itens po
   });
   if (!aiResp.ok) throw new Error(`Anthropic ${aiResp.status}: ${truncate(await aiResp.text(), 300)}`);
   const aiData = await aiResp.json();
+  logUsoIA("client-brain", MODEL, aiData?.usage);
   const raw = (aiData.content?.[0]?.text || "{}").replace(/^```json?\s*/i, "").replace(/```\s*$/, "");
   const brain = parseBrainJson(raw);
 
@@ -388,6 +389,29 @@ function riskAlertText(items: { companyName: string; brain: any }[]): string {
     return `• *${companyName}*: ${truncate(brain?.termometro_motivo || "risco alto detectado", 180)}${acao}`;
   });
   return `🚨 *Cérebro do Cliente — RISCO ALTO*\n\n${lines.join("\n\n")}\n\nAbra o projeto no Nexus (aba Cérebro) pra ver promessas, riscos e o plano completo.`;
+}
+
+
+/** medidor de tokens: grava o usage de cada chamada (fire-and-forget) */
+function logUsoIA(fn: string, model: string, usage: any, meta?: Record<string, unknown>) {
+  try {
+    fetch(`${Deno.env.get("SUPABASE_URL")}/rest/v1/ai_usage_log`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+      },
+      body: JSON.stringify({
+        fn, model,
+        input_tokens: usage?.input_tokens ?? 0,
+        output_tokens: usage?.output_tokens ?? 0,
+        cache_read_tokens: usage?.cache_read_input_tokens ?? 0,
+        cache_write_tokens: usage?.cache_creation_input_tokens ?? 0,
+        meta: meta ?? null,
+      }),
+    }).catch(() => {});
+  } catch { /* medidor nunca derruba a função */ }
 }
 
 Deno.serve(async (req) => {

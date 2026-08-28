@@ -21,6 +21,29 @@ const PUBLIC_DOMAIN = "https://unvholdings.com.br";
 // automaticamente (roll-forward diário) conforme cada ação entra na janela.
 const HORIZON_DAYS = 60;
 
+
+/** medidor de tokens: grava o usage de cada chamada (fire-and-forget) */
+function logUsoIA(fn: string, model: string, usage: any, meta?: Record<string, unknown>) {
+  try {
+    fetch(`${Deno.env.get("SUPABASE_URL")}/rest/v1/ai_usage_log`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+      },
+      body: JSON.stringify({
+        fn, model,
+        input_tokens: usage?.input_tokens ?? 0,
+        output_tokens: usage?.output_tokens ?? 0,
+        cache_read_tokens: usage?.cache_read_input_tokens ?? 0,
+        cache_write_tokens: usage?.cache_creation_input_tokens ?? 0,
+        meta: meta ?? null,
+      }),
+    }).catch(() => {});
+  } catch { /* medidor nunca derruba a função */ }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -233,6 +256,7 @@ RESPONDA SOMENTE com um array JSON válido (sem markdown, sem comentários), ond
   }
 
   const aiData = await aiResp.json();
+  logUsoIA("board-engine", "claude-sonnet-4-6", (aiData as any)?.usage);
   const text = (aiData.content || []).map((b: any) => b.text || "").join("");
   let actions: any[];
   try {
@@ -514,6 +538,7 @@ REGRAS DE FORMA:
     return json({ error: `Anthropic ${aiResp.status}: ${errText.substring(0, 300)}` }, 500);
   }
   const aiData = await aiResp.json();
+  logUsoIA("board-engine", "claude-sonnet-4-6", (aiData as any)?.usage, { etapa: "deliverable" });
   const content = (aiData.content || []).map((b: any) => b.text || "").join("").trim();
   if (content.length < 100) return json({ error: "IA retornou documento vazio" }, 500);
 

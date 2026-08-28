@@ -8,6 +8,29 @@ const corsHeaders = {
 const ALERT_NUMBERS = ['5531989840003', '5531997667686'];
 const ALERT_INSTANCE_NAME = 'UNV Financeiro';
 
+
+/** medidor de tokens: grava o usage de cada chamada (fire-and-forget) */
+function logUsoIA(fn: string, model: string, usage: any, meta?: Record<string, unknown>) {
+  try {
+    fetch(`${Deno.env.get("SUPABASE_URL")}/rest/v1/ai_usage_log`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+      },
+      body: JSON.stringify({
+        fn, model,
+        input_tokens: usage?.input_tokens ?? 0,
+        output_tokens: usage?.output_tokens ?? 0,
+        cache_read_tokens: usage?.cache_read_input_tokens ?? 0,
+        cache_write_tokens: usage?.cache_creation_input_tokens ?? 0,
+        meta: meta ?? null,
+      }),
+    }).catch(() => {});
+  } catch { /* medidor nunca derruba a função */ }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -67,6 +90,7 @@ NÃO considere como cancelamento: reclamações sem pedido de cancelamento, pedi
     }
 
     const aiData = await aiResponse.json();
+    logUsoIA("detect-cancellation-intent", "claude-haiku-4-5", (aiData as any)?.usage);
     const aiText = aiData.content?.[0]?.text || '';
     console.log('[Cancellation Detection] AI response:', aiText);
 

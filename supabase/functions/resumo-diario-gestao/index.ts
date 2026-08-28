@@ -221,6 +221,7 @@ Regras de escrita:
   });
   if (!resp.ok) return "";
   const data = await resp.json();
+  logUsoIA("resumo-diario-gestao", "claude-haiku-4-5", (data as any)?.usage);
   return (data?.content?.[0]?.text || "").trim();
 }
 
@@ -270,6 +271,7 @@ Regras:
     });
     if (!resp.ok) return nudgeFallback(companyName);
     const data = await resp.json();
+    logUsoIA("resumo-diario-gestao", "claude-haiku-4-5", (data as any)?.usage);
     const text = (data?.content?.[0]?.text || "").trim();
     return text.length > 30 ? text : nudgeFallback(companyName);
   } catch {
@@ -363,6 +365,29 @@ async function processCompany(
 }
 
 const json = (b: any, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+
+/** medidor de tokens: grava o usage de cada chamada (fire-and-forget) */
+function logUsoIA(fn: string, model: string, usage: any, meta?: Record<string, unknown>) {
+  try {
+    fetch(`${Deno.env.get("SUPABASE_URL")}/rest/v1/ai_usage_log`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+      },
+      body: JSON.stringify({
+        fn, model,
+        input_tokens: usage?.input_tokens ?? 0,
+        output_tokens: usage?.output_tokens ?? 0,
+        cache_read_tokens: usage?.cache_read_input_tokens ?? 0,
+        cache_write_tokens: usage?.cache_creation_input_tokens ?? 0,
+        meta: meta ?? null,
+      }),
+    }).catch(() => {});
+  } catch { /* medidor nunca derruba a função */ }
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });

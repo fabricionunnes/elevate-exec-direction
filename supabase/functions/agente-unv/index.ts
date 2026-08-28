@@ -672,7 +672,16 @@ async function executeTool(toolName: string, input: Record<string, unknown>, age
       case "consultar_marketing": result = await callAgent("marketing", input.pergunta as string); break;
       default: return JSON.stringify({ error: `Tool desconhecida: ${toolName}` });
     }
-    return JSON.stringify(result);
+    // Teto no resultado: uma listagem grande (leads, contas) virava 100k+
+    // tokens REENVIADOS a cada iteração do loop — era o maior ralo do Office.
+    // 12k chars ≈ 3k tokens dá de sobra pro agente responder; se cortar, ele
+    // fica sabendo e pode pedir com filtro.
+    const bruto = JSON.stringify(result);
+    if (bruto.length > 12000) {
+      return bruto.slice(0, 12000) +
+        `\n...[resultado cortado: ${bruto.length} chars no total — refaça a consulta com filtros ou paginação para ver o restante]`;
+    }
+    return bruto;
   } catch (err) {
     return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
   }
@@ -769,6 +778,7 @@ async function callAgent(agentType: AgentType, userMessage: string, history: Ant
         throw err;
       }
     }
+    logUsoIA("agente-unv", agentModel, (response as any).usage, { agente: agentType, iteracao: i });
     if (response.stop_reason === "end_turn") {
       return response.content.find((c) => c.type === "text")?.text ?? "Pronto.";
     }
@@ -1629,6 +1639,29 @@ async function forwardToEvolutionWebhook(rawBody: unknown): Promise<void> {
 }
 
 // ============ HANDLER ============
+
+/** medidor de tokens: grava o usage de cada chamada (fire-and-forget) */
+function logUsoIA(fn: string, model: string, usage: any, meta?: Record<string, unknown>) {
+  try {
+    fetch(`${Deno.env.get("SUPABASE_URL")}/rest/v1/ai_usage_log`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+      },
+      body: JSON.stringify({
+        fn, model,
+        input_tokens: usage?.input_tokens ?? 0,
+        output_tokens: usage?.output_tokens ?? 0,
+        cache_read_tokens: usage?.cache_read_input_tokens ?? 0,
+        cache_write_tokens: usage?.cache_creation_input_tokens ?? 0,
+        meta: meta ?? null,
+      }),
+    }).catch(() => {});
+  } catch { /* medidor nunca derruba a função */ }
+}
+
 Deno.serve(async (req) => {
   const url = new URL(req.url);
 

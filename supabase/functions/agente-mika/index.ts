@@ -198,13 +198,15 @@ async function runAgent(chatId: number, history: Message[]): Promise<Message[]> 
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
         max_tokens: 1024,
-        system: SYSTEM_PROMPT,
-        tools: TOOLS,
+        // cache: system e tools não mudam entre as até 10 iterações do loop
+        system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+        tools: TOOLS.map((t: any, i: number) => i === TOOLS.length - 1 ? { ...t, cache_control: { type: "ephemeral" } } : t),
         messages,
       }),
     });
 
     const data = await res.json();
+    logUsoIA("agente-mika", "claude-sonnet-4-6", (data as any)?.usage);
     if (data.error) { await sendTelegram(chatId, `Erro: ${data.error.message}`); return messages; }
 
     messages.push({ role: "assistant", content: data.content });
@@ -252,6 +254,29 @@ async function saveHistory(chatId: number, messages: Message[]): Promise<void> {
     },
     body: JSON.stringify({ chat_id: chatId, messages: trimmed, updated_at: new Date().toISOString() }),
   });
+}
+
+
+/** medidor de tokens: grava o usage de cada chamada (fire-and-forget) */
+function logUsoIA(fn: string, model: string, usage: any, meta?: Record<string, unknown>) {
+  try {
+    fetch(`${Deno.env.get("SUPABASE_URL")}/rest/v1/ai_usage_log`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+      },
+      body: JSON.stringify({
+        fn, model,
+        input_tokens: usage?.input_tokens ?? 0,
+        output_tokens: usage?.output_tokens ?? 0,
+        cache_read_tokens: usage?.cache_read_input_tokens ?? 0,
+        cache_write_tokens: usage?.cache_creation_input_tokens ?? 0,
+        meta: meta ?? null,
+      }),
+    }).catch(() => {});
+  } catch { /* medidor nunca derruba a função */ }
 }
 
 Deno.serve(async (req) => {
