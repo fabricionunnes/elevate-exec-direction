@@ -42,6 +42,9 @@ interface NfseRecord {
   issued_at: string | null;
   cancelled_at: string | null;
   created_at: string;
+  chave_acesso?: string | null;
+  origem?: string | null;
+  environment?: string | null;
 }
 
 interface NfeioCompany {
@@ -66,6 +69,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof
   pending: { label: "Pendente", color: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20", icon: Clock },
   processing: { label: "Processando", color: "bg-blue-500/10 text-blue-600 border-blue-500/20", icon: RefreshCw },
   authorized: { label: "Autorizada", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", icon: CheckCircle2 },
+  issued: { label: "Emitida", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", icon: CheckCircle2 },
   cancelled: { label: "Cancelada", color: "bg-destructive/10 text-destructive border-destructive/20", icon: XCircle },
   error: { label: "Erro", color: "bg-destructive/10 text-destructive border-destructive/20", icon: AlertTriangle },
   cancelling: { label: "Cancelando", color: "bg-orange-500/10 text-orange-600 border-orange-500/20", icon: RefreshCw },
@@ -412,6 +416,33 @@ export function NfsePanel() {
   };
 
   const handleDownloadPdf = async (record: NfseRecord) => {
+    if (record.origem === "gov") {
+      if (!record.chave_acesso) { toast.error("Nota sem chave de acesso guardada."); return; }
+      try {
+        toast.info("Buscando o PDF...");
+        const { data, error } = await supabase.functions.invoke("nfse-emitir", {
+          body: { action: "danfse", chave_acesso: record.chave_acesso, ambiente: record.environment },
+        });
+        if (error) {
+          const det = await (error as any).context?.json?.().catch(() => null);
+          throw new Error(det?.error || error.message);
+        }
+        if ((data as any)?.error) throw new Error((data as any).error);
+        const d = data as any;
+        const bytes = Uint8Array.from(atob(d.pdf_base64), (c) => c.charCodeAt(0));
+        const blob = new Blob([bytes], { type: "application/pdf" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `NFSe-${record.number || record.chave_acesso.slice(-8)}.pdf`;
+        a.click();
+        if (d.fonte === "espelho") {
+          toast.info("O serviço de PDF do gov está instável — baixei o espelho gerado do XML oficial.");
+        }
+      } catch (e: any) {
+        toast.error(e?.message || "Não consegui baixar o PDF");
+      }
+      return;
+    }
     const nfeioId = sanitizeStringValue(record.nfeio_id);
     const nfeioCompanyId = getDefaultNfeioCompanyId();
 
@@ -485,8 +516,13 @@ export function NfsePanel() {
      const nfeioId = sanitizeStringValue(record.nfeio_id);
      const nfeioCompanyId = getDefaultNfeioCompanyId();
 
-     if (!nfeioId || !nfeioCompanyId) {
+     // nota do gov não tem id da NFE.io — o envio dela segue outro caminho
+     if (record.origem !== "gov" && (!nfeioId || !nfeioCompanyId)) {
        toast.error("Dados da NFS-e inválidos para envio.");
+       return;
+     }
+     if (record.origem === "gov" && !record.chave_acesso) {
+       toast.error("Nota sem chave de acesso guardada.");
        return;
      }
 
@@ -508,6 +544,26 @@ export function NfsePanel() {
 
      setSendingWhatsApp(record.id);
      try {
+       if (record.origem === "gov") {
+         const { data, error } = await supabase.functions.invoke("nfse-emitir", {
+           body: {
+             action: "enviar-whatsapp",
+             chave_acesso: record.chave_acesso,
+             phone,
+             tomador_nome: record.tomador_name || "Cliente",
+             numero_nota: record.number || "",
+             ambiente: record.environment,
+           },
+         });
+         if (error) {
+           const det = await (error as any).context?.json?.().catch(() => null);
+           throw new Error(det?.error || error.message);
+         }
+         if ((data as any)?.error) throw new Error((data as any).error);
+         toast.success("NFS-e enviada via WhatsApp!");
+         setSendingWhatsApp(null);
+         return;
+       }
        await invokeNfseFunction({
          action: "send-whatsapp",
          nfeioCompanyId,
@@ -932,12 +988,12 @@ export function NfsePanel() {
                           <RefreshCw className="h-4 w-4" />
                         </Button>
                       )}
-                      {record.status === "authorized" && record.nfeio_id && (
+                      {((record.status === "authorized" && record.nfeio_id) || (record.origem === "gov" && record.chave_acesso && record.status !== "cancelled")) && (
                         <Button type="button" variant="ghost" size="icon" onClick={() => handleDownloadPdf(record)} title="Baixar PDF">
                           <Download className="h-4 w-4" />
                         </Button>
                       )}
-                       {record.status === "authorized" && record.nfeio_id && (
+                       {((record.status === "authorized" && record.nfeio_id) || (record.origem === "gov" && record.chave_acesso && record.status !== "cancelled")) && (
                          <Button
                            type="button"
                            variant="ghost"
