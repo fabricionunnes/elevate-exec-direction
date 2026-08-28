@@ -2317,6 +2317,9 @@ const OnboardingTasksPage = () => {
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/task-manager")}>
                   <LayoutGrid className="h-4 w-4 mr-2" /> Gerenciador
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/processos")}>
+                  <BookOpen className="h-4 w-4 mr-2" /> Manual de Processos
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/office?tab=calendar")}>
                   <Calendar className="h-4 w-4 mr-2" /> Conectar Google Agenda
                 </DropdownMenuItem>
