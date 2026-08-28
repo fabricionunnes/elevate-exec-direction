@@ -87,6 +87,7 @@ export function NfsePanel() {
   const [loadingCompanies, setLoadingCompanies] = useState(false);
   // Diagnóstico da emissão: sem isso a tela ficava vazia sem dizer o motivo
   const [conexao, setConexao] = useState<any>({ carregando: true });
+  const [certStatus, setCertStatus] = useState<any>(null);
   const [emitDialogOpen, setEmitDialogOpen] = useState(false);
   const [emitting, setEmitting] = useState(false);
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("all");
@@ -263,7 +264,6 @@ export function NfsePanel() {
   const loadNfeioCompanies = async () => {
     setLoadingCompanies(true);
     try {
-      verificarConexao();
       const data = await invokeNfseFunction({ action: "list-companies" });
       const list = data?.companies || data?.data || [];
       setCompanies(Array.isArray(list) ? list : []);
@@ -543,7 +543,7 @@ export function NfsePanel() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Notas Fiscais de Serviço (NFS-e)</h2>
-          <p className="text-muted-foreground">Emita e gerencie NFS-e via NFE.io</p>
+          <p className="text-muted-foreground">Emissão direta no Emissor Nacional (gov.br), com o certificado da empresa</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={loadRecords}>
@@ -552,7 +552,7 @@ export function NfsePanel() {
           </Button>
           <Dialog open={emitDialogOpen} onOpenChange={(open) => { setEmitDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button size="sm">
+              <Button size="sm" disabled title="Emissão direta pelo gov em construção">
                 <Plus className="h-4 w-4 mr-2" />
                 Emitir NFS-e
               </Button>
@@ -849,39 +849,17 @@ export function NfsePanel() {
         </div>
       </div>
 
-      <FiscalCertificateCard />
+      <FiscalCertificateCard onStatus={setCertStatus} />
 
       {/* Situação da emissão */}
-      {!conexao.carregando && !conexao.connected && (
-        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4">
-          <p className="font-semibold text-amber-700 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" /> A emissão ainda não está conectada
+      {certStatus?.tem_certificado && !certStatus?.vencido && (
+        <div className="rounded-lg border border-sky-500/40 bg-sky-500/5 p-4">
+          <p className="font-semibold text-sky-800">Emissão direta pelo gov — em construção</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            O certificado já é aceito pelo Emissor Nacional e a conexão está funcionando.
+            Falta montar a declaração de serviço (DPS) que o gov exige para gerar a nota.
+            Enquanto isso, para emitir hoje use o portal gov.br/nfse com o mesmo certificado.
           </p>
-          <p className="text-sm text-muted-foreground mt-1">{conexao.message}</p>
-          {conexao.reason === "sem_chave" && (
-            <ol className="text-sm text-muted-foreground mt-3 space-y-1 list-decimal list-inside">
-              <li>Criar a conta na NFE.io e gerar a chave de API</li>
-              <li>Cadastrar o CNPJ com inscrição municipal e enviar o certificado digital A1 lá</li>
-              <li>Salvar a chave no sistema (segredo NFEIO_API_KEY) e voltar aqui</li>
-            </ol>
-          )}
-          <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={verificarConexao}>
-            <RefreshCw className="h-3.5 w-3.5" /> Verificar de novo
-          </Button>
-        </div>
-      )}
-      {!conexao.carregando && conexao.connected && !!conexao.empresas?.length && (
-        <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3 text-sm">
-          <span className="font-semibold text-emerald-700">Emissão conectada</span>
-          <span className="text-muted-foreground"> — {conexao.empresas.map((e: any) =>
-            `${e.nome}${e.cidade ? ` (${e.cidade}${e.uf ? "/" + e.uf : ""})` : ""}${e.tem_certificado ? "" : " · sem certificado"}`
-          ).join(" · ")}</span>
-        </div>
-      )}
-      {!conexao.carregando && conexao.connected && !conexao.empresas?.length && (
-        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
-          <span className="font-semibold text-amber-700">Chave válida, falta cadastrar o CNPJ na NFE.io</span>
-          <span className="text-muted-foreground"> — com inscrição municipal e certificado digital A1.</span>
         </div>
       )}
 

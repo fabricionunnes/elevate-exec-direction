@@ -82,21 +82,35 @@ function sb() {
   return createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 }
 
-/** confere se o certificado abre conexão com o Emissor Nacional */
-async function testarGov(certPem: string, keyPem: string, codigoMunicipio: string) {
-  const client = (Deno as any).createHttpClient({ cert: certPem, key: keyPem });
-  try {
-    // consulta pública de parâmetros do município: exige a conexão com certificado
-    const r = await fetch(
-      `https://sefin.nfse.gov.br/sefinnacional/parametros_municipais/${codigoMunicipio}/convenio`,
-      { client, headers: { Accept: "application/json" } } as any,
-    );
-    const corpo = await r.text();
-    return { ok: r.ok, status: r.status, corpo: corpo.slice(0, 400) };
-  } finally {
-    client?.close?.();
-  }
+/** fala com o Emissor Nacional através da ponte na VPS: o servidor do gov (IIS)
+ *  pede o certificado por renegociação TLS, que o runtime daqui não faz. */
+async function chamarGov(opts: {
+  certPem: string; keyPem: string; path: string; metodo?: string; corpo?: string;
+  host?: string; headers?: Record<string, string>;
+}) {
+  const url = Deno.env.get("NFSE_BRIDGE_URL");
+  const token = Deno.env.get("NFSE_BRIDGE_TOKEN");
+  if (!url || !token) throw new Error("Ponte de NFS-e não configurada");
+  const r = await fetch(`${url}/gov`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-bridge-token": token },
+    body: JSON.stringify({
+      host: opts.host || "sefin.nfse.gov.br",
+      path: opts.path,
+      metodo: opts.metodo || "GET",
+      corpo: opts.corpo,
+      headers: opts.headers,
+      cert_pem: opts.certPem,
+      key_pem: opts.keyPem,
+    }),
+  });
+  const d = await r.json();
+  if (!r.ok || d.error) throw new Error(d.error || `ponte respondeu ${r.status}`);
+  return d as { status: number; headers: any; corpo: string };
 }
+
+
+
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -105,11 +119,23 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const { action } = body;
 
-    let staff;
-    try {
-      staff = await exigirAdmin(req, supabase);
-    } catch {
-      return json({ error: "Só master ou admin pode mexer no certificado digital." }, 403);
+    // chamada feita pelo próprio servidor (diagnóstico): o token de serviço traz
+    // role=service_role no payload — quem já tem essa chave tem acesso total
+    const tokenReq = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+    let chaveServidor = tokenReq === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!chaveServidor && tokenReq.split(".").length === 3) {
+      try {
+        const payload = JSON.parse(atob(tokenReq.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+        chaveServidor = payload?.role === "service_role";
+      } catch { /* token que não é JWT: segue como usuário comum */ }
+    }
+    let staff: any = null;
+    if (!(chaveServidor && action === "test")) {
+      try {
+        staff = await exigirAdmin(req, supabase);
+      } catch {
+        return json({ error: "Só master ou admin pode mexer no certificado digital." }, 403);
+      }
     }
 
     if (action === "save") {
@@ -140,7 +166,7 @@ Deno.serve(async (req: Request) => {
         cnpj: dados.cnpj, titular: dados.titular,
         file_path: caminho, senha_cifrada: await cifrar(senha),
         valido_de: dados.validoDe.toISOString(), valido_ate: dados.validoAte.toISOString(),
-        ativo: true, enviado_por: staff.id,
+        ativo: true, enviado_por: staff?.id ?? null,
       }).select("id").single();
       if (insErr) return json({ error: insErr.message }, 500);
 
@@ -174,15 +200,19 @@ Deno.serve(async (req: Request) => {
 
       let resultado;
       try {
-        const r = await testarGov(certPem, keyPem, municipio);
+        const r = await chamarGov({ certPem, keyPem, path: "/SefinNacional/swagger/docs/v1" });
+        const amostra = (r.corpo || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 220);
+        const ok = r.status >= 200 && r.status < 300;
         resultado = {
-          ok: r.ok,
-          message: r.ok
-            ? "Conexão com o Emissor Nacional funcionando com este certificado."
-            : `O gov respondeu ${r.status}. ${r.corpo}`,
+          ok,
+          message: ok
+            ? "Conectado no Emissor Nacional — o certificado da empresa foi aceito pelo gov."
+            : r.status === 403
+              ? "O gov recusou o certificado (403). Confira se o certificado é o e-CNPJ da empresa e está válido."
+              : `O gov respondeu ${r.status}. ${amostra}`,
         };
       } catch (e) {
-        resultado = { ok: false, message: "Não consegui conectar no Emissor Nacional: " + String((e as Error).message).slice(0, 200) };
+        resultado = { ok: false, message: String((e as Error).message).slice(0, 300) };
       }
 
       await supabase.from("fiscal_certificates").update({
@@ -192,6 +222,7 @@ Deno.serve(async (req: Request) => {
       }).eq("id", cert.id);
       return json(resultado);
     }
+
 
     if (action === "delete") {
       const { data: cert } = await supabase.from("fiscal_certificates").select("id, file_path").eq("ativo", true).maybeSingle();

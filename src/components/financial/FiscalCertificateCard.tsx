@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-export function FiscalCertificateCard({ codigoMunicipio = "3144805" }: { codigoMunicipio?: string }) {
+export function FiscalCertificateCard({ codigoMunicipio = "3144805", onStatus }: { codigoMunicipio?: string; onStatus?: (s: any) => void }) {
   const [status, setStatus] = useState<any>(null);
   const [carregando, setCarregando] = useState(true);
   const [aberto, setAberto] = useState(false);
@@ -43,7 +43,8 @@ export function FiscalCertificateCard({ codigoMunicipio = "3144805" }: { codigoM
 
   const carregar = useCallback(async () => {
     try {
-      setStatus(await chamar({ action: "status" }));
+      const s = await chamar({ action: "status" });
+      setStatus(s); onStatus?.(s);
     } catch {
       setStatus(null);
     } finally { setCarregando(false); }
