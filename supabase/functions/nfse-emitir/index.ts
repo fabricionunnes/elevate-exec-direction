@@ -50,24 +50,33 @@ function montarIdDps(codMun: string, cnpj: string, serie: string, numero: number
 
 /** assinatura XMLDSig (enveloped, RSA-SHA1 + C14N) — padrão dos documentos fiscais */
 function assinar(xmlInfDps: string, idDps: string, cert: any, key: any) {
-  const digest = forge.md.sha1.create();
-  digest.update(xmlInfDps, "utf8");
+  // O digest é calculado sobre o trecho JÁ canonicalizado (C14N): nele o
+  // elemento assinado carrega o namespace herdado do pai. Sem isso o gov
+  // recusa com "erro na assinatura" (E0714).
+  const canon = xmlInfDps.replace(
+    "<infDPS ",
+    `<infDPS xmlns="http://www.sped.fazenda.gov.br/nfse" `,
+  );
+  const digest = forge.md.sha256.create();
+  digest.update(canon, "utf8");
   const digestValue = forge.util.encode64(digest.digest().getBytes());
 
+  // C14N expande tags autofechadas (<X/> vira <X></X>): o SignedInfo precisa
+  // já nascer na forma canônica, senão os bytes assinados diferem dos conferidos
   const signedInfo =
     `<SignedInfo xmlns="http://www.w3.org/2000/09/xmldsig#">` +
-    `<CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>` +
-    `<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>` +
+    `<CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"></CanonicalizationMethod>` +
+    `<SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"></SignatureMethod>` +
     `<Reference URI="#${idDps}">` +
     `<Transforms>` +
-    `<Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>` +
-    `<Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>` +
+    `<Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"></Transform>` +
+    `<Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"></Transform>` +
     `</Transforms>` +
-    `<DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>` +
+    `<DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"></DigestMethod>` +
     `<DigestValue>${digestValue}</DigestValue>` +
     `</Reference></SignedInfo>`;
 
-  const md = forge.md.sha1.create();
+  const md = forge.md.sha256.create();
   md.update(signedInfo, "utf8");
   const signatureValue = forge.util.encode64(key.sign(md));
   const certB64 = forge.util.encode64(
@@ -94,13 +103,12 @@ function blocoPessoa(tag: string, p: any) {
     (p.email ? `<email>${esc(p.email)}</email>` : "") + `</${tag}>`;
 }
 
-function montarDps(cfg: any, dados: any, numero: number) {
+function montarDps(cfg: any, dados: any, numero: number, semIM = false) {
   const idDps = montarIdDps(cfg.codigo_municipio, cfg.cnpj, cfg.serie, numero);
   // o layout exige data-hora com fuso (-03:00); "Z" é recusado pelo schema
   const br = new Date(Date.now() - 3 * 3600000).toISOString();
   const agora = `${br.slice(0, 19)}-03:00`;
   const compet = br.slice(0, 10);
-  const aliq = cfg.aliquota_iss != null ? `<pAliq>${dec2(cfg.aliquota_iss)}</pAliq>` : "";
 
   const infDps =
     `<infDPS Id="${idDps}">` +
@@ -113,8 +121,9 @@ function montarDps(cfg: any, dados: any, numero: number) {
     `<tpEmit>1</tpEmit>` +
     `<cLocEmi>${so(cfg.codigo_municipio)}</cLocEmi>` +
     `<prest><CNPJ>${so(cfg.cnpj)}</CNPJ>` +
-      (cfg.inscricao_municipal ? `<IM>${esc(cfg.inscricao_municipal)}</IM>` : "") +
+      (!semIM && cfg.inscricao_municipal ? `<IM>${esc(cfg.inscricao_municipal)}</IM>` : "") +
       `<regTrib><opSimpNac>${cfg.op_simples_nacional}</opSimpNac>` +
+      (cfg.op_simples_nacional === "3" ? `<regApTribSN>${cfg.regime_apuracao_sn || "1"}</regApTribSN>` : "") +
       `<regEspTrib>${cfg.regime_especial}</regEspTrib></regTrib>` +
     `</prest>` +
     blocoPessoa("toma", dados.tomador) +
@@ -125,8 +134,11 @@ function montarDps(cfg: any, dados: any, numero: number) {
       `</cServ></serv>` +
     `<valores><vServPrest><vServ>${dec2(dados.valor)}</vServ></vServPrest>` +
       `<trib><tribMun><tribISSQN>1</tribISSQN>` +
-      `${aliq}<tpRetISSQN>${cfg.tipo_retencao_iss}</tpRetISSQN></tribMun>` +
-      `<totTrib><indTotTrib>0</indTotTrib></totTrib></trib></valores>` +
+      `<tpRetISSQN>${cfg.tipo_retencao_iss}</tpRetISSQN></tribMun>` +
+      (cfg.op_simples_nacional === "3"
+        ? `<totTrib><pTotTribSN>${dec2(cfg.percentual_trib_sn || 0)}</pTotTribSN></totTrib>`
+        : `<totTrib><indTotTrib>0</indTotTrib></totTrib>`) +
+      `</trib></valores>` +
     `</infDPS>`;
 
   return { idDps, infDps };
@@ -141,14 +153,16 @@ async function gzipB64(texto: string) {
   return btoa(bin);
 }
 
-async function pontoGov(path: string, metodo: string, corpo: string | undefined, certPem: string, keyPem: string) {
+async function pontoGov(path: string, metodo: string, corpo: string | undefined, certPem: string, keyPem: string, ambiente = "1") {
   const url = Deno.env.get("NFSE_BRIDGE_URL"), token = Deno.env.get("NFSE_BRIDGE_TOKEN");
   if (!url || !token) throw new Error("Ponte de NFS-e não configurada");
   const r = await fetch(`${url}/gov`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-bridge-token": token },
     body: JSON.stringify({
-      host: "sefin.nfse.gov.br", path, metodo, corpo,
+      // ambiente 2 (teste) tem endereço próprio; mandar teste pra produção é recusado
+      host: ambiente === "2" ? "sefin.producaorestrita.nfse.gov.br" : "sefin.nfse.gov.br",
+      path, metodo, corpo,
       headers: corpo ? { "Content-Type": "application/json" } : undefined,
       cert_pem: certPem, key_pem: keyPem,
     }),
@@ -194,22 +208,40 @@ Deno.serve(async (req: Request) => {
     const senha = await decifrar(cert.senha_cifrada);
     const { cert: certObj, key, certPem, keyPem } = abrirPfx(bytesToB64(new Uint8Array(await arq.arrayBuffer())), senha);
 
+    const ambiente = body.ambiente || cfg.ambiente;   // teste pode forçar homologação
+    cfg.ambiente = ambiente;
     const numero = body.numero || cfg.proximo_numero;
-    const { idDps, infDps } = montarDps(cfg, body, numero);
-    const assinatura = assinar(infDps, idDps, certObj, key);
-    const xml = `<?xml version="1.0" encoding="UTF-8"?><DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.00">${infDps}${assinatura}</DPS>`;
 
-    if (body.dry_run) return json({ ok: true, dry_run: true, idDps, xml_tamanho: xml.length, xml: body.mostrar_xml ? xml : undefined });
+    const montarEnviar = async (semIM: boolean) => {
+      const { idDps, infDps } = montarDps(cfg, body, numero, semIM);
+      const assinatura = assinar(infDps, idDps, certObj, key);
+      const xml = `<?xml version="1.0" encoding="UTF-8"?><DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.00">${infDps}${assinatura}</DPS>`;
+      if (body.dry_run) return { dry: { idDps, xml } };
+      const resp = await pontoGov("/SefinNacional/nfse", "POST",
+        JSON.stringify({ dpsXmlGZipB64: await gzipB64(xml) }), certPem, keyPem, String(cfg.ambiente));
+      let retorno: any = {};
+      try { retorno = JSON.parse(resp.corpo); } catch { retorno = { bruto: resp.corpo.slice(0, 800) }; }
+      return { resp, retorno, idDps };
+    };
 
-    const resp = await pontoGov("/SefinNacional/nfse", "POST",
-      JSON.stringify({ dpsXmlGZipB64: await gzipB64(xml) }), certPem, keyPem);
-
-    let retorno: any = {};
-    try { retorno = JSON.parse(resp.corpo); } catch { retorno = { bruto: resp.corpo.slice(0, 800) }; }
+    let r = await montarEnviar(false);
+    if ((r as any).dry) {
+      const { idDps, xml } = (r as any).dry;
+      return json({ ok: true, dry_run: true, idDps, xml_tamanho: xml.length, xml: body.mostrar_xml ? xml : undefined });
+    }
+    // E0120: o município não usa inscrição municipal no cadastro nacional —
+    // reenvia sem o campo em vez de devolver o erro pro usuário
+    let { resp, retorno, idDps } = r as any;
+    const codigos = (retorno?.erros || []).map((e: any) => e.Codigo || e.codigo);
+    if (resp.status >= 400 && codigos.includes("E0120")) {
+      ({ resp, retorno, idDps } = await montarEnviar(true) as any);
+    }
 
     if (resp.status < 200 || resp.status >= 300) {
       return json({
-        error: retorno?.mensagem || retorno?.message ||
+        error: (Array.isArray(retorno?.erros) && retorno.erros.length
+            ? retorno.erros.map((e: any) => [e.Codigo || e.codigo, e.Descricao || e.descricao || e.mensagem].filter(Boolean).join(" - ")).join(" | ")
+            : null) || retorno?.mensagem || retorno?.message ||
           (Array.isArray(retorno?.erros) ? retorno.erros.map((e: any) => e.Descricao || e.descricao || JSON.stringify(e)).join(" | ") : null) ||
           `O gov recusou (HTTP ${resp.status}).`,
         detalhe: retorno, idDps,
