@@ -149,6 +149,8 @@ const OnboardingTasksPage = () => {
   const [monthlyGoals, setMonthlyGoals] = useState<{ project_id: string; month: number; year: number; sales_target: number | null; sales_result: number | null }[]>([]);
   const [companyKpis, setCompanyKpis] = useState<{ id: string; company_id: string; target_value: number; kpi_type: string; periodicity: string; is_main_goal: boolean }[]>([]);
   const [kpiEntries, setKpiEntries] = useState<{ company_id: string; kpi_id: string; value: number; entry_date: string }[]>([]);
+  // false até a 1ª carga completa — evita o badge de projeção "0%" enquanto os lançamentos ainda baixam
+  const [kpiEntriesLoaded, setKpiEntriesLoaded] = useState(false);
   const [contractRenewals, setContractRenewals] = useState<{ company_id: string; renewal_date: string }[]>([]);
   const [healthScoresByProject, setHealthScoresByProject] = useState<Map<string, { total_score: number; risk_level: string }>>(new Map());
   const [whatsappSignals, setWhatsappSignals] = useState<Map<string, { rag: string | null; msgs_7d: number }>>(new Map());
@@ -489,28 +491,34 @@ const OnboardingTasksPage = () => {
       const endStr = format(end, "yyyy-MM-dd");
 
       const pageSize = 1000;
-      let from = 0;
-      let all: { company_id: string; kpi_id: string; value: number; entry_date: string }[] = [];
-
-      while (true) {
-        const { data, error } = await supabase
+      // ordena por id (único): paginar por entry_date repetia/perdia linha quando
+      // a mesma data cruzava o corte da página. count na 1ª página permite baixar
+      // o resto em paralelo — sequencial levava vários segundos e o badge de
+      // projeção ficava "0%" até terminar.
+      const pageQuery = (from: number) =>
+        supabase
           .from("kpi_entries")
-          .select("company_id, kpi_id, value, entry_date")
+          .select("company_id, kpi_id, value, entry_date", { count: "exact" })
           .gte("entry_date", startStr)
           .lte("entry_date", endStr)
-          .order("entry_date", { ascending: false })
+          .order("id", { ascending: true })
           .range(from, from + pageSize - 1);
 
-        if (error) throw error;
-
-        const batch = data || [];
-        all = all.concat(batch);
-
-        if (batch.length < pageSize) break;
-        from += pageSize;
+      const first = await pageQuery(0);
+      if (first.error) throw first.error;
+      let all: { company_id: string; kpi_id: string; value: number; entry_date: string }[] = first.data || [];
+      const total = first.count ?? all.length;
+      if (total > all.length) {
+        const pages: Promise<any>[] = [];
+        for (let from = pageSize; from < total; from += pageSize) pages.push(pageQuery(from) as any);
+        for (const r of await Promise.all(pages)) {
+          if (r.error) throw r.error;
+          all = all.concat(r.data || []);
+        }
       }
 
       setKpiEntries(all);
+      setKpiEntriesLoaded(true);
     } catch (error) {
       console.error("Error fetching KPI entries:", error);
     }
@@ -3194,7 +3202,7 @@ const OnboardingTasksPage = () => {
                                         ? 'text-yellow-600' 
                                         : 'text-red-600'
                               }`}>
-                                {(company as any).goal_not_required ? '—' : companyGoalPercent === null || companyGoalPercent === undefined ? 'S/M' : `${companyGoalPercent}%`}
+                                {(company as any).goal_not_required ? '—' : !kpiEntriesLoaded ? '…' : companyGoalPercent === null || companyGoalPercent === undefined ? 'S/M' : `${companyGoalPercent}%`}
                               </span>
                             </span>
                           </div>
@@ -3250,7 +3258,7 @@ const OnboardingTasksPage = () => {
                                     ? 'text-yellow-600' 
                                     : 'text-red-600'
                           }`}>
-                            {(company as any).goal_not_required ? '—' : companyGoalPercent === null || companyGoalPercent === undefined ? 'S/M' : `${companyGoalPercent}%`}
+                            {(company as any).goal_not_required ? '—' : !kpiEntriesLoaded ? '…' : companyGoalPercent === null || companyGoalPercent === undefined ? 'S/M' : `${companyGoalPercent}%`}
                           </span>
                         </div>
                         {/* Contract End Date / Recurring — com contagem de dias até a renovação */}
