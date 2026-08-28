@@ -150,62 +150,24 @@ export const CRMDashboardPage = () => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const { data: pipelinesData } = await supabase
-          .from("crm_pipelines")
-          .select("*")
-          .eq("is_active", true);
-        setPipelines(pipelinesData || []);
-
-        if (isAdmin) {
-          const { data: staffData } = await supabase
-            .from("onboarding_staff")
-            .select("id, name, role")
-            .eq("is_active", true)
-            .in("role", ["master", "admin", "head_comercial", "closer", "sdr"]);
-          setStaff(staffData || []);
-        }
-
-        const { data: stagesData } = await supabase
-          .from("crm_stages")
-          .select("*, pipeline:crm_pipelines(name)")
-          .order("sort_order");
-
         const { start, end } = getDateRange();
-        let leadsQuery = supabase
-          .from("crm_leads")
-          .select("*, stage:crm_stages(name, is_final, final_type, color)");
 
-        if (selectedPipeline !== "all") {
-          leadsQuery = leadsQuery.eq("pipeline_id", selectedPipeline);
-        }
-
-        if (selectedOwner !== "all" && isAdmin) {
-          leadsQuery = leadsQuery.eq("owner_staff_id", selectedOwner);
-        }
-
-        if (!isAdmin && staffId) {
-          leadsQuery = leadsQuery.eq("owner_staff_id", staffId);
-        }
-
-        const { data: leadsData } = await leadsQuery;
-
-        const parseNumeric = (val: any): number => {
-          if (typeof val === 'number') return val;
-          if (typeof val === 'string') return parseFloat(val) || 0;
-          return 0;
+        // Uma RPC calcula as métricas no banco sobre a base INTEIRA (117k+
+        // leads). Antes a tela baixava crm_leads sem limite: o PostgREST capava
+        // em 1000 linhas — lento E com números errados.
+        const rpcParams = {
+          p_start: start.toISOString(),
+          p_end: end.toISOString(),
+          p_pipeline: selectedPipeline !== "all" ? selectedPipeline : null,
+          p_owner: (!isAdmin && staffId) ? staffId : (selectedOwner !== "all" && isAdmin ? selectedOwner : null),
         };
 
         let activitiesQuery = supabase
           .from("crm_activities")
-          .select("*, lead:crm_leads!inner(id, pipeline_id, owner_staff_id)")
+          .select("id, type, status, created_at, responsible_staff_id, lead:crm_leads!inner(id, pipeline_id, owner_staff_id)")
           .gte("created_at", start.toISOString())
           .lte("created_at", end.toISOString());
-
-        if (!isAdmin && staffId) {
-          activitiesQuery = activitiesQuery.eq("responsible_staff_id", staffId);
-        }
-
-        const { data: activitiesData } = await activitiesQuery;
+        if (!isAdmin && staffId) activitiesQuery = activitiesQuery.eq("responsible_staff_id", staffId);
 
         let meetingEventsQuery = supabase
           .from("crm_meeting_events")
@@ -216,12 +178,25 @@ export const CRMDashboardPage = () => {
           `)
           .gte("event_date", start.toISOString())
           .lte("event_date", end.toISOString());
+        if (selectedPipeline !== "all") meetingEventsQuery = meetingEventsQuery.eq("pipeline_id", selectedPipeline);
 
-        if (selectedPipeline !== "all") {
-          meetingEventsQuery = meetingEventsQuery.eq("pipeline_id", selectedPipeline);
-        }
+        // tudo que é independente vai junto — antes eram 6+ idas ao banco em fila
+        const [pipelinesRes, staffRes, dashRes, activitiesRes, meetingEventsRes] = await Promise.all([
+          supabase.from("crm_pipelines").select("id, name").eq("is_active", true),
+          isAdmin
+            ? supabase.from("onboarding_staff").select("id, name, role").eq("is_active", true)
+                .in("role", ["master", "admin", "head_comercial", "closer", "sdr"])
+            : Promise.resolve({ data: null }),
+          supabase.rpc("crm_dashboard_metrics", rpcParams),
+          activitiesQuery,
+          meetingEventsQuery,
+        ]);
 
-        const { data: meetingEventsData } = await meetingEventsQuery;
+        setPipelines(pipelinesRes.data || []);
+        if (isAdmin) setStaff((staffRes as any).data || []);
+        const dash: any = (dashRes as any).data || {};
+        const { data: activitiesData } = activitiesRes as any;
+        const { data: meetingEventsData } = meetingEventsRes as any;
 
         let filteredMeetingEvents = meetingEventsData || [];
         if (selectedOwner !== "all" && isAdmin) {
@@ -279,105 +254,31 @@ export const CRMDashboardPage = () => {
           a.type === "proposal" || a.title?.toLowerCase().includes("proposta")
         ).length;
 
-        const leadsInPeriod = (leadsData || []).filter(lead => {
-          const createdAt = new Date(lead.created_at);
-          return createdAt >= start && createdAt <= end;
-        });
-
-        const wonLeadsInPeriod = (leadsData || []).filter(l => {
-          if (l.stage?.final_type !== "won") return false;
-          if (!l.closed_at) return false;
-          const closedAt = new Date(l.closed_at);
-          return closedAt >= start && closedAt <= end;
-        });
-
-        const lostLeadsInPeriod = (leadsData || []).filter(l => {
-          if (l.stage?.final_type !== "lost") return false;
-          if (!l.closed_at) return false;
-          const closedAt = new Date(l.closed_at);
-          return closedAt >= start && closedAt <= end;
-        });
-
-        const activeLeads = (leadsData || []).filter(l => !l.stage?.is_final);
-
-        const stageGroups: { [key: string]: { count: number; value: number; color: string } } = {};
-        (leadsData || []).forEach(lead => {
-          const stageName = lead.stage?.name || "Sem Etapa";
-          if (!stageGroups[stageName]) {
-            stageGroups[stageName] = { count: 0, value: 0, color: lead.stage?.color || "#6B7280" };
-          }
-          stageGroups[stageName].count++;
-          stageGroups[stageName].value += parseNumeric(lead.opportunity_value);
-        });
-
-        setStageData(
-          Object.entries(stageGroups).map(([name, data]) => ({
-            name,
-            count: data.count,
-            value: data.value,
-            color: data.color,
-          }))
-        );
-
-        const forecast = activeLeads.reduce((sum, lead) => {
-          return sum + parseNumeric(lead.opportunity_value) * ((lead.probability || 0) / 100);
-        }, 0);
-
-        const pipelineValue = activeLeads.reduce((sum, lead) => sum + parseNumeric(lead.opportunity_value), 0);
-        const totalWonValue = wonLeadsInPeriod.reduce((sum, l) => sum + parseNumeric(l.opportunity_value), 0);
+        // números vindos prontos do banco (base inteira, sem o teto de 1000)
+        setStageData((dash.stage_data || []).map((x: any) => ({
+          name: x.name, count: x.count, value: parseNumeric(x.value), color: x.color || "#6B7280",
+        })));
 
         setMetrics({
-          newLeads: leadsInPeriod.length,
-          workedLeads: leadsInPeriod.filter(l => l.last_activity_at).length,
+          newLeads: dash.new_leads || 0,
+          workedLeads: dash.worked_leads || 0,
           meetingsScheduled,
           meetingsHeld,
           proposalsSent,
-          won: wonLeadsInPeriod.length,
-          lost: lostLeadsInPeriod.length,
-          conversionRate: leadsInPeriod.length > 0
-            ? Math.round((wonLeadsInPeriod.length / leadsInPeriod.length) * 100)
+          won: dash.won || 0,
+          lost: dash.lost || 0,
+          conversionRate: (dash.new_leads || 0) > 0
+            ? Math.round(((dash.won || 0) / dash.new_leads) * 100)
             : 0,
-          pipelineValue,
-          forecast,
-          totalRevenue: totalWonValue,
+          pipelineValue: parseNumeric(dash.pipeline_value),
+          forecast: parseNumeric(dash.forecast),
+          totalRevenue: parseNumeric(dash.won_value),
         });
 
-        const sevenDaysAgo = subDays(new Date(), 7);
-        setOverdueLeads(
-          activeLeads
-            .filter(l => !l.last_activity_at || new Date(l.last_activity_at) < sevenDaysAgo)
-            .slice(0, 5)
-        );
-
-        setNoActivityLeads(
-          activeLeads
-            .filter(l => !l.next_activity_at)
-            .slice(0, 5)
-        );
-
-        setTopOpportunities(
-          activeLeads
-            .sort((a, b) => (b.opportunity_value || 0) - (a.opportunity_value || 0))
-            .slice(0, 5)
-        );
-
-        const { data: lostLeadsWithReason } = await supabase
-          .from("crm_leads")
-          .select("loss_reason_id, loss_reason:crm_loss_reasons(name)")
-          .not("loss_reason_id", "is", null);
-
-        const reasonCounts: { [key: string]: number } = {};
-        (lostLeadsWithReason || []).forEach(lead => {
-          const reason = lead.loss_reason?.name || "Outro";
-          reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
-        });
-
-        setLossReasons(
-          Object.entries(reasonCounts)
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 5)
-        );
+        setOverdueLeads(dash.overdue_leads || []);
+        setNoActivityLeads(dash.no_activity_leads || []);
+        setTopOpportunities(dash.top_opportunities || []);
+        setLossReasons(dash.loss_reasons || []);
 
         const now = new Date();
         const currentMonth = now.getMonth() + 1;
