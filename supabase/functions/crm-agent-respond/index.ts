@@ -1049,6 +1049,7 @@ Deno.serve(async (req) => {
       `- Se ficar claro que tem empresa: comente algo ESPECÍFICO e verdadeiro sobre o negócio/segmento dela e conecte com o que oferecemos — nada genérico, nada de "vi que você tem uma empresa".`,
       `- Se NÃO estiver claro que é empresária: diga de forma leve e humana que você busca se conectar com empresários, e PERGUNTE diretamente se ela é dona de empresa. Conduza conforme a resposta.`,
       `- NUNCA invente dados da empresa. Se a busca não trouxer nada concreto e verdadeiro, não afirme — pergunte.`,
+      `- A busca é SILENCIOSA: nunca comente o processo ("vou pesquisar", "não achei nada sobre o perfil", "vou perguntar direto"). Escreva somente a mensagem final, como se a busca nunca tivesse existido.`,
     ].join("") : "";
     const system = [
       agent.instructions || "Você é um atendente comercial.",
@@ -1064,7 +1065,7 @@ Deno.serve(async (req) => {
       missingNameHint,
       igPersonalization,
       `\n\nÁUDIO: quando a mensagem vier como "(áudio do lead, transcrito) ...", o lead FALOU aquilo — trate como se tivesse ouvido e responda normalmente, SEMPRE em texto. Nunca diga que não conseguiu ouvir e nunca peça pra ele repetir por escrito. Só se vier "(o lead mandou um áudio que não consegui transcrever)" é que você pede, com naturalidade, que ele reescreva.`,
-      `\n\nVocê está respondendo uma conversa de ${channelLabel} com ${leadName}. Responda como mensagem: curta, humana, sem markdown, sem títulos, uma ideia por mensagem. NUNCA repita uma pergunta que o lead já respondeu — antes de perguntar, confira o histórico. Escreva a resposta UMA única vez, sem repetir o texto. Nunca revele que é uma IA. Se não souber algo, seja honesto e ofereça encaminhar para uma pessoa.`,
+      `\n\nVocê está respondendo uma conversa de ${channelLabel} com ${leadName}. Responda como mensagem: curta, humana, sem markdown, sem títulos, uma ideia por mensagem. NUNCA repita uma pergunta que o lead já respondeu — antes de perguntar, confira o histórico. Escreva a resposta UMA única vez, sem repetir o texto. Nunca revele que é uma IA. Se não souber algo, seja honesto e ofereça encaminhar para uma pessoa. TUDO que você escrever é enviado ao lead exatamente como está — jamais inclua raciocínio, plano, anotação interna ou comentário sobre ferramentas no texto.`,
     ].join("");
 
     // Alternância user/assistant exigida pela API (mescla consecutivas, começa em user)
@@ -1083,15 +1084,22 @@ Deno.serve(async (req) => {
     // 8) Loop de IA com tool_use (máx 5 iterações)
     const toolCalls: string[] = [];
     let reply = "";
+    let lastContentShape: string[] = [];
     let retriedForSlots = false;
     for (let iter = 0; iter < 5; iter++) {
       const body: any = {
         model: agent.model || "claude-sonnet-5",
-        system,
+        // cache: o system (instruções + base de conhecimento) é idêntico em toda
+        // iteração do loop de tools e entre mensagens da mesma conversa — sem
+        // cache, cada rodada paga o preço cheio dessa parte de novo
+        system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
         messages: apiMessages,
         max_tokens: 900,
       };
-      if (tools.length) body.tools = tools;
+      if (tools.length) {
+        body.tools = tools.map((t: any, i: number) =>
+          i === tools.length - 1 ? { ...t, cache_control: { type: "ephemeral" } } : t);
+      }
       const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
@@ -1132,7 +1140,14 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const texts = content.filter((b: any) => b?.type === "text").map((b: any) => String(b.text));
+      // Com web_search o modelo intercala narração ("não achei nada...") entre
+      // os blocos de busca. Mensagem pro lead é SÓ o texto depois do último
+      // bloco de ferramenta — narração interna não vaza.
+      lastContentShape = content.map((b: any) => b?.type === "text" ? `text(${String(b.text).slice(0, 60)})` : String(b?.type));
+      const lastToolIdx = content.reduce((m: number, b: any, i: number) => (b?.type !== "text" ? i : m), -1);
+      const texts = content
+        .filter((b: any, i: number) => b?.type === "text" && i > lastToolIdx)
+        .map((b: any) => String(b.text));
       reply = [...new Set(texts)].join("").trim();
       reply = unhalve(reply);
       // Pós-checagem anti-alucinação: se houve consulta de agenda e a resposta cita
@@ -1163,9 +1178,9 @@ Deno.serve(async (req) => {
         });
       } catch { /* telemetria nunca derruba o fluxo */ }
     };
-    if (!reply) { await logRun("empty_reply"); return { ok: true, skip: "resposta vazia da IA", tool_calls: toolCalls }; }
+    if (!reply) { await logRun("empty_reply"); return { ok: true, skip: "resposta vazia da IA", tool_calls: toolCalls, content_shape: dry_run ? lastContentShape : undefined }; }
 
-    if (dry_run) return { ok: true, dry_run: true, mode, agent: agent.name, reply, tool_calls: toolCalls };
+    if (dry_run) return { ok: true, dry_run: true, mode, agent: agent.name, reply, tool_calls: toolCalls, content_shape: lastContentShape };
 
     // 9) Envia (auto) ou guarda sugestão (copiloto)
     if (mode === "auto") {

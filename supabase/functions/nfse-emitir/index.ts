@@ -169,7 +169,74 @@ async function pontoGov(path: string, metodo: string, corpo: string | undefined,
   });
   const d = await r.json();
   if (!r.ok || d.error) throw new Error(d.error || `ponte respondeu ${r.status}`);
-  return d as { status: number; corpo: string };
+  return d as { status: number; corpo: string; corpo_base64?: string };
+}
+
+
+async function gunzipB64(b64: string) {
+  const ds = new DecompressionStream("gzip");
+  const stream = new Blob([b64ToBytes(b64)]).stream().pipeThrough(ds);
+  return new TextDecoder().decode(await new Response(stream).arrayBuffer());
+}
+
+/** espelho da NFS-e gerado do XML — usado quando o serviço de PDF do gov cai
+ *  (instabilidade crônica conhecida). O documento legal é o XML. */
+async function gerarEspelho(xml: string, chave: string): Promise<Uint8Array> {
+  const { jsPDF } = await import("https://esm.sh/jspdf@2.5.2");
+  const pega = (tag: string) => (xml.match(new RegExp(`<${tag}>([^<]+)</${tag}>`)) || [])[1] || "";
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const NAVY: [number, number, number] = [13, 43, 94];
+  doc.setFillColor(...NAVY); doc.rect(0, 0, 210, 26, "F");
+  doc.setTextColor(255, 255, 255); doc.setFontSize(14); doc.setFont("helvetica", "bold");
+  doc.text("NFS-e — Nota Fiscal de Serviço Eletrônica", 12, 11);
+  doc.setFontSize(9); doc.setFont("helvetica", "normal");
+  doc.text("Espelho gerado pelo UNV Nexus a partir do XML oficial (Emissor Nacional)", 12, 18);
+  doc.setTextColor(30, 30, 30);
+  let y = 38;
+  const linha = (rot: string, val: string) => {
+    doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text(rot, 12, y);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+    const quebra = doc.splitTextToSize(val || "-", 180);
+    doc.text(quebra, 12, y + 5);
+    y += 7 + quebra.length * 5;
+  };
+  linha("NÚMERO DA NFS-e", pega("nNFSe"));
+  linha("CHAVE DE ACESSO", chave);
+  linha("EMITIDA EM", pega("dhProc"));
+  linha("PRESTADOR", `${pega("xNome")} — CNPJ ${(xml.match(/<CNPJ>(\d+)<\/CNPJ>/) || [])[1] || ""}`);
+  const tomaTrecho = (xml.match(/<toma>[\s\S]*?<\/toma>/) || [""])[0];
+  linha("TOMADOR", `${(tomaTrecho.match(/<xNome>([^<]+)</) || [])[1] || ""} — ${(tomaTrecho.match(/<CNPJ>(\d+)</) || tomaTrecho.match(/<CPF>(\d+)</) || [])[1] || ""}`);
+  linha("DESCRIÇÃO DO SERVIÇO", pega("xDescServ"));
+  linha("VALOR DO SERVIÇO", `R$ ${pega("vServ")}`);
+  linha("VALOR LÍQUIDO", `R$ ${pega("vLiq")}`);
+  doc.setFontSize(8); doc.setTextColor(120, 120, 120);
+  doc.text("Documento fiscal legalmente representado pelo XML assinado. Consulte pela chave de acesso em www.nfse.gov.br.", 12, 285);
+  return new Uint8Array(doc.output("arraybuffer"));
+}
+
+async function enviarDocEvolution(supabase: any, phone: string, fileName: string, caption: string, pdf: Uint8Array) {
+  const { data: cfgW } = await supabase.from("whatsapp_default_config")
+    .select("setting_value").eq("setting_key", "default_instance").maybeSingle();
+  const instanceName = cfgW?.setting_value;
+  if (!instanceName) throw new Error("Instância de WhatsApp do financeiro não configurada");
+  const { data: inst } = await supabase.from("whatsapp_instances")
+    .select("api_url, api_key, instance_name").eq("instance_name", instanceName).maybeSingle();
+  if (!inst?.api_url) throw new Error("Instância de WhatsApp não encontrada");
+  const baseUrl = inst.api_url.replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
+  const tel = phone.replace(/\D/g, "");
+  const numero = tel.startsWith("55") ? tel : `55${tel}`;
+  let b64 = "";
+  for (let i = 0; i < pdf.length; i += 8192) b64 += String.fromCharCode(...pdf.subarray(i, i + 8192));
+  b64 = btoa(b64);
+  const r = await fetch(`${baseUrl}/message/sendMedia/${inst.instance_name}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: inst.api_key },
+    body: JSON.stringify({
+      number: numero, mediatype: "document", mimetype: "application/pdf",
+      media: b64, caption, fileName,
+    }),
+  });
+  if (!r.ok) throw new Error(`WhatsApp recusou (${r.status}): ${(await r.text()).slice(0, 200)}`);
 }
 
 Deno.serve(async (req: Request) => {
@@ -192,6 +259,85 @@ Deno.serve(async (req: Request) => {
     })();
     if (!ehServidor && (!staff?.is_active || !["master", "admin"].includes(staff.role))) {
       return json({ error: "Sem permissão para emitir nota." }, 403);
+    }
+
+    // consulta de nota já emitida (recuperação e conferência)
+    if (body.action === "consultar") {
+      const { data: cfgC } = await supabase.from("nfse_emitter_config").select("*").limit(1).maybeSingle();
+      const { data: certC } = await supabase.from("fiscal_certificates")
+        .select("file_path, senha_cifrada").eq("ativo", true).maybeSingle();
+      if (!cfgC || !certC) return json({ error: "configuração ou certificado ausente" }, 400);
+      const { data: arqC } = await supabase.storage.from("certificados").download(certC.file_path);
+      const senhaC = await decifrar(certC.senha_cifrada);
+      const abertoC = abrirPfx(bytesToB64(new Uint8Array(await arqC!.arrayBuffer())), senhaC);
+      const amb = String(body.ambiente || cfgC.ambiente);
+      let chave = body.chave_acesso as string | undefined;
+      if (!chave && body.dps_numero) {
+        const idDps = montarIdDps(cfgC.codigo_municipio, cfgC.cnpj, cfgC.serie, Number(body.dps_numero));
+        const rD = await pontoGov(`/SefinNacional/dps/${idDps}`, "GET", undefined, abertoC.certPem, abertoC.keyPem, amb);
+        let dD: any = {}; try { dD = JSON.parse(rD.corpo); } catch { /* segue */ }
+        chave = dD.chaveAcesso;
+        if (!chave) return json({ error: `DPS não encontrada no gov (HTTP ${rD.status})`, detalhe: rD.corpo.slice(0, 300) }, 404);
+      }
+      if (!chave) return json({ error: "informe chave_acesso ou dps_numero" }, 400);
+      const rN = await pontoGov(`/SefinNacional/nfse/${chave}`, "GET", undefined, abertoC.certPem, abertoC.keyPem, amb);
+      let dN: any = {}; try { dN = JSON.parse(rN.corpo); } catch { dN = { bruto: rN.corpo.slice(0, 400) }; }
+      return json({ ok: rN.status < 300, status: rN.status, chave_acesso: chave, nota: dN });
+    }
+
+    // DANFSe: o PDF oficial da nota, direto do gov
+    if (body.action === "danfse") {
+      if (!body.chave_acesso) return json({ error: "informe chave_acesso" }, 400);
+      const { data: cfgD } = await supabase.from("nfse_emitter_config").select("*").limit(1).maybeSingle();
+      const { data: certD } = await supabase.from("fiscal_certificates")
+        .select("file_path, senha_cifrada").eq("ativo", true).maybeSingle();
+      if (!cfgD || !certD) return json({ error: "configuração ou certificado ausente" }, 400);
+      const { data: arqD } = await supabase.storage.from("certificados").download(certD.file_path);
+      const senhaD = await decifrar(certD.senha_cifrada);
+      const abertoD = abrirPfx(bytesToB64(new Uint8Array(await arqD!.arrayBuffer())), senhaD);
+      const amb = String(body.ambiente || cfgD.ambiente);
+      const hostAdn = amb === "2" ? "adn.producaorestrita.nfse.gov.br" : "adn.nfse.gov.br";
+      const url = Deno.env.get("NFSE_BRIDGE_URL"), token = Deno.env.get("NFSE_BRIDGE_TOKEN");
+      let pdfB64: string | null = null;
+      for (let tent = 0; tent < 2 && !pdfB64; tent++) {
+        try {
+          const r = await fetch(`${url}/gov`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-bridge-token": token! },
+            body: JSON.stringify({ host: hostAdn, path: `/danfse/${body.chave_acesso}`, metodo: "GET",
+              cert_pem: abertoD.certPem, key_pem: abertoD.keyPem }),
+          });
+          const d = await r.json();
+          if (d?.status < 300 && d?.corpo_base64) pdfB64 = d.corpo_base64;
+        } catch { /* tenta de novo */ }
+      }
+      if (pdfB64) return json({ ok: true, pdf_base64: pdfB64, fonte: "gov" });
+
+      // gov fora do ar: espelho a partir do XML guardado (o XML é o documento legal)
+      const { data: reg } = await supabase.from("nfse_records")
+        .select("xml_nfse").eq("chave_acesso", body.chave_acesso).maybeSingle();
+      if (!reg?.xml_nfse) return json({ error: "O serviço de PDF do gov está fora do ar e não tenho o XML desta nota guardado. Tente mais tarde." }, 503);
+      const xml = await gunzipB64(reg.xml_nfse);
+      const pdf = await gerarEspelho(xml, body.chave_acesso);
+      let b64 = "";
+      for (let i = 0; i < pdf.length; i += 8192) b64 += String.fromCharCode(...pdf.subarray(i, i + 8192));
+      return json({ ok: true, pdf_base64: btoa(b64), fonte: "espelho" });
+    }
+
+    // envia a nota por WhatsApp pro cliente (PDF oficial; espelho se o gov cair)
+    if (body.action === "enviar-whatsapp") {
+      const { chave_acesso, phone, tomador_nome, numero_nota } = body;
+      if (!chave_acesso || !phone) return json({ error: "informe chave_acesso e phone" }, 400);
+      const respPdf = await (await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/nfse-emitir`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+        body: JSON.stringify({ action: "danfse", chave_acesso, ambiente: body.ambiente }),
+      })).json();
+      if (!respPdf?.pdf_base64) return json({ error: respPdf?.error || "não consegui obter o PDF" }, 502);
+      const pdf = b64ToBytes(respPdf.pdf_base64);
+      const legenda = `📄 *Nota Fiscal de Serviço*\n\nOlá ${tomador_nome || "cliente"}, segue sua NFS-e${numero_nota ? ` nº ${numero_nota}` : ""} em anexo.`;
+      await enviarDocEvolution(supabase, phone, `NFS-e${numero_nota ? `-${numero_nota}` : ""}.pdf`, legenda, pdf);
+      return json({ ok: true, fonte: respPdf.fonte });
     }
 
     const { data: cfg } = await supabase.from("nfse_emitter_config").select("*").limit(1).maybeSingle();
@@ -248,23 +394,35 @@ Deno.serve(async (req: Request) => {
       }, 400);
     }
 
-    // sucesso: guarda a nota e avança o numerador
-    await supabase.from("nfse_emitter_config").update({ proximo_numero: numero + 1 }).eq("id", cfg.id);
-    const { data: salvo } = await supabase.from("nfse_records").insert({
+    // sucesso: guarda a nota e avança o numerador (não pode falhar em silêncio:
+    // foi assim que uma nota real emitida sumiu da tela)
+    if (!body.numero) {
+      await supabase.from("nfse_emitter_config").update({ proximo_numero: numero + 1 }).eq("id", cfg.id);
+    }
+    const { data: salvo, error: insErr } = await supabase.from("nfse_records").insert({
       company_id: body.company_id ?? null,
       invoice_id: body.invoice_id ?? null,
       service_description: body.descricao,
-      amount: body.valor,
-      customer_name: body.tomador?.nome,
-      customer_document: so(body.tomador?.documento),
-      customer_email: body.tomador?.email,
+      amount_cents: Math.round(Number(body.valor) * 100),
+      tomador_name: body.tomador?.nome ?? null,
+      tomador_document: so(body.tomador?.documento) || null,
+      tomador_email: body.tomador?.email ?? null,
       status: "issued",
+      environment: String(cfg.ambiente),
+      number: String(numero),
       chave_acesso: retorno.chaveAcesso ?? null,
       dps_numero: numero,
       xml_nfse: retorno.nfseXmlGZipB64 ?? null,
       origem: "gov",
+      issued_at: new Date().toISOString(),
     }).select("id").maybeSingle();
-
+    if (insErr) {
+      console.error("[nfse-emitir] nota emitida mas nao gravada:", insErr.message);
+      return json({
+        ok: true, chave_acesso: retorno.chaveAcesso, idDps, ambiente: cfg.ambiente,
+        aviso: "A nota foi emitida no gov, mas não consegui gravar no sistema: " + insErr.message,
+      });
+    }
     return json({ ok: true, chave_acesso: retorno.chaveAcesso, idDps, registro_id: salvo?.id, ambiente: cfg.ambiente });
   } catch (e) {
     console.error("[nfse-emitir]", e);

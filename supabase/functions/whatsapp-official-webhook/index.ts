@@ -294,7 +294,9 @@ async function processIncomingMessage(
   console.log('[WhatsApp Official] Message processed successfully');
 
   // Fire-and-forget: check for cancellation intent on inbound text messages
-  if (type === 'text' && content.length > 5) {
+  // filtro barato antes da IA: só analisa mensagens com termo de cancelamento
+  const temTermoCancel = /cancel|rescind|encerr|renovar|renova[cç]|desist|não quero mais|nao quero mais|suspender|parar o serv|sair do contrato|distrato/i.test(content);
+  if (type === 'text' && content.length > 5 && temTermoCancel) {
     detectCancellationIntent(content, phone).catch((err) =>
       console.error('[WhatsApp Official] Cancellation detection error (non-blocking):', err)
     );

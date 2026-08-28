@@ -650,8 +650,13 @@ async function handleIncomingMessage(
 
   console.log('Message processed successfully:', { phone, content: content.substring(0, 50), type, fromMe });
 
-  // Fire-and-forget: check for cancellation intent on inbound text messages
-  if (!fromMe && type === 'text' && content.length > 5) {
+  // Detector de cancelamento: o filtro de palavras vem ANTES da IA — sem ele,
+  // toda mensagem recebida (inclusive grupo e newsletter) virava uma chamada
+  // paga. A IA só entra quando a mensagem tem cara de cancelamento; o veredito
+  // continua com ela, então nada de funcionalidade se perde.
+  const ehGrupoOuCanal = /@(g\.us|newsletter|broadcast)/.test(String(phone)) || String(phone).startsWith('1203');
+  const temTermoCancel = /cancel|rescind|encerr|renovar|renova[cç]|desist|não quero mais|nao quero mais|suspender|parar o serv|sair do contrato|distrato/i.test(content);
+  if (!fromMe && type === 'text' && content.length > 5 && !ehGrupoOuCanal && temTermoCancel) {
     detectCancellationIntent(supabase, content, phone).catch((err) =>
       console.error('[evolution-webhook] Cancellation detection error (non-blocking):', err)
     );

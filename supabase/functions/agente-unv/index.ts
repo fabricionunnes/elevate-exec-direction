@@ -747,11 +747,17 @@ async function callAgent(agentType: AgentType, userMessage: string, history: Ant
     let response!: Anthropic.Message;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
+        // cache_control: tools (~150k tokens no CEO) e system não mudam entre
+        // iterações nem entre mensagens próximas — sem cache, cada volta do loop
+        // paga o preço cheio dessa parte de novo.
+        const toolsComCache = AGENT_TOOLS[agentType].map((t, idx, arr) =>
+          idx === arr.length - 1 ? { ...t, cache_control: { type: "ephemeral" } } : t,
+        ) as Anthropic.Tool[];
         response = await anthropic.messages.create({
           model: agentModel,
           max_tokens: agentMaxTokens,
-          system: getSystemPrompts()[agentType],
-          tools: AGENT_TOOLS[agentType],
+          system: [{ type: "text", text: getSystemPrompts()[agentType], cache_control: { type: "ephemeral" } }] as any,
+          tools: toolsComCache,
           messages,
         });
         break;
@@ -1868,7 +1874,7 @@ Data de hoje: ${new Date().toLocaleDateString("pt-BR")}${postsNote}`,
             saveWebExchange("social", mikaText);
           }
           return webJson({ ok: true, agent: "social", reply: mikaText });
-        } catch (_err) {
+        } catch (_err) { console.error("[agente-unv] erro no chat web:", _err);
           return webJson({ ok: false, reply: "Tive um problema técnico aqui. Tenta mandar de novo em instantes." }, 200);
         }
       }
@@ -1926,6 +1932,7 @@ Data de hoje: ${new Date().toLocaleDateString("pt-BR")}${postsNote}`,
         return webJson({ ok: true, agent: webAgent, reply });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
+        console.error("[agente-unv] chat web falhou:", msg);
         const isRate = msg.includes("rate_limit") || msg.includes("429");
         return webJson({
           ok: false,
