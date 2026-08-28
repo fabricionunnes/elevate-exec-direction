@@ -204,6 +204,12 @@ const DashboardMetrics = ({
       .select("company_id", { count: "exact", head: true }).eq("is_active", true)
       .then(({ count }: any) => setCommissionCount(count || 0));
   }, []);
+  // quantas empresas têm KPI alimentado automaticamente por CRM (chip "CRM Integrado")
+  const [integratedCount, setIntegratedCount] = useState(0);
+  useEffect(() => {
+    (supabase as any).from("company_kpi_integrations").select("company_id")
+      .then(({ data }: any) => setIntegratedCount(new Set((data || []).map((r: any) => r.company_id)).size));
+  }, []);
   const npsPerPage = 10;
 
   // CSAT state
@@ -1355,6 +1361,7 @@ const DashboardMetrics = ({
               { key: "reactivated", label: "Revertidos", display: String(projectMetrics.reactivatedInPeriod), valueClass: "text-cyan-500", chip: "bg-cyan-500/10 border-cyan-500/30", ring: "ring-cyan-500", active: isCardActive("status", "reactivated"), onClick: () => handleCardClick("status", "reactivated"), show: projectMetrics.reactivatedInPeriod > 0 },
               { key: "churn", label: `Churn · meta ${CHURN_TARGET_PERCENT}%`, display: `${churnMetrics.churnRate}%`, valueClass: churnMetrics.churnRate > CHURN_TARGET_PERCENT ? "text-red-500" : "text-emerald-500", chip: churnMetrics.churnRate > CHURN_TARGET_PERCENT ? "bg-red-500/10 border-red-500/30" : "bg-emerald-500/10 border-emerald-500/30", ring: "", active: false, onClick: undefined as (() => void) | undefined, show: true },
               { key: "commission", label: "Comissão UNV", display: String(commissionCount), valueClass: "text-yellow-600", chip: "bg-yellow-500/10 border-yellow-500/30", ring: "ring-yellow-500", active: isCardActive("company", "commission"), onClick: () => handleCardClick("company", "commission"), show: commissionCount > 0 },
+              { key: "integrated", label: "CRM Integrado", display: String(integratedCount), valueClass: "text-sky-600", chip: "bg-sky-500/10 border-sky-500/30", ring: "ring-sky-500", active: isCardActive("company", "integrated"), onClick: () => handleCardClick("company", "integrated"), show: integratedCount > 0 },
               { key: "overdue_inv", label: "Inadimplentes", display: String(overdueCompaniesData.length), valueClass: "text-orange-600", chip: "bg-orange-600/10 border-orange-600/30", ring: "ring-orange-600", active: showOverdueCompanies, onClick: () => setShowOverdueCompanies(!showOverdueCompanies), show: overdueCompaniesData.length > 0 },
             ].filter(c => c.show);
             return (

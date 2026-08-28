@@ -186,6 +186,13 @@ export const KPIDashboardTab = ({
   const [selectedSector, setSelectedSector] = useState<string>("all");
   const [salesHistoryRefreshKey, setSalesHistoryRefreshKey] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // CRMs que alimentam os KPIs desta empresa automaticamente (badge no topo)
+  const [integrationSources, setIntegrationSources] = useState<string[]>([]);
+  useEffect(() => {
+    if (!companyId) return;
+    (supabase as any).from("company_kpi_integrations").select("source").eq("company_id", companyId)
+      .then(({ data }: any) => setIntegrationSources((data || []).map((r: any) => r.source)));
+  }, [companyId]);
   const [widgetConfig, setWidgetConfig] = useState<Record<WidgetId, boolean>>(DEFAULT_WIDGET_CONFIG);
   const [widgetConfigOpen, setWidgetConfigOpen] = useState(false);
   const [savingWidgetConfig, setSavingWidgetConfig] = useState(false);
@@ -1675,6 +1682,18 @@ export const KPIDashboardTab = ({
 
   return (
     <div className="space-y-6">
+      {/* Integração automática de CRM: os KPIs mapeados chegam sozinhos, de hora em hora */}
+      {integrationSources.length > 0 && (
+        <div className="flex items-center gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2">
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-500 opacity-60" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500" />
+          </span>
+          <p className="text-xs sm:text-sm text-sky-700 dark:text-sky-300 font-medium">
+            Integração automática ativa — KPIs de vendas preenchidos pelo CRM ({integrationSources.join(" + ")}) de hora em hora.
+          </p>
+        </div>
+      )}
       {/* Filters */}
       <Card className="border-border/50 shadow-sm overflow-hidden relative">
         {/* Cabeçalho clicável para colapsar */}

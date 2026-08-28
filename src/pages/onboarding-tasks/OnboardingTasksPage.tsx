@@ -129,6 +129,8 @@ const OnboardingTasksPage = () => {
   const [ragFilter, setRagFilter] = useState<"all" | "green" | "yellow" | "red">("all"); // semáforo de saúde do cliente
   // empresas com comissão por resultado ativa (Financeiro → Comissão da empresa)
   const [commissionCompanyIds, setCommissionCompanyIds] = useState<Set<string>>(new Set());
+  // empresas com KPI alimentado automaticamente por CRM (badge no card + filtro "CRM Integrado")
+  const [integrationsByCompany, setIntegrationsByCompany] = useState<Map<string, string[]>>(new Map());
   const [companyMenuOpen, setCompanyMenuOpen] = useState(false);
   const [consultants, setConsultants] = useState<Staff[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -1045,6 +1047,15 @@ const OnboardingTasksPage = () => {
       .then(({ data }: any) => setCommissionCompanyIds(new Set((data || []).map((r: any) => r.company_id))));
   }, []);
 
+  useEffect(() => {
+    (supabase as any).from("company_kpi_integrations").select("company_id, source")
+      .then(({ data }: any) => {
+        const m = new Map<string, string[]>();
+        for (const r of data || []) m.set(r.company_id, [...(m.get(r.company_id) || []), r.source]);
+        setIntegrationsByCompany(m);
+      });
+  }, []);
+
   // Calculate company goal projection ranges for the selected period (using company KPIs - same logic as DashboardMetrics)
   const companiesGoalRanges = useMemo(() => {
     const periodMonth = dateRange.start.getMonth() + 1;
@@ -1616,6 +1627,9 @@ const OnboardingTasksPage = () => {
         } else if (activeMetricFilter.type === "company" && activeMetricFilter.value === "commission") {
           // Empresas que pagam comissão por resultado pra UNV
           matchesMetricFilter = commissionCompanyIds.has(company.id);
+        } else if (activeMetricFilter.type === "company" && activeMetricFilter.value === "integrated") {
+          // Empresas com KPI alimentado automaticamente por CRM
+          matchesMetricFilter = integrationsByCompany.has(company.id);
         } else if (activeMetricFilter.type === "projects_active") {
           // Filter companies that have at least one active project (exclude simulators)
           matchesMetricFilter = !company.is_simulator && (company.projects?.some(p => p.status === "active") ?? false);
@@ -3101,6 +3115,11 @@ const OnboardingTasksPage = () => {
                               ) <= 30 && (
                                 <Badge className="bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 text-[10px] sm:text-xs font-semibold">
                                   Empresa Nova
+                                </Badge>
+                              )}
+                              {integrationsByCompany.has(company.id) && (
+                                <Badge className="bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30 text-[10px] sm:text-xs font-semibold">
+                                  CRM Integrado · {integrationsByCompany.get(company.id)!.join(" + ")}
                                 </Badge>
                               )}
                             </div>
