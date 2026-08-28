@@ -12,6 +12,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Loader2, Settings, FileText, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -246,28 +247,29 @@ export function NfseGovDialog({ aberto, onOpenChange, onEmitida }: {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <Label className="text-xs">Cliente</Label>
-                  <Select value={empresaId} onValueChange={setEmpresaId}>
-                    <SelectTrigger><SelectValue placeholder="Escolha o cliente" /></SelectTrigger>
-                    <SelectContent className="max-h-64">
-                      {empresas.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={empresaId}
+                    onValueChange={setEmpresaId}
+                    options={empresas.map((e) => ({ value: e.id, label: e.name }))}
+                    placeholder="Digite para buscar o cliente"
+                    emptyMessage="Nenhum cliente com esse nome"
+                  />
                 </div>
                 <div>
                   <Label className="text-xs">Parcela / cobrança</Label>
-                  <Select value={parcelaId} onValueChange={setParcelaId} disabled={!empresaId}>
-                    <SelectTrigger><SelectValue placeholder={empresaId ? "Escolha a parcela" : "Escolha o cliente antes"} /></SelectTrigger>
-                    <SelectContent className="max-h-64">
-                      {parcelas.length === 0 && <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhuma cobrança lançada</div>}
-                      {parcelas.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {new Date(`${p.due_date}T12:00:00`).toLocaleDateString("pt-BR")} · R$ {((p.amount_cents || 0) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                          {p.installment_number ? ` · ${p.installment_number}/${p.total_installments}` : ""}
-                          {p.status === "paid" ? " · paga" : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={parcelaId}
+                    onValueChange={setParcelaId}
+                    options={parcelas.map((p) => ({
+                      value: p.id,
+                      label: `${new Date(`${p.due_date}T12:00:00`).toLocaleDateString("pt-BR")} · R$ ${((p.amount_cents || 0) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` +
+                        (p.installment_number ? ` · ${p.installment_number}/${p.total_installments}` : "") +
+                        (p.status === "paid" ? " · paga" : "") +
+                        (p.description ? ` · ${p.description}` : ""),
+                    }))}
+                    placeholder={empresaId ? (parcelas.length ? "Escolha a parcela" : "Nenhuma cobrança lançada") : "Escolha o cliente antes"}
+                    emptyMessage="Nenhuma cobrança encontrada"
+                  />
                 </div>
               </div>
             )}
