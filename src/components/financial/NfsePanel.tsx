@@ -15,6 +15,7 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { FiscalCertificateCard } from "./FiscalCertificateCard";
 import { Loader2, FileText, Plus, RefreshCw, XCircle, Download, CheckCircle2, Clock, AlertTriangle, Receipt, Trash2, ChevronsUpDown, Check } from "lucide-react";
  import { MessageSquare } from "lucide-react";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
@@ -847,6 +848,8 @@ export function NfsePanel() {
           </Dialog>
         </div>
       </div>
+
+      <FiscalCertificateCard />
 
       {/* Situação da emissão */}
       {!conexao.carregando && !conexao.connected && (
