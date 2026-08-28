@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { FiscalCertificateCard } from "./FiscalCertificateCard";
+import { NfseGovDialog } from "./NfseGovDialog";
 import { Loader2, FileText, Plus, RefreshCw, XCircle, Download, CheckCircle2, Clock, AlertTriangle, Receipt, Trash2, ChevronsUpDown, Check } from "lucide-react";
  import { MessageSquare } from "lucide-react";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
@@ -88,6 +89,7 @@ export function NfsePanel() {
   // Diagnóstico da emissão: sem isso a tela ficava vazia sem dizer o motivo
   const [conexao, setConexao] = useState<any>({ carregando: true });
   const [certStatus, setCertStatus] = useState<any>(null);
+  const [govDialog, setGovDialog] = useState(false);
   const [emitDialogOpen, setEmitDialogOpen] = useState(false);
   const [emitting, setEmitting] = useState(false);
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("all");
@@ -550,13 +552,13 @@ export function NfsePanel() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Atualizar
           </Button>
+          <Button size="sm" onClick={() => setGovDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Emitir NFS-e
+          </Button>
+          <NfseGovDialog aberto={govDialog} onOpenChange={setGovDialog} onEmitida={loadRecords} />
           <Dialog open={emitDialogOpen} onOpenChange={(open) => { setEmitDialogOpen(open); if (!open) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button size="sm" disabled title="Emissão direta pelo gov em construção">
-                <Plus className="h-4 w-4 mr-2" />
-                Emitir NFS-e
-              </Button>
-            </DialogTrigger>
+            <DialogTrigger asChild><span className="hidden" /></DialogTrigger>
              <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
               <DialogHeader>
                 <DialogTitle>Emitir NFS-e</DialogTitle>
@@ -854,11 +856,11 @@ export function NfsePanel() {
       {/* Situação da emissão */}
       {certStatus?.tem_certificado && !certStatus?.vencido && (
         <div className="rounded-lg border border-sky-500/40 bg-sky-500/5 p-4">
-          <p className="font-semibold text-sky-800">Emissão direta pelo gov — em construção</p>
+          <p className="font-semibold text-sky-800">Emissão pelo Emissor Nacional</p>
           <p className="text-sm text-muted-foreground mt-1">
-            O certificado já é aceito pelo Emissor Nacional e a conexão está funcionando.
-            Falta montar a declaração de serviço (DPS) que o gov exige para gerar a nota.
-            Enquanto isso, para emitir hoje use o portal gov.br/nfse com o mesmo certificado.
+            O certificado da empresa é aceito pelo gov e a nota sai daqui, sem intermediário.
+            Confira os dados fiscais (código do serviço e alíquota) antes da primeira nota real —
+            o ambiente começa em homologação, que serve para testar sem valor fiscal.
           </p>
         </div>
       )}
