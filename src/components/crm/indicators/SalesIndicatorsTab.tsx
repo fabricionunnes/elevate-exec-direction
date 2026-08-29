@@ -188,6 +188,12 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       ]);
       if (!active) return;
       setCallStats({ total: tot.count || 0, discador: disc.count || 0, avulsa: avul.count || 0, atendidas: ans.count || 0 });
+      const map: Record<string, { total: number; atendidas: number }> = {};
+      ((byAgent.data as any[]) || []).forEach((r) => { map[r.agent_staff_id] = { total: Number(r.total) || 0, atendidas: Number(r.atendidas) || 0 }; });
+      setCallsByCloser(map);
+      // Custo Twilio, outcomes do discador e entradas por funil são independentes —
+      // rodam juntos (o custo consulta a Twilio e é o mais lento; antes segurava os outros).
+      const custoTwilio = async () => {
       // Custo do discador (gasto Twilio) no período, em BRL — pra CAC e custo por reunião
       try {
         const days = Math.min(370, Math.max(1, Math.ceil((Date.now() - start.getTime()) / 86400000) + 1));
@@ -204,6 +210,8 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           setDialerCostBrl(brl);
         }
       } catch { /* sem custo */ }
+      };
+      const outcomesDiscador = async () => {
       // Reuniões/vendas atribuídas ao discador no período (agendou/realizada/venda das ligações)
       try {
         const { data: oc } = await (supabase as any).rpc("dialer_outcome_metrics", { p_since: start.toISOString(), p_until: end.toISOString() });
@@ -211,9 +219,8 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         if (active && r) setDialerOutcomes({ scheduled: r.meetings_scheduled || 0, realized: r.meetings_realized || 0, sales: r.sales_won || 0 });
         else if (active) setDialerOutcomes({ scheduled: 0, realized: 0, sales: 0 });
       } catch { /* sem outcomes */ }
-      const map: Record<string, { total: number; atendidas: number }> = {};
-      ((byAgent.data as any[]) || []).forEach((r) => { map[r.agent_staff_id] = { total: Number(r.total) || 0, atendidas: Number(r.atendidas) || 0 }; });
-      setCallsByCloser(map);
+      };
+      const entradasPorFunil = async () => {
       // Entradas de leads por funil no período (leads criados em cada funil).
       // Lead na etapa "Pessoal" (exclude_from_lead_count) sai da soma.
       try {
@@ -228,6 +235,8 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           setLeadsByFunnel([...agg.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count));
         }
       } catch { /* sem entradas */ }
+      };
+      await Promise.all([custoTwilio(), outcomesDiscador(), entradasPorFunil()]);
     })();
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -258,18 +267,182 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       const filterMonth = filterStart.getMonth() + 1;
       const filterYear = filterStart.getFullYear();
 
-      // Load closers (staff with closer role who have CRM access)
-      const { data: crmAccessData } = await supabase
-        .from("staff_menu_permissions")
-        .select("staff_id")
-        .eq("menu_key", "crm");
-      
-      const crmStaffIds = new Set((crmAccessData || []).map(a => a.staff_id));
+      // Antes eram ~14 consultas em série (cada uma esperando a anterior) e a
+      // aba levava vários segundos só de ida-e-volta de rede. Tudo que é
+      // independente sai junto; cadeia dependente (etapa → leads, tipo de
+      // meta → valores) vira sub-fluxo que roda em paralelo com o resto.
+      const [
+        staffRes,
+        calls,
+        meetingEvents,
+        salesData,
+        ltAgg,
+        forecastLeads,
+        negotiationLeads,
+        goalsRes,
+      ] = await Promise.all([
+        supabase
+          .from("onboarding_staff")
+          .select("id, name, role, is_crm_closer")
+          .eq("is_active", true),
+        // Scheduled calls (paginado — evita corte de 1000)
+        fetchAllRows(() =>
+          supabase
+            .from("crm_scheduled_calls")
+            .select(`
+              *,
+              scheduled_by_staff:onboarding_staff!crm_scheduled_calls_scheduled_by_fkey(id, name),
+              assigned_to_staff:onboarding_staff!crm_scheduled_calls_assigned_to_fkey(id, name)
+            `)
+            .gte("scheduled_at", filterStart.toISOString())
+            .lte("scheduled_at", filterEnd.toISOString())
+        ),
+        // Meeting events (include lead owner for closer attribution) — paginado
+        fetchAllRows(() =>
+          supabase
+            .from("crm_meeting_events")
+            .select(`
+              *,
+              credited_staff:onboarding_staff!crm_meeting_events_credited_staff_id_fkey(id, name),
+              lead:crm_leads!crm_meeting_events_lead_id_fkey(id, owner_staff_id, pipeline:crm_pipelines(name))
+            `)
+            .gte("event_date", filterStart.toISOString())
+            .lte("event_date", filterEnd.toISOString())
+        ),
+        // Sales — paginado
+        fetchAllRows(() =>
+          supabase
+            .from("crm_sales")
+            .select(`
+              *,
+              closer:onboarding_staff!crm_sales_closer_staff_id_fkey(id, name),
+              sdr:onboarding_staff!crm_sales_sdr_staff_id_fkey(id, name),
+              pipeline:crm_pipelines(id, name),
+              product:onboarding_services(id, name),
+              lead:crm_leads(id, name, company, created_at)
+            `)
+            .gte("sale_date", format(filterStart, "yyyy-MM-dd"))
+            .lte("sale_date", format(filterEnd, "yyyy-MM-dd"))
+        ),
+        // Lead time por funil: janela móvel dos ÚLTIMOS 60 DIAS (independente do
+        // filtro da tela) — métrica viva, não média de datas eternas. O relógio
+        // começa na ENTRADA DO LEAD NO FUNIL (entered_pipeline_at); se faltar,
+        // cai pra criação do lead e, em último caso, pro 1º agendamento — assim
+        // TODA venda com lead entra na média, nenhuma fica de fora.
+        (async () => {
+          try {
+            const d60 = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
+            const { data: sales90 } = await supabase
+              .from("crm_sales")
+              .select("sale_date, pipeline:crm_pipelines(name), lead:crm_leads(id, created_at, entered_pipeline_at)")
+              .gte("sale_date", d60);
+            const soldIds = Array.from(new Set((sales90 || []).map((s: any) => s.lead?.id).filter(Boolean)));
+            const firstSched: Record<string, string> = {};
+            if (soldIds.length) {
+              const { data: schedEvs } = await supabase
+                .from("crm_meeting_events")
+                .select("lead_id, event_date")
+                .eq("event_type", "scheduled")
+                .in("lead_id", soldIds)
+                .order("event_date", { ascending: true });
+              (schedEvs || []).forEach((e: any) => { if (!firstSched[e.lead_id]) firstSched[e.lead_id] = e.event_date; });
+            }
+            const agg: Record<string, { ltSum: number; ltN: number }> = {};
+            (sales90 || []).forEach((s: any) => {
+              const name = s.pipeline?.name || "(sem funil)";
+              const start = s.lead?.entered_pipeline_at
+                || s.lead?.created_at
+                || (s.lead?.id ? firstSched[s.lead.id] : null);
+              if (!start || !s.sale_date) return;
+              const dias = (new Date(s.sale_date + "T12:00:00").getTime() - new Date(start).getTime()) / 86400000;
+              if (!isFinite(dias)) return;
+              const a = agg[name] || { ltSum: 0, ltN: 0 };
+              a.ltSum += Math.max(0, dias); a.ltN++;
+              agg[name] = a;
+            });
+            return agg;
+          } catch { return {} as Record<string, { ltSum: number; ltN: number }>; }
+        })(),
+        // Forecast: leads nas etapas "Forecast" de todos os funis
+        (async () => {
+          const { data: forecastStages } = await supabase
+            .from("crm_stages")
+            .select("id")
+            .ilike("name", "%forecast%");
+          if (!forecastStages || forecastStages.length === 0) return [] as any[];
+          return fetchAllRows(() =>
+            supabase
+              .from("crm_leads")
+              .select("id, name, company, opportunity_value, owner_staff_id, stage_id")
+              .in("stage_id", forecastStages.map(s => s.id))
+          );
+        })(),
+        // "Em Negociação": leads em stages de negociação (antes buscava "%realizada%",
+        // que casava com "Reunião realizada" e não com "Em negociação"/"Negociação").
+        (async () => {
+          const { data: negociacaoStages } = await supabase
+            .from("crm_stages")
+            .select("id")
+            .ilike("name", "%negocia%");
+          if (!negociacaoStages || negociacaoStages.length === 0) return [] as any[];
+          return fetchAllRows(() =>
+            supabase
+              .from("crm_leads")
+              .select("id, name, company, opportunity_value, owner_staff_id, stage_id")
+              .in("stage_id", negociacaoStages.map(s => s.id))
+          );
+        })(),
+        // Metas do mês
+        (async () => {
+          const goalsMap = new Map<string, { meta: number; super: number; hiper: number }>();
+          let totalMeta = 0, totalSuper = 0, totalHiper = 0;
+          const { data: goalTypeData } = await supabase
+            .from("crm_goal_types")
+            .select("id")
+            .eq("name", "Vendas")
+            .eq("is_active", true)
+            .single();
+          if (goalTypeData?.id) {
+            const { data: goalValues } = await supabase
+              .from("crm_goal_values")
+              .select("*")
+              .eq("goal_type_id", goalTypeData.id)
+              .eq("month", filterMonth)
+              .eq("year", filterYear);
+            if (goalValues && goalValues.length > 0) {
+              goalValues.forEach(g => {
+                goalsMap.set(g.staff_id, {
+                  meta: g.meta_value || 0,
+                  super: g.super_meta_value || 0,
+                  hiper: g.hiper_meta_value || 0,
+                });
+              });
+              // Head Comercial e staff INATIVO NÃO entram na meta do time:
+              // - head: a meta dela JÁ é a soma dos closers (somar de novo = double-count).
+              // - inativo: quem saiu/foi desativado não conta no total do mês.
+              // Busca o cargo/ativo direto (allActiveStaff não traz inativos, e era por isso
+              // que a head inativa escapava e dobrava a meta).
+              const goalStaffIds = goalValues.map((g) => g.staff_id);
+              const { data: goalStaffRows } = await supabase
+                .from("onboarding_staff")
+                .select("id, role, is_active")
+                .in("id", goalStaffIds);
+              const excludeIds = new Set(
+                (goalStaffRows || [])
+                  .filter((s: any) => String(s.role ?? "").toLowerCase() === "head_comercial" || s.is_active === false)
+                  .map((s: any) => s.id),
+              );
+              const teamGoals = goalValues.filter((g) => !excludeIds.has(g.staff_id));
+              totalMeta = teamGoals.reduce((sum, g) => sum + (g.meta_value || 0), 0);
+              totalSuper = teamGoals.reduce((sum, g) => sum + (g.super_meta_value || 0), 0);
+              totalHiper = teamGoals.reduce((sum, g) => sum + (g.hiper_meta_value || 0), 0);
+            }
+          }
+          return { goalsMap, totalMeta, totalSuper, totalHiper };
+        })(),
+      ]);
 
-      const { data: allActiveStaff } = await supabase
-        .from("onboarding_staff")
-        .select("id, name, role, is_crm_closer")
-        .eq("is_active", true);
+      const allActiveStaff = staffRes.data;
 
       // head_comercial NÃO entra na base do ranking (não é closer individual). Só aparece
       // se tiver venda/reunião no período, via a expansão abaixo.
@@ -294,88 +467,10 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       );
       setStaffRoles(staffRoleMap as Map<string, string>);
 
-      // Load scheduled calls (paginado — evita corte de 1000)
-      const calls = await fetchAllRows(() =>
-        supabase
-          .from("crm_scheduled_calls")
-          .select(`
-            *,
-            scheduled_by_staff:onboarding_staff!crm_scheduled_calls_scheduled_by_fkey(id, name),
-            assigned_to_staff:onboarding_staff!crm_scheduled_calls_assigned_to_fkey(id, name)
-          `)
-          .gte("scheduled_at", filterStart.toISOString())
-          .lte("scheduled_at", filterEnd.toISOString())
-      );
       setRawCalls(calls);
-
-      // Load meeting events (include lead owner for closer attribution) — paginado
-      const meetingEvents = await fetchAllRows(() =>
-        supabase
-          .from("crm_meeting_events")
-          .select(`
-            *,
-            credited_staff:onboarding_staff!crm_meeting_events_credited_staff_id_fkey(id, name),
-            lead:crm_leads!crm_meeting_events_lead_id_fkey(id, owner_staff_id, pipeline:crm_pipelines(name))
-          `)
-          .gte("event_date", filterStart.toISOString())
-          .lte("event_date", filterEnd.toISOString())
-      );
       setRawMeetingEvents(meetingEvents);
-
-      // Load sales — paginado
-      const salesData = await fetchAllRows(() =>
-        supabase
-          .from("crm_sales")
-          .select(`
-            *,
-            closer:onboarding_staff!crm_sales_closer_staff_id_fkey(id, name),
-            sdr:onboarding_staff!crm_sales_sdr_staff_id_fkey(id, name),
-            pipeline:crm_pipelines(id, name),
-            product:onboarding_services(id, name),
-            lead:crm_leads(id, name, company, created_at)
-          `)
-          .gte("sale_date", format(filterStart, "yyyy-MM-dd"))
-          .lte("sale_date", format(filterEnd, "yyyy-MM-dd"))
-      );
       setRawSalesData(salesData);
-
-      // Lead time por funil: janela móvel dos ÚLTIMOS 60 DIAS (independente do
-      // filtro da tela) — métrica viva, não média de datas eternas. O relógio
-      // começa na ENTRADA DO LEAD NO FUNIL (entered_pipeline_at); se faltar,
-      // cai pra criação do lead e, em último caso, pro 1º agendamento — assim
-      // TODA venda com lead entra na média, nenhuma fica de fora.
-      try {
-        const d60 = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
-        const { data: sales90 } = await supabase
-          .from("crm_sales")
-          .select("sale_date, pipeline:crm_pipelines(name), lead:crm_leads(id, created_at, entered_pipeline_at)")
-          .gte("sale_date", d60);
-        const soldIds = Array.from(new Set((sales90 || []).map((s: any) => s.lead?.id).filter(Boolean)));
-        const firstSched: Record<string, string> = {};
-        if (soldIds.length) {
-          const { data: schedEvs } = await supabase
-            .from("crm_meeting_events")
-            .select("lead_id, event_date")
-            .eq("event_type", "scheduled")
-            .in("lead_id", soldIds)
-            .order("event_date", { ascending: true });
-          (schedEvs || []).forEach((e: any) => { if (!firstSched[e.lead_id]) firstSched[e.lead_id] = e.event_date; });
-        }
-        const agg: Record<string, { ltSum: number; ltN: number }> = {};
-        (sales90 || []).forEach((s: any) => {
-          const name = s.pipeline?.name || "(sem funil)";
-          const start = s.lead?.entered_pipeline_at
-            || s.lead?.created_at
-            || (s.lead?.id ? firstSched[s.lead.id] : null);
-          if (!start || !s.sale_date) return;
-          const dias = (new Date(s.sale_date + "T12:00:00").getTime() - new Date(start).getTime()) / 86400000;
-          if (!isFinite(dias)) return;
-          const a = agg[name] || { ltSum: 0, ltN: 0 };
-          a.ltSum += Math.max(0, dias); a.ltN++;
-          agg[name] = a;
-        });
-        setLtByFunnel(agg);
-      } catch { setLtByFunnel({}); }
+      setLtByFunnel(ltAgg);
 
       // Expand "closers" list with anyone who has scheduled/realized meetings
       // or sales in the period — even without the "closer" role.
@@ -398,95 +493,10 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       });
       setRawCloserStaff(Array.from(expandedCloserMap.values()));
 
-      // Load forecasts from leads in "Forecast" stages across all pipelines
-      const { data: forecastStages } = await supabase
-        .from("crm_stages")
-        .select("id")
-        .ilike("name", "%forecast%");
-
-      if (forecastStages && forecastStages.length > 0) {
-        const forecastStageIds = forecastStages.map(s => s.id);
-        const forecastLeads = await fetchAllRows(() =>
-          supabase
-            .from("crm_leads")
-            .select("id, name, company, opportunity_value, owner_staff_id, stage_id")
-            .in("stage_id", forecastStageIds)
-        );
-        setRawForecastData(forecastLeads);
-      } else {
-        setRawForecastData([]);
-      }
-
-      // Load "Em Negociação" from leads em stages de negociação (antes buscava "%realizada%",
-      // que casava com "Reunião realizada" e não com "Em negociação"/"Negociação").
-      const { data: negociacaoStages } = await supabase
-        .from("crm_stages")
-        .select("id")
-        .ilike("name", "%negocia%");
-
-      if (negociacaoStages && negociacaoStages.length > 0) {
-        const negociacaoStageIds = negociacaoStages.map(s => s.id);
-        const negotiationLeads = await fetchAllRows(() =>
-          supabase
-            .from("crm_leads")
-            .select("id, name, company, opportunity_value, owner_staff_id, stage_id")
-            .in("stage_id", negociacaoStageIds)
-        );
-        setRawNegotiationData(negotiationLeads);
-      } else {
-        setRawNegotiationData([]);
-      }
-
-      // Load goals
-      const { data: goalTypeData } = await supabase
-        .from("crm_goal_types")
-        .select("id")
-        .eq("name", "Vendas")
-        .eq("is_active", true)
-        .single();
-
-      const goalsMap = new Map<string, { meta: number; super: number; hiper: number }>();
-      let totalMeta = 0, totalSuper = 0, totalHiper = 0;
-
-      if (goalTypeData?.id) {
-        const { data: goalValues } = await supabase
-          .from("crm_goal_values")
-          .select("*")
-          .eq("goal_type_id", goalTypeData.id)
-          .eq("month", filterMonth)
-          .eq("year", filterYear);
-
-        if (goalValues && goalValues.length > 0) {
-          goalValues.forEach(g => {
-            goalsMap.set(g.staff_id, {
-              meta: g.meta_value || 0,
-              super: g.super_meta_value || 0,
-              hiper: g.hiper_meta_value || 0,
-            });
-          });
-          // Head Comercial e staff INATIVO NÃO entram na meta do time:
-          // - head: a meta dela JÁ é a soma dos closers (somar de novo = double-count).
-          // - inativo: quem saiu/foi desativado não conta no total do mês.
-          // Busca o cargo/ativo direto (allActiveStaff não traz inativos, e era por isso
-          // que a head inativa escapava e dobrava a meta).
-          const goalStaffIds = goalValues.map((g) => g.staff_id);
-          const { data: goalStaffRows } = await supabase
-            .from("onboarding_staff")
-            .select("id, role, is_active")
-            .in("id", goalStaffIds);
-          const excludeIds = new Set(
-            (goalStaffRows || [])
-              .filter((s: any) => String(s.role ?? "").toLowerCase() === "head_comercial" || s.is_active === false)
-              .map((s: any) => s.id),
-          );
-          const teamGoals = goalValues.filter((g) => !excludeIds.has(g.staff_id));
-          totalMeta = teamGoals.reduce((sum, g) => sum + (g.meta_value || 0), 0);
-          totalSuper = teamGoals.reduce((sum, g) => sum + (g.super_meta_value || 0), 0);
-          totalHiper = teamGoals.reduce((sum, g) => sum + (g.hiper_meta_value || 0), 0);
-        }
-      }
-      setStaffGoalsMap(goalsMap);
-      setTotalGoals({ meta: totalMeta, super: totalSuper, hiper: totalHiper });
+      setRawForecastData(forecastLeads);
+      setRawNegotiationData(negotiationLeads);
+      setStaffGoalsMap(goalsRes.goalsMap);
+      setTotalGoals({ meta: goalsRes.totalMeta, super: goalsRes.totalSuper, hiper: goalsRes.totalHiper });
 
     } catch (error) {
       console.error("Error loading sales indicators:", error);

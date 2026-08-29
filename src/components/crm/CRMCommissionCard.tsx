@@ -261,9 +261,17 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
             }
           }
 
+          // SDR conta reuniões inteiras: 70% de 45 = 31,5 exige 32 reuniões.
+          // O Math.round interno limpa ruído de ponto flutuante (0.7*45 = 31.4999…)
+          // antes do ceil, senão faixa exata (ex: 36.0000001) viraria um a mais.
+          const minParaFaixa = (pct: number) => {
+            const bruto = (pct / 100) * metaValue;
+            return staff.role === "sdr" ? Math.ceil(Math.round(bruto * 1000) / 1000) : bruto;
+          };
+
           // Build tier info
           const tierInfos: TierInfo[] = staffTiers.map(tier => {
-            const tierMinValue = (tier.min_percent / 100) * metaValue;
+            const tierMinValue = minParaFaixa(tier.min_percent);
             const missingValue = Math.max(0, tierMinValue - achieved);
             const dailyNeeded = remainingDays > 0 ? missingValue / remainingDays : missingValue;
             const isCurrentTier = achievedPercent >= tier.min_percent && achievedPercent <= tier.max_percent;
@@ -319,7 +327,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
 
           const firstTier = staffTiers[0];
           const missingToFirstTier = firstTier
-            ? Math.max(0, ((firstTier.min_percent / 100) * metaValue) - achieved)
+            ? Math.max(0, minParaFaixa(firstTier.min_percent) - achieved)
             : 0;
 
           // ── Metas extra: quantidade de vendas e por produto ──

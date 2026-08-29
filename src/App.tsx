@@ -205,6 +205,7 @@ const DatabaseBackupPage = lazy(() => import("./pages/onboarding-tasks/DatabaseB
 const TaskManagerPage = lazy(() => import("./pages/onboarding-tasks/TaskManagerPage"));
 const CopilotPage = lazy(() => import("./pages/onboarding-tasks/CopilotPage"));
 const CerebroPage = lazy(() => import("./pages/onboarding-tasks/CerebroPage"));
+const RadarDiretorPage = lazy(() => import("./pages/onboarding-tasks/RadarDiretorPage"));
 const AutomationsPage = lazy(() => import("./pages/onboarding-tasks/AutomationsPage"));
 const B2BProspectionPage = lazy(() => import("./pages/onboarding-tasks/B2BProspectionPage"));
 const ConsultoriasAdminPage = lazy(() => import("./pages/onboarding-tasks/ConsultoriasAdminPage"));
@@ -539,6 +540,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/task-manager" element={<TaskManagerPage />} />
               <Route path="/onboarding-tasks/copiloto" element={<CopilotPage />} />
               <Route path="/onboarding-tasks/cerebro" element={<CerebroPage />} />
+              <Route path="/onboarding-tasks/radar" element={<RadarDiretorPage />} />
               <Route path="/onboarding-tasks/grafo" element={<GlobalGraphPage />} />
               <Route path="/onboarding-tasks/transcricoes" element={<TranscricoesPage />} />
               <Route path="/onboarding-tasks/transcricoes/:id" element={<TranscricaoDetalhePage />} />
