@@ -12,10 +12,14 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import {
   ArrowLeft, ChevronLeft, ChevronRight, Loader2, Video, Plus, Trash2,
-  ExternalLink, CalendarDays, Eye, RefreshCw,
+  ExternalLink, CalendarDays, Eye, RefreshCw, Check, ChevronsUpDown,
 } from "lucide-react";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -81,6 +85,7 @@ const AgendaFabricioPage = () => {
 
   // Dialog de agendamento
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [companyPickerOpen, setCompanyPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formDate, setFormDate] = useState("");
   const [formTime, setFormTime] = useState("10:00");
@@ -531,19 +536,55 @@ const AgendaFabricioPage = () => {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Empresa *</Label>
-              <Select value={formProjectId} onValueChange={handleProjectChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a empresa" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  {projects.map((p) => (
-                    <SelectItem key={p.projectId} value={p.projectId}>
-                      {p.companyName}
-                      {p.productName ? ` — ${p.productName}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={companyPickerOpen} onOpenChange={setCompanyPickerOpen} modal>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between font-normal"
+                  >
+                    <span className="truncate">
+                      {formProjectId
+                        ? (() => {
+                            const p = projects.find((x) => x.projectId === formProjectId);
+                            return p ? `${p.companyName}${p.productName ? ` — ${p.productName}` : ""}` : "Selecione a empresa";
+                          })()
+                        : "Digite pra buscar a empresa"}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Buscar empresa..." />
+                    <CommandList className="max-h-64">
+                      <CommandEmpty>Nenhuma empresa encontrada</CommandEmpty>
+                      <CommandGroup>
+                        {projects.map((p) => (
+                          <CommandItem
+                            key={p.projectId}
+                            value={`${p.companyName} ${p.productName}`}
+                            onSelect={() => {
+                              handleProjectChange(p.projectId);
+                              setCompanyPickerOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={`mr-2 h-4 w-4 ${
+                                formProjectId === p.projectId ? "opacity-100" : "opacity-0"
+                              }`}
+                            />
+                            <span className="truncate">
+                              {p.companyName}
+                              {p.productName ? ` — ${p.productName}` : ""}
+                            </span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
