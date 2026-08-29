@@ -2644,6 +2644,10 @@ const OnboardingTasksPage = () => {
                       </DropdownMenuItem>
                     </>
                   )}
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/agenda-fabricio")}>
+                    <CalendarClock className="h-4 w-4 mr-2" />
+                    Agenda Fabrício
+                  </DropdownMenuItem>
                   {/* Painel White-Label para admin de tenant (branding, integrações, usuários) */}
                   {isWhiteLabel && isAdmin && currentUserEmail !== "fabricio@universidadevendas.com.br" && (
                     <DropdownMenuItem onClick={() => navigate("/whitelabel-admin")}>
