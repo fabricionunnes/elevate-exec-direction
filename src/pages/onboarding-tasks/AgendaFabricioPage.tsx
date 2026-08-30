@@ -543,13 +543,13 @@ const AgendaFabricioPage = () => {
                   <Button
                     variant="outline"
                     role="combobox"
-                    className="w-full justify-between font-normal"
+                    className="w-full justify-between font-normal overflow-hidden"
                   >
-                    <span className="truncate">
+                    <span className="min-w-0 flex-1 text-left truncate">
                       {formProjectId
                         ? (() => {
                             const p = projects.find((x) => x.projectId === formProjectId);
-                            return p ? `${p.companyName}${p.productName ? ` — ${p.productName}` : ""}` : "Selecione a empresa";
+                            return p ? p.companyName : "Selecione a empresa";
                           })()
                         : "Digite pra buscar a empresa"}
                     </span>
@@ -576,9 +576,11 @@ const AgendaFabricioPage = () => {
                                 formProjectId === p.projectId ? "opacity-100" : "opacity-0"
                               }`}
                             />
-                            <span className="truncate">
-                              {p.companyName}
-                              {p.productName ? ` — ${p.productName}` : ""}
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate">{p.companyName}</span>
+                              {p.productName && (
+                                <span className="block truncate text-xs text-muted-foreground">{p.productName}</span>
+                              )}
                             </span>
                           </CommandItem>
                         ))}
@@ -587,6 +589,12 @@ const AgendaFabricioPage = () => {
                   </Command>
                 </PopoverContent>
               </Popover>
+              {formProjectId && (() => {
+                const p = projects.find((x) => x.projectId === formProjectId);
+                return p?.productName ? (
+                  <p className="text-xs text-muted-foreground">{p.companyName} · {p.productName}</p>
+                ) : null;
+              })()}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
