@@ -437,7 +437,7 @@ const AgendaFabricioPage = () => {
           <div className="overflow-x-auto rounded-lg border">
             <div className="min-w-[860px]">
               {/* Cabeçalho dos dias */}
-              <div className="grid" style={{ gridTemplateColumns: "70px repeat(5, 1fr)" }}>
+              <div className="grid" style={{ gridTemplateColumns: "70px repeat(5, minmax(0, 1fr))" }}>
                 <div className="border-b border-r bg-muted/50" />
                 {weekDays.map((day) => (
                   <div
@@ -460,7 +460,7 @@ const AgendaFabricioPage = () => {
                 <div
                   key={time}
                   className="grid"
-                  style={{ gridTemplateColumns: "70px repeat(5, 1fr)" }}
+                  style={{ gridTemplateColumns: "70px repeat(5, minmax(0, 1fr))" }}
                 >
                   <div className="border-b border-r px-2 py-1 text-[11px] text-muted-foreground text-right bg-muted/30">
                     {time}
@@ -474,7 +474,7 @@ const AgendaFabricioPage = () => {
                         <button
                           key={key}
                           onClick={() => setSelectedMeeting(meeting)}
-                          className="border-b border-r last:border-r-0 min-h-[34px] px-1.5 py-1 text-left bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                          className="border-b border-r last:border-r-0 min-h-[34px] min-w-0 overflow-hidden px-1.5 py-1 text-left bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                         >
                           <div className="text-[11px] font-semibold truncate flex items-center gap-1">
                             <Video className="h-3 w-3 shrink-0" />
