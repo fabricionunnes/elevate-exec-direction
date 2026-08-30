@@ -127,7 +127,9 @@ const AgendaFabricioPage = () => {
     const { data: projs } = await supabase
       .from("onboarding_projects")
       .select("id, product_name, onboarding_company_id")
-      .eq("status", "active");
+      // ativo, sinalizou cancelamento e cumprindo aviso: enquanto for cliente,
+      // reunião com o Fabrício pode (e deve) ser agendada
+      .in("status", ["active", "cancellation_signaled", "notice_period"]);
     if (!projs || projs.length === 0) return;
     const companyIds = [...new Set(projs.map((p) => p.onboarding_company_id).filter(Boolean))];
     const { data: companies } = await supabase
