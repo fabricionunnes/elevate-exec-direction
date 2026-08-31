@@ -29,8 +29,10 @@ export function EnvelopeEditDialog({ open, onOpenChange, envelope, signers, onSa
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [removedAttIds, setRemovedAttIds] = useState<string[]>([]);
   const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [newBase, setNewBase] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const baseRef = useRef<HTMLInputElement>(null);
 
   const someViewed = signers.some((s) => s.status === "viewed");
 
@@ -41,6 +43,7 @@ export function EnvelopeEditDialog({ open, onOpenChange, envelope, signers, onSa
     setEditSigners(signers.map((s) => ({ id: s.id, name: s.name, email: s.email })));
     setRemovedAttIds([]);
     setNewFiles([]);
+    setNewBase(null);
     (async () => {
       const { data } = await supabase
         .from("envelope_attachments")
@@ -76,6 +79,7 @@ export function EnvelopeEditDialog({ open, onOpenChange, envelope, signers, onSa
       fd.append("signers", JSON.stringify(valid.map((s, i) => ({ id: s.id, name: s.name.trim(), email: s.email.trim(), order_index: i }))));
       if (removedAttIds.length) fd.append("removed_attachment_ids", JSON.stringify(removedAttIds));
       newFiles.forEach((f) => fd.append("attachments", f));
+      if (newBase) fd.append("new_base", newBase);
 
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/edit-envelope`, {
         method: "POST",
@@ -85,7 +89,7 @@ export function EnvelopeEditDialog({ open, onOpenChange, envelope, signers, onSa
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error ?? "Erro ao salvar");
 
-      toast.success("Envelope atualizado" + (newFiles.length || removedAttIds.length ? " — documento remontado com os anexos" : ""));
+      toast.success("Envelope atualizado" + (newBase ? " — contrato substituído e documento remontado" : newFiles.length || removedAttIds.length ? " — documento remontado com os anexos" : ""));
       onSaved();
       onOpenChange(false);
     } catch (e: unknown) {
@@ -139,6 +143,31 @@ export function EnvelopeEditDialog({ open, onOpenChange, envelope, signers, onSa
                 </Button>
               </div>
             ))}
+          </div>
+
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" /> Contrato (documento principal)</Label>
+              <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => baseRef.current?.click()}>
+                <Plus className="h-3.5 w-3.5" /> Trocar contrato
+              </Button>
+              <input ref={baseRef} type="file" accept="application/pdf,.pdf" className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    if (f.type !== "application/pdf" && !f.name.toLowerCase().endsWith(".pdf")) { toast.error("O contrato precisa ser PDF"); }
+                    else if (f.size > 20 * 1024 * 1024) { toast.error("Contrato acima de 20MB"); }
+                    else setNewBase(f);
+                  }
+                  e.target.value = "";
+                }} />
+            </div>
+            {newBase && (
+              <div className="flex items-center justify-between rounded border border-dashed border-primary/50 px-2.5 py-1.5 text-xs">
+                <span className="flex items-center gap-1.5 min-w-0"><FileText className="h-3.5 w-3.5 shrink-0 text-primary" /><span className="truncate">{newBase.name}</span><span className="text-muted-foreground">(substitui o atual)</span></span>
+                <button className="text-destructive ml-2" onClick={() => setNewBase(null)}>desfazer</button>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-2">

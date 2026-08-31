@@ -73,18 +73,29 @@ serve(async (req: Request) => {
     const removedRaw = form.get("removed_attachment_ids");
     const newFiles = form.getAll("attachments").filter((f): f is File => f instanceof File);
     const removedIds: string[] = (() => { try { return removedRaw ? JSON.parse(String(removedRaw)) : []; } catch { return []; } })();
+    // troca do contrato-base: substitui o base.pdf e remonta tudo
+    const newBase = form.get("new_base");
+    const baseReplaced = newBase instanceof File;
 
-    let attachmentsChanged = newFiles.length > 0 || removedIds.length > 0;
+    let attachmentsChanged = newFiles.length > 0 || removedIds.length > 0 || baseReplaced;
     let newHash = env.original_file_hash as string;
 
     if (attachmentsChanged) {
       const basePath = `envelopes/${envelopeId}/base.pdf`;
-      // Garante o base.pdf (na 1ª edição, o original.pdf atual É a base)
-      const { data: baseExists } = await admin.storage.from(BUCKET).download(basePath).then((r) => ({ data: r.data })).catch(() => ({ data: null }));
-      if (!baseExists) {
-        const { data: orig } = await admin.storage.from(BUCKET).download(env.original_file_path);
-        if (!orig) return createErrorResponse("Documento base não encontrado", 500);
-        await admin.storage.from(BUCKET).upload(basePath, orig, { contentType: "application/pdf", upsert: true });
+      if (baseReplaced) {
+        const f = newBase as File;
+        if (f.type !== "application/pdf" && !f.name.toLowerCase().endsWith(".pdf")) return createErrorResponse("O contrato precisa ser PDF", 400);
+        if (f.size > 20 * 1024 * 1024) return createErrorResponse("Contrato excede 20 MB", 400);
+        const buf = new Uint8Array(await f.arrayBuffer());
+        await admin.storage.from(BUCKET).upload(basePath, buf, { contentType: "application/pdf", upsert: true });
+      } else {
+        // Garante o base.pdf (na 1ª edição, o original.pdf atual É a base)
+        const { data: baseExists } = await admin.storage.from(BUCKET).download(basePath).then((r) => ({ data: r.data })).catch(() => ({ data: null }));
+        if (!baseExists) {
+          const { data: orig } = await admin.storage.from(BUCKET).download(env.original_file_path);
+          if (!orig) return createErrorResponse("Documento base não encontrado", 500);
+          await admin.storage.from(BUCKET).upload(basePath, orig, { contentType: "application/pdf", upsert: true });
+        }
       }
 
       // remove anexos marcados
@@ -130,7 +141,7 @@ serve(async (req: Request) => {
     await admin.from("audit_events").insert({
       envelope_id: envelopeId, event_type: "document_modified", ip: clientIp,
       user_agent: req.headers.get("user-agent"),
-      metadata: { by: user.id, attachments_changed: attachmentsChanged, new_hash: attachmentsChanged ? newHash : undefined },
+      metadata: { by: user.id, attachments_changed: attachmentsChanged, base_replaced: baseReplaced || undefined, new_hash: attachmentsChanged ? newHash : undefined },
     });
 
     const { data: finalAtts } = await admin.from("envelope_attachments").select("id, filename, size_bytes, sort_order").eq("envelope_id", envelopeId).order("sort_order");
