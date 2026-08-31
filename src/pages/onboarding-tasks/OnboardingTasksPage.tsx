@@ -1454,9 +1454,14 @@ const OnboardingTasksPage = () => {
         return false;
       }
 
-      // Saúde do cliente: por padrão, só empresas com projeto ATIVO.
-      // (ao filtrar por um status específico no dropdown ou por uma métrica, respeita esse filtro.)
-      if (filterStatus === "all" && !activeMetricFilter && !company.projects.some((p) => p.status === "active")) {
+      // Por padrão aparece quem ainda é cliente: projeto ativo, sinalizou
+      // cancelamento ou cumprindo aviso. Só encerradas ficam de fora do "Todos".
+      if (
+        filterStatus === "all" && !activeMetricFilter &&
+        !company.projects.some((p) =>
+          p.status === "active" || p.status === "cancellation_signaled" || p.status === "notice_period"
+        )
+      ) {
         return false;
       }
 
