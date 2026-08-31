@@ -57,6 +57,9 @@ interface ProjectOption {
   productName: string;
 }
 
+// Janelas dedicadas a reunião de produto com cliente (10h Acceleration, 14h Partners)
+const PRODUCT_SLOTS = new Set(["10:00", "14:00"]);
+
 const slotTimes: string[] = [];
 for (let h = DAY_START_HOUR; h < DAY_END_HOUR; h++) {
   slotTimes.push(`${String(h).padStart(2, "0")}:00`);
@@ -462,7 +465,9 @@ const AgendaFabricioPage = () => {
                   className="grid"
                   style={{ gridTemplateColumns: "70px repeat(5, minmax(0, 1fr))" }}
                 >
-                  <div className="border-b border-r px-2 py-1 text-[11px] text-muted-foreground text-right bg-muted/30">
+                  <div className={`border-b border-r px-2 py-1 text-[11px] text-right ${
+                    PRODUCT_SLOTS.has(time) ? "bg-emerald-100/70 text-emerald-700 font-semibold" : "bg-muted/30 text-muted-foreground"
+                  }`}>
                     {time}
                   </div>
                   {weekDays.map((day) => {
@@ -502,8 +507,8 @@ const AgendaFabricioPage = () => {
                         onClick={() => openSchedule(day, time)}
                         disabled={!canEdit}
                         className={`border-b border-r last:border-r-0 min-h-[34px] transition-colors group ${
-                          canEdit ? "hover:bg-primary/5 cursor-pointer" : "cursor-default"
-                        }`}
+                          PRODUCT_SLOTS.has(time) ? "bg-emerald-50 hover:bg-emerald-100/80" : ""
+                        } ${canEdit ? (PRODUCT_SLOTS.has(time) ? "cursor-pointer" : "hover:bg-primary/5 cursor-pointer") : "cursor-default"}`}
                       >
                         {canEdit && (
                           <Plus className="h-3.5 w-3.5 mx-auto text-transparent group-hover:text-primary/60" />
@@ -518,7 +523,7 @@ const AgendaFabricioPage = () => {
         )}
 
         <p className="text-xs text-muted-foreground mt-3">
-          Horários ocupados vêm do Google Agenda do Fabrício. Ao agendar, o evento é criado no
+          Faixas em verde (10h e 14h) são as janelas dedicadas a reuniões de produto com clientes. Horários ocupados vêm do Google Agenda do Fabrício. Ao agendar, o evento é criado no
           Google Agenda com link do Meet e a reunião entra automaticamente na aba Reuniões do
           projeto do cliente.
         </p>
