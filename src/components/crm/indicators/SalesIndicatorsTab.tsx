@@ -512,9 +512,10 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     const currentDay = getDate(now);
     const isCloserFilter = selectedCloser !== "all";
 
-    // Vendas de EVENTO (Imersão, Mansão, Palestra, Eventos) não são venda comercial core —
-    // são conversão específica do evento e distorcem ticket médio / qtd. Ficam de fora deste painel.
-    const isEventSale = (s: any) => /imers|evento|mans[ãa]o|palestra/i.test(s.pipeline?.name || "");
+    // Vendas de EVENTO (Mansão, Palestra, Eventos presenciais) não são venda comercial
+    // core e distorcem ticket médio / qtd — ficam fora. Imersão Crescer CONTA: é produto
+    // vendido pelo funil (pedido do Fabrício em 31/08 — vendas Welington/Kelysson sumiam).
+    const isEventSale = (s: any) => /evento|mans[ãa]o|palestra/i.test(s.pipeline?.name || "");
     const commercialRawSales = rawSalesData.filter(s => !isEventSale(s));
 
     // Filter raw data by selected closer + produto (filtro de produto antes era morto;

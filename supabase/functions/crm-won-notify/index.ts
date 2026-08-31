@@ -74,6 +74,13 @@ Deno.serve(async (req) => {
     // mensagens quando dois caminhos davam ganho quase ao mesmo tempo (kanban +
     // tela do lead): ambos liam "não notificado" antes de qualquer um gravar.
     // A PK em lead_id garante que só uma execução consegue inserir.
+    //
+    // EXCEÇÃO — funil de evento (Imersão/Mansão): o mesmo lead pode comprar de
+    // novo (reganho) e CADA ganho avisa no grupo. A reserva vira só uma janela
+    // de 5 min contra o clique duplo kanban + tela do lead.
+    const { data: leadFunil } = await supabase
+      .from("crm_leads").select("pipeline:crm_pipelines(name)").eq("id", leadId).maybeSingle();
+    const funilRepete = /imers|mans[ãa]o/i.test((leadFunil as any)?.pipeline?.name || "");
     if (!force) {
       const { data: reserved, error: reserveErr } = await supabase
         .from("crm_won_notifications")
@@ -81,11 +88,22 @@ Deno.serve(async (req) => {
         .select("lead_id")
         .maybeSingle();
       if (reserveErr) {
-        if ((reserveErr as { code?: string }).code === "23505") return j({ ok: true, skip: "já notificado" });
-        return j({ ok: false, error: reserveErr.message }, 500);
+        if ((reserveErr as { code?: string }).code === "23505") {
+          if (!funilRepete) return j({ ok: true, skip: "já notificado" });
+          const { data: prev } = await supabase
+            .from("crm_won_notifications").select("sent_at").eq("lead_id", leadId).maybeSingle();
+          const idadeMs = prev?.sent_at ? Date.now() - new Date(prev.sent_at).getTime() : Infinity;
+          if (idadeMs < 5 * 60_000) return j({ ok: true, skip: "já notificado (janela de 5 min)" });
+          await supabase.from("crm_won_notifications")
+            .update({ sent_at: new Date().toISOString() }).eq("lead_id", leadId);
+          // segue sem reserva própria (a linha existente marca esta rodada)
+        } else {
+          return j({ ok: false, error: reserveErr.message }, 500);
+        }
+      } else {
+        if (!reserved) return j({ ok: true, skip: "já notificado" });
+        reservedLeadId = leadId;
       }
-      if (!reserved) return j({ ok: true, skip: "já notificado" });
-      reservedLeadId = leadId;
     }
     // libera a reserva se a gente desistir/falhar antes de mandar
     const releaseReservation = async () => {
