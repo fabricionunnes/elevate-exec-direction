@@ -2324,7 +2324,7 @@ const OnboardingTasksPage = () => {
                   <ChevronDown className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuContent align="start" className="w-52 max-h-[80vh] overflow-y-auto">
                 {(isMaster || isAdmin || isCS || isConsultant || ["closer","sdr","social_setter","bdr","head_comercial","rh","financeiro","marketing","juridico"].includes(currentUserRole || "")) && (
                   <>
                     <DropdownMenuItem onClick={() => navigate("/ponto-de-encontro")} className="text-violet-400 focus:text-violet-300 font-semibold">
@@ -2452,7 +2452,7 @@ const OnboardingTasksPage = () => {
                     <ChevronDown className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuContent align="start" className="w-48 max-h-[80vh] overflow-y-auto">
                   <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/board-unv")}>
                     <Crown className="h-4 w-4 mr-2" /> UNV Board
                   </DropdownMenuItem>
@@ -2473,7 +2473,7 @@ const OnboardingTasksPage = () => {
                     <ChevronDown className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-52">
+                <DropdownMenuContent align="start" className="w-52 max-h-[80vh] overflow-y-auto">
                   <DropdownMenuItem onClick={() => setShowNPSGlobalDialog(true)}>
                     <TrendingUp className="h-4 w-4 mr-2" /> NPS
                   </DropdownMenuItem>
