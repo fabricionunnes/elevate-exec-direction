@@ -92,11 +92,21 @@ Deno.serve(async (req) => {
         .single();
 
       if (leadData) {
-        const { data: formCfg } = await supabase
-          .from('crm_pipeline_forms')
-          .select('target_stage_id')
-          .eq('form_token', form_token)
-          .maybeSingle();
+        // O front NÃO manda form_token na etapa 2 (e referenciar a const do
+        // fluxo de criação aqui dava ReferenceError/TDZ e derrubava o submit
+        // inteiro). Acha o formulário pelo funil do lead.
+        const { data: formCfg } = body.form_token
+          ? await supabase
+              .from('crm_pipeline_forms')
+              .select('target_stage_id')
+              .eq('form_token', body.form_token)
+              .maybeSingle()
+          : await supabase
+              .from('crm_pipeline_forms')
+              .select('target_stage_id')
+              .eq('pipeline_id', leadData.pipeline_id)
+              .limit(1)
+              .maybeSingle();
         const { data: triagemStage } = formCfg?.target_stage_id
           ? { data: { id: formCfg.target_stage_id } }
           : await supabase
