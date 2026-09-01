@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-01T00:01:17",
+ "gerado_em": "2026-09-01T10:01:11",
  "posts": [
+  {
+   "slug": "investimento-comercial-precisa-mostrar-retorno-claro",
+   "url": "/blog/investimento-comercial-precisa-mostrar-retorno-claro/",
+   "titulo": "Investimento comercial precisa mostrar retorno claro antes da decisão",
+   "resumo": "Dono que não consegue calcular quanto entra e quanto sai não toma decisão comercial. O valor do investimento já existe dentro da empresa, mas sem métrica ninguém enxerga.",
+   "tags": [
+    "investimento comercial",
+    "decisão",
+    "métrica",
+    "estrutura comercial",
+    "retorno"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-01",
+   "ts": 2050
+  },
   {
    "slug": "faturamento-estavel-tres-meses-trava-comercial",
    "url": "/blog/faturamento-estavel-tres-meses-trava-comercial/",
