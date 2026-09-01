@@ -45,6 +45,12 @@ export function BankStatementFullPanel() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedBank, setSelectedBank] = useState<string>("all");
+  // new Date("2026-09-01") interpreta como UTC (vira 31/08 21h local e o rótulo
+  // do mês errava); campo vazio dava Invalid Date e derrubava a tela inteira.
+  const dataSegura = (s: string) => {
+    const d = s ? new Date(s + "T12:00:00") : new Date();
+    return isNaN(d.getTime()) ? new Date() : d;
+  };
   const [dateFrom, setDateFrom] = useState(() => format(startOfMonth(new Date()), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(() => format(endOfMonth(new Date()), "yyyy-MM-dd"));
   const [page, setPage] = useState(0);
@@ -121,7 +127,7 @@ export function BankStatementFullPanel() {
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
 
   const prevMonth = () => {
-    const d = new Date(dateFrom);
+    const d = dataSegura(dateFrom);
     const newStart = startOfMonth(new Date(d.getFullYear(), d.getMonth() - 1, 1));
     const newEnd = endOfMonth(newStart);
     setDateFrom(format(newStart, "yyyy-MM-dd"));
@@ -129,14 +135,14 @@ export function BankStatementFullPanel() {
   };
 
   const nextMonth = () => {
-    const d = new Date(dateFrom);
+    const d = dataSegura(dateFrom);
     const newStart = startOfMonth(new Date(d.getFullYear(), d.getMonth() + 1, 1));
     const newEnd = endOfMonth(newStart);
     setDateFrom(format(newStart, "yyyy-MM-dd"));
     setDateTo(format(newEnd, "yyyy-MM-dd"));
   };
 
-  const monthLabel = format(new Date(dateFrom), "MMMM yyyy", { locale: ptBR }).replace(/^./, c => c.toUpperCase());
+  const monthLabel = format(dataSegura(dateFrom), "MMMM yyyy", { locale: ptBR }).replace(/^./, c => c.toUpperCase());
 
   return (
     <div className="space-y-4">

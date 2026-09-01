@@ -133,8 +133,12 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
   }, [monthPayables, todayStr]);
 
   const summary = useMemo(() => {
-    // Receita Recebida: filtra por paid_at no mês (não por due_date)
-    const paidInMonth = invoices.filter(i => i.status === "paid" && i.paid_at?.startsWith(monthStr));
+    // Receita Recebida: filtra por paid_at no mês (não por due_date).
+    // paid_at é timestamp UTC — pagamento de 31/08 às 21h BRT vira 01/09 no UTC
+    // e caía no mês errado; converte pra data de Brasília antes de agrupar.
+    const diaBR = (iso: string | null | undefined) =>
+      iso ? new Date(new Date(iso).getTime() - 3 * 3600000).toISOString().slice(0, 10) : "";
+    const paidInMonth = invoices.filter(i => i.status === "paid" && diaBR(i.paid_at).startsWith(monthStr));
     const receitaRecebida = paidInMonth.reduce((s: number, i: any) => s + (i.paid_amount_cents || i.amount_cents), 0);
     const receitaPendente = monthInvoices.filter(i => i.status === "pending" || i.status === "overdue").reduce((s: number, i: any) => s + i.amount_cents, 0);
     // Despesa Paga: filtra por paid_date no mês (não por due_date)
@@ -281,7 +285,9 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
       // Receita pelo mês do RECEBIMENTO (paid_at) — mesma regra do card "Receita Recebida"
-      const rec = invoices.filter(inv => inv.status === "paid" && (inv.paid_at || inv.due_date)?.startsWith(key)).reduce((s: number, i: any) => s + (i.paid_amount_cents || i.amount_cents), 0) / 100;
+      const diaBRm = (iso: string | null | undefined) =>
+        iso ? new Date(new Date(iso).getTime() - 3 * 3600000).toISOString().slice(0, 10) : "";
+      const rec = invoices.filter(inv => inv.status === "paid" && (inv.paid_at ? diaBRm(inv.paid_at) : inv.due_date || "").startsWith(key)).reduce((s: number, i: any) => s + (i.paid_amount_cents || i.amount_cents), 0) / 100;
       // Despesa pelo mês do PAGAMENTO (paid_date) — mesma regra do card "Despesa Paga"
       const desp = payables.filter((p: any) => p.status === "paid" && (p.paid_date || p.due_date)?.startsWith(key)).reduce((s: number, p: any) => s + (p.paid_amount || p.amount || 0), 0);
       months.push({ month: key, label, receita: rec, despesa: desp, resultado: rec - desp });

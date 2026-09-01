@@ -1256,7 +1256,9 @@ export default function AllRecurringChargesPage() {
     const to = dateTo ? format(dateTo, "yyyy-MM-dd") : null;
     const rows = invoices.filter(inv => {
       if (inv.status !== "paid" && inv.status !== "partial") return false;
-      const pago = (inv as any).paid_at ? String((inv as any).paid_at).slice(0, 10) : null;
+      const pago = (inv as any).paid_at
+        ? new Date(new Date((inv as any).paid_at).getTime() - 3 * 3600000).toISOString().slice(0, 10)
+        : null;
       if (!pago) return false;
       if (from && pago < from) return false;
       if (to && pago > to) return false;
