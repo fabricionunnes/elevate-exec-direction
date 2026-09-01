@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-01T10:01:11",
+ "gerado_em": "2026-09-01T15:01:05",
  "posts": [
+  {
+   "slug": "suporte-continuo-separa-treino-de-abandono",
+   "url": "/blog/suporte-continuo-separa-treino-de-abandono/",
+   "titulo": "Suporte contínuo separa treino que funciona de abandono",
+   "resumo": "Acompanhamento individual quinzenal e grupo de suporte diário criam a rotina que sustenta a implementação. Sem isso, o que foi ensinado vira teoria.",
+   "tags": [
+    "implementação",
+    "treino de vendedor",
+    "acompanhamento",
+    "estrutura comercial",
+    "rotina"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-01",
+   "ts": 2051
+  },
   {
    "slug": "investimento-comercial-precisa-mostrar-retorno-claro",
    "url": "/blog/investimento-comercial-precisa-mostrar-retorno-claro/",
