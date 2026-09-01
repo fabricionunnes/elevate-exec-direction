@@ -162,6 +162,7 @@ const OnboardingCompanyDetailPage = () => {
   const [projectContracts, setProjectContracts] = useState<Record<string, {
     contract_start_date: string;
     contract_end_date: string;
+    contract_term: string;
     contract_value: string;
     billing_day: string;
     contract_notes: string;
@@ -345,6 +346,7 @@ const OnboardingCompanyDetailPage = () => {
       contracts[p.id] = {
         contract_start_date: p.contract_start_date || "",
         contract_end_date: p.contract_end_date || "",
+        contract_term: (p as any).contract_term || "mensal",
         contract_value: p.contract_value?.toString() || "",
         billing_day: p.billing_day?.toString() || "",
         contract_notes: p.contract_notes || "",
@@ -356,6 +358,16 @@ const OnboardingCompanyDetailPage = () => {
   const handleSaveProjectContract = async (projectId: string) => {
     const data = projectContracts[projectId];
     if (!data) return;
+    // Regra do Fabrício: início SEMPRE (data de entrada do cliente); fim só é
+    // dispensado no mensal — semestral e anual precisam ter data de fim.
+    if (!data.contract_start_date) {
+      toast.error("Informe a data de início do contrato (data de início do cliente)");
+      return;
+    }
+    if (["semestral", "anual"].includes(data.contract_term) && !data.contract_end_date) {
+      toast.error(`Contrato ${data.contract_term} precisa da data de fim`);
+      return;
+    }
     setSavingContract(projectId);
     try {
       const { error } = await supabase
@@ -363,6 +375,7 @@ const OnboardingCompanyDetailPage = () => {
         .update({
           contract_start_date: data.contract_start_date || null,
           contract_end_date: data.contract_end_date || null,
+          contract_term: data.contract_term || "mensal",
           contract_value: data.contract_value ? parseFloat(data.contract_value) : null,
           billing_day: data.billing_day ? parseInt(data.billing_day) : null,
           contract_notes: data.contract_notes || null,
@@ -1269,14 +1282,43 @@ const OnboardingCompanyDetailPage = () => {
                           </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Vigência</Label>
+                            <Select value={c.contract_term || "mensal"}
+                              onValueChange={(v) => {
+                                // semestral/anual: sugere o fim a partir do início
+                                const patch: any = { contract_term: v };
+                                if (c.contract_start_date && v !== "mensal") {
+                                  const d = new Date(c.contract_start_date + "T12:00:00");
+                                  d.setMonth(d.getMonth() + (v === "semestral" ? 6 : 12));
+                                  patch.contract_end_date = d.toISOString().slice(0, 10);
+                                }
+                                setC(patch);
+                              }}>
+                              <SelectTrigger className="w-full sm:w-56"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="mensal">Mensal (sem data de fim)</SelectItem>
+                                <SelectItem value="semestral">Semestral</SelectItem>
+                                <SelectItem value="anual">Anual</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label>Início do Contrato</Label>
+                              <Label>Início do Contrato *</Label>
                               <Input type="date" value={c.contract_start_date}
-                                onChange={(e) => setC({ contract_start_date: e.target.value })} />
+                                onChange={(e) => {
+                                  const patch: any = { contract_start_date: e.target.value };
+                                  if (e.target.value && c.contract_term && c.contract_term !== "mensal" && !c.contract_end_date) {
+                                    const d = new Date(e.target.value + "T12:00:00");
+                                    d.setMonth(d.getMonth() + (c.contract_term === "semestral" ? 6 : 12));
+                                    patch.contract_end_date = d.toISOString().slice(0, 10);
+                                  }
+                                  setC(patch);
+                                }} />
                             </div>
                             <div className="space-y-2">
-                              <Label>Fim do Contrato</Label>
+                              <Label>Fim do Contrato{c.contract_term !== "mensal" ? " *" : ""}</Label>
                               <Input type="date" value={c.contract_end_date}
                                 onChange={(e) => setC({ contract_end_date: e.target.value })} />
                             </div>
