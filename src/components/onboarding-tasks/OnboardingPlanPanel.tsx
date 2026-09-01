@@ -131,7 +131,7 @@ export function OnboardingPlanPanel({ projectId, userRole }: { projectId: string
       if ((data as any)?.error) throw new Error((data as any).error);
       const d = data as any;
       toast.success(d.ia
-        ? `Plano gerado com base ${d.briefing_encontrado ? "no briefing da venda" : "no briefing da empresa"}`
+        ? `Plano gerado com base ${d.briefing_encontrado ? "no briefing da venda" : "no briefing da empresa"}${d.contrato_encontrado ? " + contrato assinado" : ""}`
         : d.aviso || "Plano criado a partir do modelo padrão UNV");
       await load();
       setEditing(true);

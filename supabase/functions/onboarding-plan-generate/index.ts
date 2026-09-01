@@ -147,6 +147,50 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // 3b) contrato principal (envelope de assinaturas): casa o título do envelope
+    // com o nome da empresa/lead e anexa o PDF na chamada da IA — o plano nasce
+    // do que está ESCRITO no contrato, não só do briefing.
+    let contratoPdfB64: string | null = null;
+    let contratoTitulo = "";
+    // norm() do arquivo tira ESPAÇOS — pro casamento por palavras precisa de um
+    // normalizador que preserva os espaços
+    const normEsp = (s: string) => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    try {
+      const { data: envs } = await supabase.from("envelopes")
+        .select("id, title, status, original_file_path, final_file_path, created_at")
+        .neq("status", "cancelled").order("created_at", { ascending: false }).limit(200);
+      const nomes = [comp?.name, lead?.company].filter(Boolean).map((n: any) => normEsp(String(n)));
+      const tokens = new Set(
+        nomes.flatMap((n) => n.split(/\s+/))
+          .filter((t) => t.length >= 4 && !["ltda", "eireli", "servicos", "serviços", "comercio", "empresa", "gestao", "gestão", "brasil", "transportes", "consultoria", "eventos"].includes(t))
+      );
+      const casa = (titulo: string) => {
+        const nt = normEsp(titulo);
+        if (nomes.some((n) => n.length > 5 && nt.includes(n))) return 2;
+        let hits = 0;
+        tokens.forEach((t) => { if (nt.includes(t)) hits++; });
+        return hits;
+      };
+      const alvoEnv = (envs || [])
+        .map((e: any) => ({ e, score: casa(e.title || "") }))
+        .filter((x) => x.score >= 1)
+        .sort((a, b) => b.score - a.score || (a.e.status === "completed" ? -1 : 1))[0]?.e;
+      if (alvoEnv) {
+        const path = alvoEnv.final_file_path || alvoEnv.original_file_path;
+        const { data: blob } = await supabase.storage.from("envelopes").download(path);
+        if (blob) {
+          const buf = new Uint8Array(await blob.arrayBuffer());
+          if (buf.byteLength < 15 * 1024 * 1024) {
+            let bin = "";
+            const chunk = 0x8000;
+            for (let i = 0; i < buf.length; i += chunk) bin += String.fromCharCode(...buf.subarray(i, i + chunk));
+            contratoPdfB64 = btoa(bin);
+            contratoTitulo = alvoEnv.title || "";
+          }
+        }
+      }
+    } catch (e) { console.error("[onboarding-plan] contrato do envelope:", e); }
+
     // 4) serviço/plano vendidos
     let produto = proj.product_name || "";
     if (lead?.product_id) {
@@ -175,6 +219,7 @@ Deno.serve(async (req: Request) => {
       comp?.conversion_rate ? `CONVERSÃO: ${comp.conversion_rate}` : "",
       comp?.crm_usage ? `CRM QUE USA: ${comp.crm_usage}` : "",
       briefing ? `\nBRIEFING DA VENDA (CRM Comercial):\n${briefing.slice(0, 6000)}` : "",
+      contratoTitulo ? `\nCONTRATO ASSINADO EM ANEXO: "${contratoTitulo}" — leia o PDF e use escopo, entregáveis, prazos e valores contratados.` : "",
       extra ? `\nORIENTAÇÕES EXTRAS: ${extra}` : "",
     ].filter(Boolean).join("\n");
 
@@ -201,6 +246,7 @@ Regras:
 - 4 a 6 fases, em ordem, cada uma com prazo, objetivo, o que a UNV entrega, o que o cliente precisa fazer e o resultado esperado ao fim da fase.
 - As métricas de sucesso devem ser as que a UNV acompanha (ticket médio, conversão, CAC, faturamento, previsibilidade), com meta quando o briefing der base — se não der, deixe o alvo em branco.
 - Não invente número que não está no material.
+- Se houver CONTRATO em anexo, ele é a fonte da verdade do escopo: as fases devem cobrir exatamente o que foi contratado (serviços, prazos, vigência, valores) — nada além, nada aquém.
 
 Responda SÓ com JSON válido neste formato:
 {"intro":"2-3 frases dizendo o que foi contratado e onde queremos chegar","phases":[{"title":"","period":"","objective":"","deliverables":[""],"client_actions":[""],"outcome":""}],"expectations":{"unv":[""],"cliente":[""]},"success_metrics":[{"label":"","target":""}]}`;
@@ -208,7 +254,19 @@ Responda SÓ com JSON válido neste formato:
       const r = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-5", max_tokens: 4000, messages: [{ role: "user", content: prompt }] }),
+        body: JSON.stringify({
+          model: "claude-sonnet-5",
+          max_tokens: 9000,
+          messages: [{
+            role: "user",
+            content: contratoPdfB64
+              ? [
+                  { type: "document", source: { type: "base64", media_type: "application/pdf", data: contratoPdfB64 } },
+                  { type: "text", text: prompt },
+                ]
+              : prompt,
+          }],
+        }),
       });
       if (r.ok) {
         const d = await r.json();
@@ -221,10 +279,15 @@ Responda SÓ com JSON válido neste formato:
               plan = { ...plan, ...parsed, title: plan.title, subtitle: plan.subtitle };
               usedAI = true;
             }
-          } catch (e) { console.error("[onboarding-plan] json inválido:", e); }
+          } catch (e) {
+            (globalThis as any).__iaErr = `json inválido (fim: …${txt.slice(-120)})`;
+            console.error("[onboarding-plan] json inválido:", e);
+          }
         }
       } else {
-        console.error("[onboarding-plan] IA falhou:", r.status, (await r.text()).slice(0, 200));
+        const errTxt = (await r.text()).slice(0, 300);
+        (globalThis as any).__iaErr = `${r.status}: ${errTxt}`;
+        console.error("[onboarding-plan] IA falhou:", r.status, errTxt);
       }
     }
 
@@ -237,7 +300,7 @@ Responda SÓ com JSON válido neste formato:
       expectations: plan.expectations || { unv: [], cliente: [] },
       success_metrics: plan.success_metrics || [],
       start_date: proj.contract_start_date || comp?.kickoff_date || new Date().toISOString().slice(0, 10),
-      source: { lead_id: lead?.id || null, produto, plano, valor, tem_briefing: !!briefing, ia: usedAI },
+      source: { lead_id: lead?.id || null, produto, plano, valor, tem_briefing: !!briefing, tem_contrato: !!contratoPdfB64, contrato_titulo: contratoTitulo || null, ia: usedAI },
       updated_at: new Date().toISOString(),
     };
     const { data: saved, error } = await supabase.from("project_onboarding_plans")
@@ -245,7 +308,7 @@ Responda SÓ com JSON válido neste formato:
     if (error) return json({ error: error.message }, 500);
 
     return json({
-      ok: true, plan_id: saved.id, ia: usedAI, briefing_encontrado: !!briefing,
+      ok: true, plan_id: saved.id, ia: usedAI, briefing_encontrado: !!briefing, contrato_encontrado: !!contratoPdfB64, ia_erro: (globalThis as any).__iaErr || null,
       lead_id: lead?.id || null, produto, fases: plan.phases.length,
       aviso: usedAI ? undefined : "Gerado a partir do modelo padrão UNV (IA indisponível) — edite à vontade.",
     });
