@@ -364,7 +364,7 @@ const OnboardingCompanyDetailPage = () => {
       toast.error("Informe a data de início do contrato (data de início do cliente)");
       return;
     }
-    if (["semestral", "anual"].includes(data.contract_term) && !data.contract_end_date) {
+    if (["trimestral", "semestral", "anual"].includes(data.contract_term) && !data.contract_end_date) {
       toast.error(`Contrato ${data.contract_term} precisa da data de fim`);
       return;
     }
@@ -374,7 +374,8 @@ const OnboardingCompanyDetailPage = () => {
         .from("onboarding_projects")
         .update({
           contract_start_date: data.contract_start_date || null,
-          contract_end_date: data.contract_end_date || null,
+          // mensal não tem fim — grava em branco mesmo que algo tenha ficado no campo
+          contract_end_date: data.contract_term === "mensal" ? null : (data.contract_end_date || null),
           contract_term: data.contract_term || "mensal",
           contract_value: data.contract_value ? parseFloat(data.contract_value) : null,
           billing_day: data.billing_day ? parseInt(data.billing_day) : null,
@@ -1288,9 +1289,10 @@ const OnboardingCompanyDetailPage = () => {
                               onValueChange={(v) => {
                                 // semestral/anual: sugere o fim a partir do início
                                 const patch: any = { contract_term: v };
+                                if (v === "mensal") patch.contract_end_date = "";
                                 if (c.contract_start_date && v !== "mensal") {
                                   const d = new Date(c.contract_start_date + "T12:00:00");
-                                  d.setMonth(d.getMonth() + (v === "semestral" ? 6 : 12));
+                                  d.setMonth(d.getMonth() + (v === "trimestral" ? 3 : v === "semestral" ? 6 : 12));
                                   patch.contract_end_date = d.toISOString().slice(0, 10);
                                 }
                                 setC(patch);
@@ -1298,6 +1300,7 @@ const OnboardingCompanyDetailPage = () => {
                               <SelectTrigger className="w-full sm:w-56"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="mensal">Mensal (sem data de fim)</SelectItem>
+                                <SelectItem value="trimestral">Trimestral</SelectItem>
                                 <SelectItem value="semestral">Semestral</SelectItem>
                                 <SelectItem value="anual">Anual</SelectItem>
                               </SelectContent>
@@ -1311,7 +1314,7 @@ const OnboardingCompanyDetailPage = () => {
                                   const patch: any = { contract_start_date: e.target.value };
                                   if (e.target.value && c.contract_term && c.contract_term !== "mensal" && !c.contract_end_date) {
                                     const d = new Date(e.target.value + "T12:00:00");
-                                    d.setMonth(d.getMonth() + (c.contract_term === "semestral" ? 6 : 12));
+                                    d.setMonth(d.getMonth() + (c.contract_term === "trimestral" ? 3 : c.contract_term === "semestral" ? 6 : 12));
                                     patch.contract_end_date = d.toISOString().slice(0, 10);
                                   }
                                   setC(patch);
@@ -1319,8 +1322,12 @@ const OnboardingCompanyDetailPage = () => {
                             </div>
                             <div className="space-y-2">
                               <Label>Fim do Contrato{c.contract_term !== "mensal" ? " *" : ""}</Label>
-                              <Input type="date" value={c.contract_end_date}
+                              <Input type="date" value={c.contract_term === "mensal" ? "" : c.contract_end_date}
+                                disabled={c.contract_term === "mensal"}
                                 onChange={(e) => setC({ contract_end_date: e.target.value })} />
+                              {c.contract_term === "mensal" && (
+                                <p className="text-xs text-muted-foreground">Contrato mensal não tem data de fim.</p>
+                              )}
                             </div>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
