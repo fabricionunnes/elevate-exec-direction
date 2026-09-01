@@ -5,7 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const ALERT_NUMBERS = ['5531989840003', '5531997667686'];
+// Eva saiu da lista a pedido dela (2026-09-01) — só o Fabrício recebe
+const ALERT_NUMBERS = ['5531989840003'];
 const ALERT_INSTANCE_NAME = 'UNV Financeiro';
 
 

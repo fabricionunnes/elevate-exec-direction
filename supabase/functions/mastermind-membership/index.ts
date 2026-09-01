@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
         .eq("company_id", companyId).neq("status", "removed");
       const alert = `Mastermind UNV: a empresa ${comp.name} cancelou/pausou. ${removedNames.length ? `Membro cortado da base: ${removedNames.join(", ")}.` : "Nenhum membro com esse telefone na base."} Remover do grupo de WhatsApp (2 toques): Mastermind UNV > participante > remover.`;
       await sendWhats(sb, FABRICIO, alert);
-      await sendWhats(sb, EVA, alert);
+      // Eva pediu pra não receber notificações (2026-09-01) — aviso vai só pro Fabrício
       return json({ ok: true, company: comp.name, removed: removedNames });
     }
 
