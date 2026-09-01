@@ -1246,6 +1246,61 @@ export default function AllRecurringChargesPage() {
     };
   }, [filteredInvoices, todayStr]);
 
+  // "Recebido"/"Pago" pela régua de CAIXA: data do PAGAMENTO dentro do período
+  // do filtro, independente do vencimento — mesma regra dos cards "Receita
+  // Recebida"/"Despesas Pagas" do dashboard financeiro. Antes cada tela usava
+  // uma régua e os números divergiam (parecia erro; decisão do Fabrício 31/08:
+  // caixa nos dois lugares).
+  const caixaRecebido = useMemo(() => {
+    const from = dateFrom ? format(dateFrom, "yyyy-MM-dd") : null;
+    const to = dateTo ? format(dateTo, "yyyy-MM-dd") : null;
+    const rows = invoices.filter(inv => {
+      if (inv.status !== "paid" && inv.status !== "partial") return false;
+      const pago = (inv as any).paid_at ? String((inv as any).paid_at).slice(0, 10) : null;
+      if (!pago) return false;
+      if (from && pago < from) return false;
+      if (to && pago > to) return false;
+      if (searchTerm) {
+        const s = searchTerm.toLowerCase();
+        if (!(inv.description?.toLowerCase().includes(s) || inv.company_name?.toLowerCase().includes(s))) return false;
+      }
+      if (selectedCompany !== "all" && inv.company_id !== selectedCompany) return false;
+      if (selectedConsultant !== "all") {
+        const cids = companyConsultantMap.get(inv.company_id);
+        if (!cids || !cids.has(selectedConsultant)) return false;
+      }
+      const invAny = inv as any;
+      if (selectedCategories.length > 0 && !selectedCategories.includes(invAny.category_id)) return false;
+      if (selectedCostCenters.length > 0 && !selectedCostCenters.includes(invAny.cost_center_id)) return false;
+      return true;
+    });
+    return {
+      total: rows.reduce((s, i) => {
+        const base = i.paid_amount_cents || (i.status === "paid" ? i.amount_cents : 0);
+        return s + base - ((i as any).payment_fee_cents || 0);
+      }, 0),
+      count: rows.length,
+    };
+  }, [invoices, dateFrom, dateTo, searchTerm, selectedCompany, selectedConsultant, selectedCategories, selectedCostCenters, companyConsultantMap]);
+
+  const caixaPago = useMemo(() => {
+    const from = payableDateFrom ? format(payableDateFrom, "yyyy-MM-dd") : null;
+    const to = payableDateTo ? format(payableDateTo, "yyyy-MM-dd") : null;
+    const rows = payables.filter(p => {
+      if (p.status !== "paid") return false;
+      const pago = (p as any).paid_date ? String((p as any).paid_date).slice(0, 10) : null;
+      if (!pago) return false;
+      if (from && pago < from) return false;
+      if (to && pago > to) return false;
+      if (searchTerm && !p.description?.toLowerCase().includes(searchTerm.toLowerCase()) && !p.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      const pAny = p as any;
+      if (selectedPayableCategories.length > 0 && !selectedPayableCategories.includes(pAny.category_id)) return false;
+      if (selectedPayableCostCenters.length > 0 && !selectedPayableCostCenters.includes(pAny.cost_center_id)) return false;
+      return true;
+    });
+    return { total: rows.reduce((s, p) => s + (p.paid_amount || p.amount || 0), 0), count: rows.length };
+  }, [payables, payableDateFrom, payableDateTo, searchTerm, selectedPayableCategories, selectedPayableCostCenters]);
+
   // Cards do topo funcionam como filtro rápido de status (clicar de novo limpa).
   const isStatusCardActive = (target: string[]) =>
     target.length > 0 && target.length === selectedStatuses.length && target.every(s => selectedStatuses.includes(s));
@@ -1690,8 +1745,8 @@ export default function AllRecurringChargesPage() {
                 <Card onClick={() => applyStatusCard(["paid", "partial"])} className={statusCardClass(["paid", "partial"])}>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Recebido</CardTitle></CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-emerald-600">{formatCurrencyCents(invoiceSummary.totalPaid)}</div>
-                    <p className="text-xs text-muted-foreground">{invoiceSummary.paidCount} parcelas</p>
+                    <div className="text-2xl font-bold text-emerald-600">{formatCurrencyCents(caixaRecebido.total)}</div>
+                    <p className="text-xs text-muted-foreground">{caixaRecebido.count} pagamentos no período (caixa)</p>
                   </CardContent>
                 </Card>
                 <Card onClick={() => applyStatusCard(["overdue"])} className={statusCardClass(["overdue"])}>
@@ -2201,7 +2256,8 @@ export default function AllRecurringChargesPage() {
                 <Card onClick={() => applyStatusCard(["paid", "partial"])} className={statusCardClass(["paid", "partial"])}>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Pago</CardTitle></CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-emerald-600">{formatCurrency(filteredPayables.filter(p => p.status === "paid").reduce((s, p) => s + (p.paid_amount || p.amount), 0))}</div>
+                    <div className="text-2xl font-bold text-emerald-600">{formatCurrency(caixaPago.total)}</div>
+                    <p className="text-xs text-muted-foreground">{caixaPago.count} pagamentos no período (caixa)</p>
                   </CardContent>
                 </Card>
                 <Card onClick={() => applyStatusCard(["overdue"])} className={statusCardClass(["overdue"])}>
