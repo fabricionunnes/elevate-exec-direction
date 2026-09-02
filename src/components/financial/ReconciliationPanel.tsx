@@ -6,7 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Loader2, RefreshCw, AlertTriangle, CheckCircle2, Link2, Undo2, EyeOff } from "lucide-react";
+import { Loader2, RefreshCw, AlertTriangle, CheckCircle2, Link2, Undo2, EyeOff, Receipt, ArrowRightLeft, PlusCircle } from "lucide-react";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 interface Entry {
@@ -44,6 +46,31 @@ export function ReconciliationPanel() {
   const [candTo, setCandTo] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  // resolver "na mão": criar recebível (com empresa) ou conta a pagar a partir da linha do extrato
+  const [resolving, setResolving] = useState<Entry | null>(null);
+  const [resForm, setResForm] = useState({ company_id: "", party: "", description: "", category_id: "", supplier_name: "" });
+  const [resSaving, setResSaving] = useState(false);
+  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string; type: string }[]>([]);
+  useEffect(() => {
+    (async () => {
+      const [c, k] = await Promise.all([
+        (supabase as any).from("onboarding_companies").select("id, name").eq("status", "active").order("name"),
+        (supabase as any).from("staff_financial_categories").select("id, name, type").order("name"),
+      ]);
+      setCompanies(c.data || []); setCategories(k.data || []);
+    })();
+  }, []);
+
+  // Toda resolução passa pela RPC: baixa/cria o título E lança no razão interno
+  // uma única vez (é isso que substitui o antigo "ajuste automático" de saldo).
+  const resolver = async (e: Entry, action: string, payload: Record<string, unknown> = {}) => {
+    const { data, error } = await (supabase as any).rpc("resolve_statement_entry", { p_entry_id: e.id, p_action: action, p_payload: payload });
+    if (error) { toast.error(error.message || "Não consegui resolver"); return false; }
+    const r = data || {};
+    toast.success(r.ledger_posted ? "Resolvido e lançado no extrato interno" : "Resolvido");
+    return true;
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -99,20 +126,8 @@ export function ReconciliationPanel() {
   const confirmLink = async (c: Candidate) => {
     if (!linking) return;
     const e = linking;
-    const table = e.kind === "credit" ? "financial_receivables" : "financial_payables";
-    const valor = Math.abs(e.amount_cents) / 100;
-    const { error: upErr } = await (supabase as any).from(table).update({
-      status: "paid", paid_date: e.entry_date, paid_amount: valor, updated_at: new Date().toISOString(),
-    }).eq("id", c.id);
-    if (upErr) { toast.error("Sem permissão para dar baixa"); return; }
-    const { data: { user } } = await supabase.auth.getUser();
-    await (supabase as any).from("financial_statement_entries").update({
-      status: "matched", match_kind: e.kind === "credit" ? "receivable" : "payable", match_id: c.id,
-      match_confidence: "manual", match_reason: `vinculado manualmente (${[c.party, c.description].filter(Boolean).join(" — ")})`.trim(),
-      auto_settled: false, reviewed_by: user?.id || null, reviewed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }).eq("id", e.id);
-    toast.success("Vinculado e baixado");
+    const ok = await resolver(e, "link", { kind: e.kind === "credit" ? "receivable" : "payable", id: c.id });
+    if (!ok) return;
     setLinking(null); load();
   };
 
@@ -134,11 +149,24 @@ export function ReconciliationPanel() {
   };
 
   const ignore = async (e: Entry) => {
-    const { error } = await (supabase as any).from("financial_statement_entries").update({
-      status: "ignored", match_reason: "marcado como sem efeito no financeiro", updated_at: new Date().toISOString(),
-    }).eq("id", e.id);
-    if (error) { toast.error("Sem permissão para editar"); return; }
-    load();
+    if (await resolver(e, "ignore")) load();
+  };
+
+  const abrirResolver = (e: Entry) => {
+    setResolving(e);
+    setResForm({ company_id: "", party: "", description: e.description || "", category_id: "", supplier_name: "Asaas" });
+  };
+  const confirmarResolver = async () => {
+    if (!resolving) return;
+    if (!resForm.description.trim()) { toast.error("Descreva o lançamento"); return; }
+    const credito = resolving.kind === "credit";
+    if (credito && !resForm.company_id && !resForm.party.trim()) { toast.error("Escolha a empresa ou informe o nome"); return; }
+    setResSaving(true);
+    const ok = await resolver(resolving, credito ? "create_receivable" : "create_payable", credito
+      ? { company_id: resForm.company_id || null, party: resForm.party.trim() || null, description: resForm.description.trim(), category_id: resForm.category_id || null }
+      : { supplier_name: resForm.supplier_name.trim() || "Asaas", description: resForm.description.trim(), category_id: resForm.category_id || null });
+    setResSaving(false);
+    if (ok) { setResolving(null); load(); }
   };
 
   const filtered = cands.filter((c) => {
@@ -160,8 +188,10 @@ export function ReconciliationPanel() {
               <Link2 className="h-4 w-4 text-primary" /> Conciliação bancária — Asaas
             </h3>
             <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
-              Importa o extrato e dá baixa sozinho quando tem certeza (id do Asaas, ou valor e vencimento
-              batendo com um único título). Na dúvida, não mexe: marca para você decidir e avisa no WhatsApp.
+              Importa o extrato do Asaas linha a linha, dá baixa e lança no extrato interno sozinho quando tem certeza
+              (taxa, transferência, id do Asaas, ou valor e vencimento batendo com um único título). Na dúvida, não
+              inventa lançamento: fica aqui pra você decidir — vincular, criar recebível com a empresa, taxa, transferência
+              ou ignorar. A diferença de saldo Asaas × sistema é exatamente o que ainda está nesta fila.
             </p>
             {lastRun && (
               <div className="flex flex-wrap gap-3 mt-3 text-xs">
@@ -237,9 +267,25 @@ export function ReconciliationPanel() {
                     </div>
                     <div className="flex items-center gap-1">
                       {e.status !== "matched" && (
-                        <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => openLink(e)}>
-                          <Link2 className="h-3.5 w-3.5" /> Vincular
-                        </Button>
+                        <>
+                          <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => openLink(e)} title="Baixar um título já cadastrado">
+                            <Link2 className="h-3.5 w-3.5" /> Vincular
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => abrirResolver(e)}
+                            title={credito ? "Criar recebível pago (com empresa)" : "Criar conta paga"}>
+                            <PlusCircle className="h-3.5 w-3.5" /> {credito ? "Criar recebível" : "Criar conta"}
+                          </Button>
+                          {!credito && (
+                            <Button size="sm" variant="ghost" className="h-8 gap-1" title="É taxa do Asaas"
+                              onClick={async () => { if (await resolver(e, "fee")) load(); }}>
+                              <Receipt className="h-3.5 w-3.5" /> Taxa
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" className="h-8 gap-1" title="Transferência entre contas próprias / antecipação"
+                            onClick={async () => { if (await resolver(e, "transfer")) load(); }}>
+                            <ArrowRightLeft className="h-3.5 w-3.5" /> Transf.
+                          </Button>
+                        </>
                       )}
                       {e.status === "matched" && e.match_kind !== "fee" && (
                         <Button size="sm" variant="ghost" className="h-8 gap-1" onClick={() => undo(e)}>
@@ -259,6 +305,50 @@ export function ReconciliationPanel() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!resolving} onOpenChange={(o) => !o && setResolving(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {resolving?.kind === "credit" ? "Criar recebível" : "Criar conta a pagar"} de {resolving ? brl(Math.abs(resolving.amount_cents)) : ""}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-2">{resolving?.entry_date && dt(resolving.entry_date)} · {resolving?.description}</p>
+          <div className="space-y-3">
+            {resolving?.kind === "credit" ? (
+              <>
+                <div>
+                  <Label>Empresa</Label>
+                  <SearchableSelect value={resForm.company_id || "none"} onValueChange={(v) => setResForm(f => ({ ...f, company_id: v === "none" ? "" : v }))}
+                    options={companies.map(c => ({ value: c.id, label: c.name }))} allowNone noneLabel="Sem empresa (nome livre)"
+                    placeholder="Digite pra buscar a empresa" emptyMessage="Nenhuma empresa encontrada" />
+                </div>
+                {!resForm.company_id && (
+                  <div><Label>Nome do recebedor</Label><Input value={resForm.party} onChange={(e) => setResForm(f => ({ ...f, party: e.target.value }))} placeholder="Ex: Fulano (venda avulsa)" /></div>
+                )}
+              </>
+            ) : (
+              <div><Label>Fornecedor</Label><Input value={resForm.supplier_name} onChange={(e) => setResForm(f => ({ ...f, supplier_name: e.target.value }))} /></div>
+            )}
+            <div><Label>Descrição *</Label><Input value={resForm.description} onChange={(e) => setResForm(f => ({ ...f, description: e.target.value }))} /></div>
+            <div>
+              <Label>Categoria</Label>
+              <Select value={resForm.category_id || "none"} onValueChange={(v) => setResForm(f => ({ ...f, category_id: v === "none" ? "" : v }))}>
+                <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="none">Sem categoria</SelectItem>
+                  {categories.filter(c => c.type === (resolving?.kind === "credit" ? "receita" : "despesa")).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-[11px] text-muted-foreground">O título nasce já pago na data do extrato e o valor entra no extrato interno uma única vez.</p>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={() => setResolving(null)}>Cancelar</Button>
+              <Button onClick={confirmarResolver} disabled={resSaving}>{resSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Confirmar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!linking} onOpenChange={(o) => !o && setLinking(null)}>
         <DialogContent className="max-w-2xl">
