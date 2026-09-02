@@ -1258,9 +1258,13 @@ export default function AllRecurringChargesPage() {
     const to = dateTo ? format(dateTo, "yyyy-MM-dd") : null;
     const rows = invoices.filter(inv => {
       if (inv.status !== "paid" && inv.status !== "partial") return false;
-      const pago = (inv as any).paid_at
-        ? new Date(new Date((inv as any).paid_at).getTime() - 3 * 3600000).toISOString().slice(0, 10)
-        : null;
+      // Data pura (lançamento avulso: paid_date "2026-09-02") fica como está.
+      // Só carimbo com hora (timestamptz UTC) é convertido pra Brasília — se
+      // converter data pura, "02/09 00:00" vira 01/09 às 21h e cai no dia errado.
+      const rawPago = (inv as any).paid_at ? String((inv as any).paid_at) : "";
+      const pago = !rawPago ? null
+        : (rawPago.length <= 10 || !rawPago.includes("T")) ? rawPago.slice(0, 10)
+        : new Date(new Date(rawPago).getTime() - 3 * 3600000).toISOString().slice(0, 10);
       if (!pago) return false;
       if (from && pago < from) return false;
       if (to && pago > to) return false;
