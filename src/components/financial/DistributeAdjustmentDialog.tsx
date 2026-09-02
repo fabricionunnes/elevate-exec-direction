@@ -55,6 +55,7 @@ interface NewLine {
   amount: number;
   category_id: string;
   party: string;
+  company_id: string;
 }
 
 interface Props {
@@ -63,6 +64,7 @@ interface Props {
   kind: DistributeKind;
   adjustment: AdjustmentRow | null;
   categories: { id: string; name: string; color?: string }[];
+  companies?: { id: string; name: string }[];
   existingAccounts: ExistingAccount[];
   onDone: () => void;
 }
@@ -77,6 +79,7 @@ const newLine = (): NewLine => ({
   amount: 0,
   category_id: "",
   party: "",
+  company_id: "",
 });
 
 export function DistributeAdjustmentDialog({
@@ -85,6 +88,7 @@ export function DistributeAdjustmentDialog({
   kind,
   adjustment,
   categories,
+  companies = [],
   existingAccounts,
   onDone,
 }: Props) {
@@ -189,7 +193,8 @@ export function DistributeAdjustmentDialog({
         description: l.description.trim(),
         amount: l.amount,
         category_id: l.category_id || null,
-        party: l.party.trim() || null,
+        party: l.company_id ? null : (l.party.trim() || null),
+        company_id: l.company_id || null,
       }));
       const p_existing = Array.from(pickedAmounts.entries())
         .filter(([, amt]) => amt > 0)
@@ -225,10 +230,11 @@ export function DistributeAdjustmentDialog({
     <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : close())}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Distribuir ajuste do Asaas</DialogTitle>
+          <DialogTitle>Desmembrar lançamento</DialogTitle>
           <DialogDescription className="break-words">
-            {adjustment?.description} — total {fmt(total)}. Distribua esse valor em contas reais
-            (sem alterar o saldo do banco). Sobra fica no ajuste.
+            {adjustment?.description} — total {fmt(total)}. Divida esse valor em 2 ou mais lançamentos
+            reais (empresa, descrição, valor) ou abata contas existentes — o saldo do banco não muda.
+            O que sobrar continua no lançamento original.
           </DialogDescription>
         </DialogHeader>
 
@@ -268,11 +274,23 @@ export function DistributeAdjustmentDialog({
                 />
               </div>
               <div className="col-span-3">
-                <Input
-                  placeholder={partyLabel}
-                  value={l.party}
-                  onChange={(e) => updateLine(l.key, { party: e.target.value })}
-                />
+                {kind === "receivable" && companies.length > 0 ? (
+                  <Select value={l.company_id || "none"} onValueChange={(v) => updateLine(l.key, { company_id: v === "none" ? "" : v })}>
+                    <SelectTrigger><SelectValue placeholder="Empresa" /></SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      <SelectItem value="none">Sem empresa (nome livre)</SelectItem>
+                      {companies.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : null}
+                {(kind !== "receivable" || !l.company_id) && (
+                  <Input
+                    className={kind === "receivable" && companies.length > 0 ? "mt-1" : ""}
+                    placeholder={partyLabel}
+                    value={l.party}
+                    onChange={(e) => updateLine(l.key, { party: e.target.value })}
+                  />
+                )}
               </div>
               <div className="col-span-2">
                 <Select value={l.category_id} onValueChange={(v) => updateLine(l.key, { category_id: v })}>

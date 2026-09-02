@@ -2053,8 +2053,8 @@ export default function AllRecurringChargesPage() {
                                       <Edit2 className="h-3.5 w-3.5" />
                                     </Button>
                                   )}
-                                  {isMaster && inv.source_table === "financial_receivables" && inv.description?.startsWith("Ajuste automático Asaas") && (
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" title="Distribuir ajuste"
+                                  {isMaster && inv.source_table === "financial_receivables" && (inv.description?.startsWith("Ajuste automático Asaas") || inv.status === "paid") && (
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" title="Desmembrar em 2 ou mais lançamentos"
                                       onClick={() => setDistributeReceivable(inv)}>
                                       <Split className="h-3.5 w-3.5" />
                                     </Button>
@@ -3034,10 +3034,11 @@ export default function AllRecurringChargesPage() {
           amount: Number(distributeReceivable.amount_cents || 0) / 100,
         } : null}
         categories={staffCategories.filter((c: any) => c.type === "receita").map((c: any) => ({ id: c.id, name: c.name }))}
+        companies={companies}
         existingAccounts={invoices
           // inclui mensalidades de cliente (company_invoices) além dos lançamentos
           // do financeiro central — a RPC agora dá baixa nas duas origens
-          .filter((x: any) => (x.status === "pending" || x.status === "overdue" || x.status === "partial") && !x.description?.startsWith("Ajuste automático Asaas"))
+          .filter((x: any) => (x.status === "pending" || x.status === "overdue" || x.status === "partial") && !x.description?.startsWith("Ajuste automático Asaas") && x.id !== distributeReceivable?.id)
           .map((x: any) => ({ id: x.id, description: x.description, amount: Number(x.amount_cents || 0) / 100, party: x.company_name || x.custom_receiver_name || null, due_date: x.due_date, paid: Number(x.paid_amount_cents || 0) / 100 }))}
         onDone={() => { setDistributeReceivable(null); loadData(); }}
       />
