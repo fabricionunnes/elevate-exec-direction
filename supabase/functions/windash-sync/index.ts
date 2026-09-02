@@ -85,13 +85,17 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 2) somas atuais do mês no Nexus (por kpi+vendedor)
+    // 2) somas atuais do mês no Nexus (por kpi+vendedor), separando a linha
+    //    de HOJE (que a gente reescreve) dos outros dias (que ficam como estão).
+    //    kpi_entries tem UNIQUE (vendedor, kpi, dia): inserir "mais um delta"
+    //    no mesmo dia colide — foi isso que travava o sync depois da 1ª hora.
     const kpiIds = KPI_MAP.map((k) => k.kpiId);
-    const current = new Map<string, number>();
+    const outrosDias = new Map<string, number>();
+    const hoje = new Map<string, number>();
     for (let from = 0; ; from += 1000) {
       const { data: rows } = await supabase
         .from("kpi_entries")
-        .select("kpi_id, salesperson_id, value")
+        .select("kpi_id, salesperson_id, value, entry_date")
         .eq("company_id", COMPANY_ID)
         .in("kpi_id", kpiIds)
         .gte("entry_date", monthStart)
@@ -100,13 +104,16 @@ Deno.serve(async (req: Request) => {
         .range(from, from + 999);
       (rows || []).forEach((r: any) => {
         const k = `${r.kpi_id}|${r.salesperson_id || ""}`;
-        current.set(k, (current.get(k) || 0) + Number(r.value || 0));
+        if (r.entry_date === entryDate) hoje.set(k, (hoje.get(k) || 0) + Number(r.value || 0));
+        else outrosDias.set(k, (outrosDias.get(k) || 0) + Number(r.value || 0));
       });
       if (!rows || rows.length < 1000) break;
     }
 
     // 3) deltas + metas
-    const plan: { sp: any; kpiId: string; api: number; atual: number; delta: number }[] = [];
+    // valor da linha de HOJE = acumulado da API − soma dos outros dias. Idempotente:
+    // pode rodar de hora em hora que converge sem duplicar.
+    const plan: { sp: any; kpiId: string; api: number; atual: number; delta: number; valorHoje: number }[] = [];
     const metas: { sp: any; valor: number }[] = [];
     for (const v of vendedoresApi) {
       const sp = byName.get(norm(v.nome));
@@ -114,9 +121,13 @@ Deno.serve(async (req: Request) => {
       const ind = v.indicadores || {};
       for (const m of KPI_MAP) {
         const api = m.pick(ind);
-        const atual = current.get(`${m.kpiId}|${sp.id}`) || 0;
+        const k = `${m.kpiId}|${sp.id}`;
+        const outros = outrosDias.get(k) || 0;
+        const hojeAtual = hoje.get(k) || 0;
+        const atual = outros + hojeAtual;
+        const valorHoje = Math.round((api - outros) * 100) / 100;
         const delta = api - atual;
-        if (Math.abs(delta) > 0.009) plan.push({ sp, kpiId: m.kpiId, api, atual, delta });
+        if (Math.abs(valorHoje - hojeAtual) > 0.009) plan.push({ sp, kpiId: m.kpiId, api, atual, delta, valorHoje });
       }
       const metaVal = Number(ind?.meta_vendas?.valor) || 0;
       if (metaVal > 0) metas.push({ sp, valor: metaVal });
@@ -131,22 +142,28 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // 4) grava deltas
+    // 4) grava deltas — em LOTE. Antes era um insert por linha (80+ idas ao
+    // banco): o cron (pg_net, 5s de timeout) derrubava a chamada no meio e
+    // só 1-3 deltas entravam por hora — o Nexus ficava dias atrás do WinDash.
     let written = 0;
-    for (const p of plan) {
-      const { error } = await supabase.from("kpi_entries").insert({
-        company_id: COMPANY_ID,
-        kpi_id: p.kpiId,
-        salesperson_id: p.sp.id,
-        entry_date: entryDate,
-        value: Math.round(p.delta * 100) / 100,
-        unit_id: p.sp.unit_id ?? null,
-        team_id: p.sp.team_id ?? null,
-        sector_id: p.sp.sector_id ?? null,
-        observations: `${TAG} sync automático do WinDash (acumulado ${p.api})`,
-      });
-      if (error) console.error("[windash-sync] insert:", error.message);
-      else written++;
+    const linhas = plan.map((p) => ({
+      company_id: COMPANY_ID,
+      kpi_id: p.kpiId,
+      salesperson_id: p.sp.id,
+      entry_date: entryDate,
+      value: p.valorHoje,
+      unit_id: p.sp.unit_id ?? null,
+      team_id: p.sp.team_id ?? null,
+      sector_id: p.sp.sector_id ?? null,
+      observations: `${TAG} sync automático do WinDash (acumulado ${p.api})`,
+    }));
+    for (let i = 0; i < linhas.length; i += 100) {
+      const lote = linhas.slice(i, i + 100);
+      // upsert na linha do dia (UNIQUE vendedor+kpi+dia): reescreve, não duplica
+      const { error } = await supabase.from("kpi_entries")
+        .upsert(lote, { onConflict: "salesperson_id,kpi_id,entry_date" });
+      if (error) console.error("[windash-sync] upsert lote:", error.message);
+      else written += lote.length;
     }
 
     // 5) metas mensais de Faturamento por vendedor
