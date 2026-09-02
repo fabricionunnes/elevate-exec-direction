@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-02T15:01:12",
+ "gerado_em": "2026-09-02T21:01:03",
  "posts": [
+  {
+   "slug": "atendimento-volume-qualidade-exige-estrutura-escalavel",
+   "url": "/blog/atendimento-volume-qualidade-exige-estrutura-escalavel/",
+   "titulo": "Atendimento em volume com qualidade exige estrutura escalável",
+   "resumo": "Dono que atende sozinho não consegue crescer. Equipe que atende em volume precisa de processo claro, não improvisação.",
+   "tags": [
+    "estrutura comercial",
+    "delegação",
+    "sistema",
+    "atendimento",
+    "escala"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-02",
+   "ts": 2054
+  },
   {
    "slug": "concorrente-grande-entra-sistema-retencao-segura",
    "url": "/blog/concorrente-grande-entra-sistema-retencao-segura/",
