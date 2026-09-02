@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 
 export type DistributeKind = "payable" | "receivable";
@@ -275,13 +276,15 @@ export function DistributeAdjustmentDialog({
               </div>
               <div className="col-span-3">
                 {kind === "receivable" && companies.length > 0 ? (
-                  <Select value={l.company_id || "none"} onValueChange={(v) => updateLine(l.key, { company_id: v === "none" ? "" : v })}>
-                    <SelectTrigger><SelectValue placeholder="Empresa" /></SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      <SelectItem value="none">Sem empresa (nome livre)</SelectItem>
-                      {companies.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={l.company_id || "none"}
+                    onValueChange={(v) => updateLine(l.key, { company_id: v === "none" ? "" : v })}
+                    options={companies.map((c) => ({ value: c.id, label: c.name }))}
+                    allowNone
+                    noneLabel="Sem empresa (nome livre)"
+                    placeholder="Empresa"
+                    emptyMessage="Nenhuma empresa encontrada"
+                  />
                 ) : null}
                 {(kind !== "receivable" || !l.company_id) && (
                   <Input

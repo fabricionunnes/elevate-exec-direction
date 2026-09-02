@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Info } from "lucide-react";
@@ -185,13 +186,15 @@ export function ReceivableEditDialog({ open, onOpenChange, receivable, companies
           <div className="space-y-4 max-h-[65vh] overflow-y-auto py-2">
             <div>
               <Label>Empresa</Label>
-              <Select value={form.company_id || "none"} onValueChange={(v) => setForm(f => ({ ...f, company_id: v === "none" ? "" : v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent className="max-h-72">
-                  <SelectItem value="none">Nenhuma (nome manual)</SelectItem>
-                  {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={form.company_id || "none"}
+                onValueChange={(v) => setForm(f => ({ ...f, company_id: v === "none" ? "" : v }))}
+                options={companies.map(c => ({ value: c.id, label: c.name }))}
+                allowNone
+                noneLabel="Nenhuma (nome manual)"
+                placeholder="Digite pra buscar a empresa"
+                emptyMessage="Nenhuma empresa encontrada"
+              />
             </div>
             {!form.company_id && (
               <div>
