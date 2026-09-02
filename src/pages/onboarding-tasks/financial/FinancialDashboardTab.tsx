@@ -143,11 +143,13 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
       if (s.length <= 10 || !s.includes("T")) return s.slice(0, 10);
       return new Date(new Date(s).getTime() - 3 * 3600000).toISOString().slice(0, 10);
     };
-    const paidInMonth = invoices.filter(i => i.status === "paid" && diaBR(i.paid_at).startsWith(monthStr));
+    // Parcial conta: o que foi pago entra pelo valor pago (paid_amount) na data do
+    // último pagamento. Ex: salário de julho pago 2.200 em 02/09 é caixa de setembro.
+    const paidInMonth = invoices.filter(i => (i.status === "paid" || i.status === "partial") && diaBR(i.paid_at).startsWith(monthStr));
     const receitaRecebida = paidInMonth.reduce((s: number, i: any) => s + (i.paid_amount_cents || i.amount_cents), 0);
     const receitaPendente = monthInvoices.filter(i => i.status === "pending" || i.status === "overdue").reduce((s: number, i: any) => s + i.amount_cents, 0);
     // Despesa Paga: filtra por paid_date no mês (não por due_date)
-    const paidPayablesInMonth = payables.filter((p: any) => p.status === "paid" && p.paid_date?.startsWith(monthStr));
+    const paidPayablesInMonth = payables.filter((p: any) => (p.status === "paid" || p.status === "partial") && p.paid_date?.startsWith(monthStr));
     const despesaPaga = paidPayablesInMonth.reduce((s: number, p: any) => s + (p.paid_amount || p.amount || 0) * 100, 0);
     const despesaPendente = monthPayables.filter((p: any) => p.status !== "paid" && p.status !== "cancelled").reduce((s: number, p: any) => s + (p.amount || 0) * 100, 0);
     const totalBancos = banks.reduce((s: number, b: any) => s + (b.current_balance_cents || 0), 0);
@@ -296,9 +298,9 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
         if (s.length <= 10 || !s.includes("T")) return s.slice(0, 10);
         return new Date(new Date(s).getTime() - 3 * 3600000).toISOString().slice(0, 10);
       };
-      const rec = invoices.filter(inv => inv.status === "paid" && (inv.paid_at ? diaBRm(inv.paid_at) : inv.due_date || "").startsWith(key)).reduce((s: number, i: any) => s + (i.paid_amount_cents || i.amount_cents), 0) / 100;
+      const rec = invoices.filter(inv => (inv.status === "paid" || inv.status === "partial") && (inv.paid_at ? diaBRm(inv.paid_at) : inv.due_date || "").startsWith(key)).reduce((s: number, i: any) => s + (i.paid_amount_cents || i.amount_cents), 0) / 100;
       // Despesa pelo mês do PAGAMENTO (paid_date) — mesma regra do card "Despesa Paga"
-      const desp = payables.filter((p: any) => p.status === "paid" && (p.paid_date || p.due_date)?.startsWith(key)).reduce((s: number, p: any) => s + (p.paid_amount || p.amount || 0), 0);
+      const desp = payables.filter((p: any) => (p.status === "paid" || p.status === "partial") && (p.paid_date || p.due_date)?.startsWith(key)).reduce((s: number, p: any) => s + (p.paid_amount || p.amount || 0), 0);
       months.push({ month: key, label, receita: rec, despesa: desp, resultado: rec - desp });
     }
     return months;

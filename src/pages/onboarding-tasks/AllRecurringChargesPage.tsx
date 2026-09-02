@@ -1295,7 +1295,7 @@ export default function AllRecurringChargesPage() {
     const from = payableDateFrom ? format(payableDateFrom, "yyyy-MM-dd") : null;
     const to = payableDateTo ? format(payableDateTo, "yyyy-MM-dd") : null;
     const rows = payables.filter(p => {
-      if (p.status !== "paid") return false;
+      if (p.status !== "paid" && p.status !== "partial") return false; // parcial conta pelo valor pago
       const pago = (p as any).paid_date ? String((p as any).paid_date).slice(0, 10) : null;
       if (!pago) return false;
       if (from && pago < from) return false;
