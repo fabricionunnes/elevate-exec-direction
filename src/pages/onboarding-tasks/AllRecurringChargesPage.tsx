@@ -67,6 +67,7 @@ import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
 import { FinancialImportDialog } from "@/components/financial/FinancialImportDialog";
 import { DistributeAdjustmentDialog } from "@/components/financial/DistributeAdjustmentDialog";
+import { ReceivableEditDialog } from "@/components/financial/ReceivableEditDialog";
 import { CFOFilterBar, type CFOFilters } from "@/components/financial/CFOFilterBar";
 import { BillingRulesPanel } from "@/components/financial/BillingRulesPanel";
 import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
@@ -248,6 +249,7 @@ export default function AllRecurringChargesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [distributePayable, setDistributePayable] = useState<any>(null);
   const [distributeReceivable, setDistributeReceivable] = useState<any>(null);
+  const [editReceivable, setEditReceivable] = useState<{ id: string } | null>(null);
   const [processingInvoiceId, setProcessingInvoiceId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; invoiceId: string; action: "confirm" | "revert" | "revert_payable"; description: string }>({
     open: false, invoiceId: "", action: "confirm", description: "",
@@ -2045,6 +2047,12 @@ export default function AllRecurringChargesPage() {
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                   )}
+                                  {inv.source_table === "financial_receivables" && (
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar (empresa, descrição, valores, desconto, taxa)"
+                                      onClick={() => setEditReceivable({ id: inv.id })}>
+                                      <Edit2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
                                   {isMaster && inv.source_table === "financial_receivables" && inv.description?.startsWith("Ajuste automático Asaas") && (
                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" title="Distribuir ajuste"
                                       onClick={() => setDistributeReceivable(inv)}>
@@ -3006,6 +3014,15 @@ export default function AllRecurringChargesPage() {
           .filter((x: any) => (x.status === "pending" || x.status === "overdue" || x.status === "partial") && !x.description?.startsWith("Ajuste automático Asaas"))
           .map((x: any) => ({ id: x.id, description: x.description, amount: Number(x.amount), party: x.supplier_name, due_date: x.due_date, paid: Number(x.paid_amount || 0) }))}
         onDone={() => { setDistributePayable(null); loadData(); }}
+      />
+      <ReceivableEditDialog
+        open={!!editReceivable}
+        onOpenChange={(o) => { if (!o) setEditReceivable(null); }}
+        receivable={editReceivable}
+        companies={companies}
+        categories={staffCategories.filter((c: any) => c.type === "receita").map((c: any) => ({ id: c.id, name: c.name }))}
+        costCenters={staffCostCenters.map((c: any) => ({ id: c.id, name: c.name }))}
+        onSuccess={() => { setEditReceivable(null); loadData(); }}
       />
       <DistributeAdjustmentDialog
         open={!!distributeReceivable}
