@@ -428,14 +428,53 @@ Deno.serve(async (req) => {
       const staleBefore = new Date(Date.now() - BATCH_STALE_HOURS * 3600_000).toISOString();
       const { data: projects } = await supabase
         .from("onboarding_projects")
-        .select("id, client_brain(generated_at)")
+        .select("id, onboarding_company_id, client_brain(generated_at)")
         .in("status", ACTIVE_STATUSES);
-      const pending = (projects || [])
-        .filter((p: any) => {
-          const g = p.client_brain?.generated_at ?? p.client_brain?.[0]?.generated_at;
-          return !g || g < staleBefore;
-        })
-        .slice(0, BATCH_LIMIT);
+      const candidatos = (projects || [])
+        .map((p: any) => ({
+          id: p.id,
+          companyId: p.onboarding_company_id,
+          g: p.client_brain?.generated_at ?? p.client_brain?.[0]?.generated_at ?? null,
+        }))
+        .filter((p) => !p.g || p.g < staleBefore);
+
+      // Regerar dossiê custa caro (Sonnet, saída longa). Só vale a pena quando o
+      // cliente TEVE MOVIMENTO desde o último dossiê: KPI lançado, conversa no
+      // grupo ou reunião nova. Sem novidade, o dossiê de ontem continua válido —
+      // com teto de 7 dias pra ninguém ficar eternamente desatualizado.
+      // (Corte medido: era ~40 gerações/noite pra 46 clientes, todo dia.)
+      const SEM_NOVIDADE_MAX_DIAS = 7;
+      const limite7d = new Date(Date.now() - SEM_NOVIDADE_MAX_DIAS * 86400_000).toISOString();
+      const companyIds = [...new Set(candidatos.map((c) => c.companyId).filter(Boolean))];
+      const desde = candidatos.reduce((min, c) => (c.g && c.g < min ? c.g : min), new Date().toISOString());
+      const [kpiRes, waRes, meetRes] = await Promise.all([
+        supabase.from("kpi_entries").select("company_id, updated_at")
+          .in("company_id", companyIds).gte("updated_at", desde)
+          .order("updated_at", { ascending: false }).limit(2000),
+        supabase.from("client_whatsapp_signals").select("company_id, updated_at")
+          .in("company_id", companyIds).gte("updated_at", desde),
+        supabase.from("onboarding_meeting_notes").select("project_id, created_at")
+          .in("project_id", candidatos.map((c) => c.id)).gte("created_at", desde).limit(2000),
+      ]);
+      const ultimaNovidade = new Map<string, string>();
+      const marca = (chave: string, t: string) => {
+        const cur = ultimaNovidade.get(chave);
+        if (!cur || t > cur) ultimaNovidade.set(chave, t);
+      };
+      for (const r of (kpiRes.data || []) as any[]) marca(r.company_id, r.updated_at);
+      for (const r of (waRes.data || []) as any[]) marca(r.company_id, r.updated_at);
+      for (const r of (meetRes.data || []) as any[]) marca(`proj:${r.project_id}`, r.created_at);
+      const pulados: string[] = [];
+      const pending = candidatos.filter((c) => {
+        if (!c.g) return true;                       // nunca gerou
+        if (c.g < limite7d) return true;             // velho demais, renova
+        const nov = c.companyId ? ultimaNovidade.get(c.companyId) : null;
+        const novProj = ultimaNovidade.get(`proj:${c.id}`);
+        if ((nov && nov > c.g) || (novProj && novProj > c.g)) return true; // teve movimento
+        pulados.push(c.id);
+        return false;
+      }).slice(0, BATCH_LIMIT);
+      if (pulados.length) console.log(`[client-brain] batch: ${pulados.length} sem novidade, pulados`);
 
       const results: Record<string, unknown>[] = [];
       const newHighRisk: { companyName: string; brain: any }[] = [];
@@ -452,7 +491,7 @@ Deno.serve(async (req) => {
       if (newHighRisk.length > 0) {
         alerted = await sendWhatsApp(supabase, ALERT_PHONE, riskAlertText(newHighRisk));
       }
-      return json({ ok: true, processed: results.length, results, alerted });
+      return json({ ok: true, processed: results.length, skipped_sem_novidade: pulados.length, results, alerted });
     }
 
     // ── Modo single: {projectId, force?} ─────────────────────────────────
