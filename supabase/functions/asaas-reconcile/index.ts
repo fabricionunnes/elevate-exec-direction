@@ -47,7 +47,29 @@ const FEE_TYPES = new Set([
   "PAYMENT_FEE", "PAYMENT_MESSAGING_NOTIFICATION_FEE", "TRANSFER_FEE", "BILL_PAYMENT_FEE",
   "PIX_TRANSACTION_FEE", "ASAAS_CARD_TRANSACTION_FEE", "CREDIT_BUREAU_REPORT_FEE",
   "PAYMENT_SMS_NOTIFICATION_FEE", "INVOICE_FEE", "PHONE_CALL_NOTIFICATION_FEE",
+  "INSTANT_TEXT_MESSAGE_FEE",
 ]);
+
+// Lança no razão interno (extrato do Nexus) o dinheiro de um lançamento do
+// extrato do Asaas — uma vez só por lançamento (ledger_posted) e nunca em
+// duplicidade com um título que já foi creditado por outro caminho (webhook,
+// baixa manual). É isso que faz o saldo interno acompanhar o Asaas sem
+// precisar de "ajuste automático".
+async function lancarNoRazao(supabase: any, e: any, tipo: "credit" | "debit", descricao: string, refType: string, refId: string | null, dryRun: boolean) {
+  if (e.ledger_posted || dryRun) return false;
+  if (refId && refType !== "statement_entry") {
+    const { data: dup } = await supabase.from("financial_bank_transactions").select("id")
+      .eq("reference_type", refType).eq("reference_id", refId).eq("type", tipo).limit(1);
+    if (dup?.length) return false;
+  }
+  const valor = Math.abs(e.amount_cents);
+  await supabase.from("financial_bank_transactions").insert({
+    bank_id: e.bank_id, type: tipo, amount_cents: valor, description: descricao,
+    reference_type: refType, reference_id: refId,
+  });
+  await supabase.rpc("increment_bank_balance", { p_bank_id: e.bank_id, p_amount: tipo === "credit" ? valor : -valor });
+  return true;
+}
 
 async function asaasGet(path: string) {
   const r = await fetch(`${ASAAS_BASE}${path}`, {
@@ -142,15 +164,28 @@ Deno.serve(async (req) => {
 
       // 2a) taxa/custo do Asaas — explica o saldo, não é baixa de título
       if (FEE_TYPES.has(String(e.entry_type))) {
-        patch = { status: "matched", match_kind: "fee", match_confidence: "exact",
-          match_reason: "custo do Asaas (taxa) — não baixa título", auto_settled: false };
+        let feeId: string | null = null;
+        if (!dryRun) {
+          const { data: pay } = await supabase.from("financial_payables").insert({
+            supplier_name: "Asaas", description: e.description || "Taxa Asaas",
+            amount: Math.abs(e.amount_cents) / 100, due_date: e.entry_date, status: "paid",
+            paid_date: e.entry_date, paid_amount: Math.abs(e.amount_cents) / 100,
+            notes: "Conciliação Asaas — taxa identificada no extrato",
+          }).select("id").maybeSingle();
+          feeId = pay?.id || null;
+          await lancarNoRazao(supabase, e, "debit", e.description || "Taxa Asaas", "payable", feeId, dryRun);
+        }
+        patch = { status: "matched", match_kind: "fee", match_id: feeId, match_confidence: "exact",
+          match_reason: "custo do Asaas (taxa) — conta paga criada e lançada no razão", auto_settled: true, ledger_posted: true };
         feeCount++;
       }
 
       // 2a2) transferência/antecipação: identifica e tira do meio do caminho
       if (!patch && TRANSFER_TYPES.has(String(e.entry_type))) {
+        await lancarNoRazao(supabase, e, e.kind === "credit" ? "credit" : "debit",
+          `Transferência Asaas: ${e.description || e.entry_type}`, "statement_entry", e.id, dryRun);
         patch = { status: "matched", match_kind: "transfer", match_confidence: "exact",
-          match_reason: "movimento interno do Asaas (transferência/antecipação) — não é título", auto_settled: false };
+          match_reason: "movimento interno do Asaas (transferência/antecipação) — lançado no razão", auto_settled: false, ledger_posted: true };
         transferCount++;
       }
 
@@ -165,8 +200,9 @@ Deno.serve(async (req) => {
               updated_at: new Date().toISOString(),
             }).eq("id", rec.id);
           }
+          if (rec.status !== "paid") await lancarNoRazao(supabase, e, "credit", `Recebimento Asaas: ${rec.description || ""}`.trim(), "receivable", rec.id, dryRun);
           patch = { status: "matched", match_kind: "receivable", match_id: rec.id, match_confidence: "exact",
-            match_reason: `recebível pelo id do Asaas (${e.provider_payment_id})`, auto_settled: rec.status !== "paid" };
+            match_reason: `recebível pelo id do Asaas (${e.provider_payment_id})`, auto_settled: rec.status !== "paid", ledger_posted: true };
           if (rec.status !== "paid") { autoMatched++; conciliados.push(`+${brl(e.amount_cents)} ${rec.description || ""}`.trim()); }
         }
       }
@@ -182,9 +218,10 @@ Deno.serve(async (req) => {
               paid_amount_cents: e.amount_cents, updated_at: new Date().toISOString(),
             }).eq("id", inv.id);
           }
+          if (inv.status !== "paid") await lancarNoRazao(supabase, e, "credit", `Recebimento Asaas: ${inv.description || ""}`.trim(), "invoice", inv.id, dryRun);
           patch = { status: "matched", match_kind: "invoice", match_id: inv.id, match_confidence: "exact",
             match_reason: `fatura da empresa pelo id do Asaas (${inv.description || ""})`.trim(),
-            auto_settled: inv.status !== "paid" };
+            auto_settled: inv.status !== "paid", ledger_posted: true };
           if (inv.status !== "paid") { autoMatched++; invoiceCount++; conciliados.push(`+${brl(e.amount_cents)} ${inv.description || ""}`.trim()); }
         }
       }
@@ -203,8 +240,9 @@ Deno.serve(async (req) => {
               updated_at: new Date().toISOString(),
             }).eq("id", c.id);
           }
+          await lancarNoRazao(supabase, e, "credit", `Recebimento Asaas: ${c.description || ""}`.trim(), "receivable", c.id, dryRun);
           patch = { status: "matched", match_kind: "receivable", match_id: c.id, match_confidence: "high",
-            match_reason: `valor e vencimento batem, candidato único (${c.description || ""})`.trim(), auto_settled: true };
+            match_reason: `valor e vencimento batem, candidato único (${c.description || ""})`.trim(), auto_settled: true, ledger_posted: true };
           autoMatched++; conciliados.push(`+${brl(e.amount_cents)} ${c.description || ""}`.trim());
         } else {
           patch = { status: "review", match_confidence: "none",
@@ -226,8 +264,9 @@ Deno.serve(async (req) => {
               status: "paid", paid_date: e.entry_date, paid_amount: valor, updated_at: new Date().toISOString(),
             }).eq("id", c.id);
           }
+          await lancarNoRazao(supabase, e, "debit", `Pagamento Asaas: ${c.description || ""}`.trim(), "payable", c.id, dryRun);
           patch = { status: "matched", match_kind: "payable", match_id: c.id, match_confidence: "high",
-            match_reason: `conta a pagar com valor e vencimento batendo (${c.description || ""})`.trim(), auto_settled: true };
+            match_reason: `conta a pagar com valor e vencimento batendo (${c.description || ""})`.trim(), auto_settled: true, ledger_posted: true };
           autoMatched++; conciliados.push(`-${brl(Math.abs(e.amount_cents))} ${c.description || ""}`.trim());
         } else {
           patch = { status: "review", match_confidence: "none",
@@ -252,11 +291,19 @@ Deno.serve(async (req) => {
       .select("current_balance_cents").eq("id", ASAAS_BANK_ID).maybeSingle();
     const systemBalance = bank?.current_balance_cents ?? null;
     const diff = providerBalance != null && systemBalance != null ? providerBalance - systemBalance : null;
+    // A diferença DEVE ser exatamente a soma do que está na fila de revisão
+    // (dinheiro que o Asaas viu e ninguém classificou ainda). O que sobrar
+    // além disso aconteceu fora do extrato — aí sim é alerta de verdade.
+    const { data: fila } = await supabase.from("financial_statement_entries")
+      .select("amount_cents").eq("provider", "asaas").eq("status", "review").eq("ledger_posted", false);
+    const filaCents = (fila || []).reduce((s: number, x: any) => s + Number(x.amount_cents || 0), 0);
+    const filaQtd = (fila || []).length;
+    const inexplicado = diff != null ? diff - filaCents : null;
 
     // ── 4) Registra a rodada e avisa ───────────────────────────────────────
     let aviso: { sent: boolean; reason?: string } = { sent: false, reason: "dry run" };
     if (!dryRun) {
-      const houveNovidade = imported > 0 || autoMatched > 0 || needsReview > 0;
+      const houveNovidade = imported > 0 || autoMatched > 0 || needsReview > 0 || (inexplicado != null && Math.abs(inexplicado) > 1);
       if (houveNovidade) {
         const linhas = [
           "🏦 *Conciliação bancária — Asaas*",
@@ -269,7 +316,10 @@ Deno.serve(async (req) => {
           "",
           providerBalance != null ? `Saldo no Asaas: ${brl(providerBalance)}` : "",
           systemBalance != null ? `Saldo no sistema: ${brl(systemBalance)}` : "",
-          diff != null && diff !== 0 ? `❗ Diferença: ${brl(diff)}` : (diff === 0 ? "✔️ Saldos batendo" : ""),
+          diff != null && diff !== 0
+            ? `Diferença: ${brl(diff)}${filaQtd ? ` — ${brl(filaCents)} explicados por ${filaQtd} pendência(s) na fila` : ""}`
+            : (diff === 0 ? "✔️ Saldos batendo" : ""),
+          inexplicado != null && Math.abs(inexplicado) > 1 ? `❗ Fora do extrato (investigar): ${brl(inexplicado)}` : "",
           conciliados.length ? "\n*Baixados automaticamente:*\n" + conciliados.slice(0, 8).map(s => `• ${s}`).join("\n") : "",
           revisar.length ? "\n*Aguardando você decidir:*\n" + revisar.slice(0, 8).map(s => `• ${s}`).join("\n") : "",
           revisar.length > 8 ? `…e mais ${revisar.length - 8}` : "",

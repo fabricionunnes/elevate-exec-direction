@@ -24,78 +24,22 @@ function toCents(value: unknown): number {
 }
 
 async function reconcileAsaasBankBalance(supabase: any, apiKey: string) {
+  // SÓ CONFERE. Desde 2026-09-02 o saldo oficial do Asaas é conferência, não
+  // fonte: quem lança dinheiro no razão é a conciliação linha a linha
+  // (asaas-reconcile) e a fila de revisão. Antes, qualquer diferença virava
+  // "Ajuste automático" pago às cegas — 24 ajustes em 45 dias sem ninguém
+  // saber de onde vinham.
   const balanceData = await asaasGet("/finance/balance", apiKey);
   const actualBalanceCents = toCents(balanceData?.balance);
-
   const { data: bank } = await supabase
     .from("financial_banks")
     .select("id, name, current_balance_cents")
     .eq("name", "Asaas")
     .eq("is_active", true)
     .maybeSingle();
-
   if (!bank) return { adjusted: false, reason: "bank_not_found", diff_cents: 0 };
-
-  const storedBalanceCents = Number(bank.current_balance_cents || 0);
-  const diffCents = actualBalanceCents - storedBalanceCents;
-  if (diffCents === 0) return { adjusted: false, diff_cents: 0, actual_balance_cents: actualBalanceCents };
-
-  const { data: updated, error: updateErr } = await supabase
-    .from("financial_banks")
-    .update({ current_balance_cents: actualBalanceCents, updated_at: new Date().toISOString() })
-    .eq("id", bank.id)
-    .eq("current_balance_cents", storedBalanceCents)
-    .select("id");
-
-  if (updateErr) throw updateErr;
-  if (!updated?.length) return { adjusted: false, reason: "concurrent_update", diff_cents: diffCents };
-
-  const adjustmentDescription = `Ajuste automático Asaas: saldo oficial R$ ${(actualBalanceCents / 100).toFixed(2)} (${diffCents > 0 ? "+" : "-"}R$ ${(Math.abs(diffCents) / 100).toFixed(2)})`;
-  const today = new Date().toISOString().slice(0, 10);
-
-  await supabase.from("financial_bank_transactions").insert({
-    bank_id: bank.id,
-    type: diffCents > 0 ? "credit" : "debit",
-    amount_cents: Math.abs(diffCents),
-    description: adjustmentDescription,
-    reference_type: "asaas_balance_reconciliation",
-  });
-
-  const reconciliationNote = "Criado automaticamente pela conciliação bancária. Edite o fornecedor, descrição, categoria e centro de custo conforme necessário.";
-
-  // Débito (saída): cria conta a pagar JÁ PAGA — o banco já foi ajustado acima, não debitar de novo
-  let payableId: string | null = null;
-  if (diffCents < 0) {
-    const { data: payable } = await supabase.from("financial_payables").insert({
-      supplier_name: "Asaas",
-      description: adjustmentDescription,
-      amount: Math.abs(diffCents) / 100,
-      due_date: today,
-      status: "paid",
-      paid_date: today,
-      paid_amount: Math.abs(diffCents) / 100,
-      notes: reconciliationNote,
-    }).select("id").single();
-    payableId = payable?.id ?? null;
-  }
-
-  // Crédito (entrada): cria conta a receber JÁ RECEBIDA — o banco já foi ajustado acima
-  let receivableId: string | null = null;
-  if (diffCents > 0) {
-    const { data: receivable } = await supabase.from("financial_receivables").insert({
-      custom_receiver_name: "Asaas",
-      description: adjustmentDescription,
-      amount: Math.abs(diffCents) / 100,
-      due_date: today,
-      status: "paid",
-      paid_date: today,
-      paid_amount: Math.abs(diffCents) / 100,
-      notes: reconciliationNote,
-    }).select("id").single();
-    receivableId = receivable?.id ?? null;
-  }
-
-  return { adjusted: true, diff_cents: diffCents, actual_balance_cents: actualBalanceCents, payable_id: payableId, receivable_id: receivableId };
+  const diffCents = actualBalanceCents - Number(bank.current_balance_cents || 0);
+  return { adjusted: false, check_only: true, diff_cents: diffCents, actual_balance_cents: actualBalanceCents };
 }
 
 async function runSync(days: number) {
