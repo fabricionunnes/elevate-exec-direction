@@ -12,7 +12,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const MODEL = "claude-sonnet-4-6";
+const MODEL = "claude-sonnet-4-6";          // cliente em atenção/risco e "regerar agora"
+const MODEL_LEVE = "claude-haiku-4-5";      // cliente saudável na rodada da madrugada (3x mais barato)
 const CACHE_HOURS = 12;
 const BATCH_STALE_HOURS = 20; // batch renova 1x/dia
 const BATCH_LIMIT = 2; // 2×~60s cabe no idle-timeout de 150s do gateway
@@ -116,7 +117,7 @@ interface GenResult {
 }
 
 /** Gera o cérebro de UM projeto e persiste. */
-async function generateBrain(supabase: SupabaseClient, projectId: string): Promise<GenResult> {
+async function generateBrain(supabase: SupabaseClient, projectId: string, opts: { forcaCompleto?: boolean } = {}): Promise<GenResult> {
   const { data: prev } = await supabase
     .from("client_brain")
     .select("brain")
@@ -133,7 +134,9 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
   const companyId = project.onboarding_company_id;
 
   const now = new Date();
-  const d90 = new Date(now.getTime() - 90 * 86400000).toISOString();
+  // 60 dias (era 90): o que vale pro churn é recente; reunião de 3 meses atrás
+  // já virou tarefa ou virou passado. Menos entrada = menos token sem perder sinal.
+  const d90 = new Date(now.getTime() - 60 * 86400000).toISOString();
   const d30 = new Date(now.getTime() - 30 * 86400000).toISOString();
   const d14 = new Date(now.getTime() - 14 * 86400000).toISOString();
 
@@ -155,7 +158,7 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
     .in("project_id", companyProjectIds)
     .gte("meeting_date", d90)
     .order("meeting_date", { ascending: false })
-    .limit(8);
+    .limit(5);
 
   // Ligações do consultor pro cliente (aba Ligações do projeto) — transcritas
   const { data: projectCalls } = await supabase
@@ -165,7 +168,7 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
     .not("transcription", "is", null)
     .gte("created_at", d90)
     .order("created_at", { ascending: false })
-    .limit(6);
+    .limit(4);
 
   const { data: tasks } = await supabase
     .from("onboarding_tasks")
@@ -269,7 +272,7 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
         { headers: mh },
       );
       const dossiers = dRes.ok ? await dRes.json() : [];
-      dossierMd = dossiers?.[0]?.dossier_md ? truncate(dossiers[0].dossier_md, 7000) : null;
+      dossierMd = dossiers?.[0]?.dossier_md ? truncate(dossiers[0].dossier_md, 3500) : null;
 
       const gRes = await fetch(
         `${MARCELO_URL}/rest/v1/marcelo_groups?select=group_jid,group_type,group_name&company_id=eq.${companyId}`,
@@ -280,7 +283,7 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
         const jids = groups.map((g: any) => `"${g.group_jid}"`).join(",");
         const typeByJid = new Map(groups.map((g: any) => [g.group_jid, g.group_type || g.group_name]));
         const mRes = await fetch(
-          `${MARCELO_URL}/rest/v1/marcelo_group_messages?select=group_jid,sender_name,message_text,msg_timestamp&group_jid=in.(${jids})&msg_timestamp=gte.${d14}&order=msg_timestamp.desc&limit=200`,
+          `${MARCELO_URL}/rest/v1/marcelo_group_messages?select=group_jid,sender_name,message_text,msg_timestamp&group_jid=in.(${jids})&msg_timestamp=gte.${d14}&order=msg_timestamp.desc&limit=80`,
           { headers: mh },
         );
         const msgs = mRes.ok ? await mRes.json() : [];
@@ -289,7 +292,7 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
           .map((mm: any) => ({
             grupo: typeByJid.get(mm.group_jid) || "grupo",
             quem: mm.sender_name,
-            msg: truncate(mm.message_text, 300),
+            msg: truncate(mm.message_text, 200),
             quando: mm.msg_timestamp,
           }))
           .reverse();
@@ -319,15 +322,15 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
       data: mm.meeting_date,
       no_show: mm.is_no_show,
       interna: mm.is_internal,
-      notas: truncate(mm.notes, 800),
-      transcricao: truncate(mm.transcript, 2200),
+      notas: truncate(mm.notes, 500),
+      transcricao: truncate(mm.transcript, 1400),
     })),
     ligacoes_90d: (projectCalls || []).map((pc: any) => ({
       quando: pc.created_at,
       consultor: pc.agent?.name || null,
       duracao_seg: pc.duration_seconds,
-      resumo_ia: truncate(pc.ai_summary, 600),
-      transcricao: truncate(pc.transcription, 1800),
+      resumo_ia: truncate(pc.ai_summary, 400),
+      transcricao: truncate(pc.transcription, 1000),
     })),
     dossie_vivo: dossierMd,
     whatsapp_14d: waMessages,
@@ -336,7 +339,7 @@ async function generateBrain(supabase: SupabaseClient, projectId: string): Promi
   const prompt = `Você é o CÉREBRO DO CLIENTE da UNV (diretoria comercial terceirizada). Consolide TUDO abaixo num estado vivo e ACIONÁVEL deste cliente, pensando como um diretor de Customer Success obcecado por churn zero. Seja específico, cite evidências reais (frases, números, datas). Nada genérico.
 
 Dados (JSON):
-${JSON.stringify(ctx, null, 2)}
+${JSON.stringify(ctx)}
 
 Responda APENAS com JSON válido (sem markdown) neste formato:
 {
@@ -352,22 +355,38 @@ Responda APENAS com JSON válido (sem markdown) neste formato:
   "citacoes_chave": [{ "quem": "nome", "frase": "citação real e relevante", "quando": "data", "leitura": "o que essa frase significa pro churn" }]
 }
 
-Regras: promessas VENCIDAS e riscos vêm primeiro nas listas. Máximo 6 itens por lista. Se não houver dado pra um campo, use lista vazia ou null — NÃO invente. Português do Brasil.`;
+Regras: promessas VENCIDAS e riscos vêm primeiro nas listas. Máximo 3 itens por lista (só o que muda a decisão do consultor), frases curtas e diretas, sem repetir a mesma evidência em campos diferentes. Se não houver dado pra um campo, use lista vazia ou null — NÃO invente. Português do Brasil.`;
 
-  const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
-      "anthropic-version": "2023-06-01",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ model: MODEL, max_tokens: 4500, messages: [{ role: "user", content: prompt }] }),
-  });
-  if (!aiResp.ok) throw new Error(`Anthropic ${aiResp.status}: ${truncate(await aiResp.text(), 300)}`);
-  const aiData = await aiResp.json();
-  logUsoIA("client-brain", MODEL, aiData?.usage);
-  const raw = (aiData.content?.[0]?.text || "{}").replace(/^```json?\s*/i, "").replace(/```\s*$/, "");
-  const brain = parseBrainJson(raw);
+  // Modelo por risco: inteligência cara onde o churn mora. Cliente que já estava
+  // em atenção/risco, saúde ruim, NPS baixo ou tarefas atrasadas demais vai direto
+  // pro Sonnet; cliente saudável vai pro Haiku. Se o Haiku enxergar risco, refaz
+  // no Sonnet — o alerta de "virou risco alto" nunca sai do modelo leve.
+  const npsBaixo = (nps || []).some((n: any) => Number(n.score) <= 6);
+  const precisaCompleto = !!opts.forcaCompleto
+    || (prevTermo && prevTermo !== "seguro")
+    || ["critical", "at_risk", "attention"].includes(health?.risk_level || "")
+    || npsBaixo
+    || overdueTasks.length > 5;
+  const chamarIA = async (model: string) => {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ model, max_tokens: 2200, messages: [{ role: "user", content: prompt }] }),
+    });
+    if (!resp.ok) throw new Error(`Anthropic ${resp.status}: ${truncate(await resp.text(), 300)}`);
+    const data = await resp.json();
+    logUsoIA("client-brain", model, data?.usage, { modo: model === MODEL ? "completo" : "leve" });
+    const txt = (data.content?.[0]?.text || "{}").replace(/^```json?\s*/i, "").replace(/```\s*$/, "");
+    return parseBrainJson(txt);
+  };
+  let brain = await chamarIA(precisaCompleto ? MODEL : MODEL_LEVE);
+  if (!precisaCompleto && brain?.termometro && brain.termometro !== "seguro") {
+    brain = await chamarIA(MODEL); // escalona: leve viu risco → dossiê completo
+  }
 
   const generatedAt = new Date().toISOString();
   await supabase.from("client_brain").upsert(
@@ -507,7 +526,7 @@ Deno.serve(async (req) => {
       return json({ brain: cached.brain, generated_at: cached.generated_at, cached: true });
     }
 
-    const r = await generateBrain(supabase, projectId);
+    const r = await generateBrain(supabase, projectId, { forcaCompleto: true });
     if (r.becameHighRisk) {
       await sendWhatsApp(supabase, ALERT_PHONE, riskAlertText([{ companyName: r.companyName, brain: r.brain }]));
     }
