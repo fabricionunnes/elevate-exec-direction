@@ -183,6 +183,7 @@ const CohortRetentionPage = lazy(() => import("./pages/onboarding-tasks/CohortRe
 const ConsultantEngagementPage = lazy(() => import("./pages/onboarding-tasks/ConsultantEngagementPage"));
 const ExecutiveDashboardPage = lazy(() => import("./pages/onboarding-tasks/ExecutiveDashboardPage"));
 const CEODashboardPage = lazy(() => import("./pages/onboarding-tasks/CEODashboardPage"));
+const CockpitPage = lazy(() => import("./pages/onboarding-tasks/CockpitPage"));
 const LeaderDashboardPage = lazy(() => import("./pages/onboarding-tasks/LeaderDashboardPage"));
 const GlobalJobOpeningsPage = lazy(() => import("./pages/onboarding-tasks/GlobalJobOpeningsPage"));
 const GlobalTalentPoolResumesPage = lazy(() => import("./pages/onboarding-tasks/GlobalTalentPoolResumesPage"));
@@ -592,6 +593,7 @@ const AppShell = () => {
             {/* Leader Dashboard */}
             <Route path="/onboarding-tasks/leader" element={<LeaderDashboardPage />} />
             <Route path="/onboarding-tasks/ceo" element={<CEODashboardPage />} />
+            <Route path="/onboarding-tasks/cockpit" element={<CockpitPage />} />
             
             {/* Hotseat Public Form */}
             <Route path="/hotseat" element={<HotseatFormPage />} />

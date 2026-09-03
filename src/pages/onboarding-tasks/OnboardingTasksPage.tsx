@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain, Network, AudioLines, Radar } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain, Network, AudioLines, Radar, Gauge } from "lucide-react";
 import { GlobalAccessControlPanel } from "@/components/onboarding-tasks/GlobalAccessControlPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -1947,6 +1947,11 @@ const OnboardingTasksPage = () => {
                   <DollarSign className="h-4 w-4" />
                 </Button>
               )}
+              {currentUserEmail === "fabricio@universidadevendas.com.br" && (
+                <Button variant="default" size="icon" className="h-8 w-8" onClick={() => navigate("/onboarding-tasks/cockpit")} title="Cockpit UNV">
+                  <Gauge className="h-4 w-4" />
+                </Button>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="icon" className="h-8 w-8">
@@ -2146,6 +2151,10 @@ const OnboardingTasksPage = () => {
                             <Crown className="h-4 w-4 mr-2" />
                             Painel do CEO
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cockpit")}>
+                            <Gauge className="h-4 w-4 mr-2" />
+                            Cockpit UNV
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/mrr")}>
                             <DollarSign className="h-4 w-4 mr-2" />
                             MRR
@@ -2314,6 +2323,20 @@ const OnboardingTasksPage = () => {
               <Button size="sm" className="gap-1.5 ml-1" onClick={() => setShowCreateDialog(true)}>
                 <Plus className="h-4 w-4" />
                 Novo Projeto
+              </Button>
+            )}
+
+            {/* Cockpit UNV — só o CEO vê */}
+            {currentUserEmail === "fabricio@universidadevendas.com.br" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 ml-1 border-primary/40 text-primary hover:bg-primary/10 font-semibold"
+                onClick={() => navigate("/onboarding-tasks/cockpit")}
+                title="Cockpit UNV: projeção da escada comercial e plano estratégico"
+              >
+                <Gauge className="h-4 w-4" />
+                Cockpit UNV
               </Button>
             )}
 
@@ -2642,6 +2665,10 @@ const OnboardingTasksPage = () => {
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/ceo")}>
                         <Crown className="h-4 w-4 mr-2" />
                         Painel do CEO
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cockpit")}>
+                        <Gauge className="h-4 w-4 mr-2" />
+                        Cockpit UNV
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/mrr")}>
                         <DollarSign className="h-4 w-4 mr-2" />
