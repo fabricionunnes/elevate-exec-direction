@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-03T15:01:22",
+ "gerado_em": "2026-09-03T21:01:06",
  "posts": [
+  {
+   "slug": "desconto-prazo-nao-resolve-decisao-travada",
+   "url": "/blog/desconto-prazo-nao-resolve-decisao-travada/",
+   "titulo": "Desconto no prazo não resolve decisão travada no diagnóstico",
+   "resumo": "Quando o cliente não fecha nem com desconto e nem com prazo é porque a decisão já estava travada antes da proposta. O problema não é preço, é que ele não viu onde vai chegar.",
+   "tags": [
+    "decisão",
+    "diagnóstico",
+    "qualificação",
+    "desconto",
+    "estrutura comercial"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-03",
+   "ts": 2058
+  },
   {
    "slug": "desconto-urgencia-nao-fecha-estrutura-fecha",
    "url": "/blog/desconto-urgencia-nao-fecha-estrutura-fecha/",
