@@ -2,13 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -72,75 +66,47 @@ export function SegmentSelect({
 
   if (loading) {
     return (
-      <Select disabled>
-        <SelectTrigger className={className}>
-          <SelectValue placeholder="Carregando..." />
-        </SelectTrigger>
-      </Select>
+      <SearchableSelect value="none" onValueChange={() => {}} options={[]} placeholder="Carregando..." className={className} />
     );
   }
 
   return (
-    <Select value={value || "none"} onValueChange={(v) => onValueChange(v === "none" ? "" : v)}>
-      <SelectTrigger className={className}>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="none">Sem segmento</SelectItem>
-        {segments.map((seg) => (
-          <SelectItem key={seg} value={seg}>
-            {seg}
-          </SelectItem>
-        ))}
-
-        <div className="border-t mt-1 pt-1 px-1 pb-1">
-          {adding ? (
-            <div className="flex items-center gap-1">
-              <Input
-                value={newSegment}
-                onChange={(e) => setNewSegment(e.target.value)}
-                placeholder="Nome do segmento"
-                className="h-8 text-sm"
-                onKeyDown={(e) => {
-                  e.stopPropagation();
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddSegment();
-                  }
-                  if (e.key === "Escape") setAdding(false);
-                }}
-                autoFocus
-              />
-              <Button
-                size="sm"
-                className="h-8 px-2"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleAddSegment();
-                }}
-                disabled={saving || !newSegment.trim()}
-              >
-                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : "OK"}
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start text-sm h-8"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setAdding(true);
-              }}
-            >
-              <Plus className="h-3.5 w-3.5 mr-1.5" />
-              Adicionar segmento
-            </Button>
-          )}
+    <div className="space-y-1.5">
+      <div className="flex gap-2">
+        <div className="flex-1 min-w-0">
+          <SearchableSelect
+            value={value || "none"}
+            onValueChange={(v) => onValueChange(v === "none" ? "" : v)}
+            options={segments.map((seg) => ({ value: seg, label: seg }))}
+            allowNone
+            noneLabel="Sem segmento"
+            placeholder={placeholder === "Selecione o segmento" ? "Digite pra buscar o segmento" : placeholder}
+            emptyMessage="Nenhum segmento encontrado"
+            className={className}
+          />
         </div>
-      </SelectContent>
-    </Select>
+        <Button type="button" variant="outline" size="icon" title="Adicionar segmento" onClick={() => setAdding((a) => !a)}>
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+      {adding && (
+        <div className="flex items-center gap-1">
+          <Input
+            value={newSegment}
+            onChange={(e) => setNewSegment(e.target.value)}
+            placeholder="Nome do novo segmento"
+            className="h-8 text-sm"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); handleAddSegment(); }
+              if (e.key === "Escape") setAdding(false);
+            }}
+            autoFocus
+          />
+          <Button size="sm" className="h-8 px-2" onClick={handleAddSegment} disabled={saving || !newSegment.trim()}>
+            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : "OK"}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

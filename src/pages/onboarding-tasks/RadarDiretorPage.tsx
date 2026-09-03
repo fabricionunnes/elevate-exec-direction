@@ -40,7 +40,15 @@ interface EmpresaRadar {
   risco: string | null;
   tendencia: string | null;
   assuntos: Assunto[];
-  componentes: { rotulo: string; valor: number }[];
+  componentes: { rotulo: string; valor: number; oQueMede: string }[];
+  cerebro: {
+    geradoEm: string | null;
+    termometro: string | null;
+    motivo: string | null;
+    momento: string | null;
+    acoes: { acao: string; motivo?: string; urgencia?: string }[];
+    relacionamento: { ultima_reuniao?: string | null; dias_sem_reuniao?: number | null; whatsapp?: string | null; resumo?: string | null } | null;
+  } | null;
 }
 
 const brl = (v: number) =>
@@ -78,7 +86,7 @@ export default function RadarDiretorPage() {
   const carregar = useCallback(async () => {
     setLoading(true);
     const hoje = new Date();
-    const [empRes, projRes, healthRes, waRes, invRes] = await Promise.all([
+    const [empRes, projRes, healthRes, waRes, invRes, brainRes] = await Promise.all([
       (supabase as any).from("onboarding_companies")
         .select("id, name, contract_value").eq("status", "active"),
       (supabase as any).from("onboarding_projects")
@@ -90,7 +98,12 @@ export default function RadarDiretorPage() {
         .select("company_id, rag, last_message_at, msgs_7d"),
       (supabase as any).from("company_invoices")
         .select("company_id, amount_cents, due_date").eq("status", "overdue"),
+      // Cérebro do Cliente: o dossiê com evidência (frases, datas) — é ele que
+      // explica POR QUE o cliente está mal, não só que está.
+      (supabase as any).from("client_brain").select("project_id, brain, generated_at"),
     ]);
+    const brainPorProjeto = new Map<string, any>();
+    (brainRes.data || []).forEach((b: any) => brainPorProjeto.set(b.project_id, b));
 
     const projetos = (projRes.data || []) as any[];
     const healthPorProjeto = new Map<string, any>();
@@ -119,6 +132,11 @@ export default function RadarDiretorPage() {
       const wa = waPorEmpresa.get(emp.id);
       const faturas = faturasPorEmpresa.get(emp.id) || [];
       const assuntos: Assunto[] = [];
+      // cérebro: vale o pior termômetro entre os projetos da empresa
+      const ordemTermo: Record<string, number> = { risco_alto: 0, atencao: 1, seguro: 2 };
+      const cerebroRow = projs.map((p) => brainPorProjeto.get(p.id)).filter((b) => b?.brain)
+        .sort((a, b) => (ordemTermo[a.brain?.termometro] ?? 3) - (ordemTermo[b.brain?.termometro] ?? 3))[0] || null;
+      const cb = cerebroRow?.brain || null;
 
       // 1. Sinal de cancelamento — o alarme mais alto que existe
       const sinalizado = projs.find((p) => p.status === "cancellation_signaled" || p.cancellation_signal_reason);
@@ -165,18 +183,62 @@ export default function RadarDiretorPage() {
 
       // 4. Saúde — score baixo aponta a PIOR área como assunto
       const componentes = pior ? [
-        { rotulo: "Metas do cliente", valor: Number(pior.goals_score) || 0 },
-        { rotulo: "Comercial", valor: Number(pior.commercial_score) || 0 },
-        { rotulo: "Engajamento", valor: Number(pior.engagement_score) || 0 },
-        { rotulo: "Suporte", valor: Number(pior.support_score) || 0 },
-        { rotulo: "Satisfação", valor: Number(pior.satisfaction_score) || 0 },
+        { rotulo: "Metas do cliente", valor: Number(pior.goals_score) || 0, oQueMede: "% da meta do mês atingida nos KPIs do cliente" },
+        { rotulo: "Comercial", valor: Number(pior.commercial_score) || 0, oQueMede: "vendas e faturamento do cliente vs. mês anterior" },
+        { rotulo: "Engajamento", valor: Number(pior.engagement_score) || 0, oQueMede: "reuniões realizadas e conversa no grupo de WhatsApp" },
+        { rotulo: "Suporte", valor: Number(pior.support_score) || 0, oQueMede: "tarefas atrasadas e chamados abertos" },
+        { rotulo: "Satisfação", valor: Number(pior.satisfaction_score) || 0, oQueMede: "NPS e CSAT recentes" },
       ] : [];
-      if (pior && ["critical", "at_risk"].includes(pior.risk_level)) {
+      const scoreSaude = pior ? Number(pior.total_score) : null;
+      if (pior && (pior.risk_level === "critical" || (scoreSaude !== null && scoreSaude < 40))) {
         const piorArea = [...componentes].sort((a, b) => a.valor - b.valor)[0];
         assuntos.push({
-          texto: `Saúde ${pior.risk_level === "critical" ? "crítica" : "em risco"}: ${pior.total_score}/100`,
-          detalhe: piorArea ? `Pior área: ${piorArea.rotulo} (${piorArea.valor})` : undefined,
+          texto: `Saúde crítica: ${pior.total_score}/100`,
+          detalhe: piorArea ? `Pior área: ${piorArea.rotulo} (${piorArea.valor}) — ${piorArea.oQueMede}` : undefined,
           icone: <HeartPulse className="h-4 w-4" />, peso: 70,
+        });
+      } else if (pior && ["at_risk", "attention"].includes(pior.risk_level)) {
+        const piorArea = [...componentes].sort((a, b) => a.valor - b.valor)[0];
+        assuntos.push({
+          texto: `Saúde em atenção: ${pior.total_score}/100`,
+          detalhe: piorArea ? `Pior área: ${piorArea.rotulo} (${piorArea.valor}) — ${piorArea.oQueMede}` : undefined,
+          icone: <HeartPulse className="h-4 w-4" />, peso: 40,
+        });
+      }
+
+      // Cérebro do Cliente: evidência concreta. Risco alto COM risco de gravidade
+      // alta = vermelho; risco alto sem gravidade alta ou "atenção" = amarelo.
+      if (cb) {
+        const riscos: any[] = Array.isArray(cb.riscos) ? cb.riscos : [];
+        const temGraveAlto = riscos.some((x) => x?.gravidade === "alta");
+        if (cb.termometro === "risco_alto") {
+          assuntos.push({
+            texto: `Cérebro: risco alto${cb.termometro_motivo ? ` — ${cb.termometro_motivo}` : ""}`,
+            detalhe: temGraveAlto ? "há risco de gravidade alta com evidência (abaixo)" : "sem risco de gravidade alta listado — acompanhar",
+            icone: <TrendingDown className="h-4 w-4" />, peso: temGraveAlto ? 75 : 55,
+          });
+        } else if (cb.termometro === "atencao") {
+          assuntos.push({
+            texto: `Cérebro: atenção${cb.termometro_motivo ? ` — ${cb.termometro_motivo}` : ""}`,
+            icone: <TrendingDown className="h-4 w-4" />, peso: 42,
+          });
+        }
+        riscos.slice(0, 3).forEach((x) => {
+          if (!x?.sinal) return;
+          assuntos.push({
+            texto: `Risco (${x.gravidade || "média"}): ${x.sinal}`,
+            detalhe: x.evidencia || undefined,
+            icone: <AlertTriangle className="h-4 w-4" />,
+            peso: x.gravidade === "alta" ? 65 : x.gravidade === "media" ? 45 : 30,
+          });
+        });
+        const vencidas: any[] = (Array.isArray(cb.promessas) ? cb.promessas : []).filter((p) => p?.status === "vencida");
+        vencidas.slice(0, 2).forEach((p) => {
+          assuntos.push({
+            texto: `Promessa vencida (${p.quem || "UNV"}): ${p.o_que}`,
+            detalhe: p.evidencia || undefined,
+            icone: <Ban className="h-4 w-4" />, peso: 60,
+          });
         });
       }
 
@@ -239,6 +301,14 @@ export default function RadarDiretorPage() {
         tendencia: pior?.trend_direction || null,
         assuntos,
         componentes,
+        cerebro: cb ? {
+          geradoEm: cerebroRow?.generated_at || null,
+          termometro: cb.termometro || null,
+          motivo: cb.termometro_motivo || null,
+          momento: cb.momento || null,
+          acoes: (Array.isArray(cb.proximas_acoes) ? cb.proximas_acoes : []).slice(0, 3),
+          relacionamento: cb.relacionamento || null,
+        } : null,
       };
     });
 
@@ -378,7 +448,7 @@ export default function RadarDiretorPage() {
               </SheetHeader>
               <div className="mt-5 space-y-5">
                 <div>
-                  <h3 className="text-sm font-bold mb-2">O que tratar</h3>
+                  <h3 className="text-sm font-bold mb-2">Por que está {selecionada.nivel === "vermelho" ? "vermelho" : selecionada.nivel === "amarelo" ? "amarelo" : "verde"}</h3>
                   {selecionada.assuntos.length ? (
                     <ul className="space-y-2.5">
                       {selecionada.assuntos.map((a, i) => (
@@ -395,13 +465,41 @@ export default function RadarDiretorPage() {
                     <p className="text-sm text-muted-foreground">Nada urgente — cliente saudável. Bom momento pra pedir indicação ou puxar upsell.</p>
                   )}
                 </div>
+                {selecionada.cerebro?.momento && (
+                  <div>
+                    <h3 className="text-sm font-bold mb-1">Momento (Cérebro do Cliente)</h3>
+                    <p className="text-sm leading-relaxed text-muted-foreground">{selecionada.cerebro.momento}</p>
+                  </div>
+                )}
+                {!!selecionada.cerebro?.acoes?.length && (
+                  <div>
+                    <h3 className="text-sm font-bold mb-2">Próximas ações</h3>
+                    <ul className="space-y-1.5">
+                      {selecionada.cerebro.acoes.map((a, i) => (
+                        <li key={i} className="text-sm flex gap-2">
+                          <Badge variant="outline" className="text-[10px] h-5 shrink-0">{a.urgencia === "hoje" ? "hoje" : a.urgencia === "esta_semana" ? "semana" : "mês"}</Badge>
+                          <span><span className="font-medium">{a.acao}</span>{a.motivo ? <span className="text-muted-foreground"> — {a.motivo}</span> : null}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {selecionada.cerebro?.relacionamento && (
+                  <div className="text-xs text-muted-foreground space-y-0.5">
+                    <p><b>Relação:</b> {selecionada.cerebro.relacionamento.resumo || "—"}</p>
+                    <p>
+                      {selecionada.cerebro.relacionamento.dias_sem_reuniao != null ? `${selecionada.cerebro.relacionamento.dias_sem_reuniao} dias sem reunião` : "sem reunião registrada"}
+                      {selecionada.cerebro.relacionamento.whatsapp ? ` · WhatsApp ${selecionada.cerebro.relacionamento.whatsapp}` : ""}
+                    </p>
+                  </div>
+                )}
                 {!!selecionada.componentes.length && (
                   <div>
-                    <h3 className="text-sm font-bold mb-2">Saúde por área</h3>
+                    <h3 className="text-sm font-bold mb-2">Saúde por área <span className="font-normal text-xs text-muted-foreground">(passe o mouse pra ver o que cada uma mede)</span></h3>
                     <div className="space-y-1.5">
                       {selecionada.componentes.map((c) => (
                         <div key={c.rotulo} className="flex items-center gap-2">
-                          <span className="text-xs w-28 shrink-0 text-muted-foreground">{c.rotulo}</span>
+                          <span className="text-xs w-28 shrink-0 text-muted-foreground cursor-help" title={c.oQueMede}>{c.rotulo}</span>
                           <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
                             <div
                               className={`h-full rounded-full ${c.valor < 40 ? "bg-red-500" : c.valor < 70 ? "bg-amber-400" : "bg-emerald-500"}`}
@@ -414,8 +512,11 @@ export default function RadarDiretorPage() {
                     </div>
                   </div>
                 )}
-                <Button className="w-full gap-2" onClick={() => navigate(`/onboarding-tasks/companies/${selecionada.id}`)}>
-                  <ExternalLink className="h-4 w-4" /> Abrir empresa
+                {selecionada.cerebro?.geradoEm && (
+                  <p className="text-[11px] text-muted-foreground">Cérebro do Cliente gerado em {format(new Date(selecionada.cerebro.geradoEm), "dd/MM 'às' HH:mm", { locale: ptBR })}. Sem cérebro, o radar usa só saúde, WhatsApp e financeiro.</p>
+                )}
+                <Button className="w-full gap-2" onClick={() => window.open(`${window.location.origin}/#/onboarding-tasks/companies/${selecionada.id}`, "_blank", "noopener")}>
+                  <ExternalLink className="h-4 w-4" /> Abrir empresa em nova aba
                 </Button>
               </div>
             </>
