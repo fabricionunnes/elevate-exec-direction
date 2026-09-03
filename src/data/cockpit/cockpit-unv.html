@@ -1,0 +1,735 @@
+<meta charset="utf-8">
+<title>Cockpit UNV</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts-gl/2.0.8/echarts-gl.min.js"></script>
+<style>
+:root{
+  --bg:#F3F5F9; --surface:#FCFCFB; --surface2:#EDF1F6; --ink:#0B0B0B; --text:#1F2A3F; --muted:#5D6A80; --axis:#898781; --grid:#E1E0D9; --line:#D5DCE7;
+  --navy:#0D2B5E; --navy-soft:#E3EAF6; --red:#CC1B1B; --band:#0D2B5E; --band-text:#fff; --band-muted:#B7C6E2; --band-accent:#FF6B6B;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948;
+  --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --critical:#d03b3b; --good-text:#006300;
+  --seq1:#cde2fb; --seq2:#9ec5f4; --seq3:#6da7ec; --seq4:#3987e5; --seq5:#256abf; --seq6:#184f95;
+  --shadow:0 1px 2px rgba(11,11,11,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D0D0D; --surface:#1A1A19; --surface2:#242423; --ink:#FFFFFF; --text:#E6E6E1; --muted:#C3C2B7; --axis:#898781; --grid:#2C2C2A; --line:#383835;
+    --navy:#8FB0E8; --navy-soft:#1B2C4A; --red:#F05A5A;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+    --good-text:#0ca30c; --seq1:#184f95; --seq2:#1c5cab; --seq3:#256abf; --seq4:#2a78d6; --seq5:#3987e5; --seq6:#6da7ec;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D0D0D; --surface:#1A1A19; --surface2:#242423; --ink:#FFFFFF; --text:#E6E6E1; --muted:#C3C2B7; --axis:#898781; --grid:#2C2C2A; --line:#383835;
+  --navy:#8FB0E8; --navy-soft:#1B2C4A; --red:#F05A5A;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --good-text:#0ca30c; --seq1:#184f95; --seq2:#1c5cab; --seq3:#256abf; --seq4:#2a78d6; --seq5:#3987e5; --seq6:#6da7ec;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;line-height:1.45}
+h1,h2,h3{font-family:Montserrat,"Helvetica Neue",Arial,sans-serif;color:var(--ink);margin:0}
+button,input,select{font:inherit;color:inherit}
+.band{background:var(--band);border-bottom:4px solid #CC1B1B}
+.band-inner{max-width:1480px;margin:0 auto;padding:16px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.logo-tile{background:#fff;border-radius:6px;padding:6px 10px;display:flex;align-items:center}
+.logo-tile img{width:92px;height:auto;display:block}
+.band h1{color:var(--band-text);font-size:1.5rem;font-weight:800;letter-spacing:-.01em}
+.band .sub{color:var(--band-muted);font-size:.9rem;margin-top:2px}
+.band .right{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:7px 12px;cursor:pointer;font-weight:600;font-size:.88rem}
+.btn:hover{background:var(--surface2)}
+.btn:focus-visible,.seg button:focus-visible,.chip:focus-visible,input:focus-visible{outline:2px solid var(--s1);outline-offset:2px}
+.band .btn{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff}
+.band .btn:hover{background:rgba(255,255,255,.18)}
+.wrap{max-width:1480px;margin:0 auto;padding:18px 24px 80px}
+/* filters */
+.filters{display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:16px;box-shadow:var(--shadow)}
+.fgroup{display:flex;align-items:center;gap:8px}
+.flabel{font-family:Montserrat,sans-serif;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-weight:600;font-size:.86rem;color:var(--muted);border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--navy);color:#fff}
+:root[data-theme="dark"] .seg button.on{color:#0D0D0D}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .seg button.on{color:#0D0D0D}}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px 4px 8px;cursor:pointer;font-size:.82rem;font-weight:600;display:inline-flex;align-items:center;gap:6px;color:var(--text)}
+.chip i{width:10px;height:10px;border-radius:2px;display:inline-block;background:var(--c)}
+.chip.off{opacity:.45}
+.chip.off i{background:transparent;border:2px solid var(--c)}
+.month-ctl{display:flex;align-items:center;gap:8px}
+.month-ctl input[type=range]{width:180px;accent-color:var(--navy)}
+.month-ctl output{font-weight:700;color:var(--ink);min-width:66px;font-variant-numeric:tabular-nums}
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.kpi .l{font-family:Montserrat,sans-serif;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.kpi .v{font-size:1.55rem;font-weight:700;color:var(--ink);line-height:1.15;margin-top:4px}
+.kpi .d{font-size:.8rem;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:6px}
+.kpi .d.up{color:var(--good-text)}.kpi .d.down{color:var(--critical)}
+.kpi .d .ic{font-weight:700}
+.kpi .spark{position:absolute;right:8px;bottom:6px;width:64px;height:22px;opacity:.9}
+/* grid */
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px 10px;box-shadow:var(--shadow);min-width:0}
+.card h3{font-size:.95rem;font-weight:700;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.card h3 small{font-family:"Source Sans 3",sans-serif;font-weight:400;color:var(--muted);font-size:.82rem}
+.chart{width:100%;height:320px}
+.chart.tall{height:420px}
+.chart.short{height:240px}
+.c12{grid-column:span 12}.c8{grid-column:span 8}.c6{grid-column:span 6}.c4{grid-column:span 4}
+@media (max-width:1100px){.c8,.c6,.c4{grid-column:span 12}}
+.note{font-size:.82rem;color:var(--muted);margin:6px 0 0}
+.mgroups{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:8px}
+.mgroup{border:1px solid var(--line);border-radius:6px;padding:10px 12px;background:var(--surface2)}
+.mgroup h4{font-family:Montserrat,sans-serif;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--navy);margin:0 0 6px}
+.mrow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:5px 0;border-top:1px solid var(--line);font-size:.86rem}
+.mrow:first-of-type{border-top:0}
+.mrow .mn{color:var(--text)}
+.mrow .mn small{display:block;color:var(--muted);font-size:.72rem}
+.mrow .mv{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.mrow .ms{width:56px;height:18px}
+.mrow .st{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+td.sel{background:var(--navy-soft);font-weight:700}
+/* table */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px}
+table{border-collapse:collapse;width:100%;min-width:900px;font-size:.86rem;font-variant-numeric:tabular-nums}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--surface)}
+th{font-family:Montserrat,sans-serif;font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface2)}
+tr:last-child td{border-bottom:0}
+td.neg{color:var(--critical)}
+/* drawer */
+.drawer{position:fixed;top:0;right:0;height:100%;width:min(460px,100%);background:var(--surface);border-left:1px solid var(--line);transform:translateX(100%);transition:transform .25s;z-index:50;overflow-y:auto;padding:18px 20px 40px}
+.drawer.open{transform:none}
+@media (prefers-reduced-motion:reduce){.drawer{transition:none}}
+.drawer h2{font-size:1.1rem;margin-bottom:4px}
+.drawer .close{float:right}
+.dgroup{margin-top:16px;border-top:1px solid var(--line);padding-top:10px}
+.dgroup h3{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.ctl{display:grid;grid-template-columns:1fr 92px;gap:8px;align-items:center;margin-bottom:8px}
+.ctl label{font-size:.86rem;color:var(--text)}
+.ctl label small{display:block;color:var(--muted);font-size:.74rem}
+.ctl input[type=number]{width:92px;padding:5px 8px;border:1px solid var(--line);border-radius:5px;background:var(--surface2);text-align:right}
+.ctl input[type=range]{grid-column:1/3;width:100%;accent-color:var(--navy);margin:0}
+.scen-tabs{display:flex;gap:6px;margin:10px 0}
+.scen-tabs button{flex:1}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40;display:none}
+.overlay.on{display:block}
+.real-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.real-grid label{font-size:.78rem;color:var(--muted);display:block}
+.real-grid input{width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:5px;background:var(--surface2);text-align:right}
+.legend-note{font-size:.8rem;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
+.legend-note span{display:inline-flex;align-items:center;gap:6px}
+.legend-note i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:.86rem;z-index:60;display:none}
+.toast.on{display:block}
+.gl-fallback{display:none;font-size:.85rem;color:var(--muted);padding:12px}
+</style>
+
+<div class="band"><div class="band-inner">
+  <div class="logo-tile"><img src="data:image/png;base64,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" alt="UNV"></div>
+  <div><h1>Cockpit UNV</h1><div class="sub">Projeção da escada comercial · 36 meses · três cenários · premissas editáveis</div></div>
+  <div class="right">
+    <button class="btn" id="btnPremissas">Premissas</button>
+    <button class="btn" id="btnRealizado">Realizado</button>
+    <button class="btn" id="btnReset">Restaurar padrão</button>
+  </div>
+</div></div>
+
+<div class="wrap">
+  <div class="filters">
+    <div class="fgroup"><span class="flabel">Cenário</span><div class="seg" id="segScen"><button data-v="pess">Pessimista</button><button data-v="real" class="on">Realista</button><button data-v="otim">Otimista</button></div></div>
+    <div class="fgroup"><span class="flabel">Horizonte</span><div class="seg" id="segHor"><button data-v="3">90 dias</button><button data-v="12" class="on">12 meses</button><button data-v="36">36 meses</button></div></div>
+    <div class="fgroup month-ctl"><span class="flabel">Mês foco</span><input type="range" id="focus" min="1" max="12" value="12"><output id="focusOut">set/27</output></div>
+    <div class="fgroup"><span class="flabel">Linhas</span><div class="chips" id="chips"></div></div>
+    <div class="fgroup"><span class="flabel">Produto</span><select id="selProd" class="btn" style="padding:6px 10px"><option value="all">Todos (visão geral)</option></select></div>
+    <div class="fgroup"><span class="flabel">Evento</span><div class="seg" id="segEv"><button data-v="all" class="on">Todos</button><button data-v="mans">Mansão</button><button data-v="imer">Imersão</button></div></div>
+  </div>
+
+  <div class="card c12" id="prodPanel" style="margin-bottom:16px;display:none"><h3 id="prodTitle"></h3><div class="mgroups" id="prodMetrics" style="grid-template-columns:1fr 1fr 1fr"></div><div class="grid" style="margin-top:12px"><div class="c6"><div class="chart short" id="chProdRec"></div></div><div class="c6"><div class="chart short" id="chProdCli"></div></div></div></div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="card c12" style="margin-bottom:16px"><h3>Curto, médio e longo prazo <small>90 dias · 12 meses · 36 meses, nos três cenários</small></h3><div class="tablewrap"><table id="tblHor"></table></div><div class="note">Cada célula é o mês de fechamento do horizonte. Lucro e caixa são acumulados desde outubro de 2026. Verde = cenário selecionado.</div></div>
+
+  <div class="card c12" style="margin-bottom:16px"><h3>Métricas do mês foco <small id="hMet"></small></h3><div id="metrics"></div></div>
+
+  <div class="grid">
+    <div class="card c8"><h3>Receita mensal por linha <small id="hReceita"></small></h3><div class="chart tall" id="chReceita"></div><div class="legend-note" id="lgReceita"></div></div>
+    <div class="card c4"><h3>Composição do MRR <small>recorrente, mês foco</small></h3><div class="chart tall" id="chMrr"></div></div>
+
+    <div class="card c6"><h3>Receita total: três cenários <small>projetado vs realizado</small></h3><div class="chart" id="chCen"></div></div>
+    <div class="card c6"><h3>Lucro acumulado: três cenários <small>após impostos e contratações</small></h3><div class="chart" id="chLucro"></div></div>
+
+    <div class="card c6"><h3>Receita em 3D <small>linha × mês, arraste pra girar</small></h3><div class="chart tall" id="ch3d"></div><div class="gl-fallback" id="fb3d">Seu navegador não carregou o módulo 3D. A mesma leitura está no gráfico de receita por linha acima.</div></div>
+    <div class="card c6"><h3>Sensibilidade do lucro em 12 meses <small>conversão no palco × churn da Sala</small></h3><div class="chart tall" id="chSurf"></div><div class="gl-fallback" id="fbSurf">Módulo 3D indisponível. Veja a tabela de sensibilidade abaixo.</div><div class="note">Superfície: cada ponto é uma simulação completa de 12 meses com o cenário atual, variando só esses dois drivers. O ponto marcado é onde você está.</div></div>
+
+    <div class="card c12"><h3>Eventos do horizonte <small id="hEv"></small></h3><div class="tablewrap"><table id="tblEv"></table></div><div class="note">Clique numa linha pra levar o mês foco até o evento. "Sala no palco" = fechamentos no fim do evento. "MRR gerado" = essas empresas × ticket da Sala. Retorno = (ingressos + 6 meses do MRR gerado) ÷ custo do evento.</div></div>
+
+    <div class="card c4"><h3>Funil do horizonte <small>somado no período</small></h3><div class="chart" id="chFunil"></div></div>
+    <div class="card c4"><h3>Clientes ativos por linha</h3><div class="chart" id="chClientes"></div></div>
+    <div class="card c4"><h3>Margem líquida mensal</h3><div class="chart" id="chMargem"></div></div>
+
+    <div class="card c6"><h3>Horas do Fabrício por linha <small>teto 180 h/mês</small></h3><div class="chart" id="chHoras"></div><div class="note">Se a barra cruza a linha de 180 h, o plano exige contratar consultor sênior antes disso. O modelo já contrata automaticamente quando a Sala passa de 2 turmas e o DCT de 4 clientes.</div></div>
+    <div class="card c6"><h3>Caixa acumulado e dívida de tráfego</h3><div class="chart" id="chCaixa"></div><div class="note">Caixa acumulado = soma do lucro líquido mensal a partir de outubro. A linha tracejada é a dívida atual. Onde as duas cruzam é o mês em que a dívida cabe no caixa gerado.</div></div>
+
+    <div class="card c12"><h3>Equipe e capacidade <small>contratações disparadas pelo modelo</small></h3><div class="chart short" id="chTime"></div></div>
+
+    <div class="card c6"><h3>Movimentação do MRR <small>novo, expansão e churn por mês</small></h3><div class="chart" id="chWater"></div><div class="note">Expansão = Sala que sobe pro DCT ou Conselho. Churn = MRR perdido. A barra líquida é o que o MRR recorrente cresceu no mês.</div></div>
+    <div class="card c6"><h3>CAC, LTV e payback <small>clientes recorrentes novos</small></h3><div class="chart" id="chCac"></div><div class="note">CAC = tráfego + eventos + SDRs + comissão + marketing, dividido pelos clientes recorrentes novos do mês. LTV = margem de contribuição mensal ÷ churn. Meta: LTV/CAC acima de 3 e payback abaixo de 6 meses.</div></div>
+
+    <div class="card c6"><h3>Retenção por safra da Sala <small>% de clientes que continuam, por mês desde a entrada</small></h3><div class="chart tall" id="chCohort"></div></div>
+    <div class="card c6"><h3>Regra dos 40 <small>crescimento trimestral anualizado + margem líquida</small></h3><div class="chart" id="chRule40"></div><div class="note">Regra usada em SaaS: crescimento de receita (anualizado do mês) somado à margem líquida. Acima de 40 é uma empresa saudável pra escalar. Abaixo de 0, o crescimento está comendo a empresa.</div></div>
+
+    <div class="card c12"><h3>Unit economics por linha <small>mês foco</small></h3><div class="tablewrap"><table id="tblUnit"></table></div></div>
+
+    <div class="card c12"><h3>Detalhe mensal <small id="hTabela"></small></h3><div class="tablewrap"><table id="tbl"></table></div></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="drawer" id="drawer">
+  <button class="btn close" id="btnClose">Fechar</button>
+  <h2>Premissas</h2>
+  <div class="note">Cada cenário tem os seus drivers. Preços, custos e ponto de partida são compartilhados. Tudo fica salvo neste navegador.</div>
+  <div class="scen-tabs seg" id="drawerScen"><button data-v="pess">Pessimista</button><button data-v="real" class="on">Realista</button><button data-v="otim">Otimista</button></div>
+  <div id="drawerBody"></div>
+</div>
+<div class="drawer" id="drawerReal">
+  <button class="btn close" id="btnCloseReal">Fechar</button>
+  <h2>Realizado</h2>
+  <div class="note">Digite a receita real de cada mês conforme fechar. Ela aparece como linha tracejada sobre a projeção nos gráficos de receita e cenários. Em branco = ainda não fechou.</div>
+  <div class="real-grid" id="realGrid" style="margin-top:12px"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+// ---------- constants ----------
+const START = {y:2026, m:10}; // outubro 2026 = mês 1
+const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const N = 36;
+function mlabel(i){ // i = 1..36
+  const idx = (START.m-1 + (i-1)); const y = START.y + Math.floor(idx/12); return MESES[idx%12]+'/'+String(y).slice(2);
+}
+const LINES = [
+  {k:'sala',   n:'Sala CRESCER',    c:'--s1', rec:true},
+  {k:'dct',    n:'DCT 1 pra 1',     c:'--s2', rec:true},
+  {k:'cons',   n:'Conselho UNV',    c:'--s3', rec:true},
+  {k:'imer',   n:'Imersão CRESCER', c:'--s4', rec:false},
+  {k:'mans',   n:'Mansão',          c:'--s5', rec:false},
+  {k:'comp',   n:'Complementares',  c:'--s6', rec:true},
+  {k:'eq',     n:'UNV Equity',      c:'--s7', rec:false},
+  {k:'leg',    n:'Legado / outros', c:'--s8', rec:true},
+];
+const SCEN = {pess:{n:'Pessimista',c:'--s2'}, real:{n:'Realista',c:'--s1'}, otim:{n:'Otimista',c:'--s3'}};
+
+// ---------- defaults ----------
+const DEF_SHARED = {
+  receitaLegadoDct: 60000, clientesDctAtuais: 30, outrasReceitas: 140000, custoFixoAtual: 170000, dividaTrafego: 150000,
+  mansaoTicket: 997, imersaoT1: 697, imersaoT2: 997, imersaoT3: 1497, salaTicket: 1500, salaPlusTicket: 2500, salaPlusShare: 0.2,
+  dctTicket: 7000, dctSetup: 7000, conselhoTicket: 5000, compTicket: 2000, equityShare: 0.10, adiantamento: 4000,
+  consultorSenior: 12000, sdrSalario: 5000, opsSalario: 6000, cooSalario: 18000, mansaoCusto: 15000, imersaoCusto: 25000,
+  equipeAtual: 8, corteAutomatico: 0.20, infraBase: 4000, infraPorCliente: 30, impostos: 0.14, comissao: 0.10, horasTeto: 180, csSalario: 5000, overheadPct: 0.06, marketingPct: 0.04, inflacaoMensal: 0.004,
+};
+const DEF_SCEN = {
+  pess:{leads0:60, leadGrowth:0.02, leadCap:400, txConversa:0.40, txConvite:0.20, mansaoCap:40, mansaoPag:0.30, imersaoCap:60, imersaoPag:0.45, convPalco:0.15, convDireta:0.02, salaChurn:0.05, migracao:0.05, dctFromSala:0.010, dctChurn:0.04, consFromSala:0.10, consChurn:0.020, eqInterval:6, eqCap:2, eqTarget:150000, eqRamp:10, compAttach:0.08, trafego:3000, outrasTrend:-0.01},
+  real:{leads0:100, leadGrowth:0.05, leadCap:600, txConversa:0.50, txConvite:0.30, mansaoCap:40, mansaoPag:0.40, imersaoCap:60, imersaoPag:0.60, convPalco:0.25, convDireta:0.03, salaChurn:0.03, migracao:0.10, dctFromSala:0.015, dctChurn:0.03, consFromSala:0.15, consChurn:0.015, eqInterval:3, eqCap:3, eqTarget:250000, eqRamp:8, compAttach:0.15, trafego:5000, outrasTrend:0},
+  otim:{leads0:150, leadGrowth:0.07, leadCap:700, txConversa:0.60, txConvite:0.40, mansaoCap:50, mansaoPag:0.50, imersaoCap:80, imersaoPag:0.70, convPalco:0.35, convDireta:0.04, salaChurn:0.025, migracao:0.15, dctFromSala:0.020, dctChurn:0.02, consFromSala:0.20, consChurn:0.010, eqInterval:3, eqCap:4, eqTarget:350000, eqRamp:6, compAttach:0.20, trafego:8000, outrasTrend:0.01},
+};
+const CTL_SHARED = [
+  ['Ponto de partida', [
+    ['receitaLegadoDct','Receita mensal dos clientes DCT atuais','R$',0,300000,5000],
+    ['clientesDctAtuais','Clientes DCT ativos hoje','',0,120,1],
+    ['outrasReceitas','Outras receitas mensais hoje (Ads, eventos, etc.)','R$',0,400000,5000],
+    ['custoFixoAtual','Custo fixo mensal atual (time + estrutura)','R$',0,500000,5000],
+    ['equipeAtual','Pessoas na equipe hoje (incluindo você)','',1,60,1],
+    ['corteAutomatico','Corte do custo fixo após 3 meses seguidos no vermelho','%',0,0.5,0.05],
+    ['dividaTrafego','Dívida de tráfego hoje','R$',0,1000000,10000],
+  ]],
+  ['Preços', [
+    ['mansaoTicket','Ingresso Mansão (pagante)','R$',0,5000,50],
+    ['imersaoT1','Imersão turma 2','R$',0,5000,50],['imersaoT2','Imersão turma 3','R$',0,5000,50],['imersaoT3','Imersão turma 4 em diante','R$',0,5000,50],
+    ['salaTicket','Sala CRESCER (mês)','R$',0,10000,100],['salaPlusTicket','Sala+ com call individual (mês)','R$',0,10000,100],['salaPlusShare','Parcela da Sala em Sala+','%',0,1,0.05],
+    ['dctTicket','DCT 1 pra 1 (mês)','R$',0,30000,500],['dctSetup','Setup do DCT (uma vez)','R$',0,30000,500],
+    ['conselhoTicket','Conselho UNV (mês)','R$',0,20000,250],['compTicket','Complementar médio (mês)','R$',0,10000,100],
+    ['equityShare','Equity: % da receita incremental','%',0,0.3,0.01],['adiantamento','Equity: adiantamento meses 1 a 3','R$',0,20000,500],
+  ]],
+  ['Custos', [
+    ['consultorSenior','Consultor sênior (mês)','R$',0,40000,500],['sdrSalario','SDR (mês)','R$',0,15000,250],['opsSalario','Ops/Marketing (mês)','R$',0,20000,250],['cooSalario','COO quando MRR > R$ 300k','R$',0,60000,1000],
+    ['mansaoCusto','Custo por Mansão','R$',0,100000,1000],['imersaoCusto','Custo por Imersão','R$',0,150000,1000],
+    ['infraBase','Infra e ferramentas (mês)','R$',0,30000,250],['infraPorCliente','Infra por cliente (mês)','R$',0,300,5],
+    ['csSalario','Customer success (1 a cada 40 clientes)','R$',0,15000,250],['overheadPct','Overhead administrativo sobre receita','%',0,0.2,0.01],['marketingPct','Produção de conteúdo e marca sobre receita','%',0,0.2,0.01],['inflacaoMensal','Inflação mensal do custo fixo','%',0,0.02,0.001],
+    ['impostos','Impostos sobre receita','%',0,0.35,0.01],['comissao','Comissão sobre vendas novas','%',0,0.3,0.01],['horasTeto','Teto de horas do Fabrício','h',80,260,5],
+  ]],
+];
+const CTL_SCEN = [
+  ['Aquisição', [
+    ['leads0','Raio-X por mês no início','',0,600,5],['leadGrowth','Crescimento mensal dos Raio-X (conteúdo)','%',0,0.2,0.005],['leadCap','Teto de Raio-X por mês','',0,2000,50],
+    ['txConversa','Raio-X que vira conversa com SDR','%',0,1,0.05],['txConvite','Conversa que aceita convite pra evento','%',0,1,0.05],
+    ['trafego','Tráfego pago por mês','R$',0,50000,500],
+  ]],
+  ['Eventos', [
+    ['mansaoCap','Cadeiras na Mansão','',10,200,5],['mansaoPag','Cadeiras pagas na Mansão','%',0,1,0.05],
+    ['imersaoCap','Cadeiras na Imersão','',10,300,5],['imersaoPag','Cadeiras pagas na Imersão','%',0,1,0.05],
+  ]],
+  ['Conversão e retenção', [
+    ['convPalco','Presente no evento que fecha Sala no palco','%',0,0.8,0.01],['convDireta','Conversa que fecha Sala sem evento','%',0,0.3,0.005],
+    ['migracao','Cliente DCT atual que migra pra Sala por mês','%',0,0.5,0.01],['salaChurn','Churn mensal da Sala','%',0,0.15,0.005],
+    ['dctFromSala','Sala que sobe pro DCT por mês','%',0,0.1,0.0025],['dctChurn','Churn mensal do DCT','%',0,0.15,0.005],
+    ['consFromSala','Sala com 12 meses que sobe pro Conselho','%',0,1,0.05],['consChurn','Churn mensal do Conselho','%',0,0.1,0.0025],
+    ['compAttach','Clientes que compram complementar','%',0,0.6,0.01],['outrasTrend','Tendência mensal das outras receitas','%',-0.05,0.05,0.005],
+  ]],
+  ['UNV Equity', [
+    ['eqInterval','Meses entre novas sociedades (a partir de jan/27)','',1,12,1],['eqCap','Máximo de sociedades ativas','',0,10,1],
+    ['eqTarget','Incremento alvo por empresa (mês)','R$',0,1000000,10000],['eqRamp','Meses pra chegar perto do alvo','',2,24,1],
+  ]],
+];
+
+// ---------- state ----------
+const LS = 'cockpit-unv-v1';
+let state = load() || {scen:'real', hor:12, focus:12, lines:LINES.map(l=>l.k), prod:'all', ev:'all', shared:{...DEF_SHARED}, drivers:JSON.parse(JSON.stringify(DEF_SCEN)), real:{}};
+if(!state.prod) state.prod='all'; if(!state.ev) state.ev='all';
+function load(){ try{ const s=JSON.parse(localStorage.getItem(LS)); if(s&&s.shared&&s.drivers){ s.shared={...DEF_SHARED,...s.shared}; for(const k in DEF_SCEN) s.drivers[k]={...DEF_SCEN[k],...(s.drivers[k]||{})}; return s;} }catch(e){} return null; }
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} }
+
+// ---------- simulation ----------
+function simulate(d, sh, over){
+  d = {...d, ...(over||{})};
+  const out=[]; let pool=0; // convites aceitos aguardando evento
+  let legado = sh.clientesDctAtuais, outras = sh.outrasReceitas;
+  const legTicket = sh.clientesDctAtuais>0 ? sh.receitaLegadoDct/sh.clientesDctAtuais : 0;
+  let cohorts=[]; // sala cohorts {m,count}
+  let dct=0, cons=0, eqs=[]; let caixa=0; let lucroAcum=0; let prevMrrRec=0, prevReceita=0, prevSala=0, prevDct=0, prevCons=0; let negMonths=0, negStreak=0, cutFactor=1, cutMonth=null;
+  let imerCount=0; // turma index for ticket ramp (turma 1 já aconteceu em ago/26)
+  const salaTicket = sh.salaTicket*(1-sh.salaPlusShare)+sh.salaPlusTicket*sh.salaPlusShare;
+  for(let m=1;m<=N;m++){
+    const r={m, label:mlabel(m)};
+    // funnel
+    const leads = Math.min(d.leadCap, d.leads0*Math.pow(1+d.leadGrowth, m-1));
+    const conversas = leads*d.txConversa; const convites = conversas*d.txConvite; pool += convites;
+    const isImer = (m%4===2), isMans = (m%2===1) && !isImer; // Imersão a cada 4 meses (nov, mar, jul); Mansão nos meses ímpares restantes
+    let mansPag=0, mansConv=0, imerPag=0, imerConv=0, imerTicket=0;
+    if(isMans){ mansPag=Math.min(d.mansaoCap*d.mansaoPag, pool*0.5); mansConv=Math.min(d.mansaoCap-mansPag, Math.max(0,pool-mansPag)); pool-=Math.min(pool,mansPag+mansConv); }
+    if(isImer){ imerCount++; imerTicket = imerCount===1?sh.imersaoT1: imerCount===2?sh.imersaoT2: sh.imersaoT3; imerPag=Math.min(d.imersaoCap*d.imersaoPag, pool*0.6+ (isMans?0:0)); imerConv=Math.min(d.imersaoCap-imerPag, Math.max(0,pool-imerPag)); pool-=Math.min(pool,imerPag+imerConv); }
+    const presentes = mansPag+mansConv+imerPag+imerConv;
+    // Sala flows
+    const migr = legado*d.migracao; const legChurn = legado*0.04; legado = Math.max(0, legado-migr-legChurn);
+    const salaNew = presentes*d.convPalco + conversas*d.convDireta + migr;
+    const salaPrevTotal = cohorts.reduce((a,c)=>a+c.count,0); const salaChurned = salaPrevTotal*d.salaChurn;
+    cohorts = cohorts.map(c=>({m:c.m, count:c.count*(1-d.salaChurn), size0:c.size0}));
+    let salaBefore = cohorts.reduce((a,c)=>a+c.count,0);
+    // upgrades from sala
+    const toDct = salaBefore*d.dctFromSala; let toCons=0;
+    cohorts = cohorts.map(c=>{ let cnt=c.count*(1-d.dctFromSala); if(m-c.m===12){ const g=cnt*d.consFromSala; toCons+=g; cnt-=g; } return {m:c.m,count:cnt,size0:c.size0}; });
+    cohorts.push({m, count:salaNew, size0:salaNew});
+    const sala = cohorts.reduce((a,c)=>a+c.count,0);
+    const dctChurned = dct*d.dctChurn; dct = dct*(1-d.dctChurn) + toDct + (m%4===0?0.5:0); const dctNew = toDct + (m%4===0?0.5:0);
+    const consChurned = cons*d.consChurn; cons = cons*(1-d.consChurn) + toCons;
+    // equity
+    if(m>=4 && ((m-4)%d.eqInterval===0) && eqs.filter(e=>m-e.start<18).length<d.eqCap) eqs.push({start:m});
+    let eqRev=0, eqHours=0, eqVal=0, eqActive=0;
+    eqs.forEach(e=>{ const n=m-e.start+1; if(n<1) return; eqActive++; const inc=d.eqTarget*(1-Math.exp(-n/d.eqRamp)); eqRev+=inc*sh.equityShare + (n<=3?sh.adiantamento:0); eqHours += n<=12?24:(n<=18?12:2); if(n>=12 && inc>=d.eqTarget*0.75) eqVal += 0.15*5*(inc*12*0.30); });
+    // revenue
+    const compClients = (sala+dct+cons)*d.compAttach;
+    outras = outras*(1+d.outrasTrend);
+    const rev = {
+      sala: sala*salaTicket, dct: dct*sh.dctTicket + dctNew*sh.dctSetup, cons: cons*sh.conselhoTicket,
+      imer: imerPag*imerTicket, mans: mansPag*sh.mansaoTicket, comp: compClients*sh.compTicket, eq: eqRev,
+      leg: legado*legTicket + outras + leads*37*0.5,
+    };
+    const receita = Object.values(rev).reduce((a,b)=>a+b,0);
+    const mrr = rev.sala+rev.dct-dctNew*sh.dctSetup+rev.cons+rev.comp+legado*legTicket+outras*0.6;
+    // team
+    const turmas = Math.ceil(sala/18);
+    const consultores = Math.max(0, Math.ceil(Math.max(0,turmas-2)/3)) + Math.max(0, Math.ceil(Math.max(0,dct-4)/6)) + Math.max(0, Math.ceil(Math.max(0,cons-10)/10));
+    const sdrs = Math.max(1, Math.ceil(conversas/150)); const ops = 1 + (mrr>250000?1:0); const coo = mrr>300000?1:0; const cs = Math.ceil((sala+dct+cons)/40);
+    const hires = consultores*sh.consultorSenior + (sdrs-1)*sh.sdrSalario + ops*sh.opsSalario + coo*sh.cooSalario + cs*sh.csSalario;
+    const eventos = (isMans?sh.mansaoCusto:0)+(isImer?sh.imersaoCusto:0);
+    const clientes = sala+dct+cons;
+    const vendasNovas = rev.imer+rev.mans+dctNew*sh.dctSetup+salaNew*salaTicket+toCons*sh.conselhoTicket;
+    const custos = sh.custoFixoAtual*cutFactor*Math.pow(1+sh.inflacaoMensal,m-1) + hires + eventos + d.trafego + sh.infraBase + clientes*sh.infraPorCliente + receita*(sh.impostos+sh.overheadPct+sh.marketingPct) + vendasNovas*sh.comissao;
+    const lucro = receita-custos; lucroAcum+=lucro; caixa+=lucro;
+    // metrics
+    const mrrRec = rev.sala + dct*sh.dctTicket + rev.cons + rev.comp; // recorrente novo (sem legado)
+    const newMRR = salaNew*salaTicket + (dctNew-toDct)*sh.dctTicket + (compClients - (r.prevComp||0))*0;
+    const expMRR = toDct*(sh.dctTicket-salaTicket) + toCons*(sh.conselhoTicket-salaTicket);
+    const churnMRR = salaChurned*salaTicket + dctChurned*sh.dctTicket + consChurned*sh.conselhoTicket;
+    const nrr = prevMrrRec>0 ? (prevMrrRec + expMRR - churnMRR)/prevMrrRec : 1;
+    const quick = churnMRR>0 ? (newMRR+expMRR)/churnMRR : 99;
+    const mkt = d.trafego + eventos + sdrs*sh.sdrSalario + vendasNovas*sh.comissao + receita*sh.marketingPct;
+    const newRec = salaNew + (dctNew-toDct);
+    const cac = newRec>0 ? mkt/newRec : 0;
+    const custoPorLead = leads>0 ? (d.trafego + receita*sh.marketingPct)/leads : 0;
+    const custoPorConversa = conversas>0 ? (d.trafego + receita*sh.marketingPct + sdrs*sh.sdrSalario)/conversas : 0;
+    const salaDeliv = (Math.ceil(Math.max(0,turmas-2)/3)*sh.consultorSenior)/Math.max(1,sala) + sh.csSalario/40 + sh.infraPorCliente;
+    const cmSala = salaTicket - salaDeliv; const cmDct = sh.dctTicket - sh.consultorSenior/6 - sh.csSalario/40 - sh.infraPorCliente; const cmCons = sh.conselhoTicket - sh.consultorSenior/10 - sh.csSalario/40 - sh.infraPorCliente;
+    const ltvSala = d.salaChurn>0 ? cmSala/d.salaChurn : cmSala*60; const ltvDct = d.dctChurn>0? cmDct/d.dctChurn : cmDct*60; const ltvCons = d.consChurn>0? cmCons/d.consChurn : cmCons*60;
+    const ltvBlend = newRec>0 ? (salaNew*ltvSala + (dctNew-toDct)*ltvDct)/newRec : ltvSala;
+    const ltvCac = cac>0 ? ltvBlend/cac : 0; const payback = cmSala>0 ? cac/cmSala : 0;
+    const arpa = clientes>0 ? mrrRec/clientes : 0;
+    const headcount = sh.equipeAtual + consultores + (sdrs-1) + ops + coo + cs;
+    const recPorPessoa = receita/headcount; const recPorHora = receita/Math.max(1,0); 
+    const growthMoM = prevReceita>0 ? receita/prevReceita-1 : 0;
+    const rec3 = (out.slice(-2).reduce((a,x)=>a+x.receita,0)+receita)/Math.min(3,out.length+1); const rec3p = out.length>=6 ? out.slice(-6,-3).reduce((a,x)=>a+x.receita,0)/3 : (out.length>=3? out.slice(0,Math.max(1,out.length-3)).reduce((a,x)=>a+x.receita,0)/Math.max(1,out.length-3) : sh.receitaLegadoDct+sh.outrasReceitas); const growthQ = rec3p>0 ? rec3/rec3p-1 : 0; const rule40 = (Math.pow(1+growthQ,4)-1)*100 + (receita?lucro/receita*100:0);
+    const ocupacao = (isMans||isImer) ? presentes/((isMans?d.mansaoCap:0)+(isImer?d.imersaoCap:0)) : null;
+    const evRec = rev.imer+rev.mans; const evConvValue = presentes*d.convPalco*salaTicket*6; const evRoi = eventos>0 ? (evRec+evConvValue)/eventos : null;
+    const pctRecorrente = receita>0 ? (mrrRec + legado*legTicket)/receita : 0; const pctLegado = receita>0 ? rev.leg/receita : 0;
+    const consultorLoad = consultores>0 ? (sala - Math.min(turmas,2)*18 + dct)/consultores : 0;
+    const eqRecPorHora = eqHours>0 ? eqRev/eqHours : 0;
+    if(lucro<0){ negMonths++; negStreak++; } else negStreak=0; if(negStreak>=3 && cutFactor===1){ cutFactor=1-sh.corteAutomatico; cutMonth=m+1; } 
+    Object.assign(r,{cutFactor,cutMonth,rule40,growthQ,mrrRec,newMRR,expMRR,churnMRR,nrr,quick,mkt,newRec,cac,custoPorLead,custoPorConversa,cmSala,cmDct,cmCons,ltvSala,ltvDct,ltvCons,ltvBlend,ltvCac,payback,arpa,headcount,recPorPessoa,growthMoM,ocupacao,evRec,evRoi,pctRecorrente,pctLegado,consultorLoad,eqRecPorHora,salaChurned,dctChurned,consChurned,negMonths,salaDeliv,cohortsSnap:cohorts.map(c=>({m:c.m,count:c.count,size0:c.size0}))});
+    prevMrrRec = mrrRec; prevReceita = receita;
+    // hours
+    const hours = { conteudo: ops>=2?12:20, gestao: coo?15:30, sala: Math.min(turmas,2)*16 + Math.max(0,turmas-2)*2, dct: (consultores>0? Math.min(dct,2) : Math.min(dct,4))*10, cons: Math.min(cons,10)*2 + (m%3===0?12:0), eq: eqHours, eventos:(isMans?20:0)+(isImer?32:0) };
+    const horas = Object.values(hours).reduce((a,b)=>a+b,0);
+    Object.assign(r,{leads,conversas,convites,presentes,mansPag,mansConv,imerPag,imerConv,salaNew,sala,dct,cons,legado,compClients,eqActive,eqVal,eqRev,eqHours,rev,receita,mrr,custos,lucro,lucroAcum,caixa,margem:receita?lucro/receita:0,turmas,consultores,sdrs,ops,coo,cs,hours,horas,clientes,toDct,toCons,migr,hires,eventos,recPorHoraF: receita/Math.max(1,horas), isMans,isImer,imerTicket,dctNew});
+    out.push(r);
+  }
+  return out;
+}
+
+// ---------- helpers ----------
+const css = (v)=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmtBRL = (v)=> 'R$ '+ (Math.abs(v)>=1e6? (v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:2})+' mi' : Math.abs(v)>=1000 ? (v/1000).toLocaleString('pt-BR',{maximumFractionDigits:0})+' mil' : v.toLocaleString('pt-BR',{maximumFractionDigits:0}));
+const fmtFull = (v)=> 'R$ '+Math.round(v).toLocaleString('pt-BR');
+const pct = (v)=> (v*100).toLocaleString('pt-BR',{maximumFractionDigits:0})+'%';
+const n0 = (v)=> Math.round(v).toLocaleString('pt-BR');
+function toast(t){ const el=document.getElementById('toast'); el.textContent=t; el.classList.add('on'); setTimeout(()=>el.classList.remove('on'),1800); }
+
+// ---------- charts ----------
+const charts={}; let glOK = !!(window.echarts && echarts.graphic && typeof echarts.init==='function' && window.echarts.__gl !== false);
+function ch(id){ if(!charts[id]){ charts[id]=echarts.init(document.getElementById(id),null,{renderer:'canvas'}); } return charts[id]; }
+function base(){ return { textStyle:{fontFamily:'"Source Sans 3",system-ui,sans-serif',color:css('--text')}, animationDuration:400,
+  tooltip:{backgroundColor:css('--surface'),borderColor:css('--line'),textStyle:{color:css('--text')},valueFormatter:v=>typeof v==='number'?fmtFull(v):v},
+  grid:{left:56,right:16,top:36,bottom:30,containLabel:false},
+  xAxis:{type:'category',axisLine:{lineStyle:{color:css('--axis')}},axisTick:{show:false},axisLabel:{color:css('--muted')}},
+  yAxis:{type:'value',splitLine:{lineStyle:{color:css('--grid')}},axisLabel:{color:css('--muted'),formatter:v=>fmtBRL(v)},axisLine:{show:false}},
+  legend:{top:0,textStyle:{color:css('--muted')},icon:'roundRect',itemWidth:10,itemHeight:10} }; }
+
+function render(){
+  save();
+  const sims = {}; for(const k in SCEN) sims[k]=simulate(state.drivers[k], state.shared);
+  const S = sims[state.scen]; const H = state.hor; const f = Math.min(state.focus,H); const cur=S[f-1];
+  document.getElementById('focus').max=H; document.getElementById('focus').value=f; document.getElementById('focusOut').value=mlabel(f);
+  const labels = S.slice(0,H).map(r=>r.label);
+  const vis = LINES.filter(l=>state.lines.includes(l.k));
+  const colr = (l)=>css(l.c);
+  // KPIs
+  const prev = S[Math.max(0,f-2)]; const first=S[0];
+  const kp = [
+    ['Receita do mês', fmtBRL(cur.receita), cur.receita-prev.receita, S.slice(0,H).map(r=>r.receita)],
+    ['MRR', fmtBRL(cur.mrr), cur.mrr-prev.mrr, S.slice(0,H).map(r=>r.mrr)],
+    ['Lucro do mês', fmtBRL(cur.lucro), cur.lucro-prev.lucro, S.slice(0,H).map(r=>r.lucro)],
+    ['Margem líquida', pct(cur.margem), (cur.margem-prev.margem)*100, S.slice(0,H).map(r=>r.margem), true],
+    ['Clientes recorrentes', n0(cur.clientes), cur.clientes-prev.clientes, S.slice(0,H).map(r=>r.clientes), false, true],
+    ['Horas do Fabrício', n0(cur.horas)+' h', -(cur.horas-prev.horas), S.slice(0,H).map(r=>r.horas), false, true, true],
+    ['Caixa acumulado', fmtBRL(cur.caixa), cur.caixa-prev.caixa, S.slice(0,H).map(r=>r.caixa)],
+    ['Participações (Equity)', fmtBRL(cur.eqVal), 0, S.slice(0,H).map(r=>r.eqVal)],
+  ];
+  const kEl=document.getElementById('kpis'); kEl.innerHTML='';
+  kp.forEach(([l,v,dlt,ser,isPct,isCount,inv],i)=>{
+    const div=document.createElement('div'); div.className='kpi';
+    const cls = dlt>0.5?'up':(dlt<-0.5?'down':''); const ic = inv ? (dlt<-0.5?'▲':(dlt>0.5?'▼':'')) : (dlt>0.5?'▲':(dlt<-0.5?'▼':''));
+    const dtxt = i===7? 'valor estimado das fatias' : (isPct? (Math.abs(dlt).toFixed(1)+' p.p. vs mês anterior') : isCount? (n0(Math.abs(inv?-dlt:dlt))+(l.includes('Horas')?' h':'')+' vs mês anterior') : fmtBRL(Math.abs(dlt))+' vs mês anterior');
+    div.innerHTML=`<div class="l">${l}</div><div class="v">${v}</div><div class="d ${cls}"><span class="ic">${ic}</span>${dtxt}</div><canvas class="spark" width="128" height="44"></canvas>`;
+    kEl.appendChild(div); spark(div.querySelector('canvas'), ser, cls==='down'?css('--critical'):css('--s1'));
+  });
+  // Receita por linha
+  document.getElementById('hReceita').textContent = SCEN[state.scen].n+' · '+labels[0]+' a '+labels[H-1];
+  const realSeries = labels.map((lb,i)=> state.real[i+1]!=null? state.real[i+1] : null);
+  ch('chReceita').setOption({...base(), legend:{...base().legend, data:[...vis.map(l=>l.n),'Realizado']},
+    tooltip:{...base().tooltip, trigger:'axis', axisPointer:{type:'cross',lineStyle:{color:css('--axis')}}},
+    xAxis:{...base().xAxis,data:labels,boundaryGap:false},
+    series:[...vis.map(l=>({name:l.n,type:'line',stack:'r',areaStyle:{opacity:.55},lineStyle:{width:1.5},symbol:'none',color:colr(l),emphasis:{focus:'series'},data:S.slice(0,H).map(r=>Math.round(r.rev[l.k]))})),
+      {name:'Realizado',type:'line',color:css('--ink'),lineStyle:{type:'dashed',width:2},symbol:'circle',symbolSize:8,connectNulls:false,data:realSeries}]
+  },true);
+  document.getElementById('lgReceita').innerHTML = `<span><i style="background:${css('--ink')}"></i> Realizado (digitado em "Realizado")</span><span>Mês foco: <b>${cur.label}</b> · receita ${fmtFull(cur.receita)}</span>`;
+  // MRR composição
+  const mrrParts=[['Sala CRESCER','--s1',cur.rev.sala],['DCT 1 pra 1','--s2',cur.dct*state.shared.dctTicket],['Conselho UNV','--s3',cur.rev.cons],['Complementares','--s6',cur.rev.comp],['Legado / outros','--s8',cur.legado*(state.shared.clientesDctAtuais?state.shared.receitaLegadoDct/state.shared.clientesDctAtuais:0)+ (cur.rev.leg-cur.legado*(state.shared.clientesDctAtuais?state.shared.receitaLegadoDct/state.shared.clientesDctAtuais:0))*0.6]];
+  ch('chMrr').setOption({...base(), grid:{left:110,right:60,top:10,bottom:20}, legend:{show:false}, xAxis:{...base().yAxis,type:'value',axisLabel:{color:css('--muted'),formatter:v=>fmtBRL(v)}}, yAxis:{...base().xAxis,type:'category',data:mrrParts.map(p=>p[0]).reverse(),axisLabel:{color:css('--text')}},
+    series:[{type:'bar',barWidth:22,itemStyle:{borderRadius:[0,4,4,0]},label:{show:true,position:'right',color:css('--text'),formatter:p=>fmtBRL(p.value)},data:mrrParts.map(p=>({value:Math.round(p[2]),itemStyle:{color:css(p[1])}})).reverse()}],
+    graphic:[{type:'text',right:8,top:0,style:{text:'MRR '+fmtBRL(cur.mrr),fill:css('--ink'),font:'700 15px Montserrat, sans-serif'}}]
+  },true);
+  // Cenários
+  const scSeries = Object.keys(SCEN).map(k=>({name:SCEN[k].n,type:'line',symbol:'none',lineStyle:{width:k===state.scen?3:1.5},color:css(SCEN[k].c),emphasis:{focus:'series'},data:sims[k].slice(0,H).map(r=>Math.round(r.receita))}));
+  ch('chCen').setOption({...base(), tooltip:{...base().tooltip,trigger:'axis',axisPointer:{type:'cross',lineStyle:{color:css('--axis')}}}, xAxis:{...base().xAxis,data:labels,boundaryGap:false},
+    series:[...scSeries,{name:'Realizado',type:'line',color:css('--ink'),lineStyle:{type:'dashed',width:2},symbol:'circle',symbolSize:8,data:realSeries}]},true);
+  ch('chLucro').setOption({...base(), tooltip:{...base().tooltip,trigger:'axis',axisPointer:{type:'cross',lineStyle:{color:css('--axis')}}}, xAxis:{...base().xAxis,data:labels,boundaryGap:false},
+    series:Object.keys(SCEN).map(k=>({name:SCEN[k].n,type:'line',symbol:'none',areaStyle:{opacity:k===state.scen?.18:0},lineStyle:{width:k===state.scen?3:1.5},color:css(SCEN[k].c),data:sims[k].slice(0,H).map(r=>Math.round(r.lucroAcum))})),
+    visualMap:null},true);
+  // 3D bars
+  try{
+    const data3=[]; vis.forEach((l,li)=>{ for(let i=0;i<H;i++) data3.push([i,li,Math.round(S[i].rev[l.k])]); });
+    ch('ch3d').setOption({ backgroundColor:css('--surface'), textStyle:base().textStyle, tooltip:{...base().tooltip, formatter:p=>`${vis[p.value[1]].n}<br>${labels[p.value[0]]}: <b>${fmtFull(p.value[2])}</b>`},
+      xAxis3D:{type:'category',data:labels,axisLabel:{color:css('--muted'),interval:H>12?2:0},axisLine:{lineStyle:{color:css('--axis')}},name:''},
+      yAxis3D:{type:'category',data:vis.map(l=>l.n),axisLabel:{color:css('--muted')},axisLine:{lineStyle:{color:css('--axis')}},name:''},
+      zAxis3D:{type:'value',axisLabel:{color:css('--muted'),formatter:v=>fmtBRL(v)},axisLine:{lineStyle:{color:css('--axis')}},splitLine:{lineStyle:{color:css('--grid')}},name:''},
+      grid3D:{boxWidth:H>12?200:120,boxDepth:80,boxHeight:70,viewControl:{alpha:22,beta:35,distance:H>12?260:200,autoRotate:false},light:{main:{intensity:1.1,shadow:false},ambient:{intensity:.5}},environment:'transparent'},
+      series:[{type:'bar3D',data:data3.map(d=>({value:d,itemStyle:{color:colr(vis[d[1]])}})),shading:'lambert',bevelSize:.2,barSize:H>12?4:8,emphasis:{label:{show:false},itemStyle:{color:css('--ink')}}}]
+    },true);
+  }catch(e){ document.getElementById('fb3d').style.display='block'; document.getElementById('ch3d').style.display='none'; }
+  // Surface sensitivity
+  try{
+    const cx=[],cy=[]; for(let a=0.05;a<=0.45+1e-9;a+=0.04) cx.push(+a.toFixed(2)); for(let b=0.01;b<=0.08+1e-9;b+=0.01) cy.push(+b.toFixed(2));
+    const sd=[]; let zmin=Infinity,zmax=-Infinity; cy.forEach(b=>cx.forEach(a=>{ const s=simulate(state.drivers[state.scen],state.shared,{convPalco:a,salaChurn:b}); const z=Math.round(s[11].lucroAcum); zmin=Math.min(zmin,z); zmax=Math.max(zmax,z); sd.push([a,b,z]); }));
+    const d0=state.drivers[state.scen]; const here=simulate(d0,state.shared)[11].lucroAcum;
+    ch('chSurf').setOption({ backgroundColor:css('--surface'), textStyle:base().textStyle, tooltip:{...base().tooltip, formatter:p=>`Conversão no palco ${pct(p.value[0])} · churn ${pct(p.value[1])}<br>Lucro 12 meses: <b>${fmtFull(p.value[2])}</b>`},
+      visualMap:{show:true,dimension:2,min:zmin,max:zmax,right:0,top:10,textStyle:{color:css('--muted')},formatter:v=>fmtBRL(v),inRange:{color:[css('--seq1'),css('--seq2'),css('--seq3'),css('--seq4'),css('--seq5'),css('--seq6')]}},
+      xAxis3D:{type:'value',name:'conv. palco',nameTextStyle:{color:css('--muted')},axisLabel:{color:css('--muted'),formatter:v=>pct(v)},axisLine:{lineStyle:{color:css('--axis')}}},
+      yAxis3D:{type:'value',name:'churn Sala',nameTextStyle:{color:css('--muted')},axisLabel:{color:css('--muted'),formatter:v=>pct(v)},axisLine:{lineStyle:{color:css('--axis')}}},
+      zAxis3D:{type:'value',name:'',axisLabel:{color:css('--muted'),formatter:v=>fmtBRL(v)},axisLine:{lineStyle:{color:css('--axis')}},splitLine:{lineStyle:{color:css('--grid')}}},
+      grid3D:{boxWidth:140,boxDepth:100,boxHeight:70,viewControl:{alpha:25,beta:-40,distance:230},light:{main:{intensity:1.1,shadow:false},ambient:{intensity:.5}},environment:'transparent'},
+      series:[{type:'surface',data:sd,shading:'lambert',wireframe:{show:true,lineStyle:{color:'rgba(255,255,255,.18)',width:.6}}},
+              {type:'scatter3D',data:[[d0.convPalco,d0.salaChurn,here]],symbolSize:14,itemStyle:{color:css('--red'),borderColor:css('--surface'),borderWidth:2},label:{show:true,formatter:'você',textStyle:{color:css('--ink'),fontWeight:700}}}]
+    },true);
+  }catch(e){ document.getElementById('fbSurf').style.display='block'; document.getElementById('chSurf').style.display='none'; }
+  // Funil
+  const W=S.slice(0,H); const ser=(fn)=>W.map(r=>{const v=fn(r); return v==null||isNaN(v)?0:v;}); const fun=[['Raio-X',W.reduce((a,r)=>a+r.leads,0)],['Conversas SDR',W.reduce((a,r)=>a+r.conversas,0)],['Convites aceitos',W.reduce((a,r)=>a+r.convites,0)],['Presentes em evento',W.reduce((a,r)=>a+r.presentes,0)],['Novas na Sala',W.reduce((a,r)=>a+r.salaNew,0)]];
+  const seqs=['--seq6','--seq5','--seq4','--seq3','--seq2'];
+  ch('chFunil').setOption({...base(), grid:{left:120,right:60,top:10,bottom:20}, legend:{show:false}, tooltip:{...base().tooltip,valueFormatter:v=>n0(v)}, xAxis:{...base().yAxis,type:'value',axisLabel:{color:css('--muted'),formatter:v=>n0(v)}}, yAxis:{...base().xAxis,type:'category',data:fun.map(f=>f[0]).reverse(),axisLabel:{color:css('--text')}},
+    series:[{type:'bar',barWidth:20,itemStyle:{borderRadius:[0,4,4,0]},label:{show:true,position:'right',color:css('--text'),formatter:p=>n0(p.value)+(p.dataIndex<4?' · '+pct(fun[4-p.dataIndex][1]/fun[3-p.dataIndex][1]):'')},data:fun.map((f,i)=>({value:Math.round(f[1]),itemStyle:{color:css(seqs[i])}})).reverse()}]},true);
+  // Clientes
+  const cl=[['Sala CRESCER','--s1','sala'],['DCT 1 pra 1','--s2','dct'],['Conselho UNV','--s3','cons'],['Legado (DCT atual)','--s8','legado']];
+  ch('chClientes').setOption({...base(), tooltip:{...base().tooltip,trigger:'axis',valueFormatter:v=>n0(v)}, yAxis:{...base().yAxis,axisLabel:{color:css('--muted')}}, xAxis:{...base().xAxis,data:labels,boundaryGap:false},
+    series:cl.map(c=>({name:c[0],type:'line',symbol:'none',lineStyle:{width:2},color:css(c[1]),endLabel:{show:true,color:css('--text'),formatter:p=>n0(p.value)},data:W.map(r=>Math.round(r[c[2]]))}))},true);
+  // Margem
+  ch('chMargem').setOption({...base(), legend:{show:false}, tooltip:{...base().tooltip,trigger:'axis',valueFormatter:v=>v.toFixed(0)+'%'}, yAxis:{...base().yAxis,axisLabel:{color:css('--muted'),formatter:v=>v+'%'}}, xAxis:{...base().xAxis,data:labels,boundaryGap:false},
+    series:[{name:'Margem',type:'line',symbol:'none',lineStyle:{width:2},color:css('--s1'),areaStyle:{opacity:.15},data:W.map(r=>+(r.margem*100).toFixed(1)),markLine:{silent:true,symbol:'none',lineStyle:{color:css('--axis'),type:'dashed'},label:{color:css('--muted'),formatter:'meta 40%'},data:[{yAxis:40}]}}]},true);
+  // Horas
+  const hk=[['Conteúdo','--seq3','conteudo'],['Gestão','--seq2','gestao'],['Sala','--s1','sala'],['DCT','--s2','dct'],['Conselho','--s3','cons'],['Equity','--s7','eq'],['Eventos','--s4','eventos']];
+  ch('chHoras').setOption({...base(), tooltip:{...base().tooltip,trigger:'axis',valueFormatter:v=>n0(v)+' h'}, yAxis:{...base().yAxis,axisLabel:{color:css('--muted'),formatter:v=>v+' h'}}, xAxis:{...base().xAxis,data:labels},
+    series:hk.map(h=>({name:h[0],type:'bar',stack:'h',barWidth:'55%',itemStyle:{color:css(h[1]),borderColor:css('--surface'),borderWidth:1},data:W.map(r=>Math.round(r.hours[h[2]]))})).concat([{name:'Teto',type:'line',symbol:'none',color:css('--critical'),lineStyle:{type:'dashed',width:2},data:W.map(()=>state.shared.horasTeto)}])},true);
+  // Caixa
+  ch('chCaixa').setOption({...base(), legend:{...base().legend}, tooltip:{...base().tooltip,trigger:'axis',axisPointer:{type:'cross',lineStyle:{color:css('--axis')}}}, xAxis:{...base().xAxis,data:labels,boundaryGap:false},
+    series:[{name:'Caixa acumulado',type:'line',symbol:'none',lineStyle:{width:2.5},color:css('--s1'),areaStyle:{opacity:.15},data:W.map(r=>Math.round(r.caixa))},
+            {name:'Dívida de tráfego',type:'line',symbol:'none',color:css('--critical'),lineStyle:{type:'dashed',width:2},data:W.map(()=>state.shared.dividaTrafego)}]},true);
+  // Time
+  const tk=[['Consultores sêniores','--s1','consultores'],['SDRs','--s3','sdrs'],['Ops/Marketing','--s4','ops'],['Customer success','--s5','cs'],['COO','--s7','coo']];
+  ch('chTime').setOption({...base(), grid:{left:40,right:16,top:36,bottom:30}, tooltip:{...base().tooltip,trigger:'axis',valueFormatter:v=>n0(v)}, yAxis:{...base().yAxis,axisLabel:{color:css('--muted')},minInterval:1}, xAxis:{...base().xAxis,data:labels},
+    series:tk.map(t=>({name:t[0],type:'bar',stack:'t',barWidth:'55%',itemStyle:{color:css(t[1]),borderColor:css('--surface'),borderWidth:1},data:W.map(r=>r[t[2]])}))},true);
+  // Painel do produto
+  const pp=document.getElementById('prodPanel');
+  if(state.prod==='all'){ pp.style.display='none'; }
+  else{
+    pp.style.display='block'; const L=LINES.find(l=>l.k===state.prod); document.getElementById('prodTitle').innerHTML=L.n+' <small>'+cur.label+' · '+SCEN[state.scen].n+'</small>';
+    const d=state.drivers[state.scen], sh=state.shared; const tS=sh.salaTicket*(1-sh.salaPlusShare)+sh.salaPlusTicket*sh.salaPlusShare;
+    const sum=(fn)=>W.reduce((a,r)=>a+fn(r),0);
+    const P={
+      sala:[['Clientes ativos',n0(cur.sala),ser(r=>r.sala)],['Turmas',n0(cur.turmas),ser(r=>r.turmas)],['Novos no mês',n0(cur.salaNew),ser(r=>r.salaNew)],['Perdidos no mês',n0(cur.salaChurned),ser(r=>r.salaChurned)],['Churn mensal',pct(d.salaChurn),ser(()=>d.salaChurn)],['MRR',fmtBRL(cur.rev.sala),ser(r=>r.rev.sala)],['Ticket blend',fmtFull(tS),ser(()=>tS)],['Margem de contribuição',fmtFull(cur.cmSala)+' ('+pct(cur.cmSala/tS)+')',ser(r=>r.cmSala)],['LTV',fmtBRL(cur.ltvSala),ser(r=>r.ltvSala)],['Subiram pro DCT (mês)',n0(cur.toDct),ser(r=>r.toDct)],['Subiram pro Conselho (mês)',n0(cur.toCons),ser(r=>r.toCons)],['Horas do Fabrício',n0(cur.hours.sala)+' h',ser(r=>r.hours.sala)],['Receita no horizonte',fmtBRL(sum(r=>r.rev.sala)),ser(r=>r.rev.sala)],['Novos no horizonte',n0(sum(r=>r.salaNew)),ser(r=>r.salaNew)],['Vindos do legado (horizonte)',n0(sum(r=>r.migr)),ser(r=>r.migr)]],
+      dct:[['Clientes ativos',n0(cur.dct),ser(r=>r.dct)],['Novos no mês',n0(cur.dctNew),ser(r=>r.dctNew)],['Perdidos no mês',n0(cur.dctChurned),ser(r=>r.dctChurned)],['Churn mensal',pct(d.dctChurn),ser(()=>d.dctChurn)],['MRR',fmtBRL(cur.dct*sh.dctTicket),ser(r=>r.dct*sh.dctTicket)],['Receita de setup (mês)',fmtBRL(cur.dctNew*sh.dctSetup),ser(r=>r.dctNew*sh.dctSetup)],['Ticket',fmtFull(sh.dctTicket),ser(()=>sh.dctTicket)],['Margem de contribuição',fmtFull(cur.cmDct)+' ('+pct(cur.cmDct/sh.dctTicket)+')',ser(r=>r.cmDct)],['LTV',fmtBRL(cur.ltvDct),ser(r=>r.ltvDct)],['Horas do Fabrício',n0(cur.hours.dct)+' h',ser(r=>r.hours.dct)],['Consultores no DCT',n0(Math.ceil(Math.max(0,cur.dct-4)/6)),ser(r=>Math.ceil(Math.max(0,r.dct-4)/6))],['Receita no horizonte',fmtBRL(sum(r=>r.rev.dct)),ser(r=>r.rev.dct)]],
+      cons:[['Empresas no Conselho',n0(cur.cons),ser(r=>r.cons)],['Entraram no mês',n0(cur.toCons),ser(r=>r.toCons)],['Perdidas no mês',n0(cur.consChurned),ser(r=>r.consChurned)],['Churn mensal',pct(d.consChurn),ser(()=>d.consChurn)],['MRR',fmtBRL(cur.rev.cons),ser(r=>r.rev.cons)],['Ticket',fmtFull(sh.conselhoTicket),ser(()=>sh.conselhoTicket)],['Margem de contribuição',fmtFull(cur.cmCons)+' ('+pct(cur.cmCons/sh.conselhoTicket)+')',ser(r=>r.cmCons)],['LTV',fmtBRL(cur.ltvCons),ser(r=>r.ltvCons)],['Horas do Fabrício',n0(cur.hours.cons)+' h',ser(r=>r.hours.cons)],['Receita no horizonte',fmtBRL(sum(r=>r.rev.cons)),ser(r=>r.rev.cons)]],
+      imer:[['Turmas no horizonte',n0(W.filter(r=>r.isImer).length),ser(r=>r.isImer?1:0)],['Presentes (horizonte)',n0(sum(r=>r.imerPag+r.imerConv)),ser(r=>r.imerPag+r.imerConv)],['Pagantes (horizonte)',n0(sum(r=>r.imerPag)),ser(r=>r.imerPag)],['Convidados (horizonte)',n0(sum(r=>r.imerConv)),ser(r=>r.imerConv)],['Ocupação média',pct(sum(r=>r.imerPag+r.imerConv)/Math.max(1,W.filter(r=>r.isImer).length*d.imersaoCap)),ser(r=>r.isImer?(r.imerPag+r.imerConv)/d.imersaoCap:0)],['Receita de ingressos (horizonte)',fmtBRL(sum(r=>r.rev.imer)),ser(r=>r.rev.imer)],['Custo (horizonte)',fmtBRL(W.filter(r=>r.isImer).length*sh.imersaoCusto),ser(r=>r.isImer?sh.imersaoCusto:0)],['Sala vendidas no palco (horizonte)',n0(sum(r=>(r.imerPag+r.imerConv)*d.convPalco)),ser(r=>(r.imerPag+r.imerConv)*d.convPalco)],['MRR gerado no palco',fmtBRL(sum(r=>(r.imerPag+r.imerConv)*d.convPalco)*tS),ser(r=>(r.imerPag+r.imerConv)*d.convPalco*tS)],['Ingresso atual',cur.imerTicket?fmtFull(cur.imerTicket):'—',ser(r=>r.imerTicket||0)],['Horas do Fabrício por turma','32 h',ser(r=>r.isImer?32:0)]],
+      mans:[['Edições no horizonte',n0(W.filter(r=>r.isMans).length),ser(r=>r.isMans?1:0)],['Presentes (horizonte)',n0(sum(r=>r.mansPag+r.mansConv)),ser(r=>r.mansPag+r.mansConv)],['Pagantes (horizonte)',n0(sum(r=>r.mansPag)),ser(r=>r.mansPag)],['Convidados (horizonte)',n0(sum(r=>r.mansConv)),ser(r=>r.mansConv)],['Ocupação média',pct(sum(r=>r.mansPag+r.mansConv)/Math.max(1,W.filter(r=>r.isMans).length*d.mansaoCap)),ser(r=>r.isMans?(r.mansPag+r.mansConv)/d.mansaoCap:0)],['Receita de ingressos (horizonte)',fmtBRL(sum(r=>r.rev.mans)),ser(r=>r.rev.mans)],['Custo (horizonte)',fmtBRL(W.filter(r=>r.isMans).length*sh.mansaoCusto),ser(r=>r.isMans?sh.mansaoCusto:0)],['Pagantes pra dar ROI',n0(Math.ceil(sh.mansaoCusto/Math.max(1,sh.mansaoTicket))),ser(()=>Math.ceil(sh.mansaoCusto/Math.max(1,sh.mansaoTicket)))],['Sala vendidas no palco (horizonte)',n0(sum(r=>(r.mansPag+r.mansConv)*d.convPalco)),ser(r=>(r.mansPag+r.mansConv)*d.convPalco)],['MRR gerado no palco',fmtBRL(sum(r=>(r.mansPag+r.mansConv)*d.convPalco)*tS),ser(r=>(r.mansPag+r.mansConv)*d.convPalco*tS)],['Ingresso',fmtFull(sh.mansaoTicket),ser(()=>sh.mansaoTicket)]],
+      comp:[['Clientes com complementar',n0(cur.compClients),ser(r=>r.compClients)],['Taxa de adesão',pct(d.compAttach),ser(()=>d.compAttach)],['MRR',fmtBRL(cur.rev.comp),ser(r=>r.rev.comp)],['Ticket médio',fmtFull(sh.compTicket),ser(()=>sh.compTicket)],['Receita no horizonte',fmtBRL(sum(r=>r.rev.comp)),ser(r=>r.rev.comp)]],
+      eq:[['Sociedades ativas',n0(cur.eqActive),ser(r=>r.eqActive)],['Receita no mês',fmtBRL(cur.eqRev),ser(r=>r.eqRev)],['Receita no horizonte',fmtBRL(sum(r=>r.eqRev)),ser(r=>r.eqRev)],['Horas no mês',n0(cur.eqHours)+' h',ser(r=>r.eqHours)],['Receita por hora',fmtFull(cur.eqRecPorHora),ser(r=>r.eqRecPorHora)],['Valor das participações',fmtBRL(cur.eqVal),ser(r=>r.eqVal)],['Incremento alvo por empresa',fmtBRL(d.eqTarget)+'/mês',ser(()=>d.eqTarget)],['Sua parte',pct(sh.equityShare)+' do incremento',ser(()=>sh.equityShare)]],
+      leg:[['Clientes DCT do modelo antigo',n0(cur.legado),ser(r=>r.legado)],['Migraram pra Sala (mês)',n0(cur.migr),ser(r=>r.migr)],['Receita legada + outras',fmtBRL(cur.rev.leg),ser(r=>r.rev.leg)],['% da receita total',pct(cur.pctLegado),ser(r=>r.pctLegado)],['Receita no horizonte',fmtBRL(sum(r=>r.rev.leg)),ser(r=>r.rev.leg)]],
+    }[state.prod];
+    const pm=document.getElementById('prodMetrics'); pm.innerHTML='<div class="mgroup" style="grid-column:1/-1"><h4>Indicadores</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0 18px">'+P.map(r=>'<div class="mrow"><div class="mn">'+r[0]+'</div><div class="mv">'+r[1]+'</div><canvas class="ms" width="112" height="36"></canvas></div>').join('')+'</div></div>';
+    const pcs=pm.querySelectorAll('canvas'); P.forEach((r,i)=>spark(pcs[i],r[2],css(L.c)));
+    ch('chProdRec').setOption({...base(), grid:{left:56,right:16,top:30,bottom:30}, legend:{show:false}, title:{text:'Receita mensal · '+L.n,left:0,top:0,textStyle:{color:css('--ink'),fontSize:13,fontFamily:'Montserrat'}}, tooltip:{...base().tooltip,trigger:'axis'}, xAxis:{...base().xAxis,data:labels},
+      series:[{type:'bar',barWidth:'55%',itemStyle:{color:css(L.c),borderRadius:[4,4,0,0]},data:W.map(r=>Math.round(r.rev[state.prod]))}]},true);
+    const cliK={sala:r=>r.sala,dct:r=>r.dct,cons:r=>r.cons,imer:r=>r.imerPag+r.imerConv,mans:r=>r.mansPag+r.mansConv,comp:r=>r.compClients,eq:r=>r.eqActive,leg:r=>r.legado}[state.prod];
+    const cliT={sala:'Clientes ativos',dct:'Clientes ativos',cons:'Empresas',imer:'Presentes por turma',mans:'Presentes por edição',comp:'Clientes',eq:'Sociedades ativas',leg:'Clientes legados'}[state.prod];
+    ch('chProdCli').setOption({...base(), grid:{left:40,right:16,top:30,bottom:30}, legend:{show:false}, title:{text:cliT+' · '+L.n,left:0,top:0,textStyle:{color:css('--ink'),fontSize:13,fontFamily:'Montserrat'}}, tooltip:{...base().tooltip,trigger:'axis',valueFormatter:v=>n0(v)}, yAxis:{...base().yAxis,axisLabel:{color:css('--muted')}}, xAxis:{...base().xAxis,data:labels,boundaryGap:false},
+      series:[{type:'line',symbol:'circle',symbolSize:6,lineStyle:{width:2},color:css(L.c),areaStyle:{opacity:.12},data:W.map(r=>Math.round(cliK(r)))}]},true);
+    setTimeout(()=>{ch('chProdRec').resize(); ch('chProdCli').resize();},30);
+  }
+  // Eventos do horizonte
+  { const d=state.drivers[state.scen], sh=state.shared; const tS=sh.salaTicket*(1-sh.salaPlusShare)+sh.salaPlusTicket*sh.salaPlusShare; let imerN=1; const evs=[];
+    S.slice(0,H).forEach(r=>{ if(r.isMans && (state.ev==='all'||state.ev==='mans')) evs.push({m:r.m,label:r.label,tipo:'Mansão Empreendedora',cap:d.mansaoCap,pag:r.mansPag,conv:r.mansConv,ticket:sh.mansaoTicket,rec:r.rev.mans,custo:sh.mansaoCusto}); if(r.isImer){ imerN++; if(state.ev==='all'||state.ev==='imer') evs.push({m:r.m,label:r.label,tipo:'Imersão CRESCER · turma '+imerN,cap:d.imersaoCap,pag:r.imerPag,conv:r.imerConv,ticket:r.imerTicket,rec:r.rev.imer,custo:sh.imersaoCusto}); } });
+    document.getElementById('hEv').textContent = evs.length+' eventos · '+(state.ev==='all'?'Mansão e Imersão':state.ev==='mans'?'só Mansão':'só Imersão')+' · '+SCEN[state.scen].n;
+    const tot=evs.reduce((a,e)=>{a.pag+=e.pag;a.conv+=e.conv;a.rec+=e.rec;a.custo+=e.custo;a.sala+=(e.pag+e.conv)*d.convPalco;return a;},{pag:0,conv:0,rec:0,custo:0,sala:0});
+    const row=e=>{ const pres=e.pag+e.conv, sala=pres*d.convPalco, mrr=sala*tS, roi=e.custo?(e.rec+mrr*6)/e.custo:0; return '<tr data-m="'+e.m+'" style="cursor:pointer" class="'+(e.m===f?'sel':'')+'"><td>'+e.label+'</td><td style="text-align:left">'+e.tipo+'</td><td>'+n0(e.cap)+'</td><td>'+n0(e.pag)+'</td><td>'+n0(e.conv)+'</td><td>'+pct(pres/e.cap)+'</td><td>'+fmtFull(e.ticket)+'</td><td>'+fmtFull(e.rec)+'</td><td>'+fmtFull(e.custo)+'</td><td class="'+(e.rec-e.custo<0?'neg':'')+'">'+fmtFull(e.rec-e.custo)+'</td><td>'+n0(sala)+'</td><td>'+fmtFull(mrr)+'</td><td>'+roi.toFixed(1)+'x</td></tr>'; };
+    document.getElementById('tblEv').innerHTML='<thead><tr><th>Mês</th><th style="text-align:left">Evento</th><th>Cadeiras</th><th>Pagantes</th><th>Convidados</th><th>Ocupação</th><th>Ingresso</th><th>Receita</th><th>Custo</th><th>Resultado do ingresso</th><th>Sala no palco</th><th>MRR gerado</th><th>Retorno</th></tr></thead><tbody>'+evs.map(row).join('')+'<tr style="font-weight:700"><td>Total</td><td style="text-align:left">'+evs.length+' eventos</td><td></td><td>'+n0(tot.pag)+'</td><td>'+n0(tot.conv)+'</td><td></td><td></td><td>'+fmtFull(tot.rec)+'</td><td>'+fmtFull(tot.custo)+'</td><td class="'+(tot.rec-tot.custo<0?'neg':'')+'">'+fmtFull(tot.rec-tot.custo)+'</td><td>'+n0(tot.sala)+'</td><td>'+fmtFull(tot.sala*tS)+'</td><td>'+(tot.custo?((tot.rec+tot.sala*tS*6)/tot.custo).toFixed(1):'0')+'x</td></tr></tbody>';
+    document.querySelectorAll('#tblEv tr[data-m]').forEach(tr=>tr.onclick=()=>{ state.focus=+tr.dataset.m; render(); });
+  }
+  // Horizontes
+  const HORS=[[3,'Curto · 90 dias'],[12,'Médio · 12 meses'],[36,'Longo · 36 meses']];
+  const hm=[['Receita do mês',r=>fmtBRL(r.receita)],['MRR',r=>fmtBRL(r.mrr)],['Lucro do mês',r=>fmtBRL(r.lucro)],['Margem',r=>pct(r.margem)],['Lucro acumulado',r=>fmtBRL(r.lucroAcum)],['Caixa vs dívida',r=>fmtBRL(r.caixa-state.shared.dividaTrafego)],['Clientes recorrentes',r=>n0(r.clientes)],['Sala / DCT / Conselho',r=>n0(r.sala)+' / '+n0(r.dct)+' / '+n0(r.cons)],['Sociedades ativas',r=>n0(r.eqActive)],['Valor das participações',r=>fmtBRL(r.eqVal)],['Equipe',r=>n0(r.headcount)],['Horas do Fabrício',r=>n0(r.horas)+' h'],['LTV / CAC',r=>r.ltvCac?r.ltvCac.toFixed(1)+'x':'—'],['% receita recorrente',r=>pct(r.pctRecorrente)]];
+  let th='<thead><tr><th>Métrica</th>'+HORS.map(h=>Object.keys(SCEN).map(k=>'<th>'+h[1].split(' · ')[0]+' · '+SCEN[k].n.slice(0,4)+'</th>').join('')).join('')+'</tr></thead>';
+  let tb='<tbody>'+hm.map(([n,f])=>'<tr><td>'+n+'</td>'+HORS.map(h=>Object.keys(SCEN).map(k=>'<td class="'+(k===state.scen?'sel':'')+'">'+f(sims[k][h[0]-1])+'</td>').join('')).join('')+'</tr>').join('')+'</tbody>';
+  document.getElementById('tblHor').innerHTML=th+tb;
+  // Métricas
+  document.getElementById('hMet').textContent = cur.label+' · '+SCEN[state.scen].n;
+  const st=(ok,warn)=> ok?'--good':(warn?'--warn':'--critical');
+  const MG=[
+    ['Aquisição',[
+      ['Raio-X no mês','leads que entraram no funil',n0(cur.leads),ser(r=>r.leads)],
+      ['Conversas do SDR','ligações qualificadas',n0(cur.conversas),ser(r=>r.conversas)],
+      ['Taxa Raio-X → conversa','',pct(cur.conversas/Math.max(1,cur.leads)),ser(r=>r.conversas/Math.max(1,r.leads))],
+      ['Convites aceitos','pra Mansão ou Imersão',n0(cur.convites),ser(r=>r.convites)],
+      ['Custo por Raio-X','tráfego + conteúdo',fmtFull(cur.custoPorLead),ser(r=>r.custoPorLead)],
+      ['Custo por conversa','inclui SDR',fmtFull(cur.custoPorConversa),ser(r=>r.custoPorConversa)],
+      ['Investimento comercial','tráfego, eventos, SDR, comissão, marca',fmtBRL(cur.mkt),ser(r=>r.mkt)],
+      ['Clientes recorrentes novos','Sala + DCT direto',n0(cur.newRec),ser(r=>r.newRec)],
+      ['CAC','custo por cliente recorrente novo',fmtFull(cur.cac),ser(r=>r.cac),st(cur.cac<2500,cur.cac<4000)],
+    ]],
+    ['Eventos',[
+      ['Presentes no mês',state.ev==='all'?'Mansão + Imersão':(state.ev==='mans'?'só Mansão':'só Imersão'),n0(state.ev==='all'?cur.presentes:state.ev==='mans'?cur.mansPag+cur.mansConv:cur.imerPag+cur.imerConv),ser(r=>state.ev==='all'?r.presentes:state.ev==='mans'?r.mansPag+r.mansConv:r.imerPag+r.imerConv)],
+      ['Ocupação','cadeiras ocupadas',cur.ocupacao!=null?pct(cur.ocupacao):'sem evento',ser(r=>r.ocupacao||0)],
+      ['Pagantes / convidados','',n0(cur.mansPag+cur.imerPag)+' / '+n0(cur.mansConv+cur.imerConv),ser(r=>r.mansPag+r.imerPag)],
+      ['Receita de ingressos','',fmtBRL(cur.evRec),ser(r=>r.evRec)],
+      ['Custo do evento','',fmtBRL(cur.eventos),ser(r=>r.eventos)],
+      ['Retorno do evento','(ingressos + 6 meses das vendas de palco) ÷ custo',cur.evRoi!=null?cur.evRoi.toFixed(1)+'x':'sem evento',ser(r=>r.evRoi||0),cur.evRoi==null?null:st(cur.evRoi>=3,cur.evRoi>=1.5)],
+      ['Conversão no palco','presentes que fecham Sala',pct(state.drivers[state.scen].convPalco),ser(()=>state.drivers[state.scen].convPalco)],
+      ['Ingresso médio da Imersão','turma atual',cur.imerTicket?fmtFull(cur.imerTicket):'—',ser(r=>r.imerTicket||0)],
+    ]],
+    ['Receita',[
+      ['Receita do mês','',fmtBRL(cur.receita),ser(r=>r.receita)],
+      ['Crescimento mês a mês','',pct(cur.growthMoM),ser(r=>r.growthMoM),st(cur.growthMoM>=0.03,cur.growthMoM>=0)],
+      ['MRR total','inclui legado e 60% das outras receitas',fmtBRL(cur.mrr),ser(r=>r.mrr)],
+      ['MRR novo da escada','Sala + DCT + Conselho + complementares',fmtBRL(cur.mrrRec),ser(r=>r.mrrRec)],
+      ['ARR','MRR total × 12',fmtBRL(cur.mrr*12),ser(r=>r.mrr*12)],
+      ['% receita recorrente','',pct(cur.pctRecorrente),ser(r=>r.pctRecorrente),st(cur.pctRecorrente>=0.6,cur.pctRecorrente>=0.4)],
+      ['% receita legada','dependência do modelo antigo',pct(cur.pctLegado),ser(r=>r.pctLegado),st(cur.pctLegado<=0.3,cur.pctLegado<=0.5)],
+      ['Receita de eventos','',fmtBRL(cur.evRec),ser(r=>r.evRec)],
+      ['Receita do Equity','',fmtBRL(cur.eqRev),ser(r=>r.eqRev)],
+      ['ARPA','receita recorrente média por cliente',fmtFull(cur.arpa),ser(r=>r.arpa)],
+    ]],
+    ['Retenção e expansão',[
+      ['Clientes recorrentes','Sala + DCT + Conselho',n0(cur.clientes),ser(r=>r.clientes)],
+      ['Churn da Sala','mensal',pct(state.drivers[state.scen].salaChurn),ser(()=>state.drivers[state.scen].salaChurn),st(state.drivers[state.scen].salaChurn<=0.03,state.drivers[state.scen].salaChurn<=0.05)],
+      ['Clientes perdidos no mês','Sala + DCT + Conselho',n0(cur.salaChurned+cur.dctChurned+cur.consChurned),ser(r=>r.salaChurned+r.dctChurned+r.consChurned)],
+      ['MRR novo','',fmtBRL(cur.newMRR),ser(r=>r.newMRR)],
+      ['MRR de expansão','upgrades Sala → DCT/Conselho',fmtBRL(cur.expMRR),ser(r=>r.expMRR)],
+      ['MRR perdido','churn',fmtBRL(cur.churnMRR),ser(r=>r.churnMRR)],
+      ['Retenção líquida (NRR)','MRR da base após expansão e churn',pct(cur.nrr),ser(r=>r.nrr),st(cur.nrr>=1,cur.nrr>=0.95)],
+      ['Quick ratio','(novo + expansão) ÷ perdido',cur.quick>=99?'∞':cur.quick.toFixed(1),ser(r=>Math.min(r.quick,10)),st(cur.quick>=4,cur.quick>=2)],
+      ['Upgrades no mês','Sala → DCT / Sala → Conselho',n0(cur.toDct)+' / '+n0(cur.toCons),ser(r=>r.toDct+r.toCons)],
+      ['Migração do legado','clientes DCT atuais que foram pra Sala',n0(cur.migr),ser(r=>r.migr)],
+    ]],
+    ['Unit economics',[
+      ['LTV da Sala','margem de contribuição ÷ churn',fmtBRL(cur.ltvSala),ser(r=>r.ltvSala)],
+      ['LTV do DCT','',fmtBRL(cur.ltvDct),ser(r=>r.ltvDct)],
+      ['LTV do Conselho','',fmtBRL(cur.ltvCons),ser(r=>r.ltvCons)],
+      ['LTV / CAC','meta acima de 3x',cur.ltvCac?cur.ltvCac.toFixed(1)+'x':'—',ser(r=>Math.min(r.ltvCac,30)),st(cur.ltvCac>=3,cur.ltvCac>=2)],
+      ['Payback do CAC','meses pra recuperar o CAC na Sala',cur.payback?cur.payback.toFixed(1)+' m':'—',ser(r=>Math.min(r.payback,24)),st(cur.payback<=6,cur.payback<=12)],
+      ['Margem de contribuição Sala','por cliente/mês',fmtFull(cur.cmSala)+' ('+pct(cur.cmSala/(state.shared.salaTicket*(1-state.shared.salaPlusShare)+state.shared.salaPlusTicket*state.shared.salaPlusShare))+')',ser(r=>r.cmSala)],
+      ['Margem de contribuição DCT','',fmtFull(cur.cmDct)+' ('+pct(cur.cmDct/state.shared.dctTicket)+')',ser(r=>r.cmDct)],
+      ['Margem de contribuição Conselho','',fmtFull(cur.cmCons)+' ('+pct(cur.cmCons/state.shared.conselhoTicket)+')',ser(r=>r.cmCons)],
+      ['Custo de entrega por cliente Sala','consultor + CS + infra',fmtFull(cur.salaDeliv),ser(r=>r.salaDeliv)],
+    ]],
+    ['Resultado e caixa',[
+      ['Custos do mês','',fmtBRL(cur.custos),ser(r=>r.custos)],
+      ['Lucro do mês','',fmtBRL(cur.lucro),ser(r=>r.lucro),st(cur.lucro>0,cur.lucro>-20000)],
+      ['Margem líquida','meta 40%',pct(cur.margem),ser(r=>r.margem),st(cur.margem>=0.4,cur.margem>=0.15)],
+      ['Lucro acumulado','desde out/26',fmtBRL(cur.lucroAcum),ser(r=>r.lucroAcum)],
+      ['Caixa acumulado vs dívida','positivo = dívida coberta',fmtBRL(cur.caixa-state.shared.dividaTrafego),ser(r=>r.caixa-state.shared.dividaTrafego),st(cur.caixa>=state.shared.dividaTrafego,cur.caixa>=0)],
+      ['Meses no vermelho','acumulado no horizonte',n0(cur.negMonths),ser(r=>r.negMonths)],
+      ['Corte de custo acionado','após 3 meses seguidos no vermelho',cur.cutFactor<1?'sim, em '+mlabel(cur.cutMonth)+' ('+pct(1-cur.cutFactor)+')':'não',ser(r=>1-r.cutFactor)],
+      ['Regra dos 40','crescimento trimestral anualizado + margem',cur.rule40.toFixed(0),ser(r=>r.rule40),st(cur.rule40>=40,cur.rule40>=0)],
+      ['Crescimento trimestral','média móvel de 3 meses vs 3 anteriores',pct(cur.growthQ),ser(r=>r.growthQ),st(cur.growthQ>=0.1,cur.growthQ>=0)],
+      ['Impostos + overhead + marca','% da receita',pct(state.shared.impostos+state.shared.overheadPct+state.shared.marketingPct),ser(()=>state.shared.impostos+state.shared.overheadPct+state.shared.marketingPct)],
+    ]],
+    ['Pessoas e capacidade',[
+      ['Equipe','pessoas',n0(cur.headcount),ser(r=>r.headcount)],
+      ['Receita por pessoa','mês',fmtBRL(cur.recPorPessoa),ser(r=>r.recPorPessoa),st(cur.recPorPessoa>=30000,cur.recPorPessoa>=20000)],
+      ['Consultores sêniores','',n0(cur.consultores),ser(r=>r.consultores)],
+      ['Clientes por consultor','Sala fora das turmas do Fabrício + DCT',cur.consultores?n0(cur.consultorLoad):'—',ser(r=>r.consultorLoad),cur.consultores?st(cur.consultorLoad<=60,cur.consultorLoad<=80):null],
+      ['Customer success','1 a cada 40 clientes',n0(cur.cs),ser(r=>r.cs)],
+      ['SDRs','1 a cada 150 conversas',n0(cur.sdrs),ser(r=>r.sdrs)],
+      ['Horas do Fabrício','teto '+state.shared.horasTeto+' h',n0(cur.horas)+' h',ser(r=>r.horas),st(cur.horas<=state.shared.horasTeto,cur.horas<=state.shared.horasTeto*1.15)],
+      ['Ocupação do Fabrício','',pct(cur.horas/state.shared.horasTeto),ser(r=>r.horas/state.shared.horasTeto)],
+      ['Receita por hora do Fabrício','',fmtFull(cur.recPorHoraF),ser(r=>r.recPorHoraF)],
+      ['Horas em entrega','Sala + DCT + Conselho + Equity',n0(cur.hours.sala+cur.hours.dct+cur.hours.cons+cur.hours.eq)+' h ('+pct((cur.hours.sala+cur.hours.dct+cur.hours.cons+cur.hours.eq)/Math.max(1,cur.horas))+')',ser(r=>r.hours.sala+r.hours.dct+r.hours.cons+r.hours.eq)],
+    ]],
+    ['UNV Equity',[
+      ['Sociedades ativas','',n0(cur.eqActive),ser(r=>r.eqActive)],
+      ['Receita do Equity no mês','10% do incremento + adiantamentos',fmtBRL(cur.eqRev),ser(r=>r.eqRev)],
+      ['Horas no Equity','',n0(cur.eqHours)+' h',ser(r=>r.eqHours)],
+      ['Receita por hora no Equity','',fmtFull(cur.eqRecPorHora),ser(r=>r.eqRecPorHora)],
+      ['Valor estimado das participações','15% × 5× EBITDA incremental, após meta',fmtBRL(cur.eqVal),ser(r=>r.eqVal)],
+    ]],
+  ];
+  const mEl=document.getElementById('metrics'); mEl.innerHTML='<div class="mgroups">'+MG.map(([g,rows])=>'<div class="mgroup"><h4>'+g+'</h4>'+rows.map(r=>'<div class="mrow"><div class="mn">'+(r[4]?'<span class="st" style="background:var('+r[4]+')"></span>':'')+r[0]+(r[1]?'<small>'+r[1]+'</small>':'')+'</div><div class="mv">'+r[2]+'</div><canvas class="ms" width="112" height="36"></canvas></div>').join('')+'</div>').join('')+'</div>';
+  const cvs=mEl.querySelectorAll('canvas'); let ci=0; MG.forEach(([g,rows])=>rows.forEach(r=>{ spark(cvs[ci++], r[3], css('--s1')); }));
+  // Waterfall MRR
+  ch('chWater').setOption({...base(), tooltip:{...base().tooltip,trigger:'axis'}, xAxis:{...base().xAxis,data:labels},
+    series:[{name:'MRR novo',type:'bar',stack:'w',itemStyle:{color:css('--s1'),borderColor:css('--surface'),borderWidth:1},data:W.map(r=>Math.round(r.newMRR))},
+            {name:'Expansão',type:'bar',stack:'w',itemStyle:{color:css('--s3'),borderColor:css('--surface'),borderWidth:1},data:W.map(r=>Math.round(r.expMRR))},
+            {name:'Churn',type:'bar',stack:'w',itemStyle:{color:css('--s8'),borderColor:css('--surface'),borderWidth:1},data:W.map(r=>-Math.round(r.churnMRR))},
+            {name:'Líquido',type:'line',symbol:'circle',symbolSize:6,color:css('--ink'),lineStyle:{width:2},data:W.map(r=>Math.round(r.newMRR+r.expMRR-r.churnMRR))}]},true);
+  // CAC LTV
+  ch('chCac').setOption({...base(), tooltip:{...base().tooltip,trigger:'axis',axisPointer:{type:'cross',lineStyle:{color:css('--axis')}}}, xAxis:{...base().xAxis,data:labels,boundaryGap:false},
+    series:[{name:'CAC',type:'line',symbol:'none',lineStyle:{width:2},color:css('--s2'),data:W.map(r=>Math.round(r.cac))},
+            {name:'LTV Sala',type:'line',symbol:'none',lineStyle:{width:2},color:css('--s1'),data:W.map(r=>Math.round(r.ltvSala))},
+            {name:'LTV blend (novos)',type:'line',symbol:'none',lineStyle:{width:2,type:'dashed'},color:css('--s3'),data:W.map(r=>Math.round(r.ltvBlend))}]},true);
+  // Cohort heatmap
+  const snap=cur.cohortsSnap.filter(c=>c.size0>0.5); const maxAge=Math.min(12,H); const hdRows=snap.slice(-12); const hd=[]; hdRows.forEach((c,ri)=>{ for(let age=0;age<=maxAge;age++){ const mm=c.m+age; if(mm>f) break; const at=S[mm-1].cohortsSnap.find(x=>x.m===c.m); const ret=at? at.count/c.size0 : 0; hd.push([age,ri,+(ret*100).toFixed(0)]); } });
+  ch('chCohort').setOption({...base(), grid:{left:70,right:16,top:10,bottom:50}, legend:{show:false}, tooltip:{...base().tooltip,formatter:p=>'Safra '+mlabel(hdRows[p.value[1]].m)+' · mês '+p.value[0]+': <b>'+p.value[2]+'%</b>'},
+    xAxis:{...base().xAxis,type:'category',data:Array.from({length:maxAge+1},(_,i)=>'m'+i),name:'meses desde a entrada',nameLocation:'middle',nameGap:28,nameTextStyle:{color:css('--muted')}},
+    yAxis:{...base().xAxis,type:'category',data:hdRows.map(c=>mlabel(c.m)),axisLabel:{color:css('--text')}},
+    visualMap:{min:0,max:100,show:false,inRange:{color:[css('--seq1'),css('--seq2'),css('--seq3'),css('--seq4'),css('--seq5'),css('--seq6')]}},
+    series:[{type:'heatmap',data:hd,label:{show:true,color:css('--ink'),fontSize:11,formatter:p=>p.value[2]+'%'},itemStyle:{borderColor:css('--surface'),borderWidth:2}}]},true);
+  // Rule of 40
+  ch('chRule40').setOption({...base(), legend:{show:false}, tooltip:{...base().tooltip,trigger:'axis',valueFormatter:v=>v.toFixed(0)}, yAxis:{...base().yAxis,axisLabel:{color:css('--muted')}}, xAxis:{...base().xAxis,data:labels,boundaryGap:false},
+    series:[{name:'Regra dos 40',type:'line',symbol:'none',lineStyle:{width:2},color:css('--s7'),areaStyle:{opacity:.12},data:W.map(r=>Math.max(-100,Math.min(300,+r.rule40.toFixed(0)))),markLine:{silent:true,symbol:'none',lineStyle:{color:css('--axis'),type:'dashed'},label:{color:css('--muted'),formatter:'40'},data:[{yAxis:40}]}}]},true);
+  // Unit table
+  const st2=state.shared; const ticketSala=st2.salaTicket*(1-st2.salaPlusShare)+st2.salaPlusTicket*st2.salaPlusShare; const dd=state.drivers[state.scen];
+  const ur=[['Sala CRESCER',ticketSala,cur.cmSala,dd.salaChurn,cur.ltvSala,cur.cac,cur.sala],['DCT 1 pra 1',st2.dctTicket,cur.cmDct,dd.dctChurn,cur.ltvDct,cur.cac,cur.dct],['Conselho UNV',st2.conselhoTicket,cur.cmCons,dd.consChurn,cur.ltvCons,0,cur.cons]];
+  document.getElementById('tblUnit').innerHTML='<thead><tr><th>Linha</th><th>Ticket/mês</th><th>Margem contrib./mês</th><th>% margem</th><th>Churn mensal</th><th>Vida média</th><th>LTV</th><th>CAC</th><th>LTV/CAC</th><th>Payback</th><th>Clientes</th><th>MRR</th></tr></thead><tbody>'+ur.map(u=>'<tr><td>'+u[0]+'</td><td>'+fmtFull(u[1])+'</td><td>'+fmtFull(u[2])+'</td><td>'+pct(u[2]/u[1])+'</td><td>'+pct(u[3])+'</td><td>'+(u[3]>0?(1/u[3]).toFixed(0):'—')+' m</td><td>'+fmtFull(u[4])+'</td><td>'+(u[5]?fmtFull(u[5]):'via base')+'</td><td>'+(u[5]?(u[4]/u[5]).toFixed(1)+'x':'—')+'</td><td>'+(u[5]?(u[5]/u[2]).toFixed(1)+' m':'—')+'</td><td>'+n0(u[6])+'</td><td>'+fmtFull(u[6]*u[1])+'</td></tr>').join('')+'</tbody>';
+  // Tabela
+  document.getElementById('hTabela').textContent = SCEN[state.scen].n;
+  const cols=[['Mês',r=>r.label],['Raio-X',r=>n0(r.leads)],['Conversas',r=>n0(r.conversas)],['Presentes',r=>n0(r.presentes)],['Novas Sala',r=>n0(r.salaNew)],['Sala',r=>n0(r.sala)],['DCT',r=>n0(r.dct)],['Conselho',r=>n0(r.cons)],['Equity ativas',r=>n0(r.eqActive)],['Receita',r=>fmtFull(r.receita)],['MRR',r=>fmtFull(r.mrr)],['Custos',r=>fmtFull(r.custos)],['Lucro',r=>fmtFull(r.lucro)],['Margem',r=>pct(r.margem)],['Caixa acum.',r=>fmtFull(r.caixa)],['CAC',r=>fmtFull(r.cac)],['NRR',r=>pct(r.nrr)],['Horas F.',r=>n0(r.horas)],['Equipe',r=>n0(r.headcount)]];
+  const t=document.getElementById('tbl'); t.innerHTML='<thead><tr>'+cols.map(c=>'<th>'+c[0]+'</th>').join('')+'</tr></thead><tbody>'+W.map(r=>'<tr>'+cols.map(c=>{const v=c[1](r); const neg=(c[0]==='Lucro'&&r.lucro<0)||(c[0]==='Caixa acum.'&&r.caixa<0); return '<td class="'+(neg?'neg':'')+'">'+v+'</td>';}).join('')+'</tr>').join('')+'</tbody>';
+}
+function spark(cv, ser, color){ const c=cv.getContext('2d'); const w=cv.width,h=cv.height; c.clearRect(0,0,w,h); const mn=Math.min(...ser), mx=Math.max(...ser); const rg=(mx-mn)||1; c.beginPath(); ser.forEach((v,i)=>{ const x=i/(ser.length-1||1)*(w-4)+2, y=h-2-((v-mn)/rg)*(h-6); i?c.lineTo(x,y):c.moveTo(x,y); }); c.strokeStyle=color; c.lineWidth=2; c.stroke(); const lx=w-2, ly=h-2-((ser[ser.length-1]-mn)/rg)*(h-6); c.beginPath(); c.arc(lx,ly,3,0,Math.PI*2); c.fillStyle=color; c.fill(); }
+
+// ---------- UI wiring ----------
+function segWire(id, key, cb){ const el=document.getElementById(id); el.querySelectorAll('button').forEach(b=>{ b.onclick=()=>{ el.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); cb(b.dataset.v); }; }); }
+function segSet(id,v){ document.getElementById(id).querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===String(v))); }
+segWire('segScen','scen',v=>{ state.scen=v; segSet('drawerScen',v); buildDrawer(); render(); });
+segWire('segHor','hor',v=>{ state.hor=+v; state.focus=+v; render(); });
+document.getElementById('focus').oninput=e=>{ state.focus=+e.target.value; render(); };
+const chipsEl=document.getElementById('chips');
+LINES.forEach(l=>{ const b=document.createElement('button'); b.className='chip'+(state.lines.includes(l.k)?'':' off'); b.style.setProperty('--c',css(l.c)); b.innerHTML=`<i></i>${l.n}`; b.onclick=()=>{ if(state.lines.includes(l.k)){ if(state.lines.length===1) return; state.lines=state.lines.filter(k=>k!==l.k);} else state.lines.push(l.k); b.classList.toggle('off'); render(); }; chipsEl.appendChild(b); });
+segSet('segScen',state.scen); segSet('segHor',state.hor); segSet('segEv',state.ev);
+segWire('segEv','ev',v=>{ state.ev=v; render(); });
+const selProd=document.getElementById('selProd'); LINES.forEach(l=>{ const o=document.createElement('option'); o.value=l.k; o.textContent=l.n; selProd.appendChild(o); }); selProd.value=state.prod;
+selProd.onchange=e=>{ state.prod=e.target.value; if(state.prod!=='all'){ state.lines=[state.prod]; } else { state.lines=LINES.map(l=>l.k); } chipsEl.querySelectorAll('.chip').forEach((b,i)=>b.classList.toggle('off',!state.lines.includes(LINES[i].k))); render(); };
+
+// Drawer premissas
+const drawer=document.getElementById('drawer'), overlay=document.getElementById('overlay'), drawerReal=document.getElementById('drawerReal');
+function openD(d){ d.classList.add('open'); overlay.classList.add('on'); }
+function closeD(){ drawer.classList.remove('open'); drawerReal.classList.remove('open'); overlay.classList.remove('on'); }
+document.getElementById('btnPremissas').onclick=()=>{ buildDrawer(); openD(drawer); };
+document.getElementById('btnRealizado').onclick=()=>{ buildReal(); openD(drawerReal); };
+document.getElementById('btnClose').onclick=closeD; document.getElementById('btnCloseReal').onclick=closeD; overlay.onclick=closeD;
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeD(); });
+document.getElementById('btnReset').onclick=()=>{ if(!confirm('Restaurar todas as premissas pro padrão? O realizado digitado é mantido.')) return; state.shared={...DEF_SHARED}; state.drivers=JSON.parse(JSON.stringify(DEF_SCEN)); buildDrawer(); render(); toast('Premissas restauradas'); };
+segWire('drawerScen','dscen',v=>{ state.scen=v; segSet('segScen',v); buildDrawer(); render(); });
+function ctlRow(obj,key,label,unit,min,max,step){
+  const isP = unit==='%'; const v=obj[key];
+  const w=document.createElement('div'); w.className='ctl';
+  w.innerHTML=`<label>${label}<small>${unit==='R$'?'em reais':unit==='%'?'em %':unit==='h'?'horas':'quantidade'}</small></label><input type="number" step="${isP?step*100:step}" min="${isP?min*100:min}" max="${isP?max*100:max}" value="${isP?+(v*100).toFixed(2):v}"><input type="range" min="${isP?min*100:min}" max="${isP?max*100:max}" step="${isP?step*100:step}" value="${isP?v*100:v}">`;
+  const num=w.querySelector('input[type=number]'), rng=w.querySelector('input[type=range]');
+  const apply=(val)=>{ let x=parseFloat(val); if(isNaN(x)) return; obj[key]= isP? x/100 : x; num.value=isP?+x.toFixed(2):x; rng.value=x; render(); };
+  num.onchange=e=>apply(e.target.value); rng.oninput=e=>apply(e.target.value);
+  return w;
+}
+function buildDrawer(){
+  const body=document.getElementById('drawerBody'); body.innerHTML='';
+  const d=state.drivers[state.scen];
+  const mk=(title,rows,obj)=>{ const g=document.createElement('div'); g.className='dgroup'; g.innerHTML=`<h3>${title}</h3>`; rows.forEach(r=>g.appendChild(ctlRow(obj,...r))); body.appendChild(g); };
+  const hd=document.createElement('div'); hd.className='note'; hd.style.marginTop='6px'; hd.innerHTML=`Editando drivers do cenário <b>${SCEN[state.scen].n}</b>.`; body.appendChild(hd);
+  CTL_SCEN.forEach(([t,rows])=>mk(t,rows,d));
+  const hs=document.createElement('div'); hs.className='note'; hs.style.marginTop='18px'; hs.innerHTML='<b>Compartilhado entre cenários</b>'; body.appendChild(hs);
+  CTL_SHARED.forEach(([t,rows])=>mk(t,rows,state.shared));
+}
+function buildReal(){
+  const g=document.getElementById('realGrid'); g.innerHTML='';
+  for(let i=1;i<=24;i++){ const w=document.createElement('div'); w.innerHTML=`<label>${mlabel(i)}</label><input type="number" step="1000" placeholder="—" value="${state.real[i]!=null?state.real[i]:''}">`; const inp=w.querySelector('input'); inp.onchange=e=>{ const v=parseFloat(e.target.value); if(isNaN(v)) delete state.real[i]; else state.real[i]=v; render(); }; g.appendChild(w); }
+}
+// theme + resize
+window.addEventListener('resize',()=>Object.values(charts).forEach(c=>c.resize()));
+const mq=window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener('change',()=>setTimeout(render,50));
+new MutationObserver(()=>setTimeout(render,50)).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+buildDrawer(); render();
+})();
+</script>
