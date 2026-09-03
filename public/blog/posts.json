@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-02T22:32:16",
+ "gerado_em": "2026-09-03T10:01:07",
  "posts": [
+  {
+   "slug": "suporte-continuo-separa-treino-abandono",
+   "url": "/blog/suporte-continuo-separa-treino-abandono/",
+   "titulo": "Suporte contínuo separa treino que funciona de abandono",
+   "resumo": "Treino sem suporte vira conhecimento esquecido. Dúvida não respondida na hora vira travamento no número.",
+   "tags": [
+    "treino de vendedor",
+    "implementação",
+    "suporte",
+    "rotina de cobrança",
+    "acompanhamento"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-03",
+   "ts": 2056
+  },
   {
    "slug": "reuniao-diaria-antes-reuniao-mensal",
    "url": "/blog/reuniao-diaria-antes-reuniao-mensal/",
