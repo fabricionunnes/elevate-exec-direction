@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -59,17 +59,17 @@ export function CostCenterSelect({ value, onChange, costCenters, onCreated, plac
   return (
     <>
       <div className="flex gap-2">
-        <Select value={value || "none"} onValueChange={(v) => onChange(v)}>
-          <SelectTrigger className="flex-1">
-            <SelectValue placeholder={placeholder} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Nenhum</SelectItem>
-            {costCenters.map((cc) => (
-              <SelectItem key={cc.id} value={cc.id}>{cc.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex-1 min-w-0">
+          <SearchableSelect
+            value={value || "none"}
+            onValueChange={(v) => onChange(v)}
+            options={costCenters.map((cc) => ({ value: cc.id, label: cc.name }))}
+            allowNone
+            noneLabel="Nenhum"
+            placeholder={placeholder === "Selecione" ? "Digite pra buscar…" : placeholder}
+            emptyMessage="Nenhum centro de custo encontrado"
+          />
+        </div>
         <Button
           type="button"
           variant="outline"

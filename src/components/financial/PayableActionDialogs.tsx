@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { syncPaymentToContaAzul } from "@/utils/contaAzulSync";
 import { SupplierAutocomplete } from "./SupplierAutocomplete";
 import { CostCenterSelect } from "./CostCenterSelect";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 interface PayableEntry {
   id: string;
@@ -578,15 +579,15 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Categoria</Label>
-              <Select value={form.category_id || "none"} onValueChange={(v) => setForm(f => ({ ...f, category_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhuma</SelectItem>
-                  {categories.filter((c: any) => c.type === "despesa").map((c: any) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={form.category_id || "none"}
+                onValueChange={(v) => setForm(f => ({ ...f, category_id: v }))}
+                options={categories.filter((c: any) => c.type === "despesa").map((c: any) => ({ value: c.id, label: c.name }))}
+                allowNone
+                noneLabel="Nenhuma"
+                placeholder="Digite pra buscar…"
+                emptyMessage="Nenhuma categoria encontrada"
+              />
             </div>
             <div>
               <Label>Centro de Custo</Label>

@@ -254,23 +254,21 @@ export function ReceivableEditDialog({ open, onOpenChange, receivable, companies
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Categoria</Label>
-                <Select value={form.category_id || "none"} onValueChange={(v) => setForm(f => ({ ...f, category_id: v === "none" ? "" : v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent className="max-h-72">
-                    <SelectItem value="none">Nenhuma</SelectItem>
-                    {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={form.category_id || "none"}
+                  onValueChange={(v) => setForm(f => ({ ...f, category_id: v === "none" ? "" : v }))}
+                  options={categories.map(c => ({ value: c.id, label: c.name }))}
+                  allowNone noneLabel="Nenhuma" placeholder="Digite pra buscar…" emptyMessage="Nenhuma categoria encontrada"
+                />
               </div>
               <div>
                 <Label>Centro de custo</Label>
-                <Select value={form.cost_center_id || "none"} onValueChange={(v) => setForm(f => ({ ...f, cost_center_id: v === "none" ? "" : v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent className="max-h-72">
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {costCenters.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={form.cost_center_id || "none"}
+                  onValueChange={(v) => setForm(f => ({ ...f, cost_center_id: v === "none" ? "" : v }))}
+                  options={costCenters.map(c => ({ value: c.id, label: c.name }))}
+                  allowNone noneLabel="Nenhum" placeholder="Digite pra buscar…" emptyMessage="Nenhum centro de custo encontrado"
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
