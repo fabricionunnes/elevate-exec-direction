@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
   const monthEnd = `${competencia}-${String(new Date(Date.UTC(cy, cm, 0)).getUTCDate()).padStart(2, "0")}`;
 
   let rulesQ = supabase.from("company_commission_rules")
-    .select("id, company_id, kpi_id, basis, is_active, description, due_day, send_whatsapp")
+    .select("id, company_id, kpi_id, basis, is_active, description, due_day, send_whatsapp, use_tiers, use_percent, percent")
     .eq("is_active", true);
   if (body.company_id) rulesQ = rulesQ.eq("company_id", body.company_id);
   const { data: rules, error: rErr } = await rulesQ;
@@ -145,27 +145,38 @@ Deno.serve(async (req) => {
         .select("id, threshold, payout_cents, label").eq("rule_id", rule.id).order("threshold", { ascending: true });
       const tiers = (tiersRaw || []) as Tier[];
 
-      // base da faixa: % da meta ou valor absoluto do KPI
+      // Dois componentes independentes, somados:
+      //  1) faixas por meta (use_tiers): paga a maior faixa atingida
+      //  2) percentual sobre o vendido (use_percent): percent% do realizado, bata ou não a meta
+      const usaFaixas = rule.use_tiers !== false;
+      const usaPercent = !!rule.use_percent && Number(rule.percent) > 0;
+
       const medida = rule.basis === "value" ? realizado : pct;
-      const atingidas = tiers.filter(t => medida >= Number(t.threshold));
+      const atingidas = usaFaixas ? tiers.filter(t => medida >= Number(t.threshold)) : [];
       const tier = atingidas.length ? atingidas[atingidas.length - 1] : null;
+      const semMetaParaFaixa = usaFaixas && rule.basis !== "value" && meta <= 0;
+      const faixaCents = tier && !semMetaParaFaixa ? Number(tier.payout_cents) : 0;
+      const percentCents = usaPercent ? Math.round(realizado * Number(rule.percent) / 100 * 100) : 0;
+      const totalCents = faixaCents + percentCents;
 
       const baseRun = {
         rule_id: rule.id, company_id: rule.company_id, month_year: competencia, kpi_id: rule.kpi_id,
         meta, realizado, pct: Number(pct.toFixed(2)),
       };
 
-      if (rule.basis !== "value" && meta <= 0) {
-        if (!dryRun) await supabase.from("company_commission_runs").insert({ ...baseRun, status: "no_target", payout_cents: 0, detail: "sem meta cadastrada na competência" });
-        results.push({ company_id: rule.company_id, status: "no_target", competencia });
+      if (totalCents <= 0) {
+        const motivo = semMetaParaFaixa && !usaPercent ? "sem meta cadastrada na competência"
+          : usaFaixas && !tier && !usaPercent ? `medida ${medida.toFixed(2)} abaixo da menor faixa`
+          : "nada a cobrar (sem faixa atingida e sem percentual)";
+        const st = semMetaParaFaixa && !usaPercent ? "no_target" : "no_tier";
+        if (!dryRun) await supabase.from("company_commission_runs").insert({ ...baseRun, status: st, payout_cents: 0, detail: motivo });
+        results.push({ company_id: rule.company_id, status: st, medida: Number(medida.toFixed(2)), competencia });
         continue;
       }
-
-      if (!tier) {
-        if (!dryRun) await supabase.from("company_commission_runs").insert({ ...baseRun, status: "no_tier", payout_cents: 0, detail: `medida ${medida.toFixed(2)} abaixo da menor faixa` });
-        results.push({ company_id: rule.company_id, status: "no_tier", medida: Number(medida.toFixed(2)), competencia });
-        continue;
-      }
+      const partes = [
+        faixaCents > 0 && tier ? `faixa ${tier.label || tier.threshold}: ${brl(faixaCents)}` : "",
+        percentCents > 0 ? `${Number(rule.percent)}% sobre ${realizado}: ${brl(percentCents)}` : "",
+      ].filter(Boolean).join(" + ");
 
       // vencimento: dia configurado do mês ATUAL (o da apuração)
       const dueDay = Math.min(28, Math.max(1, rule.due_day || 5));
@@ -174,17 +185,17 @@ Deno.serve(async (req) => {
       const description = (rule.description?.trim() || `Comissão por resultado — ${kpi.name}`) + ` (${compLabel})`;
 
       if (dryRun) {
-        results.push({ company_id: rule.company_id, status: "dry", tier: tier.label, payout_cents: tier.payout_cents, due_date: dueDate, meta, realizado, pct: Number(pct.toFixed(2)) });
+        results.push({ company_id: rule.company_id, status: "dry", tier: tier?.label || null, payout_cents: totalCents, partes, due_date: dueDate, meta, realizado, pct: Number(pct.toFixed(2)) });
         continue;
       }
 
       const { data: inv, error: invErr } = await supabase.from("company_invoices").insert({
         company_id: rule.company_id,
         description,
-        amount_cents: tier.payout_cents,
+        amount_cents: totalCents,
         due_date: dueDate,
         status: "pending",
-        notes: `[COMISSAO] competência ${competencia} · ${kpi.name}: ${realizado} de ${meta} (${pct.toFixed(0)}%) · faixa ${tier.label || tier.threshold}`,
+        notes: `[COMISSAO] competência ${competencia} · ${kpi.name}: ${realizado} de ${meta} (${pct.toFixed(0)}%) · ${partes}`,
         // o aviso desta cobrança é o texto próprio abaixo (explica meta x realizado),
         // então a régua padrão não deve mandar a mensagem genérica de fatura
         send_whatsapp: false,
@@ -193,17 +204,17 @@ Deno.serve(async (req) => {
 
       const aviso = await avisarCliente(supabase, {
         companyId: rule.company_id, kpiName: kpi.name, kpiType: kpi.kpi_type,
-        meta, realizado, pct, payoutCents: tier.payout_cents, dueDate, competencia,
-        token: inv?.public_token || null, tierLabel: tier.label,
+        meta, realizado, pct, payoutCents: totalCents, dueDate, competencia,
+        token: inv?.public_token || null, tierLabel: tier?.label || (percentCents > 0 ? `${Number(rule.percent)}% sobre o vendido` : null),
       });
 
       await supabase.from("company_commission_runs").insert({
-        ...baseRun, tier_id: tier.id, payout_cents: tier.payout_cents, invoice_id: inv?.id || null,
+        ...baseRun, tier_id: tier?.id || null, payout_cents: totalCents, invoice_id: inv?.id || null,
         status: "paid_tier",
-        detail: `faixa ${tier.label || tier.threshold} · fatura ${dueDate} · aviso ao cliente: ${aviso.sent ? "enviado" : `não enviado (${aviso.reason})`}`,
+        detail: `${partes} · fatura ${dueDate} · aviso ao cliente: ${aviso.sent ? "enviado" : `não enviado (${aviso.reason})`}`,
       });
 
-      results.push({ company_id: rule.company_id, status: "faturado", payout_cents: tier.payout_cents, invoice_id: inv?.id, due_date: dueDate, competencia, aviso });
+      results.push({ company_id: rule.company_id, status: "faturado", payout_cents: totalCents, partes, invoice_id: inv?.id, due_date: dueDate, competencia, aviso });
     } catch (e) {
       const msg = String((e as Error).message || e);
       if (!dryRun) {

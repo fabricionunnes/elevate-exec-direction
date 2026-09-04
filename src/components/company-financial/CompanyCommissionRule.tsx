@@ -38,6 +38,10 @@ export function CompanyCommissionRule({ companyId, companyName }: { companyId: s
   const [dueDay, setDueDay] = useState("5");
   const [description, setDescription] = useState("");
   const [tiers, setTiers] = useState<Tier[]>([{ threshold: "100", payout: "", label: "Meta batida" }]);
+  // dois componentes, somados: faixas por meta e/ou percentual sobre o vendido
+  const [useTiers, setUseTiers] = useState(true);
+  const [usePercent, setUsePercent] = useState(false);
+  const [percent, setPercent] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -56,6 +60,9 @@ export function CompanyCommissionRule({ companyId, companyName }: { companyId: s
       setIsActive(!!rule.is_active);
       setKpiId(rule.kpi_id || "");
       setBasis(rule.basis === "value" ? "value" : "percent");
+      setUseTiers(rule.use_tiers !== false);
+      setUsePercent(!!rule.use_percent);
+      setPercent(rule.percent != null ? String(rule.percent).replace(".", ",") : "");
       setDueDay(String(rule.due_day || 5));
       setDescription(rule.description || "");
       const { data: t } = await (supabase as any).from("company_commission_tiers")
@@ -79,12 +86,16 @@ export function CompanyCommissionRule({ companyId, companyName }: { companyId: s
     const clean = tiers
       .map((t) => ({ ...t, thresholdNum: parseFloat(String(t.threshold).replace(",", ".")), payoutCents: toCents(t.payout) }))
       .filter((t) => isFinite(t.thresholdNum) && t.payoutCents > 0);
-    if (isActive && !clean.length) { toast.error("Cadastre ao menos uma faixa (quanto atingir e quanto recebe)"); return; }
+    const percentNum = parseFloat(String(percent).replace(",", "."));
+    if (isActive && !useTiers && !usePercent) { toast.error("Ligue ao menos um componente: faixas por meta ou percentual sobre o vendido"); return; }
+    if (isActive && useTiers && !clean.length) { toast.error("Cadastre ao menos uma faixa (quanto atingir e quanto recebe)"); return; }
+    if (isActive && usePercent && !(percentNum > 0)) { toast.error("Informe o percentual sobre o vendido"); return; }
 
     setSaving(true);
     try {
       const payload = {
         company_id: companyId, kpi_id: kpiId || null, basis, is_active: isActive,
+        use_tiers: useTiers, use_percent: usePercent, percent: usePercent && isFinite(percentNum) ? percentNum : null,
         description: description.trim() || null, due_day: Number(dueDay) || 5,
         updated_at: new Date().toISOString(),
       };
@@ -204,13 +215,34 @@ export function CompanyCommissionRule({ companyId, companyName }: { companyId: s
               </div>
 
               <div className="rounded-lg border p-3 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <label className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input type="checkbox" className="h-4 w-4 accent-primary" checked={usePercent} onChange={(e) => setUsePercent(e.target.checked)} />
+                    <span className="font-medium">Percentual sobre o vendido</span>
+                    <span className="text-muted-foreground">— paga sempre, bata ou não a meta</span>
+                  </label>
+                  {usePercent && (
+                    <div className="flex items-center gap-1.5">
+                      <Input value={percent} onChange={(e) => setPercent(e.target.value)} placeholder="2,5" className="h-8 w-24 text-right" inputMode="decimal" />
+                      <span className="text-xs text-muted-foreground">% do valor do KPI no mês</span>
+                    </div>
+                  )}
+                </div>
+                {usePercent && <p className="text-[11px] text-muted-foreground">Ex: 2,5% sobre R$ 400.000 vendidos = R$ 10.000. Se as faixas também estiverem ligadas, os dois somam na mesma fatura.</p>}
+              </div>
+
+              <div className={`rounded-lg border p-3 space-y-2 ${useTiers ? "" : "opacity-60"}`}>
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs">Faixas — vale a maior atingida</Label>
-                  <Button size="sm" variant="outline" className="h-7 gap-1" onClick={addTier}>
+                  <label className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input type="checkbox" className="h-4 w-4 accent-primary" checked={useTiers} onChange={(e) => setUseTiers(e.target.checked)} />
+                    <span className="font-medium">Faixas por meta</span>
+                    <span className="text-muted-foreground">— vale a maior atingida</span>
+                  </label>
+                  <Button size="sm" variant="outline" className="h-7 gap-1" onClick={addTier} disabled={!useTiers}>
                     <Plus className="h-3.5 w-3.5" /> Adicionar faixa
                   </Button>
                 </div>
-                {tiers.map((t, i) => (
+                {useTiers && tiers.map((t, i) => (
                   <div key={i} className="grid gap-2 sm:grid-cols-[1fr_1fr_1.2fr_auto] items-end">
                     <div>
                       <Label className="text-[10px] text-muted-foreground">Se atingir ({unit})</Label>
