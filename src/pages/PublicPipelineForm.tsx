@@ -42,7 +42,15 @@ const cleanPhone = (value: string) => value.replace(/\D/g, "");
 
 const PublicPipelineForm = () => {
   const { token } = useParams<{ token: string }>();
-  const [searchParams] = useSearchParams();
+  const [hashParams] = useSearchParams();
+  // O app usa HashRouter: o Meta Ads (fbclid) e os UTMs do anúncio caem ANTES
+  // do "#" (unvholdings.com.br/?utm_source=...&fbclid=...#/form/xyz) e o router
+  // não enxerga. Junta os dois lugares — o que estiver depois do # ganha.
+  const searchParams = (() => {
+    const merged = new URLSearchParams(window.location.search);
+    hashParams.forEach((v, k) => merged.set(k, v));
+    return merged;
+  })();
   const prefilledLeadId = searchParams.get("lead_id");
   const autoSubmit = searchParams.get("auto_submit") === "1";
   const autoNome = (searchParams.get("nome") || "").trim();
