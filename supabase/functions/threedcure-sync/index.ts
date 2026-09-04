@@ -154,9 +154,8 @@ Deno.serve(async (req: Request) => {
     }
     const somaCanais = Array.from(linhas.values()).reduce((s, c) => s + c.realizado, 0);
     const residuo = r2(totalApi - somaCanais);
-    if (Math.abs(residuo) >= 0.5) {
-      linhas.set("sem_canal", { key: "sem_canal", rotulo: SEM_CANAL, meta: 0, realizado: residuo, quantidade: null, metaQuantidade: null, ordem: 999, vendedora: false });
-    }
+    // "Sem canal" entra SEMPRE (com 0 quando não há resíduo) pra zerar sobra antiga
+    linhas.set("sem_canal", { key: "sem_canal", rotulo: SEM_CANAL, meta: 0, realizado: Math.abs(residuo) >= 0.5 ? residuo : 0, quantidade: null, metaQuantidade: null, ordem: 999, vendedora: false });
     // abertura por vendedora: tira do canal "Time de vendas" e distribui
     let somaVendedoras = 0;
     let somaQtdVendedoras = 0;
@@ -210,6 +209,30 @@ Deno.serve(async (req: Request) => {
       spDaLinha.set(l.key, sp);
     }
 
+    // 3b) quem já recebeu lançamento nosso no mês e sumiu da API (canal renomeado,
+    //     vendedora que saiu) vira linha zero — senão o valor antigo fica somando
+    const { data: antigos } = await supabase
+      .from("kpi_entries")
+      .select("salesperson_id, kpi_id")
+      .eq("company_id", COMPANY_ID)
+      .in("kpi_id", [KPI_FATURAMENTO, KPI_VENDAS])
+      .gte("entry_date", iniMes)
+      .lte("entry_date", ultimoDia)
+      .like("observations", `${TAG}%`)
+      .limit(5000);
+    const jaMapeados = new Set(Array.from(spDaLinha.values()).map((s) => s?.id).filter(Boolean));
+    const zerados: string[] = [];
+    for (const a of antigos || []) {
+      if (!a.salesperson_id || jaMapeados.has(a.salesperson_id)) continue;
+      const sp = lista.find((s) => s.id === a.salesperson_id);
+      if (!sp) continue;
+      jaMapeados.add(sp.id);
+      const key = `zero:${sp.id}`;
+      linhas.set(key, { key, rotulo: sp.name, meta: 0, realizado: 0, quantidade: temQuantidade ? 0 : null, metaQuantidade: null, ordem: 998, vendedora: false });
+      spDaLinha.set(key, sp);
+      zerados.push(sp.name);
+    }
+
     // 4) KPIs a convergir: Faturamento sempre; Vendas quando a API traz quantidade
     const kpis: { kpiId: string; pick: (l: Linha) => number | null; nome: string }[] = [
       { kpiId: KPI_FATURAMENTO, pick: (l) => l.realizado, nome: "Faturamento" },
@@ -258,15 +281,20 @@ Deno.serve(async (req: Request) => {
       metasPlano.push({ alvo: "company_kpis.target_value (Faturamento)", de: Number(kpiFat?.target_value) || null, para: metaTotal });
       if (!dryRun) await supabase.from("company_kpis").update({ target_value: metaTotal }).eq("id", KPI_FATURAMENTO);
     }
+    const metaTotalQtd = Array.from(linhas.values()).reduce((s, l) => s + (l.metaQuantidade || 0), 0);
     if (temQuantidade) {
-      const { data: kpiVen } = await supabase.from("company_kpis").select("is_active").eq("id", KPI_VENDAS).single();
-      if (kpiVen && kpiVen.is_active === false) {
-        metasPlano.push({ alvo: "company_kpis.is_active (Vendas) reativado", de: 0, para: 1 });
-        if (!dryRun) await supabase.from("company_kpis").update({ is_active: true }).eq("id", KPI_VENDAS);
+      const { data: kpiVen } = await supabase.from("company_kpis").select("is_active, target_value").eq("id", KPI_VENDAS).single();
+      const upd: Record<string, unknown> = {};
+      if (kpiVen && kpiVen.is_active === false) { upd.is_active = true; metasPlano.push({ alvo: "company_kpis.is_active (Vendas) reativado", de: 0, para: 1 }); }
+      if (ehMesAtual && metaTotalQtd > 0 && Number(kpiVen?.target_value) !== metaTotalQtd) {
+        upd.target_value = metaTotalQtd;
+        metasPlano.push({ alvo: "company_kpis.target_value (Vendas = soma das vendedoras)", de: Number(kpiVen?.target_value) || null, para: metaTotalQtd });
       }
+      if (!dryRun && Object.keys(upd).length) await supabase.from("company_kpis").update(upd).eq("id", KPI_VENDAS);
     }
     const alvos: { kpiId: string; salesperson_id: string | null; rotulo: string; meta: number }[] = [];
     if (metaTotal > 0) alvos.push({ kpiId: KPI_FATURAMENTO, salesperson_id: null, rotulo: "Empresa (meta total)", meta: metaTotal });
+    if (temQuantidade && metaTotalQtd > 0) alvos.push({ kpiId: KPI_VENDAS, salesperson_id: null, rotulo: "Empresa (meta total de vendas)", meta: metaTotalQtd });
     for (const l of linhas.values()) {
       const sp = spDaLinha.get(l.key);
       if (!sp?.id) continue;
@@ -299,7 +327,7 @@ Deno.serve(async (req: Request) => {
       ok: true, dry_run: dryRun, via: viaWebhook ? "webhook" : "cron", competencia, dia,
       total_api: totalApi, soma_canais: r2(somaCanais), residuo, meta_total: metaTotal,
       linhas: linhas.size, vendedoras_na_api: porVendedora.length, com_quantidade: temQuantidade,
-      criados, reativados,
+      criados, reativados, zerados,
       lancamentos: plano.map((p) => ({ kpi: p.kpi, linha: p.linha, api: p.api, ja_lancado_outros_dias: r2(p.outros), no_dia_antes: p.hojeAtual, no_dia_depois: p.valorHoje })),
       metas: metasPlano,
     };
