@@ -162,13 +162,17 @@ export const ScheduleMeetingDialog = ({
 
       setConnectedStaff(staffList);
 
-      // Auto-select based on role
-      if (currentStaffData?.role === "consultant") {
-        // Consultants can only use their own calendar
-        const ownCalendar = staffList.find((s: StaffWithCalendar) => s.id === currentStaffData.id);
-        if (ownCalendar) {
-          setTargetStaffId(ownCalendar.id);
-        }
+      // Padrão pra TODO MUNDO (consultor, admin, master): a própria agenda.
+      // Quem quiser agendar na agenda de outra pessoa troca manualmente.
+      // Só cai no consultor/CS do projeto se o usuário logado não tiver
+      // o Google Calendar conectado.
+      const ownCalendar = currentStaffData
+        ? staffList.find((s: StaffWithCalendar) => s.id === currentStaffData.id)
+        : undefined;
+      if (ownCalendar) {
+        setTargetStaffId(ownCalendar.id);
+      } else if (currentStaffData?.role === "consultant") {
+        // consultor sem agenda conectada: nada a selecionar
       } else if (consultantId) {
         // Admin/CS: auto-select consultant if available
         const consultant = staffList.find((s: StaffWithCalendar) => s.id === consultantId);
