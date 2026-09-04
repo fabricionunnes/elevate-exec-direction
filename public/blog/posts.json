@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-03T21:01:06",
+ "gerado_em": "2026-09-04T10:01:15",
  "posts": [
+  {
+   "slug": "preco-unico-nao-existe-oferta-certa-existe",
+   "url": "/blog/preco-unico-nao-existe-oferta-certa-existe/",
+   "titulo": "Preço único não existe oferta certa para o problema existe",
+   "resumo": "Vendedor que defende tabela sem entender o problema do cliente não fecha. O que muda a decisão é saber qual solução cabe na dor dele, não qual desconto cabe no bolso.",
+   "tags": [
+    "oferta",
+    "diagnóstico",
+    "qualificação",
+    "estrutura comercial",
+    "preço"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-04",
+   "ts": 2059
+  },
   {
    "slug": "desconto-prazo-nao-resolve-decisao-travada",
    "url": "/blog/desconto-prazo-nao-resolve-decisao-travada/",
