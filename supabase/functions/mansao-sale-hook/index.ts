@@ -13,6 +13,12 @@ const STAGE_ENTRADA = "79e7818f-d949-4980-8a60-0595c8b22cc3";
 const STAGE_COMPROU = "80c7b37d-2630-49ee-9d87-f209faa91f7a";
 const NOTIFY_PHONE = "5531989840003"; // Fabrício
 const NOTIFY_INSTANCE = "fabricionunnes";
+// Financeiro: contas a receber + saldo do banco (financial_banks)
+const BANK_ASAAS = "6e9a3135-5826-4633-adf1-a63ef5b70e96";       // Asaas (ativo)
+const BANK_MERCADOPAGO = "50d90f6e-e8e6-4dd7-87e9-3757ccda9842"; // Mercado pago
+const CATEGORY_EVENTOS = "c0a1e5e0-0000-4000-8000-00000000e7e7"; // financial_categories: Eventos (income)
+const PROVIDER_FEE_RATE = 0.0199; // 1,99% descontado pelo provedor
+const EVENT_LABEL: Record<string, string> = { "junho-2026": "Setembro 2026", "outubro-2026": "GP Outubro 2026", "maio-2026": "Maio 2026", "abril-2026": "Abril 2026" };
 const FALLBACK_TOKEN = "656a7068f01d8920fe9167279dcb14d19d7b6d09cb9bbcc7";
 
 Deno.serve(async (req) => {
@@ -26,7 +32,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { name, phone, email, status, amount, method, installments, orderId } = await req.json();
+    const { name, phone, email, status, amount, method, installments, orderId, provider, eventKey } = await req.json();
     if (!name || !status) {
       return new Response(JSON.stringify({ error: "name e status obrigatórios" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -99,6 +105,66 @@ Deno.serve(async (req) => {
       if (insErr) console.error("[mansao-sale-hook] insert error:", insErr);
     }
 
+    // Financeiro do Nexus: recebível já baixado + crédito líquido no banco certo (só em pagamento confirmado)
+    let finInfo = "";
+    if (isPaid && Number(amount) > 0 && orderId) {
+      try {
+        const gross = Math.round(Number(amount) * 100) / 100;
+        const fee = Math.round(gross * PROVIDER_FEE_RATE * 100) / 100;
+        const net = Math.round((gross - fee) * 100) / 100;
+        const bankId = provider === "mercadopago" ? BANK_MERCADOPAGO : BANK_ASAAS;
+        const bankName = provider === "mercadopago" ? "Mercado Pago" : "Asaas";
+        const refKey = `mansao:${orderId}`;
+        const today = new Date().toISOString().slice(0, 10);
+        const eventLabel = EVENT_LABEL[eventKey as string] || "Mansão Empreendedora";
+        const description = `Mansão Empreendedora ${eventLabel} — ingresso — ${name}`;
+
+        // idempotência: webhook pode disparar mais de uma vez
+        const { data: existing } = await supabase.from("financial_receivables").select("id").eq("asaas_payment_id", refKey).maybeSingle();
+        if (existing) {
+          finInfo = "Financeiro: recebível já existia";
+        } else {
+          const { data: rec, error: recErr } = await supabase.from("financial_receivables").insert({
+            description,
+            amount: gross,
+            due_date: today,
+            paid_date: today,
+            paid_amount: net,
+            fee_amount: fee,
+            discount_amount: 0,
+            interest_amount: 0,
+            late_fee_amount: 0,
+            status: "paid",
+            payment_method: method === "credit_card" ? "credit_card" : "pix",
+            category_id: CATEGORY_EVENTOS,
+            company_id: null,
+            custom_receiver_name: name,
+            asaas_payment_id: refKey,
+            notes: `Venda pelo site (${bankName}). Bruto R$ ${gross.toFixed(2)} · taxa ${(PROVIDER_FEE_RATE * 100).toFixed(2)}% R$ ${fee.toFixed(2)} · líquido R$ ${net.toFixed(2)}. Pedido ${orderId}`,
+          }).select("id").single();
+          if (recErr) throw recErr;
+
+          const netCents = Math.round(net * 100);
+          await supabase.rpc("increment_bank_balance", { p_bank_id: bankId, p_amount: netCents });
+          await supabase.from("financial_bank_transactions").insert({
+            bank_id: bankId,
+            type: "credit",
+            amount_cents: netCents,
+            description: `Recebimento: ${description} (taxa ${bankName} 1,99%: R$ ${fee.toFixed(2)})`,
+            reference_type: "receivable",
+            reference_id: rec.id,
+            fee_cents: Math.round(fee * 100),
+            discount_cents: 0,
+            interest_cents: 0,
+          });
+          finInfo = `Financeiro: R$ ${net.toFixed(2)} liquido no ${bankName} (taxa R$ ${fee.toFixed(2)})`;
+        }
+      } catch (e) {
+        console.error("[mansao-sale-hook] financeiro:", e);
+        finInfo = "Financeiro: ERRO ao lancar (ver logs)";
+      }
+    }
+
     // Notificação WhatsApp pro Fabrício (só em pagamento confirmado)
     if (isPaid) {
       try {
@@ -109,7 +175,7 @@ Deno.serve(async (req) => {
           .maybeSingle();
 
         if (inst?.api_url && inst?.api_key) {
-          const msg = `VENDA CONFIRMADA - Mansao Empreendedora\n\nNome: ${name}\nWhatsApp: ${digits || "nao informado"}\nValor: ${valueText}\nPagamento: ${methodText}\n\nLead movido para "Comprou evento" no CRM.`;
+          const msg = `VENDA CONFIRMADA - Mansao Empreendedora\n\nNome: ${name}\nWhatsApp: ${digits || "nao informado"}\nValor: ${valueText}\nPagamento: ${methodText}\n\nLead movido para "Comprou evento" no CRM.${finInfo ? "\n" + finInfo : ""}`;
           await fetch(`${inst.api_url}/message/sendText/${inst.instance_name}`, {
             method: "POST",
             headers: { "Content-Type": "application/json", apikey: inst.api_key },
