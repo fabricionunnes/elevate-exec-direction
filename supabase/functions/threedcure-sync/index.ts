@@ -11,6 +11,8 @@
 //   - metas: company_kpis.target_value = meta_total; kpi_monthly_targets
 //     (nível "Meta") por canal e no nível da empresa.
 // Entrada: { competencia?: "YYYY-MM", mes_anterior?: boolean, dry_run?: boolean }
+// Tempo real: o sistema da cliente chama POST/GET ...?t=<THREEDCURE_WEBHOOK_SECRET>
+// (corpo vazio) toda vez que uma venda entra/muda — roda a mesma convergência.
 import { createClient } from "@supabase/supabase-js";
 
 const cors = {
@@ -54,7 +56,16 @@ Deno.serve(async (req: Request) => {
     if (!token) return json({ error: "THREEDCURE_API_TOKEN não configurado" }, 500);
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const body = await req.json().catch(() => ({}));
+    // autorização: chave do projeto (cron/painel) OU segredo do webhook na query (?t=)
+    const url = new URL(req.url);
+    const t = url.searchParams.get("t") || "";
+    const whSecret = Deno.env.get("THREEDCURE_WEBHOOK_SECRET") || "";
+    const auth = req.headers.get("authorization") || "";
+    const viaWebhook = !!whSecret && t === whSecret;
+    if (!viaWebhook && !auth.startsWith("Bearer ")) return json({ error: "unauthorized" }, 401);
+    if (t && !viaWebhook) return json({ error: "segredo inválido" }, 401);
+
+    const body = req.method === "GET" ? {} : await req.json().catch(() => ({}));
     const dryRun = !!body.dry_run;
 
     // competência: mês corrente (BRT) por padrão; mes_anterior pro reconcile do fechamento
@@ -212,7 +223,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const resumo = {
-      ok: true, dry_run: dryRun, competencia, dia, total_api: totalApi, soma_canais: r2(somaCanais), residuo,
+      ok: true, dry_run: dryRun, via: viaWebhook ? "webhook" : "cron", competencia, dia, total_api: totalApi, soma_canais: r2(somaCanais), residuo,
       meta_total: metaTotal, canais: canais.size, canais_criados: criados,
       lancamentos: plano.map((p) => ({ canal: p.rotulo, api: p.api, ja_lancado_outros_dias: r2(p.outros), no_dia_antes: p.hojeAtual, no_dia_depois: p.valorHoje })),
       metas: metasPlano,
