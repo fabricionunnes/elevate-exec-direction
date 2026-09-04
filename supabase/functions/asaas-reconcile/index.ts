@@ -55,6 +55,20 @@ const FEE_TYPES = new Set([
 // duplicidade com um título que já foi creditado por outro caminho (webhook,
 // baixa manual). É isso que faz o saldo interno acompanhar o Asaas sem
 // precisar de "ajuste automático".
+// O time TAMBÉM lança na mão (baixa de conta a pagar, transferência). Se já
+// existe um lançamento manual do mesmo tipo e valor perto da data, o dinheiro
+// já está no razão — a conciliação NÃO repete (foi isso que dobrou 4,2 mil em
+// 02/09 e 987 em 03/09).
+async function jaLancadoManual(supabase: any, bankId: string, tipo: "credit" | "debit", valorCents: number, dia: string) {
+  const ini = new Date(new Date(dia + "T12:00:00Z").getTime() - 3 * 86400000).toISOString();
+  const fim = new Date(new Date(dia + "T12:00:00Z").getTime() + 4 * 86400000).toISOString();
+  const { data } = await supabase.from("financial_bank_transactions").select("id")
+    .eq("bank_id", bankId).eq("type", tipo).eq("amount_cents", valorCents)
+    .neq("reference_type", "statement_entry")
+    .gte("created_at", ini).lte("created_at", fim).limit(1);
+  return !!(data && data.length);
+}
+
 async function lancarNoRazao(supabase: any, e: any, tipo: "credit" | "debit", descricao: string, refType: string, refId: string | null, dryRun: boolean) {
   if (e.ledger_posted || dryRun) return false;
   if (refId && refType !== "statement_entry") {
@@ -165,7 +179,20 @@ Deno.serve(async (req) => {
       // 2a) taxa/custo do Asaas — explica o saldo, não é baixa de título
       if (FEE_TYPES.has(String(e.entry_type))) {
         let feeId: string | null = null;
-        if (!dryRun) {
+        // recebimento desta cobrança baixado na mão pelo líquido (bruto − taxa)?
+        let taxaJaDescontada = false;
+        if (e.provider_payment_id) {
+          const { data: recebido } = await supabase.from("financial_statement_entries").select("amount_cents")
+            .eq("provider", "asaas").eq("provider_payment_id", e.provider_payment_id).eq("entry_type", "PAYMENT_RECEIVED").limit(1).maybeSingle();
+          if (recebido?.amount_cents) {
+            taxaJaDescontada = await jaLancadoManual(supabase, e.bank_id, "credit", Number(recebido.amount_cents) - Math.abs(e.amount_cents), e.entry_date);
+          }
+        }
+        if (taxaJaDescontada) {
+          patch = { status: "matched", match_kind: "fee", match_confidence: "exact",
+            match_reason: "taxa já descontada na baixa manual do recebimento (líquido)", auto_settled: false, ledger_posted: true };
+          feeCount++;
+        } else if (!dryRun) {
           const { data: pay } = await supabase.from("financial_payables").insert({
             supplier_name: "Asaas", description: e.description || "Taxa Asaas",
             amount: Math.abs(e.amount_cents) / 100, due_date: e.entry_date, status: "paid",
@@ -175,17 +202,23 @@ Deno.serve(async (req) => {
           feeId = pay?.id || null;
           await lancarNoRazao(supabase, e, "debit", e.description || "Taxa Asaas", "payable", feeId, dryRun);
         }
-        patch = { status: "matched", match_kind: "fee", match_id: feeId, match_confidence: "exact",
-          match_reason: "custo do Asaas (taxa) — conta paga criada e lançada no razão", auto_settled: true, ledger_posted: true };
-        feeCount++;
+        if (!taxaJaDescontada) {
+          patch = { status: "matched", match_kind: "fee", match_id: feeId, match_confidence: "exact",
+            match_reason: "custo do Asaas (taxa) — conta paga criada e lançada no razão", auto_settled: true, ledger_posted: true };
+          feeCount++;
+        }
       }
 
       // 2a2) transferência/antecipação: identifica e tira do meio do caminho
       if (!patch && TRANSFER_TYPES.has(String(e.entry_type))) {
-        await lancarNoRazao(supabase, e, e.kind === "credit" ? "credit" : "debit",
-          `Transferência Asaas: ${e.description || e.entry_type}`, "statement_entry", e.id, dryRun);
+        const tipo = e.kind === "credit" ? "credit" : "debit";
+        const manual = await jaLancadoManual(supabase, e.bank_id, tipo, Math.abs(e.amount_cents), e.entry_date);
+        if (!manual) {
+          await lancarNoRazao(supabase, e, tipo, `Transferência Asaas: ${e.description || e.entry_type}`, "statement_entry", e.id, dryRun);
+        }
         patch = { status: "matched", match_kind: "transfer", match_confidence: "exact",
-          match_reason: "movimento interno do Asaas (transferência/antecipação) — lançado no razão", auto_settled: false, ledger_posted: true };
+          match_reason: manual ? "transferência já lançada manualmente no razão (pagamento/transferência)" : "movimento interno do Asaas (transferência/antecipação) — lançado no razão",
+          auto_settled: false, ledger_posted: true };
         transferCount++;
       }
 
@@ -245,8 +278,13 @@ Deno.serve(async (req) => {
             match_reason: `valor e vencimento batem, candidato único (${c.description || ""})`.trim(), auto_settled: true, ledger_posted: true };
           autoMatched++; conciliados.push(`+${brl(e.amount_cents)} ${c.description || ""}`.trim());
         } else {
-          patch = { status: "review", match_confidence: "none",
-            match_reason: perto.length === 0 ? "nenhum recebível em aberto com esse valor/vencimento" : `${perto.length} recebíveis possíveis — precisa escolher` };
+          const bruto = Math.abs(e.amount_cents);
+          const jaNoRazao = await jaLancadoManual(supabase, e.bank_id, "credit", bruto, e.entry_date)
+            || await jaLancadoManual(supabase, e.bank_id, "credit", bruto - 199, e.entry_date)
+            || await jaLancadoManual(supabase, e.bank_id, "credit", bruto - 398, e.entry_date);
+          patch = { status: "review", match_confidence: "none", ledger_posted: jaNoRazao,
+            match_reason: (perto.length === 0 ? "nenhum recebível em aberto com esse valor/vencimento" : `${perto.length} recebíveis possíveis — precisa escolher`)
+              + (jaNoRazao ? " · dinheiro já lançado manualmente no razão (só classificar)" : "") };
           needsReview++; revisar.push(`+${brl(e.amount_cents)} ${e.description || ""}`.trim());
         }
       }
