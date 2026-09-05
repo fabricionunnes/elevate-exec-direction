@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-05T15:01:16",
+ "gerado_em": "2026-09-05T21:01:06",
  "posts": [
+  {
+   "slug": "empresa-comeco-nao-pode-querer-tudo-agora",
+   "url": "/blog/empresa-comeco-nao-pode-querer-tudo-agora/",
+   "titulo": "Empresa no começo não pode querer tudo agora",
+   "resumo": "Estrutura comercial se constrói por fase. Pular etapa não acelera, paralisa.",
+   "tags": [
+    "estrutura comercial",
+    "implementação",
+    "decisão",
+    "meta mensal",
+    "diagnóstico"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-05",
+   "ts": 2064
+  },
   {
    "slug": "consulta-individual-filtra-cliente-ideal-antes-oferta-escalar",
    "url": "/blog/consulta-individual-filtra-cliente-ideal-antes-oferta-escalar/",
