@@ -146,7 +146,8 @@ async function buildMetrics(supabase: SupabaseClient, companyId: string, today: 
   // Quem lançou hoje x quem faltou (vendedores ativos da empresa)
   const { data: people } = await supabase
     .from("company_salespeople").select("id, name")
-    .eq("company_id", companyId).eq("is_active", true);
+    .eq("company_id", companyId).eq("is_active", true)
+    .eq("exclude_from_ranking", false); // canais de integração ficam fora de "lançaram/faltaram"
   const launchedToday = new Set(
     (entries || []).filter((e: any) => e.entry_date === today && e.salesperson_id).map((e: any) => e.salesperson_id),
   );

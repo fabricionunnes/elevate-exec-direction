@@ -183,7 +183,7 @@ Deno.serve(async (req: Request) => {
     // 3) linha → "vendedor" do Nexus (canal casa exato pelo nome; vendedora casa por tokens; cria se faltar)
     const { data: sellers, error: eSellers } = await supabase
       .from("company_salespeople")
-      .select("id, name, is_active, unit_id, team_id, sector_id")
+      .select("id, name, is_active, unit_id, team_id, sector_id, exclude_from_ranking")
       .eq("company_id", COMPANY_ID);
     if (eSellers) return json({ error: `company_salespeople: ${eSellers.message}` }, 500);
     const lista = (sellers || []) as any[];
@@ -197,14 +197,22 @@ Deno.serve(async (req: Request) => {
         if (dryRun) { criados.push(l.rotulo); spDaLinha.set(l.key, { id: null, name: l.rotulo }); continue; }
         const { data: novo, error } = await supabase
           .from("company_salespeople")
-          .insert({ company_id: COMPANY_ID, name: l.rotulo, access_code: genCode(), is_active: true })
-          .select("id, name, is_active, unit_id, team_id, sector_id")
+          // canal = linha técnica: soma nos totais, mas fora do ranking e das mensagens de vendedores
+          .insert({ company_id: COMPANY_ID, name: l.rotulo, access_code: genCode(), is_active: true, exclude_from_ranking: !l.vendedora })
+          .select("id, name, is_active, unit_id, team_id, sector_id, exclude_from_ranking")
           .single();
         if (error) return json({ error: `criar linha ${l.rotulo}: ${error.message}` }, 500);
         sp = novo; lista.push(sp); byName.set(norm(l.rotulo), sp); criados.push(l.rotulo);
-      } else if (l.vendedora && sp.is_active === false) {
-        reativados.push(sp.name);
-        if (!dryRun) await supabase.from("company_salespeople").update({ is_active: true }).eq("id", sp.id);
+      } else {
+        if (l.vendedora && sp.is_active === false) {
+          reativados.push(sp.name);
+          if (!dryRun) await supabase.from("company_salespeople").update({ is_active: true }).eq("id", sp.id);
+        }
+        // mantém a marcação certa: canal fora do ranking, vendedora dentro
+        if (!dryRun && sp.exclude_from_ranking !== !l.vendedora) {
+          await supabase.from("company_salespeople").update({ exclude_from_ranking: !l.vendedora }).eq("id", sp.id);
+          sp.exclude_from_ranking = !l.vendedora;
+        }
       }
       spDaLinha.set(l.key, sp);
     }

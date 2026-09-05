@@ -110,7 +110,8 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
         supabase.from("company_kpis").select("id, name, kpi_type, periodicity, target_value, is_main_goal, sort_order").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
         supabase.from("kpi_monthly_targets").select("kpi_id, target_value, level_order, level_name, salesperson_id, unit_id, team_id, sector_id").eq("company_id", companyId).eq("month_year", mKey),
         supabase.from("kpi_entries").select("kpi_id, salesperson_id, value, entry_date, updated_at").eq("company_id", companyId).gte("entry_date", start).lte("entry_date", end),
-        supabase.from("company_salespeople").select("id, name, team_id").eq("company_id", companyId).eq("is_active", true),
+        // exclude_from_ranking = linha técnica de integração (canal de venda): soma nos totais, fora do ranking
+        supabase.from("company_salespeople").select("id, name, team_id").eq("company_id", companyId).eq("is_active", true).eq("exclude_from_ranking", false),
         supabase.from("company_teams").select("id, name").eq("company_id", companyId).eq("is_active", true),
         supabase.from("company_daily_goal_settings").select("include_saturday, include_sunday, include_holidays").eq("company_id", companyId).maybeSingle(),
         supabase.from("gestao_vista_config").select("show_meta, show_realizado, show_ranking, ranking_mode").eq("company_id", companyId).maybeSingle(),
