@@ -208,10 +208,12 @@ Deno.serve(async (req: Request) => {
           reativados.push(sp.name);
           if (!dryRun) await supabase.from("company_salespeople").update({ is_active: true }).eq("id", sp.id);
         }
-        // mantém a marcação certa: canal fora do ranking, vendedora dentro
-        if (!dryRun && sp.exclude_from_ranking !== !l.vendedora) {
-          await supabase.from("company_salespeople").update({ exclude_from_ranking: !l.vendedora }).eq("id", sp.id);
-          sp.exclude_from_ranking = !l.vendedora;
+        // canal é SEMPRE marcado fora do ranking. Vendedora nasce dentro, mas a
+        // marcação manual do Fabrício vale (ex.: Melyssa fora do ranking, 05/09)
+        // — por isso nunca desmarca uma pessoa aqui.
+        if (!dryRun && !l.vendedora && sp.exclude_from_ranking !== true) {
+          await supabase.from("company_salespeople").update({ exclude_from_ranking: true }).eq("id", sp.id);
+          sp.exclude_from_ranking = true;
         }
       }
       spDaLinha.set(l.key, sp);
