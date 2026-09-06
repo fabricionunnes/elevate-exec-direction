@@ -18,7 +18,7 @@ const BANK_ASAAS = "6e9a3135-5826-4633-adf1-a63ef5b70e96";       // Asaas (ativo
 const BANK_MERCADOPAGO = "50d90f6e-e8e6-4dd7-87e9-3757ccda9842"; // Mercado pago
 const CATEGORY_EVENTOS = "c0a1e5e0-0000-4000-8000-00000000e7e7"; // financial_categories: Eventos (income)
 const PROVIDER_FEE_RATE = 0.0199; // 1,99% descontado pelo provedor
-const EVENT_LABEL: Record<string, string> = { "junho-2026": "Setembro 2026", "outubro-2026": "GP Outubro 2026", "maio-2026": "Maio 2026", "abril-2026": "Abril 2026" };
+const EVENT_LABEL: Record<string, string> = { "junho-2026": "Setembro 2026", "outubro-2026": "GP Outubro 2026", "novembro-2026": "Novembro 2026 (Jiu-Jítsu)", "maio-2026": "Maio 2026", "abril-2026": "Abril 2026" };
 const FALLBACK_TOKEN = "656a7068f01d8920fe9167279dcb14d19d7b6d09cb9bbcc7";
 
 Deno.serve(async (req) => {
