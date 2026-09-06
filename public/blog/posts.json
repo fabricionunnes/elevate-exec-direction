@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-06T15:01:12",
+ "gerado_em": "2026-09-06T21:01:20",
  "posts": [
+  {
+   "slug": "preco-diferente-mesmo-cliente-quebra-confianca",
+   "url": "/blog/preco-diferente-mesmo-cliente-quebra-confianca/",
+   "titulo": "Preço diferente para o mesmo cliente quebra a confiança",
+   "resumo": "Quando você muda o preço na mesma conversa, o cliente não volta. A oferta tem que ser clara desde o diagnóstico, não virar conforme a objeção aparece.",
+   "tags": [
+    "oferta",
+    "preço",
+    "diagnóstico",
+    "qualificação",
+    "estrutura comercial"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-06",
+   "ts": 2067
+  },
   {
    "slug": "meta-urgente-exige-acao-direta-estrutura-vem-depois",
    "url": "/blog/meta-urgente-exige-acao-direta-estrutura-vem-depois/",
