@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-08T10:01:14",
+ "gerado_em": "2026-09-08T15:01:03",
  "posts": [
+  {
+   "slug": "ferramenta-nova-nao-resolve-comercial-sem-estrutura",
+   "url": "/blog/ferramenta-nova-nao-resolve-comercial-sem-estrutura/",
+   "titulo": "Ferramenta nova não resolve comercial sem estrutura de base",
+   "resumo": "Tecnologia impressiona mas não substitui rotina de cobrança e treino. O que faz meta bater todo mês é o básico funcionando.",
+   "tags": [
+    "estrutura comercial",
+    "ferramenta",
+    "implementação",
+    "treino de vendedor",
+    "rotina de cobrança"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-08",
+   "ts": 2071
+  },
   {
    "slug": "dono-na-correria-deixa-meta-deriva",
    "url": "/blog/dono-na-correria-deixa-meta-deriva/",
