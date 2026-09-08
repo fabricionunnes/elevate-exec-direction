@@ -157,27 +157,31 @@ Deno.serve(async (req: Request) => {
     // "Sem canal" entra SEMPRE (com 0 quando não há resíduo) pra zerar sobra antiga
     linhas.set("sem_canal", { key: "sem_canal", rotulo: SEM_CANAL, meta: 0, realizado: Math.abs(residuo) >= 0.5 ? residuo : 0, quantidade: null, metaQuantidade: null, ordem: 999, vendedora: false });
     // abertura por vendedora: tira do canal "Time de vendas" e distribui
-    let somaVendedoras = 0;
-    let somaQtdVendedoras = 0;
+    // cada vendedora desconta do canal dela: `canal` da API (time_vendas, mrs_direta…);
+    // sem o campo, assume o Time de vendas (4 CNPJs)
+    const porCanalVend = new Map<string, { real: number; qtd: number; meta: number; n: number }>();
     let temQuantidade = false;
     for (const v of porVendedora) {
       const nome = String(v.vendedora || v.nome || v.name || "").trim();
       if (!nome) continue;
       const realizado = Number(v.realizado ?? v.faturamento ?? v.valor) || 0;
       const qtd = num(v.quantidade ?? v.vendas ?? v.qtd);
-      if (qtd !== null) { temQuantidade = true; somaQtdVendedoras += qtd; }
-      somaVendedoras += realizado;
+      if (qtd !== null) temQuantidade = true;
+      const canalV = String(v.canal || CANAL_TIME).trim();
+      const acc = porCanalVend.get(canalV) || { real: 0, qtd: 0, meta: 0, n: 0 };
+      acc.real += realizado; acc.qtd += qtd || 0; acc.meta += Number(v.meta) || 0; acc.n++;
+      porCanalVend.set(canalV, acc);
       linhas.set(`vend:${norm(nome)}`, {
         key: `vend:${norm(nome)}`, rotulo: nome, meta: Number(v.meta) || 0, realizado,
         quantidade: qtd, metaQuantidade: num(v.meta_quantidade ?? v.meta_vendas), ordem: 0.5, vendedora: true,
       });
     }
-    const time = linhas.get(CANAL_TIME);
-    if (time && porVendedora.length) {
-      time.realizado = r2(time.realizado - somaVendedoras); // resíduo (idealmente 0)
-      if (temQuantidade && time.quantidade !== null) time.quantidade = time.quantidade - somaQtdVendedoras;
-      const somaMetasVend = porVendedora.reduce((s, v) => s + (Number(v.meta) || 0), 0);
-      if (somaMetasVend > 0) time.meta = Math.max(0, r2(time.meta - somaMetasVend));
+    for (const [canalV, acc] of porCanalVend) {
+      const ch = linhas.get(canalV);
+      if (!ch) continue;
+      ch.realizado = r2(ch.realizado - acc.real); // resíduo (idealmente 0)
+      if (temQuantidade && ch.quantidade !== null) ch.quantidade = ch.quantidade - acc.qtd;
+      if (acc.meta > 0) ch.meta = Math.max(0, r2(ch.meta - acc.meta));
     }
 
     // 3) linha → "vendedor" do Nexus (canal casa exato pelo nome; vendedora casa por tokens; cria se faltar)
@@ -291,7 +295,16 @@ Deno.serve(async (req: Request) => {
       metasPlano.push({ alvo: "company_kpis.target_value (Faturamento)", de: Number(kpiFat?.target_value) || null, para: metaTotal });
       if (!dryRun) await supabase.from("company_kpis").update({ target_value: metaTotal }).eq("id", KPI_FATURAMENTO);
     }
-    const metaTotalQtd = Array.from(linhas.values()).reduce((s, l) => s + (l.metaQuantidade || 0), 0);
+    let metaTotalQtd = Array.from(linhas.values()).reduce((s, l) => s + (l.metaQuantidade || 0), 0);
+    if (temQuantidade) {
+      // inclui metas de vendedora cadastradas à mão no Nexus (quem a API ainda não manda)
+      const spComQtdApi = new Set(Array.from(linhas.values()).filter((l) => l.metaQuantidade !== null).map((l) => spDaLinha.get(l.key)?.id).filter(Boolean));
+      const { data: manuais } = await supabase
+        .from("kpi_monthly_targets").select("salesperson_id, target_value")
+        .eq("company_id", COMPANY_ID).eq("kpi_id", KPI_VENDAS).eq("month_year", competencia)
+        .eq("level_order", LEVEL_META.level_order).not("salesperson_id", "is", null);
+      for (const m of manuais || []) if (!spComQtdApi.has(m.salesperson_id)) metaTotalQtd += Number(m.target_value) || 0;
+    }
     if (temQuantidade) {
       const { data: kpiVen } = await supabase.from("company_kpis").select("is_active, target_value").eq("id", KPI_VENDAS).single();
       const upd: Record<string, unknown> = {};
