@@ -259,6 +259,17 @@ async function transcribeAudio(url: string): Promise<string | null> {
   }
 }
 
+// Quem o Fabrício SEGUE no Instagram (tabela crm_ig_following, importada do
+// Chrome logado) o agente NÃO responde — pedido dele em 08/09/2026: "se for
+// alguém que eu sigo, não quero que a IA responda". Vale pro DM, pro follow-up
+// e pro gatilho por etapa. Sem username ou tabela vazia → não bloqueia.
+async function igSeguidoPeloFabricio(supabase: any, username: string | null | undefined): Promise<boolean> {
+  const u = String(username || "").trim().replace(/^@/, "").toLowerCase();
+  if (!u) return false;
+  const { data } = await supabase.from("crm_ig_following").select("username").eq("username", u).maybeSingle();
+  return !!data;
+}
+
 async function runTool(supabase: any, agent: any, leadId: string | null, name: string, input: any): Promise<string> {
   try {
     // staff alvo da agenda: primeiro closer configurado
@@ -547,7 +558,7 @@ Deno.serve(async (req) => {
       if (!ag || !ag.is_active) return j({ ok: true, skip: "agente inativo" });
       const [{ data: waConvs }, { data: igConvs }, { data: agentChannels }] = await Promise.all([
         supabase.from("crm_whatsapp_conversations").select("id, instance_id, contact:crm_whatsapp_contacts(phone)").eq("lead_id", lead_id),
-        supabase.from("instagram_conversations").select("id").eq("lead_id", lead_id),
+        supabase.from("instagram_conversations").select("id, contact:instagram_contacts(username)").eq("lead_id", lead_id),
         supabase.from("crm_ai_agent_channels").select("channel, instance_id").eq("agent_id", agent_id),
       ]);
       // O gatilho por etapa só ativa o agente nos CANAIS em que ele está
@@ -562,6 +573,11 @@ Deno.serve(async (req) => {
         ...(waConvs || []).filter((c: any) => allowsChannel("whatsapp", c.instance_id)).map((c: any) => ({ channel: "whatsapp", conv: c })),
         ...(igConvs || []).filter(() => allowsChannel("instagram")).map((c: any) => ({ channel: "instagram", conv: c })),
       ];
+      // Instagram: conta que o Fabrício segue não é ativada pelo gatilho de etapa
+      for (let i = targets.length - 1; i >= 0; i--) {
+        const t = targets[i];
+        if (t.channel === "instagram" && await igSeguidoPeloFabricio(supabase, (t.conv as any)?.contact?.username)) targets.splice(i, 1);
+      }
       let greeted = 0;
       for (const t of targets) {
         const { data: prev } = await supabase.from("crm_keyword_trigger_logs")
@@ -620,6 +636,8 @@ Deno.serve(async (req) => {
               const ph = String((cv as any).contact?.phone || "");
               if (ph.includes("@") || ph.includes("-") || ph.replace(/\D/g, "").length > 15) continue;
             }
+            // Instagram: quem o Fabrício segue não recebe follow-up do agente
+            if (isBIG && await igSeguidoPeloFabricio(supabase, (cv as any).contact?.username)) continue;
             // agente desligado nesta conversa?
             const { data: ov } = await supabase.from("crm_ai_agent_conversation_overrides")
               .select("enabled, reply_mode").eq("conversation_id", cv.id).eq("channel", b.channel).maybeSingle();
@@ -705,6 +723,9 @@ Deno.serve(async (req) => {
     }
     if (!conv) return j({ ok: false, error: "conversa não encontrada" });
     if (!isIG && !conv.instance_id) return j({ ok: true, skip: "conversa sem instância Evolution" });
+    if (isIG && await igSeguidoPeloFabricio(supabase, conv.contact?.username)) {
+      return j({ ok: true, skip: `@${conv.contact?.username}: o Fabrício segue esta conta — agente não responde` });
+    }
 
     // WhatsApp: nunca responder em GRUPO/newsletter — agente é só pra conversa individual
     if (!isIG) {
