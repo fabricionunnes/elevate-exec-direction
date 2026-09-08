@@ -375,6 +375,13 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
           google_calendar_event_id: ev.event?.id || null,
           google_calendar_user_id: staff.user_id,
         });
+        // Closer que recebeu a reunião vira o RESPONSÁVEL pelo lead (dono + closer),
+        // pedido do Fabrício 08/09/2026: "sempre coloque o closer ao qual agendou
+        // a reunião como responsável pelo lead". SDR e quem agendou não mudam.
+        await supabase.from("crm_leads")
+          .update({ owner_staff_id: staff.id, closer_staff_id: staff.id })
+          .eq("id", leadId);
+        if (leadRow) { leadRow.owner_staff_id = staff.id; leadRow.closer_staff_id = staff.id; }
         // Marca o agendamento no funil: move pra etapa 'Agendado' se o funil tiver uma
         if (leadRow?.pipeline_id) {
           const { data: stages } = await supabase.from("crm_stages")
