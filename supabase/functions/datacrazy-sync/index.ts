@@ -416,6 +416,34 @@ Deno.serve(async (req: Request) => {
     const action = String(body.action || "sync");
     const companyId: string | undefined = body.company_id || undefined;
 
+    // { action: "raw", company_id, n? } → amostra de negócios GANHOS com o JSON
+    // completo (pra descobrir onde o CRM guarda instituição/produto/tag)
+    if (action === "raw") {
+      if (!companyId) return json({ error: "company_id obrigatório" }, 400);
+      const [cfg] = await loadConfigs(supabase, companyId);
+      if (!cfg) return json({ error: "empresa sem configuração" }, 404);
+      const token = tokenFor(cfg);
+      const n = Math.min(Number(body.n || 5), 50);
+      const since = new Date(Date.now() - 30 * 86400000).toISOString();
+      const won = await dc(token, `/api/v1/businesses?filter%5BlastMovedAfter%5D=${encodeURIComponent(since)}&take=500&skip=0`);
+      const movidos: any[] = Array.isArray(won) ? won : (won?.data || []);
+      const todos = movidos.filter((b: any) => /fechad|ganh|won/i.test(b?.stage?.name || "") || b?.status === "won");
+      const rows: any[] = todos.slice(-n); // os mais recentes ficam no fim
+      const meta = Array.isArray(won) ? null : Object.fromEntries(Object.entries(won || {}).filter(([k]) => k !== "data"));
+      if (!todos.length) return json({ ok: true, empresa: cfg.label, lista: [], total_won: 0, meta_resposta: meta });
+      let detalhe: any = null;
+      if (rows[0]?.id) { try { detalhe = await dc(token, `/api/v1/businesses/${rows[0].id}`); } catch (e) { detalhe = { erro: String(e) }; } }
+      const cont = (xs: string[]) => { const m: Record<string, number> = {}; for (const x of xs) m[x] = (m[x] || 0) + 1; return m; };
+      const resumo = {
+        produtos: cont(todos.flatMap((b: any) => (b.products || []).map((p: any) => String(p?.product?.name || "").trim() || "(sem nome)"))),
+        sem_produto: todos.filter((b: any) => !(b.products || []).length).length,
+        etiquetas: cont(todos.flatMap((b: any) => (b.lead?.tags || []).map((t: any) => String(t?.name || "").trim()))),
+        campos_adicionais: cont(todos.flatMap((b: any) => (b.additionalFields || []).map((f: any) => `${f?.field?.name || f?.name || f?.key || "?"}=${f?.value ?? ""}`))),
+        atendentes: cont(todos.map((b: any) => String(b.attendant?.name || "").trim() || "(sem)")),
+        origem_lead: cont(todos.map((b: any) => String(b.lead?.source || "").trim() || "(vazio)")),
+      };
+      return json({ ok: true, empresa: cfg.label, movidos_30d: movidos.length, fechados_30d: todos.length, etapas_vistas: [...new Set(movidos.map((b: any) => b?.stage?.name))], resumo, lista: body.lista ? rows : undefined, detalhe_primeiro: body.lista ? detalhe : undefined });
+    }
     if (action === "ping" || action === "attendants" || action === "stages") {
       if (!companyId) return json({ error: "company_id obrigatório" }, 400);
       const [cfg] = await loadConfigs(supabase, companyId);
