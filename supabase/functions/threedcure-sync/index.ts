@@ -241,10 +241,56 @@ Deno.serve(async (req: Request) => {
       const sp = lista.find((s) => s.id === a.salesperson_id);
       if (!sp) continue;
       jaMapeados.add(sp.id);
-      const key = `zero:${sp.id}`;
-      linhas.set(key, { key, rotulo: sp.name, meta: 0, realizado: 0, quantidade: temQuantidade ? 0 : null, metaQuantidade: null, ordem: 998, vendedora: false });
-      spDaLinha.set(key, sp);
       zerados.push(sp.name);
+      if (!dryRun) {
+        await supabase.from("kpi_entries").delete()
+          .eq("company_id", COMPANY_ID).eq("salesperson_id", sp.id).in("kpi_id", [KPI_FATURAMENTO, KPI_VENDAS])
+          .gte("entry_date", iniMes).lte("entry_date", ultimoDia).like("observations", `${TAG}%`);
+      }
+    }
+
+    // 3c) VENDEDORAS DIA A DIA: se a API abre o mês por dia (por_vendedora_dia),
+    //     cada (vendedora, dia) recebe exatamente o valor do dia — igual ao que o
+    //     Agendor fazia. Nada de delta pra elas; linha nossa que a API não confirma
+    //     mais (dia zerado, vendedora que saiu da régua) é apagada.
+    const porDia: any[] = Array.isArray(fat.por_vendedora_dia) ? fat.por_vendedora_dia : [];
+    const spsDia = new Set<string>();
+    const planoDia: { sp: any; kpiId: string; date: string; value: number; antes: number | null }[] = [];
+    const apagarDia: { id: string; sp: string; kpiId: string; date: string; value: number }[] = [];
+    if (porDia.length) {
+      const desejado = new Map<string, { sp: any; kpiId: string; date: string; value: number }>();
+      for (const r of porDia) {
+        const nome = String(r.vendedora || r.nome || "").trim();
+        const data = String(r.data || r.date || "").slice(0, 10);
+        if (!nome || !/^\d{4}-\d{2}-\d{2}$/.test(data) || data < iniMes || data > ultimoDia || data > hoje) continue;
+        const sp = spDaLinha.get(`vend:${norm(nome)}`);
+        if (!sp?.id) continue;
+        spsDia.add(sp.id);
+        desejado.set(`${sp.id}|${KPI_FATURAMENTO}|${data}`, { sp, kpiId: KPI_FATURAMENTO, date: data, value: r2(Number(r.realizado ?? r.faturamento) || 0) });
+        const q = num(r.quantidade ?? r.vendas);
+        if (q !== null) { temQuantidade = true; desejado.set(`${sp.id}|${KPI_VENDAS}|${data}`, { sp, kpiId: KPI_VENDAS, date: data, value: q }); }
+      }
+      if (spsDia.size) {
+        const { data: ex, error } = await supabase
+          .from("kpi_entries").select("id, salesperson_id, kpi_id, entry_date, value, observations")
+          .eq("company_id", COMPANY_ID).in("kpi_id", [KPI_FATURAMENTO, KPI_VENDAS]).in("salesperson_id", [...spsDia])
+          .gte("entry_date", iniMes).lte("entry_date", ultimoDia).limit(5000);
+        if (error) return json({ error: `kpi_entries (dia): ${error.message}` }, 500);
+        const exMap = new Map((ex || []).map((e: any) => [`${e.salesperson_id}|${e.kpi_id}|${e.entry_date}`, e]));
+        for (const [k, d] of desejado) {
+          const e: any = exMap.get(k);
+          if (d.value > 0) {
+            if (!e || Math.abs(Number(e.value) - d.value) > 0.009) planoDia.push({ ...d, antes: e ? Number(e.value) : null });
+          } else if (e && String(e.observations || "").startsWith(TAG)) {
+            apagarDia.push({ id: e.id, sp: e.salesperson_id, kpiId: e.kpi_id, date: e.entry_date, value: Number(e.value) });
+          }
+        }
+        for (const [k, e] of exMap) {
+          if (!desejado.has(k) && String((e as any).observations || "").startsWith(TAG)) {
+            apagarDia.push({ id: (e as any).id, sp: (e as any).salesperson_id, kpiId: (e as any).kpi_id, date: (e as any).entry_date, value: Number((e as any).value) });
+          }
+        }
+      }
     }
 
     // 4) KPIs a convergir: Faturamento sempre; Vendas quando a API traz quantidade
@@ -279,6 +325,7 @@ Deno.serve(async (req: Request) => {
         const api = k.pick(l);
         if (api === null) continue;
         const sp = spDaLinha.get(l.key);
+        if (sp?.id && spsDia.has(sp.id)) continue; // vendedora no modo dia a dia
         const outros = sp?.id ? outrosDias.get(sp.id) || 0 : 0;
         const hojeAtual = sp?.id ? noDia.get(sp.id) || 0 : 0;
         const valorHoje = r2(api - outros);
@@ -354,7 +401,34 @@ Deno.serve(async (req: Request) => {
       lancamentos: plano.map((p) => ({ kpi: p.kpi, linha: p.linha, api: p.api, ja_lancado_outros_dias: r2(p.outros), no_dia_antes: p.hojeAtual, no_dia_depois: p.valorHoje })),
       metas: metasPlano,
     };
-    if (dryRun || plano.length === 0) return json({ ...resumo, gravados: 0 });
+    const resumoDia = {
+      modo_dia: porDia.length > 0, vendedoras_dia: spsDia.size,
+      dias_gravar: planoDia.length, dias_apagar: apagarDia.length,
+      amostra_dias: planoDia.slice(0, 12).map((d) => ({ vend: d.sp.name, kpi: d.kpiId === KPI_VENDAS ? "Vendas" : "Fat", dia: d.date, de: d.antes, para: d.value })),
+      amostra_apagar: apagarDia.slice(0, 12).map((d) => ({ dia: d.date, kpi: d.kpiId === KPI_VENDAS ? "Vendas" : "Fat", valor: d.value })),
+    };
+    Object.assign(resumo, resumoDia);
+    if (dryRun || (plano.length === 0 && planoDia.length === 0 && apagarDia.length === 0)) return json({ ...resumo, gravados: 0 });
+
+    // 6a) modo dia: upsert dia a dia + apagar o que a API não confirma
+    let gravadosDia = 0;
+    const loteDia = planoDia.map((d) => ({
+      company_id: COMPANY_ID, kpi_id: d.kpiId, salesperson_id: d.sp.id, entry_date: d.date, value: d.value,
+      unit_id: d.sp.unit_id ?? null, team_id: d.sp.team_id ?? null, sector_id: d.sp.sector_id ?? null,
+      observations: `${TAG} sync automático do dashboard 3D Cure HQ · por dia`,
+    }));
+    for (let i = 0; i < loteDia.length; i += 100) {
+      const parte = loteDia.slice(i, i + 100);
+      const { error } = await supabase.from("kpi_entries").upsert(parte, { onConflict: "salesperson_id,kpi_id,entry_date" });
+      if (error) console.error("[threedcure-sync] upsert dia:", error.message); else gravadosDia += parte.length;
+    }
+    for (let i = 0; i < apagarDia.length; i += 100) {
+      const ids = apagarDia.slice(i, i + 100).map((d) => d.id);
+      const { error } = await supabase.from("kpi_entries").delete().in("id", ids);
+      if (error) console.error("[threedcure-sync] delete dia:", error.message);
+    }
+    (resumo as any).gravados_dia = gravadosDia;
+    if (plano.length === 0) return json({ ...resumo, gravados: 0 });
 
     // 6) upsert na linha do dia (UNIQUE vendedor+kpi+dia)
     const lote = plano.map((p) => ({
