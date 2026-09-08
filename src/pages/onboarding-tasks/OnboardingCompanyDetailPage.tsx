@@ -910,7 +910,7 @@ const OnboardingCompanyDetailPage = () => {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Telefone</Label>
+                      <Label htmlFor="phone">Telefone (financeiro)</Label>
                       <Input
                         id="phone"
                         value={form.phone}
@@ -930,6 +930,9 @@ const OnboardingCompanyDetailPage = () => {
                           setForm({ ...form, phone: masked });
                         }}
                       />
+                      <p className="text-xs text-muted-foreground">
+                        É neste número que chegam as cobranças: régua de vencimento e link de pagamento das faturas.
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
@@ -971,7 +974,7 @@ const OnboardingCompanyDetailPage = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="owner_phone">Telefone de Contato</Label>
+                        <Label htmlFor="owner_phone">Telefone do Proprietário</Label>
                         <Input
                           id="owner_phone"
                           value={form.owner_phone}
@@ -989,6 +992,9 @@ const OnboardingCompanyDetailPage = () => {
                             setForm({ ...form, owner_phone: masked });
                           }}
                         />
+                        <p className="text-xs text-muted-foreground">
+                          Contato do dono: recebe relatórios e avisos da UNV. Não recebe cobrança.
+                        </p>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="owner_cpf">CPF</Label>
