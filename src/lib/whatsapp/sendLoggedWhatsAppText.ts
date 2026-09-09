@@ -164,6 +164,13 @@ export async function sendLoggedWhatsAppText({
 
   if (insertMsgErr) throw insertMsgErr;
 
+  // A conversa sobe pro topo do Atendimento na hora do disparo (mesmo que o envio
+  // falhe depois, ela precisa aparecer em primeiro, com a mensagem marcada como falha)
+  await supabase
+    .from("crm_whatsapp_conversations")
+    .update({ last_message: msg.substring(0, 255), last_message_at: new Date().toISOString() })
+    .eq("id", conversationId);
+
   // 4) Send via backend function
   const { data: sendData, error: sendErr } = await supabase.functions.invoke("evolution-api", {
     body: {

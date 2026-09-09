@@ -138,8 +138,10 @@ export const CRMInboxPage = () => {
     ...whatsappConversations.map(c => ({ ...c, channel: "whatsapp" as const })),
     ...instagramConversations,
   ].sort((a, b) => {
-    const dateA = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
-    const dateB = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+    // Sempre a conversa com a mensagem mais recente (enviada OU recebida) em primeiro.
+    // Conversa sem mensagem ainda usa a data de criação, pra não cair no fim da lista.
+    const dateA = new Date(a.last_message_at || a.created_at || 0).getTime();
+    const dateB = new Date(b.last_message_at || b.created_at || 0).getTime();
     return dateB - dateA;
   });
 
