@@ -210,13 +210,16 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
           if (own.length) return own;
           return metaLevelsFor(main).map(l => ({ name: l.name, value: l.value / Math.max(1, people.length) }));
         };
+        // Entra no ranking quem vendeu no mês OU quem tem meta individual cadastrada
+        // no mês (aparece zerado, no fim da lista). Sem meta e sem venda fica fora.
+        const hasOwnTarget = (pid: string) => targets.some(t => t.kpi_id === main.id && t.salesperson_id === pid && Number(t.target_value || 0) > 0);
         rank = people.map(p => {
           const value = byPerson.get(p.id) || 0;
           const lv = levelsPerson(p.id).map(l => ({ name: l.name, value: l.value, pct: l.value > 0 ? (value / l.value) * 100 : 0 }));
           const base = lv.find(l => l.name === "Meta") ?? lv[0];
           const reached = [...lv].reverse().find(l => l.value > 0 && value >= l.value)?.name || null;
-          return { name: p.name, value, type: main.kpi_type, pct: base && base.value > 0 ? (value / base.value) * 100 : 0, levels: lv, reached };
-        }).filter(r => r.value > 0).sort((a, b) => b.pct - a.pct || b.value - a.value).slice(0, 10);
+          return { name: p.name, value, type: main.kpi_type, pct: base && base.value > 0 ? (value / base.value) * 100 : 0, levels: lv, reached, ownTarget: hasOwnTarget(p.id) };
+        }).filter(r => r.value > 0 || r.ownTarget).sort((a, b) => b.pct - a.pct || b.value - a.value).slice(0, 10);
         // vendas por equipe
         people.forEach(p => {
           if (!p.team_id) return;
