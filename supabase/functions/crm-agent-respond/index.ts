@@ -135,6 +135,27 @@ function agentScheduleActive(agent: any): boolean {
   return inDay && h >= hs && h < he;
 }
 
+/** Classificador barato: a última mensagem do lead é uma recusa clara? */
+async function leadRecusou(hist: any[], leadNm: string): Promise<boolean> {
+  try {
+    const txt = hist.map((m: any) => `${m.direction === "inbound" ? leadNm : "Atendente"}: ${m.content}`).join("\n");
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001", max_tokens: 5,
+        system: "Você classifica conversas comerciais. Responda APENAS 'RECUSA' se a ÚLTIMA mensagem do lead diz que não quer, não tem interesse, já tem outra solução/estratégia, pede pra não insistir ou encerra a conversa. Caso contrário (dúvida, 'vou pensar', pergunta, silêncio, aceite, qualquer outra coisa) responda 'OK'.",
+        messages: [{ role: "user", content: txt }],
+      }),
+    });
+    if (!r.ok) return false;
+    const d = await r.json();
+    const out = (Array.isArray(d?.content) ? d.content : []).filter((x: any) => x?.type === "text").map((x: any) => String(x.text)).join("").trim().toUpperCase();
+    return out.startsWith("RECUSA");
+  } catch { return false; }
+}
+const leadNmFor = (cv: any) => cv?.contact?.name || cv?.contact?.username || "Lead";
+
 // ---------- Ferramentas do agente (agenda + funil) ----------
 function buildTools(agent: any, hasLead: boolean): any[] {
   const tools: any[] = [];
@@ -165,6 +186,20 @@ function buildTools(agent: any, hasLead: boolean): any[] {
         },
       });
     }
+  }
+  if (hasLead) {
+    tools.push({
+      name: "marcar_perdido",
+      description: "Marca o negócio como PERDIDO no CRM e encerra o atendimento. Use SOMENTE quando o lead recusou DUAS vezes: ele disse que não quer / não tem interesse / já tem outra solução, você fez UMA tentativa de contorno com argumento plausível, e ele manteve a recusa. Nunca use na primeira recusa, nem por silêncio, nem por 'vou pensar' ou falta de orçamento agora (isso é objeção, você trabalha).",
+      input_schema: {
+        type: "object",
+        properties: {
+          motivo: { type: "string", description: "Em uma frase, o que o lead disse ao recusar" },
+          tipo: { type: "string", enum: ["nao_quer", "timing", "preco", "concorrente", "outro"], description: "nao_quer = decidiu não fazer / sem interesse; timing = não é o momento; preco = caro / sem orçamento; concorrente = já tem outra empresa ou solução; outro" },
+        },
+        required: ["motivo", "tipo"],
+      },
+    });
   }
   if (agent.can_move_stage && hasLead) {
     tools.push({
@@ -496,6 +531,33 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
         : `Lead marcado como fora do perfil (este funil não tem etapa "Fora do ICP", então ele ficou onde está). Encerre a conversa com educação.`;
     }
 
+    if (name === "marcar_perdido") {
+      if (!leadId) return "Erro: conversa sem negócio vinculado.";
+      const motivo = String(input?.motivo || "").trim() || "lead recusou duas vezes";
+      const tipo = String(input?.tipo || "outro");
+      const reasonName: Record<string, string> = {
+        nao_quer: "Decidiu não fazer nada", timing: "Timing - Não é o momento", preco: "Preço", concorrente: "Concorrente", outro: "Outro",
+      };
+      const { data: lead } = await supabase.from("crm_leads").select("id, pipeline_id, notes, stage_id").eq("id", leadId).maybeSingle();
+      if (!lead?.pipeline_id) return "Erro: lead sem funil.";
+      const { data: lostStage } = await supabase.from("crm_stages").select("id, name")
+        .eq("pipeline_id", lead.pipeline_id).eq("final_type", "lost").limit(1).maybeSingle();
+      const { data: reason } = await supabase.from("crm_loss_reasons").select("id")
+        .eq("name", reasonName[tipo] || "Outro").eq("is_active", true).limit(1).maybeSingle();
+      const now = new Date().toISOString();
+      const patch: Record<string, unknown> = {
+        notes: [lead.notes, `[Agente IA] Perdido após 2 recusas (${reasonName[tipo] || "Outro"}): ${motivo}`].filter(Boolean).join("\n"),
+        closed_at: now,
+      };
+      if (reason?.id) patch.loss_reason_id = reason.id;
+      if (lostStage) { patch.stage_id = lostStage.id; patch.stage_entered_at = now; }
+      const { error } = await supabase.from("crm_leads").update(patch).eq("id", leadId);
+      if (error) return `Erro ao marcar perdido: ${error.message}`;
+      return lostStage
+        ? `OK: negócio marcado como perdido (etapa "${lostStage.name}"). Agora ENCERRE: agradeça em uma frase, deixe a porta aberta sem prometer retorno e NÃO faça nenhuma pergunta. Depois desta mensagem você não fala mais com este lead.`
+        : `OK: lead marcado como perdido (este funil não tem etapa de perdido, ficou onde está). Agora ENCERRE: agradeça em uma frase, sem pergunta e sem prometer retorno.`;
+    }
+
     if (name === "mover_etapa") {
       if (!leadId) return "Erro: conversa sem negócio vinculado.";
       const term = String(input?.etapa || "").trim().toLowerCase();
@@ -650,6 +712,10 @@ Deno.serve(async (req) => {
             // Já agendou? Lead com reunião FUTURA não pode receber follow-up de
             // reativação (senão o agente pede pra agendar de novo, como já ocorreu).
             if (cv.lead_id) {
+              // lead perdido/ganho não recebe follow-up
+              const { data: ld } = await supabase.from("crm_leads").select("stage_id, closed_at, stage:crm_stages(final_type)").eq("id", cv.lead_id).maybeSingle();
+              const ft = (ld as any)?.stage?.final_type;
+              if (ft === "lost" || ft === "won" || (ld as any)?.closed_at) continue;
               const { data: futureMtgs } = await supabase.from("crm_activities")
                 .select("status").eq("lead_id", cv.lead_id).eq("type", "meeting")
                 .gte("scheduled_at", new Date().toISOString()).limit(5);
@@ -678,6 +744,12 @@ Deno.serve(async (req) => {
             const lastLoggedTs = lastLoggedRow ? Date.parse(String(lastLoggedRow[tsCol] || "")) : 0;
             const lastConvTs = Date.parse(String((cv as any).last_message_at || ""));
             if (lastConvTs && lastLoggedTs && lastConvTs - lastLoggedTs > 2 * 60000) continue;
+            // RECUSA: se a última fala do lead foi "não quero / já tenho / sem
+            // interesse", o agente já fez (ou faria) a tentativa de contorno na
+            // resposta normal. Silêncio depois disso NÃO vira follow-up (Yasmin
+            // 09/09: recusou, agente contornou, ela calou, e ainda levou 5 cobranças).
+            const lastInbound = [...hm].reverse().find((m: any) => m.direction === "inbound");
+            if (lastInbound && await leadRecusou(hm.slice(-8), leadNmFor(cv))) continue;
             // monta prompt de reativação — tentativa N de M, com os follow-ups já
             // enviados listados pra IA NÃO repetir (o lead recebia a mesma pergunta
             // reescrita 5 vezes).
@@ -1146,6 +1218,9 @@ Deno.serve(async (req) => {
       tools.some((t: any) => t.name === "marcar_fora_do_perfil")
         ? `\nFORA DO PERFIL: se durante a conversa ficar claro que o lead não é do nosso perfil (outro segmento, sem time comercial, pessoa procurando emprego, curioso, concorrente), chame marcar_fora_do_perfil com o motivo e encerre com educação — sem insistir e sem agendar. Falta de orçamento agora ou "vou pensar" NÃO é fora de perfil: isso você trabalha como objeção.`
         : "",
+      tools.some((t: any) => t.name === "marcar_perdido")
+        ? `\nRECUSA (regra obrigatória): se o lead disser que NÃO quer, não tem interesse, já tem outra solução ou pede pra parar, você faz UMA ÚNICA tentativa de contorno — curta, respeitosa, com um argumento plausível e específico pro caso dele (um dado, um exemplo, um ganho concreto ou uma pergunta que reabra), sem pressão. Se ele recusar de novo (ou reafirmar que não quer), NÃO insista: chame marcar_perdido com o motivo e o tipo, e encerre com educação em uma frase, sem nova pergunta. Nunca faça duas tentativas de contorno. Silêncio não é recusa.`
+        : "",
       confirmedTimeHint,
       missingNameHint,
       igPersonalization,
@@ -1168,6 +1243,7 @@ Deno.serve(async (req) => {
 
     // 8) Loop de IA com tool_use (máx 5 iterações)
     const toolCalls: string[] = [];
+    let encerrarConversa = false; // marcar_perdido rodou: depois de responder, o agente sai desta conversa
     let reply = "";
     let lastContentShape: string[] = [];
     let retriedForSlots = false;
@@ -1218,6 +1294,7 @@ Deno.serve(async (req) => {
             result = `[dry_run] ferramenta ${block.name} NÃO executada (simulação).`;
           } else {
             result = await runTool(supabase, agent, conv.lead_id, block.name, block.input);
+            if (block.name === "marcar_perdido" && result.startsWith("OK")) encerrarConversa = true;
           }
           toolCalls.push(`${block.name}(${JSON.stringify(block.input)}) -> ${result.slice(0, 120)}`);
           toolResults.push({ type: "tool_result", tool_use_id: block.id, content: result });
@@ -1313,8 +1390,15 @@ Deno.serve(async (req) => {
           last_message: reply.substring(0, 255), last_message_at: new Date().toISOString(),
         }).eq("id", conversation_id);
       }
-      await logRun("sent");
-      return { ok: true, mode: "auto", sent: true, agent: agent.name, tool_calls: toolCalls };
+      if (encerrarConversa) {
+        // lead perdido após 2 recusas: agente desligado nesta conversa (sem
+        // follow-up, sem resposta automática). Quem religa é a pessoa, no Atendimento.
+        await supabase.from("crm_ai_agent_conversation_overrides").upsert({
+          agent_id: agent.id, conversation_id, channel, enabled: false, reply_mode: mode,
+        }, { onConflict: "conversation_id,channel" });
+      }
+      await logRun(encerrarConversa ? "sent_lost_closed" : "sent");
+      return { ok: true, mode: "auto", sent: true, agent: agent.name, tool_calls: toolCalls, closed: encerrarConversa || undefined };
     } else {
       await supabase.from("crm_ai_suggested_replies").insert({
         agent_id: agent.id, channel, conversation_id, content: reply, status: "pending",
