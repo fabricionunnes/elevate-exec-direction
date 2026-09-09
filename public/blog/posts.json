@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-09T15:02:07",
+ "gerado_em": "2026-09-09T21:01:26",
  "posts": [
+  {
+   "slug": "pos-venda-nao-resolve-estrutura-comercial-travada",
+   "url": "/blog/pos-venda-nao-resolve-estrutura-comercial-travada/",
+   "titulo": "Pós-venda não resolve estrutura comercial travada na conversão",
+   "resumo": "Empilhar serviço não muda o número do mês. Se o cliente não fecha na frente, o que vem depois não sustenta a operação.",
+   "tags": [
+    "pós-venda",
+    "estrutura comercial",
+    "conversão",
+    "decisão",
+    "meta mensal"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-09",
+   "ts": 2074
+  },
   {
    "slug": "ferramenta-disponivel-nao-substitui-estrutura-comercial",
    "url": "/blog/ferramenta-disponivel-nao-substitui-estrutura-comercial/",
