@@ -48,6 +48,15 @@ export async function sendLoggedWhatsAppText({
   if (!formatted) throw new Error("Telefone inválido");
 
   // 1) Find or create contact
+  //    Primeiro pelo número exato (cobre número fora do padrão, ex.: 14 dígitos,
+  //    que o filtro por sufixo abaixo rejeitava e acabava em "duplicate key").
+  const { data: exactMatches, error: exactErr } = await supabase
+    .from("crm_whatsapp_contacts")
+    .select("id, phone, lead_id, name")
+    .eq("phone", formatted)
+    .limit(1);
+  if (exactErr) throw exactErr;
+
   const { data: suffixMatches, error: suffixErr } = await supabase
     .from("crm_whatsapp_contacts")
     .select("id, phone, lead_id, name")
@@ -55,9 +64,9 @@ export async function sendLoggedWhatsAppText({
 
   if (suffixErr) throw suffixErr;
 
-  const contactMatch = (suffixMatches || []).find((c: any) => {
+  let contactMatch: any = (exactMatches || [])[0] || (suffixMatches || []).find((c: any) => {
     const cDigits = (c.phone || "").replace(/\D/g, "");
-    if (cDigits.length > 13 || cDigits.length < 8) return false;
+    if (cDigits.length > 15 || cDigits.length < 8) return false;
     if ((c.phone || "").includes("@") || (c.phone || "").includes("-")) return false;
     return cDigits.slice(-8) === suffix8 || cDigits.slice(-9) === suffix9;
   });
@@ -84,8 +93,23 @@ export async function sendLoggedWhatsAppText({
       .select("id")
       .single();
 
-    if (createErr) throw createErr;
-    contactId = created.id;
+    if (createErr) {
+      // Corrida/duplicidade (23505): o contato já existe com esse telefone — reaproveita
+      if ((createErr as any).code === "23505") {
+        const { data: again } = await supabase
+          .from("crm_whatsapp_contacts")
+          .select("id")
+          .eq("phone", formatted)
+          .limit(1)
+          .maybeSingle();
+        if (!again?.id) throw createErr;
+        contactId = again.id;
+      } else {
+        throw createErr;
+      }
+    } else {
+      contactId = created.id;
+    }
   }
 
   // 2) Find or create conversation (scoped by instance)
