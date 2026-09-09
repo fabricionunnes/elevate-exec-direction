@@ -43,7 +43,7 @@ async function resolveAgentMode(
 }
 
 // ---------- Envio WhatsApp (mesmo transporte do survey-sender: Stevo/Manager V2 vs Evolution legado) ----------
-async function sendWhatsAppText(supabase: any, instanceId: string, phone: string, message: string): Promise<{ ok: boolean; error?: string }> {
+async function sendWhatsAppText(supabase: any, instanceId: string, phone: string, message: string): Promise<{ ok: boolean; error?: string; remoteId?: string | null; isV2?: boolean }> {
   const { data: instance } = await supabase
     .from("whatsapp_instances")
     .select("id, instance_name, api_url, api_key, provider_type, status")
@@ -86,7 +86,9 @@ async function sendWhatsAppText(supabase: any, instanceId: string, phone: string
     : { "Content-Type": "application/json", apikey: apiKey, Authorization: `Bearer ${apiKey}` };
   const resp = await fetch(sendUrl, { method: "POST", headers, body: JSON.stringify({ number: phone, text: message, delay: 0 }) });
   if (!resp.ok) return { ok: false, error: `HTTP ${resp.status}: ${(await resp.text()).slice(0, 120)}` };
-  return { ok: true };
+  let remoteId: string | null = null;
+  try { const d = await resp.json(); remoteId = d?.key?.id || d?.data?.key?.id || d?.messageId || d?.id || null; } catch { /* corpo não-JSON */ }
+  return { ok: true, remoteId, isV2 };
 }
 
 // ---------- Horário de atendimento ----------
@@ -1107,7 +1109,7 @@ Deno.serve(async (req) => {
       agent.objective ? `\nOBJETIVO: ${agent.objective}` : "",
       agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
       knowledge ? `\n\nBASE DE CONHECIMENTO (use quando relevante, não invente):${knowledge}` : "",
-      `\n\nData/hora atual (Brasília): ${nowBR}.`,
+      `\n\nData/hora atual (Brasília): ${nowBR}. A saudação (bom dia/boa tarde/boa noite) segue ESTA hora — nunca repita a saudação do lead se ela não bater com o horário.`,
       tools.length ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou; (5) ANTES de chamar agendar_reuniao, você precisa do NOME, do E-MAIL e do TELEFONE/WhatsApp do lead — peça numa única mensagem curta o que faltar ("perfeito, fechei pra {horário}. Me confirma seu nome completo, e-mail e WhatsApp pra eu mandar o convite?") e só chame a ferramenta quando o lead responder; se você já sabe o nome dele pela conversa, não pergunte de novo — pergunte só o que falta; (6) passe email, telefone e nome_completo nos parâmetros de agendar_reuniao — eles vão pro cadastro do lead no CRM.` : "",
       tools.some((t: any) => t.name === "marcar_fora_do_perfil")
         ? `\nFORA DO PERFIL: se durante a conversa ficar claro que o lead não é do nosso perfil (outro segmento, sem time comercial, pessoa procurando emprego, curioso, concorrente), chame marcar_fora_do_perfil com o motivo e encerre com educação — sem insistir e sem agendar. Falta de orçamento agora ou "vou pensar" NÃO é fora de perfil: isso você trabalha como objeção.`
@@ -1263,9 +1265,18 @@ Deno.serve(async (req) => {
         const phone = String(conv.contact?.phone || "").replace(/\D/g, "");
         const sent = await sendWhatsAppText(supabase, conv.instance_id, phone, reply);
         if (!sent.ok) { await logRun("send_failed", sent.error); return { ok: false, error: "falha ao enviar WhatsApp", detail: sent.error }; }
-        // NÃO insere a mensagem aqui: o eco do webhook do Stevo já grava o outbound
-        // (com remote_id). Gravar dos dois lados duplicava o histórico e o modelo
-        // passava a IMITAR o padrão, gerando o texto 2x dentro da própria resposta.
+        // Stevo: NÃO insere a mensagem aqui — o eco do webhook grava o outbound
+        // (com remote_id); gravar dos dois lados duplicava o histórico.
+        // Evolution (servidor próprio): a API NÃO ecoa o que ela mesma enviou, então
+        // a resposta do agente sumia do Atendimento (09/09: Yasmin Teles — o log
+        // dizia "sent" e a conversa não mostrava nada). Gravamos aqui, com remote_id;
+        // se algum eco vier, o webhook deduplica pelo remote_id.
+        if (!sent.isV2) {
+          await supabase.from("crm_whatsapp_messages").insert({
+            conversation_id, content: reply, type: "text", direction: "outbound", status: "sent",
+            remote_id: sent.remoteId || null, is_ai: true, sent_by: null,
+          });
+        }
         await supabase.from("crm_whatsapp_conversations").update({
           last_message: reply.substring(0, 255), last_message_at: new Date().toISOString(),
         }).eq("id", conversation_id);
