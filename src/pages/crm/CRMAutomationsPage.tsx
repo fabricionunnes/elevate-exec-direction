@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { toast } from "sonner";
 import { Plus, Zap, Bot, Trash2, Loader2, MessageSquare, Instagram } from "lucide-react";
 import { IgTriggersManager } from "@/components/crm/agents/IgTriggersManager";
+import { AgentEditorDialog } from "@/components/crm/agents/AgentEditorDialog";
+import type { AIAgent } from "@/pages/crm/CRMAgentsPage";
 import { useCRMContext } from "./CRMLayout";
 
 interface Agent {
@@ -51,6 +53,17 @@ export default function CRMAutomationsPage() {
   const [keywordsText, setKeywordsText] = useState("");
 
   const [agentDialog, setAgentDialog] = useState(false);
+  // Editor completo (horário de atendimento, agenda, follow-up, conhecimento) —
+  // o mesmo de /crm/agents, aberto daqui pra não precisar de outra tela.
+  const [fullOpen, setFullOpen] = useState(false);
+  const [fullAgent, setFullAgent] = useState<AIAgent | null>(null);
+  const openFullEditor = async (id: string) => {
+    const { data, error } = await supabase.from("crm_ai_agents").select("*").eq("id", id).maybeSingle();
+    if (error || !data) { toast.error("Não consegui carregar o agente"); return; }
+    setAgentDialog(false);
+    setFullAgent(data as AIAgent);
+    setFullOpen(true);
+  };
   const [editAgent, setEditAgent] = useState<Partial<Agent> | null>(null);
   const [agentKwText, setAgentKwText] = useState("");
 
@@ -244,7 +257,10 @@ export default function CRMAutomationsPage() {
                     </div>
                   )}
                 </div>
-                <Button size="sm" variant="ghost" onClick={() => openEditAgent(a)}>Configurar</Button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button size="sm" variant="ghost" onClick={() => openFullEditor(a.id)} title="Horário de atendimento, agenda, follow-up e conhecimento">Horários e agenda</Button>
+                  <Button size="sm" variant="ghost" onClick={() => openEditAgent(a)}>Configurar</Button>
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -429,12 +445,28 @@ export default function CRMAutomationsPage() {
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAgentDialog(false)}>Cancelar</Button>
-            <Button onClick={saveAgent} disabled={saving}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Salvar</Button>
+          <DialogFooter className="sm:justify-between">
+            {editAgent?.id ? (
+              <Button variant="link" className="px-0 text-xs" onClick={() => openFullEditor(editAgent.id!)}>
+                Horário de atendimento, agenda e conhecimento →
+              </Button>
+            ) : <span />}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setAgentDialog(false)}>Cancelar</Button>
+              <Button onClick={saveAgent} disabled={saving}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Salvar</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AgentEditorDialog
+        open={fullOpen}
+        onOpenChange={setFullOpen}
+        agent={fullAgent}
+        staffId={staffId}
+        tenantId={tenantId}
+        onSaved={load}
+      />
     </div>
   );
 }
