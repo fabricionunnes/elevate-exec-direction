@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-09T21:01:26",
+ "gerado_em": "2026-09-09T22:31:06",
  "posts": [
+  {
+   "slug": "prospeccao-junior-nao-resolve-time-sem-direcao",
+   "url": "/blog/prospeccao-junior-nao-resolve-time-sem-direcao/",
+   "titulo": "Prospecção com júnior não resolve time sem direção comercial",
+   "resumo": "Contratar júnior para prospectar parece barato mas esconde o problema real. A empresa precisa de alguém que estruture o time que já está lá.",
+   "tags": [
+    "prospecção",
+    "contratação",
+    "estrutura comercial",
+    "treino de vendedor",
+    "decisão"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-09",
+   "ts": 2075
+  },
   {
    "slug": "pos-venda-nao-resolve-estrutura-comercial-travada",
    "url": "/blog/pos-venda-nao-resolve-estrutura-comercial-travada/",
