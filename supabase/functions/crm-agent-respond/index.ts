@@ -625,8 +625,8 @@ Deno.serve(async (req) => {
           const tsCol = isBIG ? "timestamp" : "created_at";
           const { data: convs } = await supabase.from(convTable)
             .select(isBIG
-              ? "id, instance_id, lead_id, contact:instagram_contacts(name, username)"
-              : "id, instance_id, lead_id, contact:crm_whatsapp_contacts(name, phone)")
+              ? "id, instance_id, lead_id, last_message_at, contact:instagram_contacts(name, username)"
+              : "id, instance_id, lead_id, last_message_at, contact:crm_whatsapp_contacts(name, phone)")
             .eq("instance_id", b.instance_id)
             .lt("last_message_at", new Date(Date.now() - afterMin * 60000).toISOString())
             .gt("last_message_at", new Date(Date.now() - 7 * 86400000).toISOString())
@@ -668,13 +668,33 @@ Deno.serve(async (req) => {
             for (let i = hm.length - 1; i >= 0 && hm[i].direction === "outbound"; i--) trailing++;
             if (trailing >= hm.length) continue; // nunca teve resposta do lead
             if (trailing - 1 >= maxAtt) continue; // já esgotou as tentativas
-            // monta prompt de reativação
+            // TRAVA (09/09/2026): se a conversa tem last_message_at mais novo que a
+            // última mensagem gravada, houve envio que não ficou registrado (era o
+            // caso do follow-up via Evolution — a API não ecoa o que envia). Sem o
+            // registro o contador nunca subia e o agente repetia a cada hora
+            // (Yasmin recebeu 5 iguais). Nesse caso não empilha outro follow-up;
+            // a próxima mensagem do lead zera tudo naturalmente.
+            const lastLoggedRow: any = (hist || []).length ? (hist as any[])[(hist as any[]).length - 1] : null;
+            const lastLoggedTs = lastLoggedRow ? Date.parse(String(lastLoggedRow[tsCol] || "")) : 0;
+            const lastConvTs = Date.parse(String((cv as any).last_message_at || ""));
+            if (lastConvTs && lastLoggedTs && lastConvTs - lastLoggedTs > 2 * 60000) continue;
+            // monta prompt de reativação — tentativa N de M, com os follow-ups já
+            // enviados listados pra IA NÃO repetir (o lead recebia a mesma pergunta
+            // reescrita 5 vezes).
+            const attempt = trailing; // 1 = primeiro follow-up (trailing conta a resposta original)
+            const prevFu = hm.slice(hm.length - trailing + 1).map((m: any) => String(m.content));
             const leadNm = (cv as any).contact?.name || (cv as any).contact?.username || "o lead";
             const histTxt = hm.slice(-14).map((m: any) => `${m.direction === "inbound" ? leadNm : "Você"}: ${m.content}`).join("\n");
+            const angulo = attempt <= 1
+              ? "Primeiro follow-up: retome o assunto em aberto de forma leve, como quem lembrou do lead. Uma pergunta só, fácil de responder."
+              : "Último follow-up: NÃO repita a pergunta anterior nem a mesma estrutura. Mude o ângulo — traga algo novo (um dado, um exemplo rápido, um benefício concreto ou uma pergunta diferente e mais simples) e deixe a porta aberta sem cobrar resposta.";
             const fuSystem = [
               agent.instructions || "Você é um atendente comercial.",
               agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
-              `\n\nO lead parou de responder. Escreva UMA mensagem CURTA de follow-up (1-2 frases) retomando a conversa de forma leve e humana, sem pressão e sem repetir perguntas já respondidas. Referencie o assunto em aberto. Não use markdown. Nunca revele que é uma IA.`,
+              `\n\nO lead parou de responder. Escreva UMA mensagem CURTA de follow-up (1-2 frases), humana, sem pressão e sem repetir perguntas já respondidas. Não use markdown. Nunca revele que é uma IA.`,
+              `\nEsta é a tentativa ${attempt} de ${maxAtt}. ${angulo}`,
+              prevFu.length ? `\nFollow-ups JÁ ENVIADOS (proibido repetir a abertura, a estrutura ou a pergunta deles, mesmo reescrita):\n- ${prevFu.join("\n- ")}` : "",
+              prevFu.length ? `\nNão comece com "Oi ${leadNm.split(" ")[0]}, tudo certo por aí?" nem variações — já foi usado.` : "",
             ].join("");
             const aiR = await fetch("https://api.anthropic.com/v1/messages", {
               method: "POST",
@@ -696,10 +716,22 @@ Deno.serve(async (req) => {
               const ph = String((cv as any).contact?.phone || "").replace(/\D/g, "");
               const sent = await sendWhatsAppText(supabase, (cv as any).instance_id, ph, fuReply);
               if (!sent.ok) continue;
+              // Evolution não ecoa o envio: grava aqui (mesma regra da resposta normal)
+              // — é isso que faz o contador de tentativas funcionar.
+              if (!sent.isV2) {
+                await supabase.from("crm_whatsapp_messages").insert({
+                  conversation_id: cv.id, content: fuReply, type: "text", direction: "outbound", status: "sent",
+                  remote_id: sent.remoteId || null, is_ai: true, sent_by: null,
+                });
+              }
               await supabase.from("crm_whatsapp_conversations").update({
                 last_message: fuReply.substring(0, 255), last_message_at: new Date().toISOString() }).eq("id", cv.id);
             }
-            results.push(`${b.channel}/${cv.id}: enviado`);
+            await supabase.from("crm_ai_agent_runs").insert({
+              agent_id: agent.id, channel: b.channel, conversation_id: cv.id, mode: "followup",
+              outcome: `sent (tentativa ${attempt}/${maxAtt})`, reply: fuReply,
+            }).then(() => {}, () => {});
+            results.push(`${b.channel}/${cv.id}: enviado (tentativa ${attempt}/${maxAtt})`);
           }
         }
       }
