@@ -419,6 +419,7 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
           lead_id: leadId, type: "meeting", title,
           scheduled_at: startISO, status: "pending",
           responsible_staff_id: staff.id,
+          description: `Agendada pelo agente IA "${agent.name}"`,
           meeting_link: ev.event?.meetingLink || null,
           google_calendar_event_id: ev.event?.id || null,
           google_calendar_user_id: staff.user_id,
