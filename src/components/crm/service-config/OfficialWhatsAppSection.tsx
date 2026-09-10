@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { META_APP_ID, META_ES_CONFIG_ID, META_GRAPH_VERSION } from "@/lib/metaConfig";
 import { 
   ArrowLeft, 
   Plus, 
@@ -70,6 +71,54 @@ export const OfficialWhatsAppSection = ({ onBack }: OfficialWhatsAppSectionProps
   const [saving, setSaving] = useState(false);
 
   const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-official-webhook`;
+
+  // ---- Cadastro Incorporado da Meta (Embedded Signup): escolhe o número na janela da Meta ----
+  const [esBusy, setEsBusy] = useState(false);
+  const esCanUse = !!META_APP_ID && !!META_ES_CONFIG_ID;
+
+  const loadFbSdk = () =>
+    new Promise<any>((resolve, reject) => {
+      const w = window as any;
+      if (w.FB) return resolve(w.FB);
+      w.fbAsyncInit = () => { w.FB.init({ appId: META_APP_ID, autoLogAppEvents: true, xfbml: false, version: META_GRAPH_VERSION }); resolve(w.FB); };
+      const sc = document.createElement("script");
+      sc.src = "https://connect.facebook.net/pt_BR/sdk.js"; sc.async = true; sc.defer = true; sc.crossOrigin = "anonymous";
+      sc.onerror = () => reject(new Error("Não carregou o SDK da Meta (bloqueador de anúncios?)"));
+      document.body.appendChild(sc);
+    });
+
+  const startEmbeddedSignup = async () => {
+    setEsBusy(true);
+    let picked: { waba_id?: string; phone_number_id?: string } = {};
+    const onMsg = (event: MessageEvent) => {
+      if (!String(event.origin).endsWith("facebook.com")) return;
+      try {
+        const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        if (data?.type === "WA_EMBEDDED_SIGNUP" && data?.event === "FINISH") picked = { waba_id: data.data?.waba_id, phone_number_id: data.data?.phone_number_id };
+      } catch { /* outra mensagem */ }
+    };
+    window.addEventListener("message", onMsg);
+    try {
+      const FB = await loadFbSdk();
+      const code: string = await new Promise((resolve, reject) => {
+        FB.login((resp: any) => {
+          const c = resp?.authResponse?.code;
+          if (c) resolve(c); else reject(new Error("Cadastro cancelado ou não concluído na janela da Meta."));
+        }, { config_id: META_ES_CONFIG_ID, response_type: "code", override_default_response_type: true, extras: { setup: {}, featureType: "", sessionInfoVersion: "3" } });
+      });
+      for (let i = 0; i < 20 && !picked.phone_number_id; i++) await new Promise((r) => setTimeout(r, 250));
+      if (!picked.phone_number_id || !picked.waba_id) throw new Error("A Meta não devolveu o número escolhido. Tente de novo.");
+      const { data, error } = await supabase.functions.invoke("whatsapp-embedded-signup", { body: { code, waba_id: picked.waba_id, phone_number_id: picked.phone_number_id } });
+      if (error || data?.error) throw new Error(data?.detail || data?.error || error?.message);
+      toast.success(`WhatsApp ${data.phone || ""} conectado${data.registered ? "" : " (registro pendente: " + (data.registerError || "") + ")"}.`);
+      fetchInstances();
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao conectar com a Meta");
+    } finally {
+      window.removeEventListener("message", onMsg);
+      setEsBusy(false);
+    }
+  };
 
   useEffect(() => {
     fetchInstances();
@@ -231,10 +280,17 @@ export const OfficialWhatsAppSection = ({ onBack }: OfficialWhatsAppSectionProps
             </p>
           </div>
         </div>
-        <Button onClick={() => setShowAddDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Instância
-        </Button>
+        <div className="flex items-center gap-2">
+          {esCanUse && (
+            <Button onClick={startEmbeddedSignup} disabled={esBusy} className="bg-[#1877F2] hover:bg-[#166FE5] text-white">
+              {esBusy ? "Abrindo a Meta…" : "Conectar com a Meta"}
+            </Button>
+          )}
+          <Button variant={esCanUse ? "outline" : "default"} onClick={() => setShowAddDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            {esCanUse ? "Cadastro manual" : "Nova Instância"}
+          </Button>
+        </div>
       </div>
 
       {/* Setup Guide */}
