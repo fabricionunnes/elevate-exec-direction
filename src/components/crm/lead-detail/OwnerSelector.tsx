@@ -7,7 +7,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Check, User } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -136,7 +135,7 @@ export function OwnerSelector({
           </div>
         </div>
 
-        <ScrollArea className="max-h-64">
+        <div className="max-h-64 overflow-y-auto overscroll-contain">
           <div className="p-1">
             {/* Option to remove owner */}
             <button
@@ -194,7 +193,7 @@ export function OwnerSelector({
               ))
             )}
           </div>
-        </ScrollArea>
+        </div>
       </PopoverContent>
     </Popover>
   );
