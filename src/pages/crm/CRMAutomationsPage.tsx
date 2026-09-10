@@ -363,7 +363,8 @@ export default function CRMAutomationsPage() {
 
       {/* Dialog Agente */}
       <Dialog open={agentDialog} onOpenChange={setAgentDialog}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        {/* max-w-2xl + overflow-x-hidden: o rodapé (link + 2 botões) estourava a largura e cortava os botões */}
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader><DialogTitle>{editAgent?.id ? "Configurar agente" : "Novo agente"}</DialogTitle>
             <CardDescription>Configure as informações que o agente usa pra qualificar o lead.</CardDescription>
           </DialogHeader>
@@ -477,13 +478,13 @@ export default function CRMAutomationsPage() {
               </div>
             </div>
           )}
-          <DialogFooter className="sm:justify-between">
+          <DialogFooter className="flex-wrap gap-2 sm:justify-between">
             {editAgent?.id ? (
-              <Button variant="link" className="px-0 text-xs" onClick={() => openFullEditor(editAgent.id!)}>
-                Horário de atendimento, agenda e conhecimento →
+              <Button variant="link" className="px-0 text-xs whitespace-normal text-left" onClick={() => openFullEditor(editAgent.id!)}>
+                Horário, agenda e conhecimento →
               </Button>
             ) : <span />}
-            <div className="flex gap-2">
+            <div className="flex gap-2 shrink-0">
               <Button variant="outline" onClick={() => setAgentDialog(false)}>Cancelar</Button>
               <Button onClick={saveAgent} disabled={saving}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Salvar</Button>
             </div>
