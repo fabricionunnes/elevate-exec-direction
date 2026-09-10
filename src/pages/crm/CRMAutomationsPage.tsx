@@ -40,6 +40,7 @@ export default function CRMAutomationsPage() {
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [waInstances, setWaInstances] = useState<{ id: string; label: string }[]>([]);
   const [igInstances, setIgInstances] = useState<{ id: string; label: string }[]>([]);
+  const [offInstances, setOffInstances] = useState<{ id: string; label: string }[]>([]);
   const [stages, setStages] = useState<{ id: string; name: string; pipeline_id: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -77,12 +78,14 @@ export default function CRMAutomationsPage() {
     setRules(r.data || []);
     setAgents(a.data || []);
     setPipelines(p.data || []);
-    const [wa, ig, st] = await Promise.all([
+    const [wa, ig, st, off] = await Promise.all([
       supabase.from("whatsapp_instances").select("id, display_name, instance_name").order("display_name"),
       supabase.from("instagram_instances").select("id, instagram_username, instance_name"),
       supabase.from("crm_stages").select("id, name, pipeline_id").order("sort_order"),
+      supabase.from("whatsapp_official_instances").select("id, display_name, phone_number").order("display_name"),
     ]);
     setWaInstances((wa.data || []).map((x: any) => ({ id: x.id, label: x.display_name || x.instance_name })));
+    setOffInstances((off.data || []).map((x: any) => ({ id: x.id, label: `${x.display_name || "API Oficial"}${x.phone_number ? ` · ${x.phone_number}` : ""}` })));
     setIgInstances((ig.data || []).map((x: any) => ({ id: x.id, label: x.instagram_username || x.instance_name || "Instagram" })));
     setStages(st.data || []);
     setLoading(false);
@@ -138,6 +141,27 @@ export default function CRMAutomationsPage() {
     setAgChannels(new Set()); setAgPipelines({}); setAgStages(new Set());
     setAgentDialog(true);
   };
+  // Cópia idêntica do agente (config + canais + funis + conhecimento), criada INATIVA
+  // com "(cópia)" no nome, pra editar depois (pedido do Fabrício 10/09/2026).
+  const duplicateAgent = async (a: Agent) => {
+    const { data: full, error } = await supabase.from("crm_ai_agents").select("*").eq("id", a.id).maybeSingle();
+    if (error || !full) { toast.error("Não consegui ler o agente"); return; }
+    const { id: _id, created_at: _c, updated_at: _u, ...rest } = full as any;
+    const { data: created, error: insErr } = await supabase.from("crm_ai_agents")
+      .insert({ ...rest, name: `${full.name} (cópia)`, is_active: false }).select("id").single();
+    if (insErr || !created) { toast.error(insErr?.message || "Erro ao duplicar"); return; }
+    const [ch, pp, kn] = await Promise.all([
+      supabase.from("crm_ai_agent_channels").select("channel, instance_id").eq("agent_id", a.id),
+      supabase.from("crm_ai_agent_pipelines").select("pipeline_id, reply_mode").eq("agent_id", a.id),
+      supabase.from("crm_ai_agent_knowledge").select("kind, title, content, source_url, file_path, status, char_count").eq("agent_id", a.id),
+    ]);
+    if (ch.data?.length) await supabase.from("crm_ai_agent_channels").insert(ch.data.map((x: any) => ({ ...x, agent_id: created.id })));
+    if (pp.data?.length) await supabase.from("crm_ai_agent_pipelines").insert(pp.data.map((x: any) => ({ ...x, agent_id: created.id })));
+    if (kn.data?.length) await supabase.from("crm_ai_agent_knowledge").insert(kn.data.map((x: any) => ({ ...x, agent_id: created.id })));
+    toast.success(`Agente duplicado como "${full.name} (cópia)" (inativo)`);
+    load();
+  };
+
   const openEditAgent = async (a: Agent) => {
     setEditAgent({ ...a });
     setAgentKwText((a.trigger_keywords || []).join(", "));
@@ -258,6 +282,7 @@ export default function CRMAutomationsPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  <Button size="sm" variant="ghost" onClick={() => duplicateAgent(a)} title="Criar uma cópia idêntica (inativa) pra editar depois">Duplicar</Button>
                   <Button size="sm" variant="ghost" onClick={() => openFullEditor(a.id)} title="Horário de atendimento, agenda, follow-up e conhecimento">Horários e agenda</Button>
                   <Button size="sm" variant="ghost" onClick={() => openEditAgent(a)}>Configurar</Button>
                 </div>
@@ -369,6 +394,13 @@ export default function CRMAutomationsPage() {
                 <div className="flex flex-wrap gap-x-4 gap-y-1">
                   {waInstances.map((i) => {
                     const key = `whatsapp:${i.id}`;
+                    return <label key={key} className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={agChannels.has(key)} onChange={(e) => { const s = new Set(agChannels); e.target.checked ? s.add(key) : s.delete(key); setAgChannels(s); }} />{i.label}</label>;
+                  })}
+                </div>
+                {offInstances.length > 0 && <p className="text-[11px] text-muted-foreground mt-1">WhatsApp — API oficial (Meta)</p>}
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {offInstances.map((i) => {
+                    const key = `whatsapp_official:${i.id}`;
                     return <label key={key} className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={agChannels.has(key)} onChange={(e) => { const s = new Set(agChannels); e.target.checked ? s.add(key) : s.delete(key); setAgChannels(s); }} />{i.label}</label>;
                   })}
                 </div>

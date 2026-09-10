@@ -91,6 +91,28 @@ async function sendWhatsAppText(supabase: any, instanceId: string, phone: string
   return { ok: true, remoteId, isV2 };
 }
 
+/** Envio pela API oficial do WhatsApp (Cloud API/Meta). Só texto livre: a Meta só
+ *  aceita fora da janela de 24h com template — aí o envio falha e o chamador pula. */
+async function sendOfficialText(supabase: any, officialInstanceId: string, phone: string, message: string): Promise<{ ok: boolean; error?: string; remoteId?: string | null; isV2?: boolean }> {
+  const { data: inst } = await supabase.from("whatsapp_official_instances")
+    .select("id, phone_number_id, access_token, status").eq("id", officialInstanceId).maybeSingle();
+  if (!inst?.phone_number_id || !inst?.access_token) return { ok: false, error: "instância oficial sem phone_number_id/token" };
+  let to = String(phone || "").replace(/\D/g, "");
+  if (to && (!to.startsWith("55") || to.length < 12)) to = `55${to}`;
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${inst.phone_number_id}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${inst.access_token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to, type: "text", text: { body: message } }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) return { ok: false, error: d?.error?.message || `HTTP ${r.status}` };
+    return { ok: true, remoteId: d?.messages?.[0]?.id || null, isV2: false };
+  } catch (e) {
+    return { ok: false, error: String((e as Error).message || e) };
+  }
+}
+
 // ---------- Horário de atendimento ----------
 // work_schedule (grade semanal): { "0": [["08:00","12:00"],["20:00","08:00"]], ... }
 // chave = dia da semana (0=domingo, fuso Brasília); faixa com fim < início vira a
@@ -622,7 +644,7 @@ Deno.serve(async (req) => {
       const { data: ag } = await supabase.from("crm_ai_agents").select("*").eq("id", agent_id).maybeSingle();
       if (!ag || !ag.is_active) return j({ ok: true, skip: "agente inativo" });
       const [{ data: waConvs }, { data: igConvs }, { data: agentChannels }] = await Promise.all([
-        supabase.from("crm_whatsapp_conversations").select("id, instance_id, contact:crm_whatsapp_contacts(phone)").eq("lead_id", lead_id),
+        supabase.from("crm_whatsapp_conversations").select("id, instance_id, official_instance_id, contact:crm_whatsapp_contacts(phone)").eq("lead_id", lead_id),
         supabase.from("instagram_conversations").select("id, contact:instagram_contacts(username)").eq("lead_id", lead_id),
         supabase.from("crm_ai_agent_channels").select("channel, instance_id").eq("agent_id", agent_id),
       ]);
@@ -635,7 +657,10 @@ Deno.serve(async (req) => {
       const allowsChannel = (channel: string, instanceId?: string | null) =>
         binds.some((b: any) => b.channel === channel && (!b.instance_id || !instanceId || b.instance_id === instanceId));
       const targets: any[] = [
-        ...(waConvs || []).filter((c: any) => allowsChannel("whatsapp", c.instance_id)).map((c: any) => ({ channel: "whatsapp", conv: c })),
+        ...(waConvs || []).filter((c: any) => c.instance_id
+          ? allowsChannel("whatsapp", c.instance_id)
+          : (c.official_instance_id && binds.some((b: any) => b.channel === "whatsapp_official" && b.instance_id === c.official_instance_id))
+        ).map((c: any) => ({ channel: "whatsapp", conv: c })),
         ...(igConvs || []).filter(() => allowsChannel("instagram")).map((c: any) => ({ channel: "instagram", conv: c })),
       ];
       // Instagram: conta que o Fabrício segue não é ativada pelo gatilho de etapa
@@ -657,7 +682,15 @@ Deno.serve(async (req) => {
             await supabase.functions.invoke("instagram-send", { body: { conversationId: t.conv.id, message: greeting, staffId: null } });
           } else {
             const ph = String(t.conv.contact?.phone || "").replace(/\D/g, "");
-            const sent = await sendWhatsAppText(supabase, t.conv.instance_id, ph, greeting);
+            const sent = t.conv.instance_id
+              ? await sendWhatsAppText(supabase, t.conv.instance_id, ph, greeting)
+              : await sendOfficialText(supabase, t.conv.official_instance_id, ph, greeting);
+            if (sent.ok && !sent.isV2) {
+              await supabase.from("crm_whatsapp_messages").insert({
+                conversation_id: t.conv.id, content: greeting, type: "text", direction: "outbound", status: "sent",
+                remote_id: sent.remoteId || null, is_ai: true, sent_by: null,
+              });
+            }
             if (sent.ok) await supabase.from("crm_whatsapp_conversations").update({ last_message: greeting.substring(0, 255), last_message_at: new Date().toISOString() }).eq("id", t.conv.id);
           }
         }
@@ -683,14 +716,16 @@ Deno.serve(async (req) => {
           .select("channel, instance_id").eq("agent_id", agent.id);
         for (const b of (bindings || [])) {
           const isBIG = b.channel === "instagram";
+          const isOFF = b.channel === "whatsapp_official";
           const convTable = isBIG ? "instagram_conversations" : "crm_whatsapp_conversations";
           const msgTable = isBIG ? "instagram_messages" : "crm_whatsapp_messages";
           const tsCol = isBIG ? "timestamp" : "created_at";
-          const { data: convs } = await supabase.from(convTable)
+          // (as any: o parser de tipos do supabase-js engasga com o select longo em ternário)
+          const { data: convs } = await (supabase.from(convTable) as any)
             .select(isBIG
               ? "id, instance_id, lead_id, last_message_at, contact:instagram_contacts(name, username)"
-              : "id, instance_id, lead_id, last_message_at, contact:crm_whatsapp_contacts(name, phone)")
-            .eq("instance_id", b.instance_id)
+              : "id, instance_id, official_instance_id, lead_id, last_message_at, contact:crm_whatsapp_contacts(name, phone)")
+            .eq(isOFF ? "official_instance_id" : "instance_id", b.instance_id)
             .lt("last_message_at", new Date(Date.now() - afterMin * 60000).toISOString())
             .gt("last_message_at", new Date(Date.now() - 7 * 86400000).toISOString())
             .order("last_message_at", { ascending: false }).limit(30);
@@ -787,7 +822,9 @@ Deno.serve(async (req) => {
               if (se) continue;
             } else {
               const ph = String((cv as any).contact?.phone || "").replace(/\D/g, "");
-              const sent = await sendWhatsAppText(supabase, (cv as any).instance_id, ph, fuReply);
+              const sent = isOFF
+                ? await sendOfficialText(supabase, b.instance_id, ph, fuReply)
+                : await sendWhatsAppText(supabase, (cv as any).instance_id, ph, fuReply);
               if (!sent.ok) continue;
               // Evolution não ecoa o envio: grava aqui (mesma regra da resposta normal)
               // — é isso que faz o contador de tentativas funcionar.
@@ -824,12 +861,14 @@ Deno.serve(async (req) => {
       conv = data;
     } else {
       const { data } = await supabase.from("crm_whatsapp_conversations")
-        .select("id, instance_id, contact_id, lead_id, contact:crm_whatsapp_contacts(name, phone)")
+        .select("id, instance_id, official_instance_id, contact_id, lead_id, contact:crm_whatsapp_contacts(name, phone)")
         .eq("id", conversation_id).maybeSingle();
       conv = data;
     }
     if (!conv) return j({ ok: false, error: "conversa não encontrada" });
-    if (!isIG && !conv.instance_id) return j({ ok: true, skip: "conversa sem instância Evolution" });
+    // conversa pela API oficial (Cloud API): instance_id nulo, official_instance_id preenchido
+    const isOFFICIAL = !isIG && !conv.instance_id && !!conv.official_instance_id;
+    if (!isIG && !conv.instance_id && !isOFFICIAL) return j({ ok: true, skip: "conversa sem instância" });
     if (isIG && await igSeguidoPeloFabricio(supabase, conv.contact?.username)) {
       return j({ ok: true, skip: `@${conv.contact?.username}: o Fabrício segue esta conta — agente não responde` });
     }
@@ -937,7 +976,8 @@ Deno.serve(async (req) => {
       const { data: chRows } = await supabase
         .from("crm_ai_agent_channels")
         .select("agent_id, agent:crm_ai_agents(*)")
-        .eq("channel", channel).eq("instance_id", conv.instance_id);
+        .eq("channel", isOFFICIAL ? "whatsapp_official" : channel)
+        .eq("instance_id", isOFFICIAL ? conv.official_instance_id : conv.instance_id);
       const agents = (chRows || []).map((r: any) => r.agent).filter((a: any) => a && a.is_active);
       if (agents.length === 0) return j({ ok: true, skip: "nenhum agente ativo nesta instância" });
       agents.sort((a: any, b: any) => (a.created_at < b.created_at ? -1 : 1));
@@ -1373,7 +1413,9 @@ Deno.serve(async (req) => {
         if (sendErr) return { ok: false, error: "falha ao enviar DM", detail: String(sendErr) };
       } else {
         const phone = String(conv.contact?.phone || "").replace(/\D/g, "");
-        const sent = await sendWhatsAppText(supabase, conv.instance_id, phone, reply);
+        const sent = isOFFICIAL
+          ? await sendOfficialText(supabase, conv.official_instance_id, phone, reply)
+          : await sendWhatsAppText(supabase, conv.instance_id, phone, reply);
         if (!sent.ok) { await logRun("send_failed", sent.error); return { ok: false, error: "falha ao enviar WhatsApp", detail: sent.error }; }
         // Stevo: NÃO insere a mensagem aqui — o eco do webhook grava o outbound
         // (com remote_id); gravar dos dois lados duplicava o histórico.
