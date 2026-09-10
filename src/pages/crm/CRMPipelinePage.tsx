@@ -132,7 +132,8 @@ export const CRMPipelinePage = () => {
       .from("crm_pipelines")
       .select("*")
       .eq("is_active", true)
-      .order("is_default", { ascending: false });
+      .order("is_default", { ascending: false })
+      .order("sort_order", { ascending: true });
     
     setPipelines(data || []);
     if (data && data.length > 0 && !selectedPipeline) {

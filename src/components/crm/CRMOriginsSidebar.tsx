@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -73,6 +73,7 @@ export const CRMOriginsSidebar = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [manageDialogOpen, setManageDialogOpen] = useState(false);
+  const autoSelectedRef = useRef(false);
 
   useEffect(() => {
     loadData();
@@ -96,6 +97,26 @@ export const CRMOriginsSidebar = ({
 
       setGroups(groupsRes.data || []);
       setOrigins(originsRes.data || []);
+
+      // Entrou no CRM sem nada escolhido: seleciona o PRIMEIRO funil da lista
+      // (1ª origem do 1º grupo, ex.: Funis Comerciais → FUNIL SE) em vez de cair
+      // em "Todos os Leads" com um kanban vazio (pedido do Fabrício 10/09/2026).
+      // Só na entrada — clicar em "Todos os Leads" depois continua valendo.
+      if (!autoSelectedRef.current) {
+        autoSelectedRef.current = true;
+        if (selectedOrigin === null) {
+          const gs = groupsRes.data || [];
+          const os = (originsRes.data || []) as Origin[];
+          const firstGroup = gs.find((g) => os.some((o) => o.group_id === g.id && o.pipeline_id));
+          const first = firstGroup
+            ? os.find((o) => o.group_id === firstGroup.id && o.pipeline_id)
+            : os.find((o) => o.pipeline_id);
+          if (first) {
+            setSelectedOrigin(first.id);
+            setSelectedPipeline(first.pipeline_id);
+          }
+        }
+      }
 
       // Expand all groups by default
       if (groupsRes.data) {
