@@ -55,7 +55,8 @@ import {
   Bell,
   Link2,
   FileText,
-  Shuffle
+  Shuffle,
+  ShieldCheck
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
 import { StageChecklistDialog } from "@/components/crm/StageChecklistDialog";
@@ -67,6 +68,7 @@ import { ClintIntegrationTab } from "@/components/crm/settings/ClintIntegrationT
 import { PipelineFormsManager } from "@/components/crm/PipelineFormsManager";
 import { CRMDistributionTab } from "@/components/crm/settings/CRMDistributionTab";
 import { CRMMessageRulesTab } from "@/components/crm/settings/CRMMessageRulesTab";
+import { OfficialTemplatesTab } from "@/components/crm/settings/OfficialTemplatesTab";
 import { toast } from "sonner";
 
 interface Pipeline {
@@ -1178,6 +1180,11 @@ export const CRMSettingsPage = () => {
                 <Shuffle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Distribuição</span>
                 <span className="sm:hidden">Distrib.</span>
+              </TabsTrigger>
+              <TabsTrigger value="official-templates" className="gap-1.5 text-xs sm:text-sm">
+                <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Templates oficiais</span>
+                <span className="sm:hidden">Templates</span>
               </TabsTrigger>
             </>
           )}
@@ -2314,6 +2321,11 @@ export const CRMSettingsPage = () => {
             {/* Distribuição automática de leads/conversas */}
             <TabsContent value="distribution" className="mt-6">
               <CRMDistributionTab />
+            </TabsContent>
+
+            {/* Templates da API oficial do WhatsApp (Meta) */}
+            <TabsContent value="official-templates" className="mt-6">
+              <OfficialTemplatesTab />
             </TabsContent>
           </>
         )}

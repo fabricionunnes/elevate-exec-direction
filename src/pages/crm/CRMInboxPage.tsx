@@ -58,6 +58,7 @@ import {
   Info,
   Instagram,
   Bot,
+  ShieldCheck,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -73,6 +74,7 @@ import { ConversationSidebar } from "@/components/crm/inbox/ConversationSidebar"
 import { ConversationFilters, ConversationFiltersData, defaultFilters } from "@/components/crm/inbox/ConversationFilters";
 import { AudioPlayer } from "@/components/crm/inbox/AudioPlayer";
 import { MediaUploadButton } from "@/components/crm/inbox/MediaUploadButton";
+import { OfficialTemplateSendDialog } from "@/components/crm/OfficialTemplateSendDialog";
 import { AudioRecorder } from "@/components/crm/inbox/AudioRecorder";
 import { ReceiptAnalysisButton } from "@/components/crm/inbox/ReceiptAnalysisButton";
 import { useCompanyIdentification } from "@/hooks/useCompanyIdentification";
@@ -91,6 +93,7 @@ export const CRMInboxPage = () => {
   const { staffId, staffName, isAdmin, staffRole } = useCRMContext();
   const [selectedConversation, setSelectedConversation] = useState<WhatsAppConversation | null>(null);
   const [newMessage, setNewMessage] = useState("");
+  const [officialTemplateOpen, setOfficialTemplateOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram">("all");
@@ -1096,6 +1099,16 @@ export const CRMInboxPage = () => {
             </div>
           </ScrollArea>
 
+          {selectedConversation.official_instance_id && (
+            <OfficialTemplateSendDialog
+              open={officialTemplateOpen}
+              onOpenChange={setOfficialTemplateOpen}
+              leads={[{ id: selectedConversation.lead_id || null, name: selectedConversation.contact?.name || selectedConversation.lead?.name || null, phone: selectedConversation.contact?.phone || null }]}
+              conversationId={selectedConversation.id}
+              onSent={() => refetchConversations()}
+            />
+          )}
+
           {/* Message Input */}
           <div className="border-t border-border p-2 sm:p-3 bg-card">
             <div className="flex items-center gap-1 sm:gap-2 max-w-3xl mx-auto">
@@ -1106,6 +1119,17 @@ export const CRMInboxPage = () => {
                 onUpload={handleSendMedia}
                 disabled={sending}
               />
+              {selectedConversation.official_instance_id && !selectedConversation.instance_id && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-emerald-600"
+                  title="Enviar template (API oficial) — obrigatório fora da janela de 24h"
+                  onClick={() => setOfficialTemplateOpen(true)}
+                >
+                  <ShieldCheck className="h-5 w-5" />
+                </Button>
+              )}
               <Input
                 placeholder="Mensagem"
                 value={newMessage}

@@ -62,6 +62,7 @@ import {
   Sparkles,
   MessagesSquare,
   CreditCard,
+  ShieldCheck,
 } from "lucide-react";
 import { AddLeadNoteDialog } from "@/components/crm/lead-detail/AddLeadNoteDialog";
 import { LeadSummaryTab } from "@/components/crm/lead-detail/lead-summary/LeadSummaryTab";
@@ -90,6 +91,7 @@ import { LeadScannerTab } from "@/components/crm/lead-detail/LeadScannerTab";
 import { LeadMeetingsPanel } from "@/components/crm/lead-detail/LeadMeetingsPanel";
 import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
 import { SendContractButton } from "@/components/crm/SendContractButton";
+import { OfficialTemplateSendDialog } from "@/components/crm/OfficialTemplateSendDialog";
 import { ConvertLeadToCompanyDialog } from "@/components/crm/lead-detail/ConvertLeadToCompanyDialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -198,6 +200,7 @@ export const CRMLeadDetailPage = () => {
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState("");
   const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
+  const [officialTemplateOpen, setOfficialTemplateOpen] = useState(false);
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
   const [siblingLeadIds, setSiblingLeadIds] = useState<string[]>([]);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
@@ -962,6 +965,17 @@ export const CRMLeadDetailPage = () => {
                 <MessageSquare className="h-4 w-4" />
               </Button>
             )}
+            {lead.phone && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-emerald-600 hover:text-emerald-500"
+                title="Template pela API oficial do WhatsApp"
+                onClick={() => setOfficialTemplateOpen(true)}
+              >
+                <ShieldCheck className="h-4 w-4" />
+              </Button>
+            )}
             {lead.email && (
               <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="Email">
                 <a href={`mailto:${lead.email}`}>
@@ -1598,6 +1612,12 @@ export const CRMLeadDetailPage = () => {
         onOpenChange={setAddNoteDialogOpen}
         leadId={lead.id}
         onSuccess={loadLead}
+      />
+
+      <OfficialTemplateSendDialog
+        open={officialTemplateOpen}
+        onOpenChange={setOfficialTemplateOpen}
+        leads={[{ id: lead.id, name: lead.name, phone: lead.phone }]}
       />
 
       {/* WhatsApp Dialog */}

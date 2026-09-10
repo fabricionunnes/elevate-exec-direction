@@ -25,11 +25,13 @@ import {
   UserPlus, 
   Loader2,
   CheckSquare,
-  FolderInput
+  FolderInput,
+  ShieldCheck
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { createStageActivities } from "@/hooks/useStageActions";
+import { OfficialTemplateSendDialog } from "@/components/crm/OfficialTemplateSendDialog";
 
 interface Stage {
   id: string;
@@ -73,6 +75,7 @@ export const KanbanBulkActions = ({
 }: KanbanBulkActionsProps) => {
   const [loading, setLoading] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
   const [moveToStage, setMoveToStage] = useState<string>("");
   const [assignToOwner, setAssignToOwner] = useState<string>("");
   const [moveToPipeline, setMoveToPipeline] = useState<string>("");
@@ -374,6 +377,18 @@ export const KanbanBulkActions = ({
           )}
         </div>
 
+        {/* Template pela API oficial (disparo em massa) */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setTemplateOpen(true)}
+          disabled={loading}
+          title="Disparar template aprovado pela Meta (API oficial) pros leads selecionados"
+        >
+          <ShieldCheck className="h-3 w-3 mr-1" />
+          Template oficial
+        </Button>
+
         {/* Delete */}
         <Button 
           variant="destructive" 
@@ -395,6 +410,13 @@ export const KanbanBulkActions = ({
           <X className="h-4 w-4" />
         </Button>
       </div>
+
+      <OfficialTemplateSendDialog
+        open={templateOpen}
+        onOpenChange={setTemplateOpen}
+        leadIds={selectedLeads}
+        onSent={onSuccess}
+      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

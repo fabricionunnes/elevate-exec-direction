@@ -45,6 +45,12 @@ Deno.serve(async (req) => {
       case 'getTemplates':
         return await getTemplates(instance);
 
+      case 'createTemplate':
+        return await createTemplate(instance, params);
+
+      case 'deleteTemplate':
+        return await deleteTemplate(instance, params);
+
       case 'verifyConnection':
         return await verifyConnection(instance);
 
@@ -177,7 +183,7 @@ async function sendMediaMessage(instance: any, params: any) {
 
 async function getTemplates(instance: any) {
   const response = await fetch(
-    `${GRAPH_API_URL}/${instance.waba_id}/message_templates`,
+    `${GRAPH_API_URL}/${instance.waba_id}/message_templates?fields=id,name,status,category,language,components,rejected_reason,quality_score&limit=100`,
     {
       headers: {
         'Authorization': `Bearer ${instance.access_token}`,
@@ -225,4 +231,44 @@ async function verifyConnection(instance: any) {
     }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
+}
+
+// Cria template e manda pra aprovação da Meta (status volta PENDING).
+// params: { name, category: MARKETING|UTILITY, language='pt_BR', body, footer?, buttons?: string[] (quick reply), examples?: string[] }
+async function createTemplate(instance: any, params: any) {
+  const name = String(params.name || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 512);
+  const body = String(params.body || '').trim();
+  if (!name || !body) throw new Error('Nome e texto do template são obrigatórios');
+  const vars = new Set((body.match(/\{\{\d+\}\}/g) || []));
+  const n = vars.size;
+  for (let i = 1; i <= n; i++) if (!vars.has(`{{${i}}}`)) throw new Error(`Variáveis precisam ser sequenciais: falta {{${i}}}`);
+  const examples: string[] = Array.isArray(params.examples) ? params.examples.map((e: any) => String(e)) : [];
+  while (examples.length < n) examples.push(`Exemplo ${examples.length + 1}`);
+  const components: any[] = [{ type: 'BODY', text: body, ...(n ? { example: { body_text: [examples.slice(0, n)] } } : {}) }];
+  if (params.footer) components.push({ type: 'FOOTER', text: String(params.footer).slice(0, 60) });
+  const buttons = (Array.isArray(params.buttons) ? params.buttons : []).map((b: any) => String(b).trim()).filter(Boolean).slice(0, 3);
+  if (buttons.length) components.push({ type: 'BUTTONS', buttons: buttons.map((t: string) => ({ type: 'QUICK_REPLY', text: t.slice(0, 25) })) });
+
+  const response = await fetch(`${GRAPH_API_URL}/${instance.waba_id}/message_templates`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${instance.access_token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, language: params.language || 'pt_BR', category: params.category || 'MARKETING', components }),
+  });
+  const data = await response.json();
+  console.log('[WhatsApp Official API] Create template response:', data);
+  if (!response.ok) throw new Error(data.error?.error_user_msg || data.error?.message || 'Erro ao criar template');
+  return new Response(JSON.stringify({ success: true, id: data.id, status: data.status, category: data.category, name }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+}
+
+async function deleteTemplate(instance: any, params: any) {
+  const name = String(params.name || '').trim();
+  if (!name) throw new Error('Nome do template obrigatório');
+  const response = await fetch(`${GRAPH_API_URL}/${instance.waba_id}/message_templates?name=${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${instance.access_token}` },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error?.error_user_msg || data.error?.message || 'Erro ao excluir template');
+  return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
