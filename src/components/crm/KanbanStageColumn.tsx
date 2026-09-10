@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Plus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ListChecks, Loader2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KanbanLeadCard } from "./KanbanLeadCard";
 
@@ -47,6 +49,8 @@ interface KanbanStageColumnProps {
   draggedLeadId: string | null;
   onSelectLead: (leadId: string, selected: boolean) => void;
   onSelectAllInStage: (stageId: string) => void;
+  /** seleciona os N primeiros leads da etapa (na ordem da coluna) */
+  onSelectFirstInStage?: (stageId: string, count: number) => void;
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent, stageId: string) => void;
   onDragStart: (e: React.DragEvent, lead: Lead) => void;
@@ -67,6 +71,7 @@ export const KanbanStageColumn = ({
   draggedLeadId,
   onSelectLead,
   onSelectAllInStage,
+  onSelectFirstInStage,
   onDragOver,
   onDrop,
   onDragStart,
@@ -75,6 +80,8 @@ export const KanbanStageColumn = ({
   onAddLead,
 }: KanbanStageColumnProps) => {
   const [visibleCount, setVisibleCount] = useState(LEADS_PER_PAGE);
+  const [pickOpen, setPickOpen] = useState(false);
+  const [pickCount, setPickCount] = useState<string>("");
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -146,6 +153,34 @@ export const KanbanStageColumn = ({
           )}
 
           <span className="font-semibold text-[13px] flex-1 truncate text-foreground">{stage.name}</span>
+
+          {/* Selecionar só os N primeiros (ex.: 200 de 1000) — pedido do Fabrício 10/09/2026 */}
+          {isMaster && leads.length > 1 && onSelectFirstInStage && (
+            <Popover open={pickOpen} onOpenChange={(o) => { setPickOpen(o); if (o && !pickCount) setPickCount(String(Math.min(leads.length, 200))); }}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0" title="Selecionar os N primeiros desta etapa">
+                  <ListChecks className="h-3.5 w-3.5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-3 space-y-2" align="end">
+                <p className="text-xs font-medium">Selecionar os primeiros</p>
+                <p className="text-[11px] text-muted-foreground">Na ordem da coluna. Etapa tem {leads.length} lead(s).</p>
+                <form
+                  className="flex items-center gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const n = Math.max(1, Math.min(leads.length, Number(pickCount) || 0));
+                    if (!n) return;
+                    onSelectFirstInStage(stage.id, n);
+                    setPickOpen(false);
+                  }}
+                >
+                  <Input type="number" min={1} max={leads.length} value={pickCount} onChange={(e) => setPickCount(e.target.value)} className="h-8 text-sm" autoFocus />
+                  <Button type="submit" size="sm" className="h-8 shrink-0">Selecionar</Button>
+                </form>
+              </PopoverContent>
+            </Popover>
+          )}
 
           <span className="text-[11px] text-muted-foreground font-medium tabular-nums shrink-0">
             {leads.length}

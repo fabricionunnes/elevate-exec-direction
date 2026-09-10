@@ -798,6 +798,12 @@ export const CRMPipelinePage = () => {
     }
   };
 
+  // Seleciona só os N primeiros da etapa (ordem da coluna), somando ao que já estava marcado
+  const handleSelectFirstInStage = (stageId: string, count: number) => {
+    const ids = getLeadsByStage(stageId).slice(0, Math.max(0, count)).map(l => l.id);
+    setSelectedLeads(prev => [...new Set([...prev, ...ids])]);
+  };
+
   const isSelectionMode = selectedLeads.length > 0;
 
   if (loading && !stages.length) {
@@ -907,6 +913,7 @@ export const CRMPipelinePage = () => {
                     draggedLeadId={draggedLead?.id || null}
                     onSelectLead={handleLeadSelect}
                     onSelectAllInStage={handleSelectAllInStage}
+                    onSelectFirstInStage={handleSelectFirstInStage}
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
                     onDragStart={handleDragStart}
