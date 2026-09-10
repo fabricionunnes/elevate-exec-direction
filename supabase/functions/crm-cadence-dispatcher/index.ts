@@ -36,6 +36,43 @@ function normalizeTime(t: string): string {
 }
 
 /** Stevo/Manager V2 usa outro protocolo — o endpoint legado devolve 404. */
+/** Grava contato + conversa + mensagem no Atendimento (mesmo formato do evolution-webhook). */
+async function registrarNoAtendimento(supabase: any, a: {
+  instanceId: string; leadId: string; leadName: string; phone: string; content: string;
+  mediaType: string; mediaUrl: string | null; remoteId: string | null; sentAt: string;
+}) {
+  const phone = a.phone.replace(/\D/g, "");
+  if (!phone) return;
+  let { data: contact } = await supabase.from("crm_whatsapp_contacts").select("id, lead_id").eq("phone", phone).maybeSingle();
+  if (!contact) {
+    const { data: created, error } = await supabase.from("crm_whatsapp_contacts")
+      .insert({ phone, name: a.leadName || phone, lead_id: a.leadId }).select("id, lead_id").single();
+    if (error) throw error;
+    contact = created;
+  } else if (!contact.lead_id) {
+    await supabase.from("crm_whatsapp_contacts").update({ lead_id: a.leadId }).eq("id", contact.id);
+  }
+  let { data: conv } = await supabase.from("crm_whatsapp_conversations").select("id, lead_id")
+    .eq("instance_id", a.instanceId).eq("contact_id", contact.id).neq("status", "closed")
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!conv) {
+    const { data: created, error } = await supabase.from("crm_whatsapp_conversations")
+      .insert({ instance_id: a.instanceId, contact_id: contact.id, lead_id: a.leadId, status: "open" })
+      .select("id, lead_id").single();
+    if (error) throw error;
+    conv = created;
+  } else if (!conv.lead_id) {
+    await supabase.from("crm_whatsapp_conversations").update({ lead_id: a.leadId }).eq("id", conv.id);
+  }
+  await supabase.from("crm_whatsapp_messages").insert({
+    conversation_id: conv.id, content: a.content, type: a.mediaType === "text" ? "text" : a.mediaType,
+    media_url: a.mediaType === "text" ? null : a.mediaUrl,
+    direction: "outbound", status: "sent", remote_id: a.remoteId, is_ai: false, sent_by: null, created_at: a.sentAt,
+  });
+  await supabase.from("crm_whatsapp_conversations")
+    .update({ last_message: a.content.substring(0, 255), last_message_at: a.sentAt }).eq("id", conv.id);
+}
+
 function isV2Instance(inst: { provider_type?: string | null; api_url?: string | null }): boolean {
   if (inst.provider_type === "manager_v2") return true;
   try {
@@ -393,13 +430,36 @@ Deno.serve(async (req) => {
         }
 
         if (resp.ok) {
-          await resp.text();
+          let remoteId: string | null = null;
+          let remoteJid = "";
+          try {
+            const d = JSON.parse(await resp.text());
+            remoteId = d?.key?.id || d?.data?.key?.id || d?.messageId || d?.id || null;
+            remoteJid = String(d?.key?.remoteJid || d?.data?.key?.remoteJid || "");
+          } catch { /* corpo não-JSON */ }
           await supabase.from("crm_cadence_messages").insert({
             enrollment_id: enr.id, cadence_id: cadence.id, step_id: step.id, lead_id: enr.lead_id,
             whatsapp_instance_id: instance.id, phone, message_content: messageContent,
             status: "sent", sent_at: now.toISOString(),
           });
           sent++;
+
+          // Evolution (servidor próprio) NÃO ecoa o que ele mesmo envia: sem este
+          // bloco a cadência saía no WhatsApp e não aparecia em Conversas nem no
+          // Atendimento (Ísis Mynssen, 09/09/2026). Stevo/v2 ecoa pelo webhook,
+          // então lá continua sem gravar (gravar dos dois lados duplicava).
+          if (!v2) {
+            try {
+              await registrarNoAtendimento(supabase, {
+                instanceId: instance.id, leadId: enr.lead_id, leadName: lead.name || "",
+                phone: remoteJid ? remoteJid.split("@")[0].replace(/\D/g, "") || phone : phone,
+                content: messageContent, mediaType, mediaUrl: step.media_url || null, remoteId,
+                sentAt: now.toISOString(),
+              });
+            } catch (e) {
+              console.error("[cadence-dispatcher] falha ao registrar no Atendimento", (e as Error).message);
+            }
+          }
 
           // Avanço de etapa após a 1ª mensagem é OPT-IN por cadência
           // (advance_stage_on_first_message). Era incondicional e movia lead de
