@@ -285,38 +285,78 @@ async function sendWhatsAppAlert(supabase: any, phone: string, text: string): Pr
 
 /** Transcreve áudio do lead (Whisper). O CDN da Meta assina a URL e ela expira,
  * então transcrevemos na hora da resposta e guardamos pra não refazer. */
+/** Fallback: AssemblyAI (a OpenAI ficou sem créditos em 11/09/2026). Recebe a URL,
+ *  baixa do lado deles e devolve o texto; áudio de WhatsApp leva poucos segundos. */
+async function transcribeViaAssembly(url: string): Promise<{ text: string | null; error?: string }> {
+  const key = Deno.env.get("ASSEMBLYAI_API_KEY");
+  if (!key) return { text: null, error: "ASSEMBLYAI_API_KEY ausente" };
+  try {
+    const sub = await fetch("https://api.assemblyai.com/v2/transcript", {
+      method: "POST", headers: { Authorization: key, "Content-Type": "application/json" },
+      body: JSON.stringify({ audio_url: url, language_code: "pt" }),
+    });
+    if (!sub.ok) return { text: null, error: `assembly submit ${sub.status}: ${(await sub.text()).slice(0, 200)}` };
+    const { id } = await sub.json();
+    for (let i = 0; i < 40; i++) {
+      await new Promise((r) => setTimeout(r, 1500));
+      const poll = await fetch(`https://api.assemblyai.com/v2/transcript/${id}`, { headers: { Authorization: key } });
+      if (!poll.ok) return { text: null, error: `assembly poll ${poll.status}` };
+      const d = await poll.json();
+      if (d.status === "completed") { const t = String(d.text || "").trim(); return { text: t || null, error: t ? undefined : "transcrição vazia" }; }
+      if (d.status === "error") return { text: null, error: `assembly: ${d.error}` };
+    }
+    return { text: null, error: "assembly: tempo esgotado" };
+  } catch (e) {
+    return { text: null, error: `assembly: ${String((e as Error).message || e)}` };
+  }
+}
+
 async function transcribeAudio(url: string): Promise<string | null> {
+  return (await transcribeAudioDetalhado(url)).text;
+}
+/** Versão com o motivo da falha (usada no teste e nos logs). Extensão do arquivo
+ *  segue o content-type: mandar .ogg com nome .mp4 fazia o Whisper recusar (11/09/2026). */
+async function transcribeAudioDetalhado(url: string): Promise<{ text: string | null; error?: string; bytes?: number; type?: string }> {
   try {
     const key = Deno.env.get("OPENAI_API_KEY");
-    if (!key || !url) return null;
+    if (!url) return { text: null, error: "sem url" };
+    if (!key) return await transcribeViaAssembly(url);
     const media = await fetch(url);
-    if (!media.ok) {
-      console.error("[transcribe] download falhou:", media.status);
-      return null;
-    }
+    if (!media.ok) return { text: null, error: `download ${media.status}` };
     const blob = await media.blob();
-    if (blob.size > 24 * 1024 * 1024) return null;
+    if (blob.size < 200) return { text: null, error: `arquivo vazio (${blob.size} bytes)` };
+    if (blob.size > 24 * 1024 * 1024) return { text: null, error: "arquivo > 24MB" };
+    const ct = String(media.headers.get("content-type") || blob.type || "").toLowerCase();
+    const ext = ct.includes("ogg") || ct.includes("opus") || /\.ogg(\?|$)/i.test(url) ? "ogg"
+      : ct.includes("mpeg") || ct.includes("mp3") ? "mp3"
+      : ct.includes("wav") ? "wav"
+      : ct.includes("webm") ? "webm"
+      : ct.includes("m4a") || ct.includes("x-m4a") ? "m4a"
+      : ct.includes("aac") ? "aac"
+      : ct.includes("flac") ? "flac"
+      : "mp4";
     const form = new FormData();
-    form.append("file", blob, "audio.mp4");
+    form.append("file", blob, `audio.${ext}`);
     form.append("model", "whisper-1");
     form.append("language", "pt");
     const resp = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}` },
-      body: form,
+      method: "POST", headers: { Authorization: `Bearer ${key}` }, body: form,
     });
     if (!resp.ok) {
-      console.error("[transcribe] whisper falhou:", resp.status, (await resp.text()).slice(0, 200));
-      return null;
+      const err = (await resp.text()).slice(0, 300);
+      console.error("[transcribe] whisper falhou:", resp.status, err, "→ tentando AssemblyAI");
+      const alt = await transcribeViaAssembly(url);
+      return { text: alt.text, error: alt.text ? undefined : `whisper ${resp.status}: ${err.slice(0, 80)} | ${alt.error}`, bytes: blob.size, type: ct };
     }
     const data = await resp.json();
     const text = String(data?.text || "").trim();
-    return text || null;
+    return { text: text || null, error: text ? undefined : "transcrição vazia", bytes: blob.size, type: ct };
   } catch (e) {
     console.error("[transcribe] erro:", e);
-    return null;
+    return { text: null, error: String((e as Error).message || e) };
   }
 }
+
 
 // Quem o Fabrício SEGUE no Instagram (tabela crm_ig_following, importada do
 // Chrome logado) o agente NÃO responde — pedido dele em 08/09/2026: "se for
@@ -631,6 +671,16 @@ Deno.serve(async (req) => {
     const { channel, conversation_id, dry_run } = body0;
 
     // Debug/admin: executa uma ferramenta isolada (sem conversa) pra validar agenda
+    // Debug/admin: testa a transcrição de um áudio (exige service role em body.secret)
+    if (body0.action === "transcribe_test") {
+      // autoriza pelo JWT do header (role service_role) ou pelo secret no body
+      const authz = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+      let roleClaim = "";
+      try { roleClaim = String(JSON.parse(atob(authz.split(".")[1] || "")).role || ""); } catch { /* não é JWT */ }
+      if (body0.secret !== SERVICE_ROLE && roleClaim !== "service_role") return j({ ok: false, error: "não autorizado" }, 401);
+      return j({ ok: true, ...(await transcribeAudioDetalhado(String(body0.url || ""))) });
+    }
+
     if (body0.action === "test_tool") {
       const { data: agent } = await supabase.from("crm_ai_agents").select("*").eq("id", body0.agent_id).maybeSingle();
       if (!agent) return j({ ok: false, error: "agente não encontrado" }, 400);
