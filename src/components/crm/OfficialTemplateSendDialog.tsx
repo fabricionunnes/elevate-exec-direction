@@ -167,6 +167,7 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
         await registrarNoAtendimento({ instanceId, lead, phone, content: rendered, messageId: data?.messageId || null, staffId: staff?.id || null, conversationId: conversationId || null });
+        if (lead.id) await marcarTagTemplateEnviado(lead.id);
         ok++;
       } catch (e) {
         console.error("template oficial:", lead.name, e);
@@ -281,6 +282,26 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
 }
 
 /** contato + conversa (official_instance_id) + mensagem — mesmo formato do whatsapp-official-webhook */
+/** Tag "Template enviado" no lead a cada disparo pela API oficial (pedido do Fabrício 11/09/2026).
+ *  Cria a tag se não existir; ignora se o lead já tem. */
+let _tagTemplateId: string | null = null;
+async function marcarTagTemplateEnviado(leadId: string) {
+  try {
+    if (!_tagTemplateId) {
+      const { data: t } = await supabase.from("crm_tags").select("id").ilike("name", "Template enviado").limit(1).maybeSingle();
+      if (t?.id) _tagTemplateId = t.id;
+      else {
+        const { data: created } = await supabase.from("crm_tags").insert({ name: "Template enviado", color: "#2563eb", is_active: true }).select("id").single();
+        _tagTemplateId = created?.id || null;
+      }
+    }
+    if (!_tagTemplateId) return;
+    await supabase.from("crm_lead_tags").upsert({ lead_id: leadId, tag_id: _tagTemplateId }, { onConflict: "lead_id,tag_id", ignoreDuplicates: true });
+  } catch (e) {
+    console.error("tag Template enviado:", e);
+  }
+}
+
 async function registrarNoAtendimento(a: {
   instanceId: string; lead: OfficialTemplateLead; phone: string; content: string;
   messageId: string | null; staffId: string | null; conversationId: string | null;
