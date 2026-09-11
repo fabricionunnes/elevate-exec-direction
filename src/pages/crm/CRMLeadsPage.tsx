@@ -73,56 +73,31 @@ export const CRMLeadsPage = () => {
   const [primaryLeadId, setPrimaryLeadId] = useState<string | null>(null);
   const [merging, setMerging] = useState(false);
 
+  // Paginação e filtros NO SERVIDOR (RPC crm_leads_page). Antes a tela baixava até
+  // 50 mil leads (50 requisições em sequência, com joins) antes de mostrar a 1ª linha
+  // — com 118 mil leads na base, levava dezenas de segundos (pedido do Fabrício 10/09/2026: ≤1s).
+  const [total, setTotal] = useState(0);
+  const [pageLoading, setPageLoading] = useState(false);
+  const [dupCounts, setDupCounts] = useState({ phone: 0, email: 0 });
+  const [knownLeads, setKnownLeads] = useState<Record<string, Lead>>({});
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  // Listas dos filtros (uma vez)
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch leads in batches to bypass 1000-row limit
-      const PAGE_SIZE = 1000;
-      const MAX_LEADS = 50000;
-      let allLeads: Lead[] = [];
-      let from = 0;
-      let hasMore = true;
-
-      while (hasMore && allLeads.length < MAX_LEADS) {
-        const { data, error } = await supabase
-          .from("crm_leads")
-          .select(`
-            *,
-            stage:crm_stages(name, color, is_final, final_type),
-            pipeline:crm_pipelines(name),
-            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name, avatar_url),
-            tags:crm_lead_tags(tag:crm_tags(id, name, color))
-          `)
-          .order("created_at", { ascending: false })
-          .range(from, from + PAGE_SIZE - 1);
-
-        if (error) {
-          console.error("Error loading leads:", error);
-          break;
-        }
-
-        if (data && data.length > 0) {
-          allLeads = allLeads.concat(data as Lead[]);
-          from += PAGE_SIZE;
-          hasMore = data.length === PAGE_SIZE;
-        } else {
-          hasMore = false;
-        }
-      }
-
-      setLeads(allLeads);
-
-      // Load filters data
       const [pipelinesRes, stagesRes, tagsRes] = await Promise.all([
-        supabase.from("crm_pipelines").select("*").eq("is_active", true),
+        supabase.from("crm_pipelines").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("crm_stages").select("*").order("sort_order"),
         supabase.from("crm_tags").select("*").eq("is_active", true),
       ]);
-
       setPipelines(pipelinesRes.data || []);
       setStages(stagesRes.data || []);
       setTags(tagsRes.data || []);
-
       if (isAdmin) {
         const { data: staffData } = await supabase
           .from("onboarding_staff")
@@ -132,8 +107,7 @@ export const CRMLeadsPage = () => {
         setStaff(staffData || []);
       }
     } catch (error) {
-      console.error("Error loading leads:", error);
-      toast.error("Erro ao carregar leads");
+      console.error("Error loading filters:", error);
     } finally {
       setLoading(false);
     }
@@ -143,91 +117,67 @@ export const CRMLeadsPage = () => {
     loadData();
   }, [loadData]);
 
-  // Compute duplicate maps
-  const { phoneDuplicates, emailDuplicates } = useMemo(() => {
-    const phoneMap = new Map<string, string[]>();
-    const emailMap = new Map<string, string[]>();
+  // Contagem de duplicados (em paralelo — não segura a tabela)
+  const loadDupCounts = useCallback(async () => {
+    const { data } = await supabase.rpc("crm_leads_dup_counts");
+    const r: any = Array.isArray(data) ? data[0] : data;
+    if (r) setDupCounts({ phone: Number(r.phone_dups || 0), email: Number(r.email_dups || 0) });
+  }, []);
+  useEffect(() => { loadDupCounts(); }, [loadDupCounts]);
 
-    leads.forEach(lead => {
-      if (lead.phone) {
-        const normalized = lead.phone.replace(/\D/g, "").slice(-11); // last 11 digits
-        if (normalized.length >= 8) {
-          const key = normalized.slice(-8); // match by last 8 digits
-          const existing = phoneMap.get(key) || [];
-          existing.push(lead.id);
-          phoneMap.set(key, existing);
-        }
-      }
-      if (lead.email) {
-        const normalized = lead.email.toLowerCase().trim();
-        if (normalized) {
-          const existing = emailMap.get(normalized) || [];
-          existing.push(lead.id);
-          emailMap.set(normalized, existing);
-        }
-      }
-    });
+  // Página atual
+  const loadPage = useCallback(async () => {
+    setPageLoading(true);
+    try {
+      const { data: page, error } = await supabase.rpc("crm_leads_page", {
+        p_search: debouncedSearch || null,
+        p_pipeline: filterPipeline !== "all" ? filterPipeline : null,
+        p_stage: filterStage !== "all" ? filterStage : null,
+        p_owner: filterOwner !== "all" ? filterOwner : null,
+        p_origin: filterOrigin !== "all" ? filterOrigin : null,
+        p_urgency: filterUrgency !== "all" ? filterUrgency : null,
+        p_dups: filterDuplicates !== "all" ? filterDuplicates : null,
+        p_limit: pageSize,
+        p_offset: (currentPage - 1) * pageSize,
+      });
+      if (error) throw error;
+      const rows = (page || []) as { id: string; total: number }[];
+      setTotal(rows.length ? Number(rows[0].total) : 0);
+      const ids = rows.map((r) => r.id);
+      if (!ids.length) { setLeads([]); return; }
+      const { data, error: e2 } = await supabase
+        .from("crm_leads")
+        .select(`
+          *,
+          stage:crm_stages(name, color, is_final, final_type),
+          pipeline:crm_pipelines(name),
+          owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name, avatar_url),
+          tags:crm_lead_tags(tag:crm_tags(id, name, color))
+        `)
+        .in("id", ids);
+      if (e2) throw e2;
+      const byId = new Map((data || []).map((l: any) => [l.id, l]));
+      const ordered = ids.map((id) => byId.get(id)).filter(Boolean) as Lead[];
+      setLeads(ordered);
+      setKnownLeads((prev) => { const n = { ...prev }; ordered.forEach((l) => { n[l.id] = l; }); return n; });
+    } catch (error) {
+      console.error("Error loading leads:", error);
+      toast.error("Erro ao carregar leads");
+    } finally {
+      setPageLoading(false);
+    }
+  }, [debouncedSearch, filterPipeline, filterStage, filterOwner, filterOrigin, filterUrgency, filterDuplicates, pageSize, currentPage]);
 
-    // Only keep entries with duplicates (2+)
-    const phoneDups = new Set<string>();
-    phoneMap.forEach((ids) => {
-      if (ids.length > 1) ids.forEach(id => phoneDups.add(id));
-    });
-    const emailDups = new Set<string>();
-    emailMap.forEach((ids) => {
-      if (ids.length > 1) ids.forEach(id => emailDups.add(id));
-    });
-
-    return { phoneDuplicates: phoneDups, emailDuplicates: emailDups };
-  }, [leads]);
-
-  const duplicatePhoneCount = phoneDuplicates.size;
-  const duplicateEmailCount = emailDuplicates.size;
-
-  const filteredLeads = useMemo(() => {
-    return leads.filter(lead => {
-      if (searchTerm) {
-        const search = searchTerm.toLowerCase();
-        const matchesSearch = 
-          lead.name.toLowerCase().includes(search) ||
-          lead.company?.toLowerCase().includes(search) ||
-          lead.email?.toLowerCase().includes(search) ||
-          lead.phone?.includes(search);
-        if (!matchesSearch) return false;
-      }
-
-      if (filterPipeline !== "all") {
-        const pipeline = pipelines.find(p => p.id === filterPipeline);
-        if (pipeline && lead.pipeline?.name !== pipeline.name) return false;
-      }
-
-      if (filterStage !== "all" && lead.stage_id !== filterStage) return false;
-
-      if (filterOwner !== "all") {
-        const owner = staff.find(s => s.id === filterOwner);
-        if (owner && lead.owner?.name !== owner.name) return false;
-      }
-
-      if (filterOrigin !== "all" && lead.origin !== filterOrigin) return false;
-      if (filterUrgency !== "all" && lead.urgency !== filterUrgency) return false;
-
-      // Duplicate filter
-      if (filterDuplicates === "phone" && !phoneDuplicates.has(lead.id)) return false;
-      if (filterDuplicates === "email" && !emailDuplicates.has(lead.id)) return false;
-
-      return true;
-    });
-  }, [leads, searchTerm, filterPipeline, filterStage, filterOwner, filterOrigin, filterUrgency, filterDuplicates, pipelines, staff, phoneDuplicates, emailDuplicates]);
-
-  const totalPages = Math.ceil(filteredLeads.length / pageSize);
-  const paginatedLeads = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredLeads.slice(start, start + pageSize);
-  }, [filteredLeads, currentPage, pageSize]);
+  useEffect(() => { loadPage(); }, [loadPage]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterPipeline, filterStage, filterOwner, filterOrigin, filterUrgency, filterDuplicates, pageSize]);
+  }, [debouncedSearch, filterPipeline, filterStage, filterOwner, filterOrigin, filterUrgency, filterDuplicates, pageSize]);
+
+  const duplicatePhoneCount = dupCounts.phone;
+  const duplicateEmailCount = dupCounts.email;
+  const paginatedLeads = leads;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const formatCurrency = (value: number | null) => {
     if (!value) return "-";
@@ -284,7 +234,8 @@ export const CRMLeadsPage = () => {
         setMergeDialogOpen(false);
         setSelectedLeads([]);
         setPrimaryLeadId(null);
-        loadData();
+        loadPage();
+        loadDupCounts();
       }
     } catch (error: any) {
       console.error("Merge error:", error);
@@ -295,8 +246,8 @@ export const CRMLeadsPage = () => {
   };
 
   const selectedLeadDetails = useMemo(() => {
-    return selectedLeads.map(id => leads.find(l => l.id === id)).filter(Boolean) as Lead[];
-  }, [selectedLeads, leads]);
+    return selectedLeads.map(id => knownLeads[id]).filter(Boolean) as Lead[];
+  }, [selectedLeads, knownLeads]);
 
   if (loading) {
     return (
@@ -313,7 +264,7 @@ export const CRMLeadsPage = () => {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">Leads</h1>
           <p className="text-sm text-muted-foreground">
-            {filteredLeads.length} leads encontrados
+            {pageLoading ? "Carregando…" : `${total.toLocaleString("pt-BR")} leads encontrados`}
             {filterDuplicates !== "all" && (
               <span className="ml-1 text-amber-600 font-medium">
                 (filtro de duplicados ativo)
@@ -669,7 +620,7 @@ export const CRMLeadsPage = () => {
 
             <div className="flex items-center gap-2">
               <span className="text-xs sm:text-sm text-muted-foreground">
-                {Math.min((currentPage - 1) * pageSize + 1, filteredLeads.length)}-{Math.min(currentPage * pageSize, filteredLeads.length)} de {filteredLeads.length}
+                {Math.min((currentPage - 1) * pageSize + 1, total)}-{Math.min(currentPage * pageSize, total)} de {total}
               </span>
               <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>
                 Anterior
@@ -752,13 +703,13 @@ export const CRMLeadsPage = () => {
         open={addLeadOpen}
         onOpenChange={setAddLeadOpen}
         pipelineId={pipelines[0]?.id || ""}
-        onSuccess={loadData}
+        onSuccess={() => { loadPage(); loadDupCounts(); }}
       />
 
       <ImportLeadsDialog
         open={importLeadsOpen}
         onOpenChange={setImportLeadsOpen}
-        onSuccess={loadData}
+        onSuccess={() => { loadPage(); loadDupCounts(); }}
         selectedOriginId={null}
       />
     </div>
