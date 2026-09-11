@@ -579,14 +579,12 @@ export const CRMInboxPage = () => {
       return isGeneric ? conv.lead?.name || rawName : rawName;
     })();
 
-    // Text search
+    // Busca por nome do contato, nome do lead, EMPRESA do lead e telefone (pedido 11/09/2026)
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
-      const contactName = displayName || "";
-      const contactPhone = conv.contact?.phone || "";
-      if (!contactName.toLowerCase().includes(search) && !contactPhone.includes(search)) {
-        return false;
-      }
+      const haystack = [displayName, conv.contact?.name, conv.lead?.name, (conv.lead as any)?.company, conv.contact?.phone]
+        .filter(Boolean).map((v) => String(v).toLowerCase());
+      if (!haystack.some((v) => v.includes(search))) return false;
     }
 
     // Conversation filters
@@ -788,6 +786,10 @@ export const CRMInboxPage = () => {
               const rawName = (conv.contact?.name || "").trim();
               const isGenericName = !rawName || ["sou eu", "eu", "me"].includes(rawName.toLowerCase());
               const displayName = isGenericName ? conv.lead?.name || conv.contact?.phone || "Desconhecido" : rawName;
+              // Destaque = nome do LEAD (quando vinculado); embaixo, a empresa. Sem lead, nome do contato.
+              const leadName = (conv.lead?.name || "").trim();
+              const titleName = leadName || displayName;
+              const companyName = String((conv.lead as any)?.company || "").trim();
 
               return (
               <button
@@ -807,13 +809,13 @@ export const CRMInboxPage = () => {
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={conv.contact?.profile_picture_url || undefined} />
                   <AvatarFallback>
-                    {(displayName || "?").slice(0, 2).toUpperCase()}
+                    {(titleName || "?").slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-sm truncate">
-                      {displayName}
+                      {titleName}
                     </span>
                     <span className="text-[10px] text-muted-foreground">
                       {conv.last_message_at 
@@ -821,6 +823,9 @@ export const CRMInboxPage = () => {
                         : ""}
                     </span>
                   </div>
+                  {companyName && (
+                    <div className="text-[11px] text-muted-foreground truncate">{companyName}</div>
+                  )}
                   <div className="flex items-center gap-1 mt-0.5">
                     {conv.status === "pending" && (
                       <Badge variant="destructive" className="h-4 px-1 text-[10px]">

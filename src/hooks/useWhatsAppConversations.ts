@@ -42,6 +42,7 @@ export interface WhatsAppConversation {
   lead?: {
     id: string;
     name: string;
+    company?: string | null;
     origin_id?: string | null;
     stage_id?: string | null;
   };
@@ -77,7 +78,7 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
           .select(`
             *,
             contact:crm_whatsapp_contacts(*),
-            lead:crm_leads(id, name, origin_id, stage_id),
+            lead:crm_leads(id, name, company, origin_id, stage_id),
             assigned_staff:onboarding_staff(id, name, avatar_url),
             instance:whatsapp_instances(id, instance_name, display_name),
             official_instance:whatsapp_official_instances(id, display_name, phone_number)
@@ -160,7 +161,7 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
       .select(`
         *,
         contact:crm_whatsapp_contacts(*),
-        lead:crm_leads(id, name, origin_id, stage_id),
+        lead:crm_leads(id, name, company, origin_id, stage_id),
         assigned_staff:onboarding_staff(id, name, avatar_url),
         instance:whatsapp_instances(id, instance_name, display_name),
         official_instance:whatsapp_official_instances(id, display_name, phone_number)
