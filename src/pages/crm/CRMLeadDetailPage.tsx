@@ -89,6 +89,7 @@ import { LeadConversationsTab } from "@/components/crm/lead-detail/LeadConversat
 import { LeadFormAnswersTab } from "@/components/crm/lead-detail/LeadFormAnswersTab";
 import { LeadScannerTab } from "@/components/crm/lead-detail/LeadScannerTab";
 import { LeadMeetingsPanel } from "@/components/crm/lead-detail/LeadMeetingsPanel";
+import { LeadCalendarDialog } from "@/components/crm/lead-detail/LeadCalendarDialog";
 import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
 import { SendContractButton } from "@/components/crm/SendContractButton";
 import { OfficialTemplateSendDialog } from "@/components/crm/OfficialTemplateSendDialog";
@@ -201,6 +202,7 @@ export const CRMLeadDetailPage = () => {
   const [tagSearch, setTagSearch] = useState("");
   const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
   const [officialTemplateOpen, setOfficialTemplateOpen] = useState(false);
+  const [leadCalendarOpen, setLeadCalendarOpen] = useState(false);
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
   const [siblingLeadIds, setSiblingLeadIds] = useState<string[]>([]);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
@@ -983,7 +985,7 @@ export const CRMLeadDetailPage = () => {
                 </a>
               </Button>
             )}
-            <Button variant="ghost" size="icon" className="h-8 w-8" title="Agendar">
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Agenda do lead (todas as reuniões)" onClick={() => setLeadCalendarOpen(true)}>
               <Calendar className="h-4 w-4" />
             </Button>
             <Button 
@@ -1613,6 +1615,8 @@ export const CRMLeadDetailPage = () => {
         leadId={lead.id}
         onSuccess={loadLead}
       />
+
+      <LeadCalendarDialog open={leadCalendarOpen} onOpenChange={setLeadCalendarOpen} leadId={lead.id} leadName={lead.name} />
 
       <OfficialTemplateSendDialog
         open={officialTemplateOpen}
