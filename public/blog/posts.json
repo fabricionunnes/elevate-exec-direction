@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-11T15:01:28",
+ "gerado_em": "2026-09-11T21:01:14",
  "posts": [
+  {
+   "slug": "oferta-condicional-preco-cria-cliente-errado",
+   "url": "/blog/oferta-condicional-preco-cria-cliente-errado/",
+   "titulo": "Oferta condicional no preço cria o cliente errado",
+   "resumo": "Preço que muda conforme a decisão do cliente traz quem quer desconto, não resultado. A oferta certa já mostra o valor e o investimento sem precisar negociar.",
+   "tags": [
+    "oferta",
+    "preço",
+    "decisão",
+    "qualificação",
+    "estrutura comercial"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-11",
+   "ts": 2081
+  },
   {
    "slug": "oferta-modular-separa-urgencia-decisao-estruturada",
    "url": "/blog/oferta-modular-separa-urgencia-decisao-estruturada/",
