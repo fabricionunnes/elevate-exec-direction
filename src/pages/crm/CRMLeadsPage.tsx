@@ -80,6 +80,7 @@ export const CRMLeadsPage = () => {
   const [pageLoading, setPageLoading] = useState(false);
   const [dupCounts, setDupCounts] = useState({ phone: 0, email: 0 });
   const [knownLeads, setKnownLeads] = useState<Record<string, Lead>>({});
+  const [dupFlags, setDupFlags] = useState<Record<string, { phone: boolean; email: boolean }>>({});
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
@@ -141,8 +142,9 @@ export const CRMLeadsPage = () => {
         p_offset: (currentPage - 1) * pageSize,
       });
       if (error) throw error;
-      const rows = (page || []) as { id: string; total: number }[];
+      const rows = (page || []) as { id: string; total: number; dup_phone?: boolean; dup_email?: boolean }[];
       setTotal(rows.length ? Number(rows[0].total) : 0);
+      setDupFlags(Object.fromEntries(rows.map((r) => [r.id, { phone: !!r.dup_phone, email: !!r.dup_email }])));
       const ids = rows.map((r) => r.id);
       if (!ids.length) { setLeads([]); return; }
       const { data, error: e2 } = await supabase
@@ -442,8 +444,8 @@ export const CRMLeadsPage = () => {
               </TableHeader>
               <TableBody>
                 {paginatedLeads.map(lead => {
-                  const isPhoneDup = phoneDuplicates.has(lead.id);
-                  const isEmailDup = emailDuplicates.has(lead.id);
+                  const isPhoneDup = !!dupFlags[lead.id]?.phone;
+                  const isEmailDup = !!dupFlags[lead.id]?.email;
                   return (
                     <TableRow key={lead.id} className={isPhoneDup || isEmailDup ? "bg-amber-50/50 dark:bg-amber-950/10" : ""}>
                       <TableCell>
@@ -585,7 +587,7 @@ export const CRMLeadsPage = () => {
                     {lead.opportunity_value ? (
                       <span className="text-xs font-medium">{formatCurrency(lead.opportunity_value)}</span>
                     ) : null}
-                    {phoneDuplicates.has(lead.id) && (
+                    {!!dupFlags[lead.id]?.phone && (
                       <Badge variant="outline" className="text-[10px] border-amber-400 text-amber-600">Duplicado</Badge>
                     )}
                   </div>
