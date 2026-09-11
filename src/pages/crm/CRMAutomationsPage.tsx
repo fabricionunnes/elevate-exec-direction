@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Zap, Bot, Trash2, Loader2, MessageSquare, Instagram } from "lucide-react";
+import { Plus, Zap, Bot, Trash2, Loader2, MessageSquare, Instagram, Search } from "lucide-react";
 import { IgTriggersManager } from "@/components/crm/agents/IgTriggersManager";
 import { AgentEditorDialog } from "@/components/crm/agents/AgentEditorDialog";
 import type { AIAgent } from "@/pages/crm/CRMAgentsPage";
@@ -54,6 +54,7 @@ export default function CRMAutomationsPage() {
   const [keywordsText, setKeywordsText] = useState("");
 
   const [agentDialog, setAgentDialog] = useState(false);
+  const [agentSearch, setAgentSearch] = useState("");
   // Editor completo (horário de atendimento, agenda, follow-up, conhecimento) —
   // o mesmo de /crm/agents, aberto daqui pra não precisar de outra tela.
   const [fullOpen, setFullOpen] = useState(false);
@@ -162,6 +163,15 @@ export default function CRMAutomationsPage() {
     load();
   };
 
+  // Exclui o agente (canais, funis, conhecimento, overrides e regras vão junto por cascade no banco)
+  const deleteAgent = async (a: Agent) => {
+    if (!confirm(`Excluir o agente "${a.name}"? Isso apaga também os vínculos de canal, funis, base de conhecimento e as regras de palavra-chave que apontam pra ele. Não dá pra desfazer.`)) return;
+    const { error } = await supabase.from("crm_ai_agents").delete().eq("id", a.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Agente "${a.name}" excluído`);
+    load();
+  };
+
   const openEditAgent = async (a: Agent) => {
     setEditAgent({ ...a });
     setAgentKwText((a.trigger_keywords || []).join(", "));
@@ -262,10 +272,23 @@ export default function CRMAutomationsPage() {
         </TabsContent>
 
         <TabsContent value="agents" className="mt-4 space-y-3">
-          <div className="flex justify-end">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
+            <div className="relative w-full sm:max-w-xs">
+              <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input value={agentSearch} onChange={(e) => setAgentSearch(e.target.value)} placeholder="Buscar agente por nome…" className="pl-8 h-9" />
+            </div>
             <Button size="sm" onClick={openNewAgent}><Plus className="h-4 w-4 mr-1.5" />Novo agente</Button>
           </div>
-          {agents.map((a) => (
+          {agents.filter((a) => {
+            const q = agentSearch.trim().toLowerCase();
+            return !q || a.name.toLowerCase().includes(q) || (a.objective || "").toLowerCase().includes(q);
+          }).length === 0 && (
+            <p className="text-sm text-muted-foreground py-6 text-center">Nenhum agente encontrado.</p>
+          )}
+          {agents.filter((a) => {
+            const q = agentSearch.trim().toLowerCase();
+            return !q || a.name.toLowerCase().includes(q) || (a.objective || "").toLowerCase().includes(q);
+          }).map((a) => (
             <Card key={a.id}>
               <CardContent className="p-4 flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
@@ -285,6 +308,7 @@ export default function CRMAutomationsPage() {
                   <Button size="sm" variant="ghost" onClick={() => duplicateAgent(a)} title="Criar uma cópia idêntica (inativa) pra editar depois">Duplicar</Button>
                   <Button size="sm" variant="ghost" onClick={() => openFullEditor(a.id)} title="Horário de atendimento, agenda, follow-up e conhecimento">Horários e agenda</Button>
                   <Button size="sm" variant="ghost" onClick={() => openEditAgent(a)}>Configurar</Button>
+                  <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-destructive" title="Excluir agente" onClick={() => deleteAgent(a)}><Trash2 className="h-4 w-4" /></Button>
                 </div>
               </CardContent>
             </Card>
