@@ -21,6 +21,10 @@ Copy: português do Brasil, frases curtas, específico da empresa, sem "soluçõ
 const POSTS_SYS = `Você é o head de conteúdo da UNV. Crie 5 posts de Instagram para a empresa descrita, prontos para arte: 3 para feed (1080x1350) e 2 para story (1080x1920). Responda SOMENTE com JSON válido:
 {"posts":[{"format":"feed"|"story","layout":"stat"|"list"|"quote"|"cta"|"question","headline":"até 9 palavras, forte","sub":"até 18 palavras","bullets":["até 3 itens curtos, só em layout list"],"stat":"número + unidade, só em layout stat","cta":"até 5 palavras","caption":"legenda completa do post com 3 hashtags"}]}
 Regras: cada post ataca uma dor real do cliente ideal ou mostra prova/diferencial; sem clichê; sem emoji na arte (pode na legenda); 1 post com o ponto de vista do dono; stories são curtos, com pergunta ou chamada direta.`;
+const SYSTEM_SYS = `Você é um engenheiro de produto sênior da UNV. Você constrói MINI SISTEMAS DE GESTÃO completos para pequenas empresas em um único arquivo HTML. Responda SOMENTE com um documento HTML completo (<!doctype html> até </html>), sem markdown e sem explicações. Seja econômico no código: CSS enxuto, funções curtas, sem comentários longos; o arquivo inteiro deve ficar abaixo de 900 linhas.
+Regras técnicas: tudo em um arquivo (CSS em <style>, JS em <script>), sem bibliotecas externas exceto uma fonte do Google Fonts. Dados salvos no localStorage do navegador (chave com o nome da empresa), com botões Exportar/Importar JSON e Exportar CSV. Responsivo (funciona no celular). Gráficos desenhados em <canvas> puro. Sem lorem ipsum: já vem com 8 a 12 registros de exemplo coerentes com a empresa, marcados como exemplo e com botão "limpar exemplos".
+Interface: cabeçalho com a logo (img da URL informada, ou o nome) e as cores da marca; navegação por abas; painel inicial com os indicadores que importam pra empresa (cards grandes) e um gráfico; formulários simples com validação; tabelas com filtro por período e busca; ações de editar, excluir, marcar como pago/feito; alertas do que está vencido ou pendente; um relatório do mês em texto que o dono pode copiar.
+Conteúdo: construa exatamente o que o participante pediu na especificação, usando os termos do negócio dele (categorias, produtos, cargos). Se pediu financeiro: contas a pagar e a receber, fluxo de caixa mensal, categorias, DRE simplificado (receita, custos, despesas, resultado) e o que mais ele pediu. Português do Brasil, textos curtos e claros, sem emoji.`;
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...CORS, "content-type": "application/json" } });
@@ -47,6 +51,16 @@ Deno.serve(async (req) => {
         await sb.from("mansao_estudio").update({ posts, posts_status: "ready", updated_at: new Date().toISOString() }).eq("id", id);
         return json({ ok: true, posts });
       } catch (e) { await sb.from("mansao_estudio").update({ posts_status: "error" }).eq("id", id); throw e; }
+    }
+    if (action === "system") {
+      const spec = String(row.system_spec || "").trim() || "mini sistema financeiro: contas a pagar e a receber, fluxo de caixa mensal, categorias, relatório do mês";
+      await sb.from("mansao_estudio").update({ system_status: "generating" }).eq("id", id);
+      try {
+        let html = strip(await claude(SYSTEM_SYS, `Dados da empresa:\n${ctx(row)}\n\nEspecificação do sistema pedida pelo participante:\n${spec}\n\nConstrua o sistema completo agora.`, 16000));
+        if (!/<html/i.test(html)) throw new Error("resposta sem HTML");
+        await sb.from("mansao_estudio").update({ system_html: html, system_status: "ready", updated_at: new Date().toISOString() }).eq("id", id);
+        return json({ ok: true, chars: html.length });
+      } catch (e) { await sb.from("mansao_estudio").update({ system_status: "error" }).eq("id", id); throw e; }
     }
     return json({ error: "action inválida" }, 400);
   } catch (e) { console.error(e); return json({ error: String((e as Error).message || e) }, 500); }
