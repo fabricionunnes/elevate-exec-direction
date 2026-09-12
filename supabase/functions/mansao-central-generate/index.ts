@@ -93,9 +93,13 @@ Deno.serve(async (req) => {
 
     if (action === "map") {
       await sb.from("mansao_central").update({ status: "generating", error: null, updated_at: new Date().toISOString() }).eq("id", id);
-      const out = await claude(MAP_SYSTEM, mapPrompt(row), 4000);
-      let parsed: any;
-      try { parsed = JSON.parse(stripFences(out)); } catch { throw new Error("mapa inválido: " + out.slice(0, 200)); }
+      let parsed: any = null; let lastOut = "";
+      for (let attempt = 0; attempt < 2 && !parsed; attempt++) {
+        const out = await claude(MAP_SYSTEM, mapPrompt(row), 8000); lastOut = out;
+        const cleaned = stripFences(out); const i = cleaned.indexOf("{"); const j = cleaned.lastIndexOf("}");
+        try { parsed = JSON.parse(cleaned.slice(i, j + 1)); } catch { parsed = null; }
+      }
+      if (!parsed) throw new Error("mapa inválido: " + lastOut.slice(0, 200));
       const docs = (parsed.docs || []).slice(0, 18);
       if (docs.length < 6) throw new Error("mapa com poucos documentos");
       await sb.from("mansao_central_docs").delete().eq("central_id", id);
