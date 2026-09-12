@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-12T15:01:09",
+ "gerado_em": "2026-09-12T21:01:03",
  "posts": [
+  {
+   "slug": "reuniao-diagnostico-sem-dono-perde-decisao",
+   "url": "/blog/reuniao-diagnostico-sem-dono-perde-decisao/",
+   "titulo": "Reunião de diagnóstico sem o dono perde a decisão",
+   "resumo": "Diagnóstico comercial sem quem decide vira levantamento de dados e não movimento. Você descobre o que trava e não tem quem muda na mesma sala.",
+   "tags": [
+    "diagnóstico",
+    "estrutura comercial",
+    "decisão",
+    "reunião",
+    "dono"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-12",
+   "ts": 2083
+  },
   {
    "slug": "diagnostico-abre-venda-ou-perde-tempo",
    "url": "/blog/diagnostico-abre-venda-ou-perde-tempo/",
