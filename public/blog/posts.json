@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-12T22:31:02",
+ "gerado_em": "2026-09-13T10:00:56",
  "posts": [
+  {
+   "slug": "vendedor-acumula-funcao-trava-conversao",
+   "url": "/blog/vendedor-acumula-funcao-trava-conversao/",
+   "titulo": "Vendedor que acumula função trava a conversão no meio",
+   "resumo": "Quando o vendedor faz o projeto, a estrutura e a venda ao mesmo tempo, a métrica some e o dono perde a capacidade de saber onde o número travou. Esse texto mostra por que separar função é decisão de estrutura comercial, não de crescimento.",
+   "tags": [
+    "estrutura comercial",
+    "conversão",
+    "treino de vendedor",
+    "rotina de cobrança",
+    "meta mensal"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-13",
+   "ts": 2085
+  },
   {
    "slug": "dono-terceiriza-gerente-vendas-cobra-numero-toda-semana",
    "url": "/blog/dono-terceiriza-gerente-vendas-cobra-numero-toda-semana/",
