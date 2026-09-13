@@ -26,6 +26,7 @@ interface Agent {
 interface Rule {
   id: string; name: string; keywords: string[]; match_type: string; channels: string[];
   listen_dm: boolean; listen_comment: boolean; pipeline_id: string | null;
+  move_to_stage_id?: string | null;
   agent_id: string | null; comment_public_reply: string | null; comment_dm_text: string | null;
   is_active: boolean; priority: number;
 }
@@ -115,6 +116,7 @@ export default function CRMAutomationsPage() {
       name: editRule.name.trim(), keywords: kws, match_type: editRule.match_type || "contains",
       channels: editRule.channels || [], listen_dm: editRule.listen_dm ?? true, listen_comment: editRule.listen_comment ?? false,
       pipeline_id: editRule.pipeline_id || null, agent_id: editRule.agent_id,
+      move_to_stage_id: editRule.move_to_stage_id || null,
       comment_public_reply: editRule.comment_public_reply || null, comment_dm_text: editRule.comment_dm_text || null,
       is_active: editRule.is_active ?? true, priority: editRule.priority ?? 0,
     };
@@ -358,6 +360,18 @@ export default function CRMAutomationsPage() {
                   <SelectContent>
                     <SelectItem value="all">Todos os funis</SelectItem>
                     {pipelines.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Mover o lead para a etapa (opcional)</Label>
+                <p className="text-[11px] text-muted-foreground mb-1">Quando a palavra bater, o negócio vai pra essa etapa. Ex.: "quero saber mais" → Interessado. Só vale se a etapa for do funil do lead.</p>
+                <Select value={editRule.move_to_stage_id || "none"} onValueChange={(v) => setEditRule({ ...editRule, move_to_stage_id: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Não mover</SelectItem>
+                    {stages.filter((st) => !editRule.pipeline_id || st.pipeline_id === editRule.pipeline_id).map((st) => (
+                      <SelectItem key={st.id} value={st.id}>{editRule.pipeline_id ? st.name : `${pipelines.find((p) => p.id === st.pipeline_id)?.name || "?"} · ${st.name}`}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

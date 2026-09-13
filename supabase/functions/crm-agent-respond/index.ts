@@ -1002,6 +1002,15 @@ Deno.serve(async (req) => {
             trigger_id: rule.id, agent_id: rule.agent_id, conversation_id, channel,
             source: "dm", matched_keyword: hit,
           });
+          // Regra com "mover para etapa": lead vai pra etapa configurada (só se a etapa
+          // for do funil do lead). Ex.: "quero saber mais" → Interessado (13/09/2026).
+          if (rule.move_to_stage_id && conv.lead_id) {
+            const { data: st } = await supabase.from("crm_stages").select("id, name, pipeline_id").eq("id", rule.move_to_stage_id).maybeSingle();
+            const { data: ld2 } = await supabase.from("crm_leads").select("pipeline_id, stage_id").eq("id", conv.lead_id).maybeSingle();
+            if (st && ld2 && st.pipeline_id === ld2.pipeline_id && ld2.stage_id !== st.id) {
+              await supabase.from("crm_leads").update({ stage_id: st.id, stage_entered_at: new Date().toISOString() }).eq("id", conv.lead_id);
+            }
+          }
           forcedAgent = ruleAgent;
           break;
         }
@@ -1177,6 +1186,47 @@ Deno.serve(async (req) => {
     const lastInbound = msgs[msgs.length - 1].content.toLowerCase();
     const handoff = (agent.handoff_keywords || []).some((k: string) => k && lastInbound.includes(k.toLowerCase()));
     if (handoff) return { ok: true, skip: "handoff acionado por palavra-chave" };
+
+    // OPT-OUT (13/09/2026): lead pediu pra parar de receber mensagens. Resposta FIXA
+    // (sem IA), agente desligado na conversa, tag "Opt-out" (os disparos de template
+    // pulam quem tem) e negócio marcado como perdido. Nada de tentar contornar.
+    const OPT_OUT_RE = /\b(parar|pare|para|parem)\s+de\s+(receber|me\s+(mandar|enviar)|mandar|enviar)\b|n[aã]o\s+quero\s+(mais\s+)?(receber|mensagens?)|remov(e|a|er)\s+(o\s+)?meu\s+(n[uú]mero|contato)|descadastr|cancel(a|ar)\s+(as\s+)?mensagens|^\s*(sair|stop|parar|remover|cancelar|descadastrar)\s*[.!]*\s*$|n[aã]o\s+(me\s+)?(mande|manda|envie|envia)\s+mais/i;
+    if (OPT_OUT_RE.test(msgs[msgs.length - 1].content || "")) {
+      const primeiro = String(conv.contact?.name || "").trim().split(/\s+/)[0];
+      const nomeOk = primeiro && !/^\d+$/.test(primeiro) && !["sou", "eu", "me"].includes(primeiro.toLowerCase()) ? primeiro : "";
+      const despedida = `Tudo bem${nomeOk ? `, ${nomeOk}` : ""}. Não vou mais te mandar mensagens por aqui. Se um dia precisar de ajuda com o comercial da sua empresa, é só me chamar.`;
+      if (dry_run) return { ok: true, dry_run: true, opt_out: true, reply: despedida };
+      let enviado = false;
+      if (isIG) {
+        const { error: se } = await supabase.functions.invoke("instagram-send", { body: { conversationId: conversation_id, message: despedida, staffId: null } });
+        enviado = !se;
+      } else {
+        const ph = String(conv.contact?.phone || "").replace(/\D/g, "");
+        const sent = isOFFICIAL ? await sendOfficialText(supabase, conv.official_instance_id, ph, despedida) : await sendWhatsAppText(supabase, conv.instance_id, ph, despedida);
+        enviado = sent.ok;
+        if (sent.ok && !sent.isV2) {
+          await supabase.from("crm_whatsapp_messages").insert({
+            conversation_id, content: despedida, type: "text", direction: "outbound", status: "sent",
+            remote_id: sent.remoteId || null, whatsapp_message_id: isOFFICIAL ? sent.remoteId || null : null, is_ai: true, sent_by: null,
+          });
+        }
+        if (sent.ok) await supabase.from("crm_whatsapp_conversations").update({ last_message: despedida.substring(0, 255), last_message_at: new Date().toISOString() }).eq("id", conversation_id);
+      }
+      await supabase.from("crm_ai_agent_conversation_overrides").upsert({
+        agent_id: agent.id, conversation_id, channel, enabled: false, reply_mode: mode,
+      }, { onConflict: "conversation_id,channel" });
+      if (conv.lead_id) {
+        try {
+          const { data: tag } = await supabase.from("crm_tags").select("id").ilike("name", "Opt-out").limit(1).maybeSingle();
+          if (tag?.id) await supabase.from("crm_lead_tags").upsert({ lead_id: conv.lead_id, tag_id: tag.id }, { onConflict: "lead_id,tag_id", ignoreDuplicates: true });
+        } catch { /* tag é acessório */ }
+        await runTool(supabase, agent, conv.lead_id, "marcar_perdido", { motivo: "Pediu para parar de receber mensagens (opt-out)", tipo: "nao_quer" });
+      }
+      await supabase.from("crm_ai_agent_runs").insert({
+        agent_id: agent.id, channel, conversation_id, mode, outcome: enviado ? "opt_out" : "opt_out_send_failed", reply: despedida,
+      }).then(() => {}, () => {});
+      return { ok: true, opt_out: true, sent: enviado };
+    }
 
     // 6) Base de conhecimento
     const { data: kn } = await supabase.from("crm_ai_agent_knowledge")

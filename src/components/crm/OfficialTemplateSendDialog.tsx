@@ -69,6 +69,7 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState<{ ok: number; fail: number; total: number } | null>(null);
+  const [optOutCount, setOptOutCount] = useState(0);
 
   // quem está enviando + instâncias oficiais liberadas
   useEffect(() => {
@@ -94,11 +95,18 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
         setInstances(list);
         if (list.length && !instanceId) setInstanceId(list[0].id);
 
-        if (leads?.length) setTargets(leads);
-        else if (leadIds?.length) {
-          const { data } = await supabase.from("crm_leads").select("id, name, phone").in("id", leadIds);
-          setTargets((data || []) as OfficialTemplateLead[]);
+        // Quem pediu pra parar (tag "Opt-out") nunca entra no disparo
+        const baseTargets: OfficialTemplateLead[] = leads?.length
+          ? leads
+          : leadIds?.length ? (((await supabase.from("crm_leads").select("id, name, phone").in("id", leadIds)).data || []) as OfficialTemplateLead[]) : [];
+        const ids = baseTargets.map((t) => t.id).filter(Boolean) as string[];
+        let optOut = new Set<string>();
+        if (ids.length) {
+          const { data: lt } = await supabase.from("crm_lead_tags").select("lead_id, tag:crm_tags!inner(name)").in("lead_id", ids).ilike("tag.name", "opt-out");
+          optOut = new Set((lt || []).map((r: any) => r.lead_id));
         }
+        setOptOutCount(optOut.size);
+        setTargets(baseTargets.filter((t) => !t.id || !optOut.has(t.id)));
       } finally {
         setLoading(false);
       }
@@ -205,6 +213,7 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
             <div className="flex flex-wrap gap-2 text-xs">
               <Badge variant="secondary">{validTargets.length} destinatário(s)</Badge>
               {semTelefone > 0 && <Badge variant="destructive">{semTelefone} sem telefone válido</Badge>}
+              {optOutCount > 0 && <Badge variant="outline">{optOutCount} pulado(s): pediram pra não receber (Opt-out)</Badge>}
             </div>
 
             {instances.length > 1 && (
