@@ -26,7 +26,8 @@ import {
   Loader2,
   CheckSquare,
   FolderInput,
-  ShieldCheck
+  ShieldCheck,
+  Tag
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -80,6 +81,8 @@ export const KanbanBulkActions = ({
   const [assignToOwner, setAssignToOwner] = useState<string>("");
   const [moveToPipeline, setMoveToPipeline] = useState<string>("");
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [tags, setTags] = useState<{ id: string; name: string; color: string | null }[]>([]);
+  const [bulkTag, setBulkTag] = useState<string>("");
 
   const chunkLeadIds = (leadIds: string[], chunkSize = 100) => {
     const chunks: string[][] = [];
@@ -104,10 +107,42 @@ export const KanbanBulkActions = ({
       setPipelines(filtered);
     };
     
+    const loadTags = async () => {
+      const { data } = await supabase.from("crm_tags").select("id, name, color").eq("is_active", true).order("name");
+      setTags((data || []) as any);
+    };
+
     if (selectedLeads.length > 0) {
       loadPipelines();
+      loadTags();
     }
   }, [selectedLeads.length, currentPipelineId]);
+
+  // Etiqueta em massa (aplicar/remover) — pedido do Fabrício 13/09/2026
+  const handleBulkTag = async (action: "add" | "remove") => {
+    if (!bulkTag) return;
+    setLoading(true);
+    try {
+      for (const chunk of chunkLeadIds(selectedLeads)) {
+        if (action === "add") {
+          const { error } = await supabase.from("crm_lead_tags")
+            .upsert(chunk.map((lead_id) => ({ lead_id, tag_id: bulkTag })), { onConflict: "lead_id,tag_id", ignoreDuplicates: true });
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from("crm_lead_tags").delete().eq("tag_id", bulkTag).in("lead_id", chunk);
+          if (error) throw error;
+        }
+      }
+      const nome = tags.find((t) => t.id === bulkTag)?.name || "etiqueta";
+      toast.success(action === "add" ? `Etiqueta "${nome}" aplicada em ${selectedLeads.length} lead(s)` : `Etiqueta "${nome}" removida de ${selectedLeads.length} lead(s)`);
+      setBulkTag("");
+      onSuccess();
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao aplicar etiqueta");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Em massa não dá pra abrir um dialog por lead: se a etapa destino é de reunião
   // agendada, cria automaticamente a tarefa "Próximo contato" (dia útil seguinte,
@@ -374,6 +409,36 @@ export const KanbanBulkActions = ({
             <Button size="sm" onClick={handleBulkAssign} disabled={loading}>
               {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Atribuir"}
             </Button>
+          )}
+        </div>
+
+        {/* Etiqueta em massa */}
+        <div className="flex items-center gap-2">
+          <Select value={bulkTag} onValueChange={setBulkTag}>
+            <SelectTrigger className="w-[150px] h-8 text-xs">
+              <Tag className="h-3 w-3 mr-1" />
+              <SelectValue placeholder="Etiqueta..." />
+            </SelectTrigger>
+            <SelectContent>
+              {tags.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color || "#999" }} />
+                    {t.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {bulkTag && (
+            <>
+              <Button size="sm" onClick={() => handleBulkTag("add")} disabled={loading}>
+                {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Aplicar"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => handleBulkTag("remove")} disabled={loading} title="Remover esta etiqueta dos selecionados">
+                Remover
+              </Button>
+            </>
           )}
         </div>
 
