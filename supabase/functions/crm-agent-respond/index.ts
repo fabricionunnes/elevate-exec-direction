@@ -1031,7 +1031,21 @@ Deno.serve(async (req) => {
       const agents = (chRows || []).map((r: any) => r.agent).filter((a: any) => a && a.is_active);
       if (agents.length === 0) return j({ ok: true, skip: "nenhum agente ativo nesta instância" });
       agents.sort((a: any, b: any) => (a.created_at < b.created_at ? -1 : 1));
-      agent = agents[0];
+      // Mais de um agente na mesma instância: escolhe o que ATENDE o funil do lead
+      // (modo auto > copiloto). Antes pegava sempre o mais antigo e, se o funil
+      // estivesse desligado nele, parava sem olhar os outros — 13/09/2026: leads do
+      // Social Media na instância da Natalia ficaram sem resposta.
+      if (agents.length > 1) {
+        let melhor: any = null; let melhorModo = "off";
+        for (const cand of agents) {
+          const m = await resolveAgentMode(supabase, cand, conv.lead_id, override);
+          if (m === "auto") { melhor = cand; melhorModo = m; break; }
+          if (m === "copilot" && melhorModo === "off") { melhor = cand; melhorModo = m; }
+        }
+        agent = melhor || agents[0];
+      } else {
+        agent = agents[0];
+      }
     }
 
     // 3) Modo: override da conversa > funil do lead (allowlist) > padrão do agente
