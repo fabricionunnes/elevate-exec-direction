@@ -33,6 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { createStageActivities } from "@/hooks/useStageActions";
 import { OfficialTemplateSendDialog } from "@/components/crm/OfficialTemplateSendDialog";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 interface Stage {
   id: string;
@@ -414,22 +415,17 @@ export const KanbanBulkActions = ({
 
         {/* Etiqueta em massa */}
         <div className="flex items-center gap-2">
-          <Select value={bulkTag} onValueChange={setBulkTag}>
-            <SelectTrigger className="w-[150px] h-8 text-xs">
-              <Tag className="h-3 w-3 mr-1" />
-              <SelectValue placeholder="Etiqueta..." />
-            </SelectTrigger>
-            <SelectContent>
-              {tags.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color || "#999" }} />
-                    {t.name}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Busca por nome (pedido 13/09/2026: muitas etiquetas, precisava pesquisar) */}
+          <div className="w-[190px]">
+            <SearchableSelect
+              value={bulkTag}
+              onValueChange={setBulkTag}
+              options={tags.map((t) => ({ value: t.id, label: t.name }))}
+              placeholder="Etiqueta..."
+              emptyMessage="Nenhuma etiqueta com esse nome."
+              className="h-8 text-xs"
+            />
+          </div>
           {bulkTag && (
             <>
               <Button size="sm" onClick={() => handleBulkTag("add")} disabled={loading}>
