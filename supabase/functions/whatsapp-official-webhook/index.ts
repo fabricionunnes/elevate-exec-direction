@@ -337,8 +337,17 @@ async function processStatusUpdate(supabase: any, status: any) {
   if (statusValue === 'read') dbStatus = 'read';
   if (statusValue === 'failed') dbStatus = 'failed';
 
+  // Falha: guarda o motivo da Meta (ex.: 141006 = sem método de pagamento na WABA,
+  // 131049 = limite de marketing pro usuário) — antes o "failed" ficava mudo (13/09/2026).
+  const patch: Record<string, unknown> = { status: dbStatus };
+  if (statusValue === 'failed') {
+    const errs = Array.isArray(status.errors) ? status.errors : [];
+    const txt = errs.map((e: any) => `${e.code || ''} ${e.title || e.message || ''}${e.error_data?.details ? ' — ' + e.error_data.details : ''}`.trim()).filter(Boolean).join(' | ');
+    patch.error_text = (txt || 'falha sem detalhe da Meta').slice(0, 500);
+    console.error('[WhatsApp Official] Falha de entrega:', messageId, patch.error_text);
+  }
   await supabase
     .from('crm_whatsapp_messages')
-    .update({ status: dbStatus })
+    .update(patch)
     .eq('whatsapp_message_id', messageId);
 }
