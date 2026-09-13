@@ -341,25 +341,12 @@ export const KanbanBulkActions = ({
 
         {/* Move to Stage */}
         <div className="flex items-center gap-2">
-          <Select value={moveToStage} onValueChange={setMoveToStage}>
-            <SelectTrigger className="w-[140px] h-8 text-xs">
-              <ArrowRight className="h-3 w-3 mr-1" />
-              <SelectValue placeholder="Mover para..." />
-            </SelectTrigger>
-            <SelectContent>
-              {stages.map(stage => (
-                <SelectItem key={stage.id} value={stage.id}>
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-2 h-2 rounded-full" 
-                      style={{ backgroundColor: stage.color }}
-                    />
-                    {stage.name}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* seletores com busca (pedido 13/09/2026) */}
+          <div className="w-[170px]">
+            <SearchableSelect value={moveToStage} onValueChange={setMoveToStage}
+              options={stages.map((st) => ({ value: st.id, label: st.name }))}
+              placeholder="Mover para..." emptyMessage="Nenhuma etapa." className="h-8 text-xs" />
+          </div>
           {moveToStage && (
             <Button size="sm" onClick={handleBulkMove} disabled={loading}>
               {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Mover"}
@@ -370,19 +357,11 @@ export const KanbanBulkActions = ({
         {/* Change Pipeline */}
         {pipelines.length > 0 && (
           <div className="flex items-center gap-2">
-            <Select value={moveToPipeline} onValueChange={setMoveToPipeline}>
-              <SelectTrigger className="w-[150px] h-8 text-xs">
-                <FolderInput className="h-3 w-3 mr-1" />
-                <SelectValue placeholder="Mudar funil..." />
-              </SelectTrigger>
-              <SelectContent>
-                {pipelines.map(pipeline => (
-                  <SelectItem key={pipeline.id} value={pipeline.id}>
-                    {pipeline.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="w-[170px]">
+              <SearchableSelect value={moveToPipeline} onValueChange={setMoveToPipeline}
+                options={pipelines.map((p) => ({ value: p.id, label: p.name }))}
+                placeholder="Mudar funil..." emptyMessage="Nenhum funil." className="h-8 text-xs" />
+            </div>
             {moveToPipeline && (
               <Button size="sm" onClick={handleBulkChangePipeline} disabled={loading}>
                 {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Mover"}
@@ -393,19 +372,11 @@ export const KanbanBulkActions = ({
 
         {/* Assign Owner */}
         <div className="flex items-center gap-2">
-          <Select value={assignToOwner} onValueChange={setAssignToOwner}>
-            <SelectTrigger className="w-[140px] h-8 text-xs">
-              <UserPlus className="h-3 w-3 mr-1" />
-              <SelectValue placeholder="Atribuir a..." />
-            </SelectTrigger>
-            <SelectContent>
-              {owners.map(owner => (
-                <SelectItem key={owner.id} value={owner.id}>
-                  {owner.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="w-[170px]">
+            <SearchableSelect value={assignToOwner} onValueChange={setAssignToOwner}
+              options={owners.map((o) => ({ value: o.id, label: o.name }))}
+              placeholder="Atribuir a..." emptyMessage="Ninguém com esse nome." className="h-8 text-xs" />
+          </div>
           {assignToOwner && (
             <Button size="sm" onClick={handleBulkAssign} disabled={loading}>
               {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Atribuir"}
