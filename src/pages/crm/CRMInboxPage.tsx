@@ -59,6 +59,7 @@ import {
   Instagram,
   Bot,
   ShieldCheck,
+  XCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -618,8 +619,10 @@ export const CRMInboxPage = () => {
     return true;
   });
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string, errorText?: string | null) => {
     switch (status) {
+      case "failed":
+        return <XCircle className="h-3 w-3 text-destructive" title={errorText || "Falha na entrega"} />;
       case "sent":
         return <CheckCheck className="h-3 w-3 text-muted-foreground" />;
       case "delivered":
@@ -1094,8 +1097,11 @@ export const CRMInboxPage = () => {
                         <span className="text-[10px] text-muted-foreground">
                           {format(new Date(message.created_at), "dd/MM/yyyy HH:mm")}
                         </span>
-                        {message.direction === "outbound" && getStatusIcon(message.status)}
+                        {message.direction === "outbound" && getStatusIcon(message.status, (message as any).error_text)}
                       </div>
+                      {message.direction === "outbound" && message.status === "failed" && (
+                        <p className="text-[10px] text-destructive mt-0.5">Não entregue{(message as any).error_text ? `: ${(message as any).error_text}` : ""}</p>
+                      )}
                     </div>
                   </div>
                 ))
