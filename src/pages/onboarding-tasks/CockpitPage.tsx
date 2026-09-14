@@ -2,18 +2,20 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Gauge, FileText, Loader2, ExternalLink } from "lucide-react";
+import { ArrowLeft, Gauge, FileText, Loader2, ExternalLink, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import cockpitHtml from "@/data/cockpit/cockpit-unv.html?raw";
 import planoHtml from "@/data/cockpit/plano-unv.html?raw";
+import vendasHtml from "@/data/cockpit/plano-vendas.html?raw";
 
-// Página privada do CEO: Cockpit de projeção da escada comercial + plano estratégico.
+// Página privada do CEO: plano de vendas, Cockpit de projeção da escada comercial e plano estratégico.
 // O conteúdo é HTML estático embutido no bundle (srcdoc), não fica em URL pública.
 const CEO_EMAIL = "fabricio@universidadevendas.com.br";
 
-type Tab = "cockpit" | "plano";
+type Tab = "vendas" | "cockpit" | "plano";
 
 const tabs: { value: Tab; label: string; icon: typeof Gauge; hint: string }[] = [
+  { value: "vendas", label: "Plano de vendas", icon: Target, hint: "Quantas vendas de cada produto por mês e como vender cada uma" },
   { value: "cockpit", label: "Cockpit", icon: Gauge, hint: "Projeção 36 meses · 3 cenários · métricas por produto e evento" },
   { value: "plano", label: "Plano estratégico", icon: FileText, hint: "Redesenho Comercial UNV · escada de 7 degraus" },
 ];
@@ -27,10 +29,10 @@ export default function CockpitPage() {
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [tab, setTab] = useState<Tab>(() => {
     try {
-      const saved = localStorage.getItem("cockpit-page-tab");
-      return saved === "plano" ? "plano" : "cockpit";
+      const saved = localStorage.getItem("cockpit-page-tab-v2");
+      return saved === "plano" || saved === "cockpit" ? saved : "vendas";
     } catch {
-      return "cockpit";
+      return "vendas";
     }
   });
   const [dark, setDark] = useState<boolean>(() => document.documentElement.classList.contains("dark"));
@@ -73,11 +75,12 @@ export default function CockpitPage() {
   }, []);
 
   useEffect(() => {
-    try { localStorage.setItem("cockpit-page-tab", tab); } catch { /* ignore */ }
+    try { localStorage.setItem("cockpit-page-tab-v2", tab); } catch { /* ignore */ }
   }, [tab]);
 
   const cockpitDoc = useMemo(() => wrapHtml(cockpitHtml, dark), [dark]);
   const planoDoc = useMemo(() => wrapHtml(planoHtml, dark), [dark]);
+  const vendasDoc = useMemo(() => wrapHtml(vendasHtml, dark), [dark]);
 
   if (isAuthorized === null) {
     return (
@@ -130,7 +133,12 @@ export default function CockpitPage() {
       </div>
 
       <div className="flex-1 min-h-0 relative">
-        {/* Os dois iframes ficam montados pra não perder estado (filtros, premissas) ao alternar. */}
+        {/* Os iframes ficam montados pra não perder estado (filtros, premissas) ao alternar. */}
+        <iframe
+          title="Plano de vendas UNV"
+          srcDoc={vendasDoc}
+          className={cn("absolute inset-0 w-full h-full border-0 bg-background", tab !== "vendas" && "invisible")}
+        />
         <iframe
           title="Cockpit UNV"
           srcDoc={cockpitDoc}
