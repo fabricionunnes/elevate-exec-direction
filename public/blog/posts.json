@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-14T15:01:08",
+ "gerado_em": "2026-09-14T21:01:06",
  "posts": [
+  {
+   "slug": "multimarca-nao-justifica-comercial-sem-direcao",
+   "url": "/blog/multimarca-nao-justifica-comercial-sem-direcao/",
+   "titulo": "Multimarca não justifica comercial sem direção clara",
+   "resumo": "Empresa que atende vários segmentos precisa de estrutura comercial ainda mais clara. O problema não é a variedade de cliente, é não ter quem defina como cada tipo é atendido.",
+   "tags": [
+    "estrutura comercial",
+    "segmentação",
+    "decisão",
+    "diagnóstico",
+    "atendimento"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-14",
+   "ts": 2090
+  },
   {
    "slug": "contrato-sem-fidelidade-filtra-cliente-certo",
    "url": "/blog/contrato-sem-fidelidade-filtra-cliente-certo/",
