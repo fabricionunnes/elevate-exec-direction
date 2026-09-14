@@ -362,13 +362,14 @@ async function describeImage(url: string, legenda = ""): Promise<string | null> 
         model: "claude-haiku-4-5-20251001", max_tokens: 250,
         messages: [{ role: "user", content: [
           { type: "image", source: { type: "base64", media_type: mediaType, data: btoa(bin) } },
-          { type: "text", text: `Um lead mandou esta imagem numa conversa comercial de WhatsApp${legenda ? ` com a legenda "${legenda}"` : ""}. Descreva em português, em 1 a 3 frases objetivas, o que aparece e qualquer texto legível (números, nomes, valores). Sem introdução.` },
+          { type: "text", text: `Um lead mandou esta imagem numa conversa comercial de WhatsApp${legenda ? ` com a legenda "${legenda}"` : ""}. Descreva em português, em 1 a 3 frases objetivas, o que aparece e qualquer texto legível (números, nomes, valores). Texto corrido, sem título, sem markdown, sem introdução.` },
         ] }],
       }),
     });
     if (!resp.ok) { console.error("[image] claude", resp.status, (await resp.text()).slice(0, 200)); return null; }
     const d = await resp.json();
-    const out = (Array.isArray(d?.content) ? d.content : []).filter((x: any) => x?.type === "text").map((x: any) => String(x.text)).join("").trim();
+    const out = (Array.isArray(d?.content) ? d.content : []).filter((x: any) => x?.type === "text").map((x: any) => String(x.text)).join("")
+      .replace(/^\s*#+[^\n]*\n+/, "").replace(/\*\*/g, "").trim();
     return out || null;
   } catch (e) {
     console.error("[image] erro:", e);
