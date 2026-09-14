@@ -45,6 +45,7 @@
   }
 }
 *,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
 body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;margin:0;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 img{display:block;max-width:100%;height:auto}
@@ -192,19 +193,46 @@ thead th{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-trans
 .faq details[open] summary::after{content:"–"}
 .faq details p{padding:0 0 18px;color:var(--muted);max-width:68ch}
 
-/* final */
-.final{background:#0D2B5E;color:#fff;padding:clamp(56px,9vw,96px) 0}
-.final .wrap{display:flex;flex-direction:column;gap:18px;align-items:flex-start}
+/* final + inscrição */
+.final{background:#0D2B5E;color:#fff;padding:clamp(56px,9vw,96px) 0;scroll-margin-top:0}
 .final h2{color:#fff;max-width:18ch}
-.final p{color:#DCE4F3;max-width:56ch;font-size:1.08rem}
+.final-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(28px,5vw,64px);align-items:start}
+@media (max-width:860px){.final-grid{grid-template-columns:1fr}}
+.final-copy{display:flex;flex-direction:column;gap:18px}
+.final-copy p{color:#DCE4F3;max-width:56ch;font-size:1.08rem}
+.final-copy ul{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;color:#DCE4F3;font-size:.95rem}
+.final-copy li{padding-left:22px;position:relative}
+.final-copy li::before{content:"✓";position:absolute;left:0;color:#7FD4A6;font-weight:700}
+.ficha{background:#fff;color:#0B1B36;border-radius:6px;overflow:hidden}
+.ficha-head{display:flex;justify-content:space-between;gap:12px;padding:12px 20px;border-bottom:1px solid #D3D9E4;font-family:var(--mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:#56637A}
+.ficha form{padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+@media (max-width:560px){.ficha form{grid-template-columns:1fr}}
+.f{display:flex;flex-direction:column;gap:6px;min-width:0}
+.f.full{grid-column:1/-1}
+.f label{font-size:.82rem;font-weight:600;color:#0B1B36}
+.f input,.f select,.f textarea{width:100%;font:inherit;font-size:16px;color:#0B1B36;background:#F3F5F9;border:1px solid #C9D1DE;border-radius:4px;padding:11px 12px;outline:none;transition:border-color .15s,background .15s}
+.f textarea{min-height:92px;resize:vertical}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:#0D2B5E;background:#fff}
+fieldset.f{border:0;margin:0;padding:0}
+fieldset.f legend{font-size:.82rem;font-weight:600;margin-bottom:6px;padding:0;color:#0B1B36}
+.lvl-pick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media (max-width:560px){.lvl-pick{grid-template-columns:1fr}}
+.lvl-pick label{position:relative;display:flex;flex-direction:column;gap:2px;border:1px solid #C9D1DE;border-radius:4px;padding:10px 12px;cursor:pointer;font-weight:600;font-size:.88rem;background:#F3F5F9}
+.lvl-pick label span{font-weight:400;font-size:.76rem;color:#56637A}
+.lvl-pick input{position:absolute;opacity:0;pointer-events:none}
+.lvl-pick label:has(input:checked){border-color:#0D2B5E;background:#E3E9F4;box-shadow:inset 0 0 0 1px #0D2B5E}
+.lvl-pick label:has(input:focus-visible){outline:2px solid #CC1B1B;outline-offset:2px}
+.form-err{grid-column:1/-1;color:#B02318;font-size:.88rem;font-weight:600}
+.ficha .btn{grid-column:1/-1;width:100%;border:0;cursor:pointer}
+.ficha .btn:disabled{opacity:.6;cursor:default}
+.form-note{grid-column:1/-1;font-size:.78rem;color:#56637A;text-align:center}
+.form-ok{padding:36px 24px;display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.form-ok h3{font-size:1.6rem;font-variation-settings:"wdth" 75;font-weight:880;text-transform:uppercase}
+.form-ok p{color:#56637A;max-width:48ch}
+
 footer{background:#071A3B;color:#8FA3C7;font-size:.82rem;padding:22px 0}
 footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 footer a{color:#DCE4F3}
-
-.float-wa{position:fixed;right:20px;bottom:20px;z-index:40;display:inline-flex;align-items:center;gap:9px;background:#1FA855;color:#fff;text-decoration:none;font-weight:700;font-size:.9rem;padding:12px 18px;border-radius:4px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
-.float-wa:hover{background:#178A45}
-.float-wa svg{width:18px;height:18px}
-@media (max-width:560px){.float-wa span{display:none}.float-wa{padding:14px}}
 </style>
 </head>
 <body>
@@ -225,7 +253,7 @@ footer a{color:#DCE4F3}
         <p class="lede">Eu entro na sua empresa como <strong>diretor comercial por um dia</strong>. Vejo a venda acontecer, encontro o que trava o seu resultado <strong>em número</strong> e saio com um <strong>plano de 30 dias</strong> na parede. Daqui a 90 dias eu volto pra conferir o placar.</p>
         <p class="lede" style="margin-top:12px">Tudo gravado. <strong>Nenhum dado sensível da sua empresa vai ao ar.</strong></p>
         <div class="hero-cta">
-          <a class="btn wa-link" href="#" target="_blank" rel="noopener">Quero minha empresa no quadro
+          <a class="btn" href="#inscricao">Quero minha empresa no quadro
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
           <a class="btn ghost" href="#dados">Como protejo seus dados</a>
         </div>
@@ -300,7 +328,7 @@ footer a{color:#DCE4F3}
       <div class="sec-head"><span class="label">Seus dados</span><h2>Tudo gravado, nada exposto</h2></div>
       <p class="intro">Você escolhe o nível <strong>antes</strong> de ligar a câmera, e ele fica registrado no termo. O vídeo ensina com proporções e processos. Os números do seu caixa ficam com você.</p>
 
-      <div class="tbl pad-top" style="margin-top:28px">
+      <div class="tbl" style="margin-top:28px">
         <table>
           <thead><tr><th>Nível</th><th>Você e sua voz</th><th>Nome da empresa</th><th>Números</th><th>Bom pra quem</th></tr></thead>
           <tbody>
@@ -390,13 +418,65 @@ footer a{color:#DCE4F3}
     </div>
   </section>
 
-  <section class="final">
-    <div class="wrap">
-      <span class="label" style="color:#9FB2D6">Inscrição</span>
-      <h2>Quer um diretor comercial dentro da sua empresa por um dia?</h2>
-      <p>Me chama no WhatsApp, conta rapidamente sobre o seu negócio e a gente marca a conversa de preparação.</p>
-      <a class="btn wa-link" href="#" target="_blank" rel="noopener">Quero minha empresa no quadro
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+  <section class="final" id="inscricao">
+    <div class="wrap final-grid">
+      <div class="final-copy">
+        <span class="label" style="color:#9FB2D6">Inscrição</span>
+        <h2>Quer um diretor comercial dentro da sua empresa por um dia?</h2>
+        <p>Preencha a ficha. Minha equipe analisa e, se fizer sentido, chama você no WhatsApp pra marcar a conversa de preparação.</p>
+        <ul>
+          <li>Leva 2 minutos</li>
+          <li>Nada é publicado sem o termo assinado</li>
+          <li>Inscrição não obriga a participar</li>
+        </ul>
+      </div>
+      <div class="ficha">
+        <div class="ficha-head"><span>Ficha de inscrição</span><span>Diretor por um Dia</span></div>
+        <form id="inscricaoForm" novalidate>
+          <div class="f"><label for="f-nome">Seu nome</label><input id="f-nome" name="nome" type="text" autocomplete="name" maxlength="120" required></div>
+          <div class="f"><label for="f-tel">WhatsApp com DDD</label><input id="f-tel" name="telefone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="(31) 99999-9999" maxlength="24" required></div>
+          <div class="f"><label for="f-email">E-mail</label><input id="f-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="150" required></div>
+          <div class="f"><label for="f-empresa">Empresa</label><input id="f-empresa" name="empresa" type="text" autocomplete="organization" maxlength="120" required></div>
+          <div class="f"><label for="f-setor">Setor</label><input id="f-setor" name="setor" type="text" placeholder="Ex.: clínica, loja, indústria" maxlength="50" required></div>
+          <div class="f"><label for="f-cidade">Cidade / UF</label><input id="f-cidade" name="cidade" type="text" placeholder="Ex.: Belo Horizonte / MG" maxlength="50" required></div>
+          <div class="f"><label for="f-fat">Faturamento mensal</label>
+            <select id="f-fat" name="faturamento" required>
+              <option value="">Selecione</option>
+              <option>Até R$ 50 mil</option>
+              <option>R$ 50 a 100 mil</option>
+              <option>R$ 100 a 300 mil</option>
+              <option>R$ 300 mil a 1 milhão</option>
+              <option>Acima de R$ 1 milhão</option>
+            </select></div>
+          <div class="f"><label for="f-vend">Vendedores no time</label>
+            <select id="f-vend" name="vendedores" required>
+              <option value="">Selecione</option>
+              <option>Nenhum, eu vendo</option>
+              <option>1 a 2</option>
+              <option>3 a 5</option>
+              <option>6 a 15</option>
+              <option>Mais de 15</option>
+            </select></div>
+          <div class="f full"><label for="f-dor">O que mais trava as vendas hoje?</label><textarea id="f-dor" name="desafio" maxlength="800" placeholder="Conte em poucas linhas" required></textarea></div>
+          <fieldset class="f full">
+            <legend>Como você toparia aparecer?</legend>
+            <div class="lvl-pick">
+              <label><input type="radio" name="nivel" value="Aberto">Aberto<span>Eu e a empresa aparecemos</span></label>
+              <label><input type="radio" name="nivel" value="Protegido" checked>Protegido<span>Apareço, números em proporção</span></label>
+              <label><input type="radio" name="nivel" value="Anônimo">Anônimo<span>Sem rosto e sem nome</span></label>
+            </div>
+          </fieldset>
+          <p class="form-err" role="alert" hidden></p>
+          <button class="btn" type="submit">Enviar inscrição
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+          <p class="form-note">Seus dados ficam só com a UNV e servem apenas pra avaliar a inscrição.</p>
+        </form>
+        <div class="form-ok" id="inscricaoOk" hidden>
+          <span class="label">Inscrição recebida</span>
+          <h3>Ficha na mesa do diretor</h3>
+          <p>Vamos analisar o cenário da sua empresa. Se fizer sentido pro quadro, você recebe uma mensagem no WhatsApp pra marcar a conversa de preparação.</p>
+        </div>
+      </div>
     </div>
   </section>
 </main>
@@ -408,23 +488,93 @@ footer a{color:#DCE4F3}
   </div>
 </footer>
 
-<a class="float-wa wa-link" href="#" target="_blank" rel="noopener" aria-label="Falar no WhatsApp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg><span>Falar comigo</span></a>
-
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=247392077001023&ev=PageView&noscript=1" alt=""></noscript>
 <script>
 (function(){
   "use strict";
-  var WA_NUMBER = "5511927008490";
-  var WA_MSG = "Olá, vi a página do Diretor por um Dia e quero inscrever minha empresa no quadro";
-  var WA_URL = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(WA_MSG);
+  // Funil "Diretor por um dia" no CRM (crm_pipeline_forms.form_token)
+  var FORM_TOKEN = "2ead3428b7c00a82fc9945ada579a591";
+  var SUPA = "https://xrncvhzxjmddqluxoosu.supabase.co";
+  var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
   var PIXEL = "247392077001023";
 
   !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");
   try { fbq("init", PIXEL); fbq("track", "PageView"); } catch(e){}
 
-  Array.prototype.forEach.call(document.querySelectorAll(".wa-link"), function(a){
-    a.href = WA_URL;
-    a.addEventListener("click", function(){ try { fbq("track", "Contact", { content_name: "Diretor por um Dia" }); } catch(e){} });
+  function qp(name){ try { return new URLSearchParams(location.search).get(name) || undefined; } catch(e){ return undefined; } }
+
+  function maskPhone(v){
+    var d = v.replace(/\D/g,"");
+    if(d.length > 11 && d.slice(0,2) === "55") d = d.slice(2);
+    d = d.slice(0,11);
+    if(d.length<=2) return d.length?"("+d:d;
+    if(d.length<=6) return "("+d.slice(0,2)+") "+d.slice(2);
+    if(d.length<=10) return "("+d.slice(0,2)+") "+d.slice(2,6)+"-"+d.slice(6);
+    return "("+d.slice(0,2)+") "+d.slice(2,7)+"-"+d.slice(7);
+  }
+
+  var form = document.getElementById("inscricaoForm");
+  var ok = document.getElementById("inscricaoOk");
+  var errEl = form.querySelector(".form-err");
+  var phone = form.elements.telefone;
+  phone.addEventListener("input", function(){ phone.value = maskPhone(phone.value); });
+
+  form.addEventListener("submit", function(ev){
+    ev.preventDefault();
+    var el = form.elements;
+    var v = function(n){ return (el[n].value || "").trim(); };
+    var tel = phone.value.replace(/\D/g,"");
+    var nivel = (form.querySelector('input[name="nivel"]:checked') || {}).value || "Protegido";
+    function showErr(m, field){ errEl.textContent = m; errEl.hidden = false; if(field) try{ el[field].focus(); }catch(e){} }
+    errEl.hidden = true;
+
+    if(v("nome").length < 2) return showErr("Informe seu nome.", "nome");
+    if(tel.length < 10) return showErr("Informe o WhatsApp com DDD.", "telefone");
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v("email"))) return showErr("Informe um e-mail válido.", "email");
+    if(v("empresa").length < 2) return showErr("Informe o nome da empresa.", "empresa");
+    if(!v("setor")) return showErr("Informe o setor da empresa.", "setor");
+    if(!v("cidade")) return showErr("Informe a cidade.", "cidade");
+    if(!v("faturamento")) return showErr("Selecione a faixa de faturamento.", "faturamento");
+    if(!v("vendedores")) return showErr("Selecione quantos vendedores tem no time.", "vendedores");
+    if(v("desafio").length < 5) return showErr("Conte o que mais trava as vendas hoje.", "desafio");
+
+    var btn = form.querySelector('button[type="submit"]');
+    var original = btn.innerHTML;
+    btn.disabled = true; btn.textContent = "Enviando...";
+
+    // Tudo da ficha vai pras observações (notes) do lead.
+    // observacao: a função guarda até 300 caracteres (setor/cidade limitados a 50 cabem com folga).
+    // desafio: a função grava inteiro em notes ("Desafio: ...") e em main_pain.
+    var observacao = "Ficha Diretor por um Dia · Setor: " + v("setor") + " · Cidade: " + v("cidade") +
+      " · Faturamento: " + v("faturamento") + " · Vendedores: " + v("vendedores") + " · Exposição: " + nivel;
+
+    var payload = {
+      form_token: FORM_TOKEN,
+      nome: v("nome"), telefone: tel, email: v("email"),
+      empresa: v("empresa"), desafio: v("desafio"), observacao: observacao,
+      utm_source: qp("utm_source"), utm_medium: qp("utm_medium"),
+      utm_campaign: qp("utm_campaign"), utm_content: qp("utm_content"), utm_term: qp("utm_term"),
+      fbclid: qp("fbclid"), ad_name: qp("ad_name"), adset_name: qp("adset_name"), campaign_name: qp("campaign_name"),
+      meta_campaign_id: qp("meta_campaign_id") || qp("campaign_id"),
+      meta_adset_id: qp("meta_adset_id") || qp("adset_id"),
+      meta_ad_id: qp("meta_ad_id") || qp("ad_id")
+    };
+
+    fetch(SUPA + "/functions/v1/submit-pipeline-form", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + ANON, "apikey": ANON },
+      body: JSON.stringify(payload)
+    }).then(function(r){
+      return r.json().catch(function(){ return {}; }).then(function(data){ return { ok: r.ok, data: data }; });
+    }).then(function(res){
+      if(!res.ok) throw new Error((res.data && res.data.error) || "Erro ao enviar");
+      try { fbq("track", "Lead", { content_name: "Diretor por um Dia" }); } catch(e){}
+      form.hidden = true; ok.hidden = false;
+      ok.scrollIntoView({ behavior: "smooth", block: "center" });
+    }).catch(function(){
+      btn.disabled = false; btn.innerHTML = original;
+      showErr("Não conseguimos enviar agora. Confira sua conexão e tente de novo.");
+    });
   });
 })();
 </script>
