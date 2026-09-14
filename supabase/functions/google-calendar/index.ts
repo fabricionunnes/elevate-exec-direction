@@ -972,6 +972,96 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Reagendar: move SÓ data/hora do evento (PATCH), mantendo Meet, convidados,
+    // descrição e a duração original. O update-event faz PUT e apagaria tudo isso.
+    // Pedido do Fabrício 14/09/2026 (Agenda do Fabrício → Alterar dia e horário).
+    if (action === "move-event") {
+      const body = await req.json();
+      const { eventId, startDateTime, durationMinutes, target_user_id } = body;
+      if (!eventId || !startDateTime) {
+        return new Response(JSON.stringify({ error: "Missing eventId or startDateTime" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const calendarUserId = target_user_id || user.id;
+      let calendarToken = tokenData;
+      if (target_user_id && target_user_id !== user.id) {
+        const { data: targetToken } = await supabase.from("user_google_tokens")
+          .select("*").eq("user_id", target_user_id).maybeSingle();
+        calendarToken = targetToken;
+      }
+      if (!calendarToken) {
+        return new Response(JSON.stringify({ error: "Not connected to Google Calendar", needsAuth: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      let accessToken = calendarToken.access_token;
+      if (calendarToken.token_expires_at && new Date(calendarToken.token_expires_at) < new Date()) {
+        const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
+        const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+        if (!calendarToken.refresh_token || !googleClientId || !googleClientSecret) {
+          return new Response(JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: googleClientId, client_secret: googleClientSecret,
+            refresh_token: calendarToken.refresh_token, grant_type: "refresh_token",
+          }),
+        });
+        if (!refreshResponse.ok) {
+          return new Response(JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const refreshData = await refreshResponse.json();
+        accessToken = refreshData.access_token;
+        await supabase.from("user_google_tokens").update({
+          access_token: accessToken,
+          token_expires_at: new Date(Date.now() + (refreshData.expires_in || 3600) * 1000).toISOString(),
+        }).eq("user_id", calendarUserId);
+      }
+
+      const eventUrl = `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`;
+      const getResp = await fetch(eventUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (!getResp.ok) {
+        return new Response(JSON.stringify({ error: "Evento não encontrado na agenda do Google" }),
+          { status: getResp.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const current = await getResp.json();
+      const curStart = new Date(current.start?.dateTime || current.start?.date);
+      const curEnd = new Date(current.end?.dateTime || current.end?.date);
+      const durMs = Number(durationMinutes) > 0
+        ? Number(durationMinutes) * 60000
+        : Math.max(15 * 60000, curEnd.getTime() - curStart.getTime() || 60 * 60000);
+      const newStart = new Date(startDateTime);
+      const newEnd = new Date(newStart.getTime() + durMs);
+
+      const patchResp = await fetch(`${eventUrl}?sendUpdates=all`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          start: { dateTime: newStart.toISOString(), timeZone: "America/Sao_Paulo" },
+          end: { dateTime: newEnd.toISOString(), timeZone: "America/Sao_Paulo" },
+        }),
+      });
+      if (!patchResp.ok) {
+        const errorText = await patchResp.text();
+        console.error("move-event error:", errorText);
+        const needsAuth = patchResp.status === 401 || patchResp.status === 403;
+        return new Response(JSON.stringify({ error: "Falha ao mover evento: " + errorText.slice(0, 200), needsAuth }),
+          { status: patchResp.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const moved = await patchResp.json();
+      const meetingLink = moved.hangoutLink ||
+        moved.conferenceData?.entryPoints?.find((ep: { entryPointType: string; uri: string }) => ep.entryPointType === "video")?.uri || null;
+      return new Response(JSON.stringify({
+        success: true,
+        event: { id: moved.id, start: moved.start?.dateTime, end: moved.end?.dateTime, meetingLink },
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Carimba o link do projeto na descrição de um evento que já existe no
     // Google (ex.: reunião criada direto na agenda e depois vinculada ao
     // projeto). Usa PATCH só na descrição — o update-event faz PUT e apagaria

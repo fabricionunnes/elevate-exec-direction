@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { toast } from "sonner";
 import {
   ArrowLeft, ChevronLeft, ChevronRight, Loader2, Video, Plus, Trash2,
-  ExternalLink, CalendarDays, Eye, RefreshCw, Check, ChevronsUpDown,
+  ExternalLink, CalendarDays, Eye, RefreshCw, Check, ChevronsUpDown, CalendarClock,
 } from "lucide-react";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -100,6 +100,11 @@ const AgendaFabricioPage = () => {
   // Dialog de detalhes/cancelamento
   const [selectedMeeting, setSelectedMeeting] = useState<AgendaMeeting | null>(null);
   const [canceling, setCanceling] = useState(false);
+  // Reagendar (alterar dia e horário) — move no Google Agenda e no projeto
+  const [rescheduleMode, setRescheduleMode] = useState(false);
+  const [rsDate, setRsDate] = useState("");
+  const [rsTime, setRsTime] = useState("10:00");
+  const [rescheduling, setRescheduling] = useState(false);
 
   const weekDays = useMemo(
     () => [0, 1, 2, 3, 4].map((i) => addDays(weekStart, i)),
@@ -367,6 +372,95 @@ const AgendaFabricioPage = () => {
       toast.error("Erro ao cancelar reunião");
     } finally {
       setCanceling(false);
+    }
+  };
+
+  const openReschedule = () => {
+    if (!selectedMeeting) return;
+    const d = new Date(selectedMeeting.meeting_date);
+    setRsDate(format(d, "yyyy-MM-dd"));
+    setRsTime(format(d, "HH:mm"));
+    setRescheduleMode(true);
+  };
+
+  const handleReschedule = async () => {
+    if (!selectedMeeting) return;
+    if (!rsDate || !rsTime) { toast.error("Informe o novo dia e horário"); return; }
+    setRescheduling(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Sessão expirada"); return; }
+      const authHeaders = { Authorization: `Bearer ${session.access_token}` };
+
+      const oldStart = new Date(selectedMeeting.meeting_date);
+      const [h, m] = rsTime.split(":").map(Number);
+      const start = new Date(`${rsDate}T00:00:00`);
+      start.setHours(h, m, 0, 0);
+      if (start.getTime() === oldStart.getTime()) { toast.info("É o mesmo dia e horário"); return; }
+
+      // duração original: pelo período ocupado da própria reunião no dia atual (fallback 60 min)
+      let durationMin = 60;
+      {
+        const { data: fbOld } = await supabase.functions.invoke("google-calendar?action=freebusy", {
+          body: { target_user_id: FABRICIO.userId, date: format(oldStart, "yyyy-MM-dd"), duration_minutes: 30 },
+          headers: authHeaders,
+        });
+        const own = ((fbOld?.busyPeriods || []) as BusyPeriod[]).find((b) => Math.abs(new Date(b.start).getTime() - oldStart.getTime()) < 60000);
+        if (own) durationMin = Math.max(15, Math.round((new Date(own.end).getTime() - new Date(own.start).getTime()) / 60000));
+      }
+      const end = new Date(start.getTime() + durationMin * 60000);
+
+      // Regra: nunca por cima de horário ocupado (ignora o slot da própria reunião)
+      const { data: fb, error: fbError } = await supabase.functions.invoke("google-calendar?action=freebusy", {
+        body: { target_user_id: FABRICIO.userId, date: rsDate, duration_minutes: durationMin },
+        headers: authHeaders,
+      });
+      if (fbError) throw new Error("Não foi possível verificar a disponibilidade");
+      if (fb?.needsAuth) { toast.error("Fabrício precisa reconectar o Google Agenda"); return; }
+      const busy = ((fb?.busyPeriods || []) as BusyPeriod[])
+        .filter((b) => Math.abs(new Date(b.start).getTime() - oldStart.getTime()) >= 60000);
+      const conflict = busy.find((b) => overlaps(start, end, new Date(b.start), new Date(b.end)));
+      if (conflict) {
+        toast.error(`Horário ocupado: ${format(new Date(conflict.start), "HH:mm")}–${format(new Date(conflict.end), "HH:mm")}. Escolha outra janela.`);
+        return;
+      }
+
+      let meetingLink = selectedMeeting.meeting_link;
+      if (selectedMeeting.google_event_id) {
+        const { data: moved, error: mvError } = await supabase.functions.invoke("google-calendar?action=move-event", {
+          body: {
+            eventId: selectedMeeting.google_event_id,
+            target_user_id: FABRICIO.userId,
+            startDateTime: start.toISOString(),
+            durationMinutes: durationMin,
+          },
+          headers: authHeaders,
+        });
+        if (mvError) throw new Error(mvError.message || "Erro ao mover no Google Agenda");
+        if (moved?.error) {
+          toast.error(moved.needsAuth ? "Fabrício precisa reconectar o Google Agenda" : moved.error);
+          return;
+        }
+        meetingLink = moved?.event?.meetingLink || meetingLink;
+      }
+
+      const { error: upError } = await supabase
+        .from("onboarding_meeting_notes")
+        .update({ meeting_date: start.toISOString(), meeting_link: meetingLink })
+        .eq("id", selectedMeeting.id);
+      if (upError) {
+        toast.warning("Movida no Google Agenda, mas não consegui atualizar no projeto");
+      } else {
+        toast.success(`Reunião remarcada para ${format(start, "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}`);
+      }
+      setRescheduleMode(false);
+      setSelectedMeeting(null);
+      fetchWeek(false);
+    } catch (err: any) {
+      console.error("Erro ao reagendar:", err);
+      toast.error(err.message || "Erro ao reagendar reunião");
+    } finally {
+      setRescheduling(false);
     }
   };
 
@@ -646,7 +740,7 @@ const AgendaFabricioPage = () => {
       </Dialog>
 
       {/* Dialog de detalhes da reunião */}
-      <Dialog open={!!selectedMeeting} onOpenChange={(o) => !o && setSelectedMeeting(null)}>
+      <Dialog open={!!selectedMeeting} onOpenChange={(o) => { if (!o) { setSelectedMeeting(null); setRescheduleMode(false); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -677,7 +771,41 @@ const AgendaFabricioPage = () => {
             >
               <ExternalLink className="h-4 w-4 mr-2" /> Abrir projeto do cliente
             </Button>
-            {canEdit && (
+            {canEdit && !rescheduleMode && (
+              <Button variant="outline" className="w-full justify-start" onClick={openReschedule}>
+                <CalendarClock className="h-4 w-4 mr-2" /> Alterar dia e horário
+              </Button>
+            )}
+            {canEdit && rescheduleMode && (
+              <div className="rounded-md border p-3 space-y-3">
+                <p className="text-sm font-medium">Novo dia e horário</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Dia</Label>
+                    <Input type="date" value={rsDate} onChange={(e) => setRsDate(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Horário</Label>
+                    <Select value={rsTime} onValueChange={setRsTime}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent className="max-h-64">
+                        {(slotTimes.includes(rsTime) ? slotTimes : [rsTime, ...slotTimes]).map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground">Mantém a duração, o link do Meet e os convidados. O Google Agenda é atualizado e os convidados recebem o aviso.</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setRescheduleMode(false)} disabled={rescheduling}>Voltar</Button>
+                  <Button size="sm" className="flex-1" onClick={handleReschedule} disabled={rescheduling}>
+                    {rescheduling && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Salvar
+                  </Button>
+                </div>
+              </div>
+            )}
+            {canEdit && !rescheduleMode && (
               <Button
                 variant="destructive"
                 className="w-full justify-start"
