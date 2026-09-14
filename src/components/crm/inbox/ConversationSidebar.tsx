@@ -672,7 +672,7 @@ export function ConversationSidebar({
   };
 
   return (
-    <div className="w-[320px] border-l border-border bg-card flex flex-col">
+    <div className="w-[320px] h-full min-h-0 border-l border-border bg-card flex flex-col overflow-y-auto [&>*]:shrink-0">
       {/* Header with Lead/Deal info */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-3">
