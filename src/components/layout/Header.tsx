@@ -10,6 +10,8 @@ interface ProductItem {
   name: string;
   href: string;
   external?: boolean;
+  // Página estática em public/ (fora do HashRouter): link comum, mesma aba
+  staticPage?: boolean;
   highlight?: boolean;
   comingSoon?: boolean;
 }
@@ -67,6 +69,7 @@ const productCategories: ProductCategory[] = [
   {
     category: "Outros",
     items: [
+      { name: "Diretor por um Dia", href: "/diretorporumdia/", staticPage: true, highlight: true },
       { name: "Mansão Empreendedora", href: "https://mansaoempreendedora.com.br", external: true, highlight: true },
       { name: "Comparar Serviços", href: "/compare" },
     ],
@@ -184,16 +187,16 @@ export function Header() {
                           </p>
                           <div className="space-y-1">
                             {cat.items.map((product) => (
-                              product.external ? (
+                              product.external || product.staticPage ? (
                                 <a
                                   key={product.href}
                                   href={product.href}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                  target={product.external ? "_blank" : undefined}
+                                  rel={product.external ? "noopener noreferrer" : undefined}
                                   className="flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-all duration-300 text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                                 >
                                   {product.name}
-                                  <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
+                                  {product.external && <ExternalLink className="h-3 w-3 ml-2 opacity-50" />}
                                 </a>
                               ) : (
                                 <Link
@@ -225,16 +228,16 @@ export function Header() {
                           </p>
                           <div className="space-y-1">
                             {cat.items.map((product) => (
-                              product.external ? (
+                              product.external || product.staticPage ? (
                                 <a
                                   key={product.href}
                                   href={product.href}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                  target={product.external ? "_blank" : undefined}
+                                  rel={product.external ? "noopener noreferrer" : undefined}
                                   className="flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-all duration-300 text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                                 >
                                   {product.name}
-                                  <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
+                                  {product.external && <ExternalLink className="h-3 w-3 ml-2 opacity-50" />}
                                 </a>
                               ) : (
                                 <Link
@@ -333,17 +336,17 @@ export function Header() {
                             {expandedCategories.includes(cat.category) && (
                               <div className="pl-4 space-y-1 mt-1 animate-fade-in">
                                 {cat.items.map((product) => (
-                                  product.external ? (
+                                  product.external || product.staticPage ? (
                                     <a
                                       key={product.href}
                                       href={product.href}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
+                                      target={product.external ? "_blank" : undefined}
+                                      rel={product.external ? "noopener noreferrer" : undefined}
                                       className="flex items-center justify-between px-4 py-2 text-sm rounded-lg transition-all text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                                       onClick={() => setMobileMenuOpen(false)}
                                     >
                                       {product.name}
-                                      <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
+                                      {product.external && <ExternalLink className="h-3 w-3 ml-2 opacity-50" />}
                                     </a>
                                   ) : (
                                     <Link

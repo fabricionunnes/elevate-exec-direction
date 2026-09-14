@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Diretor por um Dia | Fabrício Nunnes · UNV</title>
+<meta name="description" content="Fabrício Nunnes entra na sua empresa como diretor comercial por um dia, encontra o que trava as vendas e deixa um plano de 30 dias. Gravado, sem expor os dados da sua empresa.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://unvholdings.com.br/diretorporumdia/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Diretor por um Dia | Fabrício Nunnes">
+<meta property="og:description" content="Um dia com um diretor comercial dentro da sua empresa. Gargalo em número, plano de 30 dias e retorno em 90.">
+<meta property="og:image" content="https://unvholdings.com.br/diretorporumdia/fabricio.webp">
+<link rel="icon" type="image/png" sizes="32x32" href="/diretorporumdia/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/diretorporumdia/favicon-192.png">
+<link rel="apple-touch-icon" href="/diretorporumdia/favicon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --ground:#F3F5F9;
+  --surface:#FFFFFF;
+  --ink:#0B1B36;
+  --muted:#56637A;
+  --rule:#D3D9E4;
+  --navy:#0D2B5E;
+  --navy-ink:#0D2B5E;
+  --navy-soft:#E3E9F4;
+  --red:#CC1B1B;
+  --red-soft:#FBE7E7;
+  --ok:#1C7A4A;
+  --ok-soft:#E2F2E9;
+  --warn:#9A6200;
+  --warn-soft:#F7EDD9;
+  --display:"Archivo","Arial Narrow",Arial,sans-serif;
+  --body:"Public Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --ground:#08101F;--surface:#0F1A2E;--ink:#E4E9F2;--muted:#95A2B8;--rule:#23324C;
+    --navy-ink:#9DB8E8;--navy-soft:#16284A;--red:#F0575A;--red-soft:#3A1418;
+    --ok:#5CC98E;--ok-soft:#10301F;--warn:#E3B055;--warn-soft:#352711;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;margin:0;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{display:block;max-width:100%;height:auto}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;line-height:1.05;margin:0}
+p{margin:0}
+.wrap{max-width:1120px;margin:0 auto;padding:0 clamp(20px,5vw,48px)}
+.label{font-family:var(--mono);font-size:.72rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:#CC1B1B;color:#fff;text-decoration:none;border-radius:4px;padding:16px 26px;font-family:var(--display);font-variation-settings:"wdth" 90;font-weight:800;font-size:1rem;letter-spacing:.04em;text-transform:uppercase;transition:background .18s}
+.btn:hover{background:#A81515}
+.btn svg{width:18px;height:18px;flex:0 0 auto}
+.btn.ghost{background:transparent;border:1px solid rgba(255,255,255,.35)}
+.btn.ghost:hover{background:rgba(255,255,255,.08)}
+
+/* top bar */
+.topbar{background:#fff;border-bottom:1px solid #D3D9E4}
+.topbar .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;height:64px}
+.topbar img{width:52px;height:auto}
+.topbar a.back{font-size:.88rem;color:#56637A;text-decoration:none}
+.topbar a.back:hover{color:#0B1B36}
+
+/* hero slate */
+.slate{background:#0D2B5E;color:#fff;padding:clamp(36px,6vw,72px) 0 0}
+.slate-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr);gap:clamp(28px,5vw,64px);align-items:end}
+.slate-top{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:#B9C8E4}
+.rec{display:inline-flex;align-items:center;gap:8px;color:#fff}
+.rec::before{content:"";width:10px;height:10px;border-radius:50%;background:#E5342F;box-shadow:0 0 0 4px rgba(229,52,47,.25)}
+@media (prefers-reduced-motion:no-preference){.rec::before{animation:blink 1.6s steps(2,start) infinite}}
+@keyframes blink{50%{opacity:.25}}
+.slate h1{font-size:clamp(3.2rem,10vw,7.2rem);font-weight:900;font-variation-settings:"wdth" 64;text-transform:uppercase;letter-spacing:-.01em;margin:20px 0 18px;color:#fff}
+.slate h1 span{color:#FF5A55}
+.lede{max-width:56ch;font-size:clamp(1.05rem,1.6vw,1.2rem);color:#DCE4F3}
+.lede strong{color:#fff}
+.hero-cta{display:flex;flex-wrap:wrap;gap:12px;margin:28px 0 0}
+.card-photo{background:#fff;color:#0B1B36;border-radius:6px 6px 0 0;overflow:hidden;align-self:end}
+.card-photo img{width:100%;aspect-ratio:1/1;object-fit:cover}
+.card-photo dl{margin:0;display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #D3D9E4}
+.card-photo dl div{padding:10px 14px}
+.card-photo dl div+div{border-left:1px solid #D3D9E4}
+.card-photo dt{font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:#56637A}
+.card-photo dd{margin:2px 0 0;font-family:var(--display);font-variation-settings:"wdth" 85;font-weight:750;font-size:1.02rem}
+.slate-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:clamp(32px,5vw,48px);border-top:1px solid rgba(255,255,255,.2)}
+.slate-strip div{padding:14px 16px 18px 0}
+.slate-strip div+div{padding-left:16px;border-left:1px solid rgba(255,255,255,.14)}
+.slate-strip dt{font-family:var(--mono);font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;color:#9FB2D6}
+.slate-strip dd{margin:4px 0 0;font-family:var(--display);font-variation-settings:"wdth" 85;font-weight:750;font-size:1.12rem}
+@media (max-width:860px){
+  .slate-grid{grid-template-columns:1fr;align-items:start}
+  .card-photo{max-width:340px;border-radius:6px}
+  .slate-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .slate-strip div:nth-child(3){padding-left:0;border-left:0}
+  .slate-strip div:nth-child(n+3){border-top:1px solid rgba(255,255,255,.14)}
+}
+
+/* sections */
+main{display:flex;flex-direction:column}
+.sec{padding:clamp(56px,9vw,100px) 0;border-bottom:1px solid var(--rule)}
+.sec-head{display:flex;flex-direction:column;gap:10px;border-top:3px solid var(--ink);padding-top:14px;margin-bottom:32px;max-width:760px}
+h2{font-size:clamp(2rem,4.2vw,3rem);font-variation-settings:"wdth" 72;font-weight:880;text-transform:uppercase}
+h3{font-size:1.2rem;font-weight:750;font-variation-settings:"wdth" 90}
+.intro{max-width:64ch;color:var(--muted);font-size:1.05rem}
+
+.gains{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.gains > div{background:var(--surface);padding:22px 22px 24px;display:flex;flex-direction:column;gap:8px}
+.gains p{font-size:.95rem;color:var(--muted)}
+
+/* day timeline */
+.day{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.9fr);gap:clamp(28px,5vw,56px);align-items:start}
+@media (max-width:860px){.day{grid-template-columns:1fr}}
+.steps{list-style:none;margin:0;padding:0;border-top:1px solid var(--rule);counter-reset:s}
+.steps li{display:grid;grid-template-columns:48px minmax(0,1fr);gap:14px;padding:18px 0;border-bottom:1px solid var(--rule)}
+.steps li::before{counter-increment:s;content:counter(s,decimal-leading-zero);font-family:var(--mono);font-weight:600;color:var(--red);padding-top:2px}
+.steps h3{margin-bottom:4px}
+.steps p{font-size:.95rem;color:var(--muted);max-width:60ch}
+.steps .when{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--navy-ink);margin-left:8px;font-weight:600}
+.sticky-col{position:sticky;top:24px;display:flex;flex-direction:column;gap:16px}
+@media (max-width:860px){.sticky-col{position:static}}
+
+.placar{background:#0A1426;color:#fff;border-radius:8px;padding:20px 22px;font-family:var(--mono);border:1px solid #1E2E4D}
+.placar-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:#8FA3C7}
+.placar-score{font-family:var(--display);font-variation-settings:"wdth" 62;font-weight:900;font-size:4.2rem;line-height:1;margin:8px 0 14px}
+.placar-score small{font-size:1.6rem;color:#6F84AB}
+.bars{display:flex;flex-direction:column;gap:7px}
+.bar{display:grid;grid-template-columns:118px 1fr 28px;gap:10px;align-items:center;font-size:.74rem}
+.bar i{display:block;height:9px;background:#1B2A47;border-radius:2px;position:relative;overflow:hidden}
+.bar i b{position:absolute;inset:0 auto 0 0;background:#6F9BE6}
+.bar.low i b{background:#FF5A55}
+.bar.low span:first-child{color:#FF8A86}
+.bar span:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.placar-foot{margin-top:14px;padding-top:10px;border-top:1px dashed #2A3B5E;font-size:.72rem;color:#FF8A86;letter-spacing:.06em}
+.placar-note{font-size:.9rem;color:var(--muted)}
+
+/* data protection */
+.tbl{overflow-x:auto;border:1px solid var(--rule);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:.93rem}
+th,td{text-align:left;vertical-align:top;padding:13px 15px;border-bottom:1px solid var(--rule)}
+tbody tr:last-child th,tbody tr:last-child td{border-bottom:0}
+thead th{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--ground)}
+.lvl{display:inline-flex;font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:3px;font-weight:600;white-space:nowrap}
+.lvl.l1{background:var(--ok-soft);color:var(--ok)}
+.lvl.l2{background:var(--navy-soft);color:var(--navy-ink)}
+.lvl.l3{background:var(--warn-soft);color:var(--warn)}
+.pad-top{margin-top:44px}
+.swaps{border-top:1px solid var(--rule);margin-top:14px}
+.swap{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;font-size:.95rem;padding:11px 0;border-bottom:1px dashed var(--rule)}
+.swap .no{color:var(--red);text-decoration:line-through;text-decoration-thickness:1px}
+.swap .arrow{font-family:var(--mono);color:var(--muted)}
+.swap .yes{color:var(--ok);font-weight:600}
+@media (max-width:560px){.swap{grid-template-columns:1fr;gap:2px}.swap .arrow{display:none}}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:0 32px;margin-top:14px}
+.rule{padding:16px 0;border-top:1px solid var(--rule)}
+.rule h3{font-size:1.05rem;margin-bottom:4px}
+.rule p{font-size:.94rem;color:var(--muted)}
+
+/* fit */
+.fit{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(24px,4vw,48px)}
+@media (max-width:760px){.fit{grid-template-columns:1fr}}
+.fit ul{list-style:none;margin:0;padding:0;border-top:1px solid var(--rule)}
+.fit li{padding:12px 0 12px 30px;border-bottom:1px solid var(--rule);position:relative;font-size:.97rem}
+.fit li::before{position:absolute;left:0;top:12px;font-family:var(--mono);font-weight:600}
+.fit .yes li::before{content:"✓";color:var(--ok)}
+.fit .no li::before{content:"✕";color:var(--red)}
+.fit h3{margin-bottom:10px}
+
+/* host */
+.host{display:grid;grid-template-columns:minmax(0,.6fr) minmax(0,1fr);gap:clamp(28px,5vw,56px);align-items:center}
+@media (max-width:760px){.host{grid-template-columns:1fr}.host img{max-width:280px}}
+.host img{border-radius:6px;background:#fff;border:1px solid var(--rule)}
+.host .prose{display:flex;flex-direction:column;gap:14px;max-width:60ch}
+.host .prose p{color:var(--muted)}
+.host .prose p strong{color:var(--ink)}
+.nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--rule);margin-top:8px}
+.nums div{padding:14px 12px 0 0}
+.nums div+div{padding-left:14px;border-left:1px solid var(--rule)}
+.nums b{display:block;font-family:var(--display);font-variation-settings:"wdth" 70;font-weight:900;font-size:2rem;line-height:1}
+.nums span{font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+
+/* faq */
+.faq{border-top:1px solid var(--rule);max-width:820px}
+.faq details{border-bottom:1px solid var(--rule)}
+.faq summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:16px;padding:18px 0;font-family:var(--display);font-variation-settings:"wdth" 90;font-weight:750;font-size:1.1rem}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font-family:var(--mono);color:var(--red);font-weight:600}
+.faq details[open] summary::after{content:"–"}
+.faq details p{padding:0 0 18px;color:var(--muted);max-width:68ch}
+
+/* final */
+.final{background:#0D2B5E;color:#fff;padding:clamp(56px,9vw,96px) 0}
+.final .wrap{display:flex;flex-direction:column;gap:18px;align-items:flex-start}
+.final h2{color:#fff;max-width:18ch}
+.final p{color:#DCE4F3;max-width:56ch;font-size:1.08rem}
+footer{background:#071A3B;color:#8FA3C7;font-size:.82rem;padding:22px 0}
+footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+footer a{color:#DCE4F3}
+
+.float-wa{position:fixed;right:20px;bottom:20px;z-index:40;display:inline-flex;align-items:center;gap:9px;background:#1FA855;color:#fff;text-decoration:none;font-weight:700;font-size:.9rem;padding:12px 18px;border-radius:4px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+.float-wa:hover{background:#178A45}
+.float-wa svg{width:18px;height:18px}
+@media (max-width:560px){.float-wa span{display:none}.float-wa{padding:14px}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a href="/" aria-label="UNV · Universidade Nacional de Vendas"><img src="/images/unv-logo.png" width="52" height="52" alt="UNV · Universidade Nacional de Vendas"></a>
+    <a class="back" href="/">unvholdings.com.br</a>
+  </div>
+</header>
+
+<section class="slate">
+  <div class="wrap">
+    <div class="slate-grid">
+      <div>
+        <div class="slate-top"><span class="rec">Gravando</span><span>Um quadro UNV</span></div>
+        <h1>Diretor<br>por um <span>Dia</span></h1>
+        <p class="lede">Eu entro na sua empresa como <strong>diretor comercial por um dia</strong>. Vejo a venda acontecer, encontro o que trava o seu resultado <strong>em número</strong> e saio com um <strong>plano de 30 dias</strong> na parede. Daqui a 90 dias eu volto pra conferir o placar.</p>
+        <p class="lede" style="margin-top:12px">Tudo gravado. <strong>Nenhum dado sensível da sua empresa vai ao ar.</strong></p>
+        <div class="hero-cta">
+          <a class="btn wa-link" href="#" target="_blank" rel="noopener">Quero minha empresa no quadro
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <a class="btn ghost" href="#dados">Como protejo seus dados</a>
+        </div>
+      </div>
+      <figure class="card-photo" style="margin:0">
+        <img src="/diretorporumdia/fabricio.webp" width="700" height="700" alt="Fabrício Nunnes, diretor comercial e fundador da UNV" fetchpriority="high">
+        <dl>
+          <div><dt>Diretor do dia</dt><dd>Fabrício Nunnes</dd></div>
+          <div><dt>Cargo</dt><dd>CEO · UNV</dd></div>
+        </dl>
+      </figure>
+    </div>
+    <dl class="slate-strip">
+      <div><dt>Custo pra empresa</dt><dd>Zero</dd></div>
+      <div><dt>Tempo na empresa</dt><dd>2 a 3 horas</dd></div>
+      <div><dt>Você leva</dt><dd>Plano de 30 dias</dd></div>
+      <div><dt>Retorno</dt><dd>Em 90 dias</dd></div>
+    </dl>
+  </div>
+</section>
+
+<main>
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head"><span class="label">O que você ganha</span><h2>Um diagnóstico que custaria caro, feito dentro da sua operação</h2></div>
+      <div class="gains">
+        <div><span class="label">Diagnóstico</span><h3>O gargalo com nome e número</h3><p>Nada de "precisa vender mais". Você sai sabendo exatamente onde a venda morre e quanto isso custa por mês.</p></div>
+        <div><span class="label">Raio-X Comercial</span><h3>Sua nota nas 7 fases</h3><p>Uma pontuação de 0 a 70 que mostra onde o seu comercial é forte e onde está vazando.</p></div>
+        <div><span class="label">Plano</span><h3>3 ações para 30 dias</h3><p>Escritas no quadro, com responsável e o número que prova que funcionou. Dá pra executar sem contratar ninguém.</p></div>
+        <div><span class="label">Acompanhamento</span><h3>Retorno em 90 dias</h3><p>Eu volto, refaço o placar e mostramos juntos o que mudou. Se você quiser, o antes e depois vira vitrine da sua empresa.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head"><span class="label">Como é o dia</span><h2>Do primeiro contato ao retorno</h2></div>
+      <div class="day">
+        <ol class="steps">
+          <li><div><h3>Conversa de preparação <span class="when">Antes</span></h3><p>20 minutos por vídeo pra entender o negócio. Você responde o Raio-X Comercial e escolhe o nível de exposição. Assina o termo de participação.</p></div></li>
+          <li><div><h3>Chegada e tour <span class="when">No dia</span></h3><p>Você me leva pelo caminho que o seu cliente faz: por onde entra, quem atende, onde decide comprar.</p></div></li>
+          <li><div><h3>Os números da operação</h3><p>Quantos chegam, quantos compram, quanto tempo leva, quem bate meta sem você entrar. Tudo em proporção, nunca em reais na tela.</p></div></li>
+          <li><div><h3>Ver a venda acontecer</h3><p>Acompanho um atendimento, uma ligação ou a reunião do time. Olho o processo funcionando, e não só o que foi contado.</p></div></li>
+          <li><div><h3>O gargalo e o placar</h3><p>Eu digo onde está o problema e mostro a nota de cada fase. Você concorda, discorda e a gente discute ali mesmo.</p></div></li>
+          <li><div><h3>O plano de 30 dias</h3><p>Três ações no quadro, cada uma com dono e número de acompanhamento.</p></div></li>
+          <li><div><h3>Revisão antes de publicar <span class="when">Depois</span></h3><p>Você recebe o corte final e tem 48 horas pra apontar qualquer dado sensível que tenha escapado.</p></div></li>
+          <li><div><h3>Retorno <span class="when">90 dias</span></h3><p>Novo Raio-X, conferência das 3 ações e o placar comparado.</p></div></li>
+        </ol>
+        <div class="sticky-col">
+          <div class="placar" role="img" aria-label="Exemplo de placar do Raio-X Comercial: 38 de 70, com Conversão como gargalo">
+            <div class="placar-head"><span>Raio-X Comercial</span><span>Exemplo</span></div>
+            <div class="placar-score">38<small>/70</small></div>
+            <div class="bars">
+              <div class="bar"><span>Cenário</span><i><b style="width:70%"></b></i><span>7</span></div>
+              <div class="bar"><span>Resultado Ideal</span><i><b style="width:60%"></b></i><span>6</span></div>
+              <div class="bar"><span>Estrutura</span><i><b style="width:50%"></b></i><span>5</span></div>
+              <div class="bar"><span>Captação</span><i><b style="width:80%"></b></i><span>8</span></div>
+              <div class="bar low"><span>Conversão</span><i><b style="width:20%"></b></i><span>2</span></div>
+              <div class="bar"><span>Escala</span><i><b style="width:40%"></b></i><span>4</span></div>
+              <div class="bar"><span>Revisão</span><i><b style="width:60%"></b></i><span>6</span></div>
+            </div>
+            <div class="placar-foot">GARGALO ▸ CONVERSÃO NA PROPOSTA</div>
+          </div>
+          <p class="placar-note">É assim que o seu resultado aparece no vídeo: uma nota por fase do Método CRESCER, e não o seu faturamento. Números ilustrativos.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="dados">
+    <div class="wrap">
+      <div class="sec-head"><span class="label">Seus dados</span><h2>Tudo gravado, nada exposto</h2></div>
+      <p class="intro">Você escolhe o nível <strong>antes</strong> de ligar a câmera, e ele fica registrado no termo. O vídeo ensina com proporções e processos. Os números do seu caixa ficam com você.</p>
+
+      <div class="tbl pad-top" style="margin-top:28px">
+        <table>
+          <thead><tr><th>Nível</th><th>Você e sua voz</th><th>Nome da empresa</th><th>Números</th><th>Bom pra quem</th></tr></thead>
+          <tbody>
+            <tr><th><span class="lvl l1">Aberto</span></th><td>Aparecem</td><td>Aparece</td><td>Faixas e proporções. Valor em reais só com autorização por escrito</td><td>Quem quer vitrine para a marca</td></tr>
+            <tr><th><span class="lvl l2">Protegido</span></th><td>Aparecem</td><td>Você decide</td><td>Só proporção, índice e percentual</td><td>A maioria das empresas</td></tr>
+            <tr><th><span class="lvl l3">Anônimo</span></th><td>De costas ou desfocado. Voz pode ser alterada</td><td>Nome fictício e setor genérico</td><td>Só proporção</td><td>Quem prefere não aparecer</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pad-top">
+        <h3>Como os números aparecem no vídeo</h3>
+        <div class="swaps">
+          <div class="swap"><span class="no">Faturou R$ 312 mil em agosto</span><span class="arrow">→</span><span class="yes">Faixa de R$ 200 a 500 mil por mês</span></div>
+          <div class="swap"><span class="no">Vendeu R$ 48 mil a menos que julho</span><span class="arrow">→</span><span class="yes">Caiu 13% no mês</span></div>
+          <div class="swap"><span class="no">Fechou 4 de 60 leads</span><span class="arrow">→</span><span class="yes">Fecha menos de 1 em cada 10</span></div>
+          <div class="swap"><span class="no">O João não faz follow-up</span><span class="arrow">→</span><span class="yes">Não existe cadência de follow-up</span></div>
+        </div>
+      </div>
+
+      <div class="pad-top">
+        <h3>Compromissos que valem pra todo episódio</h3>
+        <div class="rules">
+          <div class="rule"><h3>Seus clientes não aparecem</h3><p>Nome, telefone e conversa de cliente ou lead nunca vão ao ar. Tela de sistema só desfocada ou em conta de demonstração.</p></div>
+          <div class="rule"><h3>Ninguém do seu time é exposto</h3><p>A análise é sobre o processo, nunca sobre uma pessoa. Nenhum vendedor é citado ou criticado individualmente.</p></div>
+          <div class="rule"><h3>Assuntos que ficam de fora</h3><p>Dívidas, caixa, sociedade, questões trabalhistas, margem e fornecedores não entram na conversa gravada.</p></div>
+          <div class="rule"><h3>"Fora do ar" a qualquer momento</h3><p>Você fala e aquele trecho é descartado, sem discussão.</p></div>
+          <div class="rule"><h3>Você vê antes de todo mundo</h3><p>Recebe o corte final e tem 48 horas pra apontar qualquer informação sensível antes da publicação.</p></div>
+          <div class="rule"><h3>Tudo por escrito</h3><p>Termo de participação com autorização de imagem, nível escolhido e confidencialidade, assinado digitalmente antes da gravação.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head"><span class="label">Pra quem é</span><h2>O quadro funciona melhor pra quem já vende e quer vender com processo</h2></div>
+      <div class="fit">
+        <div class="yes"><h3>É pra você se</h3><ul>
+          <li>Tem pelo menos 1 vendedor no time</li>
+          <li>Fatura acima de R$ 50 mil por mês</li>
+          <li>Pode estar presente no dia da gravação</li>
+          <li>Quer ouvir a verdade sobre o comercial, mesmo que incomode</li>
+          <li>Topa o retorno em 90 dias</li>
+        </ul></div>
+        <div class="no"><h3>Não é pra você se</h3><ul>
+          <li>Procura alguém pra confirmar o que já pensa</li>
+          <li>Não pode abrir a rotina do comercial por algumas horas</li>
+          <li>Não pretende executar o plano</li>
+        </ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="host">
+        <img src="/diretorporumdia/fabricio.webp" width="700" height="700" alt="Fabrício Nunnes" loading="lazy">
+        <div class="prose">
+          <span class="label">Seu diretor do dia</span>
+          <h2>Fabrício Nunnes</h2>
+          <p>Fundador e CEO da UNV, a Universidade Nacional de Vendas. <strong>Mais de 20 anos em vendas</strong>, mais de 10 como diretor comercial e <strong>mais de R$ 1 bilhão em vendas geradas</strong> ao longo da carreira.</p>
+          <p>Hoje é diretor comercial terceirizado de pequenas e médias empresas: estrutura o time, monta o processo e cobra a meta todos os meses. No quadro, você vê esse trabalho acontecendo em um dia.</p>
+          <div class="nums">
+            <div><b>+20</b><span>anos em vendas</span></div>
+            <div><b>+10</b><span>anos como diretor</span></div>
+            <div><b>+1 bi</b><span>em vendas geradas</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head"><span class="label">Dúvidas</span><h2>Perguntas de quem vai participar</h2></div>
+      <div class="faq">
+        <details><summary>Eu pago alguma coisa?</summary><p>Não. A participação não tem custo e você também não recebe cachê.</p></details>
+        <details><summary>Sou obrigado a contratar a UNV depois?</summary><p>Não. O plano de 30 dias é pensado pra funcionar com o seu próprio time. Se depois você quiser ajuda pra executar, a conversa acontece fora da gravação.</p></details>
+        <details><summary>E se eu falar algo que não quero publicado?</summary><p>Diga "fora do ar" na hora e o trecho é descartado. Além disso, você revisa o corte final e tem 48 horas pra apontar qualquer informação sensível.</p></details>
+        <details><summary>Posso participar sem aparecer?</summary><p>Pode. No nível Anônimo você é filmado de costas ou desfocado, a empresa ganha um nome fictício e o setor é descrito de forma genérica.</p></details>
+        <details><summary>Meu time precisa participar?</summary><p>Ajuda muito, porque ver um atendimento real é o que torna o diagnóstico preciso. Mas ninguém é exposto individualmente, e quem não quiser aparecer não aparece.</p></details>
+        <details><summary>Quanto tempo leva?</summary><p>A preparação leva 20 minutos por vídeo. A gravação na empresa leva de 2 a 3 horas. O retorno em 90 dias leva cerca de 1 hora.</p></details>
+        <details><summary>Onde o episódio é publicado?</summary><p>No YouTube e nas redes sociais da UNV e do Fabrício Nunnes, com trechos curtos nas redes. Tudo isso fica descrito no termo.</p></details>
+        <details><summary>Como a empresa é escolhida?</summary><p>Depois da conversa de preparação. O critério é ter uma história que ensine outros empresários, e não o tamanho da empresa.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="final">
+    <div class="wrap">
+      <span class="label" style="color:#9FB2D6">Inscrição</span>
+      <h2>Quer um diretor comercial dentro da sua empresa por um dia?</h2>
+      <p>Me chama no WhatsApp, conta rapidamente sobre o seu negócio e a gente marca a conversa de preparação.</p>
+      <a class="btn wa-link" href="#" target="_blank" rel="noopener">Quero minha empresa no quadro
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Universidade Nacional de Vendas LTDA · Todos os direitos reservados</span>
+    <a href="/">unvholdings.com.br</a>
+  </div>
+</footer>
+
+<a class="float-wa wa-link" href="#" target="_blank" rel="noopener" aria-label="Falar no WhatsApp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg><span>Falar comigo</span></a>
+
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=247392077001023&ev=PageView&noscript=1" alt=""></noscript>
+<script>
+(function(){
+  "use strict";
+  var WA_NUMBER = "5511927008490";
+  var WA_MSG = "Olá, vi a página do Diretor por um Dia e quero inscrever minha empresa no quadro";
+  var WA_URL = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(WA_MSG);
+  var PIXEL = "247392077001023";
+
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");
+  try { fbq("init", PIXEL); fbq("track", "PageView"); } catch(e){}
+
+  Array.prototype.forEach.call(document.querySelectorAll(".wa-link"), function(a){
+    a.href = WA_URL;
+    a.addEventListener("click", function(){ try { fbq("track", "Contact", { content_name: "Diretor por um Dia" }); } catch(e){} });
+  });
+})();
+</script>
+</body>
+</html>
