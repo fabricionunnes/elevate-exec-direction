@@ -92,6 +92,7 @@ import { LeadMeetingsPanel } from "@/components/crm/lead-detail/LeadMeetingsPane
 import { LeadCalendarDialog } from "@/components/crm/lead-detail/LeadCalendarDialog";
 import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
 import { SendContractButton } from "@/components/crm/SendContractButton";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { OfficialTemplateSendDialog } from "@/components/crm/OfficialTemplateSendDialog";
 import { ConvertLeadToCompanyDialog } from "@/components/crm/lead-detail/ConvertLeadToCompanyDialog";
 import { Label } from "@/components/ui/label";
@@ -1566,20 +1567,16 @@ export const CRMLeadDetailPage = () => {
           </AlertDialogHeader>
           <div className="py-4">
             <Label>Novo Funil</Label>
-            <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-              <SelectTrigger className="mt-2">
-                <SelectValue placeholder="Selecione um funil" />
-              </SelectTrigger>
-              <SelectContent>
-                {pipelines
-                  .filter(p => p.id !== lead.pipeline_id)
-                  .map(pipeline => (
-                    <SelectItem key={pipeline.id} value={pipeline.id}>
-                      {pipeline.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+            {/* com busca por nome (pedido 14/09/2026) */}
+            <div className="mt-2">
+              <SearchableSelect
+                value={selectedPipelineId}
+                onValueChange={setSelectedPipelineId}
+                options={pipelines.filter(p => p.id !== lead.pipeline_id).map(p => ({ value: p.id, label: p.name }))}
+                placeholder="Selecione um funil"
+                emptyMessage="Nenhum funil com esse nome."
+              />
+            </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setSelectedPipelineId("")}>Cancelar</AlertDialogCancel>
