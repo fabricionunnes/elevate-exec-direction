@@ -113,6 +113,24 @@ async function sendOfficialText(supabase: any, officialInstanceId: string, phone
   }
 }
 
+// ---------- Estilo humano (pedido do Fabrício 13/09/2026) ----------
+// Vale pra TODOS os agentes, na resposta e no follow-up. A IA vinha com cara de IA:
+// "Opa, bora!", "Me conta uma coisa: ...", "Boa, Roberto.", nome em toda frase.
+const ESTILO_HUMANO = `\n\nESTILO (obrigatório, vale acima do tom do agente): escreva como uma pessoa escreve no WhatsApp. Frases curtas, no máximo 2 parágrafos pequenos. Nunca use dois-pontos, travessão, listas, negrito, títulos ou emojis. Não abra com interjeição de animação ("Opa, bora!", "Que massa", "Boa!", "Show", "Perfeito", "Fala, Fulano!") e não elogie a resposta do lead. Use o nome do lead no máximo uma vez a cada três mensagens. Não anuncie a pergunta ("me conta uma coisa", "fiquei curioso aqui", "só uma dúvida rápida"), pergunte direto. Uma pergunta por mensagem. Varie a abertura entre mensagens. Nada de fórmula repetida. Se for retomar, retome pelo assunto, não pelo aviso de que está retomando.`;
+
+/** Última limpeza antes de enviar: tira dois-pontos e travessões que sobrarem. */
+function humanizar(texto: string): string {
+  let t = String(texto || "");
+  t = t.replace(/\s*[—–]\s*/g, ", ");                       // travessão → vírgula
+  t = t.replace(/(?<!\d):\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])/g, ". ");   // ": Palavra" → ". Palavra"
+  t = t.replace(/(?<!\d):\s+/g, ", ");                        // ": palavra" → ", palavra"
+  t = t.replace(/(?<!\d):(?=\s*$)/gm, ".");                    // dois-pontos no fim da linha
+  t = t.replace(/\*\*?([^*]+)\*\*?/g, "$1");                // negrito markdown
+  t = t.replace(/^\s*[-•]\s+/gm, "");                          // marcadores de lista
+  t = t.replace(/,\s*,/g, ",").replace(/\.\s*\./g, ".").replace(/[ \t]{2,}/g, " ");
+  return t.trim();
+}
+
 // ---------- Horário de atendimento ----------
 // work_schedule (grade semanal): { "0": [["08:00","12:00"],["20:00","08:00"]], ... }
 // chave = dia da semana (0=domingo, fuso Brasília); faixa com fim < início vira a
@@ -850,6 +868,7 @@ Deno.serve(async (req) => {
               agent.instructions || "Você é um atendente comercial.",
               agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
               `\n\nO lead parou de responder. Escreva UMA mensagem CURTA de follow-up (1-2 frases), humana, sem pressão e sem repetir perguntas já respondidas. Não use markdown. Nunca revele que é uma IA.`,
+              ESTILO_HUMANO,
               `\nEsta é a tentativa ${attempt} de ${maxAtt}. ${angulo}`,
               prevFu.length ? `\nFollow-ups JÁ ENVIADOS (proibido repetir a abertura, a estrutura ou a pergunta deles, mesmo reescrita):\n- ${prevFu.join("\n- ")}` : "",
               prevFu.length ? `\nNão comece com "Oi ${leadNm.split(" ")[0]}, tudo certo por aí?" nem variações — já foi usado.` : "",
@@ -863,7 +882,7 @@ Deno.serve(async (req) => {
             if (!aiR.ok) continue;
             const aiD = await aiR.json();
             const fuTexts = (Array.isArray(aiD?.content) ? aiD.content : []).filter((x: any) => x?.type === "text").map((x: any) => String(x.text));
-            const fuReply = [...new Set(fuTexts)].join("").trim();
+            const fuReply = humanizar([...new Set(fuTexts)].join("").trim());
             if (!fuReply) continue;
             if (body0.dry_run) { results.push(`[dry] ${b.channel}/${cv.id}: ${fuReply.slice(0, 80)}`); continue; }
             if (isBIG) {
@@ -1380,6 +1399,7 @@ Deno.serve(async (req) => {
       missingNameHint,
       igPersonalization,
       `\n\nÁUDIO: quando a mensagem vier como "(áudio do lead, transcrito) ...", o lead FALOU aquilo — trate como se tivesse ouvido e responda normalmente, SEMPRE em texto. Nunca diga que não conseguiu ouvir e nunca peça pra ele repetir por escrito. Só se vier "(o lead mandou um áudio que não consegui transcrever)" é que você pede, com naturalidade, que ele reescreva.`,
+      ESTILO_HUMANO,
       `\n\nVocê está respondendo uma conversa de ${channelLabel} com ${leadName}. Responda como mensagem: curta, humana, sem markdown, sem títulos, uma ideia por mensagem. NUNCA repita uma pergunta que o lead já respondeu — antes de perguntar, confira o histórico. Escreva a resposta UMA única vez, sem repetir o texto. Nunca revele que é uma IA. Se não souber algo, seja honesto e ofereça encaminhar para uma pessoa. TUDO que você escrever é enviado ao lead exatamente como está — jamais inclua raciocínio, plano, anotação interna ou comentário sobre ferramentas no texto.`,
     ].join("");
 
@@ -1466,7 +1486,7 @@ Deno.serve(async (req) => {
       const texts = content
         .filter((b: any, i: number) => b?.type === "text" && i > lastToolIdx)
         .map((b: any) => String(b.text));
-      reply = [...new Set(texts)].join("").trim();
+      reply = humanizar([...new Set(texts)].join("").trim());
       reply = unhalve(reply);
       // Pós-checagem anti-alucinação: se houve consulta de agenda e a resposta cita
       // horários fora da lista retornada, força UMA correção.
