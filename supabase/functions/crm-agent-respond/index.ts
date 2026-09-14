@@ -1456,6 +1456,28 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Telefone/e-mail que já estão no sistema não se pede (pedido do Fabrício 14/09/2026:
+    // "só pede se não tiver no sistema"). No WhatsApp o número da conversa já é o telefone.
+    let knownDataHint = "";
+    {
+      let lEmail = "", lPhone = "";
+      if (conv.lead_id) {
+        const { data: ld } = await supabase.from("crm_leads").select("email, phone").eq("id", conv.lead_id).maybeSingle();
+        lEmail = String(ld?.email || "").trim();
+        lPhone = String(ld?.phone || "").trim();
+      }
+      const convPhone = isIG ? "" : String(conv.contact?.phone || "").trim();
+      const tel = lPhone.replace(/\D/g, "").length >= 10 ? lPhone : convPhone;
+      const temTel = tel.replace(/\D/g, "").length >= 10;
+      const temEmail = /.+@.+\..+/.test(lEmail);
+      const partes: string[] = [];
+      if (temTel) partes.push(`telefone/WhatsApp ${tel}`);
+      if (temEmail) partes.push(`e-mail ${lEmail}`);
+      if (partes.length) {
+        knownDataHint = `\n\nDADOS JÁ CADASTRADOS: ${partes.join(" e ")}. NÃO peça ${partes.length > 1 ? "nenhum deles" : "esse dado"} ao lead, nem pra confirmar, mesmo que alguma instrução acima mande pedir. Use esses valores direto nos parâmetros de agendar_reuniao.${temTel && temEmail ? " Com o nome conhecido, agende direto assim que o lead escolher o horário." : ` Peça só o ${temTel ? "e-mail" : "telefone"} se precisar.`}`;
+      }
+    }
+
     // 7) Prompt + ferramentas
     const tools = buildTools(agent, !!conv.lead_id);
     // Instagram: dá ao agente busca na web para pesquisar a pessoa/empresa e abordar sob medida.
@@ -1479,7 +1501,7 @@ Deno.serve(async (req) => {
       agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
       knowledge ? `\n\nBASE DE CONHECIMENTO (use quando relevante, não invente):${knowledge}` : "",
       `\n\nData/hora atual (Brasília): ${nowBR}. A saudação (bom dia/boa tarde/boa noite) segue ESTA hora — nunca repita a saudação do lead se ela não bater com o horário.`,
-      tools.length ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou; (5) ANTES de chamar agendar_reuniao, você precisa do NOME, do E-MAIL e do TELEFONE/WhatsApp do lead — peça numa única mensagem curta o que faltar ("perfeito, fechei pra {horário}. Me confirma seu nome completo, e-mail e WhatsApp pra eu mandar o convite?") e só chame a ferramenta quando o lead responder; se você já sabe o nome dele pela conversa, não pergunte de novo — pergunte só o que falta; (6) passe email, telefone e nome_completo nos parâmetros de agendar_reuniao — eles vão pro cadastro do lead no CRM.` : "",
+      tools.length ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou; (5) ANTES de chamar agendar_reuniao, você precisa do NOME, do E-MAIL e do TELEFONE/WhatsApp do lead — peça numa única mensagem curta SOMENTE o que faltar e não estiver em DADOS JÁ CADASTRADOS (se nada faltar, agende direto, sem pedir confirmação de dados) e só chame a ferramenta quando tiver tudo; se você já sabe o nome dele pela conversa, não pergunte de novo — pergunte só o que falta; (6) passe email, telefone e nome_completo nos parâmetros de agendar_reuniao — eles vão pro cadastro do lead no CRM.` : "",
       tools.some((t: any) => t.name === "marcar_fora_do_perfil")
         ? `\nFORA DO PERFIL: se durante a conversa ficar claro que o lead não é do nosso perfil (outro segmento, sem time comercial, pessoa procurando emprego, curioso, concorrente), chame marcar_fora_do_perfil com o motivo e encerre com educação — sem insistir e sem agendar. Falta de orçamento agora ou "vou pensar" NÃO é fora de perfil: isso você trabalha como objeção.`
         : "",
@@ -1488,6 +1510,7 @@ Deno.serve(async (req) => {
         : "",
       confirmedTimeHint,
       missingNameHint,
+      knownDataHint,
       igPersonalization,
       `\n\nVÍDEO E IMAGEM: "(vídeo do lead, fala transcrita) ..." é o que a pessoa FALOU no vídeo e "(imagem do lead, o que aparece nela) ..." é o que tem na imagem. Responda como quem assistiu/viu, com base nisso, sem citar transcrição ou descrição. Nunca diga que não consegue abrir vídeo ou imagem. Se vier "sem fala", comente a legenda (se tiver) ou pergunte com naturalidade o que ele quis mostrar. Só se vier "não consegui abrir" é que você pede, sem drama, pra ele contar em uma frase.`,
       `\n\nÁUDIO: quando a mensagem vier como "(áudio do lead, transcrito) ...", o lead FALOU aquilo — trate como se tivesse ouvido e responda normalmente, SEMPRE em texto. Nunca diga que não conseguiu ouvir e nunca peça pra ele repetir por escrito. Só se vier "(o lead mandou um áudio que não consegui transcrever)" é que você pede, com naturalidade, que ele reescreva.`,
