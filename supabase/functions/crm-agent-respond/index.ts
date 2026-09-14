@@ -329,6 +329,53 @@ async function transcribeViaAssembly(url: string): Promise<{ text: string | null
   }
 }
 
+const isVideo = (m: any) =>
+  String(m.message_type || m.type || "").toLowerCase().includes("video") ||
+  /^\[(v[ií]deo|video)\]$/i.test(String(m.content || "").trim());
+const isImage = (m: any) => {
+  const t = String(m.message_type || m.type || "").toLowerCase();
+  return (t.includes("image") && !t.includes("sticker")) || /^\[(imagem|image|foto)\]$/i.test(String(m.content || "").trim());
+};
+/** Legenda real da mídia (ignora o placeholder "[Vídeo]"/"[Imagem]"). */
+const legendaDe = (m: any) => {
+  const c = String(m.content || "").trim();
+  return /^\[[^\]]{1,20}\]$/.test(c) ? "" : c.slice(0, 300);
+};
+
+/** Claude (Haiku, visão) descreve a imagem que o lead mandou, em 1-3 frases. */
+async function describeImage(url: string, legenda = ""): Promise<string | null> {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const ct = String(r.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+    const buf = new Uint8Array(await r.arrayBuffer());
+    if (buf.length < 100 || buf.length > 4.5 * 1024 * 1024) return null;
+    const mediaType = ["image/jpeg", "image/png", "image/gif", "image/webp"].includes(ct)
+      ? ct
+      : /\.png(\?|$)/i.test(url) ? "image/png" : /\.webp(\?|$)/i.test(url) ? "image/webp" : "image/jpeg";
+    let bin = "";
+    for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001", max_tokens: 250,
+        messages: [{ role: "user", content: [
+          { type: "image", source: { type: "base64", media_type: mediaType, data: btoa(bin) } },
+          { type: "text", text: `Um lead mandou esta imagem numa conversa comercial de WhatsApp${legenda ? ` com a legenda "${legenda}"` : ""}. Descreva em português, em 1 a 3 frases objetivas, o que aparece e qualquer texto legível (números, nomes, valores). Sem introdução.` },
+        ] }],
+      }),
+    });
+    if (!resp.ok) { console.error("[image] claude", resp.status, (await resp.text()).slice(0, 200)); return null; }
+    const d = await resp.json();
+    const out = (Array.isArray(d?.content) ? d.content : []).filter((x: any) => x?.type === "text").map((x: any) => String(x.text)).join("").trim();
+    return out || null;
+  } catch (e) {
+    console.error("[image] erro:", e);
+    return null;
+  }
+}
+
 async function transcribeAudio(url: string): Promise<string | null> {
   return (await transcribeAudioDetalhado(url)).text;
 }
@@ -343,7 +390,7 @@ async function transcribeAudioDetalhado(url: string): Promise<{ text: string | n
     if (!media.ok) return { text: null, error: `download ${media.status}` };
     const blob = await media.blob();
     if (blob.size < 200) return { text: null, error: `arquivo vazio (${blob.size} bytes)` };
-    if (blob.size > 24 * 1024 * 1024) return { text: null, error: "arquivo > 24MB" };
+    if (blob.size > 24 * 1024 * 1024) return await transcribeViaAssembly(url);
     const ct = String(media.headers.get("content-type") || blob.type || "").toLowerCase();
     const ext = ct.includes("ogg") || ct.includes("opus") || /\.ogg(\?|$)/i.test(url) ? "ogg"
       : ct.includes("mpeg") || ct.includes("mp3") ? "mp3"
@@ -696,6 +743,7 @@ Deno.serve(async (req) => {
       let roleClaim = "";
       try { roleClaim = String(JSON.parse(atob(authz.split(".")[1] || "")).role || ""); } catch { /* não é JWT */ }
       if (body0.secret !== SERVICE_ROLE && roleClaim !== "service_role") return j({ ok: false, error: "não autorizado" }, 401);
+      if (body0.kind === "image") return j({ ok: true, text: await describeImage(String(body0.url || "")) });
       return j({ ok: true, ...(await transcribeAudioDetalhado(String(body0.url || ""))) });
     }
 
@@ -1164,12 +1212,54 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Vídeo e imagem (14/09/2026): vídeo → transcreve a fala (Whisper/AssemblyAI
+    // aceitam mp4); imagem → Claude descreve o que aparece. Guarda em
+    // "transcription" pra não reprocessar. Vídeo sem fala vira "[sem fala]".
+    const midiaTable = isIG ? "instagram_messages" : "crm_whatsapp_messages";
+    const videosToDo = rawHistory
+      .filter((m) => isVideo(m) && !m.transcription && m.media_url)
+      .slice(-2);
+    for (const m of videosToDo) {
+      const r = await transcribeAudioDetalhado(m.media_url);
+      const text = r.text || (/vazia|no spoken audio|does not appear to contain audio/i.test(String(r.error || "")) ? "[sem fala]" : null);
+      if (text) {
+        m.transcription = text;
+        await supabase.from(midiaTable).update({ transcription: text }).eq("id", m.id);
+      } else {
+        console.error("[video] não transcreveu:", r.error);
+      }
+    }
+    const imagesToDo = rawHistory
+      .filter((m) => isImage(m) && !m.transcription && m.media_url)
+      .slice(-3);
+    for (const m of imagesToDo) {
+      const desc = await describeImage(m.media_url, legendaDe(m));
+      if (desc) {
+        m.transcription = desc;
+        await supabase.from(midiaTable).update({ transcription: desc }).eq("id", m.id);
+      }
+    }
+
     msgs = rawHistory.map((m: any) => {
       let content = m.content || "";
       if (isAudio(m)) {
         content = m.transcription
           ? `(áudio do lead, transcrito) ${m.transcription}`
           : "(o lead mandou um áudio que não consegui transcrever)";
+      } else if (isVideo(m)) {
+        const leg = legendaDe(m);
+        const quem = m.direction === "inbound" ? "vídeo do lead" : "vídeo enviado por nós";
+        content = !m.transcription
+          ? `(${quem}${leg ? `, legenda: ${leg}` : ""}, não consegui abrir o vídeo)`
+          : m.transcription === "[sem fala]"
+            ? `(${quem}${leg ? `, legenda: ${leg}` : ""}, sem fala)`
+            : `(${quem}${leg ? `, legenda: ${leg}` : ""}, fala transcrita) ${m.transcription}`;
+      } else if (isImage(m)) {
+        const leg = legendaDe(m);
+        const quem = m.direction === "inbound" ? "imagem do lead" : "imagem enviada por nós";
+        content = m.transcription
+          ? `(${quem}${leg ? `, legenda: ${leg}` : ""}, o que aparece nela) ${m.transcription}`
+          : `(${quem}${leg ? `, legenda: ${leg}` : ""}, não consegui abrir a imagem)`;
       }
       return { direction: m.direction, content, ts: m.ts };
     });
@@ -1398,6 +1488,7 @@ Deno.serve(async (req) => {
       confirmedTimeHint,
       missingNameHint,
       igPersonalization,
+      `\n\nVÍDEO E IMAGEM: "(vídeo do lead, fala transcrita) ..." é o que a pessoa FALOU no vídeo e "(imagem do lead, o que aparece nela) ..." é o que tem na imagem. Responda como quem assistiu/viu, com base nisso, sem citar transcrição ou descrição. Nunca diga que não consegue abrir vídeo ou imagem. Se vier "sem fala", comente a legenda (se tiver) ou pergunte com naturalidade o que ele quis mostrar. Só se vier "não consegui abrir" é que você pede, sem drama, pra ele contar em uma frase.`,
       `\n\nÁUDIO: quando a mensagem vier como "(áudio do lead, transcrito) ...", o lead FALOU aquilo — trate como se tivesse ouvido e responda normalmente, SEMPRE em texto. Nunca diga que não conseguiu ouvir e nunca peça pra ele repetir por escrito. Só se vier "(o lead mandou um áudio que não consegui transcrever)" é que você pede, com naturalidade, que ele reescreva.`,
       ESTILO_HUMANO,
       `\n\nVocê está respondendo uma conversa de ${channelLabel} com ${leadName}. Responda como mensagem: curta, humana, sem markdown, sem títulos, uma ideia por mensagem. NUNCA repita uma pergunta que o lead já respondeu — antes de perguntar, confira o histórico. Escreva a resposta UMA única vez, sem repetir o texto. Nunca revele que é uma IA. Se não souber algo, seja honesto e ofereça encaminhar para uma pessoa. TUDO que você escrever é enviado ao lead exatamente como está — jamais inclua raciocínio, plano, anotação interna ou comentário sobre ferramentas no texto.`,

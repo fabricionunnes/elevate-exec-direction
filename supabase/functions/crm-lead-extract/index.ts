@@ -106,18 +106,20 @@ Deno.serve(async (req) => {
     let notes = String(lead.notes || "");
     let notesChanged = false;
     let transcribed = 0;
+    const isVideo = (m: any) => String(m[typeCol] || "").toLowerCase().includes("video") || /^\[(v[ií]deo|video)\]$/i.test(String(m.content || "").trim());
     for (const m of rawHist) {
-      if (m.direction !== "inbound" || !isAudio(m)) continue;
+      if (m.direction !== "inbound" || !(isAudio(m) || isVideo(m))) continue;
+      const video = isVideo(m);
       if (!m.transcription && m.media_url) {
-        const text = await transcribeAudio(m.media_url);
+        const text = await transcribeAudio(m.media_url); // vídeo: transcreve a fala (mp4 funciona)
         if (text) {
           m.transcription = text; transcribed++;
           await supabase.from(msgTable).update({ transcription: text }).eq("id", m.id);
         }
       }
-      const marker = `[áudio ${String(m.id).slice(0, 8)}]`;
-      if (m.transcription && !notes.includes(marker)) {
-        notes = `${notes.trim()}${notes.trim() ? "\n" : ""}🎙️ Áudio ${fmtBR(m[tsCol])} ${marker}: ${m.transcription}`;
+      const marker = video ? `[vídeo ${String(m.id).slice(0, 8)}]` : `[áudio ${String(m.id).slice(0, 8)}]`;
+      if (m.transcription && m.transcription !== "[sem fala]" && !notes.includes(marker)) {
+        notes = `${notes.trim()}${notes.trim() ? "\n" : ""}${video ? "🎥 Vídeo" : "🎙️ Áudio"} ${fmtBR(m[tsCol])} ${marker}: ${m.transcription}`;
         notesChanged = true;
       }
     }
@@ -131,7 +133,7 @@ Deno.serve(async (req) => {
     if (missing.length === 0 && !isPlaceholderName(lead.name)) return j({ ok: true, skip: "card completo", transcribed, notes_updated: notesChanged });
 
     const msgs = rawHist
-      .map((m: any) => ({ ...m, content: isAudio(m) ? (m.transcription ? `(áudio) ${m.transcription}` : "") : m.content }))
+      .map((m: any) => ({ ...m, content: isAudio(m) ? (m.transcription ? `(áudio) ${m.transcription}` : "") : isVideo(m) ? (m.transcription && m.transcription !== "[sem fala]" ? `(vídeo) ${m.transcription}` : "") : m.content }))
       .filter((m: any) => (m.content || "").trim().length > 0);
     if (msgs.length === 0) return j({ ok: true, skip: "sem mensagens", transcribed, notes_updated: notesChanged });
     const transcript = msgs.map((m: any) => `${m.direction === "inbound" ? "LEAD" : "NOS"}: ${m.content}`).join("\n").slice(0, 8000);

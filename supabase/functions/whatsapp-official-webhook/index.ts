@@ -213,7 +213,11 @@ async function processIncomingMessage(
   // Extract message content
   let content = '';
   let type = 'text';
-  let mediaUrl = null;
+  let mediaUrl: string | null = null;
+  let mediaMimetype: string | null = null;
+  // id da mídia na Meta: o arquivo não vem no webhook, precisa baixar pela Graph
+  const mediaObj = message.image || message.video || message.audio || message.document || message.sticker || null;
+  const mediaId: string | null = mediaObj?.id || null;
 
   switch (message.type) {
     case 'text':
@@ -222,7 +226,6 @@ async function processIncomingMessage(
     case 'image':
       type = 'image';
       content = message.image?.caption || '[Imagem]';
-      // Media URL would need to be fetched from Meta API
       break;
     case 'video':
       type = 'video';
@@ -260,6 +263,14 @@ async function processIncomingMessage(
       content = `[${message.type}]`;
   }
 
+  // Baixa a mídia na hora (o link da Meta expira) e guarda no bucket público,
+  // igual o Evolution faz. Sem isso vídeo/imagem/áudio ficavam sem media_url e
+  // não abriam no Atendimento nem chegavam na IA (14/09/2026).
+  if (mediaId) {
+    const stored = await storeOfficialMedia(supabase, instanceId, mediaId, type, message.id);
+    if (stored) { mediaUrl = stored.url; mediaMimetype = stored.mime; }
+  }
+
   // Insert message
   const { error: msgError } = await supabase
     .from('crm_whatsapp_messages')
@@ -271,6 +282,7 @@ async function processIncomingMessage(
       status: 'received',
       whatsapp_message_id: message.id,
       media_url: mediaUrl,
+      media_mimetype: mediaMimetype,
       created_at: timestamp,
     });
 
@@ -350,4 +362,61 @@ async function processStatusUpdate(supabase: any, status: any) {
     .from('crm_whatsapp_messages')
     .update(patch)
     .eq('whatsapp_message_id', messageId);
+}
+
+async function storeOfficialMedia(
+  supabase: any,
+  instanceId: string,
+  mediaId: string,
+  type: string,
+  wamid: string,
+): Promise<{ url: string; mime: string } | null> {
+  try {
+    const { data: inst } = await supabase
+      .from('whatsapp_official_instances')
+      .select('access_token')
+      .eq('id', instanceId)
+      .maybeSingle();
+    const token = inst?.access_token;
+    if (!token) return null;
+    const metaRes = await fetch(`https://graph.facebook.com/v21.0/${mediaId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!metaRes.ok) {
+      console.error('[WhatsApp Official] media meta error:', metaRes.status, (await metaRes.text()).slice(0, 200));
+      return null;
+    }
+    const meta = await metaRes.json();
+    const fileRes = await fetch(meta.url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!fileRes.ok) {
+      console.error('[WhatsApp Official] media download error:', fileRes.status);
+      return null;
+    }
+    const bytes = new Uint8Array(await fileRes.arrayBuffer());
+    const mime = String(meta.mime_type || fileRes.headers.get('content-type') || 'application/octet-stream');
+    const base = mime.split(';')[0].trim();
+    const extMap: Record<string, string> = {
+      'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif',
+      'video/mp4': 'mp4', 'video/3gpp': '3gp',
+      'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/amr': 'amr', 'audio/aac': 'aac',
+      'application/pdf': 'pdf',
+    };
+    const ext = extMap[base] || base.split('/')[1] || 'bin';
+    const safeId = String(wamid || mediaId).replace(/[^A-Za-z0-9_-]/g, '');
+    const path = `whatsapp/official/${type}/${safeId}.${ext}`;
+    let { error } = await supabase.storage.from('whatsapp-media').upload(path, bytes, { contentType: mime, upsert: true });
+    if (error) {
+      // bucket só aceita alguns tipos; o resto vai como binário genérico
+      ({ error } = await supabase.storage.from('whatsapp-media').upload(path, bytes, { contentType: 'application/octet-stream', upsert: true }));
+    }
+    if (error) {
+      console.error('[WhatsApp Official] media upload error:', error);
+      return null;
+    }
+    const { data } = supabase.storage.from('whatsapp-media').getPublicUrl(path);
+    return { url: data.publicUrl, mime };
+  } catch (e) {
+    console.error('[WhatsApp Official] storeOfficialMedia error:', e);
+    return null;
+  }
 }
