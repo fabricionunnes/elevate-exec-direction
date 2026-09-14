@@ -350,6 +350,10 @@ export const CRMPipelinePage = () => {
   useEffect(() => {
     if (!selectedPipeline) return;
 
+    // Debounce: mover leads em massa gera 1 evento por lead. Sem espera, 200
+    // eventos = 200 recarregamentos que se cancelavam entre si e a tela ficava
+    // presa nos 200 mais recentes (14/09/2026, funil Disparo API Oficial).
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const channel = supabase
       .channel(`crm-leads-${selectedPipeline}`)
       .on(
@@ -361,13 +365,18 @@ export const CRMPipelinePage = () => {
           filter: `pipeline_id=eq.${selectedPipeline}`,
         },
         () => {
-          isRealtimeRefresh.current = true;
-          loadFnRef.current?.();
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            debounceTimer = null;
+            isRealtimeRefresh.current = true;
+            loadFnRef.current?.();
+          }, 1500);
         }
       )
       .subscribe();
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
   }, [selectedPipeline]);
