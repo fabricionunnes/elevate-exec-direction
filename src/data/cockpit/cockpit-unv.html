@@ -232,8 +232,8 @@ const SCEN = {pess:{n:'Pessimista',c:'--s2'}, real:{n:'Realista',c:'--s1'}, otim
 // ---------- defaults ----------
 const DEF_SHARED = {
   receitaLegadoDct: 44800, clientesDctAtuais: 23, outrasReceitas: 36700, custoFixoAtual: 100000, dividaTrafego: 150000,
-  mansaoTicket: 797, imersaoT1: 297, imersaoT2: 397, imersaoT3: 497, salaTicket: 1666, salaPlusTicket: 2500, salaPlusShare: 0.1,
-  dctTicket: 3000, dctSetup: 0, conselhoTicket: 3000, compTicket: 2000, equityShare: 0.10, adiantamento: 4000,
+  mansaoTicket: 797, imersaoT1: 697, imersaoT2: 997, imersaoT3: 1497, salaTicket: 1500, salaPlusTicket: 2500, salaPlusShare: 0.2,
+  dctTicket: 7000, dctSetup: 7000, conselhoTicket: 5000, compTicket: 2000, equityShare: 0.10, adiantamento: 4000,
   consultorSenior: 12000, sdrSalario: 5000, opsSalario: 6000, cooSalario: 18000, mansaoCusto: 15000, imersaoCusto: 25000,
   equipeAtual: 10, corteAutomatico: 0.20, infraBase: 4000, infraPorCliente: 30, impostos: 0.14, comissao: 0.10, horasTeto: 180, csSalario: 5000, overheadPct: 0.06, marketingPct: 0.04, inflacaoMensal: 0.004,
 };
@@ -292,7 +292,7 @@ const CTL_SCEN = [
 ];
 
 // ---------- state ----------
-const LS = 'cockpit-unv-v2';
+const LS = 'cockpit-unv-v3';
 let state = load() || {scen:'real', hor:12, focus:12, lines:LINES.map(l=>l.k), prod:'all', ev:'all', shared:{...DEF_SHARED}, drivers:JSON.parse(JSON.stringify(DEF_SCEN)), real:{}};
 if(!state.prod) state.prod='all'; if(!state.ev) state.ev='all';
 function load(){ try{ const s=JSON.parse(localStorage.getItem(LS)); if(s&&s.shared&&s.drivers){ s.shared={...DEF_SHARED,...s.shared}; for(const k in DEF_SCEN) s.drivers[k]={...DEF_SCEN[k],...(s.drivers[k]||{})}; return s;} }catch(e){} return null; }
