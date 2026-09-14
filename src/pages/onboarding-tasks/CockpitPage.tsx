@@ -2,20 +2,22 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Gauge, FileText, Loader2, ExternalLink, Target } from "lucide-react";
+import { ArrowLeft, Gauge, FileText, Loader2, ExternalLink, Target, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import cockpitHtml from "@/data/cockpit/cockpit-unv.html?raw";
 import planoHtml from "@/data/cockpit/plano-unv.html?raw";
 import vendasHtml from "@/data/cockpit/plano-vendas.html?raw";
+import entregaveisHtml from "@/data/cockpit/entregaveis.html?raw";
 
 // Página privada do CEO: plano de vendas, Cockpit de projeção da escada comercial e plano estratégico.
 // O conteúdo é HTML estático embutido no bundle (srcdoc), não fica em URL pública.
 const CEO_EMAIL = "fabricio@universidadevendas.com.br";
 
-type Tab = "vendas" | "cockpit" | "plano";
+type Tab = "vendas" | "entregaveis" | "cockpit" | "plano";
 
 const tabs: { value: Tab; label: string; icon: typeof Gauge; hint: string }[] = [
   { value: "vendas", label: "Plano de vendas", icon: Target, hint: "Quantas vendas de cada produto por mês e como vender cada uma" },
+  { value: "entregaveis", label: "Entregáveis", icon: Package, hint: "O que cada produto entrega, quando, quem faz e o que não inclui" },
   { value: "cockpit", label: "Cockpit", icon: Gauge, hint: "Projeção 36 meses · 3 cenários · métricas por produto e evento" },
   { value: "plano", label: "Plano estratégico", icon: FileText, hint: "Redesenho Comercial UNV · escada de 7 degraus" },
 ];
@@ -30,7 +32,7 @@ export default function CockpitPage() {
   const [tab, setTab] = useState<Tab>(() => {
     try {
       const saved = localStorage.getItem("cockpit-page-tab-v2");
-      return saved === "plano" || saved === "cockpit" ? saved : "vendas";
+      return saved === "plano" || saved === "cockpit" || saved === "entregaveis" ? saved : "vendas";
     } catch {
       return "vendas";
     }
@@ -81,6 +83,7 @@ export default function CockpitPage() {
   const cockpitDoc = useMemo(() => wrapHtml(cockpitHtml, dark), [dark]);
   const planoDoc = useMemo(() => wrapHtml(planoHtml, dark), [dark]);
   const vendasDoc = useMemo(() => wrapHtml(vendasHtml, dark), [dark]);
+  const entregaveisDoc = useMemo(() => wrapHtml(entregaveisHtml, dark), [dark]);
 
   if (isAuthorized === null) {
     return (
@@ -138,6 +141,11 @@ export default function CockpitPage() {
           title="Plano de vendas UNV"
           srcDoc={vendasDoc}
           className={cn("absolute inset-0 w-full h-full border-0 bg-background", tab !== "vendas" && "invisible")}
+        />
+        <iframe
+          title="Entregáveis por produto UNV"
+          srcDoc={entregaveisDoc}
+          className={cn("absolute inset-0 w-full h-full border-0 bg-background", tab !== "entregaveis" && "invisible")}
         />
         <iframe
           title="Cockpit UNV"
