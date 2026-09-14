@@ -81,6 +81,9 @@ export const KanbanBulkActions = ({
   const [moveToStage, setMoveToStage] = useState<string>("");
   const [assignToOwner, setAssignToOwner] = useState<string>("");
   const [moveToPipeline, setMoveToPipeline] = useState<string>("");
+  // etapa de destino ao mudar de funil (pedido 14/09/2026); vazio = primeira etapa
+  const [targetStages, setTargetStages] = useState<{ id: string; name: string }[]>([]);
+  const [moveToPipelineStage, setMoveToPipelineStage] = useState<string>("");
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [tags, setTags] = useState<{ id: string; name: string; color: string | null }[]>([]);
   const [bulkTag, setBulkTag] = useState<string>("");
@@ -202,27 +205,38 @@ export const KanbanBulkActions = ({
     }
   };
 
+  useEffect(() => {
+    setMoveToPipelineStage("");
+    setTargetStages([]);
+    if (!moveToPipeline) return;
+    (async () => {
+      const { data } = await supabase.from("crm_stages").select("id, name").eq("pipeline_id", moveToPipeline).order("sort_order");
+      setTargetStages((data || []) as any);
+    })();
+  }, [moveToPipeline]);
+
   const handleBulkChangePipeline = async () => {
     if (!moveToPipeline || selectedLeads.length === 0) return;
     
     setLoading(true);
     try {
-      // Get the first stage of the target pipeline
-      const { data: targetStages, error: stagesError } = await supabase
-        .from("crm_stages")
-        .select("id")
-        .eq("pipeline_id", moveToPipeline)
-        .eq("is_final", false)
-        .order("sort_order")
-        .limit(1);
-
-      if (stagesError) throw stagesError;
-      if (!targetStages || targetStages.length === 0) {
-        toast.error("O funil de destino não possui etapas disponíveis");
-        return;
+      // Etapa escolhida; sem escolha, primeira etapa não final do funil de destino
+      let targetStageId = moveToPipelineStage;
+      if (!targetStageId) {
+        const { data: firstStages, error: stagesError } = await supabase
+          .from("crm_stages")
+          .select("id")
+          .eq("pipeline_id", moveToPipeline)
+          .eq("is_final", false)
+          .order("sort_order")
+          .limit(1);
+        if (stagesError) throw stagesError;
+        if (!firstStages || firstStages.length === 0) {
+          toast.error("O funil de destino não possui etapas disponíveis");
+          return;
+        }
+        targetStageId = firstStages[0].id;
       }
-
-      const targetStageId = targetStages[0].id;
 
       // Get the first origin of the target pipeline to sync origin_id
       const { data: targetOrigins } = await supabase
@@ -254,6 +268,7 @@ export const KanbanBulkActions = ({
 
       toast.success(`${selectedLeads.length} leads movidos para outro funil`);
       setMoveToPipeline("");
+      setMoveToPipelineStage("");
       onClearSelection();
       onSuccess();
     } catch (error) {
@@ -362,6 +377,13 @@ export const KanbanBulkActions = ({
                 options={pipelines.map((p) => ({ value: p.id, label: p.name }))}
                 placeholder="Mudar funil..." emptyMessage="Nenhum funil." className="h-8 text-xs" />
             </div>
+            {moveToPipeline && (
+              <div className="w-[160px]">
+                <SearchableSelect value={moveToPipelineStage} onValueChange={setMoveToPipelineStage}
+                  options={targetStages.map((st) => ({ value: st.id, label: st.name }))}
+                  placeholder="Etapa (1ª por padrão)" emptyMessage="Nenhuma etapa." className="h-8 text-xs" />
+              </div>
+            )}
             {moveToPipeline && (
               <Button size="sm" onClick={handleBulkChangePipeline} disabled={loading}>
                 {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Mover"}
