@@ -299,24 +299,56 @@ export const CRMPipelinePage = () => {
       isRealtimeRefresh.current = false;
 
       if (firstBatch.length === FIRST_PAGE) {
+        // Resto do funil em paralelo (4 páginas por vez) e já pintando na tela a
+        // cada página. Antes era uma página de 500 por vez, em fila: funil de
+        // 1.400 leads levava vários segundos com etapas zeradas (14/09/2026).
         const PAGE_SIZE = 500;
         const MAX_LEADS = 10000;
-        let allLeads = [...firstBatch];
-        let from = FIRST_PAGE;
-        let hasMore = true;
+        const CONCURRENCY = 4;
+        let countQuery = supabase
+          .from("crm_leads")
+          .select("id", { count: "exact", head: true })
+          .eq("pipeline_id", selectedPipeline);
+        if (effectiveOrigin) countQuery = countQuery.eq("origin_id", effectiveOrigin);
+        const { count } = await countQuery;
+        if (!isCurrentLoad()) return;
 
-        while (hasMore && allLeads.length < MAX_LEADS) {
-          const { data: pageData, error: pageError } = await buildLeadQuery(effectiveOrigin, from, PAGE_SIZE);
-          if (!isCurrentLoad()) return;
-          if (pageError || !pageData || pageData.length === 0) break;
+        const total = Math.min(count ?? MAX_LEADS, MAX_LEADS);
+        const offsets: number[] = [];
+        for (let from = FIRST_PAGE; from < total; from += PAGE_SIZE) offsets.push(from);
 
-          allLeads = allLeads.concat(pageData as Lead[]);
-          from += PAGE_SIZE;
-          hasMore = pageData.length === PAGE_SIZE;
-        }
+        const pages: Lead[][] = new Array(offsets.length);
+        const publish = () => {
+          const loaded = [firstBatch];
+          for (const pg of pages) if (pg) loaded.push(pg);
+          const seen = new Set<string>();
+          const merged: Lead[] = [];
+          for (const pg of loaded) for (const l of pg) {
+            if (!seen.has(l.id)) { seen.add(l.id); merged.push(l); }
+          }
+          setLeads(merged);
+        };
 
-        if (isCurrentLoad()) {
-          setLeads(allLeads);
+        let next = 0;
+        const worker = async () => {
+          while (next < offsets.length) {
+            const idx = next++;
+            const { data: pageData, error: pageError } = await buildLeadQuery(effectiveOrigin, offsets[idx], PAGE_SIZE);
+            if (!isCurrentLoad()) return;
+            if (pageError) { console.error("Error loading leads page:", pageError); continue; }
+            pages[idx] = (pageData || []) as Lead[];
+            publish();
+          }
+        };
+        await Promise.all(Array.from({ length: Math.min(CONCURRENCY, offsets.length) }, worker));
+
+        // Se entrou lead novo durante a carga e passou do count, busca a sobra.
+        if (isCurrentLoad() && count != null && offsets.length > 0) {
+          const lastFrom = offsets[offsets.length - 1] + PAGE_SIZE;
+          if (lastFrom < MAX_LEADS && (pages[pages.length - 1]?.length ?? 0) === PAGE_SIZE) {
+            const { data: extra } = await buildLeadQuery(effectiveOrigin, lastFrom, PAGE_SIZE);
+            if (isCurrentLoad() && extra?.length) { pages.push(extra as Lead[]); publish(); }
+          }
         }
       }
     } catch (error) {
