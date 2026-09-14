@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, Fragment } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -694,11 +694,25 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
                   Sem mensagens nesta conversa.
                 </div>
               ) : (
-                messages.map((m) => {
+                messages.map((m, idx) => {
                   const isOut = m.direction === "outbound" || m.direction === "outgoing";
+                  // Separador de dia estilo WhatsApp (pedido 14/09/2026): Hoje / Ontem / "sexta, 11/09"
+                  const d = new Date(m.created_at);
+                  const prev = idx > 0 ? new Date(messages[idx - 1].created_at) : null;
+                  const novoDia = !prev || prev.toDateString() !== d.toDateString();
+                  const hoje = new Date();
+                  const ontem = new Date(); ontem.setDate(hoje.getDate() - 1);
+                  const rotuloDia = d.toDateString() === hoje.toDateString() ? "Hoje"
+                    : d.toDateString() === ontem.toDateString() ? "Ontem"
+                    : format(d, d.getFullYear() === hoje.getFullYear() ? "EEEE, dd/MM" : "dd/MM/yyyy", { locale: ptBR });
                   return (
+                    <Fragment key={m.id}>
+                    {novoDia && (
+                      <div className="flex justify-center my-2">
+                        <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground capitalize">{rotuloDia}</span>
+                      </div>
+                    )}
                     <div
-                      key={m.id}
                       className={cn("flex", isOut ? "justify-end" : "justify-start")}
                     >
                       <div
@@ -730,6 +744,7 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
                         </div>
                       </div>
                     </div>
+                    </Fragment>
                   );
                 })
               )}
