@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-13T21:01:02",
+ "gerado_em": "2026-09-14T10:01:32",
  "posts": [
+  {
+   "slug": "empresa-madura-nao-empresa-amadora",
+   "url": "/blog/empresa-madura-nao-empresa-amadora/",
+   "titulo": "Empresa madura não é empresa amadora com faturamento",
+   "resumo": "Tempo de mercado não garante estrutura comercial. O que separa maturidade de amadorismo é ter quem cobra resultado toda semana.",
+   "tags": [
+    "estrutura comercial",
+    "diagnóstico",
+    "decisão",
+    "rotina de cobrança",
+    "meta mensal"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-14",
+   "ts": 2088
+  },
   {
    "slug": "dono-atende-lead-deveria-estar-olhando-resultado",
    "url": "/blog/dono-atende-lead-deveria-estar-olhando-resultado/",
