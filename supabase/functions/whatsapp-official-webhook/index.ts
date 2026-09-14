@@ -243,6 +243,11 @@ async function processIncomingMessage(
       type = 'sticker';
       content = '[Sticker]';
       break;
+    case 'reaction':
+      // emoji vazio = a pessoa removeu a reação
+      type = 'reaction';
+      content = message.reaction?.emoji || '';
+      break;
     case 'location':
       type = 'location';
       content = `[Localização: ${message.location?.latitude}, ${message.location?.longitude}]`;
@@ -261,6 +266,32 @@ async function processIncomingMessage(
       break;
     default:
       content = `[${message.type}]`;
+  }
+
+  // Reação: aponta pra mensagem reagida (o Atendimento mostra o emoji embaixo dela)
+  let quotedMessageId: string | null = null;
+  if (type === 'reaction') {
+    const alvoWamid = message.reaction?.message_id;
+    if (alvoWamid) {
+      const { data: alvo } = await supabase
+        .from('crm_whatsapp_messages')
+        .select('id')
+        .eq('conversation_id', conversationId)
+        .or(`whatsapp_message_id.eq.${alvoWamid},remote_id.eq.${alvoWamid}`)
+        .limit(1)
+        .maybeSingle();
+      quotedMessageId = alvo?.id || null;
+    }
+    if (quotedMessageId) {
+      await supabase
+        .from('crm_whatsapp_messages')
+        .delete()
+        .eq('conversation_id', conversationId)
+        .eq('type', 'reaction')
+        .eq('direction', 'inbound')
+        .eq('quoted_message_id', quotedMessageId);
+    }
+    if (!content) return;
   }
 
   // Baixa a mídia na hora (o link da Meta expira) e guarda no bucket público,
@@ -283,6 +314,7 @@ async function processIncomingMessage(
       whatsapp_message_id: message.id,
       media_url: mediaUrl,
       media_mimetype: mediaMimetype,
+      quoted_message_id: quotedMessageId,
       created_at: timestamp,
     });
 
@@ -296,9 +328,9 @@ async function processIncomingMessage(
   await supabase
     .from('crm_whatsapp_conversations')
     .update({
-      last_message: content.substring(0, 255),
+      last_message: (type === 'reaction' ? `Reagiu com ${content}` : content).substring(0, 255),
       last_message_at: timestamp,
-      unread_count: currentUnread + 1,
+      unread_count: type === 'reaction' ? currentUnread : currentUnread + 1,
       status: 'open',
     })
     .eq('id', conversationId);

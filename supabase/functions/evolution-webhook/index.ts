@@ -477,6 +477,7 @@ async function handleIncomingMessage(
   let mediaUrl = null;
   let mediaMimetype = null;
   let mediaBase64: string | null = null;
+  let reactionTargetRemoteId: string | null = null;
 
   // Evolution payload formats vary. Common cases:
   // 1) data.message.message => { conversation | extendedTextMessage | imageMessage | ... }
@@ -522,6 +523,8 @@ async function handleIncomingMessage(
     } else if (msg.stickerMessage) {
       type = 'sticker';
       content = '[Sticker]';
+      mediaMimetype = msg.stickerMessage.mimetype || 'image/webp';
+      mediaUrl = msg.stickerMessage.url;
     } else if (msg.contactMessage) {
       type = 'contact';
       content = msg.contactMessage.displayName || '[Contato]';
@@ -529,9 +532,11 @@ async function handleIncomingMessage(
       type = 'location';
       content = '[Localização]';
     } else if (msg.reactionMessage) {
-      // Skip reaction messages - they don't have content to display
-      console.log('Skipping reaction message');
-      return;
+      // Reação (❤️ 👍): grava apontando pra mensagem reagida e o Atendimento mostra
+      // o emoji embaixo dela (14/09/2026). Texto vazio = a pessoa removeu a reação.
+      type = 'reaction';
+      content = String(msg.reactionMessage.text || '');
+      reactionTargetRemoteId = msg.reactionMessage.key?.id || null;
     } else if (msg.protocolMessage || msg.senderKeyDistributionMessage) {
       // Skip protocol/system messages - they're not user content
       console.log('Skipping protocol/system message');
@@ -565,7 +570,7 @@ async function handleIncomingMessage(
 
   // If this is a media message, store it in Supabase Storage.
   let storedMediaUrl = mediaUrl;
-  if (['image', 'video', 'audio', 'document'].includes(type)) {
+  if (['image', 'video', 'audio', 'document', 'sticker'].includes(type)) {
     if (mediaBase64) {
       // Caminho principal (Stevo): o arquivo já veio embutido no webhook.
       console.log(`Storing inline base64 ${type} for message ${messageId}...`);
@@ -608,6 +613,31 @@ async function handleIncomingMessage(
     senderName = data.pushName || message.pushName || null;
   }
 
+  let quotedMessageId: string | null = null;
+  if (type === 'reaction') {
+    if (reactionTargetRemoteId) {
+      const { data: alvo } = await supabase
+        .from('crm_whatsapp_messages')
+        .select('id')
+        .eq('conversation_id', conversation.id)
+        .or(`remote_id.eq.${reactionTargetRemoteId},whatsapp_message_id.eq.${reactionTargetRemoteId}`)
+        .limit(1)
+        .maybeSingle();
+      quotedMessageId = alvo?.id || null;
+    }
+    if (quotedMessageId) {
+      // uma reação por lado por mensagem: trocar ou remover apaga a anterior
+      await supabase
+        .from('crm_whatsapp_messages')
+        .delete()
+        .eq('conversation_id', conversation.id)
+        .eq('type', 'reaction')
+        .eq('direction', fromMe ? 'outbound' : 'inbound')
+        .eq('quoted_message_id', quotedMessageId);
+    }
+    if (!content) return;
+  }
+
   // Insert message
   const { error: msgError } = await supabase
     .from('crm_whatsapp_messages')
@@ -622,6 +652,7 @@ async function handleIncomingMessage(
       media_mimetype: mediaMimetype,
       sender_phone: senderPhone,
       sender_name: senderName,
+      quoted_message_id: quotedMessageId,
     });
 
   if (msgError) {
@@ -631,12 +662,12 @@ async function handleIncomingMessage(
 
   // Update conversation
   const updateData: any = {
-    last_message: content,
+    last_message: type === 'reaction' ? `Reagiu com ${content}` : content,
     last_message_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
 
-  if (!fromMe) {
+  if (!fromMe && type !== 'reaction') {
     updateData.unread_count = (conversation.unread_count || 0) + 1;
     if (conversation.status === 'closed') {
       updateData.status = 'open';

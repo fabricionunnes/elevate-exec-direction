@@ -1241,7 +1241,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    msgs = rawHistory.map((m: any) => {
+    // Reação (❤️ 👍) não é mensagem pra responder: sai do histórico, então uma
+    // reação sozinha não dispara resposta do agente.
+    msgs = rawHistory
+      .filter((m: any) => String(m.message_type || "").toLowerCase() !== "reaction" && String(m.content || "").trim() !== "[reaction]")
+      .map((m: any) => {
       let content = m.content || "";
       if (isAudio(m)) {
         content = m.transcription

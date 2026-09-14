@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -205,6 +205,21 @@ export const CRMInboxPage = () => {
   const messages = isInstagramConversation ? igMessages : whatsappMessages;
   const loadingMessages = isInstagramConversation ? loadingIgMessages : loadingWhatsAppMessages;
   const refetchMessages = isInstagramConversation ? refetchIgMessages : refetchWhatsAppMessages;
+
+  // Reações (❤️ 👍): aparecem como emoji embaixo da mensagem reagida, igual no WhatsApp.
+  // Reação cuja mensagem não está carregada continua aparecendo como balão próprio.
+  const reactionsByTarget = useMemo(() => {
+    const map = new Map<string, { emoji: string; direction: string }[]>();
+    for (const m of messages as any[]) {
+      if (m.type === "reaction" && m.quoted_message_id && m.content) {
+        const arr = map.get(m.quoted_message_id) || [];
+        arr.push({ emoji: m.content, direction: m.direction });
+        map.set(m.quoted_message_id, arr);
+      }
+    }
+    return map;
+  }, [messages]);
+  const loadedMessageIds = useMemo(() => new Set((messages as any[]).map((m) => m.id)), [messages]);
 
   // Company identification for receipt analysis
   const {
@@ -981,7 +996,9 @@ export const CRMInboxPage = () => {
                   <p className="text-sm">Nenhuma mensagem ainda</p>
                 </div>
               ) : (
-                messages.map((message) => (
+                messages
+                  .filter((m: any) => !(m.type === "reaction" && m.quoted_message_id && loadedMessageIds.has(m.quoted_message_id)))
+                  .map((message) => (
                   <div
                     key={message.id}
                     className={cn(
@@ -1079,7 +1096,15 @@ export const CRMInboxPage = () => {
                           {message.content || "Documento"}
                         </a>
                       ) : message.type === "sticker" ? (
-                        <div className="text-2xl">🎭</div>
+                        message.media_url ? (
+                          <img src={message.media_url} alt="Figurinha" className="w-32 h-32 object-contain" loading="lazy" />
+                        ) : (
+                          <div className="text-sm text-muted-foreground">🎭 Figurinha</div>
+                        )
+                      ) : message.type === "reaction" ? (
+                        <p className="text-sm text-muted-foreground">
+                          Reagiu com <span className="text-xl align-middle">{message.content}</span>
+                        </p>
                       ) : message.type === "location" ? (
                         <div className="flex items-center gap-2 text-sm">
                           <span>📍</span>
@@ -1102,6 +1127,18 @@ export const CRMInboxPage = () => {
                       {message.direction === "outbound" && message.status === "failed" && (
                         <p className="text-[10px] text-destructive mt-0.5">Não entregue{(message as any).error_text ? `: ${(message as any).error_text}` : ""}</p>
                       )}
+                      {reactionsByTarget.get(message.id)?.length ? (
+                        <div className={cn("mt-1 -mb-1 flex", message.direction === "outbound" ? "justify-start" : "justify-end")}>
+                          <span
+                            className="inline-flex items-center gap-0.5 rounded-full border border-border bg-background px-1.5 py-0.5 text-sm shadow-sm"
+                            title={reactionsByTarget.get(message.id)!.map((r) => `${r.direction === "inbound" ? "Lead" : "Nós"}: ${r.emoji}`).join(" · ")}
+                          >
+                            {reactionsByTarget.get(message.id)!.map((r, i) => (
+                              <span key={i}>{r.emoji}</span>
+                            ))}
+                          </span>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 ))
