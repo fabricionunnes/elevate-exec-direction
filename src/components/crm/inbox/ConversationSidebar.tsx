@@ -38,6 +38,7 @@ import { useLinkedLeads } from "@/hooks/useLinkedLeads";
 import { LinkedLeadsSection } from "@/components/crm/LinkedLeadsSection";
 import { useCompanyIdentification } from "@/hooks/useCompanyIdentification";
 import { CompanyFinancialSidePanel } from "./CompanyFinancialSidePanel";
+import { ConversationTagsSection } from "./ConversationTagsSection";
 
 interface CRMStaff {
   id: string;
@@ -806,6 +807,9 @@ export function ConversationSidebar({
           )}
         </div>
       )}
+
+      {/* Etiquetas do lead */}
+      {conversation.lead_id && <ConversationTagsSection key={conversation.lead_id} leadId={conversation.lead_id} />}
 
       {/* Assignment Section */}
       <Collapsible open={assignedOpen} onOpenChange={setAssignedOpen}>
