@@ -386,7 +386,7 @@ export const CRMLayout = () => {
                     <ChevronDown className="h-3 w-3" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-52">
+                <DropdownMenuContent align="start" className="w-52 max-h-[calc(100vh-6rem)] overflow-y-auto">
                   {moreTabs.map((tab) => {
                     const Icon = tab.icon;
                     return (
