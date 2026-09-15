@@ -84,7 +84,7 @@ export function InstanceAccessDialog({
           id: `official:${i.id}`,
           instance_name: i.display_name || i.phone_number || "API Oficial",
           display_name: i.display_name || i.phone_number || "API Oficial",
-          status: i.status === "active" ? "connected" : "disconnected",
+          status: ["active", "connected", "open"].includes(i.status) ? "connected" : "disconnected",
           type: "official",
         });
       });
@@ -99,7 +99,7 @@ export function InstanceAccessDialog({
           id: `instagram:${i.id}`,
           instance_name: i.instagram_username || i.instance_name,
           display_name: i.instance_name || `@${i.instagram_username}`,
-          status: i.status === "active" ? "connected" : "disconnected",
+          status: ["active", "connected", "open"].includes(i.status) ? "connected" : "disconnected",
           type: "instagram",
         });
       });

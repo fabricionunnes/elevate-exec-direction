@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Loader2, Search, Link2, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -199,17 +199,13 @@ export function LinkExistingLeadDialog({
         </DialogHeader>
 
         <div className="space-y-2">
-          <Select value={pipelineId} onValueChange={setPipelineId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Funil" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os funis</SelectItem>
-              {pipelines.map((p) => (
-                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={pipelineId}
+            onValueChange={setPipelineId}
+            options={[{ value: "all", label: "Todos os funis" }, ...pipelines.map((p) => ({ value: p.id, label: p.name }))]}
+            placeholder="Funil"
+            emptyMessage="Nenhum funil encontrado."
+          />
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
