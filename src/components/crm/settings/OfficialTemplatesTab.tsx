@@ -29,6 +29,16 @@ const STATUS: Record<string, { label: string; variant: "default" | "secondary" |
   DISABLED: { label: "Desativado", variant: "destructive" },
 };
 
+/** supabase.functions.invoke devolve só "non-2xx status code"; o motivo (da Meta) vem no corpo */
+async function mensagemDoErro(error: any, data: any): Promise<string> {
+  if (data?.error) return String(data.error);
+  try {
+    const corpo = await error?.context?.json?.();
+    if (corpo?.error) return String(corpo.error);
+  } catch { /* corpo não é JSON */ }
+  return String(error?.message || error || "Erro desconhecido");
+}
+
 export function OfficialTemplatesTab() {
   const [instances, setInstances] = useState<OfficialInstance[]>([]);
   const [instanceId, setInstanceId] = useState("");
@@ -53,7 +63,7 @@ export function OfficialTemplatesTab() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("whatsapp-official-api", { body: { action: "getTemplates", instanceId: id } });
-      if (error || data?.error) throw new Error(data?.error || String(error));
+      if (error || data?.error) throw new Error(await mensagemDoErro(error, data));
       setTemplates((data?.templates || []) as Template[]);
     } catch (e) {
       toast.error(`Não consegui listar os templates: ${(e as Error).message}`);
@@ -67,6 +77,9 @@ export function OfficialTemplatesTab() {
 
   const handleCreate = async () => {
     if (!form.name.trim() || !form.body.trim()) { toast.error("Nome e texto são obrigatórios"); return; }
+    // regra da Meta: texto não pode começar nem terminar com variável
+    if (/^\s*\{\{\d+\}\}/.test(form.body)) { toast.error('O texto não pode começar com variável. Ex.: "Oi, {{1}}! Uma pergunta..."'); return; }
+    if (/\{\{\d+\}\}[\s.!?…]*$/.test(form.body)) { toast.error("O texto não pode terminar com variável. Coloque uma frase depois da última {{n}}."); return; }
     setSaving(true);
     try {
       const { data, error } = await supabase.functions.invoke("whatsapp-official-api", {
@@ -77,7 +90,7 @@ export function OfficialTemplatesTab() {
           examples: form.examples.split("|").map((e) => e.trim()).filter(Boolean),
         },
       });
-      if (error || data?.error) throw new Error(data?.error || String(error));
+      if (error || data?.error) throw new Error(await mensagemDoErro(error, data));
       toast.success(`Template "${data.name}" enviado pra aprovação da Meta`);
       setCreateOpen(false);
       setForm({ name: "", category: "MARKETING", body: "", footer: "", buttons: "", examples: "" });
@@ -92,7 +105,7 @@ export function OfficialTemplatesTab() {
   const handleDelete = async (t: Template) => {
     if (!confirm(`Excluir o template "${t.name}" na Meta? Não dá pra desfazer.`)) return;
     const { data, error } = await supabase.functions.invoke("whatsapp-official-api", { body: { action: "deleteTemplate", instanceId, name: t.name } });
-    if (error || data?.error) { toast.error(data?.error || String(error)); return; }
+    if (error || data?.error) { toast.error(await mensagemDoErro(error, data)); return; }
     toast.success("Template excluído");
     load();
   };
