@@ -340,6 +340,7 @@ const CRMCadencesPage = lazy(() => import("./pages/crm/CRMCadencesPage"));
 const CRMEmailBlastPage = lazy(() => import("./pages/crm/CRMEmailBlastPage"));
 const CRMApplicationsPage = lazy(() => import("./pages/crm/CRMApplicationsPage"));
 const CRMAutomationsPage = lazy(() => import("./pages/crm/CRMAutomationsPage"));
+const CRMDisparosPage = lazy(() => import("./pages/crm/CRMDisparosPage"));
 
 // Social Pipeline
 const SocialLayoutPage = lazy(() => import("./pages/social").then(m => ({ default: m.SocialLayout })));
@@ -673,6 +674,8 @@ const AppShell = () => {
               <Route path="conexao-whatsapp" element={<CRMWhatsAppConnectionPage />} />
               <Route path="agents" element={<CRMAgentsPage />} />
               <Route path="automacoes" element={<CRMAutomationsPage />} />
+              <Route path="disparos" element={<CRMDisparosPage />} />
+              <Route path="disparos/:id" element={<CRMDisparosPage />} />
             </Route>
             
             {/* UNV Social - Content Pipeline */}

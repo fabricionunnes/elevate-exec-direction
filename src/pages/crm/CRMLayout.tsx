@@ -43,8 +43,7 @@ import {
   Contact,
   Mail as MailIcon,
   Download,
-  BookOpen,
-} from "lucide-react";
+  BookOpen, ShieldCheck } from "lucide-react";
 import logoUnv from "@/assets/logo-unv-nexus.png";
 import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
 import { CRMNotificationsBell } from "@/components/crm/CRMNotificationsBell";
@@ -89,6 +88,7 @@ const baseNavTabs = [
   { title: "Forecast", href: "/crm/forecast", icon: TrendingUp },
   { title: "Cadências", href: "/crm/cadences", icon: Repeat2 },
   { title: "Disparador E-mail", href: "/crm/email-blast", icon: MailIcon },
+  { title: "Disparos API", href: "/crm/disparos", icon: ShieldCheck },
   { title: "Automações IA", href: "/crm/automacoes", icon: Zap },
   { title: "Aplicações", href: "/crm/applications", icon: BarChart3 },
   { title: "Conexão WhatsApp", href: "/crm/conexao-whatsapp", icon: MessageSquare },

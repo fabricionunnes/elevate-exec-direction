@@ -390,10 +390,57 @@ async function processStatusUpdate(supabase: any, status: any) {
     patch.error_text = (txt || 'falha sem detalhe da Meta').slice(0, 500);
     console.error('[WhatsApp Official] Falha de entrega:', messageId, patch.error_text);
   }
-  await supabase
-    .from('crm_whatsapp_messages')
-    .update(patch)
-    .eq('whatsapp_message_id', messageId);
+  // Status chega fora de ordem (read antes de delivered): nunca rebaixa a mensagem.
+  let q = supabase.from('crm_whatsapp_messages').update(patch).eq('whatsapp_message_id', messageId);
+  if (statusValue === 'sent') q = q.in('status', ['pending', 'sent']);
+  else if (statusValue === 'delivered') q = q.in('status', ['pending', 'sent', 'delivered']);
+  else if (statusValue === 'read') q = q.neq('status', 'failed');
+  await q;
+
+  await atualizarDestinatarioDisparo(supabase, messageId, statusValue, status, patch.error_text as string | undefined);
+}
+
+// Histórico de disparos (tela Disparos API): status, cobrança e motivo da falha
+// por lead. Falhou a entrega → o lead volta pra etapa de onde o disparo tirou.
+async function atualizarDestinatarioDisparo(supabase: any, messageId: string, statusValue: string, status: any, errorText?: string) {
+  try {
+    const { data: recs } = await supabase
+      .from('whatsapp_official_campaign_recipients')
+      .select('id, status, lead_id, moved_from_stage_id, moved_to_stage_id, stage_reverted')
+      .eq('whatsapp_message_id', messageId);
+    if (!recs?.length) return;
+    const rank: Record<string, number> = { pending: 0, sent: 1, delivered: 2, read: 3 };
+    const now = new Date().toISOString();
+    for (const r of recs) {
+      const upd: Record<string, unknown> = {};
+      if (status.pricing) {
+        if (typeof status.pricing.billable === 'boolean') upd.billable = status.pricing.billable;
+        if (status.pricing.category) upd.pricing_category = String(status.pricing.category).toUpperCase();
+      }
+      if (statusValue === 'failed') {
+        upd.status = 'failed';
+        upd.error_text = errorText || 'falha sem detalhe da Meta';
+        upd.failed_at = now;
+        if (r.lead_id && r.moved_from_stage_id && r.moved_to_stage_id && !r.stage_reverted) {
+          const { data: from } = await supabase.from('crm_stages').select('pipeline_id').eq('id', r.moved_from_stage_id).maybeSingle();
+          const back: Record<string, unknown> = { stage_id: r.moved_from_stage_id };
+          if (from?.pipeline_id) back.pipeline_id = from.pipeline_id;
+          const { data: moved } = await supabase.from('crm_leads').update(back)
+            .eq('id', r.lead_id).eq('stage_id', r.moved_to_stage_id).select('id');
+          if (moved?.length) upd.stage_reverted = true;
+        }
+      } else if (r.status !== 'failed' && (rank[statusValue] ?? 0) > (rank[r.status] ?? 0)) {
+        upd.status = statusValue;
+        if (statusValue === 'delivered') upd.delivered_at = now;
+        if (statusValue === 'read') upd.read_at = now;
+      }
+      if (Object.keys(upd).length) {
+        await supabase.from('whatsapp_official_campaign_recipients').update(upd).eq('id', r.id);
+      }
+    }
+  } catch (e) {
+    console.error('[WhatsApp Official] atualizarDestinatarioDisparo:', e);
+  }
 }
 
 async function storeOfficialMedia(
