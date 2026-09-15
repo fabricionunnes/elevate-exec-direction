@@ -184,31 +184,87 @@ async function buildReceiptPdf(p: {
 }
 
 /** A baixa da conta a pagar existe? Devolve a descrição quando sim. */
-async function findBaixaPagar(supabase: any, txId: string, valueCents: number, payDate: string | null, ambiguous = false) {
-  // 1) já vinculada a este débito do extrato
+const normNome = (x: string) => String(x || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase().replace(/^[\d.\-\/\s]+/, "").trim();
+/** beneficiário do extrato ("49.675.704 TAYNON MARLONY DE SANTANA") bate com o fornecedor da conta */
+function nomeBate(beneficiario: string, fornecedor: string) {
+  const f = normNome(fornecedor);
+  if (!f) return false;
+  return normNome(beneficiario).split(/\s+/).filter((w) => w.length >= 4).slice(0, 2).some((w) => f.includes(w));
+}
+const rotuloConta = (p: any) => [p?.description, p?.supplier_name].filter(Boolean).join(" — ") || "Conta a pagar";
+
+async function findBaixaPagar(supabase: any, txId: string, valueCents: number, payDate: string | null, ambiguous = false, beneficiario = ""):
+  Promise<{ account: string; bankTxId?: string } | null> {
+  // 1) já vinculada a este débito do extrato (conta paga inteira ou parcial)
   const { data: linked } = await supabase.from("financial_payables")
     .select("id, supplier_name, description")
-    .eq("asaas_transaction_id", txId).eq("status", "paid").limit(1).maybeSingle();
-  if (linked) {
-    return { account: [linked.description, linked.supplier_name].filter(Boolean).join(" — ") || "Conta a pagar" };
+    .eq("asaas_transaction_id", txId).in("status", ["paid", "partial"]).limit(1).maybeSingle();
+  if (linked) return { account: rotuloConta(linked) };
+
+  // 1b) já casada antes pelo lançamento bancário da baixa
+  const { data: fila } = await supabase.from("asaas_receipt_queue")
+    .select("bank_transaction_id").eq("asaas_payment_id", txId).maybeSingle();
+  if (fila?.bank_transaction_id) {
+    const { data: btx } = await supabase.from("financial_bank_transactions")
+      .select("reference_id").eq("id", fila.bank_transaction_id).maybeSingle();
+    const { data: p } = btx?.reference_id
+      ? await supabase.from("financial_payables").select("supplier_name, description").eq("id", btx.reference_id).maybeSingle()
+      : { data: null };
+    if (p) return { account: rotuloConta(p), bankTxId: fila.bank_transaction_id };
   }
-  // 2) baixa manual: valor pago igual e data de pagamento igual (ou véspera —
-  //    baixa lançada no dia seguinte ao débito é comum). Com DOIS débitos de
-  //    mesmo valor na janela, não arrisca: já amarrou processo trabalhista no
-  //    Pix do Facebook (05/08, dois Pix de R$ 1.500 no mesmo dia).
-  if (payDate && !ambiguous) {
-    const abs = Math.abs(valueCents);
+
+  if (!payDate) return null;
+  const abs = Math.abs(valueCents);
+  const dia = 86400000;
+  const base = new Date(payDate).getTime();
+
+  // 2) lançamento da baixa no banco: cada pagamento (inclusive PARCIAL) vira um
+  //    débito com o valor exato apontando pra conta a pagar. Antes só achava conta
+  //    com status "paid" e paid_amount igual ao débito — baixa parcial (salário
+  //    pago em 2x) sempre caía em "SEM baixa" (Taynon, Natallia, Yasmim; 15/09/2026).
+  const { data: txs } = await supabase.from("financial_bank_transactions")
+    .select("id, reference_id")
+    .eq("type", "debit").eq("reference_type", "payable")
+    .gte("amount_cents", abs - 1).lte("amount_cents", abs + 1)
+    .gte("created_at", new Date(base - 5 * dia).toISOString())
+    .lte("created_at", new Date(base + 8 * dia).toISOString())
+    .limit(20);
+  let livres: any[] = txs || [];
+  if (livres.length) {
+    const { data: usados } = await supabase.from("asaas_receipt_queue")
+      .select("bank_transaction_id").in("bank_transaction_id", livres.map((t) => t.id));
+    const jaUsados = new Set((usados || []).map((u: any) => u.bank_transaction_id));
+    livres = livres.filter((t) => !jaUsados.has(t.id));
+  }
+  if (livres.length) {
+    const { data: contas } = await supabase.from("financial_payables")
+      .select("id, supplier_name, description, status")
+      .in("id", livres.map((t) => t.reference_id)).in("status", ["paid", "partial"]);
+    const porId = new Map((contas || []).map((c: any) => [c.id, c]));
+    const validos = livres.filter((t) => porId.has(t.reference_id));
+    const porNome = beneficiario ? validos.filter((t) => nomeBate(beneficiario, porId.get(t.reference_id).supplier_name)) : [];
+    // mesmo valor em mais de um lugar: só casa se o nome do beneficiário confirmar
+    const escolhido = porNome.length === 1 ? porNome[0] : (validos.length === 1 && !ambiguous ? validos[0] : null);
+    if (escolhido) return { account: rotuloConta(porId.get(escolhido.reference_id)), bankTxId: escolhido.id };
+  }
+
+  // 3) baixa manual sem lançamento bancário: valor pago igual e data próxima
+  //    (cartão/Ebanx debita dias depois da baixa). Com DOIS débitos de mesmo valor
+  //    na janela, não arrisca: já amarrou processo trabalhista no Pix do Facebook
+  //    (05/08, dois Pix de R$ 1.500 no mesmo dia).
+  if (!ambiguous) {
     const { data: cands } = await supabase.from("financial_payables")
       .select("id, supplier_name, description, paid_date")
       .eq("status", "paid").is("asaas_transaction_id", null)
       .gte("paid_amount", (abs - 1) / 100).lte("paid_amount", (abs + 1) / 100)
-      .gte("paid_date", new Date(new Date(payDate).getTime() - 86400000).toISOString().slice(0, 10))
-      .lte("paid_date", new Date(new Date(payDate).getTime() + 2 * 86400000).toISOString().slice(0, 10))
+      .gte("paid_date", new Date(base - 5 * dia).toISOString().slice(0, 10))
+      .lte("paid_date", new Date(base + 2 * dia).toISOString().slice(0, 10))
       .limit(2);
     if (cands?.length === 1) {
       await supabase.from("financial_payables")
         .update({ asaas_transaction_id: txId }).eq("id", cands[0].id);
-      return { account: [cands[0].description, cands[0].supplier_name].filter(Boolean).join(" — ") || "Conta a pagar" };
+      return { account: rotuloConta(cands[0]) };
     }
   }
   return null;
@@ -281,7 +337,7 @@ Deno.serve(async (req: Request) => {
         const valueCents = Math.round((t.value || 0) * 100);
         const payDate = String(t.date || "").slice(0, 10) || null;
         const { forma, beneficiario } = parseDescricao(String(t.description || ""), String(t.type || ""));
-        const baixa = await findBaixaPagar(supabase, txId, valueCents, payDate, (contagem.get(valueCents) || 0) > 1)
+        const baixa = await findBaixaPagar(supabase, txId, valueCents, payDate, (contagem.get(valueCents) || 0) > 1, beneficiario)
           || matchRule(rules, beneficiario);
         out.push({ id: txId, valor_cents: valueCents, data: payDate, forma, beneficiario,
                    conta: baixa?.account || null, tem_baixa: !!baixa });
@@ -345,7 +401,7 @@ Deno.serve(async (req: Request) => {
         const valueCents = Math.round((t.value || 0) * 100);
         const payDate = String(t.date || "").slice(0, 10) || null;
         const { forma, beneficiario } = parseDescricao(String(t.description || ""), String(t.type || ""));
-        const baixa = await findBaixaPagar(supabase, txId, valueCents, payDate, (contagem.get(valueCents) || 0) > 1)
+        const baixa = await findBaixaPagar(supabase, txId, valueCents, payDate, (contagem.get(valueCents) || 0) > 1, beneficiario)
           || matchRule(rules, beneficiario);
         // include_pending: manda também o que ainda não tem baixa (o texto fica
         // com o beneficiário do extrato no lugar da conta interna)
@@ -367,6 +423,7 @@ Deno.serve(async (req: Request) => {
             asaas_payment_id: txId, value_cents: valueCents, billing_type: forma,
             payment_date: payDate, customer_name: beneficiario || null,
             account_desc: baixa?.account || null, status: "sent",
+            bank_transaction_id: (baixa as any)?.bankTxId || null,
             sent_at: new Date().toISOString(), updated_at: new Date().toISOString(),
           };
           if (statusPorId.has(txId)) {
@@ -424,7 +481,7 @@ Deno.serve(async (req: Request) => {
       const payDate = String(t.date || "").slice(0, 10) || null;
       const { forma, beneficiario } = parseDescricao(String(t.description || ""), String(t.type || ""));
 
-      const baixa = await findBaixaPagar(supabase, txId, valueCents, payDate, (contagem.get(valueCents) || 0) > 1)
+      const baixa = await findBaixaPagar(supabase, txId, valueCents, payDate, (contagem.get(valueCents) || 0) > 1, beneficiario)
         || matchRule(rules, beneficiario);
 
       if (novo) {
@@ -432,6 +489,7 @@ Deno.serve(async (req: Request) => {
           asaas_payment_id: txId, value_cents: valueCents,
           billing_type: forma, payment_date: payDate,
           customer_name: beneficiario || null, account_desc: baixa?.account || null,
+          bank_transaction_id: (baixa as any)?.bankTxId || null,
           status: baixa ? "ready" : "awaiting_baixa",
         });
       }
@@ -449,7 +507,7 @@ Deno.serve(async (req: Request) => {
 
       // com baixa: fica pronto; quem envia é o lote diário das 17h (send_ready)
       await supabase.from("asaas_receipt_queue")
-        .update({ status: "ready", account_desc: baixa.account, updated_at: new Date().toISOString() })
+        .update({ status: "ready", account_desc: baixa.account, bank_transaction_id: (baixa as any).bankTxId || null, updated_at: new Date().toISOString() })
         .eq("asaas_payment_id", txId);
     }
 
