@@ -13,7 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, ArrowLeft, Download, Loader2, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertTriangle, ArrowLeft, CalendarDays, Download, Loader2, RefreshCw, Search, ShieldCheck } from "lucide-react";
 
 interface CampaignRow {
   id: string; created_at: string; finished_at: string | null; status: string; template_name: string;
@@ -82,6 +83,29 @@ const dt = (s: string | null) =>
   s ? new Date(s).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
 const tplLabel = (name: string) => name.replace(/_/g, " ");
 
+// Filtro por data (data do disparo). Datas no fuso do navegador.
+type Periodo = "hoje" | "ontem" | "7" | "30" | "90" | "180" | "custom";
+const PERIODO_LABEL: Record<Periodo, string> = {
+  hoje: "Hoje", ontem: "Ontem", "7": "Últimos 7 dias", "30": "Últimos 30 dias",
+  "90": "Últimos 90 dias", "180": "Últimos 180 dias", custom: "Personalizado",
+};
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const inicioDoDia = (s: string) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+function intervaloDo(periodo: Periodo, de: string, ate: string): { from: Date; to: Date } {
+  const hoje = inicioDoDia(ymd(new Date()));
+  const amanha = new Date(hoje); amanha.setDate(amanha.getDate() + 1);
+  if (periodo === "hoje") return { from: hoje, to: amanha };
+  if (periodo === "ontem") { const o = new Date(hoje); o.setDate(o.getDate() - 1); return { from: o, to: hoje }; }
+  if (periodo === "custom") {
+    const from = de ? inicioDoDia(de) : new Date(2020, 0, 1);
+    const to = ate ? inicioDoDia(ate) : new Date(hoje);
+    to.setDate(to.getDate() + 1);
+    return { from, to };
+  }
+  const from = new Date(hoje); from.setDate(from.getDate() - (Number(periodo) - 1));
+  return { from, to: amanha };
+}
+
 function useInstances() {
   const [instances, setInstances] = useState<Instance[]>([]);
   const load = useCallback(async () => {
@@ -144,19 +168,28 @@ function DisparosLista() {
   const [loading, setLoading] = useState(true);
   const [rateInput, setRateInput] = useState("");
   const [savingRate, setSavingRate] = useState(false);
+  const [periodo, setPeriodo] = useState<Periodo>("30");
+  const [de, setDe] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 29); return ymd(d); });
+  const [ate, setAte] = useState(() => ymd(new Date()));
 
   const load = useCallback(async () => {
     setLoading(true);
+    const { from, to } = intervaloDo(periodo, de, ate);
+    const range = { p_from: from.toISOString(), p_to: to.toISOString() };
     const [c, e] = await Promise.all([
-      supabase.rpc("official_campaigns_list" as any, { p_days: 180 }),
-      supabase.rpc("official_campaign_errors" as any, { p_days: 30 }),
+      supabase.rpc("official_campaigns_range" as any, range),
+      supabase.rpc("official_campaign_errors_range" as any, range),
     ]);
     if (c.error) toast.error("Não consegui carregar os disparos");
     setRows(((c.data || []) as any[]).map((r) => ({ ...r })) as CampaignRow[]);
     setErrors((e.data || []) as ErrorRow[]);
     setLoading(false);
-  }, []);
+  }, [periodo, de, ate]);
   useEffect(() => { load(); }, [load]);
+
+  const periodoTexto = periodo === "custom"
+    ? `${de ? inicioDoDia(de).toLocaleDateString("pt-BR") : "início"} a ${ate ? inicioDoDia(ate).toLocaleDateString("pt-BR") : "hoje"}`
+    : PERIODO_LABEL[periodo];
 
   useEffect(() => {
     const inst = instances[0];
@@ -205,10 +238,30 @@ function DisparosLista() {
       <div className="flex flex-wrap items-center gap-2">
         <ShieldCheck className="h-5 w-5 text-emerald-600" />
         <h1 className="text-xl font-bold">Disparos API oficial</h1>
-        <span className="text-xs text-muted-foreground">Últimos 180 dias</span>
-        <Button variant="outline" size="sm" className="ml-auto gap-1.5" onClick={load} disabled={loading}>
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Atualizar
-        </Button>
+        <span className="text-xs text-muted-foreground">{periodoTexto}</span>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+            <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
+              <SelectTrigger className="h-8 w-[170px] text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(Object.keys(PERIODO_LABEL) as Periodo[]).map((k) => (
+                  <SelectItem key={k} value={k}>{PERIODO_LABEL[k]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {periodo === "custom" && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Input type="date" className="h-8 w-[150px] text-sm" value={de} max={ate || undefined} onChange={(e) => setDe(e.target.value)} />
+              <span>até</span>
+              <Input type="date" className="h-8 w-[150px] text-sm" value={ate} min={de || undefined} onChange={(e) => setAte(e.target.value)} />
+            </div>
+          )}
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={load} disabled={loading}>
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Atualizar
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
@@ -233,7 +286,7 @@ function DisparosLista() {
           {loading ? (
             <div className="py-10 text-center text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin inline mr-2" />Carregando…</div>
           ) : !rows.length ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">Nenhum disparo ainda. Selecione leads em Negócios e use "Template oficial".</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">Nenhum disparo nesse período. Pra disparar, selecione leads em Negócios e use "Template oficial".</div>
           ) : (
             <div className="rounded-lg border overflow-x-auto">
               <table className="w-full text-sm">
@@ -292,7 +345,7 @@ function DisparosLista() {
 
         <TabsContent value="erros" className="mt-4 space-y-4">
           {!errors.length ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">Nenhum erro nos últimos 30 dias.</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">Nenhum erro nesse período.</div>
           ) : (
             <>
               <div className="grid gap-2 md:grid-cols-2">
