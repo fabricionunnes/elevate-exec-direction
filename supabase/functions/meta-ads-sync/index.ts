@@ -12,6 +12,32 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const GRAPH_API = "https://graph.facebook.com/v21.0";
 const META_ADS_STABLE_REDIRECT_URI = "https://xrncvhzxjmddqluxoosu.supabase.co/functions/v1/meta-ads-callback";
 
+// Busca TODAS as páginas da Graph. Conta com muitos anúncios estoura
+// "Please reduce the amount of data you're asking for" (Be Gym, 15/09/2026):
+// nesse caso reduz o limit pela metade e tenta de novo, até 5 por página.
+async function fetchAllPages(url: string, startLimit: number, label: string): Promise<any[]> {
+  let limit = startLimit;
+  let next: string | null = `${url}${url.includes("?") ? "&" : "?"}limit=${limit}`;
+  const out: any[] = [];
+  let guard = 0;
+  while (next && guard++ < 80) {
+    const res = await fetchWithTimeout(next, 60000);
+    const data = await res.json();
+    if (data.error) {
+      const tooMuch = /reduce the amount of data/i.test(String(data.error.message || "")) || data.error.code === 1;
+      if (tooMuch && limit > 5) {
+        limit = Math.max(5, Math.floor(limit / 2));
+        next = next.replace(/([?&])limit=\d+/, `$1limit=${limit}`);
+        continue;
+      }
+      throw new Error(`${label}: ${data.error.message}`);
+    }
+    out.push(...(data.data || []));
+    next = data.paging?.next || null;
+  }
+  return out;
+}
+
 async function fetchWithTimeout(url: string, timeout = 30000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
@@ -300,10 +326,8 @@ Deno.serve(async (req) => {
       const insightFields = "impressions,reach,clicks,spend,cpc,cpm,ctr,actions,action_values,frequency";
 
       // ── Fetch Campaigns ──
-      const campaignsUrl = `${GRAPH_API}/${adAccountId}/campaigns?fields=name,status,objective,daily_budget,lifetime_budget,insights.time_range({"since":"${start}","until":"${end}"}).fields(${insightFields})&limit=100&access_token=${token}`;
-      const campaignsRes = await fetchWithTimeout(campaignsUrl, 60000);
-      const campaignsData = await campaignsRes.json();
-      if (campaignsData.error) throw new Error(`Campaigns: ${campaignsData.error.message}`);
+      const campaignsUrl = `${GRAPH_API}/${adAccountId}/campaigns?fields=name,status,objective,daily_budget,lifetime_budget,insights.time_range({"since":"${start}","until":"${end}"}).fields(${insightFields})&access_token=${token}`;
+      const campaignsData = { data: await fetchAllPages(campaignsUrl, 100, "Campaigns") };
 
       const campaigns = (campaignsData.data || []).map((c: any) => {
         const ins = c.insights?.data?.[0] || {};
@@ -341,10 +365,8 @@ Deno.serve(async (req) => {
       });
 
       // ── Fetch AdSets ──
-      const adsetsUrl = `${GRAPH_API}/${adAccountId}/adsets?fields=name,status,campaign_id,campaign{name},daily_budget,insights.time_range({"since":"${start}","until":"${end}"}).fields(${insightFields})&limit=200&access_token=${token}`;
-      const adsetsRes = await fetchWithTimeout(adsetsUrl, 60000);
-      const adsetsData = await adsetsRes.json();
-      if (adsetsData.error) throw new Error(`AdSets: ${adsetsData.error.message}`);
+      const adsetsUrl = `${GRAPH_API}/${adAccountId}/adsets?fields=name,status,campaign_id,campaign{name},daily_budget,insights.time_range({"since":"${start}","until":"${end}"}).fields(${insightFields})&access_token=${token}`;
+      const adsetsData = { data: await fetchAllPages(adsetsUrl, 100, "AdSets") };
 
       const adsets = (adsetsData.data || []).map((a: any) => {
         const ins = a.insights?.data?.[0] || {};
@@ -376,10 +398,16 @@ Deno.serve(async (req) => {
       });
 
       // ── Fetch Ads ──
-      const adsUrl = `${GRAPH_API}/${adAccountId}/ads?fields=name,status,adset_id,adset{name},campaign_id,campaign{name},creative{thumbnail_url,body,title,image_url,object_story_spec},insights.time_range({"since":"${start}","until":"${end}"}).fields(${insightFields})&limit=200&access_token=${token}`;
-      const adsRes = await fetchWithTimeout(adsUrl, 60000);
-      const adsData = await adsRes.json();
-      if (adsData.error) throw new Error(`Ads: ${adsData.error.message}`);
+      const adsUrl = `${GRAPH_API}/${adAccountId}/ads?fields=name,status,adset_id,adset{name},campaign_id,campaign{name},creative{thumbnail_url,body,title,image_url,object_story_spec},insights.time_range({"since":"${start}","until":"${end}"}).fields(${insightFields})&access_token=${token}`;
+      // anúncios (criativos) são o pedido mais pesado: se falhar, campanhas e conjuntos ainda salvam
+      let adsWarning: string | null = null;
+      let adsData: { data: any[] } = { data: [] };
+      try {
+        adsData = { data: await fetchAllPages(adsUrl, 25, "Ads") };
+      } catch (e) {
+        adsWarning = String((e as Error)?.message || e);
+        console.error("[meta-ads-sync] anúncios não vieram:", adsWarning);
+      }
 
       const ads = (adsData.data || []).map((ad: any) => {
         const ins = ad.insights?.data?.[0] || {};
@@ -422,7 +450,7 @@ Deno.serve(async (req) => {
       // Clear old data for this date range first
       await supabase.from("meta_ads_campaigns").delete().eq("project_id", project_id).eq("date_start", start).eq("date_stop", end);
       await supabase.from("meta_ads_adsets").delete().eq("project_id", project_id).eq("date_start", start).eq("date_stop", end);
-      await supabase.from("meta_ads_ads").delete().eq("project_id", project_id).eq("date_start", start).eq("date_stop", end);
+      if (!adsWarning) await supabase.from("meta_ads_ads").delete().eq("project_id", project_id).eq("date_start", start).eq("date_stop", end);
 
       if (campaigns.length > 0) await supabase.from("meta_ads_campaigns").insert(campaigns);
       if (adsets.length > 0) await supabase.from("meta_ads_adsets").insert(adsets);
