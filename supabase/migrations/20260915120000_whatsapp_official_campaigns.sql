@@ -46,6 +46,11 @@ create index if not exists wocr_wamid_idx on public.whatsapp_official_campaign_r
 create index if not exists wocr_lead_idx on public.whatsapp_official_campaign_recipients(lead_id, sent_at desc);
 create index if not exists woc_created_idx on public.whatsapp_official_campaigns(created_at desc);
 
+grant select, insert, update on public.whatsapp_official_campaigns to authenticated;
+grant select, insert, update on public.whatsapp_official_campaign_recipients to authenticated;
+grant select, insert, update, delete on public.whatsapp_official_campaigns to service_role;
+grant select, insert, update, delete on public.whatsapp_official_campaign_recipients to service_role;
+
 alter table public.whatsapp_official_campaigns enable row level security;
 alter table public.whatsapp_official_campaign_recipients enable row level security;
 
