@@ -662,7 +662,7 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
 
     if (name === "marcar_perdido") {
       if (!leadId) return "Erro: conversa sem negócio vinculado.";
-      const motivo = String(input?.motivo || "").trim() || "lead recusou duas vezes";
+      const motivo = String(input?.motivo || "").trim() || "lead recusou";
       const tipo = String(input?.tipo || "outro");
       const reasonName: Record<string, string> = {
         nao_quer: "Decidiu não fazer nada", timing: "Timing - Não é o momento", preco: "Preço", concorrente: "Concorrente", outro: "Outro",
@@ -675,7 +675,7 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
         .eq("name", reasonName[tipo] || "Outro").eq("is_active", true).limit(1).maybeSingle();
       const now = new Date().toISOString();
       const patch: Record<string, unknown> = {
-        notes: [lead.notes, `[Agente IA] Perdido após 2 recusas (${reasonName[tipo] || "Outro"}): ${motivo}`].filter(Boolean).join("\n"),
+        notes: [lead.notes, `[Agente IA] Perdido por recusa (${reasonName[tipo] || "Outro"}): ${motivo}`].filter(Boolean).join("\n"),
         closed_at: now,
       };
       if (reason?.id) patch.loss_reason_id = reason.id;
@@ -1342,6 +1342,50 @@ Deno.serve(async (req) => {
       return { ok: true, opt_out: true, sent: enviado };
     }
 
+    // RECUSA (16/09/2026, Fabrício): "não tenho interesse" encerra na hora. Nada de
+    // tentar contornar (antes a regra era 1 tentativa — Kauan clicou "Não tenho
+    // interesse" no template e a IA mandou pergunta de qualificação). Sem IA: despedida
+    // curta e fixa, sem pergunta; agente desligado na conversa; negócio perdido.
+    const ultimaFala = String(msgs[msgs.length - 1].content || "").trim();
+    const SEM_INTERESSE_RE = /n[aã]o\s+(tenho|temos|tem)\s+(mais\s+)?interesse|sem\s+interesse|n[aã]o\s+(me\s+|nos\s+)?interessa|n[aã]o\s+(quero|queremos)(\s+n[aã]o)?\s*[.!]*$|n[aã]o\s+(quero|queremos)\s+(saber|conhecer|nada|contratar|participar)|^\s*n[aã]o[,.!\s]+obrigad[oa]|dispenso|n[aã]o\s+(preciso|precisamos)\b|n[aã]o\s+(vou|vamos)\s+querer/i;
+    const NEGATIVA_SOLTA_RE = /\bn[aã]o\b|dispens|j[aá]\s+(tenho|temos|uso|usamos|contratei|contratamos|fechei|fechamos)/i;
+    let recusou = SEM_INTERESSE_RE.test(ultimaFala);
+    if (!recusou && ultimaFala.length > 0 && ultimaFala.length <= 280 && NEGATIVA_SOLTA_RE.test(ultimaFala)) {
+      recusou = await leadRecusou(msgs.slice(-8), leadNmFor(conv));
+    }
+    if (recusou) {
+      const primeiroR = String(conv.contact?.name || "").trim().split(/\s+/)[0];
+      const nomeR = primeiroR && !/^\d+$/.test(primeiroR) && !["sou", "eu", "me"].includes(primeiroR.toLowerCase()) ? primeiroR : "";
+      const encerramento = `Tudo bem${nomeR ? `, ${nomeR}` : ""}. Obrigado pelo retorno, fico à disposição se um dia fizer sentido.`;
+      if (dry_run) return { ok: true, dry_run: true, recusa: true, reply: encerramento };
+      let enviadoR = false;
+      if (isIG) {
+        const { error: se } = await supabase.functions.invoke("instagram-send", { body: { conversationId: conversation_id, message: encerramento, staffId: null } });
+        enviadoR = !se;
+      } else {
+        const ph = String(conv.contact?.phone || "").replace(/\D/g, "");
+        const sent = isOFFICIAL ? await sendOfficialText(supabase, conv.official_instance_id, ph, encerramento) : await sendWhatsAppText(supabase, conv.instance_id, ph, encerramento);
+        enviadoR = sent.ok;
+        if (sent.ok && !sent.isV2) {
+          await supabase.from("crm_whatsapp_messages").insert({
+            conversation_id, content: encerramento, type: "text", direction: "outbound", status: "sent",
+            remote_id: sent.remoteId || null, whatsapp_message_id: isOFFICIAL ? sent.remoteId || null : null, is_ai: true, sent_by: null,
+          });
+        }
+        if (sent.ok) await supabase.from("crm_whatsapp_conversations").update({ last_message: encerramento.substring(0, 255), last_message_at: new Date().toISOString() }).eq("id", conversation_id);
+      }
+      await supabase.from("crm_ai_agent_conversation_overrides").upsert({
+        agent_id: agent.id, conversation_id, channel, enabled: false, reply_mode: mode,
+      }, { onConflict: "conversation_id,channel" });
+      if (conv.lead_id) {
+        await runTool(supabase, agent, conv.lead_id, "marcar_perdido", { motivo: `Disse que não tem interesse: "${ultimaFala.slice(0, 120)}"`, tipo: "nao_quer" });
+      }
+      await supabase.from("crm_ai_agent_runs").insert({
+        agent_id: agent.id, channel, conversation_id, mode, outcome: enviadoR ? "recusa_encerrado" : "recusa_send_failed", reply: encerramento,
+      }).then(() => {}, () => {});
+      return { ok: true, recusa: true, closed: true, sent: enviadoR };
+    }
+
     // 6) Base de conhecimento
     const { data: kn } = await supabase.from("crm_ai_agent_knowledge")
       .select("title, content").eq("agent_id", agent.id).eq("status", "ready");
@@ -1510,7 +1554,7 @@ Deno.serve(async (req) => {
         ? `\nFORA DO PERFIL: se durante a conversa ficar claro que o lead não é do nosso perfil (outro segmento, sem time comercial, pessoa procurando emprego, curioso, concorrente), chame marcar_fora_do_perfil com o motivo e encerre com educação — sem insistir e sem agendar. Falta de orçamento agora ou "vou pensar" NÃO é fora de perfil: isso você trabalha como objeção.`
         : "",
       tools.some((t: any) => t.name === "marcar_perdido")
-        ? `\nRECUSA (regra obrigatória): se o lead disser que NÃO quer, não tem interesse, já tem outra solução ou pede pra parar, você faz UMA ÚNICA tentativa de contorno — curta, respeitosa, com um argumento plausível e específico pro caso dele (um dado, um exemplo, um ganho concreto ou uma pergunta que reabra), sem pressão. Se ele recusar de novo (ou reafirmar que não quer), NÃO insista: chame marcar_perdido com o motivo e o tipo, e encerre com educação em uma frase, sem nova pergunta. Nunca faça duas tentativas de contorno. Silêncio não é recusa.`
+        ? `\nRECUSA (regra obrigatória): se o lead disser que NÃO quer, não tem interesse, já tem outra solução ou pede pra parar, NÃO tente contornar, NÃO argumente e NÃO faça pergunta. Chame marcar_perdido com o motivo e o tipo e encerre com uma frase curta de agradecimento, sem pergunta. Depois disso você não fala mais com este lead. Silêncio não é recusa; dúvida ou "vou pensar" também não.`
         : "",
       confirmedTimeHint,
       missingNameHint,
