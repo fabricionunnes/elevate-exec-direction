@@ -134,14 +134,23 @@ async function contarEnviosDoDia() {
     .in("status", ["sent", "delivered", "read"]) // falha de entrega não consome limite nem conta como enviado
     .gte("sent_at", inicio.toISOString())
     .limit(10000);
-  const unicos24 = new Set<string>();
+  // último envio de cada contato na janela: ele sai da conta da Meta 24h depois desse envio
+  const ultimoPorContato = new Map<string, number>();
   let hojeTotal = 0;
   for (const r of (data || []) as any[]) {
-    const t = new Date(r.sent_at);
-    if (t >= desde24 && r.phone) unicos24.add(r.phone);
-    if (t >= hoje) hojeTotal++;
+    const t = new Date(r.sent_at).getTime();
+    if (t >= desde24.getTime() && r.phone) ultimoPorContato.set(r.phone, Math.max(ultimoPorContato.get(r.phone) || 0, t));
+    if (t >= hoje.getTime()) hojeTotal++;
   }
-  return { ultimas24: unicos24.size, hoje: hojeTotal };
+  const fimDoDia = new Date(); fimDoDia.setHours(23, 59, 59, 999);
+  let liberamHoje = 0;
+  let proximaLiberacao: number | null = null;
+  for (const t of ultimoPorContato.values()) {
+    const libera = t + 864e5;
+    if (libera <= fimDoDia.getTime()) liberamHoje++;
+    if (proximaLiberacao === null || libera < proximaLiberacao) proximaLiberacao = libera;
+  }
+  return { ultimas24: ultimoPorContato.size, hoje: hojeTotal, liberamHoje, proximaLiberacao };
 }
 
 const QUALIDADE: Record<string, { label: string; cls: string }> = {
@@ -152,7 +161,7 @@ const QUALIDADE: Record<string, { label: string; cls: string }> = {
 
 function LimiteDiarioCard({ instanceId, refreshKey }: { instanceId: string | null; refreshKey: number }) {
   const [lim, setLim] = useState<any>(null);
-  const [uso, setUso] = useState<{ ultimas24: number; hoje: number } | null>(null);
+  const [uso, setUso] = useState<{ ultimas24: number; hoje: number; liberamHoje: number; proximaLiberacao: number | null } | null>(null);
   const [erro, setErro] = useState("");
 
   useEffect(() => {
@@ -171,6 +180,10 @@ function LimiteDiarioCard({ instanceId, refreshKey }: { instanceId: string | nul
   const limite: number | null = lim ? lim.dailyLimit : null;
   const usados = uso?.ultimas24 ?? 0;
   const restam = limite == null ? null : Math.max(limite - usados, 0);
+  // quanto ainda dá pra disparar até 23:59: o que está livre agora + contatos que saem da janela de 24h hoje
+  const disponivelHoje = limite == null || !uso ? null : Math.min(limite, (restam || 0) + uso.liberamHoje);
+  const corDisponivel = disponivelHoje == null ? "" : disponivelHoje === 0 ? "text-red-600" : limite && disponivelHoje < limite * 0.2 ? "text-amber-600" : "text-emerald-600";
+  const hhmm = (ms: number) => new Date(ms).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   const pctUso = limite ? Math.min(100, Math.round((usados / limite) * 100)) : 0;
   const barra = pctUso >= 90 ? "bg-red-500" : pctUso >= 70 ? "bg-amber-500" : "bg-emerald-500";
   const q = QUALIDADE[lim?.qualityRating || ""];
@@ -206,6 +219,20 @@ function LimiteDiarioCard({ instanceId, refreshKey }: { instanceId: string | nul
             {restam != null ? `Restam ${restam.toLocaleString("pt-BR")} contatos novos agora. ` : ""}
             Conta só contatos únicos com template enviado ou entregue numa janela móvel de 24h; falhas ficam de fora.
           </div>
+        </div>
+
+        <div className="rounded-lg border-2 border-primary/20 bg-primary/5 px-4 py-2.5 min-w-[190px]">
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Ainda dá pra disparar hoje</div>
+          <div className={`text-3xl font-bold tabular-nums leading-tight ${corDisponivel}`}>
+            {disponivelHoje == null ? (lim || erro ? "—" : <Loader2 className="h-5 w-5 animate-spin" />) : disponivelHoje.toLocaleString("pt-BR")}
+          </div>
+          {disponivelHoje != null && (
+            <div className="text-[11px] text-muted-foreground">
+              {(restam || 0).toLocaleString("pt-BR")} agora
+              {uso && uso.liberamHoje > 0 ? ` + ${uso.liberamHoje.toLocaleString("pt-BR")} liberam até 23:59` : ""}
+              {uso && (restam || 0) === 0 && uso.proximaLiberacao ? ` · próxima liberação às ${hhmm(uso.proximaLiberacao)}` : ""}
+            </div>
+          )}
         </div>
 
         <div>
