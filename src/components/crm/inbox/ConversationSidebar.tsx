@@ -65,6 +65,11 @@ export function ConversationSidebar({
 
   // Agente de IA vinculado à instância desta conversa + override liga/desliga
   const [convAgent, setConvAgent] = useState<{ id: string; name: string } | null>(null);
+  // Troca manual de agente nesta conversa: lista de agentes ativos, agente padrão do número
+  // e o agente fixado no override (null = segue o padrão do número)
+  const [agentOptions, setAgentOptions] = useState<{ id: string; name: string }[]>([]);
+  const [defaultAgent, setDefaultAgent] = useState<{ id: string; name: string } | null>(null);
+  const [pinnedAgentId, setPinnedAgentId] = useState<string | null>(null);
   const [agentEnabled, setAgentEnabled] = useState(true);
   const [savingAgentToggle, setSavingAgentToggle] = useState(false);
   const [showAddDealDialog, setShowAddDealDialog] = useState(false);
@@ -91,35 +96,77 @@ export function ConversationSidebar({
   const isInstagram = (conversation as any).channel === "instagram";
   const conversationTable = (isInstagram ? "instagram_conversations" : "crm_whatsapp_conversations") as "crm_whatsapp_conversations";
   const agentChannel = isInstagram ? "instagram" : "whatsapp";
+  // Conversa da API oficial não tem instance_id: o agente fica vinculado ao número oficial
+  // (canal whatsapp_official). Antes o card do agente nem aparecia nessas conversas.
+  const isOfficialConv = !isInstagram && !conversation.instance_id && !!(conversation as any).official_instance_id;
+  const bindingChannel = isInstagram ? "instagram" : isOfficialConv ? "whatsapp_official" : "whatsapp";
   const agentInstanceId = isInstagram
     ? (conversation as any).instagram_instance_id
-    : conversation.instance_id;
+    : isOfficialConv ? (conversation as any).official_instance_id : conversation.instance_id;
 
-  // Carrega o agente de IA ativo desta instância + estado do override da conversa
+  // Carrega agentes ativos, o padrão do número e o agente fixado nesta conversa
   useEffect(() => {
     let active = true;
     setConvAgent(null);
     setAgentEnabled(true);
-    if (!agentInstanceId) return;
+    setDefaultAgent(null);
+    setPinnedAgentId(null);
     (async () => {
-      const { data: chRows } = await (supabase as any)
-        .from("crm_ai_agent_channels")
-        .select("agent:crm_ai_agents(id, name, is_active)")
-        .eq("channel", agentChannel)
-        .eq("instance_id", agentInstanceId);
-      const agents = (chRows || []).map((r: any) => r.agent).filter((a: any) => a?.is_active);
-      if (!active || agents.length === 0) return;
-      setConvAgent({ id: agents[0].id, name: agents[0].name });
-      const { data: ov } = await (supabase as any)
-        .from("crm_ai_agent_conversation_overrides")
-        .select("enabled")
-        .eq("conversation_id", conversation.id)
-        .eq("channel", agentChannel)
-        .maybeSingle();
-      if (active && ov) setAgentEnabled(ov.enabled !== false);
+      const [{ data: all }, { data: chRows }, { data: ov }] = await Promise.all([
+        (supabase as any).from("crm_ai_agents").select("id, name, is_active").eq("is_active", true).order("name"),
+        agentInstanceId
+          ? (supabase as any).from("crm_ai_agent_channels")
+              .select("agent:crm_ai_agents(id, name, is_active, created_at)")
+              .eq("channel", bindingChannel).eq("instance_id", agentInstanceId)
+          : Promise.resolve({ data: [] }),
+        (supabase as any).from("crm_ai_agent_conversation_overrides")
+          .select("enabled, agent_id").eq("conversation_id", conversation.id).eq("channel", agentChannel).maybeSingle(),
+      ]);
+      if (!active) return;
+      const opts = ((all || []) as any[]).map((a) => ({ id: a.id, name: a.name }));
+      setAgentOptions(opts);
+      // mesmo critério do motor: o agente mais antigo vinculado ao número
+      const bound = ((chRows || []) as any[]).map((r) => r.agent).filter((a) => a?.is_active)
+        .sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+      const padrao = bound[0] ? { id: bound[0].id, name: bound[0].name } : null;
+      setDefaultAgent(padrao);
+      const fixado = ov?.agent_id ? opts.find((o) => o.id === ov.agent_id) || null : null;
+      setPinnedAgentId(fixado && fixado.id !== padrao?.id ? fixado.id : null);
+      setConvAgent(fixado || padrao);
+      if (ov) setAgentEnabled(ov.enabled !== false);
     })();
     return () => { active = false; };
-  }, [conversation.id, agentChannel, agentInstanceId]);
+  }, [conversation.id, agentChannel, bindingChannel, agentInstanceId]);
+
+  const handleChangeAgent = async (value: string) => {
+    const novo = value === "__padrao__" ? null : value;
+    setSavingAgentToggle(true);
+    let error: any = null;
+    if (!novo && agentEnabled) {
+      // volta pro padrão do número sem forçar ligado: apaga a configuração da conversa,
+      // assim o funil do lead volta a decidir se o agente responde
+      ({ error } = await (supabase as any).from("crm_ai_agent_conversation_overrides")
+        .delete().eq("conversation_id", conversation.id).eq("channel", agentChannel));
+    } else {
+      ({ error } = await (supabase as any).from("crm_ai_agent_conversation_overrides").upsert({
+        conversation_id: conversation.id,
+        channel: agentChannel,
+        agent_id: novo,
+        enabled: novo ? true : agentEnabled,
+        updated_by: staffId,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "conversation_id,channel" }));
+    }
+    setSavingAgentToggle(false);
+    if (error) { toast.error("Erro ao trocar o agente desta conversa"); return; }
+    setPinnedAgentId(novo);
+    const escolhido = novo ? agentOptions.find((o) => o.id === novo) || null : defaultAgent;
+    setConvAgent(escolhido);
+    if (novo) setAgentEnabled(true);
+    toast.success(novo
+      ? `${escolhido?.name || "Agente"} passa a responder esta conversa`
+      : defaultAgent ? `Conversa volta pro agente padrão do número (${defaultAgent.name})` : "Conversa sem agente fixo");
+  };
 
   const handleToggleAgent = async (value: boolean) => {
     if (!convAgent) return;
@@ -130,7 +177,7 @@ export function ConversationSidebar({
       .upsert({
         conversation_id: conversation.id,
         channel: agentChannel,
-        agent_id: convAgent.id,
+        agent_id: pinnedAgentId,
         enabled: value,
         updated_by: staffId,
         updated_at: new Date().toISOString(),
@@ -725,19 +772,36 @@ export function ConversationSidebar({
         </div>
       </div>
 
-      {/* Agente IA: liga/desliga só nesta conversa */}
-      {convAgent && (
-        <div className="p-4 border-b border-border flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <Bot className={`h-4 w-4 shrink-0 ${agentEnabled ? "text-primary" : "text-muted-foreground"}`} />
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{convAgent.name}</p>
-              <p className="text-[11px] text-muted-foreground">
-                {agentEnabled ? "Respondendo esta conversa" : "Desligado nesta conversa"}
-              </p>
+      {/* Agente IA: liga/desliga e troca de agente só nesta conversa */}
+      {(convAgent || agentOptions.length > 0) && (
+        <div className="p-4 border-b border-border space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Bot className={`h-4 w-4 shrink-0 ${convAgent && agentEnabled ? "text-primary" : "text-muted-foreground"}`} />
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{convAgent?.name || "Nenhum agente nesta conversa"}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {!convAgent ? "Escolha um agente abaixo" : agentEnabled ? "Respondendo esta conversa" : "Desligado nesta conversa"}
+                </p>
+              </div>
             </div>
+            <Switch checked={!!convAgent && agentEnabled} onCheckedChange={handleToggleAgent} disabled={savingAgentToggle || !convAgent} />
           </div>
-          <Switch checked={agentEnabled} onCheckedChange={handleToggleAgent} disabled={savingAgentToggle} />
+          {agentOptions.length > 0 && (
+            <Select value={pinnedAgentId || "__padrao__"} onValueChange={handleChangeAgent} disabled={savingAgentToggle}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__padrao__">
+                  {defaultAgent ? `Padrão do número (${defaultAgent.name})` : "Padrão do número (sem agente)"}
+                </SelectItem>
+                {agentOptions.filter((a) => a.id !== defaultAgent?.id).map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       )}
 
