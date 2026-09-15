@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { supabase } from "@/integrations/supabase/client";
 import { syncLeadToClint } from "@/hooks/useClintSync";
 import {
@@ -121,6 +122,7 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
   const [stages, setStages] = useState<any[]>([]);
   const [staffList, setStaffList] = useState<any[]>([]);
   const [originsList, setOriginsList] = useState<any[]>([]);
+  const [pipelinesList, setPipelinesList] = useState<{ id: string; name: string }[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -145,26 +147,39 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
     owner_staff_id: "",
   });
 
+  // Funil primeiro, etapa depois: a origem escolhida define o funil (pipeline)
+  // e a lista de etapas. Abre já no funil do kanban atual.
+  const selectedPipelineId = originsList.find((o) => o.id === formData.origin_id)?.pipeline_id || "";
+
   useEffect(() => {
     if (pipelineId && open) {
-      loadStages();
       loadStaff();
       loadOrigins();
     }
   }, [pipelineId, open]);
 
-  const loadStages = async () => {
+  useEffect(() => {
+    if (!open) return;
+    if (!selectedPipelineId) { setStages([]); setFormData(prev => ({ ...prev, stage_id: "" })); return; }
+    loadStages(selectedPipelineId);
+  }, [open, selectedPipelineId]);
+
+  const loadStages = async (pid: string) => {
     const { data } = await supabase
       .from("crm_stages")
       .select("*")
-      .eq("pipeline_id", pipelineId)
+      .eq("pipeline_id", pid)
       .order("sort_order");
     
     setStages(data || []);
     if (data && data.length > 0) {
-      // Use initialStageId if provided, otherwise use the first stage
-      const defaultStageId = initialStageId || data[0].id;
+      // Etapa inicial do kanban só vale se o funil escolhido for o mesmo; senão, a primeira etapa
+      const defaultStageId = pid === pipelineId && initialStageId && data.some((s: any) => s.id === initialStageId)
+        ? initialStageId
+        : data[0].id;
       setFormData(prev => ({ ...prev, stage_id: defaultStageId }));
+    } else {
+      setFormData(prev => ({ ...prev, stage_id: "" }));
     }
   };
 
@@ -180,25 +195,35 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
   };
 
   const loadOrigins = async () => {
-    const { data } = await supabase
-      .from("crm_origins")
-      .select("id, name, pipeline_id")
-      .eq("is_active", true)
-      .eq("pipeline_id", pipelineId)
-      .order("sort_order");
-    
-    setOriginsList(data || []);
-    // Auto-select first origin if only one exists
-    if (data && data.length === 1) {
-      setFormData(prev => ({ ...prev, origin_id: data[0].id }));
-    }
+    const [{ data }, { data: pipes }] = await Promise.all([
+      supabase.from("crm_origins").select("id, name, pipeline_id").eq("is_active", true).order("sort_order"),
+      supabase.from("crm_pipelines").select("id, name"),
+    ]);
+    const list = (data || []).filter((o: any) => o.pipeline_id);
+    setOriginsList(list);
+    setPipelinesList((pipes || []) as { id: string; name: string }[]);
+    // começa no funil do kanban aberto
+    const doFunilAtual = list.find((o: any) => o.pipeline_id === pipelineId);
+    setFormData(prev => ({ ...prev, origin_id: prev.origin_id && list.some((o: any) => o.id === prev.origin_id) ? prev.origin_id : (doFunilAtual?.id || "") }));
   };
+
+  // origem com o mesmo nome em funis diferentes: mostra o funil junto
+  const originOptions = originsList.map((o) => {
+    const repetido = originsList.filter((x) => x.name === o.name).length > 1;
+    const funil = pipelinesList.find((p) => p.id === o.pipeline_id)?.name;
+    return { value: o.id, label: repetido && funil ? `${o.name} (${funil})` : o.name };
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.name.trim()) {
       toast.error("Nome é obrigatório");
+      return;
+    }
+
+    if (!formData.origin_id || !selectedPipelineId) {
+      toast.error("Selecione o funil");
       return;
     }
 
@@ -239,7 +264,7 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
           address_neighborhood: formData.address_neighborhood || null,
           zipcode: formData.zipcode || null,
           origin_id: formData.origin_id || null,
-          pipeline_id: pipelineId,
+          pipeline_id: selectedPipelineId,
           stage_id: formData.stage_id,
           opportunity_value: formData.opportunity_value ? parseFloat(formData.opportunity_value) : 0,
           segment: formData.segment || null,
@@ -263,7 +288,7 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
         const { data: pipelineData } = await supabase
           .from("crm_pipelines")
           .select("name")
-          .eq("id", pipelineId)
+          .eq("id", selectedPipelineId)
           .maybeSingle();
         const pipelineName = pipelineData?.name || "Desconhecido";
 
@@ -277,7 +302,7 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
                 lead_name: formData.name,
                 lead_phone: formData.phone || "",
                 company_name: formData.company || "",
-                pipeline_id: pipelineId,
+                pipeline_id: selectedPipelineId,
                 pipeline_name: pipelineName,
               },
             },
@@ -370,7 +395,7 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
                 lead_phone: formData.phone,
                 lead_email: formData.email || "",
                 company_name: formData.company || "",
-                pipeline_id: pipelineId,
+                pipeline_id: selectedPipelineId,
                 pipeline_name: pipelineName,
                 stage_id: formData.stage_id,
                 stage_name: stages.find(s => s.id === formData.stage_id)?.name || "",
@@ -399,8 +424,8 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
         address_complement: "",
         address_neighborhood: "",
         zipcode: "",
-        origin_id: originsList[0]?.id || "",
-        stage_id: stages[0]?.id || "",
+        origin_id: originsList.find((o) => o.pipeline_id === pipelineId)?.id || "",
+        stage_id: "",
         opportunity_value: "",
         segment: "",
         main_pain: "",
@@ -535,34 +560,29 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
           {/* Pipeline Info */}
           <div className="grid grid-cols-2 gap-4">
             <div>
+              <Label htmlFor="origin">Origem/Funil *</Label>
+              <SearchableSelect
+                value={formData.origin_id}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, origin_id: value, stage_id: "" }))}
+                options={originOptions}
+                placeholder="Selecione o funil"
+                emptyMessage="Nenhum funil encontrado."
+              />
+            </div>
+
+            <div>
               <Label htmlFor="stage">Etapa *</Label>
               <Select
                 value={formData.stage_id}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, stage_id: value }))}
+                disabled={!selectedPipelineId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
+                  <SelectValue placeholder={selectedPipelineId ? "Selecione a etapa" : "Escolha o funil primeiro"} />
                 </SelectTrigger>
                 <SelectContent>
                   {stages.map(stage => (
                     <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="origin">Origem/Funil *</Label>
-              <Select
-                value={formData.origin_id}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, origin_id: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a origem" />
-                </SelectTrigger>
-                <SelectContent>
-                  {originsList.map(origin => (
-                    <SelectItem key={origin.id} value={origin.id}>{origin.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
