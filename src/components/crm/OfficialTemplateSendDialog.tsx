@@ -6,11 +6,12 @@
 // mensagem no Atendimento (a Cloud API não ecoa o que envia).
 //
 // Todo disparo vira um registro em whatsapp_official_campaigns com um
-// destinatário por lead (enviado, erro no envio, pulado) e abre a tela
-// /crm/disparos/:id no fim. Antes o dialog ficava aberto quando havia erro e um
-// novo clique reenviava pra todo mundo (15/09/2026: 26 leads receberam 2x).
+// destinatário por lead (pending ou pulado). O ENVIO roda no servidor
+// (edge official-campaign-dispatch): o dialog registra, chama a função e fecha;
+// o andamento aparece no OfficialDispatchProgress (canto do CRM).
+// Histórico: antes o loop rodava aqui e um segundo clique reenviava pra todos
+// (15/09/2026: 26 leads receberam 2x).
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -90,7 +91,6 @@ function render(body: string, values: string[], lead: OfficialTemplateLead, staf
 }
 
 export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds, conversationId, onSent }: Props) {
-  const navigate = useNavigate();
   const [instances, setInstances] = useState<OfficialInstance[]>([]);
   const [instanceId, setInstanceId] = useState<string>("");
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -273,24 +273,10 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sendable, stages]);
 
-  const moverLead = async (lead: OfficialTemplateLead): Promise<{ from: string | null; to: string } | null> => {
-    if (!lead.id || moveMode === "none") return null;
-    let to: Stage | null = null;
-    if (moveMode === "next") to = nextStageFor(lead);
-    else to = stages.find((s) => s.id === moveMode) || null;
-    if (!to || to.id === lead.stage_id) return null;
-    const upd: Record<string, string> = { stage_id: to.id };
-    if (to.pipeline_id !== lead.pipeline_id) upd.pipeline_id = to.pipeline_id;
-    const { error } = await supabase.from("crm_leads").update(upd).eq("id", lead.id);
-    if (error) { console.error("mover lead após disparo:", lead.name, error); return null; }
-    return { from: lead.stage_id || null, to: to.id };
-  };
-
   const handleSend = async () => {
     if (sending || !instanceId || !template || !sendable.length) return;
     if (values.some((v) => !v.trim())) { toast.error("Preencha todas as variáveis do template"); return; }
     setSending(true);
-    setProgress({ ok: 0, fail: 0, total: sendable.length });
 
     const bodyPreview = render(body, values, { id: null, name: "{primeiro_nome}", phone: null }, staff?.name || "");
     const { data: camp, error: campErr } = await supabase.from("whatsapp_official_campaigns").insert({
@@ -298,6 +284,7 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
       template_name: template.name,
       template_language: template.language,
       template_category: template.category,
+      template_body: body,
       body_preview: bodyPreview,
       variables: values,
       created_by_staff_id: staff?.id || null,
@@ -313,78 +300,39 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
       console.error("criar disparo:", campErr);
       toast.error("Não consegui registrar o disparo. Nada foi enviado.");
       setSending(false);
-      setProgress(null);
       return;
     }
 
-    const recipientId = new Map<OfficialTemplateLead, string>();
     const base = (t: OfficialTemplateLead) => ({ campaign_id: camp.id, lead_id: t.id, lead_name: t.name, phone: toE164BR(t.phone || "") || t.phone });
     const rows: any[] = [];
-    for (const t of sendable) {
-      const id = crypto.randomUUID();
-      recipientId.set(t, id);
-      rows.push({ id, ...base(t), status: "pending" });
-    }
+    for (const t of sendable) rows.push({ ...base(t), status: "pending" });
     for (const t of targets.filter((x) => toE164BR(x.phone || "").length < 12)) rows.push({ ...base(t), status: "skipped", error_text: "Sem telefone válido" });
     if (skipRecent) for (const t of recentTargets) rows.push({ ...base(t), status: "skipped", error_text: `Já recebeu este template nos últimos ${RECENT_DAYS} dias` });
     for (const t of optOutTargets) rows.push({ ...base(t), status: "skipped", error_text: "Pediu pra não receber (Opt-out)" });
+    let falhouRegistro = false;
     for (const part of chunk(rows, 500)) {
       const { error } = await supabase.from("whatsapp_official_campaign_recipients").insert(part);
-      if (error) console.error("registrar destinatários:", error);
+      if (error) { console.error("registrar destinatários:", error); falhouRegistro = true; }
+    }
+    if (falhouRegistro) {
+      await supabase.from("whatsapp_official_campaigns").update({ status: "canceled", notes: "Falha ao registrar os destinatários; nada foi enviado" } as any).eq("id", camp.id);
+      toast.error("Não consegui registrar os destinatários. Nada foi enviado.");
+      setSending(false);
+      return;
     }
 
-    let ok = 0, fail = 0;
-    for (const lead of sendable) {
-      const recId = recipientId.get(lead)!;
-      const phone = toE164BR(lead.phone || "");
-      const rendered = render(body, values, lead, staff?.name || "");
-      const params = values.map((v) => ({ type: "text", text: resolveVar(v, lead, staff?.name || "") }));
-      try {
-        const { data, error } = await supabase.functions.invoke("whatsapp-official-api", {
-          body: {
-            action: "sendTemplate", instanceId, phone,
-            templateName: template.name, languageCode: template.language,
-            components: params.length ? [{ type: "body", parameters: params }] : [],
-          },
-        });
-        if (error) {
-          let msg = error.message;
-          try { const b = await (error as any).context?.json?.(); if (b?.error) msg = b.error; } catch { /* corpo não é JSON */ }
-          throw new Error(msg);
-        }
-        if (data?.error) throw new Error(data.error);
-        const wamid: string | null = data?.messageId || null;
-        const sentAt = new Date().toISOString();
-        // grava o wamid já: o status da Meta (entregue/falhou) chega em segundos
-        await supabase.from("whatsapp_official_campaign_recipients").update({ status: "sent", whatsapp_message_id: wamid, sent_at: sentAt }).eq("id", recId);
-        const reg = await registrarNoAtendimento({ instanceId, lead, phone, content: rendered, messageId: wamid, staffId: staff?.id || null, conversationId: conversationId || null });
-        if (lead.id) await marcarTagTemplateEnviado(lead.id);
-        const mv = await moverLead(lead);
-        const { data: cur } = await supabase.from("whatsapp_official_campaign_recipients")
-          .update({ message_id: reg?.messageId || null, conversation_id: reg?.conversationId || null, moved_from_stage_id: mv?.from || null, moved_to_stage_id: mv?.to || null })
-          .eq("id", recId).select("status").maybeSingle();
-        // a falha chegou antes de mover: volta o lead pra etapa de antes
-        if (mv && cur?.status === "failed" && lead.id && mv.from) {
-          await supabase.from("crm_leads").update({ stage_id: mv.from, pipeline_id: lead.pipeline_id }).eq("id", lead.id).eq("stage_id", mv.to);
-          await supabase.from("whatsapp_official_campaign_recipients").update({ stage_reverted: true }).eq("id", recId);
-        }
-        ok++;
-      } catch (e) {
-        console.error("template oficial:", lead.name, e);
-        await supabase.from("whatsapp_official_campaign_recipients")
-          .update({ status: "error", error_text: String((e as Error)?.message || e).slice(0, 500) }).eq("id", recId);
-        fail++;
-      }
-      setProgress({ ok, fail, total: sendable.length });
+    // o envio roda no servidor: dá pra fechar a janela e continuar usando o CRM
+    const { error: invErr } = await supabase.functions.invoke("official-campaign-dispatch", { body: { campaign_id: camp.id } });
+    if (invErr) {
+      await supabase.from("whatsapp_official_campaigns").update({ status: "paused", notes: "O envio não iniciou no servidor. Clique em Retomar." } as any).eq("id", camp.id);
+      toast.error("O disparo foi registrado mas não iniciou. Use Retomar no aviso do canto da tela.");
+    } else {
+      toast.success("Disparo iniciado. Pode continuar usando o CRM; o andamento aparece no canto da tela.");
     }
-
-    await supabase.from("whatsapp_official_campaigns").update({ status: "done", finished_at: new Date().toISOString() }).eq("id", camp.id);
+    window.dispatchEvent(new CustomEvent("official-dispatch-started", { detail: { id: camp.id } }));
     setSending(false);
-    if (ok) toast.success(`${ok} template(s) enviado(s)${fail ? `, ${fail} com erro` : ""}`);
-    else toast.error("Nenhum envio concluído. Veja os motivos no histórico do disparo.");
     onSent?.();
     onOpenChange(false);
-    navigate(`/crm/disparos/${camp.id}`);
   };
 
   return (
@@ -518,70 +466,10 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={sending}>Cancelar</Button>
           <Button onClick={handleSend} disabled={sending || loading || !template || !sendable.length}>
             {sending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            {sending ? "Enviando…" : sendable.length > 1 ? `Disparar pra ${sendable.length}` : "Enviar"}
+            {sending ? "Iniciando…" : sendable.length > 1 ? `Disparar pra ${sendable.length}` : "Enviar"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-}
-
-/** Tag "Template enviado" no lead a cada disparo pela API oficial (pedido do Fabrício 11/09/2026).
- *  Cria a tag se não existir; ignora se o lead já tem. */
-let _tagTemplateId: string | null = null;
-async function marcarTagTemplateEnviado(leadId: string) {
-  try {
-    if (!_tagTemplateId) {
-      const { data: t } = await supabase.from("crm_tags").select("id").ilike("name", TAG_NAME).limit(1).maybeSingle();
-      if (t?.id) _tagTemplateId = t.id;
-      else {
-        const { data: created } = await supabase.from("crm_tags").insert({ name: TAG_NAME, color: "#2563eb", is_active: true }).select("id").single();
-        _tagTemplateId = created?.id || null;
-      }
-    }
-    if (!_tagTemplateId) return;
-    await supabase.from("crm_lead_tags").upsert({ lead_id: leadId, tag_id: _tagTemplateId }, { onConflict: "lead_id,tag_id", ignoreDuplicates: true });
-  } catch (e) {
-    console.error("tag Template enviado:", e);
-  }
-}
-
-/** contato + conversa (official_instance_id) + mensagem — mesmo formato do whatsapp-official-webhook */
-async function registrarNoAtendimento(a: {
-  instanceId: string; lead: OfficialTemplateLead; phone: string; content: string;
-  messageId: string | null; staffId: string | null; conversationId: string | null;
-}): Promise<{ conversationId: string; messageId: string | null } | null> {
-  let convId = a.conversationId;
-  if (!convId) {
-    let { data: contact } = await supabase.from("crm_whatsapp_contacts").select("id, lead_id").eq("phone", a.phone).maybeSingle();
-    if (!contact) {
-      const { data: created } = await supabase.from("crm_whatsapp_contacts")
-        .insert({ phone: a.phone, name: a.lead.name || a.phone, lead_id: a.lead.id }).select("id, lead_id").single();
-      contact = created;
-    } else if (!contact.lead_id && a.lead.id) {
-      await supabase.from("crm_whatsapp_contacts").update({ lead_id: a.lead.id }).eq("id", contact.id);
-    }
-    if (!contact) return null;
-    const { data: conv } = await supabase.from("crm_whatsapp_conversations").select("id, lead_id")
-      .eq("official_instance_id", a.instanceId).eq("contact_id", contact.id).neq("status", "closed")
-      .order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (conv) {
-      convId = conv.id;
-      if (!conv.lead_id && a.lead.id) await supabase.from("crm_whatsapp_conversations").update({ lead_id: a.lead.id }).eq("id", conv.id);
-    } else {
-      const { data: created } = await supabase.from("crm_whatsapp_conversations")
-        .insert({ official_instance_id: a.instanceId, contact_id: contact.id, lead_id: a.lead.id, status: "open" } as any)
-        .select("id").single();
-      convId = created?.id || null;
-    }
-  }
-  if (!convId) return null;
-  const { data: msg } = await supabase.from("crm_whatsapp_messages").insert({
-    conversation_id: convId, content: a.content, type: "text", direction: "outbound", status: "sent",
-    sent_by: a.staffId, whatsapp_message_id: a.messageId,
-  } as any).select("id").maybeSingle();
-  await supabase.from("crm_whatsapp_conversations").update({
-    last_message: a.content.substring(0, 255), last_message_at: new Date().toISOString(),
-  }).eq("id", convId);
-  return { conversationId: convId, messageId: (msg as any)?.id || null };
 }

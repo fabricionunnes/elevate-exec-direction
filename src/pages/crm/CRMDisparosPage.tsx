@@ -15,6 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { OfficialTemplatesTab } from "@/components/crm/settings/OfficialTemplatesTab";
+import { cancelarDisparo, retomarDisparo } from "@/components/crm/OfficialDispatchProgress";
 import { AlertTriangle, ArrowLeft, CalendarDays, Download, Loader2, RefreshCw, Search, ShieldCheck } from "lucide-react";
 
 interface CampaignRow {
@@ -38,11 +39,12 @@ interface Instance { id: string; display_name: string | null; pricing_rates: Rec
 const DEFAULT_RATES: Record<string, number> = { MARKETING: 0.3125, UTILITY: 0.04, AUTHENTICATION: 0.04 };
 
 const STATUS_LABEL: Record<string, string> = {
-  pending: "Na fila", skipped: "Pulado", error: "Erro no envio", sent: "Enviado",
+  pending: "Na fila", processing: "Enviando", skipped: "Pulado", error: "Erro no envio", sent: "Enviado",
   delivered: "Entregue", read: "Lido", failed: "Não entregue",
 };
 const STATUS_CLASS: Record<string, string> = {
   pending: "bg-muted text-muted-foreground",
+  processing: "bg-primary/10 text-primary",
   skipped: "bg-muted text-muted-foreground",
   error: "bg-red-500/15 text-red-700 dark:text-red-400",
   failed: "bg-red-500/15 text-red-700 dark:text-red-400",
@@ -416,6 +418,8 @@ function DisparosLista() {
                       <td className="px-3 py-2 whitespace-nowrap">
                         {dt(r.created_at)}
                         {r.status === "sending" && <Badge variant="secondary" className="ml-2 text-[10px]">Enviando</Badge>}
+                        {r.status === "paused" && <Badge variant="outline" className="ml-2 text-[10px] border-amber-500 text-amber-700">Pausado</Badge>}
+                        {r.status === "canceled" && <Badge variant="outline" className="ml-2 text-[10px]">Cancelado</Badge>}
                       </td>
                       <td className="px-3 py-2">
                         <div className="font-medium">{tplLabel(r.template_name)}</div>
@@ -546,7 +550,7 @@ function DisparoDetalhe({ id }: { id: string }) {
   // disparo recente: status de entrega e respostas chegam nos minutos seguintes
   useEffect(() => {
     if (!campaign) return;
-    const recente = campaign.status === "sending" || Date.now() - new Date(campaign.created_at).getTime() < 3 * 3600e3;
+    const recente = campaign.status === "sending" || campaign.status === "paused" || Date.now() - new Date(campaign.created_at).getTime() < 3 * 3600e3;
     if (!recente) return;
     const t = setInterval(() => load(true), 15000);
     return () => clearInterval(t);
@@ -561,7 +565,7 @@ function DisparoDetalhe({ id }: { id: string }) {
       if (r.status === "failed") s.failed++;
       if (r.status === "error") s.errors++;
       if (r.status === "skipped") s.skipped++;
-      if (r.status === "pending") s.pending++;
+      if (r.status === "pending" || r.status === "processing") s.pending++;
       if (r.reply_at) s.responded++;
       if (r.billable === true || (r.billable === null && ["delivered", "read"].includes(r.status))) s.billable++;
       if (r.stage_reverted) s.reverted++;
@@ -615,8 +619,20 @@ function DisparoDetalhe({ id }: { id: string }) {
         <div className="flex flex-wrap items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-emerald-600" />
           <h1 className="text-xl font-bold">{tplLabel(campaign.template_name)}</h1>
-          {campaign.status === "sending" ? <Badge variant="secondary">Enviando</Badge> : <Badge variant="outline">Concluído</Badge>}
-          <Button variant="outline" size="sm" className="ml-auto gap-1.5" onClick={() => load()}>
+          {campaign.status === "sending" ? <Badge variant="secondary">Enviando</Badge>
+            : campaign.status === "paused" ? <Badge variant="outline" className="border-amber-500 text-amber-700">Pausado</Badge>
+            : campaign.status === "canceled" ? <Badge variant="outline">Cancelado</Badge>
+            : <Badge variant="outline">Concluído</Badge>}
+          {campaign.status === "paused" && (
+            <Button size="sm" className="ml-auto" onClick={async () => { await retomarDisparo(campaign.id); load(true); }}>Retomar</Button>
+          )}
+          {(campaign.status === "sending" || campaign.status === "paused") && (
+            <Button size="sm" variant="outline" className={`${campaign.status === "paused" ? "" : "ml-auto "}text-red-600`} onClick={async () => {
+              if (!window.confirm("Cancelar o disparo? Quem ainda não recebeu fica de fora.")) return;
+              await cancelarDisparo(campaign.id); load(true);
+            }}>Cancelar envio</Button>
+          )}
+          <Button variant="outline" size="sm" className={`${campaign.status === "sending" || campaign.status === "paused" ? "" : "ml-auto "}gap-1.5`} onClick={() => load()}>
             <RefreshCw className="h-3.5 w-3.5" /> Atualizar
           </Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => downloadCsv(`disparo-${campaign.template_name}-${campaign.created_at.slice(0, 10)}.csv`, [

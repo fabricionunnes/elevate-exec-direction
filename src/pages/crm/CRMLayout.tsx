@@ -1,5 +1,6 @@
 import { useEffect, useState, createContext, useContext } from "react";
 import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
+import { OfficialDispatchProgress } from "@/components/crm/OfficialDispatchProgress";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -574,6 +575,7 @@ export const CRMLayout = () => {
           )}>
             <CallDockProvider staffId={staffId} tenantId={tenantId}>
               <Outlet context={{ staffRole, isAdmin, canSettings, staffId }} />
+              <OfficialDispatchProgress />
             </CallDockProvider>
           </main>
         </div>
