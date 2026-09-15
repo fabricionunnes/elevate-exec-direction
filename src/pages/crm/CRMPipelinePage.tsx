@@ -136,8 +136,14 @@ export const CRMPipelinePage = () => {
       .order("sort_order", { ascending: true });
     
     setPipelines(data || []);
-    if (data && data.length > 0 && !selectedPipeline) {
-      setSelectedPipeline(data[0].id);
+    // Só escolhe o funil padrão se ninguém escolheu um até a lista chegar. O menu de
+    // origens seleciona a 1ª origem + o funil dela ao abrir Negócios; antes esta
+    // resposta chegava depois e trocava pro funil padrão (Leads Clint, 40 mil leads):
+    // origem FUNIL SE com colunas de outro funil, zeradas e carregando sem fim (15/09/2026).
+    if (data && data.length > 0) {
+      (setSelectedPipeline as unknown as (fn: (prev: string | null) => string | null) => void)(
+        (prev) => prev || data[0].id,
+      );
     }
   };
 
@@ -278,6 +284,12 @@ export const CRMPipelinePage = () => {
       }
 
       if (originRes.data && originRes.data.pipeline_id !== selectedPipeline) {
+        // Origem de outro funil: troca pro funil da origem (dispara nova carga) em vez de
+        // ignorar a origem e baixar o funil errado inteiro.
+        if (originRes.data.pipeline_id) {
+          setSelectedPipeline(originRes.data.pipeline_id);
+          return;
+        }
         effectiveOrigin = null;
       }
 
