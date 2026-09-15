@@ -790,6 +790,9 @@ Deno.serve(async (req) => {
         const { data: prev } = await supabase.from("crm_keyword_trigger_logs")
           .select("id").eq("agent_id", agent_id).eq("conversation_id", t.conv.id).eq("source", "stage").limit(1).maybeSingle();
         if (prev) continue;
+        const { data: ovT } = await supabase.from("crm_ai_agent_conversation_overrides")
+          .select("agent_id, locked").eq("conversation_id", t.conv.id).eq("channel", t.channel).maybeSingle();
+        if (ovT?.locked && ovT.agent_id && ovT.agent_id !== agent_id) continue;
         await supabase.from("crm_ai_agent_conversation_overrides").upsert({
           agent_id, conversation_id: t.conv.id, channel: t.channel, enabled: true, reply_mode: "auto",
         }, { onConflict: "conversation_id,channel" });
@@ -857,9 +860,10 @@ Deno.serve(async (req) => {
             if (isBIG && await igSeguidoPeloFabricio(supabase, (cv as any).contact?.username)) continue;
             // agente desligado nesta conversa?
             const { data: ov } = await supabase.from("crm_ai_agent_conversation_overrides")
-              .select("enabled, reply_mode").eq("conversation_id", cv.id).eq("channel", b.channel).maybeSingle();
+              .select("enabled, reply_mode, agent_id, locked").eq("conversation_id", cv.id).eq("channel", b.channel).maybeSingle();
             if (ov && ov.enabled === false) continue;
             // follow-up só em modo auto (mesma regra de allowlist por funil)
+            if (ov?.locked && ov.agent_id && ov.agent_id !== agent.id) continue; // conversa travada em outro agente
             const fmode = await resolveAgentMode(supabase, agent, cv.lead_id, ov);
             if (fmode !== "auto") continue;
             // Já agendou? Lead com reunião FUTURA não pode receber follow-up de
@@ -1004,6 +1008,12 @@ Deno.serve(async (req) => {
     // conversa (via override) — mesmo que o funil estivesse "off" e mesmo que o
     // agente não esteja vinculado ao canal. Idempotente: só liga uma vez por regra.
     let forcedAgent: any = null;
+    // TRAVA (16/09/2026, Fabrício): agente fixado no disparo da API oficial ou escolhido à
+    // mão no Atendimento. Com trava, palavra-chave e regra NÃO trocam de agente e só o
+    // agente fixado responde, até alguém desligar manualmente.
+    const { data: travaOv } = await supabase.from("crm_ai_agent_conversation_overrides")
+      .select("agent_id, enabled, locked").eq("conversation_id", conversation_id).eq("channel", channel).maybeSingle();
+    const agenteTravado = !!(travaOv?.locked && travaOv?.agent_id);
     try {
       const msgTable = isIG ? "instagram_messages" : "crm_whatsapp_messages";
       const tsCol = isIG ? "timestamp" : "created_at";
@@ -1021,6 +1031,7 @@ Deno.serve(async (req) => {
         const { data: kwAgents } = await supabase.from("crm_ai_agents")
           .select("*").eq("is_active", true).not("trigger_keywords", "is", null);
         for (const ag of (kwAgents || [])) {
+          if (agenteTravado) break;
           const kws: string[] = (ag.trigger_keywords || []).map((k: string) => k.toLowerCase().trim()).filter(Boolean);
           if (kws.length === 0) continue;
           if (!(ag.trigger_channels || ["whatsapp", "instagram"]).includes(channel)) continue;
@@ -1063,9 +1074,11 @@ Deno.serve(async (req) => {
           const { data: ruleAgent } = await supabase.from("crm_ai_agents").select("*").eq("id", rule.agent_id).maybeSingle();
           if (!ruleAgent || !ruleAgent.is_active) continue;
           // liga o agente da regra nesta conversa (auto) e registra
-          await supabase.from("crm_ai_agent_conversation_overrides").upsert({
-            agent_id: rule.agent_id, conversation_id, channel, enabled: true, reply_mode: "auto",
-          }, { onConflict: "conversation_id,channel" });
+          if (!agenteTravado) {
+            await supabase.from("crm_ai_agent_conversation_overrides").upsert({
+              agent_id: rule.agent_id, conversation_id, channel, enabled: true, reply_mode: "auto",
+            }, { onConflict: "conversation_id,channel" });
+          }
           await supabase.from("crm_keyword_trigger_logs").insert({
             trigger_id: rule.id, agent_id: rule.agent_id, conversation_id, channel,
             source: "dm", matched_keyword: hit,
@@ -1079,7 +1092,7 @@ Deno.serve(async (req) => {
               await supabase.from("crm_leads").update({ stage_id: st.id, stage_entered_at: new Date().toISOString() }).eq("id", conv.lead_id);
             }
           }
-          forcedAgent = ruleAgent;
+          forcedAgent = agenteTravado ? null : ruleAgent;
           break;
         }
       }
@@ -1090,12 +1103,12 @@ Deno.serve(async (req) => {
     // Override da conversa (interruptor + agente fixado por palavra-chave/manual)
     const { data: override } = await supabase
       .from("crm_ai_agent_conversation_overrides")
-      .select("enabled, reply_mode, agent_id").eq("conversation_id", conversation_id).eq("channel", channel).maybeSingle();
+      .select("enabled, reply_mode, agent_id, locked").eq("conversation_id", conversation_id).eq("channel", channel).maybeSingle();
     if (override && override.enabled === false) return j({ ok: true, skip: "agente desligado nesta conversa" });
 
     // Agente fixado no override (foi uma palavra-chave que ligou este agente aqui):
     // mantém o MESMO agente qualificador ao longo da conversa, mesmo sem vínculo de canal.
-    if (!agent && override?.agent_id && override.enabled) {
+    if ((!agent || override?.locked) && override?.agent_id && override.enabled) {
       const { data: ovAgent } = await supabase.from("crm_ai_agents").select("*").eq("id", override.agent_id).maybeSingle();
       if (ovAgent && ovAgent.is_active) agent = ovAgent;
     }
