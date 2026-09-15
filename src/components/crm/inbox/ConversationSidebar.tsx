@@ -28,6 +28,7 @@ import {
   ArrowRightLeft,
   Briefcase,
   Bot,
+  Link2,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { WhatsAppConversation } from "@/hooks/useWhatsAppConversations";
@@ -39,6 +40,7 @@ import { LinkedLeadsSection } from "@/components/crm/LinkedLeadsSection";
 import { useCompanyIdentification } from "@/hooks/useCompanyIdentification";
 import { CompanyFinancialSidePanel } from "./CompanyFinancialSidePanel";
 import { ConversationTagsSection } from "./ConversationTagsSection";
+import { LinkExistingLeadDialog } from "./LinkExistingLeadDialog";
 
 interface CRMStaff {
   id: string;
@@ -74,6 +76,7 @@ export function ConversationSidebar({
   const [agentEnabled, setAgentEnabled] = useState(true);
   const [savingAgentToggle, setSavingAgentToggle] = useState(false);
   const [showAddDealDialog, setShowAddDealDialog] = useState(false);
+  const [showLinkExistingDialog, setShowLinkExistingDialog] = useState(false);
   const [showChangePipelineDialog, setShowChangePipelineDialog] = useState(false);
   const [selectedLeadForPipelineChange, setSelectedLeadForPipelineChange] = useState<any>(null);
   const [showEditContactDialog, setShowEditContactDialog] = useState(false);
@@ -964,6 +967,17 @@ export function ConversationSidebar({
             <ChevronRight className="h-4 w-4" />
           </Button>
         )}
+        <Button
+          variant="ghost"
+          className="w-full justify-between"
+          onClick={() => setShowLinkExistingDialog(true)}
+        >
+          <span className="flex items-center gap-2">
+            <Link2 className="h-4 w-4" />
+            Vincular a lead existente
+          </span>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Contact Section */}
@@ -1166,6 +1180,21 @@ export function ConversationSidebar({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Vincular a lead existente (mescla dados e, se quiser, absorve o lead atual) */}
+      <LinkExistingLeadDialog
+        open={showLinkExistingDialog}
+        onOpenChange={setShowLinkExistingDialog}
+        conversationId={conversation.id}
+        channel={isInstagram ? "instagram" : "whatsapp"}
+        currentLeadId={conversation.lead_id}
+        contactPhone={isInstagram ? null : conversation.contact?.phone}
+        contactInstagram={isInstagram ? conversation.contact?.phone : null}
+        onLinked={(leadId) => {
+          onLeadCreated?.(leadId);
+          refetchLinkedLeads();
+        }}
+      />
 
       {/* Edit Contact Dialog */}
       <Dialog open={showEditContactDialog} onOpenChange={setShowEditContactDialog}>
