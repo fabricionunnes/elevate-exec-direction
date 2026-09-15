@@ -129,7 +129,7 @@ async function contarEnviosDoDia() {
   const inicio = desde24 < hoje ? desde24 : hoje;
   const { data } = await supabase.from("whatsapp_official_campaign_recipients" as any)
     .select("phone, sent_at")
-    .in("status", ["sent", "delivered", "read", "failed"])
+    .in("status", ["sent", "delivered", "read"]) // falha de entrega não consome limite nem conta como enviado
     .gte("sent_at", inicio.toISOString())
     .limit(10000);
   const unicos24 = new Set<string>();
@@ -202,7 +202,7 @@ function LimiteDiarioCard({ instanceId, refreshKey }: { instanceId: string | nul
           )}
           <div className="text-[11px] text-muted-foreground">
             {restam != null ? `Restam ${restam.toLocaleString("pt-BR")} contatos novos agora. ` : ""}
-            A Meta conta contatos únicos com template numa janela móvel de 24h.
+            Conta só contatos únicos com template enviado ou entregue numa janela móvel de 24h; falhas ficam de fora.
           </div>
         </div>
 

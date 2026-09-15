@@ -181,7 +181,7 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
       const desde = new Date(Date.now() - 864e5).toISOString();
       const [res, rec] = await Promise.all([
         supabase.functions.invoke("whatsapp-official-api", { body: { action: "getLimits", instanceId } }),
-        supabase.from("whatsapp_official_campaign_recipients").select("phone").in("status", ["sent", "delivered", "read", "failed"]).gte("sent_at", desde).limit(10000),
+        supabase.from("whatsapp_official_campaign_recipients").select("phone").in("status", ["sent", "delivered", "read"]).gte("sent_at", desde).limit(10000),
       ]);
       if (res.error || res.data?.error) { setLimite(null); return; }
       const usados = new Set(((rec.data || []) as any[]).map((r) => r.phone).filter(Boolean)).size;
