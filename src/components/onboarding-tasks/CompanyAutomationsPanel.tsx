@@ -5,7 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, MessageSquare, CalendarClock, ClipboardCheck, Star, FileText, Trophy, Bell } from "lucide-react";
+import { Loader2, MessageSquare, CalendarClock, ClipboardCheck, Star, FileText, Trophy, Bell, Megaphone, BarChart3 } from "lucide-react";
 
 // Painel liga/desliga das mensagens automáticas enviadas nos grupos do cliente.
 // Sem linha na tabela = LIGADO (default). As edge functions consultam
@@ -17,6 +17,8 @@ const AUTOMATIONS: {
   schedule: string;
   sender: "Marcelo" | "Fabrício";
   icon: React.ComponentType<{ className?: string }>;
+  /** só aparece pra empresa com projeto UNV Ads */
+  onlyUnvAds?: boolean;
 }[] = [
   {
     key: "resumo_diario",
@@ -67,6 +69,24 @@ const AUTOMATIONS: {
     icon: FileText,
   },
   {
+    key: "trafego_diario",
+    label: "Resumo diário de tráfego pago",
+    description: "Resultado de ontem das campanhas no grupo UNV ADS: investimento, conversas ou leads com custo, alcance, total do mês e vendas com CAC quando houver rastreamento.",
+    schedule: "8h · diário (segunda vai o semanal)",
+    sender: "Marcelo",
+    icon: Megaphone,
+    onlyUnvAds: true,
+  },
+  {
+    key: "trafego_semanal",
+    label: "Relatório semanal de tráfego (PDF)",
+    description: "Semana passada comparada com a anterior, por campanha, com vendas e CAC quando houver rastreamento, no grupo UNV ADS.",
+    schedule: "segunda · 8h",
+    sender: "Marcelo",
+    icon: BarChart3,
+    onlyUnvAds: true,
+  },
+  {
     key: "ranking_vendas",
     label: "Ranking diário de vendas",
     description: "Ranking dos vendedores no grupo de vendas, com base nos lançamentos do dia.",
@@ -87,6 +107,7 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
   const [instances, setInstances] = useState<Record<string, string | null>>({});
   const [availableInstances, setAvailableInstances] = useState<{ name: string; connected: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasUnvAds, setHasUnvAds] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
 
   useEffect(() => {
@@ -113,6 +134,15 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
         .select("instance_name, status")
         .order("instance_name");
       setAvailableInstances((insts || []).map((i: any) => ({ name: i.instance_name, connected: i.status === "connected" })));
+      // relatórios de tráfego só fazem sentido pra quem tem projeto UNV Ads
+      const { data: ads } = await (supabase as any)
+        .from("onboarding_projects")
+        .select("id")
+        .eq("onboarding_company_id", companyId)
+        .eq("product_name", "UNV Ads")
+        .neq("status", "closed")
+        .limit(1);
+      setHasUnvAds((ads || []).length > 0);
       setLoading(false);
     };
     load();
@@ -214,7 +244,7 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {AUTOMATIONS.map((a) => {
+        {AUTOMATIONS.filter((a) => !a.onlyUnvAds || hasUnvAds).map((a) => {
           const Icon = a.icon;
           const on = isOn(a.key);
           return (
