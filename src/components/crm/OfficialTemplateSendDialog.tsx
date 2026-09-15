@@ -102,9 +102,6 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
   const [moveMode, setMoveMode] = useState<string>("next");
   const [recentIds, setRecentIds] = useState<Set<string>>(new Set());
   const [skipRecent, setSkipRecent] = useState(true);
-  // agente que assume as respostas das conversas deste disparo (fica fixo até desligar no Atendimento)
-  const [agents, setAgents] = useState<{ id: string; name: string }[]>([]);
-  const [agentId, setAgentId] = useState<string>("none");
   const [staff, setStaff] = useState<{ id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -117,9 +114,6 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
     setProgress(null);
     setMoveMode("next");
     setSkipRecent(true);
-    setAgentId("none");
-    supabase.from("crm_ai_agents").select("id, name").eq("is_active", true).order("name")
-      .then(({ data }) => setAgents((data || []) as { id: string; name: string }[]));
     (async () => {
       setLoading(true);
       try {
@@ -299,7 +293,6 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
       move_mode: moveMode === "next" || moveMode === "none" ? moveMode : "stage",
       move_stage_id: moveMode === "next" || moveMode === "none" ? null : moveMode,
       tag_name: TAG_NAME,
-      agent_id: agentId === "none" ? null : agentId,
       total: targets.length + optOutTargets.length,
       status: "sending",
     } as any).select("id").single();
@@ -445,25 +438,6 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
                 </Select>
                 <p className="text-[11px] text-muted-foreground">
                   Todo lead enviado recebe a etiqueta "{TAG_NAME}". Se a Meta não entregar, o lead volta pra etapa de antes.
-                </p>
-              </div>
-            )}
-
-            {agents.length > 0 && (
-              <div className="space-y-1">
-                <Label>Agente de IA nas respostas</Label>
-                <Select value={agentId} onValueChange={setAgentId}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Não fixar (segue o agente padrão do número)</SelectItem>
-                    {agents.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-[11px] text-muted-foreground">
-                  O agente escolhido fica fixo nas conversas deste disparo e só ele responde, até alguém desligar no Atendimento.
-                  Se o lead recusar ou pedir pra parar, ele sai sozinho.
                 </p>
               </div>
             )}
