@@ -86,7 +86,7 @@ async function processar(supabase: any, campaignId: string, hop: number, errHops
       const { data: atual } = await supabase.from(CAMP).select("status").eq("id", campaignId).maybeSingle();
       if (atual?.status !== "sending") return;
 
-      if (await bloqueioPagamento(supabase, campaignId)) {
+      if (await bloqueioPagamento(supabase, campaignId, camp.resumed_at || camp.created_at)) {
         await pausar(supabase, campaignId,
           "Pausado: a Meta está recusando por pagamento pendente na conta do WhatsApp Business (131042). Regularize o pagamento e clique em Retomar.");
         return;
@@ -120,9 +120,12 @@ async function processar(supabase: any, campaignId: string, hop: number, errHops
   }
 }
 
-async function bloqueioPagamento(supabase: any, campaignId: string) {
+// Só conta recusas de pagamento desde o último "Retomar": as antigas do mesmo
+// disparo pausavam de novo na hora, mesmo com a conta já paga (15/09/2026).
+async function bloqueioPagamento(supabase: any, campaignId: string, desde: string) {
   const { count } = await supabase.from(REC).select("id", { count: "exact", head: true })
     .eq("campaign_id", campaignId)
+    .gte("sent_at", desde)
     .or("error_text.ilike.131042%,error_text.ilike.141006%");
   return (count || 0) >= 3;
 }

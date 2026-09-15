@@ -29,7 +29,7 @@ export async function cancelarDisparo(campaignId: string) {
 }
 
 export async function retomarDisparo(campaignId: string) {
-  const { error } = await supabase.from(CAMP as any).update({ status: "sending", notes: null } as any).eq("id", campaignId).eq("status", "paused");
+  const { error } = await supabase.from(CAMP as any).update({ status: "sending", notes: null, resumed_at: new Date().toISOString() } as any).eq("id", campaignId).eq("status", "paused");
   if (error) { toast.error("Não consegui retomar o disparo"); return; }
   const { error: invErr } = await supabase.functions.invoke("official-campaign-dispatch", { body: { campaign_id: campaignId } });
   if (invErr) toast.error("O disparo não reiniciou. Tente de novo em instantes.");
