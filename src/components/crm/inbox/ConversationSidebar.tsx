@@ -153,6 +153,8 @@ export function ConversationSidebar({
         channel: agentChannel,
         agent_id: novo,
         enabled: novo ? true : agentEnabled,
+        // escolha manual trava o agente: palavra-chave e gatilho de etapa não trocam mais
+        locked: !!novo,
         updated_by: staffId,
         updated_at: new Date().toISOString(),
       }, { onConflict: "conversation_id,channel" }));
@@ -781,7 +783,7 @@ export function ConversationSidebar({
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">{convAgent?.name || "Nenhum agente nesta conversa"}</p>
                 <p className="text-[11px] text-muted-foreground">
-                  {!convAgent ? "Escolha um agente abaixo" : agentEnabled ? "Respondendo esta conversa" : "Desligado nesta conversa"}
+                  {!convAgent ? "Escolha um agente abaixo" : !agentEnabled ? "Desligado nesta conversa" : pinnedAgentId ? "Fixo nesta conversa · só ele responde" : "Respondendo esta conversa"}
                 </p>
               </div>
             </div>

@@ -189,6 +189,14 @@ async function enviarUm(supabase: any, camp: any, inst: any, r: any, stagesCache
     const reg = await registrarNoAtendimento(supabase, {
       instanceId: inst.id, leadId: r.lead_id, leadName: nome, phone: r.phone, content, wamid, staffId: camp.created_by_staff_id,
     });
+    // agente escolhido no disparo: fica FIXO na conversa (trava) e só ele responde,
+    // até alguém desligar no Atendimento (Fabrício, 16/09/2026)
+    if (camp.agent_id && reg?.conversationId) {
+      await supabase.from("crm_ai_agent_conversation_overrides").upsert({
+        conversation_id: reg.conversationId, channel: "whatsapp", agent_id: camp.agent_id,
+        enabled: true, reply_mode: "auto", locked: true, updated_at: new Date().toISOString(),
+      }, { onConflict: "conversation_id,channel" });
+    }
     if (r.lead_id && tagId) {
       await supabase.from("crm_lead_tags").upsert({ lead_id: r.lead_id, tag_id: tagId }, { onConflict: "lead_id,tag_id", ignoreDuplicates: true });
     }
