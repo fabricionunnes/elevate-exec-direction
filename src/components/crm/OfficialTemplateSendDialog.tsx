@@ -106,6 +106,7 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState<{ ok: number; fail: number; total: number } | null>(null);
+  const [limite, setLimite] = useState<{ dailyLimit: number | null; usados: number } | null>(null);
 
   // quem está enviando + instâncias oficiais liberadas + leads com etapa atual
   useEffect(() => {
@@ -172,6 +173,21 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // limite diário da Meta (contatos únicos com template em 24h) e quanto já foi usado
+  useEffect(() => {
+    if (!open || !instanceId) return;
+    (async () => {
+      const desde = new Date(Date.now() - 864e5).toISOString();
+      const [res, rec] = await Promise.all([
+        supabase.functions.invoke("whatsapp-official-api", { body: { action: "getLimits", instanceId } }),
+        supabase.from("whatsapp_official_campaign_recipients").select("phone").in("status", ["sent", "delivered", "read", "failed"]).gte("sent_at", desde).limit(10000),
+      ]);
+      if (res.error || res.data?.error) { setLimite(null); return; }
+      const usados = new Set(((rec.data || []) as any[]).map((r) => r.phone).filter(Boolean)).size;
+      setLimite({ dailyLimit: res.data?.dailyLimit ?? null, usados });
+    })();
+  }, [open, instanceId]);
 
   // templates aprovados da instância escolhida
   useEffect(() => {
@@ -393,7 +409,16 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
               <Badge variant="secondary">{sendable.length} destinatário(s)</Badge>
               {semTelefone > 0 && <Badge variant="destructive">{semTelefone} sem telefone válido</Badge>}
               {optOutTargets.length > 0 && <Badge variant="outline">{optOutTargets.length} pulado(s): pediram pra não receber</Badge>}
+              {limite?.dailyLimit != null && (
+                <Badge variant="outline">Limite Meta: restam {Math.max(limite.dailyLimit - limite.usados, 0)} de {limite.dailyLimit} em 24h</Badge>
+              )}
             </div>
+
+            {limite?.dailyLimit != null && sendable.length > Math.max(limite.dailyLimit - limite.usados, 0) && (
+              <div className="rounded-md border border-red-500/40 bg-red-500/10 p-2.5 text-xs">
+                Esse disparo passa do limite diário da Meta: restam {Math.max(limite.dailyLimit - limite.usados, 0)} contatos nas próximas 24h e você vai enviar pra {sendable.length}. O que passar do limite a Meta recusa. Selecione menos leads ou mande o resto amanhã.
+              </div>
+            )}
 
             {recentTargets.length > 0 && (
               <div className="flex items-start justify-between gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs">

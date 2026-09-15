@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { OfficialTemplatesTab } from "@/components/crm/settings/OfficialTemplatesTab";
 import { AlertTriangle, ArrowLeft, CalendarDays, Download, Loader2, RefreshCw, Search, ShieldCheck } from "lucide-react";
 
 interface CampaignRow {
@@ -121,6 +122,106 @@ function useInstances() {
   return { instances, rateFor, reload: load };
 }
 
+// Uso do limite diário: a Meta conta CONTATOS ÚNICOS com template numa janela móvel de 24h.
+async function contarEnviosDoDia() {
+  const desde24 = new Date(Date.now() - 864e5);
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const inicio = desde24 < hoje ? desde24 : hoje;
+  const { data } = await supabase.from("whatsapp_official_campaign_recipients" as any)
+    .select("phone, sent_at")
+    .in("status", ["sent", "delivered", "read", "failed"])
+    .gte("sent_at", inicio.toISOString())
+    .limit(10000);
+  const unicos24 = new Set<string>();
+  let hojeTotal = 0;
+  for (const r of (data || []) as any[]) {
+    const t = new Date(r.sent_at);
+    if (t >= desde24 && r.phone) unicos24.add(r.phone);
+    if (t >= hoje) hojeTotal++;
+  }
+  return { ultimas24: unicos24.size, hoje: hojeTotal };
+}
+
+const QUALIDADE: Record<string, { label: string; cls: string }> = {
+  GREEN: { label: "Alta", cls: "text-emerald-600" },
+  YELLOW: { label: "Média", cls: "text-amber-600" },
+  RED: { label: "Baixa", cls: "text-red-600" },
+};
+
+function LimiteDiarioCard({ instanceId, refreshKey }: { instanceId: string | null; refreshKey: number }) {
+  const [lim, setLim] = useState<any>(null);
+  const [uso, setUso] = useState<{ ultimas24: number; hoje: number } | null>(null);
+  const [erro, setErro] = useState("");
+
+  useEffect(() => {
+    if (!instanceId) return;
+    (async () => {
+      const [res, u] = await Promise.all([
+        supabase.functions.invoke("whatsapp-official-api", { body: { action: "getLimits", instanceId } }),
+        contarEnviosDoDia(),
+      ]);
+      if (res.error || res.data?.error) setErro("Não consegui consultar o limite na Meta agora.");
+      else { setErro(""); setLim(res.data); }
+      setUso(u);
+    })();
+  }, [instanceId, refreshKey]);
+
+  const limite: number | null = lim ? lim.dailyLimit : null;
+  const usados = uso?.ultimas24 ?? 0;
+  const restam = limite == null ? null : Math.max(limite - usados, 0);
+  const pctUso = limite ? Math.min(100, Math.round((usados / limite) * 100)) : 0;
+  const barra = pctUso >= 90 ? "bg-red-500" : pctUso >= 70 ? "bg-amber-500" : "bg-emerald-500";
+  const q = QUALIDADE[lim?.qualityRating || ""];
+  const nomePendente = (lim?.info || []).some((i: string) => /display name has not been approved/i.test(i));
+
+  return (
+    <Card>
+      <CardContent className="p-4 flex flex-wrap items-center gap-x-8 gap-y-3">
+        <div>
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Limite diário liberado</div>
+          <div className="text-xl font-semibold tabular-nums">
+            {lim ? (limite == null ? "Ilimitado" : limite.toLocaleString("pt-BR")) : erro ? "—" : <Loader2 className="h-4 w-4 animate-spin" />}
+            {limite != null && <span className="ml-1 text-xs font-normal text-muted-foreground">contatos a cada 24h</span>}
+          </div>
+          {lim && (
+            <div className="text-[11px] text-muted-foreground">
+              Qualidade do número: <span className={`font-medium ${q?.cls || ""}`}>{q?.label || lim.qualityRating || "—"}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-[240px] space-y-1.5">
+          <div className="flex items-baseline justify-between text-sm">
+            <span>Usados nas últimas 24h</span>
+            <span className="tabular-nums font-medium">{usados}{limite != null ? ` de ${limite.toLocaleString("pt-BR")}` : ""}</span>
+          </div>
+          {limite != null && (
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+              <div className={`h-full ${barra}`} style={{ width: `${pctUso}%` }} />
+            </div>
+          )}
+          <div className="text-[11px] text-muted-foreground">
+            {restam != null ? `Restam ${restam.toLocaleString("pt-BR")} contatos novos agora. ` : ""}
+            A Meta conta contatos únicos com template numa janela móvel de 24h.
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Enviados hoje</div>
+          <div className="text-xl font-semibold tabular-nums">{uso ? uso.hoje : "—"}</div>
+          <div className="text-[11px] text-muted-foreground">desde 00:00</div>
+        </div>
+
+        {(nomePendente || erro) && (
+          <div className="basis-full text-[11px] text-amber-700 dark:text-amber-400">
+            {erro || "O nome de exibição do número ainda não foi aprovado pela Meta. O limite sobe depois da aprovação."}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function Stat({ label, value, sub, tone }: { label: string; value: string | number; sub?: string; tone?: string }) {
   return (
     <Card>
@@ -169,11 +270,13 @@ function DisparosLista() {
   const [rateInput, setRateInput] = useState("");
   const [savingRate, setSavingRate] = useState(false);
   const [periodo, setPeriodo] = useState<Periodo>("30");
+  const [refreshKey, setRefreshKey] = useState(0);
   const [de, setDe] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 29); return ymd(d); });
   const [ate, setAte] = useState(() => ymd(new Date()));
 
   const load = useCallback(async () => {
     setLoading(true);
+    setRefreshKey((k) => k + 1);
     const { from, to } = intervaloDo(periodo, de, ate);
     const range = { p_from: from.toISOString(), p_to: to.toISOString() };
     const [c, e] = await Promise.all([
@@ -264,6 +367,8 @@ function DisparosLista() {
         </div>
       </div>
 
+      <LimiteDiarioCard instanceId={instances[0]?.id || null} refreshKey={refreshKey} />
+
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
         <Stat label="Disparos" value={totals.campaigns} />
         <Stat label="Enviados" value={totals.accepted} />
@@ -277,6 +382,7 @@ function DisparosLista() {
       <Tabs defaultValue="disparos">
         <TabsList>
           <TabsTrigger value="disparos">Disparos</TabsTrigger>
+          <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="erros" className="gap-1.5">
             Histórico de erros {errors.length > 0 && <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">{errors.length}</Badge>}
           </TabsTrigger>
@@ -341,6 +447,11 @@ function DisparosLista() {
               A Meta não informa o custo por API nesta conta. O valor é estimado; confira na fatura da Meta e ajuste aqui.
             </span>
           </div>
+        </TabsContent>
+
+        {/* Templates da API oficial (antes ficava em Configurações do CRM) */}
+        <TabsContent value="templates" className="mt-4">
+          <OfficialTemplatesTab />
         </TabsContent>
 
         <TabsContent value="erros" className="mt-4 space-y-4">

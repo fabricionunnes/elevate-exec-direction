@@ -54,6 +54,9 @@ Deno.serve(async (req) => {
       case 'verifyConnection':
         return await verifyConnection(instance);
 
+      case 'getLimits':
+        return await getLimits(instance);
+
       default:
         throw new Error(`Ação desconhecida: ${action}`);
     }
@@ -200,6 +203,36 @@ async function getTemplates(instance: any) {
 
   return new Response(
     JSON.stringify({ templates: data.data || [] }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+// Limite diário de contatos (tier da Meta) + qualidade do número, pro card da tela Disparos API.
+// A Meta conta contatos únicos iniciados pela empresa numa janela móvel de 24h.
+async function getLimits(instance: any) {
+  const fields = 'display_phone_number,verified_name,quality_rating,messaging_limit_tier,throughput,name_status,status,health_status';
+  const response = await fetch(`https://graph.facebook.com/v21.0/${instance.phone_number_id}?fields=${fields}`, {
+    headers: { 'Authorization': `Bearer ${instance.access_token}` },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error?.message || 'Erro ao consultar limites');
+  const tiers: Record<string, number | null> = {
+    TIER_50: 50, TIER_250: 250, TIER_1K: 1000, TIER_2K: 2000, TIER_10K: 10000, TIER_100K: 100000, TIER_UNLIMITED: null,
+  };
+  const tier = data.messaging_limit_tier || null;
+  const phoneEntity = (data.health_status?.entities || []).find((e: any) => e.entity_type === 'PHONE_NUMBER');
+  return new Response(
+    JSON.stringify({
+      success: true,
+      tier,
+      dailyLimit: tier && tier in tiers ? tiers[tier] : null,
+      qualityRating: data.quality_rating || null,
+      nameStatus: data.name_status || null,
+      canSendMessage: data.health_status?.can_send_message || null,
+      info: phoneEntity?.additional_info || [],
+      phoneNumber: data.display_phone_number || null,
+      verifiedName: data.verified_name || null,
+    }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
 }
