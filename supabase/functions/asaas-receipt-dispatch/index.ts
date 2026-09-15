@@ -244,8 +244,14 @@ async function findBaixaPagar(supabase: any, txId: string, valueCents: number, p
     const porId = new Map((contas || []).map((c: any) => [c.id, c]));
     const validos = livres.filter((t) => porId.has(t.reference_id));
     const porNome = beneficiario ? validos.filter((t) => nomeBate(beneficiario, porId.get(t.reference_id).supplier_name)) : [];
-    // mesmo valor em mais de um lugar: só casa se o nome do beneficiário confirmar
-    const escolhido = porNome.length === 1 ? porNome[0] : (validos.length === 1 && !ambiguous ? validos[0] : null);
+    // mesmo valor em mais de um lugar: só casa se o nome do beneficiário confirmar,
+    // ou se TODOS os candidatos são baixas da MESMA conta (ex.: várias despesas de
+    // R$ 100 lançadas no Pró labore) — aí qualquer um serve, o rótulo é o mesmo.
+    const mesmaConta = validos.length > 0 && validos.every((t) => t.reference_id === validos[0].reference_id);
+    const escolhido = porNome.length === 1 ? porNome[0]
+      : (validos.length === 1 && !ambiguous) ? validos[0]
+      : mesmaConta ? validos[0]
+      : null;
     if (escolhido) return { account: rotuloConta(porId.get(escolhido.reference_id)), bankTxId: escolhido.id };
   }
 
