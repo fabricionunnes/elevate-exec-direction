@@ -398,7 +398,8 @@ Deno.serve(async (req) => {
       });
 
       // ── Fetch Ads ──
-      const adsUrl = `${GRAPH_API}/${adAccountId}/ads?fields=name,status,adset_id,adset{name},campaign_id,campaign{name},creative{thumbnail_url,body,title,image_url,object_story_spec},insights.time_range({"since":"${start}","until":"${end}"}).fields(${insightFields})&access_token=${token}`;
+      // thumbnail_width/height: sem isso a Meta devolve miniatura 64x64 e o card de Criativos fica borrado (15/09/2026)
+      const adsUrl = `${GRAPH_API}/${adAccountId}/ads?fields=name,status,adset_id,adset{name},campaign_id,campaign{name},creative.thumbnail_width(1080).thumbnail_height(1080){thumbnail_url,body,title,image_url,object_story_spec},insights.time_range({"since":"${start}","until":"${end}"}).fields(${insightFields})&access_token=${token}`;
       // anúncios (criativos) são o pedido mais pesado: se falhar, campanhas e conjuntos ainda salvam
       let adsWarning: string | null = null;
       let adsData: { data: any[] } = { data: [] };
