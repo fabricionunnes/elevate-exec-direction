@@ -11,8 +11,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Zap, Bot, Trash2, Loader2, MessageSquare, Instagram, Search } from "lucide-react";
+import { Plus, Zap, Bot, Trash2, Loader2, MessageSquare, Instagram, Search, CalendarCheck } from "lucide-react";
 import { IgTriggersManager } from "@/components/crm/agents/IgTriggersManager";
+import { AgentMeetingsTab } from "@/components/crm/agents/AgentMeetingsTab";
 import { AgentEditorDialog } from "@/components/crm/agents/AgentEditorDialog";
 import type { AIAgent } from "@/pages/crm/CRMAgentsPage";
 import { useCRMContext } from "./CRMLayout";
@@ -225,8 +226,8 @@ export default function CRMAutomationsPage() {
     <div className="max-w-5xl mx-auto p-5 space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold flex items-center gap-2"><Zap className="h-5 w-5 text-primary" />Automações por palavra-chave</h1>
-          <p className="text-sm text-muted-foreground">Quando o lead responder uma palavra-chave, um agente entra qualificando sozinho — no WhatsApp e no Instagram.</p>
+          <h1 className="text-xl font-bold flex items-center gap-2"><Bot className="h-5 w-5 text-primary" />Agentes IA</h1>
+          <p className="text-sm text-muted-foreground">Os agentes qualificam sozinhos no WhatsApp e no Instagram, entram por palavra-chave e agendam direto na agenda do time.</p>
         </div>
       </div>
 
@@ -235,7 +236,12 @@ export default function CRMAutomationsPage() {
           <TabsTrigger value="rules"><Zap className="h-4 w-4 mr-1.5" />Palavras-chave</TabsTrigger>
           <TabsTrigger value="agents"><Bot className="h-4 w-4 mr-1.5" />Agentes qualificadores</TabsTrigger>
           <TabsTrigger value="instagram"><Instagram className="h-4 w-4 mr-1.5" />Instagram</TabsTrigger>
+          <TabsTrigger value="meetings"><CalendarCheck className="h-4 w-4 mr-1.5" />Agendamentos</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="meetings" className="mt-4">
+          <AgentMeetingsTab />
+        </TabsContent>
 
         <TabsContent value="instagram" className="mt-4">
           <IgTriggersManager canSettings={canSettings} staffId={staffId} tenantId={tenantId} />
