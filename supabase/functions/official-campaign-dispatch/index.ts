@@ -91,6 +91,11 @@ async function processar(supabase: any, campaignId: string, hop: number, errHops
           "Pausado: a Meta está recusando por pagamento pendente na conta do WhatsApp Business (131042). Regularize o pagamento e clique em Retomar.");
         return;
       }
+      if (await bloqueioSpam(supabase, campaignId, camp.resumed_at || camp.created_at)) {
+        await pausar(supabase, campaignId,
+          "Pausado: a Meta está bloqueando o número por taxa de spam (131048). Continuar enviando piora a qualidade do número. Retome só depois que o limite normalizar.");
+        return;
+      }
 
       const { data: prox } = await supabase.from(REC).select("id")
         .eq("campaign_id", campaignId).eq("status", "pending").order("created_at").limit(BATCH);
@@ -128,6 +133,15 @@ async function bloqueioPagamento(supabase: any, campaignId: string, desde: strin
     .gte("sent_at", desde)
     .or("error_text.ilike.131042%,error_text.ilike.141006%");
   return (count || 0) >= 3;
+}
+
+/** 131048 = a Meta limitou o número por taxa de spam. Insistir derruba a qualidade do número. */
+async function bloqueioSpam(supabase: any, campaignId: string, desde: string) {
+  const { count } = await supabase.from(REC).select("id", { count: "exact", head: true })
+    .eq("campaign_id", campaignId)
+    .gte("sent_at", desde)
+    .ilike("error_text", "131048%");
+  return (count || 0) >= 5;
 }
 
 const firstName = (name: string) => {
