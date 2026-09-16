@@ -44,7 +44,7 @@ async function fetchLeadWithCustomFields(leadId: string): Promise<{
   // Buscar dados do lead
   const { data: leadData, error: leadError } = await supabase
     .from("crm_leads")
-    .select("id, name, company, phone, email, document, opportunity_value, product_id, plan_id, city, state, segment, address, zipcode, trade_name, legal_representative_name, cpf, rg, marital_status, address_number, address_complement, address_neighborhood")
+    .select("id, name, company, phone, email, document, opportunity_value, product_id, plan_id, city, state, segment, address, zipcode, trade_name, legal_representative_name, cpf, rg, marital_status, address_number, address_complement, address_neighborhood, instagram")
     .eq("id", leadId)
     .single();
 
@@ -169,6 +169,8 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
           owner_cpf: lead.cpf,
           owner_rg: lead.rg,
           owner_marital_status: lead.marital_status,
+          // Instagram do lead vai pro briefing (só quando o lead tem, pra não apagar o da empresa)
+          ...((lead as any).instagram ? { instagram: (lead as any).instagram } : {}),
         })
         .eq("id", companyId);
     } else {
@@ -196,6 +198,7 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
           owner_cpf: lead.cpf,
           owner_rg: lead.rg,
           owner_marital_status: lead.marital_status,
+          instagram: (lead as any).instagram || null,
         })
         .select("id")
         .single();
