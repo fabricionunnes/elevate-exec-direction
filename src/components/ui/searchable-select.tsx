@@ -8,6 +8,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 interface SearchableSelectOption {
   value: string;
   label: string;
+  /** texto pequeno ao lado do nome (ex.: cargo) — não entra na busca */
+  hint?: string;
 }
 
 interface SearchableSelectProps {
@@ -19,6 +21,7 @@ interface SearchableSelectProps {
   className?: string;
   allowNone?: boolean;
   noneLabel?: string;
+  disabled?: boolean;
 }
 
 export function SearchableSelect({
@@ -30,6 +33,7 @@ export function SearchableSelect({
   className,
   allowNone = false,
   noneLabel = "Nenhum",
+  disabled = false,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -46,6 +50,7 @@ export function SearchableSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          disabled={disabled}
           className={cn("w-full justify-between font-normal", !value && "text-muted-foreground", className)}
         >
           <span className="truncate">{selectedLabel || placeholder}</span>
@@ -73,7 +78,12 @@ export function SearchableSelect({
                       value === option.value ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  {option.label}
+                  <span className="truncate">{option.label}</span>
+                  {option.hint && (
+                    <span className="ml-2 shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      {option.hint}
+                    </span>
+                  )}
                 </CommandItem>
               ))}
             </CommandGroup>

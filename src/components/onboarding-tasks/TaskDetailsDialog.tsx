@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { CalendarIcon, Loader2, Trash2, EyeOff, Video, ExternalLink, Clock } from "lucide-react";
@@ -676,28 +677,23 @@ export const TaskDetailsDialog = ({
 
             <div className="space-y-2">
               <Label>Responsável</Label>
-              <Select
+              {/* lista longa: digitar pra achar o responsável */}
+              <SearchableSelect
                 value={editedTask.assignee_id || "none"}
                 onValueChange={(value) =>
                   setEditedTask({ ...editedTask, assignee_id: value === "none" ? null : value })
                 }
                 disabled={!canEditAssignee}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecionar responsável" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem responsável</SelectItem>
-                  {availableAssignees.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      <div className="flex items-center">
-                        {user.name}
-                        {getRoleBadge(user.role)}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                allowNone
+                noneLabel="Sem responsável"
+                placeholder="Selecionar responsável"
+                emptyMessage="Ninguém com esse nome."
+                options={availableAssignees.map((user) => ({
+                  value: user.id,
+                  label: user.name,
+                  hint: user.role === "admin" ? "Admin" : user.role === "consultant" ? "Consultor" : user.role === "cs" ? "CS" : undefined,
+                }))}
+              />
             </div>
 
             <div className="space-y-2">
