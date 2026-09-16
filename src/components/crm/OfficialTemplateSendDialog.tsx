@@ -23,7 +23,9 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Loader2, ShieldCheck, Check, Plus, Tag as TagIcon, X } from "lucide-react";
 
 export interface OfficialTemplateLead {
   id: string | null;
@@ -106,6 +108,12 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
   const [agents, setAgents] = useState<{ id: string; name: string }[]>([]);
   const [agentId, setAgentId] = useState<string>("none");
   const [staff, setStaff] = useState<{ id: string; name: string } | null>(null);
+  // etiquetas extras: aplicadas em cada lead enviado, junto com "Template enviado"
+  const [allTags, setAllTags] = useState<{ id: string; name: string; color: string | null }[]>([]);
+  const [extraTags, setExtraTags] = useState<string[]>([]);
+  const [tagBusca, setTagBusca] = useState("");
+  const [tagPopover, setTagPopover] = useState(false);
+  const [criandoTag, setCriandoTag] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState<{ ok: number; fail: number; total: number } | null>(null);
@@ -118,6 +126,10 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
     setMoveMode("next");
     setSkipRecent(true);
     setAgentId("none");
+    setExtraTags([]);
+    setTagBusca("");
+    supabase.from("crm_tags").select("id, name, color").eq("is_active", true).order("name")
+      .then(({ data }) => setAllTags((data || []) as { id: string; name: string; color: string | null }[]));
     supabase.from("crm_ai_agents").select("id, name").eq("is_active", true).order("name")
       .then(({ data }) => setAgents((data || []) as { id: string; name: string }[]));
     (async () => {
@@ -279,6 +291,25 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sendable, stages]);
 
+  const toggleTag = (id: string) =>
+    setExtraTags((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
+
+  const criarTag = async () => {
+    const nome = tagBusca.trim();
+    if (!nome || criandoTag) return;
+    const existente = allTags.find((t) => t.name.toLowerCase() === nome.toLowerCase());
+    if (existente) { toggleTag(existente.id); setTagBusca(""); return; }
+    setCriandoTag(true);
+    const { data, error } = await supabase.from("crm_tags")
+      .insert({ name: nome, color: "#2563eb", is_active: true } as any).select("id, name, color").single();
+    setCriandoTag(false);
+    if (error || !data) { toast.error("Não consegui criar a etiqueta"); return; }
+    setAllTags((prev) => [...prev, data as any].sort((a, b) => a.name.localeCompare(b.name)));
+    setExtraTags((prev) => [...prev, (data as any).id]);
+    setTagBusca("");
+    toast.success(`Etiqueta "${nome}" criada`);
+  };
+
   const handleSend = async () => {
     if (sending || !instanceId || !template || !sendable.length) return;
     if (values.some((v) => !v.trim())) { toast.error("Preencha todas as variáveis do template"); return; }
@@ -300,6 +331,7 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
       move_stage_id: moveMode === "next" || moveMode === "none" ? null : moveMode,
       tag_name: TAG_NAME,
       agent_id: agentId === "none" ? null : agentId,
+      extra_tag_ids: extraTags,
       total: targets.length + optOutTargets.length,
       status: "sending",
     } as any).select("id").single();
@@ -445,6 +477,70 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
                 </Select>
                 <p className="text-[11px] text-muted-foreground">
                   Todo lead enviado recebe a etiqueta "{TAG_NAME}". Se a Meta não entregar, o lead volta pra etapa de antes.
+                </p>
+              </div>
+            )}
+
+            {targets.some((t) => t.id) && (
+              <div className="space-y-1.5">
+                <Label>Etiquetas nos leads</Label>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {extraTags.map((id) => {
+                    const t = allTags.find((x) => x.id === id);
+                    if (!t) return null;
+                    const cor = t.color || "#2563eb";
+                    return (
+                      <span key={id} className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                        style={{ backgroundColor: `${cor}1f`, color: cor }}>
+                        {t.name}
+                        <button type="button" onClick={() => toggleTag(id)} title="Remover">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                  <Popover open={tagPopover} onOpenChange={setTagPopover}>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="outline" size="sm" className="h-7 text-xs">
+                        <TagIcon className="h-3.5 w-3.5 mr-1" /> Adicionar etiqueta
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Buscar ou criar etiqueta..." value={tagBusca} onValueChange={setTagBusca} />
+                        <CommandList>
+                          <CommandEmpty>
+                            {tagBusca.trim() ? (
+                              <button type="button" onClick={criarTag} disabled={criandoTag}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted rounded">
+                                {criandoTag ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                                Criar etiqueta "{tagBusca.trim()}"
+                              </button>
+                            ) : "Nenhuma etiqueta"}
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {allTags.filter((t) => t.name !== TAG_NAME).map((t) => (
+                              <CommandItem key={t.id} value={t.name} onSelect={() => toggleTag(t.id)}>
+                                <span className="mr-2 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: t.color || "#2563eb" }} />
+                                <span className="flex-1 truncate">{t.name}</span>
+                                {extraTags.includes(t.id) && <Check className="h-3.5 w-3.5" />}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                          {tagBusca.trim() && !allTags.some((t) => t.name.toLowerCase() === tagBusca.trim().toLowerCase()) && (
+                            <CommandGroup>
+                              <CommandItem value={`__criar__${tagBusca}`} onSelect={criarTag}>
+                                <Plus className="h-3.5 w-3.5 mr-2" /> Criar etiqueta "{tagBusca.trim()}"
+                              </CommandItem>
+                            </CommandGroup>
+                          )}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Cada lead enviado recebe estas etiquetas junto com "{TAG_NAME}".
                 </p>
               </div>
             )}

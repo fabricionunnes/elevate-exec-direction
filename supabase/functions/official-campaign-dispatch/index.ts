@@ -197,8 +197,13 @@ async function enviarUm(supabase: any, camp: any, inst: any, r: any, stagesCache
         enabled: true, reply_mode: "auto", locked: true, updated_at: new Date().toISOString(),
       }, { onConflict: "conversation_id,channel" });
     }
-    if (r.lead_id && tagId) {
-      await supabase.from("crm_lead_tags").upsert({ lead_id: r.lead_id, tag_id: tagId }, { onConflict: "lead_id,tag_id", ignoreDuplicates: true });
+    // "Template enviado" + etiquetas escolhidas no disparo (Fabrício, 16/09/2026)
+    const tagIds = [...new Set([tagId, ...((camp.extra_tag_ids as string[] | null) || [])].filter(Boolean))];
+    if (r.lead_id && tagIds.length) {
+      await supabase.from("crm_lead_tags").upsert(
+        tagIds.map((t) => ({ lead_id: r.lead_id, tag_id: t })),
+        { onConflict: "lead_id,tag_id", ignoreDuplicates: true },
+      );
     }
     const mv = lead ? await moverLead(supabase, camp, lead, stagesCache) : null;
     const { data: cur } = await supabase.from(REC).update({
