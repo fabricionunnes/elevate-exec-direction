@@ -16,7 +16,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { OfficialTemplatesTab } from "@/components/crm/settings/OfficialTemplatesTab";
 import { cancelarDisparo, retomarDisparo } from "@/components/crm/OfficialDispatchProgress";
-import { AlertTriangle, ArrowLeft, CalendarDays, Download, Loader2, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertTriangle, ArrowLeft, CalendarDays, Download, Loader2, RefreshCw, RotateCcw, Search, ShieldCheck } from "lucide-react";
 
 interface CampaignRow {
   id: string; created_at: string; finished_at: string | null; status: string; template_name: string;
@@ -55,6 +57,8 @@ const STATUS_CLASS: Record<string, string> = {
 
 // Motivos mais comuns da Meta, em português de gente
 const ERROR_HELP: Record<string, string> = {
+  "131048": "A Meta limitou o número por taxa de spam: muita gente bloqueou ou denunciou mensagens recentes. Espere o limite normalizar antes de reenviar.",
+  "130472": "O contato está num teste da Meta que bloqueia mensagens de marketing. Não adianta reenviar agora.",
   "131026": "O número não recebe: não tem WhatsApp, é fixo, o app está muito desatualizado ou a pessoa não aceitou os termos novos do WhatsApp.",
   "131049": "A Meta segurou a mensagem de marketing porque esse número já recebeu muitas mensagens de empresas. Dá pra tentar de novo outro dia.",
   "131050": "A pessoa bloqueou mensagens de marketing da sua empresa.",
@@ -582,6 +586,135 @@ function DisparosLista() {
   );
 }
 
+// ───────────────────────── Reenvio das falhas ─────────────────────────
+// Erros em que reenviar não resolve: vêm desmarcados
+const FALHA_PERMANENTE = new Set(["131026", "130472", "131050"]);
+// mesmo critério da RPC official_campaign_retry: código numérico no começo do erro
+const codigoFalha = (t: string | null) => (String(t || "").match(/^\d+/) || [])[0] || "outros";
+
+function ReenviarFalhasDialog({ campaign, rows, open, onOpenChange }: {
+  campaign: any; rows: RecipientRow[]; open: boolean; onOpenChange: (v: boolean) => void;
+}) {
+  const navigate = useNavigate();
+  const grupos = useMemo(() => {
+    const m = new Map<string, { code: string; count: number; sample: string }>();
+    for (const r of rows) {
+      if (!["failed", "error"].includes(r.status)) continue;
+      const code = codigoFalha(r.error_text);
+      const g = m.get(code) || { code, count: 0, sample: r.error_text || "Sem detalhe" };
+      g.count++;
+      m.set(code, g);
+    }
+    return [...m.values()].sort((a, b) => b.count - a.count);
+  }, [rows]);
+  const [marcados, setMarcados] = useState<Set<string>>(new Set());
+  const [restam, setRestam] = useState<number | null | undefined>(undefined);
+  const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setMarcados(new Set(grupos.filter((g) => !FALHA_PERMANENTE.has(g.code)).map((g) => g.code)));
+    setRestam(undefined);
+    (async () => {
+      const [res, uso] = await Promise.all([
+        supabase.functions.invoke("whatsapp-official-api", { body: { action: "getLimits", instanceId: campaign.official_instance_id } }),
+        contarEnviosDoDia(),
+      ]);
+      const limite = res.error || res.data?.error ? null : res.data?.dailyLimit ?? null;
+      setRestam(limite == null ? null : Math.max(limite - uso.ultimas24, 0));
+    })();
+  }, [open, grupos, campaign.official_instance_id]);
+
+  const selecionados = grupos.filter((g) => marcados.has(g.code)).reduce((a, g) => a + g.count, 0);
+  const spamRecente = rows.some((r) => codigoFalha(r.error_text) === "131048" && r.sent_at && Date.now() - Date.parse(r.sent_at) < 864e5);
+
+  const reenviar = async () => {
+    if (!selecionados || enviando) return;
+    setEnviando(true);
+    const { data, error } = await (supabase as any).rpc("official_campaign_retry", { p_campaign: campaign.id, p_codes: [...marcados] });
+    if (error || !data?.campaign_id) {
+      toast.error(error?.message || "Não consegui criar o reenvio");
+      setEnviando(false);
+      return;
+    }
+    const { error: invErr } = await supabase.functions.invoke("official-campaign-dispatch", { body: { campaign_id: data.campaign_id } });
+    if (invErr) {
+      await supabase.from("whatsapp_official_campaigns" as any)
+        .update({ status: "paused", notes: "O envio não iniciou no servidor. Clique em Retomar." } as any).eq("id", data.campaign_id);
+      toast.error("O reenvio foi criado mas não iniciou. Abra o disparo e clique em Retomar.");
+    } else {
+      toast.success(`Reenvio iniciado para ${data.total} contato(s)`);
+    }
+    setEnviando(false);
+    onOpenChange(false);
+    navigate(`/crm/disparos/${data.campaign_id}`);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Reenviar mensagens que falharam</DialogTitle>
+          <DialogDescription>
+            Cria um disparo novo só com essas pessoas: mesmo template, variáveis, etapa, agente e etiquetas.
+            Quem já recebeu esse template nos últimos 7 dias fica de fora.
+          </DialogDescription>
+        </DialogHeader>
+
+        {spamRecente && (
+          <div className="rounded-md border border-red-300 bg-red-50 dark:bg-red-950/30 p-3 text-xs text-red-800 dark:text-red-300 flex gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>
+              A Meta limitou este número por taxa de spam nas últimas 24h (131048). Reenviar agora tende a falhar de novo e
+              derrubar a qualidade do número. O ideal é esperar. Se a Meta seguir recusando, o reenvio pausa sozinho.
+            </span>
+          </div>
+        )}
+        {restam != null && selecionados > restam && (
+          <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-3 text-xs text-amber-800 dark:text-amber-300">
+            Restam {restam} contatos no limite das últimas 24h e você vai reenviar pra {selecionados}. O que passar do limite a Meta recusa.
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {grupos.map((g) => {
+            const permanente = FALHA_PERMANENTE.has(g.code);
+            return (
+              <label key={g.code} className="flex items-start gap-2 rounded-md border p-2.5 cursor-pointer hover:bg-muted/40">
+                <Checkbox
+                  className="mt-0.5"
+                  checked={marcados.has(g.code)}
+                  onCheckedChange={(v) => setMarcados((prev) => {
+                    const n = new Set(prev);
+                    if (v === true) n.add(g.code); else n.delete(g.code);
+                    return n;
+                  })}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    {g.code === "outros" ? "Outros erros" : `Erro ${g.code}`}
+                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">{g.count}</Badge>
+                    {permanente && <span className="text-[11px] font-normal text-muted-foreground">não adianta reenviar</span>}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{ERROR_HELP[g.code] || g.sample}</p>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={enviando}>Cancelar</Button>
+          <Button onClick={reenviar} disabled={!selecionados || enviando} className="gap-1.5">
+            {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+            {selecionados ? `Reenviar pra até ${selecionados}` : "Selecione um motivo"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ───────────────────────── Detalhe ─────────────────────────
 type Filtro = "todos" | "entregues" | "lidos" | "responderam" | "sem_resposta" | "falhas" | "pulados";
 
@@ -592,6 +725,7 @@ function DisparoDetalhe({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [busca, setBusca] = useState("");
+  const [reenviarOpen, setReenviarOpen] = useState(false);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -699,7 +833,13 @@ function DisparoDetalhe({ id }: { id: string }) {
           ])}>
             <Download className="h-3.5 w-3.5" /> Exportar
           </Button>
+          {stats.failed + stats.errors > 0 && campaign.status !== "sending" && (
+            <Button size="sm" className="gap-1.5" onClick={() => setReenviarOpen(true)}>
+              <RotateCcw className="h-3.5 w-3.5" /> Reenviar falhas
+            </Button>
+          )}
         </div>
+        <ReenviarFalhasDialog campaign={campaign} rows={rows} open={reenviarOpen} onOpenChange={setReenviarOpen} />
         <p className="text-xs text-muted-foreground">
           {dt(campaign.created_at)} · por {campaign.created_by_name || "—"} · {(campaign.template_category || "").toLowerCase()}
           {campaign.notes ? ` · ${campaign.notes}` : ""}
