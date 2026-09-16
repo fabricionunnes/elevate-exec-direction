@@ -80,10 +80,19 @@ const AUTOMATIONS: {
   {
     key: "trafego_semanal",
     label: "Resumo da semana de tráfego (PDF)",
-    description: "Últimos 7 dias completos comparados com os 7 anteriores, por campanha, com vendas e CAC quando houver rastreamento, no grupo UNV ADS do cliente.",
-    schedule: "quarta · 8h",
+    description: "Semana fechada (segunda a domingo) comparada com a anterior, por campanha, com vendas e CAC quando houver rastreamento, no grupo UNV ADS do cliente.",
+    schedule: "segunda · 8h",
     sender: "Marcelo",
     icon: BarChart3,
+    onlyUnvAds: true,
+  },
+  {
+    key: "trafego_resumo",
+    label: "Resumo de tráfego em texto",
+    description: "Mensagem com os últimos 7 dias (investido, conversas ou leads com custo, cliques, alcance, campanha que mais rodou) e o acumulado do mês, no grupo UNV ADS do cliente.",
+    schedule: "quarta · 8h",
+    sender: "Marcelo",
+    icon: Megaphone,
     onlyUnvAds: true,
   },
   {
