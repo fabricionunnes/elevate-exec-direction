@@ -36,7 +36,7 @@ const MATCH_LABELS: Record<string, string> = { contains: "Contém", exact: "Exat
 
 export default function CRMAutomationsPage() {
   const { canSettings, staffId, tenantId } = useCRMContext();
-  const [tab, setTab] = useState("rules");
+  const [tab, setTab] = useState("meetings");
   const [rules, setRules] = useState<Rule[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
@@ -233,10 +233,10 @@ export default function CRMAutomationsPage() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="rules"><Zap className="h-4 w-4 mr-1.5" />Palavras-chave</TabsTrigger>
-          <TabsTrigger value="agents"><Bot className="h-4 w-4 mr-1.5" />Agentes qualificadores</TabsTrigger>
-          <TabsTrigger value="instagram"><Instagram className="h-4 w-4 mr-1.5" />Instagram</TabsTrigger>
           <TabsTrigger value="meetings"><CalendarCheck className="h-4 w-4 mr-1.5" />Agendamentos</TabsTrigger>
+          <TabsTrigger value="agents"><Bot className="h-4 w-4 mr-1.5" />Agentes qualificadores</TabsTrigger>
+          <TabsTrigger value="rules"><Zap className="h-4 w-4 mr-1.5" />Palavras-chave</TabsTrigger>
+          <TabsTrigger value="instagram"><Instagram className="h-4 w-4 mr-1.5" />Instagram</TabsTrigger>
         </TabsList>
 
         <TabsContent value="meetings" className="mt-4">
