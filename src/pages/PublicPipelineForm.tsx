@@ -29,8 +29,15 @@ interface FormQuestion {
   sort_order: number;
 }
 
+const onlyDigits = (value: string) => {
+  let d = value.replace(/\D/g, "");
+  // Digitou com DDI do Brasil (+55 31 99999-9999): tira o 55 pra não virar DDD
+  if (d.length > 11 && d.startsWith("55")) d = d.slice(2);
+  return d.slice(0, 11);
+};
+
 const formatPhone = (value: string) => {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
+  const digits = onlyDigits(value);
   if (digits.length <= 2) return digits;
   if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
   if (digits.length <= 10)
@@ -38,7 +45,7 @@ const formatPhone = (value: string) => {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 };
 
-const cleanPhone = (value: string) => value.replace(/\D/g, "");
+const cleanPhone = (value: string) => onlyDigits(value);
 
 const PublicPipelineForm = () => {
   const { token } = useParams<{ token: string }>();
@@ -314,7 +321,7 @@ const PublicPipelineForm = () => {
                     value={telefone}
                     onChange={(e) => setTelefone(formatPhone(e.target.value))}
                     required
-                    maxLength={16}
+                    maxLength={20}
                     placeholder="(11) 99999-9999"
                   />
                 </div>

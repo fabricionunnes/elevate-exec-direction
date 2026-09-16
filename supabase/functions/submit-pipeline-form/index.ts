@@ -181,7 +181,12 @@ Deno.serve(async (req) => {
     const pipelineName = pipelineData?.name || 'Desconhecido';
 
     // ── Check for existing lead by email or phone in the same pipeline ──
-    const cleanPhone = telefone.replace(/\D/g, '');
+    // Normaliza: se veio com DDI do Brasil (+55 31 99999-9999), tira o 55 pra não virar DDD
+    const cleanPhone = (() => {
+      let d = String(telefone).replace(/\D/g, '');
+      if (d.length > 11 && d.startsWith('55')) d = d.slice(2);
+      return d.slice(0, 11);
+    })();
     // Dedup por email quando houver; sempre por telefone.
     const dedupeFilters = [`phone.eq.${cleanPhone}`];
     if (email) dedupeFilters.unshift(`email.eq.${email}`);
