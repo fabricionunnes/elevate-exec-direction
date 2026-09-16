@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { AudioPlayer } from "@/components/crm/inbox/AudioPlayer";
 
 interface Props {
   leadId: string;
@@ -723,17 +724,28 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
                             : "bg-background border border-border"
                         )}
                       >
-                        {m.media_url && (
+                        {/* mídia igual ao Atendimento: player de áudio, imagem, vídeo; o resto vira link */}
+                        {(m.type === "audio" || m.type === "ptt") ? (
+                          <AudioPlayer src={m.media_url || ""} messageId={m.id} />
+                        ) : (m.type === "image" || m.type === "sticker") && m.media_url ? (
+                          <a href={m.media_url} target="_blank" rel="noreferrer">
+                            <img src={m.media_url} alt="" className={cn("rounded-md mb-1", m.type === "sticker" ? "max-h-32" : "max-h-64")} loading="lazy" />
+                          </a>
+                        ) : m.type === "video" && m.media_url ? (
+                          <video src={m.media_url} controls preload="metadata" className="rounded-md mb-1 max-h-64 max-w-full" />
+                        ) : m.media_url ? (
                           <a
                             href={m.media_url}
                             target="_blank"
                             rel="noreferrer"
                             className="block text-[11px] underline mb-1 opacity-80"
                           >
-                            [{m.type || "mídia"}]
+                            [{m.type === "document" ? "documento" : m.type || "mídia"}]
                           </a>
+                        ) : null}
+                        {m.content && !/^\[(áudio|audio|imagem|image|vídeo|video|sticker|figurinha)\]$/i.test(m.content.trim()) && (
+                          <div className="whitespace-pre-wrap break-words">{m.content}</div>
                         )}
-                        {m.content && <div className="whitespace-pre-wrap break-words">{m.content}</div>}
                         <div
                           className={cn(
                             "flex items-center gap-1 justify-end mt-0.5 text-[10px] opacity-70"
