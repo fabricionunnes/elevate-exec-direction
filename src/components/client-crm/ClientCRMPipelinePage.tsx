@@ -54,6 +54,7 @@ const defaultFilters: CRMFilters = {
   dateRange: undefined,
   fields: [],
   tags: [],
+  tagsExclude: [],
   owners: [],
   status: [],
   stages: [],
@@ -130,6 +131,11 @@ export const ClientCRMPipelinePage = ({
       if (filters.tags.length > 0) {
         const leadTagIds = lead.tags?.map(t => t.tag.id) || [];
         if (!filters.tags.some(tagId => leadTagIds.includes(tagId))) return false;
+      }
+      // Tags excluídas: esconde quem tem qualquer uma delas
+      if (filters.tagsExclude?.length) {
+        const leadTagIds = lead.tags?.map(t => t.tag.id) || [];
+        if (filters.tagsExclude.some(tagId => leadTagIds.includes(tagId))) return false;
       }
       if (filters.owners.length > 0) {
         if (!lead.owner_id || !filters.owners.includes(lead.owner_id)) return false;

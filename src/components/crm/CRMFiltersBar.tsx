@@ -28,6 +28,7 @@ import {
   RotateCcw,
   Phone,
   Megaphone,
+  Ban,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -39,6 +40,8 @@ export interface CRMFilters {
   dateRange: DateRange | undefined;
   fields: string[];
   tags: string[];
+  // tags que TIRAM o lead da lista (ex.: todos menos "Template enviado")
+  tagsExclude?: string[];
   owners: string[];
   status: string[];
   stages: string[];
@@ -112,6 +115,18 @@ export const CRMFiltersBar = ({
     updateFilter(key, updated);
   };
 
+  const excluidas = filters.tagsExclude || [];
+  const tagCount = filters.tags.length + excluidas.length;
+  // marcar pra incluir tira da exclusão e vice-versa (uma tag nunca fica nos dois)
+  const toggleIncluirTag = (id: string) => {
+    const tags = filters.tags.includes(id) ? filters.tags.filter((t) => t !== id) : [...filters.tags, id];
+    onFiltersChange({ ...filters, tags, tagsExclude: excluidas.filter((t) => t !== id) });
+  };
+  const toggleExcluirTag = (id: string) => {
+    const tagsExclude = excluidas.includes(id) ? excluidas.filter((t) => t !== id) : [...excluidas, id];
+    onFiltersChange({ ...filters, tagsExclude, tags: filters.tags.filter((t) => t !== id) });
+  };
+
   // filtros por nome (campanha/conjunto/anúncio)
   const toggleNameFilter = (key: "campaigns" | "adsets" | "ads", val: string) => {
     const current = filters[key] || [];
@@ -128,6 +143,7 @@ export const CRMFiltersBar = ({
       dateRange: undefined,
       fields: [],
       tags: [],
+      tagsExclude: [],
       owners: [],
       status: [],
       stages: [],
@@ -145,6 +161,7 @@ export const CRMFiltersBar = ({
     filters.dateRange ? 1 : 0,
     filters.fields.length,
     filters.tags.length,
+    excluidas.length,
     filters.owners.length,
     filters.status.length,
     filters.stages.length,
@@ -271,19 +288,22 @@ export const CRMFiltersBar = ({
               size="sm"
               className={cn(
                 "h-8 gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground",
-                filters.tags.length > 0 && "bg-primary/10 text-foreground font-medium"
+                tagCount > 0 && "bg-primary/10 text-foreground font-medium"
               )}
             >
               Tags
-              {filters.tags.length > 0 && (
+              {tagCount > 0 && (
                 <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                  {filters.tags.length}
+                  {tagCount}
                 </Badge>
               )}
               <ChevronDown className="h-3 w-3" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-56 p-2" align="start">
+          <PopoverContent className="w-64 p-2" align="start">
+            <p className="text-[11px] text-muted-foreground px-1 mb-1.5">
+              Marque para mostrar só quem tem a tag. Clique em <Ban className="inline h-3 w-3 -mt-0.5" /> para esconder quem tem.
+            </p>
             <div className="relative mb-2">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
@@ -300,25 +320,42 @@ export const CRMFiltersBar = ({
               ) : filteredTagOptions.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2">Nenhuma tag encontrada</p>
               ) : (
-                filteredTagOptions.map((tag) => (
-                  <div key={tag.id} className="flex items-center gap-2 py-1">
-                    <Checkbox
-                      id={`tag-${tag.id}`}
-                      checked={filters.tags.includes(tag.id)}
-                      onCheckedChange={() => toggleArrayFilter("tags", tag.id)}
-                    />
-                    <Label
-                      htmlFor={`tag-${tag.id}`}
-                      className="text-sm cursor-pointer flex items-center gap-2"
-                    >
-                      <span
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: tag.color || "#888" }}
+                filteredTagOptions.map((tag) => {
+                  const excluida = excluidas.includes(tag.id);
+                  return (
+                    <div key={tag.id} className="flex items-center gap-2 py-1">
+                      <Checkbox
+                        id={`tag-${tag.id}`}
+                        checked={filters.tags.includes(tag.id)}
+                        onCheckedChange={() => toggleIncluirTag(tag.id)}
                       />
-                      {tag.name}
-                    </Label>
-                  </div>
-                ))
+                      <Label
+                        htmlFor={`tag-${tag.id}`}
+                        className={cn(
+                          "text-sm cursor-pointer flex items-center gap-2 flex-1 min-w-0",
+                          excluida && "line-through text-destructive"
+                        )}
+                      >
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: tag.color || "#888" }}
+                        />
+                        <span className="truncate">{tag.name}</span>
+                      </Label>
+                      <button
+                        type="button"
+                        onClick={() => toggleExcluirTag(tag.id)}
+                        title={excluida ? "Voltar a mostrar quem tem esta tag" : "Esconder leads com esta tag"}
+                        className={cn(
+                          "h-6 w-6 shrink-0 rounded flex items-center justify-center transition-colors",
+                          excluida ? "bg-destructive text-destructive-foreground" : "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        )}
+                      >
+                        <Ban className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  );
+                })
               )}
             </div>
           </PopoverContent>

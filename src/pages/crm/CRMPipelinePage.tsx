@@ -76,6 +76,7 @@ const defaultFilters: CRMFilters = {
   dateRange: undefined,
   fields: [],
   tags: [],
+  tagsExclude: [],
   owners: [],
   status: [],
   stages: [],
@@ -484,6 +485,11 @@ export const CRMPipelinePage = () => {
       if (filters.tags.length > 0) {
         const leadTagIds = lead.tags?.map(t => t.tag.id) || [];
         if (!filters.tags.some(tagId => leadTagIds.includes(tagId))) return false;
+      }
+      // Tags excluídas: esconde quem tem qualquer uma delas
+      if (filters.tagsExclude?.length) {
+        const leadTagIds = lead.tags?.map(t => t.tag.id) || [];
+        if (filters.tagsExclude.some(tagId => leadTagIds.includes(tagId))) return false;
       }
 
       // Owner filter
