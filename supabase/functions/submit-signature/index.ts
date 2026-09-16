@@ -38,7 +38,12 @@ serve(async (req: Request) => {
     const { data: allSigners } = await supabaseAdmin.from("signers").select("id,status").eq("envelope_id", envelope.id);
     const allSigned = (allSigners ?? []).every((s: { status: string }) => s.status === "signed");
     if (allSigned) {
-      fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/finalize-envelope`, { method: "POST", headers: { Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json" }, body: JSON.stringify({ envelope_id: envelope.id }) }).catch(e => console.error(e));
+      // Espera a finalização: sem await o runtime encerrava antes da chamada sair e o envelope
+      // ficava "parcialmente assinado" sem PDF final (Instituto Educação Sant'Ana, 16/09/2026).
+      try {
+        const fin = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/finalize-envelope`, { method: "POST", headers: { Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json" }, body: JSON.stringify({ envelope_id: envelope.id }) });
+        if (!fin.ok) console.error("finalize-envelope falhou", fin.status, await fin.text());
+      } catch (e) { console.error("finalize-envelope erro", e); }
     } else {
       await supabaseAdmin.from("envelopes").update({ status: "partially_signed" }).eq("id", envelope.id);
     }

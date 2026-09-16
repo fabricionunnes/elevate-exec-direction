@@ -7,6 +7,13 @@ const APP_URL = Deno.env.get("APP_URL") ?? "https://unvholdings.com.br";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const FROM_EMAIL = Deno.env.get("FROM_EMAIL") ?? "assinatura@unvholdings.com.br";
 
+// Fontes padrão do PDF só desenham WinAnsi: recompõe acentos e tira o que não existir na tabela.
+// (16/09/2026: "Sant ́Ana" com acento solto U+0301 derrubava a finalização e o contrato não fechava.)
+const WIN_EXTRA = "€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ";
+const pdfSafe = (t: unknown) => String(t ?? "").normalize("NFC").split("")
+  .filter((ch) => { const c = ch.charCodeAt(0); return (c >= 0x20 && c <= 0x7e) || (c >= 0xa0 && c <= 0xff) || WIN_EXTRA.includes(ch); })
+  .join("");
+
 const fmtDate = (iso: string | null) => iso ? new Date(iso).toLocaleString("pt-BR", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " UTC" : "N/A";
 
 serve(async (req: Request) => {
@@ -36,7 +43,7 @@ serve(async (req: Request) => {
         const pages = finalPdf.getPages();
         const last = pages[pages.length - 1];
         last.drawImage(sigImg, { x: 40 + signer.order_index * 160, y: 30, width: 140, height: 50, opacity: 0.85 });
-        last.drawText(signer.name.slice(0, 30), { x: 40 + signer.order_index * 160, y: 25, size: 7, font: fontRegular, color: rgb(0.3,0.3,0.3) });
+        last.drawText(pdfSafe(signer.name).slice(0, 30), { x: 40 + signer.order_index * 160, y: 25, size: 7, font: fontRegular, color: rgb(0.3,0.3,0.3) });
       } catch { /* ignore */ }
     }
     const mp = finalPdf.addPage(PageSizes.A4);
@@ -45,7 +52,7 @@ serve(async (req: Request) => {
     const dt = (text: string, opts: { s?: number; bold?: boolean; mono?: boolean; c?: [number,number,number]; i?: number }) => {
       const { s = 9, bold = false, mono = false, c = [0.1,0.1,0.1] as [number,number,number], i = 0 } = opts;
       const font = mono ? fontMono : bold ? fontBold : fontRegular;
-      mp.drawText(String(text).slice(0, 110), { x: M + i, y, size: s, font, color: rgb(...c), maxWidth: pw - M*2 - i });
+      mp.drawText(pdfSafe(text).slice(0, 110), { x: M + i, y, size: s, font, color: rgb(...c), maxWidth: pw - M*2 - i });
       y -= s + 5;
     };
     const dl = () => { mp.drawLine({ start: { x: M, y }, end: { x: pw - M, y }, thickness: 0.5, color: rgb(0.8,0.8,0.8) }); y -= 8; };
