@@ -57,6 +57,7 @@ const emptyForm = {
   work_schedule: {} as Record<string, [string, string][]>,
   followup_enabled: false, followup_after_minutes: 60, followup_max_attempts: 2,
   followup_schedule: [] as FollowupStep[],
+  followup_total_max: "" as string,
 };
 
 // Agenda de follow-ups: cada passo conta a partir da última mensagem enviada
@@ -139,6 +140,7 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
           ? (agent as any).followup_schedule.map((st: any) => ({ ...fromMinutes(Number(st.after_minutes) || 60), instruction: String(st.instruction || "") }))
           // sem agenda salva: monta a partir do modelo antigo (X minutos, N vezes)
           : Array.from({ length: Math.max(1, agent.followup_max_attempts ?? 2) }, () => fromMinutes(agent.followup_after_minutes ?? 60))),
+        followup_total_max: (agent as any).followup_total_max ? String((agent as any).followup_total_max) : "",
       });
     } else {
       setAgentId(null);
@@ -198,6 +200,7 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
       // campos antigos seguem preenchidos (primeiro passo e quantidade) pra quem ainda lê eles
       followup_after_minutes: form.followup_schedule.length ? toMinutes(form.followup_schedule[0]) : form.followup_after_minutes,
       followup_max_attempts: form.followup_schedule.length || form.followup_max_attempts,
+      followup_total_max: parseInt(form.followup_total_max, 10) > 0 ? parseInt(form.followup_total_max, 10) : null,
       updated_at: new Date().toISOString(),
     };
     try {
@@ -487,6 +490,18 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
                     >
                       Adicionar follow-up
                     </Button>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <Label className="text-xs">Teto por conversa</Label>
+                      <Input
+                        type="number" min={1} className="h-8 w-20"
+                        placeholder={String(form.followup_schedule.length * 2)}
+                        value={form.followup_total_max}
+                        onChange={(e) => set({ followup_total_max: e.target.value })}
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        follow-ups no total. Quando o lead responde e some de novo, a sequência recomeça do passo 1; este teto evita cobrar pra sempre. Vazio = {form.followup_schedule.length * 2}.
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>

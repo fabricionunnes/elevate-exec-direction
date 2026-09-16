@@ -1,0 +1,1 @@
+alter table public.crm_ai_agents add column if not exists followup_total_max int; comment on column public.crm_ai_agents.followup_total_max is 'Teto de follow-ups por conversa somando todas as rodadas; null = 2x o tamanho da agenda'; notify pgrst, 'reload schema'; select 1 ok;

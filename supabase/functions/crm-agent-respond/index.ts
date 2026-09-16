@@ -894,6 +894,9 @@ Deno.serve(async (req) => {
         if (!schedule.length) for (let i = 0; i < legacyMax; i++) schedule.push({ after_minutes: legacyAfter, instruction: "" });
         const maxAtt = schedule.length;
         const afterMin = Math.min(...schedule.map((st) => st.after_minutes));
+        // Teto por conversa somando todas as rodadas: o lead que responde e some de novo
+        // recomeça do passo 1, mas não recebe follow-up pra sempre (padrão: 2x a agenda).
+        const totalMax = Math.max(1, Number(agent.followup_total_max) || maxAtt * 2);
         const { data: bindings } = await supabase.from("crm_ai_agent_channels")
           .select("channel, instance_id").eq("agent_id", agent.id);
         for (const b of (bindings || [])) {
@@ -958,6 +961,10 @@ Deno.serve(async (req) => {
             if (trailing - 1 >= maxAtt) continue; // já esgotou as tentativas
             // passo da agenda: espera o tempo DESTE follow-up desde a última mensagem enviada
             const passo = schedule[trailing - 1];
+            const { count: jaEnviados } = await supabase.from("crm_ai_agent_runs")
+              .select("id", { count: "exact", head: true })
+              .eq("conversation_id", cv.id).eq("mode", "followup").like("outcome", "sent%");
+            if ((jaEnviados || 0) >= totalMax) continue; // teto da conversa atingido
             const lastConvMs = Date.parse(String((cv as any).last_message_at || ""));
             if (!lastConvMs || Date.now() - lastConvMs < passo.after_minutes * 60000) continue;
             // TRAVA (09/09/2026): se a conversa tem last_message_at mais novo que a
