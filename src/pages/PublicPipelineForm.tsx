@@ -180,6 +180,13 @@ const PublicPipelineForm = () => {
       if (!data?.lead_id) throw new Error(data?.error || "Erro ao criar lead");
 
       setLeadId(data.lead_id);
+      // Lead no pixel do navegador: é o que o Gerenciador de Anúncios conta como
+      // resultado de campanha de site. Mesmo eventID do CAPI ("<lead>:Lead") pra
+      // Meta não contar duas vezes.
+      try {
+        const fbq = (window as any).fbq;
+        if (typeof fbq === "function") fbq("track", "Lead", {}, { eventID: `${data.lead_id}:Lead` });
+      } catch { /* sem pixel: segue */ }
       if (questions.length > 0) {
         setStep(2);
       } else {
