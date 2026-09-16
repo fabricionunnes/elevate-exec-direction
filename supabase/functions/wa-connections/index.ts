@@ -1,3 +1,9 @@
+// wa-connections — backend da tela "Conexões WhatsApp" do Nexus (Operações).
+// Proxy autenticado pro servidor WhatsApp próprio da UNV (Evolution API v2 no VPS):
+// criar instância, gerar QR, status ao vivo, reconectar e excluir.
+// Segurança: só staff master/admin (mesma regra do RLS de whatsapp_instances).
+// A master key do servidor fica AQUI (secrets WA_SERVER_URL/WA_SERVER_KEY) — nunca no navegador.
+// Fora do CI: deploy via Management API; fonte em ~/Documents/CLAUDE/marcelo/nexus-functions/.
 import { createClient } from "npm:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -31,14 +37,11 @@ async function evo(path, init) {
 // Estado de uma instância no servidor onde ela mora (dialeto por URL).
 async function liveState(apiUrl, apiKey, name) {
   try {
-    // Sem timeout, um servidor pendurado (Stevo em migração, VPS lenta) trava a
-    // tela de Conexões inteira — o fetch fica aberto pra sempre.
     if (isStevo(apiUrl)) {
       const r = await fetch(`${apiUrl}/instance/status`, {
         headers: {
           apikey: apiKey
-        },
-        signal: AbortSignal.timeout(6000)
+        }
       });
       if (!r.ok) return "unknown";
       const d = await r.json().catch(()=>({}));
@@ -48,8 +51,7 @@ async function liveState(apiUrl, apiKey, name) {
     const r = await fetch(`${apiUrl}/instance/connectionState/${name}`, {
       headers: {
         apikey: apiKey
-      },
-      signal: AbortSignal.timeout(6000)
+      }
     });
     if (!r.ok) return "unknown";
     const d = await r.json().catch(()=>({}));
@@ -65,6 +67,63 @@ Deno.serve(async (req)=>{
   if (req.method !== "POST") return json({
     error: "método inválido"
   }, 405);
+  // ── Vigia (cron, sem usuário): garante áudio (base64) ligado no webhook de toda
+  //    instância. Causa raiz do "Áudio não disponível" recorrente (09/09/2026): esta
+  //    própria tela regravava o webhook com base64:false ao criar/reconectar.
+  const cronToken = req.headers.get("x-cron-token") || "";
+  const CRON_TOKEN = Deno.env.get("WA_CRON_TOKEN") || "";
+  if (cronToken && CRON_TOKEN && cronToken === CRON_TOKEN) {
+    const bodyC = await req.json().catch(()=>({}));
+    if (String(bodyC.action || "") !== "ensure-webhooks") return json({
+      error: "ação inválida"
+    }, 400);
+    const lr = await evo(`/instance/fetchInstances`);
+    const list = await lr.json().catch(()=>[]);
+    const report = {};
+    for (const inst of Array.isArray(list) ? list : []){
+      const nm = String(inst?.name || inst?.instance?.instanceName || "");
+      if (!nm) continue;
+      try {
+        const wr = await evo(`/webhook/find/${nm}`);
+        if (!wr.ok) {
+          report[nm] = `find ${wr.status}`;
+          continue;
+        }
+        const w = await wr.json().catch(()=>({}));
+        const url = String(w?.url || "");
+        if (!url.includes("/functions/v1/evolution-webhook")) {
+          report[nm] = "outro webhook, não mexe";
+          continue;
+        }
+        const b64 = w?.webhookBase64 === true || w?.base64 === true;
+        if (b64 && w?.enabled !== false) {
+          report[nm] = "ok";
+          continue;
+        }
+        const sr = await evo(`/webhook/set/${nm}`, {
+          method: "POST",
+          body: JSON.stringify({
+            webhook: {
+              enabled: true,
+              url,
+              events: Array.isArray(w?.events) && w.events.length ? w.events : [
+                "MESSAGES_UPSERT"
+              ],
+              byEvents: w?.webhookByEvents === true,
+              base64: true
+            }
+          })
+        });
+        report[nm] = sr.ok ? "CORRIGIDO (base64 ligado)" : `set ${sr.status}`;
+      } catch (e) {
+        report[nm] = `erro ${String(e.message || e)}`;
+      }
+    }
+    return json({
+      ok: true,
+      report
+    });
+  }
   // ── Autenticação: JWT do usuário → staff ativo master/admin ──
   const auth = req.headers.get("Authorization") || "";
   const token = auth.replace(/^Bearer\s+/i, "");
@@ -128,9 +187,8 @@ Deno.serve(async (req)=>{
             ]));
         }
       } catch  {}
-      // consultas em paralelo: sequencial, 10 instâncias x timeout viravam
-      // mais de um minuto de tela branca quando um servidor não respondia
-      const out = await Promise.all((rows || []).filter((r)=>canTouch(r.id)).map(async (r)=>{
+      const out = [];
+      for (const r of (rows || []).filter((r)=>canTouch(r.id))){
         // Migração pendente: row no Stevo mas a instância homônima JÁ conectou no
         // servidor próprio (QR escaneado com o diálogo fechado) → vira a row aqui.
         let apiUrl = r.api_url || WA_URL, apiKey = r.api_key || WA_KEY;
@@ -158,15 +216,15 @@ Deno.serve(async (req)=>{
             updated_at: new Date().toISOString()
           }).eq("id", r.id);
         }
-        return {
+        out.push({
           ...r,
           api_key: undefined,
           status,
           state,
           phone_number: phone,
           server: isStevo(apiUrl) ? "stevo" : "unv"
-        };
-      }));
+        });
+      }
       return json({
         instances: out
       });
@@ -204,7 +262,7 @@ Deno.serve(async (req)=>{
               "MESSAGES_UPSERT"
             ],
             byEvents: false,
-            base64: false
+            base64: true
           }
         })
       }).catch(()=>{});
@@ -261,7 +319,7 @@ Deno.serve(async (req)=>{
                 "MESSAGES_UPSERT"
               ],
               byEvents: false,
-              base64: false
+              base64: true
             }
           })
         }).catch(()=>{});
