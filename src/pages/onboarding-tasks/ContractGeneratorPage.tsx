@@ -1898,7 +1898,12 @@ export default function ContractGeneratorPage() {
                                             const { data, error } = await supabase.functions.invoke("get-signing-link", {
                                               body: { signer_id: signer.id },
                                             });
-                                            if (error) throw new Error(error.message || "Erro ao gerar link");
+                                            if (error) {
+                                              // functions.invoke esconde o motivo; lê o corpo da resposta
+                                              let msg = error.message || "Erro ao gerar link";
+                                              try { const b = await (error as any).context?.json?.(); msg = b?.error || b?.message || msg; } catch { /* corpo não é JSON */ }
+                                              throw new Error(msg);
+                                            }
                                             const url = data?.data?.signing_url ?? data?.signing_url;
                                             if (!url) throw new Error("Link não retornado pela função");
                                             // Fallback para ambientes onde clipboard API não funciona

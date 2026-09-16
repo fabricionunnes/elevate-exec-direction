@@ -41,7 +41,16 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (!envelope) return createErrorResponse("Envelope não encontrado", 404);
-    if (envelope.owner_user_id !== user.id) return createErrorResponse("Acesso negado", 403);
+    // Quem criou o envelope, master/admin/head comercial ou o próprio signatário podem gerar o link
+    // (16/09/2026: contrato criado pelo Ricardo dava 403 pro Fabrício, que é master e signatário).
+    let autorizado = envelope.owner_user_id === user.id;
+    if (!autorizado && user.email && String(signer.email || "").toLowerCase() === user.email.toLowerCase()) autorizado = true;
+    if (!autorizado) {
+      const { data: staff } = await supabaseAdmin.from("onboarding_staff")
+        .select("role").eq("user_id", user.id).eq("is_active", true).limit(1).maybeSingle();
+      autorizado = ["master", "admin", "head_comercial"].includes(String(staff?.role || ""));
+    }
+    if (!autorizado) return createErrorResponse("Acesso negado: só quem criou o contrato ou um administrador pode gerar o link", 403);
     if (signer.status === "signed") return createErrorResponse("Signatário já assinou", 400);
     if (signer.status === "declined") return createErrorResponse("Signatário recusou a assinatura", 400);
 
