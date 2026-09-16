@@ -42,6 +42,52 @@ async function resolveAgentMode(
   return bind?.reply_mode || "off";
 }
 
+// ---------- Conversa de WhatsApp sem lead: acha o lead recém-cadastrado dessa pessoa ----------
+// Caso Gel Vieira (16/09/2026): preencheu o formulário com 1 dígito trocado no telefone,
+// a conversa ficou sem lead e, como os agentes atendem só funis liberados, ninguém respondeu.
+// Casa por: mesmo final de telefone, OU 1 dígito diferente + mesmo primeiro nome, em lead
+// criado nas últimas 6h. Só vincula se houver UM candidato.
+const semAcento = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+async function vincularLeadRecente(supabase: any, conv: any): Promise<string | null> {
+  const tel = String(conv.contact?.phone || "").replace(/\D/g, "");
+  if (tel.length < 10) return null;
+  const alvo9 = tel.slice(-9);
+  const primeiroNome = semAcento(String(conv.contact?.name || "").split(/\s+/)[0] || "");
+  const { data: recentes } = await supabase.from("crm_leads")
+    .select("id, name, phone, notes")
+    .gte("created_at", new Date(Date.now() - 6 * 3600000).toISOString())
+    .not("phone", "is", null)
+    .order("created_at", { ascending: false }).limit(300);
+  const candidatos: { lead: any; exato: boolean }[] = [];
+  for (const l of (recentes || [])) {
+    const d = String(l.phone || "").replace(/\D/g, "");
+    if (d.length < 8) continue;
+    if (d.slice(-9) === alvo9 || d.slice(-8) === tel.slice(-8)) { candidatos.push({ lead: l, exato: true }); continue; }
+    const l9 = d.slice(-9);
+    if (l9.length !== 9 || primeiroNome.length < 3) continue;
+    let dif = 0;
+    for (let i = 0; i < 9; i++) if (l9[i] !== alvo9[i]) dif++;
+    const nomeLead = semAcento(String(l.name || "").split(/\s+/)[0] || "");
+    if (dif === 1 && nomeLead === primeiroNome) candidatos.push({ lead: l, exato: false });
+  }
+  if (candidatos.length !== 1) return null;
+  const { lead, exato } = candidatos[0];
+  if (!exato) {
+    // telefone aproximado: não puxa lead que já conversa por outro número
+    const { data: outra } = await supabase.from("crm_whatsapp_conversations")
+      .select("id").eq("lead_id", lead.id).neq("id", conv.id).limit(1);
+    if ((outra || []).length) return null;
+  }
+  await supabase.from("crm_whatsapp_conversations").update({ lead_id: lead.id }).eq("id", conv.id);
+  if (!exato) {
+    await supabase.from("crm_leads").update({
+      phone: tel,
+      notes: [lead.notes, `[Agente IA] Telefone corrigido pelo WhatsApp real (o cadastro tinha ${lead.phone})`].filter(Boolean).join("\n"),
+    }).eq("id", lead.id);
+  }
+  return lead.id;
+}
+
 // ---------- Envio WhatsApp (mesmo transporte do survey-sender: Stevo/Manager V2 vs Evolution legado) ----------
 async function sendWhatsAppText(supabase: any, instanceId: string, phone: string, message: string): Promise<{ ok: boolean; error?: string; remoteId?: string | null; isV2?: boolean }> {
   const { data: instance } = await supabase
@@ -547,6 +593,8 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
           lead_id: leadId, type: "meeting", title,
           scheduled_at: startISO, status: "pending",
           responsible_staff_id: staff.id,
+          // autoria estruturada (o texto abaixo continua, mas o relatório lê a coluna)
+          ai_agent_id: agent.id,
           description: `Agendada pelo agente IA "${agent.name}"`,
           meeting_link: ev.event?.meetingLink || null,
           google_calendar_event_id: ev.event?.id || null,
@@ -655,6 +703,10 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
         });
         if (evErr) console.error("marcar_fora_do_perfil: evento não registrado", evErr.message);
       }
+      // Fora do ICP para QUALQUER follow-up: encerra as cadências ativas do lead.
+      await supabase.from("crm_cadence_enrollments")
+        .update({ status: "stopped", stopped_reason: "out_of_icp", updated_at: new Date().toISOString() })
+        .eq("lead_id", leadId).eq("status", "active");
       return alvo
         ? `Negócio movido para "${alvo.name}" e marcado como fora do perfil. Encerre a conversa com educação, sem prometer retorno.`
         : `Lead marcado como fora do perfil (este funil não tem etapa "Fora do ICP", então ele ficou onde está). Encerre a conversa com educação.`;
@@ -870,9 +922,12 @@ Deno.serve(async (req) => {
             // reativação (senão o agente pede pra agendar de novo, como já ocorreu).
             if (cv.lead_id) {
               // lead perdido/ganho não recebe follow-up
-              const { data: ld } = await supabase.from("crm_leads").select("stage_id, closed_at, stage:crm_stages(final_type)").eq("id", cv.lead_id).maybeSingle();
+              const { data: ld } = await supabase.from("crm_leads").select("stage_id, closed_at, stage:crm_stages(final_type, name)").eq("id", cv.lead_id).maybeSingle();
               const ft = (ld as any)?.stage?.final_type;
               if (ft === "lost" || ft === "won" || (ld as any)?.closed_at) continue;
+              // Fora do ICP não recebe follow-up (a etapa não é marcada como final,
+              // então o filtro de cima não pegava: Priscila levou cobrança 15/09).
+              if (/fora do icp|fora de icp|fora do perfil|fora de perfil|sem fit/i.test(String((ld as any)?.stage?.name || ""))) continue;
               const { data: futureMtgs } = await supabase.from("crm_activities")
                 .select("status").eq("lead_id", cv.lead_id).eq("type", "meeting")
                 .gte("scheduled_at", new Date().toISOString()).limit(5);
@@ -1001,6 +1056,12 @@ Deno.serve(async (req) => {
       if (cphone.includes("@g.us") || cphone.includes("@newsletter") || cphone.includes("-") || cphone.replace(/\D/g, "").length > 15) {
         return j({ ok: true, skip: "conversa de grupo/newsletter — agente não atua" });
       }
+    }
+
+    // Sem lead, a allowlist por funil deixa o agente mudo: tenta achar o lead recém-cadastrado.
+    if (!isIG && !conv.lead_id) {
+      const vinculado = await vincularLeadRecente(supabase, conv);
+      if (vinculado) conv.lead_id = vinculado;
     }
 
     // 1.5) GATILHO POR PALAVRA-CHAVE (estilo ManyChat). Se a última mensagem do
@@ -1646,6 +1707,8 @@ Deno.serve(async (req) => {
           } else {
             result = await runTool(supabase, agent, conv.lead_id, block.name, block.input);
             if (block.name === "marcar_perdido" && result.startsWith("OK")) encerrarConversa = true;
+            // Fora do ICP encerra igual à recusa: sem resposta automática e sem follow-up nesta conversa.
+            if (block.name === "marcar_fora_do_perfil" && !result.startsWith("Erro")) encerrarConversa = true;
           }
           toolCalls.push(`${block.name}(${JSON.stringify(block.input)}) -> ${result.slice(0, 120)}`);
           toolResults.push({ type: "tool_result", tool_use_id: block.id, content: result });
