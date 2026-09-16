@@ -56,7 +56,18 @@ const emptyForm = {
   work_days: [] as number[],
   work_schedule: {} as Record<string, [string, string][]>,
   followup_enabled: false, followup_after_minutes: 60, followup_max_attempts: 2,
+  followup_schedule: [] as FollowupStep[],
 };
+
+// Agenda de follow-ups: cada passo conta a partir da última mensagem enviada
+type FollowupUnit = "min" | "h" | "d";
+interface FollowupStep { value: number; unit: FollowupUnit; instruction: string }
+const UNIT_MIN: Record<FollowupUnit, number> = { min: 1, h: 60, d: 1440 };
+const toMinutes = (st: FollowupStep) => Math.max(15, Math.round((Number(st.value) || 0) * UNIT_MIN[st.unit]));
+const fromMinutes = (m: number): FollowupStep =>
+  m % 1440 === 0 ? { value: m / 1440, unit: "d", instruction: "" }
+  : m % 60 === 0 ? { value: m / 60, unit: "h", instruction: "" }
+  : { value: m, unit: "min", instruction: "" };
 
 export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId, onSaved }: Props) {
   const [tab, setTab] = useState("config");
@@ -124,6 +135,10 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
         followup_enabled: !!agent.followup_enabled,
         followup_after_minutes: agent.followup_after_minutes ?? 60,
         followup_max_attempts: agent.followup_max_attempts ?? 2,
+        followup_schedule: (Array.isArray((agent as any).followup_schedule) && (agent as any).followup_schedule.length
+          ? (agent as any).followup_schedule.map((st: any) => ({ ...fromMinutes(Number(st.after_minutes) || 60), instruction: String(st.instruction || "") }))
+          // sem agenda salva: monta a partir do modelo antigo (X minutos, N vezes)
+          : Array.from({ length: Math.max(1, agent.followup_max_attempts ?? 2) }, () => fromMinutes(agent.followup_after_minutes ?? 60))),
       });
     } else {
       setAgentId(null);
@@ -179,8 +194,10 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
       work_days: form.work_days.length ? form.work_days : null,
       work_schedule: Object.keys(form.work_schedule).length ? form.work_schedule : null,
       followup_enabled: form.followup_enabled,
-      followup_after_minutes: form.followup_after_minutes,
-      followup_max_attempts: form.followup_max_attempts,
+      followup_schedule: form.followup_schedule.map((st) => ({ after_minutes: toMinutes(st), instruction: st.instruction.trim() || null })),
+      // campos antigos seguem preenchidos (primeiro passo e quantidade) pra quem ainda lê eles
+      followup_after_minutes: form.followup_schedule.length ? toMinutes(form.followup_schedule[0]) : form.followup_after_minutes,
+      followup_max_attempts: form.followup_schedule.length || form.followup_max_attempts,
       updated_at: new Date().toISOString(),
     };
     try {
@@ -422,32 +439,54 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
                   <Switch checked={form.followup_enabled} onCheckedChange={(v) => set({ followup_enabled: v })} />
                 </div>
                 {form.followup_enabled && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="grid gap-2">
-                      <Label className="text-xs">Reativar após</Label>
-                      <Select value={String(form.followup_after_minutes)} onValueChange={(v) => set({ followup_after_minutes: parseInt(v, 10) })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="30">30 minutos</SelectItem>
-                          <SelectItem value="60">1 hora</SelectItem>
-                          <SelectItem value="120">2 horas</SelectItem>
-                          <SelectItem value="240">4 horas</SelectItem>
-                          <SelectItem value="480">8 horas</SelectItem>
-                          <SelectItem value="1440">24 horas</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label className="text-xs">Máx. de tentativas</Label>
-                      <Select value={String(form.followup_max_attempts)} onValueChange={(v) => set({ followup_max_attempts: parseInt(v, 10) })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1</SelectItem>
-                          <SelectItem value="2">2</SelectItem>
-                          <SelectItem value="3">3</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      Cada follow-up conta a partir da última mensagem enviada (a resposta do agente ou o follow-up anterior).
+                      A instrução é opcional: sem ela, o agente escolhe o ângulo sozinho.
+                    </p>
+                    {form.followup_schedule.map((st, i) => (
+                      <div key={i} className="rounded-md border p-2.5 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-semibold w-24 shrink-0">Follow-up {i + 1}</span>
+                          <Input
+                            type="number" min={1} className="h-8 w-20"
+                            value={st.value}
+                            onChange={(e) => set({ followup_schedule: form.followup_schedule.map((x, j) => j === i ? { ...x, value: Math.max(1, parseInt(e.target.value, 10) || 1) } : x) })}
+                          />
+                          <Select value={st.unit} onValueChange={(v) => set({ followup_schedule: form.followup_schedule.map((x, j) => j === i ? { ...x, unit: v as FollowupUnit } : x) })}>
+                            <SelectTrigger className="h-8 w-28"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="min">minutos</SelectItem>
+                              <SelectItem value="h">horas</SelectItem>
+                              <SelectItem value="d">dias</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <span className="text-xs text-muted-foreground">{i === 0 ? "depois da resposta do agente" : "depois do follow-up anterior"}</span>
+                          <Button
+                            type="button" variant="ghost" size="sm" className="h-8 px-2 ml-auto text-destructive"
+                            disabled={form.followup_schedule.length <= 1}
+                            onClick={() => set({ followup_schedule: form.followup_schedule.filter((_, j) => j !== i) })}
+                          >
+                            Remover
+                          </Button>
+                        </div>
+                        <div className="grid gap-1">
+                          <Label className="text-[11px] text-muted-foreground">Como abordar neste follow-up</Label>
+                          <Textarea
+                            rows={2} className="text-xs"
+                            placeholder="Ex.: retomar a dor que ele citou, trazer o case da Be Gym e oferecer dois horários. Em branco, o agente escolhe o ângulo."
+                            value={st.instruction}
+                            onChange={(e) => set({ followup_schedule: form.followup_schedule.map((x, j) => j === i ? { ...x, instruction: e.target.value } : x) })}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      type="button" variant="outline" size="sm"
+                      onClick={() => set({ followup_schedule: [...form.followup_schedule, { value: 1, unit: "d", instruction: "" }] })}
+                    >
+                      Adicionar follow-up
+                    </Button>
                   </div>
                 )}
               </div>

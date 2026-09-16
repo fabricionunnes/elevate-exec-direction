@@ -882,8 +882,18 @@ Deno.serve(async (req) => {
       for (const agent of (agents || [])) {
         // horário de atendimento vale pro follow-up também
         if (!agentScheduleActive(agent)) continue;
-        const afterMin = Math.max(15, agent.followup_after_minutes || 60);
-        const maxAtt = Math.max(1, agent.followup_max_attempts || 2);
+        // Agenda de follow-ups (Fabrício, 16/09/2026): cada passo conta a partir da ÚLTIMA
+        // mensagem enviada (resposta original ou follow-up anterior) e pode ter instrução própria.
+        // Sem agenda cadastrada, vale o modelo antigo: "reativar após X" repetido N vezes.
+        const legacyAfter = Math.max(15, agent.followup_after_minutes || 60);
+        const legacyMax = Math.max(1, agent.followup_max_attempts || 2);
+        const schedule: { after_minutes: number; instruction: string }[] =
+          (Array.isArray(agent.followup_schedule) ? agent.followup_schedule : [])
+            .map((st: any) => ({ after_minutes: Math.max(15, Number(st?.after_minutes) || 0), instruction: String(st?.instruction || "").trim() }))
+            .filter((st: any) => st.after_minutes >= 15);
+        if (!schedule.length) for (let i = 0; i < legacyMax; i++) schedule.push({ after_minutes: legacyAfter, instruction: "" });
+        const maxAtt = schedule.length;
+        const afterMin = Math.min(...schedule.map((st) => st.after_minutes));
         const { data: bindings } = await supabase.from("crm_ai_agent_channels")
           .select("channel, instance_id").eq("agent_id", agent.id);
         for (const b of (bindings || [])) {
@@ -946,6 +956,10 @@ Deno.serve(async (req) => {
             for (let i = hm.length - 1; i >= 0 && hm[i].direction === "outbound"; i--) trailing++;
             if (trailing >= hm.length) continue; // nunca teve resposta do lead
             if (trailing - 1 >= maxAtt) continue; // já esgotou as tentativas
+            // passo da agenda: espera o tempo DESTE follow-up desde a última mensagem enviada
+            const passo = schedule[trailing - 1];
+            const lastConvMs = Date.parse(String((cv as any).last_message_at || ""));
+            if (!lastConvMs || Date.now() - lastConvMs < passo.after_minutes * 60000) continue;
             // TRAVA (09/09/2026): se a conversa tem last_message_at mais novo que a
             // última mensagem gravada, houve envio que não ficou registrado (era o
             // caso do follow-up via Evolution — a API não ecoa o que envia). Sem o
@@ -969,9 +983,12 @@ Deno.serve(async (req) => {
             const prevFu = hm.slice(hm.length - trailing + 1).map((m: any) => String(m.content));
             const leadNm = (cv as any).contact?.name || (cv as any).contact?.username || "o lead";
             const histTxt = hm.slice(-14).map((m: any) => `${m.direction === "inbound" ? leadNm : "Você"}: ${m.content}`).join("\n");
-            const angulo = attempt <= 1
+            const anguloPadrao = attempt <= 1
               ? "Primeiro follow-up: retome o assunto em aberto de forma leve, como quem lembrou do lead. Uma pergunta só, fácil de responder."
-              : "Último follow-up: NÃO repita a pergunta anterior nem a mesma estrutura. Mude o ângulo — traga algo novo (um dado, um exemplo rápido, um benefício concreto ou uma pergunta diferente e mais simples) e deixe a porta aberta sem cobrar resposta.";
+              : attempt >= maxAtt
+              ? "Último follow-up: NÃO repita a pergunta anterior nem a mesma estrutura. Mude o ângulo — traga algo novo (um dado, um exemplo rápido, um benefício concreto ou uma pergunta diferente e mais simples) e deixe a porta aberta sem cobrar resposta."
+              : "Follow-up intermediário: NÃO repita a pergunta nem a abertura anterior. Traga um ângulo novo (um dado, um exemplo, um benefício concreto) e termine com uma pergunta simples.";
+            const angulo = passo.instruction ? `Instrução deste follow-up (siga à risca): ${passo.instruction}` : anguloPadrao;
             const fuSystem = [
               agent.instructions || "Você é um atendente comercial.",
               agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
