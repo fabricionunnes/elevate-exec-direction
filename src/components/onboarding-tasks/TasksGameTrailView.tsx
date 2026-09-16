@@ -279,12 +279,11 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                 ${isEven ? "md:mr-auto md:ml-0" : "md:ml-auto md:mr-0"}
               `}>
                 {/* Main Phase Node */}
+                {/* Só o cabeçalho abre/fecha a fase: com o toque no card inteiro, clicar numa
+                    tarefa fechava a trilha em vez de abrir a tarefa (16/09/2026) */}
                 <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setExpandedPhase(isExpanded ? null : phase.name)}
                   className={`
-                    relative cursor-pointer rounded-3xl overflow-hidden
+                    relative rounded-3xl overflow-hidden
                     transition-all duration-300
                     ${isCompleted 
                       ? "bg-gradient-to-br from-emerald-900/50 to-emerald-950/50 border-2 border-emerald-500/50 shadow-lg shadow-emerald-500/20" 
@@ -299,7 +298,20 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                     <div className={`absolute inset-0 bg-gradient-to-br ${color.bg} opacity-10`} />
                   )}
 
-                  <div className="relative p-5">
+                  <motion.div
+                    className="relative p-5 cursor-pointer"
+                    whileTap={{ scale: 0.99 }}
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={isExpanded}
+                    onClick={() => setExpandedPhase(isExpanded ? null : phase.name)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setExpandedPhase(isExpanded ? null : phase.name);
+                      }
+                    }}
+                  >
                     <div className="flex items-center gap-4">
                       {/* Phase Icon */}
                       <div className="relative">
@@ -404,7 +416,7 @@ export const TasksGameTrailView = ({ phases, onTaskClick, onStatusChange }: Task
                         </motion.div>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
 
                   {/* Expanded Tasks */}
                   <AnimatePresence>
