@@ -295,6 +295,8 @@ function DisparosLista() {
   const { instances, rateFor, reload: reloadInstances } = useInstances();
   const [rows, setRows] = useState<CampaignRow[]>([]);
   const [errors, setErrors] = useState<ErrorRow[]>([]);
+  // resultado comercial atribuído ao disparo (reuniões, no-show, vendas)
+  const [outcomes, setOutcomes] = useState<Map<string, { agendadas: number; realizadas: number; no_show: number; vendas: number; valor_vendas: number }>>(new Map());
   const [loading, setLoading] = useState(true);
   const [rateInput, setRateInput] = useState("");
   const [savingRate, setSavingRate] = useState(false);
@@ -308,10 +310,14 @@ function DisparosLista() {
     setRefreshKey((k) => k + 1);
     const { from, to } = intervaloDo(periodo, de, ate);
     const range = { p_from: from.toISOString(), p_to: to.toISOString() };
-    const [c, e] = await Promise.all([
+    const [c, e, o] = await Promise.all([
       supabase.rpc("official_campaigns_range" as any, range),
       supabase.rpc("official_campaign_errors_range" as any, range),
+      supabase.rpc("official_campaign_outcomes" as any, range),
     ]);
+    setOutcomes(new Map(((o.data || []) as any[]).map((x) => [x.campaign_id, {
+      agendadas: n(x.agendadas), realizadas: n(x.realizadas), no_show: n(x.no_show), vendas: n(x.vendas), valor_vendas: Number(x.valor_vendas || 0),
+    }])));
     if (c.error) toast.error("Não consegui carregar os disparos");
     setRows(((c.data || []) as any[]).map((r) => ({ ...r })) as CampaignRow[]);
     setErrors((e.data || []) as ErrorRow[]);
@@ -331,14 +337,17 @@ function DisparosLista() {
   const costOf = (r: CampaignRow) => n(r.billable) * rateFor(r.official_instance_id, r.template_category);
 
   const totals = useMemo(() => {
-    const t = { campaigns: rows.length, accepted: 0, delivered: 0, read: 0, responded: 0, failed: 0, errors: 0, cost: 0 };
+    const t = { campaigns: rows.length, accepted: 0, delivered: 0, read: 0, responded: 0, failed: 0, errors: 0, cost: 0,
+      agendadas: 0, realizadas: 0, noShow: 0, vendas: 0, valorVendas: 0 };
     for (const r of rows) {
       t.accepted += n(r.accepted); t.delivered += n(r.delivered); t.read += n(r.read);
       t.responded += n(r.responded); t.failed += n(r.failed); t.errors += n(r.send_errors); t.cost += costOf(r);
+      const o = outcomes.get(r.id);
+      if (o) { t.agendadas += o.agendadas; t.realizadas += o.realizadas; t.noShow += o.no_show; t.vendas += o.vendas; t.valorVendas += o.valor_vendas; }
     }
     return t;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, instances]);
+  }, [rows, instances, outcomes]);
 
   const errorGroups = useMemo(() => {
     const map = new Map<string, { code: string; count: number; sample: string }>();
@@ -408,6 +417,17 @@ function DisparosLista() {
         <Stat label="Custo estimado" value={brl(totals.cost)} sub="só mensagens entregues" />
       </div>
 
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        <Stat label="Reuniões agendadas" value={totals.agendadas} sub={`${pct(totals.agendadas, totals.responded)} de quem respondeu`} tone="text-blue-600" />
+        <Stat label="Reuniões realizadas" value={totals.realizadas} sub={totals.realizadas + totals.noShow ? `${pct(totals.realizadas, totals.realizadas + totals.noShow)} de comparecimento` : undefined} tone="text-emerald-600" />
+        <Stat label="No-show" value={totals.noShow} tone="text-amber-600" />
+        <Stat label="Vendas" value={totals.vendas} sub={totals.vendas ? brl(totals.valorVendas) : undefined} tone="text-emerald-700" />
+        <Stat label="Custo por reunião" value={totals.agendadas ? brl(totals.cost / totals.agendadas) : "—"} sub="custo estimado ÷ agendadas" />
+      </div>
+      <p className="-mt-1 text-[11px] text-muted-foreground">
+        Reuniões e vendas contam pro último disparo que chegou no lead antes delas, em até 30 dias.
+      </p>
+
       <Tabs defaultValue="disparos">
         <TabsList>
           <TabsTrigger value="disparos">Disparos</TabsTrigger>
@@ -434,6 +454,10 @@ function DisparosLista() {
                     <th className="text-right font-medium px-3 py-2">Entregues</th>
                     <th className="text-right font-medium px-3 py-2">Lidos</th>
                     <th className="text-right font-medium px-3 py-2">Responderam</th>
+                    <th className="text-right font-medium px-3 py-2">Agendadas</th>
+                    <th className="text-right font-medium px-3 py-2">Realizadas</th>
+                    <th className="text-right font-medium px-3 py-2">No-show</th>
+                    <th className="text-right font-medium px-3 py-2">Vendas</th>
                     <th className="text-right font-medium px-3 py-2">Falhas</th>
                     <th className="text-right font-medium px-3 py-2">Pulados</th>
                     <th className="text-right font-medium px-3 py-2">Custo est.</th>
@@ -457,6 +481,13 @@ function DisparosLista() {
                       <td className="px-3 py-2 text-right tabular-nums">{n(r.delivered)} <span className="text-[11px] text-muted-foreground">{pct(n(r.delivered), n(r.accepted))}</span></td>
                       <td className="px-3 py-2 text-right tabular-nums">{n(r.read)}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-emerald-700 dark:text-emerald-400 font-medium">{n(r.responded)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-blue-700 dark:text-blue-400">{outcomes.get(r.id)?.agendadas || 0}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{outcomes.get(r.id)?.realizadas || 0}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-amber-700 dark:text-amber-400">{outcomes.get(r.id)?.no_show || 0}</td>
+                      <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">
+                        {outcomes.get(r.id)?.vendas || 0}
+                        {outcomes.get(r.id)?.vendas ? <div className="text-[11px] text-muted-foreground">{brl(outcomes.get(r.id)!.valor_vendas)}</div> : null}
+                      </td>
                       <td className="px-3 py-2 text-right tabular-nums text-red-600">{n(r.failed) + n(r.send_errors)}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{n(r.skipped)}</td>
                       <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{brl(costOf(r))}</td>
