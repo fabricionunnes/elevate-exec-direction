@@ -49,15 +49,14 @@ const cleanPhone = (value: string) => onlyDigits(value);
 
 const PublicPipelineForm = () => {
   const { token } = useParams<{ token: string }>();
-  const [hashParams] = useSearchParams();
-  // O app usa HashRouter: o Meta Ads (fbclid) e os UTMs do anúncio caem ANTES
-  // do "#" (unvholdings.com.br/?utm_source=...&fbclid=...#/form/xyz) e o router
-  // não enxerga. Junta os dois lugares — o que estiver depois do # ganha.
-  const searchParams = (() => {
-    const merged = new URLSearchParams(window.location.search);
-    hashParams.forEach((v, k) => merged.set(k, v));
-    return merged;
-  })();
+  const [searchParams] = useSearchParams();
+  // O Meta anexa ?fbclid= ANTES do hash (unvholdings.com.br/?fbclid=X#/form/TOKEN),
+  // então o parâmetro não chega no router. Procura nos dois lugares.
+  const param = (k: string) => {
+    const doHash = searchParams.get(k);
+    if (doHash) return doHash;
+    try { return new URLSearchParams(window.location.search).get(k); } catch { return null; }
+  };
   const prefilledLeadId = searchParams.get("lead_id");
   const autoSubmit = searchParams.get("auto_submit") === "1";
   const autoNome = (searchParams.get("nome") || "").trim();
@@ -162,18 +161,18 @@ const PublicPipelineForm = () => {
           nome: finalNome,
           telefone: finalTelefone,
           email: finalEmail,
-          utm_source: searchParams.get("utm_source") || undefined,
-          utm_medium: searchParams.get("utm_medium") || undefined,
-          utm_campaign: searchParams.get("utm_campaign") || undefined,
-          utm_content: searchParams.get("utm_content") || undefined,
-          utm_term: searchParams.get("utm_term") || undefined,
-          fbclid: searchParams.get("fbclid") || undefined,
-          ad_name: searchParams.get("ad_name") || undefined,
-          adset_name: searchParams.get("adset_name") || undefined,
-          campaign_name: searchParams.get("campaign_name") || undefined,
-          meta_campaign_id: searchParams.get("meta_campaign_id") || searchParams.get("campaign_id") || undefined,
-          meta_adset_id: searchParams.get("meta_adset_id") || searchParams.get("adset_id") || undefined,
-          meta_ad_id: searchParams.get("meta_ad_id") || searchParams.get("ad_id") || undefined,
+          utm_source: param("utm_source") || undefined,
+          utm_medium: param("utm_medium") || undefined,
+          utm_campaign: param("utm_campaign") || undefined,
+          utm_content: param("utm_content") || undefined,
+          utm_term: param("utm_term") || undefined,
+          fbclid: param("fbclid") || undefined,
+          ad_name: param("ad_name") || undefined,
+          adset_name: param("adset_name") || undefined,
+          campaign_name: param("campaign_name") || undefined,
+          meta_campaign_id: param("meta_campaign_id") || param("campaign_id") || undefined,
+          meta_adset_id: param("meta_adset_id") || param("adset_id") || undefined,
+          meta_ad_id: param("meta_ad_id") || param("ad_id") || undefined,
         },
       });
 
