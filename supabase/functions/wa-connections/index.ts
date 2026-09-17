@@ -328,8 +328,19 @@ Deno.serve(async (req)=>{
       if (st === "open") return json({
         connected: true
       });
-      const qr = await evo(`/instance/connect/${name}`);
-      const qd = await qr.json().catch(()=>({}));
+      let qr = await evo(`/instance/connect/${name}`);
+      let qd = await qr.json().catch(()=>({}));
+      // Sessão morta com resto antigo no servidor (17/09/2026: VPS suspensa por horas →
+      // WhatsApp invalidou financeirounv e fabricio-pessoal): o QR nascia em cima das
+      // credenciais velhas e o celular recusava o pareamento. Se o número estava PARADO
+      // ("close") e o servidor pediu QR, limpa a sessão e gera um QR limpo. Em "connecting"
+      // não mexe — já tem pareamento em andamento e o logout invalidaria o QR na tela.
+      if (qr.ok && st === "close" && (qd?.base64 || qd?.code)) {
+        await evo(`/instance/logout/${name}`, { method: "DELETE" }).catch(()=>{});
+        await new Promise((r)=>setTimeout(r, 2500));
+        qr = await evo(`/instance/connect/${name}`);
+        qd = await qr.json().catch(()=>({}));
+      }
       if (!qr.ok) return json({
         error: `QR: ${JSON.stringify(qd).slice(0, 150)}`
       }, 502);
