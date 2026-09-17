@@ -72,6 +72,7 @@ import { useWhatsAppMessages, WhatsAppMessage } from "@/hooks/useWhatsAppMessage
 import { useInstagramConversations } from "@/hooks/useInstagramConversations";
 import { useInstagramMessages } from "@/hooks/useInstagramMessages";
 import { ConversationSidebar } from "@/components/crm/inbox/ConversationSidebar";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ConversationFilters, ConversationFiltersData, defaultFilters } from "@/components/crm/inbox/ConversationFilters";
 import { AudioPlayer } from "@/components/crm/inbox/AudioPlayer";
 import { MediaUploadButton } from "@/components/crm/inbox/MediaUploadButton";
@@ -98,6 +99,28 @@ export const CRMInboxPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram">("all");
+  // Filtro rápido por número/conta (evo:<id> | off:<id> | ig:<id>); lembra a última escolha
+  const [instanceFilter, setInstanceFilter] = useState<string>(() => {
+    try { return localStorage.getItem("crm_inbox_instance_filter") || "all"; } catch { return "all"; }
+  });
+  const [instanceNames, setInstanceNames] = useState<{ value: string; label: string }[]>([]);
+  useEffect(() => {
+    try { localStorage.setItem("crm_inbox_instance_filter", instanceFilter); } catch { /* sem storage */ }
+  }, [instanceFilter]);
+  useEffect(() => {
+    (async () => {
+      const [evo, off, ig] = await Promise.all([
+        supabase.from("whatsapp_instances").select("id, instance_name, display_name").eq("show_in_inbox", true),
+        supabase.from("whatsapp_official_instances").select("id, display_name, phone_number").eq("show_in_inbox", true),
+        supabase.from("instagram_instances").select("id, instance_name, instagram_username").eq("show_in_inbox", true),
+      ]);
+      setInstanceNames([
+        ...((evo.data || []) as any[]).map((i) => ({ value: `evo:${i.id}`, label: i.display_name || i.instance_name })),
+        ...((off.data || []) as any[]).map((i) => ({ value: `off:${i.id}`, label: `${i.display_name || i.phone_number} (API oficial)` })),
+        ...((ig.data || []) as any[]).map((i) => ({ value: `ig:${i.id}`, label: i.instagram_username ? `@${i.instagram_username} (Instagram)` : i.instance_name })),
+      ]);
+    })();
+  }, []);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [connectedInstances, setConnectedInstances] = useState<string[]>([]);
   const [allowedInstanceIds, setAllowedInstanceIds] = useState<string[]>([]);
@@ -156,6 +179,14 @@ export const CRMInboxPage = () => {
   const conversations = allConversations.filter((conv) => {
     // Channel filter
     if (channelFilter !== "all" && conv.channel !== channelFilter) return false;
+
+    // Filtro por número/conta
+    if (instanceFilter !== "all") {
+      const [tipo, id] = instanceFilter.split(":");
+      if (tipo === "ig" && conv.instagram_instance_id !== id) return false;
+      if (tipo === "off" && !(conv.official_instance_id === id && !conv.instance_id)) return false;
+      if (tipo === "evo" && conv.instance_id !== id) return false;
+    }
 
     // NÃO dá bypass total pro master: a visibilidade do Atendimento (show_in_inbox)
     // vale pra todos, inclusive master. Instância com "Atendimento" desligado não
@@ -710,6 +741,23 @@ export const CRMInboxPage = () => {
               </Button>
             ))}
           </div>
+          {/* Filtro rápido por número: só as contas que este usuário enxerga */}
+          <SearchableSelect
+            value={instanceFilter}
+            onValueChange={setInstanceFilter}
+            className="h-7 text-xs"
+            placeholder="Todos os números"
+            emptyMessage="Nenhum número encontrado."
+            options={[
+              { value: "all", label: "Todos os números" },
+              ...instanceNames
+                .filter((o) => {
+                  const [tipo, id] = o.value.split(":");
+                  return tipo === "evo" ? allowedInstanceIds.includes(id) : tipo === "off" ? allowedOfficialInstanceIds.includes(id) : allowedIgInstanceIds.includes(id);
+                })
+                .sort((a, b) => a.label.localeCompare(b.label)),
+            ]}
+          />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {hasConnectedDevice ? (
