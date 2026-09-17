@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 import { RealtimeChannel } from "@supabase/supabase-js";
@@ -64,11 +64,13 @@ interface UseWhatsAppConversationsOptions {
 export function useWhatsAppConversations(options: UseWhatsAppConversationsOptions = {}) {
   const [conversations, setConversations] = useState<WhatsAppConversation[]>([]);
   const [loading, setLoading] = useState(true);
+  // depois da primeira carga, toda atualização é silenciosa (sem apagar a lista e perder a posição)
+  const loadedOnce = useRef(false);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchConversations = async () => {
     try {
-      setLoading(true);
+      if (!loadedOnce.current) setLoading(true);
       
       // PostgREST corta em 1000 linhas por resposta: sem paginar, as conversas mais
       // antigas sumiam do Atendimento (o atendente via só parte da carteira dele).
@@ -94,6 +96,8 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
       });
 
       setConversations(data || []);
+
+      loadedOnce.current = true;
     } catch (err) {
       console.error('Error fetching conversations:', err);
       setError(err as Error);

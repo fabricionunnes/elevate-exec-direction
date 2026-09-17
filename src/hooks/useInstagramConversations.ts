@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 import { WhatsAppConversation } from "./useWhatsAppConversations";
@@ -7,10 +7,12 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 export function useInstagramConversations() {
   const [conversations, setConversations] = useState<WhatsAppConversation[]>([]);
   const [loading, setLoading] = useState(true);
+  // depois da primeira carga, toda atualização é silenciosa (sem apagar a lista e perder a posição)
+  const loadedOnce = useRef(false);
 
   const fetchConversations = async () => {
     try {
-      setLoading(true);
+      if (!loadedOnce.current) setLoading(true);
 
       // pagina de 1000 em 1000 (limite do PostgREST) — ver useWhatsAppConversations
       const data = await fetchAllRows<any>((from, to) =>
@@ -53,6 +55,8 @@ export function useInstagramConversations() {
       }));
 
       setConversations(mapped);
+
+      loadedOnce.current = true;
     } catch (err) {
       console.error("Error fetching Instagram conversations:", err);
     } finally {

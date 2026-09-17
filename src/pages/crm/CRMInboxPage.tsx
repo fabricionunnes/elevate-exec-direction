@@ -366,11 +366,22 @@ export const CRMInboxPage = () => {
   }, []);
 
   // Scroll to bottom when messages change or conversation is selected
+  // Só rola sozinho ao abrir/trocar de conversa, quando a última mensagem é minha, ou quando
+  // chega mensagem nova e eu já estava perto do fim. Lendo mensagens antigas, fica onde está.
+  const scrollState = useRef<{ conv: string | null; count: number; pending: boolean }>({ conv: null, count: 0, pending: false });
   useEffect(() => {
-    if (messages.length > 0) {
-      scrollToBottom();
-    }
-  }, [messages, selectedConversation?.id]);
+    const st = scrollState.current;
+    const convId = selectedConversation?.id || null;
+    if (st.conv !== convId) { st.conv = convId; st.pending = true; st.count = 0; }
+    if (!messages.length || loadingMessages) return;
+    const viewport = messagesScrollAreaRef.current?.querySelector("[data-radix-scroll-area-viewport]") as HTMLElement | null;
+    const pertoDoFim = !viewport || viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 220;
+    const cresceu = messages.length > st.count;
+    const ultimaMinha = (messages[messages.length - 1] as any)?.direction === "outbound";
+    if (st.pending || (cresceu && (pertoDoFim || ultimaMinha))) scrollToBottom();
+    st.pending = false;
+    st.count = messages.length;
+  }, [messages, selectedConversation?.id, loadingMessages]);
 
   // Sync selectedConversation with conversations when they update (e.g., from realtime)
   useEffect(() => {

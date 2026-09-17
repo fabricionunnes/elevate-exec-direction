@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { RealtimeChannel } from "@supabase/supabase-js";
 
@@ -28,6 +28,8 @@ export interface WhatsAppMessage {
 export function useWhatsAppMessages(conversationId: string | null) {
   const [messages, setMessages] = useState<WhatsAppMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  // conversa já carregada: mensagens novas entram sem apagar a tela
+  const loadedFor = useRef<string | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [sending, setSending] = useState(false);
 
@@ -39,7 +41,7 @@ export function useWhatsAppMessages(conversationId: string | null) {
     }
 
     try {
-      setLoading(true);
+      if (loadedFor.current !== (conversationId || null)) setLoading(true);
       
       const { data, error: fetchError } = await supabase
         .from('crm_whatsapp_messages')
@@ -59,6 +61,8 @@ export function useWhatsAppMessages(conversationId: string | null) {
       }));
 
       setMessages(typedData);
+
+      loadedFor.current = conversationId || null;
     } catch (err) {
       console.error('Error fetching messages:', err);
       setError(err as Error);

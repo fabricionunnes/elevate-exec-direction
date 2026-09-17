@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { WhatsAppMessage } from "./useWhatsAppMessages";
 import { RealtimeChannel } from "@supabase/supabase-js";
@@ -6,6 +6,8 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 export function useInstagramMessages(conversationId: string | null) {
   const [messages, setMessages] = useState<WhatsAppMessage[]>([]);
   const [loading, setLoading] = useState(false);
+  // conversa já carregada: mensagens novas entram sem apagar a tela
+  const loadedFor = useRef<string | null>(null);
 
   const fetchMessages = async () => {
     if (!conversationId) {
@@ -13,7 +15,7 @@ export function useInstagramMessages(conversationId: string | null) {
       return;
     }
 
-    setLoading(true);
+    if (loadedFor.current !== (conversationId || null)) setLoading(true);
     try {
       const { data, error } = await supabase
         .from("instagram_messages")
@@ -41,6 +43,8 @@ export function useInstagramMessages(conversationId: string | null) {
       }));
 
       setMessages(mapped);
+
+      loadedFor.current = conversationId || null;
     } catch (err) {
       console.error("Error fetching Instagram messages:", err);
     } finally {
