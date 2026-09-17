@@ -51,7 +51,13 @@ export async function retomarDisparo(campaignId: string) {
 export function OfficialDispatchProgress() {
   const navigate = useNavigate();
   const [itens, setItens] = useState<Andamento[]>([]);
-  const [ocultos, setOcultos] = useState<Set<string>>(new Set());
+  // Fechar no X vale de vez: fica guardado no navegador (antes voltava a cada recarga da página)
+  const [ocultos, setOcultos] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("crm_disparos_ocultos") || "[]")); } catch { return new Set(); }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("crm_disparos_ocultos", JSON.stringify([...ocultos].slice(-50))); } catch { /* sem storage */ }
+  }, [ocultos]);
   const staffIdRef = useRef<string | null>(null);
   const [contasMeta, setContasMeta] = useState<Record<string, { waba_id: string | null; business_id: string | null }>>({});
   useEffect(() => {
@@ -127,7 +133,8 @@ export function OfficialDispatchProgress() {
     return () => { clearInterval(t); window.removeEventListener("official-dispatch-started", h); };
   }, [carregar]);
 
-  const visiveis = itens.filter((i) => !ocultos.has(i.id));
+  // pausado sem ninguém pendente não tem o que retomar: não fica cobrando na tela
+  const visiveis = itens.filter((i) => !ocultos.has(i.id) && !(i.status === "paused" && i.pendentes === 0));
   if (!visiveis.length) return null;
 
   return (
@@ -157,7 +164,7 @@ export function OfficialDispatchProgress() {
               {i.falhas > 0 && <> · <span className="text-red-600">{i.falhas} com falha</span></>}
             </div>
             {i.status === "paused" && i.notes && <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">{i.notes}</p>}
-            <div className="mt-2 flex gap-1.5">
+            <div className="mt-2 flex flex-wrap gap-1.5">
               <Button asChild size="sm" variant="outline" className="h-7 text-xs">
                 <Link to={`/crm/disparos/${i.id}`}>Ver disparo</Link>
               </Button>

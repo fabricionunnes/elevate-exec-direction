@@ -61,6 +61,14 @@ async function continuar(campaignId: string, hop: number, errHops: number) {
 }
 
 async function pausar(supabase: any, campaignId: string, motivo: string) {
+  // sem ninguém pendente não há o que retomar: fecha como concluído (o motivo fica nas notas)
+  const { count } = await supabase.from(REC).select("id", { count: "exact", head: true })
+    .eq("campaign_id", campaignId).in("status", ["pending", "processing"]);
+  if (!count) {
+    await supabase.from(CAMP).update({ status: "done", finished_at: new Date().toISOString(), notes: motivo.replace(/^Pausado:/, "Encerrado com falhas:") })
+      .eq("id", campaignId).eq("status", "sending");
+    return;
+  }
   await supabase.from(CAMP).update({ status: "paused", notes: motivo }).eq("id", campaignId).eq("status", "sending");
 }
 
