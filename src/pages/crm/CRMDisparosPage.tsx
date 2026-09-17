@@ -15,7 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { OfficialTemplatesTab } from "@/components/crm/settings/OfficialTemplatesTab";
-import { cancelarDisparo, retomarDisparo } from "@/components/crm/OfficialDispatchProgress";
+import { cancelarDisparo, retomarDisparo, pausadoPorPagamento, linkPagamentoMeta } from "@/components/crm/OfficialDispatchProgress";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertTriangle, ArrowLeft, CalendarDays, Download, Loader2, RefreshCw, RotateCcw, Search, ShieldCheck } from "lucide-react";
@@ -36,7 +36,7 @@ interface ErrorRow {
   recipient_id: string; campaign_id: string; campaign_at: string; template_name: string; lead_id: string | null;
   lead_name: string | null; phone: string | null; status: string; error_text: string | null; at: string;
 }
-interface Instance { id: string; display_name: string | null; pricing_rates: Record<string, number> | null }
+interface Instance { id: string; display_name: string | null; pricing_rates: Record<string, number> | null; waba_id?: string | null; business_id?: string | null }
 
 const DEFAULT_RATES: Record<string, number> = { MARKETING: 0.3125, UTILITY: 0.04, AUTHENTICATION: 0.04 };
 
@@ -116,7 +116,7 @@ function intervaloDo(periodo: Periodo, de: string, ate: string): { from: Date; t
 function useInstances() {
   const [instances, setInstances] = useState<Instance[]>([]);
   const load = useCallback(async () => {
-    const { data } = await supabase.from("whatsapp_official_instances").select("id, display_name, pricing_rates");
+    const { data } = await supabase.from("whatsapp_official_instances").select("id, display_name, pricing_rates, waba_id, business_id");
     setInstances((data || []) as Instance[]);
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -719,7 +719,7 @@ function ReenviarFalhasDialog({ campaign, rows, open, onOpenChange }: {
 type Filtro = "todos" | "entregues" | "lidos" | "responderam" | "sem_resposta" | "falhas" | "pulados";
 
 function DisparoDetalhe({ id }: { id: string }) {
-  const { rateFor } = useInstances();
+  const { instances, rateFor } = useInstances();
   const [campaign, setCampaign] = useState<any>(null);
   const [rows, setRows] = useState<RecipientRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -815,8 +815,13 @@ function DisparoDetalhe({ id }: { id: string }) {
             : campaign.status === "paused" ? <Badge variant="outline" className="border-amber-500 text-amber-700">Pausado</Badge>
             : campaign.status === "canceled" ? <Badge variant="outline">Cancelado</Badge>
             : <Badge variant="outline">Concluído</Badge>}
+          {campaign.status === "paused" && pausadoPorPagamento(campaign.notes) && (
+            <Button asChild size="sm" className="ml-auto bg-[#0866FF] hover:bg-[#0654d4] text-white">
+              <a href={linkPagamentoMeta(instances.find((x) => x.id === campaign.official_instance_id))} target="_blank" rel="noreferrer">Pagar na Meta</a>
+            </Button>
+          )}
           {campaign.status === "paused" && (
-            <Button size="sm" className="ml-auto" onClick={async () => { await retomarDisparo(campaign.id); load(true); }}>Retomar</Button>
+            <Button size="sm" variant={pausadoPorPagamento(campaign.notes) ? "outline" : "default"} className={pausadoPorPagamento(campaign.notes) ? "" : "ml-auto"} onClick={async () => { await retomarDisparo(campaign.id); load(true); }}>Retomar</Button>
           )}
           {(campaign.status === "sending" || campaign.status === "paused") && (
             <Button size="sm" variant="outline" className={`${campaign.status === "paused" ? "" : "ml-auto "}text-red-600`} onClick={async () => {

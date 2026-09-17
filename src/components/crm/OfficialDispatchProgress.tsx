@@ -11,11 +11,22 @@ import { Loader2, PauseCircle, ShieldCheck, X, CheckCircle2 } from "lucide-react
 const CAMP = "whatsapp_official_campaigns";
 const REC = "whatsapp_official_campaign_recipients";
 
+// Pausa por pagamento pendente na Meta (131042/141006): o aviso ganha o atalho pra pagar.
+export const pausadoPorPagamento = (notes: string | null | undefined) => /131042|141006|pagamento pendente/i.test(notes || "");
+/** Cobrança da conta do WhatsApp Business no Billing Hub da Meta */
+export const linkPagamentoMeta = (inst?: { waba_id?: string | null; business_id?: string | null } | null) => {
+  const q = new URLSearchParams();
+  if (inst?.business_id) q.set("business_id", inst.business_id);
+  if (inst?.waba_id) { q.set("asset_id", inst.waba_id); q.set("account_type", "whatsapp-business-account"); }
+  return `https://business.facebook.com/billing_hub/accounts/details?${q.toString()}`;
+};
+
 interface Andamento {
   id: string;
   template_name: string;
   status: string;
   notes: string | null;
+  official_instance_id: string | null;
   total: number;
   pendentes: number;
   enviados: number;
@@ -42,6 +53,12 @@ export function OfficialDispatchProgress() {
   const [itens, setItens] = useState<Andamento[]>([]);
   const [ocultos, setOcultos] = useState<Set<string>>(new Set());
   const staffIdRef = useRef<string | null>(null);
+  const [contasMeta, setContasMeta] = useState<Record<string, { waba_id: string | null; business_id: string | null }>>({});
+  useEffect(() => {
+    supabase.from("whatsapp_official_instances" as any).select("id, waba_id, business_id").then(({ data }) => {
+      setContasMeta(Object.fromEntries(((data || []) as any[]).map((r) => [r.id, { waba_id: r.waba_id, business_id: r.business_id }])));
+    });
+  }, []);
   const statusAnterior = useRef<Map<string, string>>(new Map());
   const concluidosEm = useRef<Map<string, number>>(new Map());
 
@@ -56,7 +73,7 @@ export function OfficialDispatchProgress() {
       }
       const desde = new Date(Date.now() - 24 * 3600e3).toISOString();
       const { data: camps } = await supabase.from(CAMP as any)
-        .select("id, template_name, status, notes")
+        .select("id, template_name, status, notes, official_instance_id")
         .eq("created_by_staff_id", staffIdRef.current)
         .gte("created_at", desde)
         .order("created_at", { ascending: false })
@@ -94,7 +111,7 @@ export function OfficialDispatchProgress() {
           }
         }
         statusAnterior.current.set(c.id, c.status);
-        lista.push({ id: c.id, template_name: c.template_name, status: c.status, notes: c.notes, total, pendentes, enviados, falhas });
+        lista.push({ id: c.id, template_name: c.template_name, status: c.status, notes: c.notes, official_instance_id: c.official_instance_id || null, total, pendentes, enviados, falhas });
       }
       setItens(lista);
     } catch (e) {
@@ -151,7 +168,12 @@ export function OfficialDispatchProgress() {
               )}
               {i.status === "paused" && (
                 <>
-                  <Button size="sm" className="h-7 text-xs" onClick={() => retomarDisparo(i.id)}>Retomar</Button>
+                  {pausadoPorPagamento(i.notes) && (
+                    <Button asChild size="sm" className="h-7 text-xs bg-[#0866FF] hover:bg-[#0654d4] text-white">
+                      <a href={linkPagamentoMeta(contasMeta[i.official_instance_id || ""])} target="_blank" rel="noreferrer">Pagar na Meta</a>
+                    </Button>
+                  )}
+                  <Button size="sm" variant={pausadoPorPagamento(i.notes) ? "outline" : "default"} className="h-7 text-xs" onClick={() => retomarDisparo(i.id)}>Retomar</Button>
                   <Button size="sm" variant="ghost" className="h-7 text-xs text-red-600" onClick={() => {
                     if (window.confirm("Cancelar o disparo? Quem ainda não recebeu fica de fora.")) cancelarDisparo(i.id);
                   }}>Cancelar</Button>
