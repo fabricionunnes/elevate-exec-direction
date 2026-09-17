@@ -296,6 +296,9 @@ function buildTools(agent: any, hasLead: boolean): any[] {
             email: { type: "string", description: "E-mail do lead, coletado na conversa. OBRIGATÓRIO: peça antes de agendar se ainda não tiver." },
             telefone: { type: "string", description: "Telefone/WhatsApp do lead com DDD, coletado na conversa. OBRIGATÓRIO: peça antes de agendar se ainda não tiver." },
             nome_completo: { type: "string", description: "Nome completo do lead, se ele informou." },
+            nicho: { type: "string", description: "Nicho/segmento da empresa do lead, nas palavras dele (ex: 'clínica odontológica', 'distribuidora de bebidas'). OBRIGATÓRIO se ainda não estiver no cadastro: pergunte antes de agendar." },
+            empresa: { type: "string", description: "Nome da empresa do lead, se ele informou." },
+            instagram_empresa: { type: "string", description: "@ do Instagram da EMPRESA do lead. OBRIGATÓRIO perguntar antes de agendar se não estiver no cadastro. Se o lead disser que a empresa não tem Instagram, envie 'nao_tem'." },
           },
           required: ["data_hora", "titulo"],
         },
@@ -313,6 +316,20 @@ function buildTools(agent: any, hasLead: boolean): any[] {
           tipo: { type: "string", enum: ["nao_quer", "timing", "preco", "concorrente", "outro"], description: "nao_quer = decidiu não fazer / sem interesse; timing = não é o momento; preco = caro / sem orçamento; concorrente = já tem outra empresa ou solução; outro" },
         },
         required: ["motivo", "tipo"],
+      },
+    });
+  }
+  if (hasLead) {
+    tools.push({
+      name: "salvar_dados_lead",
+      description: "Grava no cadastro do lead o que ele acabou de informar sobre a empresa. Chame assim que o lead disser o nicho/segmento, o nome da empresa ou o Instagram da empresa — mesmo que a conversa não termine em agendamento. Não sobrescreve o que já está cadastrado.",
+      input_schema: {
+        type: "object",
+        properties: {
+          nicho: { type: "string", description: "Nicho/segmento da empresa, nas palavras do lead" },
+          empresa: { type: "string", description: "Nome da empresa" },
+          instagram_empresa: { type: "string", description: "@ do Instagram da empresa (sem inventar; só o que o lead informou)" },
+        },
       },
     });
   }
@@ -510,6 +527,31 @@ async function igSeguidoPeloFabricio(supabase: any, username: string | null | un
   return !!data;
 }
 
+// Nicho e Instagram da empresa: o agente pergunta antes de agendar e grava no cadastro do
+// lead (crm_leads.segment / crm_leads.instagram — os campos da aba Contato). Pedido do
+// Fabrício 17/09/2026: agendou sem perguntar o nicho. Nunca sobrescreve dado já preenchido.
+const SEM_IG = /^(nao_tem|n[aã]o tem|n[aã]o possui|sem instagram|nenhum|n[aã]o usa)$/i;
+function normalizarInstagram(v: unknown): string {
+  let t = String(v || "").trim();
+  if (!t || SEM_IG.test(t)) return "";
+  t = t.replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/[/?#].*$/, "").replace(/^@+/, "").trim();
+  return /^[A-Za-z0-9._]{2,30}$/.test(t) ? t.toLowerCase() : "";
+}
+async function salvarDadosLead(supabase: any, leadId: string | null, input: any): Promise<string[]> {
+  if (!leadId) return [];
+  const { data: ld } = await supabase.from("crm_leads").select("segment, instagram, company").eq("id", leadId).maybeSingle();
+  if (!ld) return [];
+  const upd: Record<string, string> = {};
+  const nicho = String(input?.nicho || "").trim();
+  const empresa = String(input?.empresa || "").trim();
+  const ig = normalizarInstagram(input?.instagram_empresa);
+  if (nicho && nicho.length <= 120 && !String(ld.segment || "").trim()) upd.segment = nicho;
+  if (empresa && empresa.length <= 160 && !String(ld.company || "").trim()) upd.company = empresa;
+  if (ig && !String(ld.instagram || "").trim()) upd.instagram = ig;
+  if (Object.keys(upd).length) await supabase.from("crm_leads").update(upd).eq("id", leadId);
+  return Object.keys(upd);
+}
+
 async function runTool(supabase: any, agent: any, leadId: string | null, name: string, input: any): Promise<string> {
   try {
     // staff alvo da agenda: primeiro closer configurado
@@ -541,7 +583,26 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
       return out + "\n\nIMPORTANTE: ofereça APENAS horários desta lista, exatamente como estão. Se o lead já escolheu um horário que está nesta lista, NÃO ofereça de novo: chame agendar_reuniao AGORA com esse horário.";
     }
 
+    if (name === "salvar_dados_lead") {
+      const campos = await salvarDadosLead(supabase, leadId, input);
+      return campos.length ? `Gravado no cadastro: ${campos.join(", ")}. Siga a conversa normalmente, sem comentar que gravou.` : "Nada novo pra gravar (já estava cadastrado). Siga a conversa.";
+    }
     if (name === "agendar_reuniao") {
+      // QUALIFICAÇÃO MÍNIMA: sem nicho e sem Instagram da empresa não agenda.
+      {
+        let seg = "", igCad = "";
+        if (leadId) {
+          const { data: lq } = await supabase.from("crm_leads").select("segment, instagram").eq("id", leadId).maybeSingle();
+          seg = String(lq?.segment || "").trim(); igCad = String(lq?.instagram || "").trim();
+        }
+        const igIn = String(input?.instagram_empresa || "").trim();
+        const faltam: string[] = [];
+        if (!seg && !String(input?.nicho || "").trim()) faltam.push("o nicho/segmento da empresa");
+        if (!igCad && !igIn) faltam.push("o Instagram da empresa (se não tiver, registre 'nao_tem')");
+        if (faltam.length) {
+          return `NÃO AGENDADO AINDA: falta perguntar ${faltam.join(" e ")}. Diga ao lead que o horário está reservado pra ele e que só precisa disso pra preparar a conversa; pergunte de forma natural, numa mensagem só. Quando ele responder, chame agendar_reuniao de novo com o mesmo data_hora e os campos nicho/instagram_empresa preenchidos. Não invente esses dados.`;
+        }
+      }
       // TRAVA DE DUPLICIDADE: duas execuções quase simultâneas (o lead manda duas
       // mensagens em sequência) chegavam aqui juntas — a primeira agendava e a
       // segunda batia no conflito da agenda e dizia "esse horário já foi
@@ -648,6 +709,7 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
           }
         }
       }
+      await salvarDadosLead(supabase, leadId, input);
       // Contato coletado na conversa vai pro cadastro do lead (não sobrescreve o que já existe)
       if (leadId) {
         const contactUpd: Record<string, string> = {};
@@ -1651,13 +1713,24 @@ Deno.serve(async (req) => {
 
     // Telefone/e-mail que já estão no sistema não se pede (pedido do Fabrício 14/09/2026:
     // "só pede se não tiver no sistema"). No WhatsApp o número da conversa já é o telefone.
+    let missingQualHint = "";
     let knownDataHint = "";
     {
-      let lEmail = "", lPhone = "";
+      let lEmail = "", lPhone = "", lSegment = "", lInstagram = "";
       if (conv.lead_id) {
-        const { data: ld } = await supabase.from("crm_leads").select("email, phone").eq("id", conv.lead_id).maybeSingle();
+        const { data: ld } = await supabase.from("crm_leads").select("email, phone, segment, instagram").eq("id", conv.lead_id).maybeSingle();
         lEmail = String(ld?.email || "").trim();
         lPhone = String(ld?.phone || "").trim();
+        lSegment = String(ld?.segment || "").trim();
+        lInstagram = String(ld?.instagram || "").trim();
+      }
+      {
+        const faltaQ: string[] = [];
+        if (!lSegment) faltaQ.push("o NICHO/segmento da empresa (o que a empresa vende e pra quem)");
+        if (!lInstagram) faltaQ.push("o INSTAGRAM da empresa (o @; se não tiver, tudo bem, registre 'nao_tem')");
+        if (faltaQ.length) {
+          missingQualHint = `\n\nQUALIFICAÇÃO OBRIGATÓRIA (regra do Fabrício, vale acima de qualquer instrução): ainda NÃO temos no cadastro ${faltaQ.join(" nem ")}. Pergunte isso de forma natural durante a conversa, uma coisa por vez, ANTES de oferecer horários de reunião. Assim que o lead responder, chame salvar_dados_lead pra gravar. A ferramenta agendar_reuniao recusa o agendamento enquanto isso não for perguntado. Nunca deduza nem invente o nicho ou o @.`;
+        }
       }
       const convPhone = isIG ? "" : String(conv.contact?.phone || "").trim();
       const tel = lPhone.replace(/\D/g, "").length >= 10 ? lPhone : convPhone;
@@ -1705,6 +1778,7 @@ Deno.serve(async (req) => {
       confirmedTimeHint,
       missingNameHint,
       knownDataHint,
+      tools.some((t: any) => t.name === "agendar_reuniao") ? missingQualHint : "",
       igPersonalization,
       `\n\nVÍDEO E IMAGEM: "(vídeo do lead, fala transcrita) ..." é o que a pessoa FALOU no vídeo e "(imagem do lead, o que aparece nela) ..." é o que tem na imagem. Responda como quem assistiu/viu, com base nisso, sem citar transcrição ou descrição. Nunca diga que não consegue abrir vídeo ou imagem. Se vier "sem fala", comente a legenda (se tiver) ou pergunte com naturalidade o que ele quis mostrar. Só se vier "não consegui abrir" é que você pede, sem drama, pra ele contar em uma frase.`,
       `\n\nÁUDIO: quando a mensagem vier como "(áudio do lead, transcrito) ...", o lead FALOU aquilo — trate como se tivesse ouvido e responda normalmente, SEMPRE em texto. Nunca diga que não conseguiu ouvir e nunca peça pra ele repetir por escrito. Só se vier "(o lead mandou um áudio que não consegui transcrever)" é que você pede, com naturalidade, que ele reescreva.`,
