@@ -667,14 +667,15 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
       </div>
 
       {/* Chat panel */}
-      <div className="flex-1 flex flex-col border border-border rounded-lg overflow-hidden bg-card min-h-[400px]">
+      {/* Altura presa à tela: o cabeçalho com o nome fica fixo e só as mensagens rolam */}
+      <div className="flex-1 flex flex-col border border-border rounded-lg overflow-hidden bg-card min-h-[400px] max-h-[calc(100vh-7rem)] md:sticky md:top-2 md:self-start md:h-[calc(100vh-7rem)]">
         {!activeConv ? (
           <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground p-4">
             Selecione uma conversa para visualizar.
           </div>
         ) : (
           <>
-            <div className="px-3 py-2 border-b border-border flex items-center gap-2">
+            <div className="px-3 py-2 border-b border-border flex items-center gap-2 bg-card shrink-0">
               {channelIcon(activeConv.channel)}
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{activeConv.contact_label}</div>
@@ -684,7 +685,7 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
               </div>
             </div>
 
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2 bg-muted/20">
+            <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-3 pb-3 space-y-2 bg-muted/20">
               {loadingMsgs ? (
                 <div className="text-center text-xs text-muted-foreground py-8">
                   <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
@@ -709,8 +710,11 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
                   return (
                     <Fragment key={m.id}>
                     {novoDia && (
-                      <div className="flex justify-center my-2">
-                        <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground capitalize">{rotuloDia}</span>
+                      // gruda no topo enquanto rola: sempre dá pra ver de que dia é a mensagem na tela
+                      <div className="sticky top-0 z-10 flex justify-center py-1.5 pointer-events-none">
+                        <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-background border border-border shadow-sm text-muted-foreground capitalize">
+                          {rotuloDia}{rotuloDia === "Hoje" || rotuloDia === "Ontem" ? ` · ${format(d, "dd/MM")}` : ""}
+                        </span>
                       </div>
                     )}
                     <div
@@ -751,7 +755,9 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
                             "flex items-center gap-1 justify-end mt-0.5 text-[10px] opacity-70"
                           )}
                         >
-                          {format(new Date(m.created_at), "HH:mm", { locale: ptBR })}
+                          <span title={format(new Date(m.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}>
+                            {format(new Date(m.created_at), "HH:mm", { locale: ptBR })}
+                          </span>
                           {isOut && <StatusIcon status={m.status} />}
                         </div>
                       </div>
