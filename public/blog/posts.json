@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-17T10:01:12",
+ "gerado_em": "2026-09-17T15:01:07",
  "posts": [
+  {
+   "slug": "conteudo-bom-nao-substitui-quem-faz-acontecer",
+   "url": "/blog/conteudo-bom-nao-substitui-quem-faz-acontecer/",
+   "titulo": "Conteúdo bom não substitui quem faz acontecer dentro da empresa",
+   "resumo": "Material de qualidade ensina o caminho. Resultado depende de quem senta na cadeira e cobra a execução todo dia.",
+   "tags": [
+    "implementação",
+    "estrutura comercial",
+    "rotina de cobrança",
+    "delegação",
+    "acompanhamento"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-17",
+   "ts": 2098
+  },
   {
    "slug": "canal-venda-muda-estrutura-comercial-nao",
    "url": "/blog/canal-venda-muda-estrutura-comercial-nao/",
