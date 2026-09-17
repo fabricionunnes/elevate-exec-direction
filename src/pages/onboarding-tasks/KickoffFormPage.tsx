@@ -167,41 +167,25 @@ const KickoffFormPage = () => {
   useEffect(() => {
     if (companyId) {
       fetchCompanyData();
-      fetchExistingSalesHistory();
     }
   }, [companyId]);
 
-  const fetchExistingSalesHistory = async () => {
-    if (!companyId) return;
-    try {
-      const { data, error } = await supabase
-        .from("company_sales_history")
-        .select("month_year, revenue, sales_count")
-        .eq("company_id", companyId)
-        .eq("is_pre_unv", true)
-        .order("month_year", { ascending: false });
-
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        // Merge with existing months template
-        const template = generateLast12Months();
-        const merged = template.map(month => {
-          const existing = data.find(d => d.month_year === month.month_year);
-          if (existing) {
-            return {
-              month_year: month.month_year,
-              revenue: existing.revenue || 0,
-              sales_count: existing.sales_count,
-            };
-          }
-          return month;
-        });
-        setSalesHistory(merged);
+  // O histórico pré-UNV vem junto de kickoff_form_get (a tabela não é mais lida direto pelo link público).
+  const applySalesHistory = (rows: { month_year: string; revenue: number | null; sales_count: number | null }[]) => {
+    if (!rows || rows.length === 0) return;
+    const template = generateLast12Months();
+    const merged = template.map(month => {
+      const existing = rows.find(d => d.month_year === month.month_year);
+      if (existing) {
+        return {
+          month_year: month.month_year,
+          revenue: Number(existing.revenue) || 0,
+          sales_count: existing.sales_count,
+        };
       }
-    } catch (error) {
-      console.error("Error fetching sales history:", error);
-    }
+      return month;
+    });
+    setSalesHistory(merged);
   };
 
   const fetchCompanyData = async () => {
@@ -209,15 +193,14 @@ const KickoffFormPage = () => {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("onboarding_companies")
-        .select("*")
-        .eq("id", companyId)
-        .single();
+      // Só os campos do formulário, via função no banco (a empresa inteira não é mais legível por link público)
+      const { data: raw, error } = await (supabase as any).rpc("kickoff_form_get", { p_company_id: companyId });
 
       if (error) throw error;
+      const data = raw as any;
 
       if (data) {
+        applySalesHistory(Array.isArray(data.sales_history) ? data.sales_history : []);
         setCompanyName(data.name);
         
         const rawQuarterlyGoals = data.quarterly_goals as unknown;
@@ -307,69 +290,24 @@ const KickoffFormPage = () => {
     }
     setSaving(true);
     try {
-      // Save company data
-      const { error } = await supabase
-        .from("onboarding_companies")
-        .update({
-          north_star_metric_cents: formData.north_star_metric_cents || null,
-          north_star_metric_label: formData.north_star_metric_label || null,
-          main_challenges: formData.main_challenges || null,
-          sales_team_size: formData.sales_team_size || null,
-          conversion_rate: formData.conversion_rate || null,
-          average_ticket: formData.average_ticket || null,
-          acquisition_channels: formData.acquisition_channels || null,
-          target_audience: formData.target_audience || null,
-          has_structured_process: formData.has_structured_process || null,
-          crm_usage: formData.crm_usage || null,
-          competitors: formData.competitors || null,
-          has_sales_goals: formData.has_sales_goals || null,
-          swot_strengths: formData.swot_strengths || null,
-          swot_weaknesses: formData.swot_weaknesses || null,
-          swot_opportunities: formData.swot_opportunities || null,
-          swot_threats: formData.swot_threats || null,
-          commercial_structure: formData.commercial_structure || null,
-          growth_target: formData.growth_target || null,
-          tools_used: formData.tools_used || null,
-          objectives_with_unv: formData.objectives_with_unv || null,
-          key_results: formData.key_results || null,
+      // Grava pelos campos permitidos do formulário (função no banco), junto do histórico pré-UNV
+      const salesEntries = salesHistory.filter(e => e.revenue > 0);
+      const { data: ok, error } = await (supabase as any).rpc("kickoff_form_save", {
+        p_company_id: companyId,
+        p_data: {
+          ...formData,
           quarterly_goals: JSON.parse(JSON.stringify(formData.quarterly_goals)),
-          growth_expectation_3m: formData.growth_expectation_3m || null,
-          growth_expectation_6m: formData.growth_expectation_6m || null,
-          growth_expectation_12m: formData.growth_expectation_12m || null,
           company_units: JSON.parse(JSON.stringify(formData.company_units)),
-          notes: formData.notes || null,
-        } as any)
-        .eq("id", companyId);
+        },
+        p_sales: salesEntries.map(entry => ({
+          month_year: entry.month_year,
+          revenue: entry.revenue,
+          sales_count: entry.sales_count,
+        })),
+      });
 
       if (error) throw error;
-
-      // Save sales history - only entries with revenue > 0
-      const salesEntries = salesHistory.filter(e => e.revenue > 0);
-      if (salesEntries.length > 0) {
-        // Delete existing pre-UNV entries first
-        await supabase
-          .from("company_sales_history")
-          .delete()
-          .eq("company_id", companyId)
-          .eq("is_pre_unv", true);
-
-        // Insert new entries
-        const { error: salesError } = await supabase
-          .from("company_sales_history")
-          .insert(
-            salesEntries.map(entry => ({
-              company_id: companyId,
-              month_year: entry.month_year,
-              revenue: entry.revenue,
-              sales_count: entry.sales_count,
-              is_pre_unv: true,
-            }))
-          );
-
-        if (salesError) {
-          console.error("Error saving sales history:", salesError);
-        }
-      }
+      if (ok === false) throw new Error("Empresa não encontrada");
 
       setSubmitted(true);
       toast.success("Formulário enviado com sucesso!");
