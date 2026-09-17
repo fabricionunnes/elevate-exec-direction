@@ -2,6 +2,7 @@
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "https://xrncvhzxjmddqluxoosu.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("STORAGE_SERVICE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
+const SERVER_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
 const GRAPH_API = "https://graph.facebook.com/v21.0";
 
@@ -14,7 +15,8 @@ const corsHeaders = {
 async function getInstagramConnection(igAccountId?: string): Promise<{ token: string; igAccountId: string } | null> {
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/unv_meta_ads_accounts?is_connected=eq.true&select=access_token,instagram_business_account_id&order=updated_at.desc&limit=1`,
-    { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+    // chave do servidor: a tabela guarda tokens do Meta e não é mais legível pela chave pública
+    { headers: { "apikey": SERVER_KEY, "Authorization": `Bearer ${SERVER_KEY}` } }
   );
   const data = await res.json();
   if (!data?.[0]?.access_token) return null;
