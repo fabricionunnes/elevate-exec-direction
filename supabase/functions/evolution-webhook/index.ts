@@ -461,6 +461,14 @@ async function handleIncomingMessage(
   }
 
   console.log('Extracted phone:', phone, 'fromMe:', fromMe);
+
+  // Conversas ignoradas (grupos de promoção etc., Fabrício 17/09/2026): não entram no
+  // Atendimento nem ocupam banco. Lista em crm_whatsapp_ignored_chats (menu ⋮ da conversa).
+  const { data: ignorado } = await supabase.from('crm_whatsapp_ignored_chats').select('phone').eq('phone', phone).maybeSingle();
+  if (ignorado) {
+    console.log('Conversa ignorada, descartando:', phone);
+    return;
+  }
   
   // Get or create contact - use pushName from data level
   // IMPORTANT: Only use pushName when message is NOT from me (fromMe: false)

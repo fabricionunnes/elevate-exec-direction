@@ -60,6 +60,7 @@ import {
   Bot,
   ShieldCheck,
   XCircle,
+  EyeOff,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -104,6 +105,28 @@ export const CRMInboxPage = () => {
     try { return localStorage.getItem("crm_inbox_instance_filter") || "all"; } catch { return "all"; }
   });
   const [instanceNames, setInstanceNames] = useState<{ value: string; label: string }[]>([]);
+  // Conversas ocultadas (grupos de promoção etc.): somem da lista e o servidor para de gravar
+  const [ignoredPhones, setIgnoredPhones] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    (supabase as any).from("crm_whatsapp_ignored_chats").select("phone").then(({ data }: any) => {
+      setIgnoredPhones(new Set(((data || []) as any[]).map((r) => r.phone)));
+    });
+  }, []);
+  const ocultarConversa = async (conv: any) => {
+    const phone = String(conv?.contact?.phone || "");
+    if (!phone) return;
+    if (!window.confirm(`Ocultar "${conv.contact?.name || phone}"? Ela some do Atendimento e o sistema para de guardar as mensagens dela.`)) return;
+    const { error } = await (supabase as any).from("crm_whatsapp_ignored_chats").insert({ phone, name: conv.contact?.name || null, created_by: staffId || null });
+    if (error) { toast.error("Não consegui ocultar: " + error.message); return; }
+    setIgnoredPhones((prev) => new Set(prev).add(phone));
+    setSelectedConversation(null);
+    toast.success("Conversa ocultada", {
+      action: { label: "Desfazer", onClick: async () => {
+        await (supabase as any).from("crm_whatsapp_ignored_chats").delete().eq("phone", phone);
+        setIgnoredPhones((prev) => { const n = new Set(prev); n.delete(phone); return n; });
+      } },
+    });
+  };
   useEffect(() => {
     try { localStorage.setItem("crm_inbox_instance_filter", instanceFilter); } catch { /* sem storage */ }
   }, [instanceFilter]);
@@ -179,6 +202,7 @@ export const CRMInboxPage = () => {
   const conversations = allConversations.filter((conv) => {
     // Channel filter
     if (channelFilter !== "all" && conv.channel !== channelFilter) return false;
+    if (conv.channel !== "instagram" && ignoredPhones.has(String((conv as any).contact?.phone || ""))) return false;
 
     // Filtro por número/conta
     if (instanceFilter !== "all") {
@@ -1025,6 +1049,12 @@ export const CRMInboxPage = () => {
                     <X className="h-4 w-4 mr-2" />
                     Fechar conversa
                   </DropdownMenuItem>
+                  {(staffRole === "master" || staffRole === "admin") && selectedConversation.channel !== "instagram" && (
+                    <DropdownMenuItem onClick={() => ocultarConversa(selectedConversation)}>
+                      <EyeOff className="h-4 w-4 mr-2" />
+                      Ocultar e parar de receber
+                    </DropdownMenuItem>
+                  )}
                   {staffRole === "master" && (
                     <>
                       <DropdownMenuSeparator />
