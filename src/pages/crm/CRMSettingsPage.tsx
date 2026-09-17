@@ -64,6 +64,7 @@ import { CRMPermissionsManager } from "@/components/crm/CRMPermissionsManager";
 import { CRMGoalsTab } from "@/components/crm/settings/CRMGoalsTab";
 import { WonNotificationSettings } from "@/components/crm/settings/WonNotificationSettings";
 import { LeadNotificationSettings } from "@/components/crm/settings/LeadNotificationSettings";
+import { MeetingNotificationSettings } from "@/components/crm/settings/MeetingNotificationSettings";
 import { ClintIntegrationTab } from "@/components/crm/settings/ClintIntegrationTab";
 import { PipelineFormsManager } from "@/components/crm/PipelineFormsManager";
 import { CRMDistributionTab } from "@/components/crm/settings/CRMDistributionTab";
@@ -2294,6 +2295,7 @@ export const CRMSettingsPage = () => {
               <div className="space-y-8">
                 <LeadNotificationSettings />
                 <WonNotificationSettings />
+                <MeetingNotificationSettings />
               </div>
             </TabsContent>
 
