@@ -1,6 +1,8 @@
 // agente-mika — Social Media Manager via Telegram
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "https://xrncvhzxjmddqluxoosu.supabase.co";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
+// Banco: chave do servidor (as tabelas não são mais legíveis pela chave pública). Sem a env, cai na chave antiga.
+const DB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || SUPABASE_ANON_KEY;
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 const TELEGRAM_TOKEN = Deno.env.get("MIKA_TELEGRAM_TOKEN") ?? "";
 const NEXUS_URL = `${SUPABASE_URL}/functions/v1`;
@@ -113,7 +115,7 @@ async function executeTool(name: string, input: Record<string, unknown>, chatId:
   switch (name) {
     case "listar_contas_instagram": {
       const r = await fetch(`${SUPABASE_URL}/rest/v1/unv_instagram_profiles?is_active=eq.true&select=instagram_account_id,instagram_username,account_name,branding`, {
-        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
+        headers: { "apikey": DB_KEY, "Authorization": `Bearer ${DB_KEY}` },
       });
       return r.ok ? r.json() : { error: "Erro ao listar contas" };
     }
@@ -123,7 +125,7 @@ async function executeTool(name: string, input: Record<string, unknown>, chatId:
       // Busca perfil pelo username
       const profileRes = await fetch(
         `${SUPABASE_URL}/rest/v1/unv_instagram_profiles?instagram_username=eq.${username}&select=instagram_account_id,instagram_username,account_name,branding&limit=1`,
-        { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+        { headers: { "apikey": DB_KEY, "Authorization": `Bearer ${DB_KEY}` } }
       );
       const profiles = await profileRes.json();
       if (!profiles?.[0]) return { error: `Conta @${username} não encontrada` };
@@ -236,7 +238,7 @@ async function runAgent(chatId: number, history: Message[]): Promise<Message[]> 
 async function loadHistory(chatId: number): Promise<Message[]> {
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/unv_mika_chat_history?chat_id=eq.${chatId}&select=messages`,
-    { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+    { headers: { "apikey": DB_KEY, "Authorization": `Bearer ${DB_KEY}` } }
   );
   const data = await res.json();
   return data?.[0]?.messages ?? [];
@@ -247,8 +249,8 @@ async function saveHistory(chatId: number, messages: Message[]): Promise<void> {
   await fetch(`${SUPABASE_URL}/rest/v1/unv_mika_chat_history?on_conflict=chat_id`, {
     method: "POST",
     headers: {
-      "apikey": SUPABASE_ANON_KEY,
-      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      "apikey": DB_KEY,
+      "Authorization": `Bearer ${DB_KEY}`,
       "Content-Type": "application/json",
       "Prefer": "resolution=merge-duplicates",
     },

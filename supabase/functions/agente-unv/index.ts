@@ -16,6 +16,8 @@ const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
 const EVOLUTION_INSTANCE = Deno.env.get("EVOLUTION_INSTANCE") ?? "fabricionunnes";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "https://xrncvhzxjmddqluxoosu.supabase.co";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
+// Banco: chave do servidor (as tabelas não são mais legíveis pela chave pública). Sem a env, cai na chave antiga.
+const DB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || SUPABASE_ANON_KEY;
 const NEXUS_URL = `${SUPABASE_URL}/functions/v1`;
 const NEXUS_KEY_FINANCEIRO = Deno.env.get("NEXUS_KEY_FINANCEIRO") ?? "";
 const NEXUS_KEY_DIRETOR = Deno.env.get("NEXUS_KEY_DIRETOR") ?? "";
@@ -949,8 +951,8 @@ async function storeChatId(agentType: AgentType, chatId: number): Promise<void> 
     await fetch(`${SUPABASE_URL}/rest/v1/agent_chat_ids`, {
       method: "POST",
       headers: {
-        "apikey": SUPABASE_ANON_KEY,
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "apikey": DB_KEY,
+        "Authorization": `Bearer ${DB_KEY}`,
         "Content-Type": "application/json",
         "Prefer": "resolution=merge-duplicates",
       },
@@ -962,7 +964,7 @@ async function storeChatId(agentType: AgentType, chatId: number): Promise<void> 
 async function getChatId(agentType: AgentType): Promise<number | null> {
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/agent_chat_ids?agent=eq.${agentType}&select=chat_id&limit=1`, {
-      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
+      headers: { "apikey": DB_KEY, "Authorization": `Bearer ${DB_KEY}` },
     });
     const data = await res.json();
     return (data as Array<{ chat_id: number }>)[0]?.chat_id ?? null;
@@ -982,7 +984,7 @@ async function getLinkedUserId(chatId: number): Promise<string | null> {
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/telegram_links?telegram_chat_id=eq.${chatId}&select=user_id&limit=1`,
-      { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+      { headers: { "apikey": DB_KEY, "Authorization": `Bearer ${DB_KEY}` } }
     );
     const data = await res.json() as Array<{ user_id: string }>;
     userId = data?.[0]?.user_id ?? null;
@@ -998,7 +1000,7 @@ async function saveMessage(agentType: AgentType, chatId: number, role: "user" | 
       // Store compartilhado com o escritório 3D
       await fetch(`${SUPABASE_URL}/rest/v1/office_agent_chats`, {
         method: "POST",
-        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" },
+        headers: { "apikey": DB_KEY, "Authorization": `Bearer ${DB_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, agent: agentType, role, content }),
       });
       return;
@@ -1006,8 +1008,8 @@ async function saveMessage(agentType: AgentType, chatId: number, role: "user" | 
     await fetch(`${SUPABASE_URL}/rest/v1/agent_messages`, {
       method: "POST",
       headers: {
-        "apikey": SUPABASE_ANON_KEY,
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "apikey": DB_KEY,
+        "Authorization": `Bearer ${DB_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ agent: agentType, chat_id: chatId, role, content }),
@@ -1021,7 +1023,7 @@ async function loadHistory(agentType: AgentType, chatId: number): Promise<Anthro
     const url = userId
       ? `${SUPABASE_URL}/rest/v1/office_agent_chats?user_id=eq.${userId}&agent=eq.${agentType}&order=created_at.desc&limit=${MEMORY_LIMIT}&select=role,content`
       : `${SUPABASE_URL}/rest/v1/agent_messages?agent=eq.${agentType}&chat_id=eq.${chatId}&order=created_at.desc&limit=${MEMORY_LIMIT}&select=role,content`;
-    const res = await fetch(url, { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } });
+    const res = await fetch(url, { headers: { "apikey": DB_KEY, "Authorization": `Bearer ${DB_KEY}` } });
     const data = await res.json() as Array<{ role: string; content: string }>;
     // Retorna em ordem cronológica (invertendo o DESC); ignora marcadores internos
     return data
@@ -1040,8 +1042,8 @@ async function savePendingApproval(chatId: number, directives: { noah: string; s
     await fetch(`${SUPABASE_URL}/rest/v1/agent_messages`, {
       method: "POST",
       headers: {
-        "apikey": SUPABASE_ANON_KEY,
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "apikey": DB_KEY,
+        "Authorization": `Bearer ${DB_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ agent: "ceo", chat_id: chatId, role: "assistant", content: `${PENDING_MARKER}${JSON.stringify(directives)}` }),
@@ -1053,7 +1055,7 @@ async function getPendingApproval(chatId: number): Promise<{ noah: string; sophi
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/agent_messages?agent=eq.ceo&chat_id=eq.${chatId}&role=eq.assistant&content=like.${encodeURIComponent(PENDING_MARKER + "%")}&order=created_at.desc&limit=1&select=id,content`,
-      { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+      { headers: { "apikey": DB_KEY, "Authorization": `Bearer ${DB_KEY}` } }
     );
     const data = await res.json() as Array<{ id: string; content: string }>;
     if (!data || data.length === 0) return null;
@@ -1062,8 +1064,8 @@ async function getPendingApproval(chatId: number): Promise<{ noah: string; sophi
     await fetch(`${SUPABASE_URL}/rest/v1/agent_messages?id=eq.${record.id}`, {
       method: "PATCH",
       headers: {
-        "apikey": SUPABASE_ANON_KEY,
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "apikey": DB_KEY,
+        "Authorization": `Bearer ${DB_KEY}`,
         "Content-Type": "application/json",
         "Prefer": "return=minimal",
       },
@@ -1494,7 +1496,7 @@ async function getLastAlertTime(): Promise<number> {
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/agent_messages?agent=eq.marketing&role=eq.assistant&content=like.${encodeURIComponent("__META_BALANCE_ALERT__%")}&order=created_at.desc&limit=1&select=created_at`,
-      { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+      { headers: { "apikey": DB_KEY, "Authorization": `Bearer ${DB_KEY}` } }
     );
     const data = await res.json() as Array<{ created_at: string }>;
     if (!data || data.length === 0) return 0;
@@ -1506,7 +1508,7 @@ async function saveAlertSent(): Promise<void> {
   try {
     await fetch(`${SUPABASE_URL}/rest/v1/agent_messages`, {
       method: "POST",
-      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" },
+      headers: { "apikey": DB_KEY, "Authorization": `Bearer ${DB_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ agent: "marketing", chat_id: 0, role: "assistant", content: `__META_BALANCE_ALERT__${new Date().toISOString()}` }),
     });
   } catch { /* silent */ }
@@ -1734,7 +1736,7 @@ Deno.serve(async (req) => {
       if (webToken && SERVICE_ROLE_KEY) {
         try {
           const uRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-            headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${webToken}` },
+            headers: { apikey: DB_KEY, Authorization: `Bearer ${webToken}` },
           });
           if (uRes.ok) {
             const u = await uRes.json();

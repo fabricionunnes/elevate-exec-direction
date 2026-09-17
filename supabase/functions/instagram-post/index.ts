@@ -2,6 +2,8 @@
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "https://xrncvhzxjmddqluxoosu.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("STORAGE_SERVICE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
+// Banco: chave do servidor (as tabelas não são mais legíveis pela chave pública). Sem a env, cai na chave antiga.
+const DB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || SUPABASE_ANON_KEY;
 const SERVER_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
 const GRAPH_API = "https://graph.facebook.com/v21.0";
@@ -242,8 +244,8 @@ Regras:
       const saveRes = await fetch(`${SUPABASE_URL}/rest/v1/unv_instagram_posts`, {
         method: "POST",
         headers: {
-          "apikey": SUPABASE_ANON_KEY,
-          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "apikey": DB_KEY,
+          "Authorization": `Bearer ${DB_KEY}`,
           "Content-Type": "application/json",
           "Prefer": "return=representation",
         },
@@ -263,7 +265,7 @@ Regras:
 
       // Busca post pendente
       const postRes = await fetch(`${SUPABASE_URL}/rest/v1/unv_instagram_posts?id=eq.${post_id}&select=*`, {
-        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
+        headers: { "apikey": DB_KEY, "Authorization": `Bearer ${DB_KEY}` },
       });
       const posts = await postRes.json();
       const post = posts?.[0];
@@ -279,8 +281,8 @@ Regras:
       await fetch(`${SUPABASE_URL}/rest/v1/unv_instagram_posts?id=eq.${post_id}`, {
         method: "PATCH",
         headers: {
-          "apikey": SUPABASE_ANON_KEY,
-          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "apikey": DB_KEY,
+          "Authorization": `Bearer ${DB_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ status: "posted", instagram_media_id: mediaId, posted_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
@@ -296,7 +298,7 @@ Regras:
       if (!post_id) return new Response(JSON.stringify({ error: "post_id obrigatório" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       await fetch(`${SUPABASE_URL}/rest/v1/unv_instagram_posts?id=eq.${post_id}`, {
         method: "PATCH",
-        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" },
+        headers: { "apikey": DB_KEY, "Authorization": `Bearer ${DB_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({ status: "rejected", updated_at: new Date().toISOString() }),
       });
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
