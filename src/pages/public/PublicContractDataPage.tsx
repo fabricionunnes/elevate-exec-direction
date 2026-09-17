@@ -96,11 +96,9 @@ const PublicContractDataPage = () => {
   const loadLead = async () => {
     setLoading(true);
     try {
-      const { data: lead, error: err } = await supabase
-        .from("crm_leads")
-        .select("id, name, company, trade_name, document, email, phone, legal_representative_name, cpf, rg, marital_status, address, address_number, address_complement, address_neighborhood, city, state, zipcode")
-        .eq("contract_form_token", token!)
-        .maybeSingle();
+      // Busca só o lead deste link, via função no banco (crm_leads não é mais legível por link público)
+      const { data: leadRaw, error: err } = await (supabase as any).rpc("contract_form_get", { p_token: token });
+      const lead = leadRaw as any;
 
       if (err) throw err;
       if (!lead) {
@@ -183,96 +181,11 @@ const PublicContractDataPage = () => {
 
     setSubmitting(true);
     try {
-      const { error: err } = await supabase
-        .from("crm_leads")
-        .update({
-          company: data.company || null,
-          trade_name: data.trade_name || null,
-          document: data.document || null,
-          email: data.email || null,
-          phone: data.phone || null,
-          legal_representative_name: data.legal_representative_name || null,
-          cpf: data.cpf || null,
-          rg: data.rg || null,
-          marital_status: data.marital_status || null,
-          address: data.address || null,
-          address_number: data.address_number || null,
-          address_complement: data.address_complement || null,
-          address_neighborhood: data.address_neighborhood || null,
-          city: data.city || null,
-          state: data.state || null,
-          zipcode: data.zipcode || null,
-        } as any)
-        .eq("contract_form_token", token!);
+      // Grava o lead, a aba Empresa e a empresa vinculada numa função só, que exige o token deste link
+      const { data: saved, error: err } = await (supabase as any).rpc("contract_form_save", { p_token: token, p_data: data });
 
       if (err) throw err;
-
-      // Propagate data to CRM "Empresa" tab custom fields
-      try {
-        const companyFieldsMap: Record<string, string> = {
-          "7b67f652-0241-4ce4-a0a1-55f662156798": data.company,        // company_name
-          "b3466b71-9393-421f-9de6-5f3e78a64d75": data.document,       // cnpj
-          "2625e412-c60b-44b2-9b95-9ffb4206ba3b": data.phone,          // company_phone
-          "80a12445-cd5e-41ad-a3ec-41990b2dd2ff": data.email,           // company_email
-          "dd91421b-6808-421b-b7b4-da7e81d87702": data.city,            // city
-          "e26503ad-13b4-41fd-9e7b-bc5b8efee7af": data.state,           // state
-          "244d8391-d3ca-4b59-b343-68809511076a": data.zipcode,          // cep
-        };
-
-        const upsertRows = Object.entries(companyFieldsMap)
-          .filter(([_, value]) => value?.trim())
-          .map(([fieldId, value]) => ({
-            lead_id: leadId,
-            field_id: fieldId,
-            value: value.trim(),
-          }));
-
-        if (upsertRows.length > 0) {
-          await supabase
-            .from("crm_custom_field_values")
-            .upsert(upsertRows, { onConflict: "lead_id,field_id" });
-        }
-      } catch (fieldErr) {
-        console.error("Error updating company fields:", fieldErr);
-      }
-
-      // Propagate data to linked company (if exists)
-      try {
-        const { data: project } = await supabase
-          .from("onboarding_projects")
-          .select("onboarding_company_id")
-          .eq("crm_lead_id", leadId)
-          .maybeSingle();
-
-        if (project?.onboarding_company_id) {
-          const fullAddress = [data.address, data.address_number, data.address_complement]
-            .filter(Boolean)
-            .join(", ");
-
-          await supabase
-            .from("onboarding_companies")
-            .update({
-              cnpj: data.document || null,
-              name: data.company || undefined,
-              address: fullAddress || null,
-              address_number: data.address_number || null,
-              address_complement: data.address_complement || null,
-              address_neighborhood: data.address_neighborhood || null,
-              address_zipcode: data.zipcode || null,
-              address_city: data.city || null,
-              address_state: data.state || null,
-              phone: data.phone || null,
-              email: data.email || null,
-              owner_name: data.legal_representative_name || null,
-              owner_cpf: data.cpf || null,
-              owner_rg: data.rg || null,
-              owner_marital_status: data.marital_status || null,
-            } as any)
-            .eq("id", project.onboarding_company_id);
-        }
-      } catch (companyErr) {
-        console.error("Error updating company data:", companyErr);
-      }
+      if (!(saved as any)?.ok) throw new Error("Link inválido");
 
       // Notify lead owner, head comercial and master (in-app + WhatsApp)
       try {
