@@ -1099,6 +1099,14 @@ Deno.serve(async (req) => {
     const { data: travaOv } = await supabase.from("crm_ai_agent_conversation_overrides")
       .select("agent_id, enabled, locked").eq("conversation_id", conversation_id).eq("channel", channel).maybeSingle();
     const agenteTravado = !!(travaOv?.locked && travaOv?.agent_id);
+    // TRAVA DE NÚMERO (17/09/2026): palavra-chave só ativa agente em número que TEM agente
+    // vinculado. Sem isso a regra "não quero" do Disparo API ligou o SDR no WhatsApp PESSOAL
+    // do Fabrício ("não quero deixar essa oportunidade morrer") e a IA respondeu um contato dele.
+    const { data: bindRows } = await supabase.from("crm_ai_agent_channels")
+      .select("agent:crm_ai_agents(is_active)")
+      .eq("channel", isOFFICIAL ? "whatsapp_official" : channel)
+      .eq("instance_id", isOFFICIAL ? conv.official_instance_id : conv.instance_id);
+    const numeroTemAgente = (bindRows || []).some((r: any) => r.agent?.is_active);
     try {
       const msgTable = isIG ? "instagram_messages" : "crm_whatsapp_messages";
       const tsCol = isIG ? "timestamp" : "created_at";
@@ -1109,7 +1117,7 @@ Deno.serve(async (req) => {
       const text = String((lastIn as any)?.content || "").toLowerCase().trim();
       const matchKw = (kw: string, mt: string) =>
         mt === "exact" ? text === kw : mt === "starts" ? text.startsWith(kw) : text.includes(kw);
-      if (text) {
+      if (text && numeroTemAgente) {
         // (a) PALAVRA-CHAVE NO PRÓPRIO AGENTE (jeito simples: você edita o agente e
         // coloca as palavras que o ativam). Vale pra qualquer agente ativo com
         // trigger_keywords, mesmo sem estar vinculado ao canal.
@@ -1135,16 +1143,21 @@ Deno.serve(async (req) => {
           break;
         }
       }
-      if (text && !forcedAgent) {
+      if (text && !forcedAgent && numeroTemAgente) {
         const { data: rules } = await supabase.from("crm_keyword_triggers")
           .select("*").eq("is_active", true).eq("listen_dm", true)
           .order("priority", { ascending: false });
         for (const rule of (rules || [])) {
           if (!(rule.channels || []).includes(channel)) continue;
-          if (rule.pipeline_id && conv.lead_id) {
-            // se a regra é de um funil específico, respeita o funil do lead
-            const { data: ld } = await supabase.from("crm_leads").select("pipeline_id").eq("id", conv.lead_id).maybeSingle();
-            if (ld && ld.pipeline_id !== rule.pipeline_id) continue;
+          if (rule.pipeline_id) {
+            // regra de um funil específico: no WhatsApp só vale pra quem É lead desse funil
+            // (contato sem lead = conversa particular, não ativa agente). No Instagram o lead
+            // pode nascer junto com a DM, então sem lead ainda passa.
+            if (!conv.lead_id) { if (!isIG) continue; }
+            else {
+              const { data: ld } = await supabase.from("crm_leads").select("pipeline_id").eq("id", conv.lead_id).maybeSingle();
+              if (!ld || ld.pipeline_id !== rule.pipeline_id) continue;
+            }
           }
           const kws: string[] = (rule.keywords || []).map((k: string) => k.toLowerCase().trim()).filter(Boolean);
           const hit = kws.find((kw) =>
