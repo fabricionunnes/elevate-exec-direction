@@ -222,6 +222,35 @@ function agentScheduleActive(agent: any): boolean {
 }
 
 /** Classificador barato: a última mensagem do lead é uma recusa clara? */
+// Reuniões do lead (últimos 7 dias em diante) com a data REAL e a relação com hoje.
+// O histórico da conversa não tem data: "amanhã às 11" escrito ontem era lido como
+// amanhã de novo (Romário, 17/09/2026: follow-up na hora da reunião dizendo "amanhã").
+const MTG_OFF = ["cancelled", "canceled", "no_show"];
+function diaBR(ms: number): string { return new Date(ms - 3 * 3600000).toISOString().slice(0, 10); }
+async function reunioesDoLead(supabase: any, leadId: string | null): Promise<{ ativas: any[]; texto: string }> {
+  if (!leadId) return { ativas: [], texto: "" };
+  const { data } = await supabase.from("crm_activities")
+    .select("scheduled_at, status, title").eq("lead_id", leadId).eq("type", "meeting")
+    .gte("scheduled_at", new Date(Date.now() - 7 * 86400000).toISOString())
+    .order("scheduled_at", { ascending: true }).limit(6);
+  const rows = (data || []).filter((m: any) => m.scheduled_at);
+  if (!rows.length) return { ativas: [], texto: "" };
+  const hoje = diaBR(Date.now());
+  const linhas = rows.map((m: any) => {
+    const ms = Date.parse(m.scheduled_at);
+    const dia = diaBR(ms);
+    const diff = Math.round((Date.parse(dia) - Date.parse(hoje)) / 86400000);
+    const rel = diff === 0 ? "HOJE" : diff === 1 ? "amanhã" : diff === -1 ? "ontem" : diff > 1 ? `daqui a ${diff} dias` : `há ${-diff} dias`;
+    const quando = new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", weekday: "long", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    const st = String(m.status || "").toLowerCase();
+    const situacao = st === "no_show" ? "lead não compareceu" : MTG_OFF.includes(st) ? "cancelada" : st === "completed" || st === "done" ? "realizada" : ms < Date.now() ? "horário já passou" : "marcada";
+    return `- ${quando} (${rel}) — ${situacao}`;
+  });
+  const ativas = rows.filter((m: any) => !MTG_OFF.includes(String(m.status || "").toLowerCase()));
+  const texto = `\n\nREUNIÕES DESTE LEAD (datas reais, confie nelas e não no histórico):\n${linhas.join("\n")}\nO histórico da conversa não tem data: "amanhã", "hoje" e "segunda" escritos ali valem pro dia em que foram enviados. Ao falar de reunião, use SEMPRE a data real acima em relação a hoje. Nunca marque outra reunião se já existe uma marcada, a não ser que o lead peça pra remarcar.`;
+  return { ativas, texto };
+}
+
 async function leadRecusou(hist: any[], leadNm: string): Promise<boolean> {
   try {
     const txt = hist.map((m: any) => `${m.direction === "inbound" ? leadNm : "Atendente"}: ${m.content}`).join("\n");
@@ -931,6 +960,7 @@ Deno.serve(async (req) => {
             if (ov?.locked && ov.agent_id && ov.agent_id !== agent.id) continue; // conversa travada em outro agente
             const fmode = await resolveAgentMode(supabase, agent, cv.lead_id, ov);
             if (fmode !== "auto") continue;
+            let mtgCtx: { ativas: any[]; texto: string } = { ativas: [], texto: "" };
             // Já agendou? Lead com reunião FUTURA não pode receber follow-up de
             // reativação (senão o agente pede pra agendar de novo, como já ocorreu).
             if (cv.lead_id) {
@@ -941,12 +971,11 @@ Deno.serve(async (req) => {
               // Fora do ICP não recebe follow-up (a etapa não é marcada como final,
               // então o filtro de cima não pegava: Priscila levou cobrança 15/09).
               if (/fora do icp|fora de icp|fora do perfil|fora de perfil|sem fit/i.test(String((ld as any)?.stage?.name || ""))) continue;
-              const { data: futureMtgs } = await supabase.from("crm_activities")
-                .select("status").eq("lead_id", cv.lead_id).eq("type", "meeting")
-                .gte("scheduled_at", new Date().toISOString()).limit(5);
-              const hasFuture = (futureMtgs || []).some((m: any) =>
-                !["cancelled", "canceled", "no_show"].includes(String(m.status || "").toLowerCase()));
-              if (hasFuture) continue;
+              // Vale pra reunião futura E pra que já passou nos últimos 7 dias: a trava antiga
+              // (scheduled_at >= agora) abriu 17s depois das 11h e o Romário levou follow-up
+              // de reativação na hora da própria reunião. Quem teve reunião é do closer.
+              mtgCtx = await reunioesDoLead(supabase, cv.lead_id);
+              if (mtgCtx.ativas.length) continue;
             }
             // histórico: precisa terminar em outbound (lead sumiu) e ter tido inbound antes
             const { data: hist } = await supabase.from(msgTable)
@@ -989,7 +1018,9 @@ Deno.serve(async (req) => {
             const attempt = trailing; // 1 = primeiro follow-up (trailing conta a resposta original)
             const prevFu = hm.slice(hm.length - trailing + 1).map((m: any) => String(m.content));
             const leadNm = (cv as any).contact?.name || (cv as any).contact?.username || "o lead";
-            const histTxt = hm.slice(-14).map((m: any) => `${m.direction === "inbound" ? leadNm : "Você"}: ${m.content}`).join("\n");
+            const carimbo = (m: any) => { const t = Date.parse(String(m[tsCol] || "")); return t ? new Date(t).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "sem data"; };
+            const histTxt = hm.slice(-14).map((m: any) => `[${carimbo(m)}] ${m.direction === "inbound" ? leadNm : "Você"}: ${m.content}`).join("\n");
+            const agoraFu = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", weekday: "long", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
             const anguloPadrao = attempt <= 1
               ? "Primeiro follow-up: retome o assunto em aberto de forma leve, como quem lembrou do lead. Uma pergunta só, fácil de responder."
               : attempt >= maxAtt
@@ -1001,6 +1032,8 @@ Deno.serve(async (req) => {
               agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
               `\n\nO lead parou de responder. Escreva UMA mensagem CURTA de follow-up (1-2 frases), humana, sem pressão e sem repetir perguntas já respondidas. Não use markdown. Nunca revele que é uma IA.`,
               ESTILO_HUMANO,
+              `\n\nAgora é ${agoraFu} (Brasília). Cada linha do histórico traz [dia/mês hora] de quando foi enviada: "amanhã", "hoje" ou dia da semana escritos ali valem praquela data, não pra agora. Nunca repita "amanhã" de uma mensagem antiga — calcule a data real ou não cite data.`,
+              mtgCtx.texto,
               `\nEsta é a tentativa ${attempt} de ${maxAtt}. ${angulo}`,
               prevFu.length ? `\nFollow-ups JÁ ENVIADOS (proibido repetir a abertura, a estrutura ou a pergunta deles, mesmo reescrita):\n- ${prevFu.join("\n- ")}` : "",
               prevFu.length ? `\nNão comece com "Oi ${leadNm.split(" ")[0]}, tudo certo por aí?" nem variações — já foi usado.` : "",
@@ -1510,6 +1543,7 @@ Deno.serve(async (req) => {
 
     const leadName = conv.contact?.name || conv.contact?.username || conv.contact?.phone || "o lead";
     const nowBR = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 16).replace("T", " ");
+    const mtgCtxMain = await reunioesDoLead(supabase, conv.lead_id);
 
     // Lead confirmou um horário? ("pode ser as 11", "as 10", "11h", "10:30"...)
     // Vira instrução explícita — o modelo tende a ancorar no histórico e reofertar.
@@ -1667,6 +1701,7 @@ Deno.serve(async (req) => {
       tools.some((t: any) => t.name === "marcar_perdido")
         ? `\nRECUSA (regra obrigatória): se o lead disser que NÃO quer, não tem interesse, já tem outra solução ou pede pra parar, NÃO tente contornar, NÃO argumente e NÃO faça pergunta. Chame marcar_perdido com o motivo e o tipo e encerre com uma frase curta de agradecimento, sem pergunta. Depois disso você não fala mais com este lead. Silêncio não é recusa; dúvida ou "vou pensar" também não.`
         : "",
+      mtgCtxMain.texto,
       confirmedTimeHint,
       missingNameHint,
       knownDataHint,
