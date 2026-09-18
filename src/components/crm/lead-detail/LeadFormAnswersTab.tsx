@@ -22,7 +22,7 @@ export const LeadFormAnswersTab = ({ leadId }: { leadId: string }) => {
   const loadAnswers = async () => {
     const { data } = await supabase
       .from("crm_lead_form_answers" as any)
-      .select("id, answer_text, question_id")
+      .select("id, answer_text, question_id, question_label")
       .eq("lead_id", leadId);
 
     if (!data || data.length === 0) {
@@ -32,7 +32,7 @@ export const LeadFormAnswersTab = ({ leadId }: { leadId: string }) => {
     }
 
     // Load questions
-    const questionIds = (data as any[]).map((a: any) => a.question_id);
+    const questionIds = (data as any[]).map((a: any) => a.question_id).filter(Boolean);
     const { data: questions } = await supabase
       .from("crm_pipeline_form_questions" as any)
       .select("id, question_text, question_type")
@@ -44,7 +44,8 @@ export const LeadFormAnswersTab = ({ leadId }: { leadId: string }) => {
       .map((a: any) => ({
         id: a.id,
         answer_text: a.answer_text,
-        question: qMap.get(a.question_id) || { question_text: "Pergunta", question_type: "open" },
+        // respostas de formulário do Meta não têm pergunta cadastrada: usam o texto guardado
+        question: qMap.get(a.question_id) || { question_text: a.question_label || "Pergunta", question_type: "open" },
       }))
       .filter((a) => a.answer_text);
 

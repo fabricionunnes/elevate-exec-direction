@@ -68,6 +68,7 @@ import { MeetingNotificationSettings } from "@/components/crm/settings/MeetingNo
 import { ClintIntegrationTab } from "@/components/crm/settings/ClintIntegrationTab";
 import { PipelineFormsManager } from "@/components/crm/PipelineFormsManager";
 import { CRMDistributionTab } from "@/components/crm/settings/CRMDistributionTab";
+import { CRMMetaLeadFormsCard } from "@/components/crm/settings/CRMMetaLeadFormsCard";
 import { CRMAutomationsTab } from "@/components/crm/settings/CRMAutomationsTab";
 import { CRMMessageRulesTab } from "@/components/crm/settings/CRMMessageRulesTab";
 import { toast } from "sonner";
@@ -2310,7 +2311,8 @@ export const CRMSettingsPage = () => {
             </TabsContent>
 
             {/* Integrations Tab */}
-            <TabsContent value="integrations" className="mt-6">
+            <TabsContent value="integrations" className="mt-6 space-y-6">
+              <CRMMetaLeadFormsCard />
               <ClintIntegrationTab />
             </TabsContent>
 
