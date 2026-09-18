@@ -968,11 +968,21 @@ Deno.serve(async (req) => {
     // ---------- Follow-up automático (cron): reativa leads que pararam de responder ----------
     if (body0.action === "followups") {
       const results: string[] = [];
+      const silencio: string[] = [];
       const { data: agents } = await supabase.from("crm_ai_agents")
         .select("*").eq("is_active", true).eq("followup_enabled", true);
       for (const agent of (agents || [])) {
         // horário de atendimento vale pro follow-up também
         if (!agentScheduleActive(agent)) continue;
+        // Janela do follow-up (Fabrício, 18/09/2026: saiu follow-up às 4h). Fora dela não envia e NÃO perde:
+        // o passo continua vencido e sai na primeira rodada depois da hora de início (padrão 8h–22h, Brasília).
+        {
+          const horaBR = new Date(Date.now() - 3 * 3600000).getUTCHours();
+          const ini = Number.isFinite(Number(agent.followup_hour_start)) ? Number(agent.followup_hour_start) : 8;
+          const fim = Number.isFinite(Number(agent.followup_hour_end)) ? Number(agent.followup_hour_end) : 22;
+          const dentro = ini < fim ? (horaBR >= ini && horaBR < fim) : (horaBR >= ini || horaBR < fim);
+          if (!dentro && !body0.ignore_quiet_hours) { silencio.push(`${agent.name}: follow-up só entre ${ini}h e ${fim}h`); continue; }
+        }
         // Agenda de follow-ups (Fabrício, 16/09/2026): cada passo conta a partir da ÚLTIMA
         // mensagem enviada (resposta original ou follow-up anterior) e pode ter instrução própria.
         // Sem agenda cadastrada, vale o modelo antigo: "reativar após X" repetido N vezes.
@@ -1141,7 +1151,7 @@ Deno.serve(async (req) => {
           }
         }
       }
-      return j({ ok: true, followups: results.length, detail: results });
+      return j({ ok: true, followups: results.length, detail: results, fora_da_janela: silencio });
     }
 
     if (channel !== "instagram" && channel !== "whatsapp") return j({ ok: false, skip: "canal não suportado" });

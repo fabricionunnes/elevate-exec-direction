@@ -58,6 +58,8 @@ const emptyForm = {
   followup_enabled: false, followup_after_minutes: 60, followup_max_attempts: 2,
   followup_schedule: [] as FollowupStep[],
   followup_total_max: "" as string,
+  followup_hour_start: "8" as string,
+  followup_hour_end: "22" as string,
 };
 
 // Agenda de follow-ups: cada passo conta a partir da última mensagem enviada
@@ -141,6 +143,8 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
           // sem agenda salva: monta a partir do modelo antigo (X minutos, N vezes)
           : Array.from({ length: Math.max(1, agent.followup_max_attempts ?? 2) }, () => fromMinutes(agent.followup_after_minutes ?? 60))),
         followup_total_max: (agent as any).followup_total_max ? String((agent as any).followup_total_max) : "",
+        followup_hour_start: String((agent as any).followup_hour_start ?? 8),
+        followup_hour_end: String((agent as any).followup_hour_end ?? 22),
       });
     } else {
       setAgentId(null);
@@ -201,6 +205,8 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
       followup_after_minutes: form.followup_schedule.length ? toMinutes(form.followup_schedule[0]) : form.followup_after_minutes,
       followup_max_attempts: form.followup_schedule.length || form.followup_max_attempts,
       followup_total_max: parseInt(form.followup_total_max, 10) > 0 ? parseInt(form.followup_total_max, 10) : null,
+      followup_hour_start: Math.min(23, Math.max(0, parseInt(form.followup_hour_start, 10) || 0)),
+      followup_hour_end: Math.min(24, Math.max(1, parseInt(form.followup_hour_end, 10) || 22)),
       updated_at: new Date().toISOString(),
     };
     try {
@@ -490,6 +496,15 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
                     >
                       Adicionar follow-up
                     </Button>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <Label className="text-xs">Enviar follow-up só entre</Label>
+                      <Input type="number" min={0} max={23} className="h-8 w-16" value={form.followup_hour_start} onChange={(e) => set({ followup_hour_start: e.target.value })} />
+                      <span className="text-xs text-muted-foreground">h e</span>
+                      <Input type="number" min={1} max={24} className="h-8 w-16" value={form.followup_hour_end} onChange={(e) => set({ followup_hour_end: e.target.value })} />
+                      <span className="text-xs text-muted-foreground">
+                        h (Brasília). Follow-up que vencer fora desse horário não se perde: sai a partir do horário de início. Responder quem escreve continua valendo 24h.
+                      </span>
+                    </div>
                     <div className="flex flex-wrap items-center gap-2 pt-1">
                       <Label className="text-xs">Teto por conversa</Label>
                       <Input
