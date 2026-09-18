@@ -93,24 +93,11 @@ export const AvatarUpload = ({
       // Add cache-busting query param
       const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`;
 
-      // Update staff or user record
-      const { data: staff } = await supabase
-        .from("onboarding_staff")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (staff) {
-        await supabase
-          .from("onboarding_staff")
-          .update({ avatar_url: publicUrl })
-          .eq("user_id", user.id);
-      } else {
-        await supabase
-          .from("onboarding_users")
-          .update({ avatar_url: publicUrl })
-          .eq("user_id", user.id);
-      }
+      // Grava no próprio cadastro via função do banco (closer/SDR não podem alterar
+      // onboarding_staff direto — a foto subia e não aparecia). Se não gravar, avisa.
+      const { data: gravou, error: gravaErr } = await (supabase as any).rpc("staff_set_my_avatar", { p_url: publicUrl });
+      if (gravaErr) throw gravaErr;
+      if (!gravou) throw new Error("Cadastro não encontrado para gravar a foto");
 
       onAvatarChange(urlWithCacheBust);
       toast.success("Foto atualizada com sucesso!");
@@ -144,24 +131,8 @@ export const AvatarUpload = ({
         await supabase.storage.from("avatars").remove([path]);
       }
 
-      // Update staff or user record
-      const { data: staff } = await supabase
-        .from("onboarding_staff")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (staff) {
-        await supabase
-          .from("onboarding_staff")
-          .update({ avatar_url: null })
-          .eq("user_id", user.id);
-      } else {
-        await supabase
-          .from("onboarding_users")
-          .update({ avatar_url: null })
-          .eq("user_id", user.id);
-      }
+      const { error: gravaErr } = await (supabase as any).rpc("staff_set_my_avatar", { p_url: null });
+      if (gravaErr) throw gravaErr;
 
       onAvatarChange(null);
       toast.success("Foto removida com sucesso!");
