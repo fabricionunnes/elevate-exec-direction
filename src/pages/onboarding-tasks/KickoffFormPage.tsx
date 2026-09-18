@@ -163,6 +163,18 @@ const KickoffFormPage = () => {
   const [submitted, setSubmitted] = useState(false);
   const [companyName, setCompanyName] = useState("");
   const [salesHistory, setSalesHistory] = useState<SalesHistoryEntry[]>(generateLast12Months());
+  const [rascunhoPronto, setRascunhoPronto] = useState(false);
+  const [rascunhoRestaurado, setRascunhoRestaurado] = useState(false);
+
+  // Salva o rascunho neste aparelho a cada alteração (só depois de carregar, pra não gravar o formulário vazio por cima)
+  useEffect(() => {
+    if (!companyId || !rascunhoPronto) return;
+    try { localStorage.setItem(`kickoff_rascunho_${companyId}`, JSON.stringify({ formData, salesHistory, em: new Date().toISOString() })); } catch { /* sem espaço: segue */ }
+  }, [formData, salesHistory, companyId, rascunhoPronto]);
+
+  useEffect(() => {
+    if (rascunhoRestaurado) toast.info("Recuperamos as respostas que você já tinha digitado neste aparelho.");
+  }, [rascunhoRestaurado]);
 
   useEffect(() => {
     if (companyId) {
@@ -238,6 +250,18 @@ const KickoffFormPage = () => {
           notes: data.notes || "",
         });
       }
+      // Rascunho local: se a pessoa já tinha começado a responder neste aparelho e não enviou
+      // (queda de internet, erro no envio, fechou a aba), devolve o que ela digitou.
+      try {
+        const raw = localStorage.getItem(`kickoff_rascunho_${companyId}`);
+        if (raw) {
+          const d = JSON.parse(raw);
+          if (d?.formData) setFormData((prev) => ({ ...prev, ...d.formData }));
+          if (Array.isArray(d?.salesHistory)) setSalesHistory(d.salesHistory);
+          setRascunhoRestaurado(true);
+        }
+      } catch { /* rascunho inválido: ignora */ }
+      setRascunhoPronto(true);
     } catch (error) {
       console.error("Error fetching company:", error);
       toast.error("Erro ao carregar dados da empresa");
@@ -309,11 +333,12 @@ const KickoffFormPage = () => {
       if (error) throw error;
       if (ok === false) throw new Error("Empresa não encontrada");
 
+      try { localStorage.removeItem(`kickoff_rascunho_${companyId}`); } catch { /* ok */ }
       setSubmitted(true);
       toast.success("Formulário enviado com sucesso!");
     } catch (error) {
       console.error("Error saving kickoff:", error);
-      toast.error("Erro ao enviar formulário");
+      toast.error("Não conseguimos enviar agora. Suas respostas ficaram salvas neste aparelho: recarregue a página e toque em enviar de novo.", { duration: 12000 });
     } finally {
       setSaving(false);
     }
