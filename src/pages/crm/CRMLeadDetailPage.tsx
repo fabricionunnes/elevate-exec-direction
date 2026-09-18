@@ -186,6 +186,26 @@ export const CRMLeadDetailPage = () => {
   const [loading, setLoading] = useState(true);
   // lead existe mas está com outra pessoa (RLS esconde): mostra aviso em vez de erro
   const [semAcesso, setSemAcesso] = useState<{ leadName: string | null; ownerName: string | null } | null>(null);
+  const [pedindoLead, setPedindoLead] = useState(false);
+  const [leadPedido, setLeadPedido] = useState(false);
+
+  // "Pedir este lead": avisa no WhatsApp o dono atual + gestão, com o link do lead
+  const pedirLead = async () => {
+    if (!id || pedindoLead) return;
+    setPedindoLead(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("crm-lead-request", { body: { lead_id: id } });
+      if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message);
+      setLeadPedido(true);
+      if ((data as any)?.ja_pedido) toast.info("Você já pediu este lead há pouco. Aguarde a resposta.");
+      else if ((data as any)?.enviados?.length) toast.success(`Pedido enviado para ${(data as any).enviados.join(", ")}.`);
+      else toast.warning("Pedido registrado, mas não consegui avisar ninguém no WhatsApp. Fale com um administrador.");
+    } catch (e: any) {
+      toast.error("Não consegui enviar o pedido: " + (e?.message || "erro"));
+    } finally {
+      setPedindoLead(false);
+    }
+  };
   const [linkedProject, setLinkedProject] = useState<{ id: string; product_name: string | null } | null>(null);
   const [wonDialogOpen, setWonDialogOpen] = useState(false);
   const [wonProducts, setWonProducts] = useState<{ id: string; name: string }[]>([]);
@@ -265,6 +285,7 @@ export const CRMLeadDetailPage = () => {
   const loadLead = useCallback(async () => {
     if (!id) return;
     setSemAcesso(null);
+    setLeadPedido(false);
 
     try {
       const { data, error } = await supabase
@@ -893,9 +914,17 @@ export const CRMLeadDetailPage = () => {
               : "não está atribuído a você."}
           </p>
           <p className="text-sm text-muted-foreground">
-            Peça a um administrador para transferir o lead para você. Depois disso, este mesmo link vai abrir normalmente.
+            Se este lead deveria estar com você, peça a transferência pelo botão abaixo ou fale com um administrador.
           </p>
-          <Button variant="outline" onClick={() => navigate("/crm/pipeline")}>Voltar para o funil</Button>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center pt-1">
+            <Button onClick={pedirLead} disabled={pedindoLead || leadPedido}>
+              {pedindoLead ? "Enviando..." : leadPedido ? "Pedido enviado" : "Pedir este lead"}
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/crm/pipeline")}>Voltar para o funil</Button>
+          </div>
+          {leadPedido && (
+            <p className="text-xs text-muted-foreground">Avisamos o responsável e a gestão pelo WhatsApp. Assim que transferirem, este link abre normalmente.</p>
+          )}
         </div>
       </div>
     );
