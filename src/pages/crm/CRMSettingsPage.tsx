@@ -68,6 +68,7 @@ import { MeetingNotificationSettings } from "@/components/crm/settings/MeetingNo
 import { ClintIntegrationTab } from "@/components/crm/settings/ClintIntegrationTab";
 import { PipelineFormsManager } from "@/components/crm/PipelineFormsManager";
 import { CRMDistributionTab } from "@/components/crm/settings/CRMDistributionTab";
+import { CRMAutomationsTab } from "@/components/crm/settings/CRMAutomationsTab";
 import { CRMMessageRulesTab } from "@/components/crm/settings/CRMMessageRulesTab";
 import { toast } from "sonner";
 
@@ -1180,6 +1181,10 @@ export const CRMSettingsPage = () => {
                 <Shuffle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Distribuição</span>
                 <span className="sm:hidden">Distrib.</span>
+              </TabsTrigger>
+              <TabsTrigger value="automations" className="gap-1.5 text-xs sm:text-sm">
+                <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                Automações
               </TabsTrigger>
             </>
           )}
@@ -2317,6 +2322,9 @@ export const CRMSettingsPage = () => {
             {/* Distribuição automática de leads/conversas */}
             <TabsContent value="distribution" className="mt-6">
               <CRMDistributionTab />
+            </TabsContent>
+            <TabsContent value="automations" className="mt-6">
+              <CRMAutomationsTab />
             </TabsContent>
           </>
         )}
