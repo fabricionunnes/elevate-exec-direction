@@ -96,6 +96,7 @@ export function NotificationPreferences({ audience }: { audience: "staff" | "cli
               {push === "off" && "Desativado. Ative pra receber os avisos mesmo com o sistema fechado."}
               {push === "denied" && "Bloqueado pelo navegador. Libere as notificações deste site nas configurações do navegador."}
               {push === "ios_needs_install" && "No iPhone, primeiro instale o app: toque em Compartilhar e em \"Adicionar à Tela de Início\". Depois abra por lá e ative aqui."}
+              {push === "in_app" && "Dentro do aplicativo da loja o push ainda não está disponível. Por enquanto, ative pelo computador, ou no celular abra unvholdings.com.br no Safari/Chrome, adicione à Tela de Início e ative por lá. O sino aqui dentro funciona normalmente."}
               {push === "unsupported" && "Este navegador não tem suporte a push. Use o Chrome, Edge ou o app instalado."}
             </p>
           </div>

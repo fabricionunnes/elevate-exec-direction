@@ -9,12 +9,15 @@ const b64ToBytes = (b64: string) => {
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 };
 
-export type PushState = "unsupported" | "ios_needs_install" | "denied" | "off" | "on";
+export type PushState = "unsupported" | "ios_needs_install" | "in_app" | "denied" | "off" | "on";
 
 const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+// App da loja = casca com navegador embutido (WKWebView / WebView Android): ali o push da web não existe.
+const isInAppShell = () => /WKWebView|GuiaConectaApp|; wv\)/i.test(navigator.userAgent);
 const isStandalone = () => window.matchMedia?.("(display-mode: standalone)").matches || (navigator as any).standalone === true;
 
 export async function getPushState(): Promise<PushState> {
+  if (isInAppShell()) return "in_app";
   if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
     return isIOS() && !isStandalone() ? "ios_needs_install" : "unsupported";
   }
@@ -29,7 +32,7 @@ export async function getPushState(): Promise<PushState> {
 
 export async function enablePush(): Promise<PushState> {
   const st = await getPushState();
-  if (st === "unsupported" || st === "ios_needs_install" || st === "denied") return st;
+  if (st === "unsupported" || st === "ios_needs_install" || st === "in_app" || st === "denied") return st;
   const perm = await Notification.requestPermission();
   if (perm !== "granted") return perm === "denied" ? "denied" : "off";
   const reg = (await navigator.serviceWorker.getRegistration()) || (await navigator.serviceWorker.register("/sw.js"));
