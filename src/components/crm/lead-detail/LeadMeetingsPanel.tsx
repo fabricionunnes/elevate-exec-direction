@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Calendar, Clock, Video, RefreshCw, XCircle, Loader2, History, User, ExternalLink, PlayCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
@@ -22,7 +23,7 @@ interface MeetingActivity {
   google_calendar_user_id: string | null;
   lead_id: string;
   responsible_staff_id: string | null;
-  responsible?: { name: string } | null;
+  responsible?: { name: string; avatar_url?: string | null } | null;
   created_at: string;
   recording_url?: string | null;
 }
@@ -43,7 +44,7 @@ export function LeadMeetingsPanel({ leadId, leadName }: LeadMeetingsPanelProps) 
     try {
       const { data, error } = await supabase
         .from("crm_activities")
-        .select("id, title, description, scheduled_at, completed_at, status, meeting_link, google_calendar_event_id, google_calendar_user_id, lead_id, responsible_staff_id, created_at, recording_url, responsible:onboarding_staff!crm_activities_responsible_staff_id_fkey(name)")
+        .select("id, title, description, scheduled_at, completed_at, status, meeting_link, google_calendar_event_id, google_calendar_user_id, lead_id, responsible_staff_id, created_at, recording_url, responsible:onboarding_staff!crm_activities_responsible_staff_id_fkey(name, avatar_url)")
         .eq("lead_id", leadId)
         .eq("type", "meeting")
         .order("scheduled_at", { ascending: false });
@@ -147,7 +148,10 @@ export function LeadMeetingsPanel({ leadId, leadName }: LeadMeetingsPanelProps) 
 
                       {(meeting.responsible as any)?.name && (
                         <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                          <User className="h-3 w-3" />
+                          <Avatar className="h-4 w-4">
+                            {(meeting.responsible as any).avatar_url && <AvatarImage src={(meeting.responsible as any).avatar_url} alt={(meeting.responsible as any).name} />}
+                            <AvatarFallback className="text-[8px]"><User className="h-2.5 w-2.5" /></AvatarFallback>
+                          </Avatar>
                           {(meeting.responsible as any).name}
                         </p>
                       )}

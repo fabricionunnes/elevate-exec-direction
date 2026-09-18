@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { StaffSettingsSheet } from "@/components/onboarding-tasks/StaffSettingsSheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -138,6 +139,8 @@ export const CRMLayout = () => {
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [dialerOnly, setDialerOnly] = useState(false);
   const [staffAvatarUrl, setStaffAvatarUrl] = useState<string | null>(null);
+  // "Conta" no menu do usuário: foto e senha (mesma folha "Meu Perfil" do Nexus)
+  const [accountOpen, setAccountOpen] = useState(false);
   const [selectedOrigin, setSelectedOrigin] = useState<string | null>(null);
   const [selectedPipeline, setSelectedPipeline] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -485,11 +488,9 @@ export const CRMLayout = () => {
                     <p className="font-semibold text-sm">{staffName}</p>
                     <p className="text-xs text-muted-foreground capitalize mt-0.5">{staffRole?.replace("_", " ")}</p>
                   </div>
-                  <DropdownMenuItem asChild>
-                    <Link to="/crm/settings" className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      Conta
-                    </Link>
+                  <DropdownMenuItem className="flex items-center gap-2" onSelect={() => setAccountOpen(true)}>
+                    <User className="h-4 w-4" />
+                    Conta
                   </DropdownMenuItem>
                   {canSettings && (
                     <DropdownMenuItem asChild>
@@ -581,6 +582,17 @@ export const CRMLayout = () => {
           </main>
         </div>
       </div>
+      <StaffSettingsSheet
+        open={accountOpen}
+        onOpenChange={async (v) => {
+          setAccountOpen(v);
+          // ao fechar, recarrega a foto do cabeçalho (pode ter mudado)
+          if (!v && staffId) {
+            const { data } = await supabase.from("onboarding_staff").select("avatar_url").eq("id", staffId).maybeSingle();
+            setStaffAvatarUrl(data?.avatar_url ?? null);
+          }
+        }}
+      />
     </CRMContext.Provider>
   );
 };

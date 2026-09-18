@@ -4,6 +4,7 @@ import { useCRMContext } from "./CRMLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -45,7 +46,7 @@ interface MeetingActivity {
     scheduled_by_staff_id: string | null;
     owner_staff_id: string | null;
   } | null;
-  responsible_staff?: { id: string; name: string } | null;
+  responsible_staff?: { id: string; name: string; avatar_url?: string | null } | null;
 }
 
 interface StaffOption { id: string; name: string; }
@@ -650,7 +651,11 @@ const CRMMeetingsPage = () => {
                           </span>
                         )}
                         {meeting.responsible_staff && (
-                          <Badge variant="outline" className="text-[10px] h-4">
+                          <Badge variant="outline" className="text-[10px] h-4 gap-1 pl-0.5">
+                            <Avatar className="h-3 w-3">
+                              {meeting.responsible_staff.avatar_url && <AvatarImage src={meeting.responsible_staff.avatar_url} alt={meeting.responsible_staff.name} />}
+                              <AvatarFallback className="text-[7px]">{meeting.responsible_staff.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
                             {meeting.responsible_staff.name}
                           </Badge>
                         )}
@@ -766,8 +771,11 @@ const CRMMeetingsPage = () => {
                     {selectedMeeting.responsible_staff && (
                       <div>
                         <p className="text-muted-foreground text-xs">Closer / Responsável</p>
-                        <p className="font-medium flex items-center gap-1">
-                          <Headphones className="h-3 w-3" />
+                        <p className="font-medium flex items-center gap-1.5">
+                          <Avatar className="h-5 w-5">
+                            {selectedMeeting.responsible_staff.avatar_url && <AvatarImage src={selectedMeeting.responsible_staff.avatar_url} alt={selectedMeeting.responsible_staff.name} />}
+                            <AvatarFallback className="text-[9px]"><Headphones className="h-3 w-3" /></AvatarFallback>
+                          </Avatar>
                           {selectedMeeting.responsible_staff.name}
                         </p>
                       </div>
