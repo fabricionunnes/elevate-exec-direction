@@ -140,8 +140,9 @@ Deno.serve(async (req) => {
             }).select("id").single();
             if (ie) { out.push({ form: f.form_name, lead: nome, erro: ie.message.slice(0, 120) }); continue; }
             leadId = ins.id; novos++;
-            for (const tg of (f.tag_ids || [])) await supabase.from("crm_lead_tags").upsert({ lead_id: leadId, tag_id: tg }, { onConflict: "lead_id,tag_id", ignoreDuplicates: true });
           }
+          // etiquetas do formulário valem pro lead novo e pro que já existia
+          if (leadId) for (const tg of (f.tag_ids || [])) await supabase.from("crm_lead_tags").upsert({ lead_id: leadId, tag_id: tg }, { onConflict: "lead_id,tag_id", ignoreDuplicates: true });
           if (leadId && respostas.length) {
             await supabase.from("crm_lead_form_answers").insert(respostas.map((r) => ({ lead_id: leadId, question_id: null, question_label: r.label, answer_text: r.valor, source: `meta_form:${f.form_id}` })));
           }

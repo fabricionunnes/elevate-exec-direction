@@ -12,13 +12,14 @@ import { ClipboardList, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
-interface FormRow { form_id: string; form_name: string | null; page_id: string; page_name: string | null; status: string | null; leads_count: number | null; is_active: boolean; pipeline_id: string | null; stage_id: string | null; origin_id: string | null; last_synced_at: string | null; imported_count: number; last_result: string | null }
+interface FormRow { form_id: string; form_name: string | null; page_id: string; page_name: string | null; status: string | null; leads_count: number | null; is_active: boolean; pipeline_id: string | null; stage_id: string | null; origin_id: string | null; tag_ids: string[] | null; last_synced_at: string | null; imported_count: number; last_result: string | null }
 
 export function CRMMetaLeadFormsCard() {
   const [rows, setRows] = useState<FormRow[]>([]);
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [stages, setStages] = useState<{ id: string; name: string; pipeline_id: string }[]>([]);
   const [origins, setOrigins] = useState<{ id: string; name: string; pipeline_id: string | null }[]>([]);
+  const [tags, setTags] = useState<{ id: string; name: string; color: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [busca, setBusca] = useState("");
@@ -26,13 +27,14 @@ export function CRMMetaLeadFormsCard() {
 
   const load = useCallback(async () => {
     const sb = supabase as any;
-    const [f, p, s, o] = await Promise.all([
+    const [f, p, s, o, tg] = await Promise.all([
       sb.from("crm_meta_lead_forms").select("*").order("is_active", { ascending: false }).order("leads_count", { ascending: false }),
       sb.from("crm_pipelines").select("id, name").eq("is_active", true).order("name"),
       sb.from("crm_stages").select("id, name, pipeline_id, sort_order").order("sort_order"),
       sb.from("crm_origins").select("id, name, pipeline_id").order("name"),
+      sb.from("crm_tags").select("id, name, color").order("name"),
     ]);
-    setRows(f.data || []); setPipelines(p.data || []); setStages(s.data || []); setOrigins(o.data || []);
+    setRows(f.data || []); setPipelines(p.data || []); setStages(s.data || []); setOrigins(o.data || []); setTags(tg.data || []);
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -107,6 +109,13 @@ export function CRMMetaLeadFormsCard() {
                     options={[{ value: "first", label: "Primeira etapa do funil" }, ...stages.filter((s) => s.pipeline_id === r.pipeline_id).map((s) => ({ value: s.id, label: s.name }))]} placeholder="Etapa" emptyMessage="Escolha o funil antes." />
                   <SearchableSelect value={r.origin_id || "none"} onValueChange={(v) => salvar(r.form_id, { origin_id: v === "none" ? null : v })}
                     options={[{ value: "none", label: "Sem origem" }, ...origins.filter((o) => !o.pipeline_id || o.pipeline_id === r.pipeline_id).map((o) => ({ value: o.id, label: o.name }))]} placeholder="Origem" emptyMessage="Nenhuma origem." />
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground mr-1">Etiquetas nos leads:</span>
+                  {tags.map((t) => { const on = (r.tag_ids || []).includes(t.id); return (
+                    <button type="button" key={t.id} onClick={() => salvar(r.form_id, { tag_ids: on ? (r.tag_ids || []).filter((x) => x !== t.id) : [...(r.tag_ids || []), t.id] })}
+                      className={`text-[11px] rounded-full border px-2 py-0.5 transition-colors ${on ? "text-white border-transparent" : "text-muted-foreground hover:bg-muted"}`} style={on ? { backgroundColor: t.color || "#64748b" } : undefined}>{t.name}</button>
+                  ); })}
                 </div>
               </div>
             ))}
