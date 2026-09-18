@@ -421,12 +421,20 @@ function DisparosLista() {
         <Stat label="Custo estimado" value={brl(totals.cost)} sub="só mensagens entregues" />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <Stat label="Reuniões agendadas" value={totals.agendadas} sub={`${pct(totals.agendadas, totals.responded)} de quem respondeu`} tone="text-blue-600" />
         <Stat label="Reuniões realizadas" value={totals.realizadas} sub={totals.realizadas + totals.noShow ? `${pct(totals.realizadas, totals.realizadas + totals.noShow)} de comparecimento` : undefined} tone="text-emerald-600" />
         <Stat label="No-show" value={totals.noShow} tone="text-amber-600" />
-        <Stat label="Vendas" value={totals.vendas} sub={totals.vendas ? brl(totals.valorVendas) : undefined} tone="text-emerald-700" />
-        <Stat label="Custo por reunião" value={totals.agendadas ? brl(totals.cost / totals.agendadas) : "—"} sub="custo estimado ÷ agendadas" />
+        <Stat label="Vendas" value={totals.vendas} sub={totals.realizadas ? `${pct(totals.vendas, totals.realizadas)} das reuniões realizadas` : undefined} tone="text-emerald-700" />
+      </div>
+
+      {/* Dinheiro: quanto custou cada etapa e quanto voltou */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        <Stat label="Custo por reunião agendada" value={totals.agendadas ? brl(totals.cost / totals.agendadas) : "—"} sub="custo estimado ÷ agendadas" />
+        <Stat label="Custo por reunião realizada" value={totals.realizadas ? brl(totals.cost / totals.realizadas) : "—"} sub="custo estimado ÷ realizadas" />
+        <Stat label="CAC" value={totals.vendas ? brl(totals.cost / totals.vendas) : "—"} sub={totals.vendas ? "custo estimado ÷ vendas" : "ainda sem venda no período"} />
+        <Stat label="Ticket médio" value={totals.vendas ? brl(totals.valorVendas / totals.vendas) : "—"} sub={totals.vendas ? `${totals.vendas} venda${totals.vendas > 1 ? "s" : ""}` : undefined} tone="text-emerald-700" />
+        <Stat label="Valor de vendas" value={brl(totals.valorVendas)} sub={totals.cost > 0 && totals.valorVendas > 0 ? `retorno de ${(totals.valorVendas / totals.cost).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}x sobre o custo` : undefined} tone="text-emerald-700" />
       </div>
       <p className="-mt-1 text-[11px] text-muted-foreground">
         Reuniões e vendas contam pro último disparo que chegou no lead antes delas, em até 30 dias.
