@@ -67,6 +67,8 @@ interface Lead {
   created_at: string;
   origin?: { name: string } | null;
   owner?: { name: string; avatar_url?: string | null } | null;
+  closer_staff_id?: string | null;
+  closer?: { name: string; avatar_url?: string | null } | null;
   tags?: { tag: { id: string; name: string; color: string } }[];
   meeting_events?: { event_type: string }[];
 }
@@ -248,12 +250,13 @@ export const CRMPipelinePage = () => {
         let query = supabase
           .from("crm_leads")
           .select(`
-            id, name, company, phone, email, document, stage_id, origin_id, owner_staff_id,
+            id, name, company, phone, email, document, stage_id, origin_id, owner_staff_id, closer_staff_id,
             opportunity_value, probability, last_activity_at, next_activity_at, urgency, notes, created_at, stage_entered_at,
             utm_source, utm_campaign, utm_content, utm_term, meta_campaign_id, meta_adset_id, meta_ad_id,
             campaign_name, adset_name, ad_name,
             origin:crm_origins(name),
             owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name, avatar_url),
+            closer:onboarding_staff!crm_leads_closer_staff_id_fkey(name, avatar_url),
             tags:crm_lead_tags(tag:crm_tags(id, name, color)),
             meeting_events:crm_meeting_events(event_type)
           `)

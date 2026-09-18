@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Mail, 
@@ -40,6 +41,8 @@ interface Lead {
   meta_ad_id?: string | null;
   origin?: { name: string } | null;
   owner?: { name: string; avatar_url?: string | null } | null;
+  closer_staff_id?: string | null;
+  closer?: { name: string; avatar_url?: string | null } | null;
   tags?: { tag: { id: string; name: string; color: string } }[];
   meeting_events?: { event_type: string }[];
 }
@@ -215,6 +218,15 @@ export const KanbanLeadCard = ({
           currentOwnerAvatarUrl={lead.owner?.avatar_url}
           onOwnerChange={onRefresh}
         />
+        {/* Closer do lead, quando é outra pessoa que não o dono */}
+        {lead.closer && lead.closer_staff_id && lead.closer_staff_id !== lead.owner_staff_id && (
+          <span className="flex items-center" title={`Closer: ${lead.closer.name}`}>
+            <Avatar className="h-5 w-5 ring-1 ring-[hsl(var(--crm-positive))]/60">
+              {lead.closer.avatar_url && <AvatarImage src={lead.closer.avatar_url} alt={lead.closer.name} />}
+              <AvatarFallback className="text-[9px] bg-muted">{lead.closer.name.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+          </span>
+        )}
         <LeadCardNotes
           leadId={lead.id}
           onNotesChange={onRefresh}

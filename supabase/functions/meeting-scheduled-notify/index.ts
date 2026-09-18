@@ -113,6 +113,25 @@ async function sendWhatsApp(inst: Inst | null, phone: string, text: string): Pro
   }
 }
 
+// Aviso com a foto do closer (pedido do Fabrício 17/09/2026): manda a imagem com o texto na legenda.
+// Só na Evolution (endpoint sendMedia conhecido); Stevo/manager_v2 ou falha → cai no texto puro.
+async function sendWhatsAppImage(inst: Inst | null, phone: string, imageUrl: string, caption: string): Promise<boolean> {
+  if (!inst?.api_url || !inst?.api_key || !imageUrl) return false;
+  const base = String(inst.api_url).replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
+  const v2 = inst.provider_type === "manager_v2" || isStevo(base);
+  if (v2) return false;
+  try {
+    const r = await fetch(`${base}/message/sendMedia/${inst.instance_name}`, {
+      method: "POST",
+      headers: { apikey: String(inst.api_key), "Content-Type": "application/json" },
+      body: JSON.stringify({ number: phone, mediatype: "image", mimetype: "image/jpeg", media: imageUrl, caption, fileName: "closer.jpg" }),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
 const fmt = (iso: string | null) => {
   if (!iso) return "";
   return new Date(iso).toLocaleString("pt-BR", {
@@ -130,6 +149,7 @@ Deno.serve(async (req) => {
 
     const staffIds: string[] = [];
     let titulo = "", quando = "", contexto = "", link = "";
+    let closerNome = "", closerFoto = "";
 
     let inst: Inst | null = null;
     let origemInst = "";
@@ -156,6 +176,11 @@ Deno.serve(async (req) => {
       // destinatário principal = closer (responsável pela reunião); quem agendou também recebe (deduplicado)
       if (cfg.incluirResponsavel && a.responsible_staff_id) staffIds.push(a.responsible_staff_id);
       if (cfg.incluirQuemAgendou && a.created_by && !staffIds.includes(a.created_by)) staffIds.push(a.created_by);
+      if (a.responsible_staff_id) {
+        const { data: rs } = await supabase.from("onboarding_staff").select("name, avatar_url").eq("id", a.responsible_staff_id).maybeSingle();
+        closerNome = rs?.name || "";
+        closerFoto = rs?.avatar_url || "";
+      }
       if (a.lead_id) {
         const { data: lead } = await supabase.from("crm_leads").select("name, phone, sdr_staff_id").eq("id", a.lead_id).maybeSingle();
         if (lead?.name) contexto = `\n*Lead:* ${lead.name}`;
@@ -209,6 +234,7 @@ Deno.serve(async (req) => {
       ? `📅 *Reunião agendada*\n\n*${titulo}*${contexto}` +
         (leadPhone ? `\n*Telefone:* ${leadPhone}` : "") +
         (quando ? `\n*Quando:* ${quando}` : "") +
+        (closerNome ? `\n*Closer:* ${closerNome}` : "") +
         (agendadoPor ? `\n*Agendada por:* ${agendadoPor}` : "") +
         (link ? `\n\n🔗 *Reunião:* ${link}` : "\n\n(sem link de reunião)") +
         (leadLink ? `\n📋 *Lead no CRM:* ${leadLink}` : "")
@@ -225,6 +251,8 @@ Deno.serve(async (req) => {
       if (instPhone && phone === instPhone) continue; // não manda pra si mesmo (SDR agendou pela própria instância)
       vistos.add(phone);
       if (dryRun) { enviados.push(`[dry] ${s.name} <${phone}>`); continue; }
+      // com foto do closer vai como imagem + legenda; sem foto (ou se a mídia falhar) vai texto
+      if (closerFoto && await sendWhatsAppImage(inst, phone, closerFoto, msg)) { enviados.push(`${s.name} (com foto)`); continue; }
       if (await sendWhatsApp(inst, phone, msg)) enviados.push(s.name);
     }
     return json({ ok: true, enviados, instancia: inst?.instance_name || null, origem_instancia: origemInst, msg: dryRun ? msg : undefined });
