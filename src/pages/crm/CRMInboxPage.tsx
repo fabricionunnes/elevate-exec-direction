@@ -155,6 +155,19 @@ export const CRMInboxPage = () => {
   const [deletingConversation, setDeletingConversation] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<ConversationFiltersData>(defaultFilters);
+  // Filtro "Agente de IA": conversas em que o agente atuou ou está ligado (vem do banco, WhatsApp e Instagram)
+  const [aiAgentConvIds, setAiAgentConvIds] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    if (!filters.aiAgentId) { setAiAgentConvIds(null); return; }
+    let ativo = true;
+    (async () => {
+      const { data, error } = await (supabase as any).rpc("crm_agent_conversation_ids", { p_agent: filters.aiAgentId === "any" ? null : filters.aiAgentId });
+      if (!ativo) return;
+      if (error) { toast.error("Não consegui aplicar o filtro de agente"); setAiAgentConvIds(null); return; }
+      setAiAgentConvIds(new Set((data || []).map((r: any) => String(r.conversation_id))));
+    })();
+    return () => { ativo = false; };
+  }, [filters.aiAgentId]);
   const [showMobileInfo, setShowMobileInfo] = useState(false);
   const [igSending, setIgSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -677,6 +690,8 @@ export const CRMInboxPage = () => {
     if (filters.status && conv.status !== filters.status) return false;
     if (filters.assignedTo && conv.assigned_to !== filters.assignedTo) return false;
     if (filters.sectorId && conv.sector_id !== filters.sectorId) return false;
+    if (filters.aiAgentId && !aiAgentConvIds) return false; // filtro ainda carregando
+    if (filters.aiAgentId && aiAgentConvIds && !aiAgentConvIds.has(String(conv.id))) return false;
     if (filters.instanceId) {
       if (filters.instanceId.startsWith("official:")) {
         const officialId = filters.instanceId.replace("official:", "");

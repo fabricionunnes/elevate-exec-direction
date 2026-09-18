@@ -47,6 +47,7 @@ export interface ConversationFiltersData {
   status: string;
   assignedTo: string;
   sectorId: string;
+  aiAgentId: string; // "" = todos | "any" = qualquer agente de IA | id do agente
   // Negócios
   dealCreatedAt: Date | undefined;
   hasDeal: string; // "all" | "with" | "without"
@@ -118,6 +119,7 @@ export function ConversationFilters({
   // Data for selects
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
+  const [aiAgents, setAiAgents] = useState<{ id: string; name: string; is_active: boolean }[]>([]);
   const [originGroups, setOriginGroups] = useState<OriginGroup[]>([]);
   const [origins, setOrigins] = useState<Origin[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
@@ -137,6 +139,11 @@ export function ConversationFilters({
     if (staffData) {
       setStaff(staffData as StaffMember[]);
     }
+
+    // Agentes de IA (filtro "Agente de IA")
+    const { data: agentsData } = await (supabase as any)
+      .from("crm_ai_agents").select("id, name, is_active").order("is_active", { ascending: false }).order("name");
+    if (agentsData) setAiAgents(agentsData);
 
     // Fetch sectors
     const { data: sectorsData } = await supabase
@@ -229,6 +236,7 @@ export function ConversationFilters({
       status: "",
       assignedTo: "",
       sectorId: "",
+      aiAgentId: "",
       dealCreatedAt: undefined,
       hasDeal: "",
       dealStatus: "",
@@ -385,6 +393,22 @@ export function ConversationFilters({
                   <SelectContent>
                     {sectors.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Agente de IA */}
+              <div className="space-y-1">
+                <Label className="text-sm text-muted-foreground">Agente de IA</Label>
+                <Select value={filters.aiAgentId} onValueChange={(v) => updateFilter("aiAgentId", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Qualquer agente de IA</SelectItem>
+                    {aiAgents.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.name}{a.is_active ? "" : " (inativo)"}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -743,6 +767,7 @@ export const defaultFilters: ConversationFiltersData = {
   status: "",
   assignedTo: "",
   sectorId: "",
+  aiAgentId: "",
   dealCreatedAt: undefined,
   hasDeal: "",
   dealStatus: "",
