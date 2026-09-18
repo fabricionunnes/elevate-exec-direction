@@ -516,7 +516,7 @@ export function ClientReceivablesPanel({ projectId, canEdit }: Props) {
           selected={statusFilter}
           onChange={setStatusFilter}
           placeholder="Status"
-          allLabel="Todos"
+          allLabel="Todos os Status"
           className="w-[180px]"
         />
         <MultiSelectFilter

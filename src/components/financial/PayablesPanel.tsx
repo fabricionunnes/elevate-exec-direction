@@ -900,7 +900,7 @@ export function PayablesPanel() {
               selected={statusFilter}
               onChange={(v) => { setStatusFilter(v); setCurrentPage(0); }}
               placeholder="Status"
-              allLabel="Todos"
+              allLabel="Todos os Status"
               className="w-[180px]"
             />
             <MultiSelectFilter

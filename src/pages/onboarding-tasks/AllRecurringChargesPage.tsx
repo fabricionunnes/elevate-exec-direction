@@ -1672,7 +1672,7 @@ export default function AllRecurringChargesPage() {
                       selected={selectedStatuses}
                       onChange={setSelectedStatuses}
                       placeholder="Status"
-                      allLabel="Todos"
+                      allLabel="Todos os Status"
                     />
                     <SearchableSelect
                       value={selectedConsultant}
@@ -2201,7 +2201,7 @@ export default function AllRecurringChargesPage() {
                       selected={selectedStatuses}
                       onChange={setSelectedStatuses}
                       placeholder="Status"
-                      allLabel="Todos"
+                      allLabel="Todos os Status"
                     />
                     <MultiSelectFilter
                       selected={selectedPayableCategories}
