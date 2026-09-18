@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,8 @@ const PublicRoutineFormPage = () => {
     main_challenges: "",
     productivity_suggestions: "",
   });
+  // rascunho no aparelho: resposta não se perde se o envio falhar ou a aba fechar
+  const draft = useFormDraft(token ? `rotina_rascunho_${token}` : null, form, (saved) => setForm((prev) => ({ ...prev, ...saved })), !loading && !!linkData && !submitted);
 
   useEffect(() => {
     const loadLink = async () => {
@@ -78,10 +81,11 @@ const PublicRoutineFormPage = () => {
         productivity_suggestions: form.productivity_suggestions || null,
       });
       if (insertErr) throw insertErr;
+      draft.clear();
       setSubmitted(true);
     } catch (err) {
       console.error(err);
-      setError("Erro ao enviar. Tente novamente.");
+      setError("Não conseguimos enviar agora. Suas respostas ficaram salvas neste aparelho: recarregue a página e envie de novo.");
     } finally {
       setSubmitting(false);
     }

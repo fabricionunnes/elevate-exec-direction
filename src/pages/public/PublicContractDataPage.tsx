@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -88,6 +89,8 @@ const PublicContractDataPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const draft = useFormDraft(token ? `contrato_rascunho_${token}` : null, data, (saved) => setData((prev) => ({ ...prev, ...saved })), !loading && !error && !!leadId);
+  useEffect(() => { if (draft.restored) toast.info("Recuperamos as respostas que você já tinha digitado neste aparelho."); }, [draft.restored]);
 
   useEffect(() => {
     if (token) loadLead();
@@ -196,11 +199,12 @@ const PublicContractDataPage = () => {
         console.error("Error sending contract form notifications:", notifyErr);
       }
 
+      draft.clear();
       setSubmitted(true);
       toast.success("Dados enviados com sucesso!");
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao enviar dados. Tente novamente.");
+      toast.error("Não conseguimos enviar agora. Suas respostas ficaram salvas neste aparelho: recarregue a página e envie de novo.", { duration: 12000 });
     } finally {
       setSubmitting(false);
     }

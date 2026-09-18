@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -100,6 +101,8 @@ export default function FinancialConsultationPublicPage() {
   const [currentSection, setCurrentSection] = useState(0);
   const [notFound, setNotFound] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const draft = useFormDraft(token ? `consultoria_fin_rascunho_${token}` : null, formData, (saved) => setFormData((prev) => ({ ...prev, ...saved })), !loading && !!form && !submitted);
+  useEffect(() => { if (draft.restored) toast.info("Recuperamos as respostas que você já tinha digitado neste aparelho."); }, [draft.restored]);
 
   useEffect(() => {
     if (token) loadData();
@@ -216,10 +219,11 @@ export default function FinancialConsultationPublicPage() {
         .eq("id", form.id);
 
       if (error) throw error;
+      draft.clear();
       setSubmitted(true);
       toast.success("Formulário enviado com sucesso!");
     } catch (error) {
-      toast.error("Erro ao enviar formulário");
+      toast.error("Não conseguimos enviar agora. Suas respostas ficaram salvas neste aparelho: recarregue a página e envie de novo.", { duration: 12000 });
     } finally {
       setSubmitting(false);
     }
