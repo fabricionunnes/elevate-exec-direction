@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff, Key } from "lucide-react";
 import { AvatarUpload } from "@/components/AvatarUpload";
+import { NotificationPreferences } from "@/components/notifications/NotificationPreferences";
 
 interface StaffSettingsSheetProps {
   open: boolean;
@@ -142,6 +143,8 @@ export const StaffSettingsSheet = ({
               <p className="font-medium">{userName}</p>
               <p className="text-sm text-muted-foreground">{userEmail}</p>
             </div>
+
+            <NotificationPreferences audience="staff" />
 
             {/* Change password section */}
             <div className="space-y-4">

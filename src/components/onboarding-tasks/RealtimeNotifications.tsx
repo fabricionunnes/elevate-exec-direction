@@ -32,6 +32,7 @@ interface Notification {
   message: string;
   reference_id: string | null;
   reference_type: string | null;
+  action_url?: string | null;
   is_read: boolean;
   created_at: string;
 }
@@ -156,6 +157,8 @@ export const RealtimeNotifications = () => {
   // Pra onde a notificação leva: se a referência é um lead do CRM (formulário
   // de dados contratuais, etc.), abre o card do lead — ainda não é projeto.
   const notificationTarget = (n: Notification): { path: string; label: string } | null => {
+    // notificações novas já dizem pra onde levar
+    if (n.action_url && !/^https?:\/\//i.test(n.action_url)) return { path: n.action_url.replace(/^\/?#/, ""), label: "Abrir" };
     if (n.reference_type === "crm_lead" && n.reference_id) {
       return { path: `/crm/leads/${n.reference_id}`, label: "Ver Lead" };
     }
