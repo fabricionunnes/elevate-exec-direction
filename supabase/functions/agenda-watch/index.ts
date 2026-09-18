@@ -123,6 +123,15 @@ async function findContext(supabase: any, eventId: string, description: string |
   return null;
 }
 
+// Fabrício, 18/09/2026: "fica chegando mensagem de compromisso o dia todo e o que importa eu não vejo".
+// Só avisa de REUNIÃO DE VERDADE: tem outra pessoa convidada, ou está ligada a um lead/projeto do Nexus.
+// Bloco de rotina da própria agenda (1:1s, Fechamento, Estratégico...) não gera aviso: fica só no resumo das 8h.
+async function ehReuniaoDeVerdade(supabase: any, e: any): Promise<{ ok: boolean; ctx: any }> {
+  const convidados = Array.isArray(e.attendeeEmails) ? e.attendeeEmails.length : 0;
+  const ctx = await findContext(supabase, e.id, e.description);
+  return { ok: convidados >= 2 || !!ctx, ctx };
+}
+
 async function listEvents(): Promise<any[]> {
   const resp = await fetch(
     `${SUPABASE_URL}/functions/v1/google-calendar?action=events&target_user_id=${CALENDAR_USER_ID}`,
@@ -223,8 +232,9 @@ Deno.serve(async (req: Request) => {
           notified_30: startMs - now < 30 * 60000,
           notified_5: startMs - now < 5 * 60000,
         });
-        if (!isBootstrap && startMs > now) {
-          const ctx = await findContext(supabase, e.id, e.description);
+        const novo = (!isBootstrap && startMs > now) ? await ehReuniaoDeVerdade(supabase, e) : { ok: false, ctx: null };
+        if (novo.ok) {
+          const ctx = novo.ctx;
           notifications.push([
             "*Nova reunião na agenda*",
             "",
@@ -239,8 +249,9 @@ Deno.serve(async (req: Request) => {
       }
 
       if (prev.fingerprint !== fingerprint) {
-        const ctx = await findContext(supabase, e.id, e.description);
-        notifications.push([
+        const alt = await ehReuniaoDeVerdade(supabase, e);
+        const ctx = alt.ctx;
+        if (alt.ok && startMs > now) notifications.push([
           "*Reunião alterada*",
           "",
           `*${e.title}*`,
@@ -249,7 +260,7 @@ Deno.serve(async (req: Request) => {
           ctx ? `\n${ctx.label}\n${ctx.link}` : null,
           e.meetingLink ? `\nLink: ${e.meetingLink}` : null,
         ].filter(Boolean).join("\n"));
-        updated++;
+        if (alt.ok) updated++;
         // horário mudou: os lembretes valem de novo
         await supabase.from("agenda_watch_events").upsert({
           ...row,
@@ -264,26 +275,30 @@ Deno.serve(async (req: Request) => {
       const minsLeft = (startMs - now) / 60000;
       const patch: Record<string, unknown> = { ...row, notified_created: prev.notified_created };
 
-      if (!prev.notified_30 && minsLeft <= 30 && minsLeft > 5) {
-        const ctx = await findContext(supabase, e.id, e.description);
+      const naJanela = (!prev.notified_30 && minsLeft <= 30 && minsLeft > 5) || (!prev.notified_5 && !prev.notified_30 && minsLeft <= 5 && minsLeft > -2);
+      const lemb = naJanela ? await ehReuniaoDeVerdade(supabase, e) : { ok: false, ctx: null };
+      if (naJanela && !lemb.ok) { patch.notified_30 = true; patch.notified_5 = true; } // bloco de rotina: marca e não avisa
+      if (lemb.ok && !prev.notified_30 && minsLeft <= 30 && minsLeft > 5) {
+        const ctx = lemb.ctx;
         notifications.push([
           "*Reunião em 30 minutos*",
           "",
           `*${e.title}* às ${fmtTime(e.start)}`,
           ctx ? `\n${ctx.label}\n${ctx.link}` : null,
-          e.meetingLink ? `\nEntrar: ${e.meetingLink}` : "\n(sem link de vídeo no evento)",
+          e.meetingLink ? `\nEntrar: ${e.meetingLink}` : null,
         ].filter(Boolean).join("\n"));
         patch.notified_30 = true;
+        patch.notified_5 = true; // um lembrete só por reunião
         reminders++;
       }
-      if (!prev.notified_5 && minsLeft <= 5 && minsLeft > -2) {
-        const ctx = await findContext(supabase, e.id, e.description);
+      if (lemb.ok && !prev.notified_5 && !prev.notified_30 && minsLeft <= 5 && minsLeft > -2) {
+        const ctx = lemb.ctx;
         notifications.push([
           "*Reunião em 5 minutos*",
           "",
           `*${e.title}* às ${fmtTime(e.start)}`,
           ctx ? `\n${ctx.label}\n${ctx.link}` : null,
-          e.meetingLink ? `\nEntrar: ${e.meetingLink}` : "\n(sem link de vídeo no evento)",
+          e.meetingLink ? `\nEntrar: ${e.meetingLink}` : null,
         ].filter(Boolean).join("\n"));
         patch.notified_5 = true;
         patch.notified_30 = true;
@@ -302,7 +317,7 @@ Deno.serve(async (req: Request) => {
         .eq("google_event_id", id);
       if (startMs > now) {
         notifications.push([
-          "*Reunião cancelada*",
+          "*Compromisso cancelado*",
           "",
           `*${prev.title}*`,
           `Era ${fmtWeekday(prev.start_at)}, ${fmtDate(prev.start_at)} às ${fmtTime(prev.start_at)}`,
