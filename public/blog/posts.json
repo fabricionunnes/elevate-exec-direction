@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-18T10:01:15",
+ "gerado_em": "2026-09-18T21:01:06",
  "posts": [
+  {
+   "slug": "custo-fixo-define-preco-minimo-nao-estrategia",
+   "url": "/blog/custo-fixo-define-preco-minimo-nao-estrategia/",
+   "titulo": "Custo fixo define o preço mínimo não a estratégia",
+   "resumo": "O piso do que você cobra não pode ser menor que o fixo da empresa mais o que você tira para viver. Qualquer número abaixo disso é operação deficitária disfarçada de movimento.",
+   "tags": [
+    "preço",
+    "estrutura comercial",
+    "margem",
+    "custo fixo",
+    "decisão"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-18",
+   "ts": 2101
+  },
   {
    "slug": "parcelamento-facilita-decisao-nao-estrutura-oferta",
    "url": "/blog/parcelamento-facilita-decisao-nao-estrutura-oferta/",
