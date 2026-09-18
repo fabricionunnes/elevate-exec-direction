@@ -63,6 +63,7 @@ import {
   MessagesSquare,
   CreditCard,
   ShieldCheck,
+  Lock,
 } from "lucide-react";
 import { AddLeadNoteDialog } from "@/components/crm/lead-detail/AddLeadNoteDialog";
 import { LeadSummaryTab } from "@/components/crm/lead-detail/lead-summary/LeadSummaryTab";
@@ -183,6 +184,8 @@ export const CRMLeadDetailPage = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [lossReasons, setLossReasons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  // lead existe mas está com outra pessoa (RLS esconde): mostra aviso em vez de erro
+  const [semAcesso, setSemAcesso] = useState<{ leadName: string | null; ownerName: string | null } | null>(null);
   const [linkedProject, setLinkedProject] = useState<{ id: string; product_name: string | null } | null>(null);
   const [wonDialogOpen, setWonDialogOpen] = useState(false);
   const [wonProducts, setWonProducts] = useState<{ id: string; name: string }[]>([]);
@@ -261,6 +264,7 @@ export const CRMLeadDetailPage = () => {
 
   const loadLead = useCallback(async () => {
     if (!id) return;
+    setSemAcesso(null);
 
     try {
       const { data, error } = await supabase
@@ -387,6 +391,14 @@ export const CRMLeadDetailPage = () => {
 
     } catch (error) {
       console.error("Error loading lead:", error);
+      // Não veio nada: ou o lead não existe, ou está com outra pessoa e a permissão esconde.
+      try {
+        const { data: info } = await (supabase as any).rpc("crm_lead_access_info", { p_lead: id });
+        if (info?.exists) {
+          setSemAcesso({ leadName: info.lead_name || null, ownerName: info.owner_name || null });
+          return;
+        }
+      } catch { /* segue pro erro padrão */ }
       toast.error("Erro ao carregar lead");
       navigate("/crm/leads");
     } finally {
@@ -862,6 +874,29 @@ export const CRMLeadDetailPage = () => {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (semAcesso) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="max-w-md w-full rounded-xl border bg-card p-6 text-center space-y-3">
+          <div className="mx-auto h-11 w-11 rounded-full bg-amber-100 dark:bg-amber-950/40 flex items-center justify-center">
+            <Lock className="h-5 w-5 text-amber-600" />
+          </div>
+          <h2 className="text-base font-semibold">Você não tem acesso a este lead</h2>
+          <p className="text-sm text-muted-foreground">
+            {semAcesso.leadName ? <>O lead <strong className="text-foreground">{semAcesso.leadName}</strong> </> : "Este lead "}
+            {semAcesso.ownerName
+              ? <>está com <strong className="text-foreground">{semAcesso.ownerName}</strong>, não com você.</>
+              : "não está atribuído a você."}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Peça a um administrador para transferir o lead para você. Depois disso, este mesmo link vai abrir normalmente.
+          </p>
+          <Button variant="outline" onClick={() => navigate("/crm/pipeline")}>Voltar para o funil</Button>
+        </div>
       </div>
     );
   }
