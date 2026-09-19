@@ -1019,6 +1019,40 @@ Deno.serve(async (req) => {
     if (body0.action === "followups") {
       const results: string[] = [];
       const silencio: string[] = [];
+      // RESGATE (19/09/2026): lead falou por último, o agente está ligado e nenhuma execução
+      // aconteceu depois da mensagem dele (disparo perdido, erro da IA, debounce antigo).
+      // Reenvia a conversa pro fluxo normal, que aplica todas as travas de sempre.
+      try {
+        const horaBR = new Date(Date.now() - 3 * 3600000).getUTCHours();
+        if ((horaBR >= 8 && horaBR < 22) || body0.ignore_quiet_hours) {
+          const { data: orfas } = await supabase.from("crm_whatsapp_conversations")
+            .select("id, last_inbound_at, contact:crm_whatsapp_contacts(phone)")
+            .eq("last_message_direction", "inbound").neq("status", "closed").not("lead_id", "is", null)
+            .gte("last_inbound_at", new Date(Date.now() - 24 * 3600000).toISOString())
+            .lte("last_inbound_at", new Date(Date.now() - 4 * 60000).toISOString())
+            .order("last_inbound_at", { ascending: false }).limit(15);
+          let resgatadas = 0;
+          for (const o of (orfas || [])) {
+            if (resgatadas >= 6) break;
+            const fone = String((o as any).contact?.phone || "");
+            if (!fone || fone.includes("@g.us") || fone.includes("@newsletter") || fone.includes("-") || fone.replace(/\D/g, "").length > 15) continue;
+            const { count } = await supabase.from("crm_ai_agent_runs").select("id", { count: "exact", head: true })
+              .eq("conversation_id", o.id).gte("created_at", o.last_inbound_at);
+            if ((count || 0) > 0) continue;
+            resgatadas++;
+            if (body0.dry_run) { results.push(`resgate (simulado): ${o.id}`); continue; }
+            const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/crm-agent-respond`, {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ channel: "whatsapp", conversation_id: o.id, resgate: true }),
+            }).then((x) => x.json()).catch((e) => ({ error: String(e) }));
+            // quem foi pulado de propósito (agente desligado, fora do horário...) fica marcado pra não voltar aqui a cada rodada
+            if (r?.skip && /deslig|handoff|sem agente|nenhum agente|suportado|grupo|limite de mensagens|segue esta conta/i.test(String(r.skip))) {
+              await supabase.from("crm_ai_agent_runs").insert({ agent_id: null, channel: "whatsapp", conversation_id: o.id, mode: "resgate", outcome: `skip: ${String(r.skip || r.error).slice(0, 120)}` }).then(() => {}, () => {});
+            }
+            results.push(`resgate ${o.id}: ${r?.sent ? "respondido" : (r?.skip || r?.error || "ok")}`);
+          }
+        }
+      } catch (e) { console.error("resgate de conversas órfãs falhou", e); }
       const { data: agents } = await supabase.from("crm_ai_agents")
         .select("*").eq("is_active", true).eq("followup_enabled", true);
       for (const agent of (agents || [])) {
@@ -1559,7 +1593,21 @@ Deno.serve(async (req) => {
     // Anti-rajada: agente respondeu há <12s → não dispara de novo
     const lastOut = [...msgs].reverse().find((m) => m.direction === "outbound");
     if (lastOut && Date.now() - new Date(lastOut.ts).getTime() < 12000) {
-      return { ok: true, skip: "resposta recente do agente (debounce)" };
+      // Antes isto só pulava — e a mensagem que o lead mandou logo depois da nossa ficava SEM
+      // resposta pra sempre (caso Ana Luísa, 16/09: respondeu 9s depois e o agente sumiu).
+      // Agora espera a janela passar e só desiste se chegou mensagem mais nova (o disparo
+      // dela assume) ou se alguém já respondeu.
+      const espera = 12000 - (Date.now() - new Date(lastOut.ts).getTime()) + 1500;
+      await new Promise((r) => setTimeout(r, Math.max(0, espera)));
+      const tbl = isIG ? "instagram_messages" : "crm_whatsapp_messages";
+      const col = isIG ? "timestamp" : "created_at";
+      const { data: ult } = await supabase.from(tbl).select(`direction, ${col}`).eq("conversation_id", conversation_id)
+        .order(col, { ascending: false }).limit(1).maybeSingle();
+      const ultTs = ult ? new Date((ult as any)[col]).getTime() : 0;
+      const minhaTs = new Date(msgs[msgs.length - 1].ts).getTime();
+      if (ult && ((ult as any).direction !== "inbound" || ultTs > minhaTs + 500)) {
+        return { ok: true, skip: "mensagem mais nova assumiu a resposta (debounce)" };
+      }
     }
 
     // 5) Guardrails
