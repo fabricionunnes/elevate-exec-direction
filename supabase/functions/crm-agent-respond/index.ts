@@ -1422,13 +1422,13 @@ Deno.serve(async (req) => {
     let rawHistory: any[] = [];
     if (isIG) {
       const { data: history } = await supabase.from("instagram_messages")
-        .select("id, direction, content, timestamp, message_type, media_url, transcription")
+        .select("id, direction, content, timestamp, message_type, media_url, transcription, is_ai, sent_by")
         .eq("conversation_id", conversation_id)
         .order("timestamp", { ascending: true }).limit(40);
       rawHistory = (history || []).map((m: any) => ({ ...m, ts: m.timestamp }));
     } else {
       const { data: history } = await supabase.from("crm_whatsapp_messages")
-        .select("id, direction, content, created_at, type, media_url, transcription")
+        .select("id, direction, content, created_at, type, media_url, transcription, is_ai, sent_by")
         .eq("conversation_id", conversation_id)
         .order("created_at", { ascending: true }).limit(40);
       rawHistory = (history || []).map((m: any) => ({ ...m, message_type: m.type, ts: m.created_at }));
@@ -1506,7 +1506,8 @@ Deno.serve(async (req) => {
           ? `(${quem}${leg ? `, legenda: ${leg}` : ""}, o que aparece nela) ${m.transcription}`
           : `(${quem}${leg ? `, legenda: ${leg}` : ""}, não consegui abrir a imagem)`;
       }
-      return { direction: m.direction, content, ts: m.ts };
+      // humano = escrito por alguém do time (no sistema ou direto no celular), não pelo agente
+      return { direction: m.direction, content, ts: m.ts, humano: m.direction === "outbound" && !m.is_ai, sentBy: m.sent_by || null };
     });
 
     msgs = msgs.filter((m) => m.content.trim().length > 0);
@@ -1821,6 +1822,27 @@ Deno.serve(async (req) => {
       `\n\nVocê está respondendo uma conversa de ${channelLabel} com ${leadName}. Responda como mensagem: curta, humana, sem markdown, sem títulos, uma ideia por mensagem. NUNCA repita uma pergunta que o lead já respondeu — antes de perguntar, confira o histórico. Escreva a resposta UMA única vez, sem repetir o texto. Nunca revele que é uma IA. Se não souber algo, seja honesto e ofereça encaminhar para uma pessoa. TUDO que você escrever é enviado ao lead exatamente como está — jamais inclua raciocínio, plano, anotação interna ou comentário sobre ferramentas no texto.`,
     ].join("");
 
+    // INTERVENÇÃO HUMANA (19/09/2026, Fabrício): "o agente tem que ler o que qualquer pessoa
+    // manda de forma manual, pra seguir o ritmo". As mensagens do time já entravam no
+    // histórico, mas como se fossem do próprio agente — ele não sabia que uma pessoa tinha
+    // mudado o rumo (ex.: agente dispensou o lead e o Fabrício reabriu oferecendo reunião).
+    let systemFinal = system;
+    try {
+      const recentes = (msgs as any[]).slice(-16);
+      const manuais = recentes.filter((m) => m.humano).slice(-5);
+      if (manuais.length) {
+        const ids = [...new Set(manuais.map((m) => m.sentBy).filter(Boolean))];
+        const nomes: Record<string, string> = {};
+        if (ids.length) {
+          const { data: st } = await supabase.from("onboarding_staff").select("id, name").in("id", ids);
+          for (const x of st || []) nomes[x.id] = String(x.name || "").split(" ")[0];
+        }
+        const ultimaEhManual = !!(recentes.filter((m) => m.direction === "outbound").slice(-1)[0]?.humano);
+        const linhas = manuais.map((m) => `- ${m.sentBy && nomes[m.sentBy] ? nomes[m.sentBy] : "alguém do time"} escreveu: "${String(m.content).replace(/\s+/g, " ").slice(0, 400)}"`).join("\n");
+        systemFinal += `\n\nMENSAGENS ESCRITAS À MÃO PELO TIME NESTA CONVERSA: no histórico, estas mensagens "nossas" NÃO foram escritas por você, e sim por uma pessoa do time, direto na conversa:\n${linhas}\nRegras: (1) a palavra da pessoa do time MANDA — siga o rumo, o tom e o ritmo que ela deu, mesmo que contrarie algo que você disse ou decidiu antes (se ela ofereceu reunião, conduza para o agendamento; se deu preço, condição ou explicação, sustente exatamente o que ela disse; se ela reabriu um lead que você tinha dispensado, NÃO dispense de novo nem marque como perdido/fora do perfil por esse mesmo motivo). (2) Não repita o que ela já disse nem se reapresente. (3) Continue como a mesma pessoa falando, sem citar que houve troca de quem escreve.${ultimaEhManual ? " (4) A ÚLTIMA mensagem nossa foi escrita à mão: sua resposta agora é a continuação direta dela." : ""}`;
+      }
+    } catch (_) { /* nunca trava a resposta */ }
+
     // Alternância user/assistant exigida pela API (mescla consecutivas, começa em user)
     const apiMessages: { role: string; content: any }[] = [];
     for (const m of msgs) {
@@ -1846,7 +1868,7 @@ Deno.serve(async (req) => {
         // cache: o system (instruções + base de conhecimento) é idêntico em toda
         // iteração do loop de tools e entre mensagens da mesma conversa — sem
         // cache, cada rodada paga o preço cheio dessa parte de novo
-        system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+        system: [{ type: "text", text: systemFinal, cache_control: { type: "ephemeral" } }],
         messages: apiMessages,
         max_tokens: 900,
       };
