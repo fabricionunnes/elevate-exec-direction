@@ -27,6 +27,7 @@ export function CRMMetaLeadFormsCard() {
   const [refreshing, setRefreshing] = useState(false);
   const [busca, setBusca] = useState("");
   const [soAtivos, setSoAtivos] = useState(false);
+  const [buscaLiberada, setBuscaLiberada] = useState(false);
 
   const load = useCallback(async () => {
     const sb = supabase as any;
@@ -121,8 +122,13 @@ export function CRMMetaLeadFormsCard() {
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {/* autoComplete off + nome próprio: o Chrome estava preenchendo o e-mail salvo aqui e escondendo a lista inteira */}
-          <Input type="search" name="busca-formulario-meta" autoComplete="off" data-lpignore="true" data-1p-ignore className="h-9 max-w-xs"
-            placeholder="Buscar formulário ou página..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+          {/* O Chrome trata "texto + senha na mesma tela" como login (há um campo de senha na integração da Clint, logo abaixo)
+              e joga o e-mail salvo aqui, ignorando autoComplete="off". Por isso: só-leitura até a pessoa clicar, e qualquer
+              texto que chegue ANTES do clique é descartado. */}
+          <Input type="search" name="filtro-formularios-meta" autoComplete="off" data-lpignore="true" data-1p-ignore data-form-type="other"
+            readOnly={!buscaLiberada} onFocus={() => setBuscaLiberada(true)} onPointerDown={() => setBuscaLiberada(true)}
+            className="h-9 max-w-xs" placeholder="Buscar formulário ou página..." value={busca}
+            onChange={(e) => { if (buscaLiberada) setBusca(e.target.value); }} />
           <label className="flex items-center gap-2 text-sm cursor-pointer"><Switch checked={soAtivos} onCheckedChange={setSoAtivos} />Só os ligados</label>
         </div>
         {loading ? <div className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Carregando...</div> : visiveis.length === 0 ? (

@@ -233,6 +233,10 @@ export const ClintIntegrationTab = () => {
             <Label>Webhook Secret (opcional)</Label>
             <Input
               type="password"
+              autoComplete="new-password"
+              name="clint-webhook-secret"
+              data-lpignore="true"
+              data-1p-ignore
               value={webhookSecret}
               onChange={(e) => setWebhookSecret(e.target.value)}
               placeholder="Senha para validar webhooks da Clint"
