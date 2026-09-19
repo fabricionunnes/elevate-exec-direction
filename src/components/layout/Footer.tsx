@@ -46,7 +46,7 @@ export function Footer() {
             </p>
             <div className="flex gap-3 sm:gap-4">
               <a
-                href="https://linkedin.com"
+                href="https://www.linkedin.com/company/universidade-vendas"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300"
@@ -54,7 +54,7 @@ export function Footer() {
                 <Linkedin className="h-4 w-4 sm:h-5 sm:w-5" />
               </a>
               <a
-                href="https://instagram.com"
+                href="https://www.instagram.com/unvholdings/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300"
