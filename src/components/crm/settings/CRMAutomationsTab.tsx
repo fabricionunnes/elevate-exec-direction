@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { ArrowDown, ArrowUp, Copy, History, Loader2, Pencil, Plus, Trash2, Zap } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, History, Loader2, Pencil, Plus, Rewind, Trash2, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -53,6 +53,33 @@ export function CRMAutomationsTab() {
   const [editing, setEditing] = useState<Automation | null>(null);
   const [saving, setSaving] = useState(false);
   const [historyOf, setHistoryOf] = useState<Automation | null>(null);
+  // Aplicar nas conversas que chegaram ANTES da regra existir (pedido do Fabrício, 19/09/2026)
+  const [backOf, setBackOf] = useState<Automation | null>(null);
+  const [backDays, setBackDays] = useState("7");
+  const [backItems, setBackItems] = useState<any[] | null>(null);
+  const [backSel, setBackSel] = useState<string[]>([]);
+  const [backAgent, setBackAgent] = useState(true);
+  const [backBusy, setBackBusy] = useState(false);
+  const abrirBackfill = (a: Automation) => { setBackOf(a); setBackItems(null); setBackSel([]); setBackDays("7"); setBackAgent(true); };
+  const buscarBackfill = async () => {
+    if (!backOf) return;
+    setBackBusy(true);
+    const { data, error } = await supabase.rpc("crm_automation_backfill" as any, { p_automation: backOf.id, p_days: Number(backDays) || 7, p_dry: true, p_trigger_agent: false, p_conversations: null });
+    setBackBusy(false);
+    if (error) { toast.error(error.message || "Não consegui buscar as conversas."); return; }
+    const itens = ((data as any)?.itens || []) as any[];
+    setBackItems(itens); setBackSel(itens.map((i) => i.conversation_id));
+  };
+  const aplicarBackfill = async () => {
+    if (!backOf || backSel.length === 0) return;
+    if (!window.confirm(`Aplicar a regra "${backOf.name}" em ${backSel.length} conversa${backSel.length > 1 ? "s" : ""}?${backAgent ? " O agente de IA vai responder as que estão esperando resposta." : ""}`)) return;
+    setBackBusy(true);
+    const { data, error } = await supabase.rpc("crm_automation_backfill" as any, { p_automation: backOf.id, p_days: Number(backDays) || 7, p_dry: false, p_trigger_agent: backAgent, p_conversations: backSel });
+    setBackBusy(false);
+    if (error) { toast.error(error.message || "Não consegui aplicar."); return; }
+    toast.success(`Regra aplicada em ${(data as any)?.total ?? 0} conversa(s).`);
+    setBackOf(null); load();
+  };
   const [runs, setRuns] = useState<any[]>([]);
   const [staffSearch, setStaffSearch] = useState("");
 
@@ -203,6 +230,7 @@ export function CRMAutomationsTab() {
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" className="h-8 w-8" title="Subir" disabled={idx === 0} onClick={() => mover(idx, -1)}><ArrowUp className="h-4 w-4" /></Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" title="Descer" disabled={idx === rules.length - 1} onClick={() => mover(idx, 1)}><ArrowDown className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="Aplicar nas conversas anteriores" disabled={!a.is_active} onClick={() => abrirBackfill(a)}><Rewind className="h-4 w-4" /></Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" title="Histórico" onClick={() => abrirHistorico(a)}><History className="h-4 w-4" /></Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" title="Duplicar" onClick={() => duplicar(a)}><Copy className="h-4 w-4" /></Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar" onClick={() => { setStaffSearch(""); setEditing(norm(a)); }}><Pencil className="h-4 w-4" /></Button>
@@ -353,6 +381,58 @@ export function CRMAutomationsTab() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)} disabled={saving}>Cancelar</Button>
             <Button onClick={salvar} disabled={saving}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Aplicar nas conversas anteriores */}
+      <Dialog open={!!backOf} onOpenChange={(o) => !o && setBackOf(null)}>
+        <DialogContent className="sm:max-w-xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Aplicar nas conversas anteriores: {backOf?.name}</DialogTitle>
+            <DialogDescription>A regra só pega conversa nova. Aqui você aplica nas que chegaram antes de ela existir. Primeiro veja a lista, depois confirme.</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-end gap-2">
+            <div className="w-40">
+              <Label className="text-xs">Conversas dos últimos</Label>
+              <Select value={backDays} onValueChange={(v) => { setBackDays(v); setBackItems(null); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {["1", "3", "7", "15", "30", "60"].map((d) => <SelectItem key={d} value={d}>{d} dia{d === "1" ? "" : "s"}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button variant="outline" onClick={buscarBackfill} disabled={backBusy}>{backBusy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Ver conversas</Button>
+          </div>
+          {backItems && (backItems.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma conversa desse período se encaixa na regra.</p>
+          ) : (
+            <>
+              <div className="divide-y border rounded-md">
+                {backItems.map((i) => (
+                  <label key={i.conversation_id} className="flex items-start gap-3 p-2 text-sm cursor-pointer">
+                    <Checkbox className="mt-1" checked={backSel.includes(i.conversation_id)}
+                      onCheckedChange={(c) => setBackSel((prev) => c ? [...prev, i.conversation_id] : prev.filter((x) => x !== i.conversation_id))} />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium truncate">{i.nome && /[a-zA-ZÀ-ú]/.test(i.nome) ? i.nome : i.telefone} <span className="text-xs text-muted-foreground font-normal">{i.telefone}</span></p>
+                      <p className="text-xs text-muted-foreground truncate">{i.ultima || "sem texto"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {[i.resultado?.lead_criado ? "cria lead" : null, i.resultado?.movido_para ? "move lead" : null, i.resultado?.responsavel ? `responsável: ${i.resultado.responsavel}` : null, i.aguardando_resposta ? "esperando resposta" : null].filter(Boolean).join(" · ")}
+                      </p>
+                    </div>
+                    <span className="text-xs text-muted-foreground shrink-0">{format(new Date(i.chegou_em), "dd/MM HH:mm")}</span>
+                  </label>
+                ))}
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <Switch checked={backAgent} onCheckedChange={setBackAgent} />
+                Acionar o agente de IA nas conversas que estão esperando resposta
+              </label>
+            </>
+          ))}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBackOf(null)} disabled={backBusy}>Fechar</Button>
+            <Button onClick={aplicarBackfill} disabled={backBusy || !backItems || backSel.length === 0}>{backBusy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Aplicar em {backSel.length}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
