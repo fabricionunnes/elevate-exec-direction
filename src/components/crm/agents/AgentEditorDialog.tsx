@@ -50,6 +50,7 @@ const emptyForm = {
   handoff_keywords: "", max_messages: "",
   scheduling_enabled: false, scheduling_staff_ids: [] as string[],
   schedule_hour_start: 8, schedule_hour_end: 19,
+  schedule_weekdays: [1, 2, 3, 4, 5] as number[],
   meeting_duration_minutes: 60, can_move_stage: false,
   response_delay_seconds: 0,
   work_hours_enabled: false, work_hour_start: 8, work_hour_end: 20,
@@ -126,6 +127,7 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
         scheduling_staff_ids: agent.scheduling_staff_ids || [],
         schedule_hour_start: agent.schedule_hour_start ?? 8,
         schedule_hour_end: agent.schedule_hour_end ?? 19,
+        schedule_weekdays: Array.isArray((agent as any).schedule_weekdays) && (agent as any).schedule_weekdays.length ? (agent as any).schedule_weekdays.map(Number) : [1, 2, 3, 4, 5],
         meeting_duration_minutes: agent.meeting_duration_minutes ?? 60,
         can_move_stage: !!agent.can_move_stage,
         response_delay_seconds: agent.response_delay_seconds ?? 0,
@@ -191,6 +193,7 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
       scheduling_staff_ids: form.scheduling_staff_ids.length ? form.scheduling_staff_ids : null,
       schedule_hour_start: form.schedule_hour_start,
       schedule_hour_end: form.schedule_hour_end,
+      schedule_weekdays: form.schedule_weekdays.length ? [...form.schedule_weekdays].sort() : [1, 2, 3, 4, 5],
       meeting_duration_minutes: form.meeting_duration_minutes,
       can_move_stage: form.can_move_stage,
       response_delay_seconds: form.response_delay_seconds,
@@ -662,6 +665,22 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Dias em que pode marcar reunião</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((nome, d) => {
+                        const on = form.schedule_weekdays.includes(d);
+                        return (
+                          <button type="button" key={d}
+                            onClick={() => set({ schedule_weekdays: on ? form.schedule_weekdays.filter((x) => x !== d) : [...form.schedule_weekdays, d] })}
+                            className={`text-xs rounded-md border px-2.5 py-1 transition-colors ${on ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground hover:bg-muted"}`}>
+                            {nome}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Fora desses dias o agente não oferece nem agenda, mesmo com a agenda livre. Ele passa pro próximo dia permitido.</p>
                   </div>
                   {form.schedule_hour_end <= form.schedule_hour_start && (
                     <p className="text-xs text-destructive">O horário máximo precisa ser maior que o mínimo.</p>

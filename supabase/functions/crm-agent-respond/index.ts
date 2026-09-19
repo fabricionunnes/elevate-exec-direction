@@ -552,6 +552,27 @@ async function salvarDadosLead(supabase: any, leadId: string | null, input: any)
   return Object.keys(upd);
 }
 
+// Dias da semana em que o agente pode MARCAR reunião (0=dom … 6=sáb; padrão seg–sex). Fabrício, 18/09/2026.
+const DIAS_PT = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+function diasDeReuniao(agent: any): number[] {
+  const d = Array.isArray(agent?.schedule_weekdays) ? agent.schedule_weekdays.map((x: unknown) => Number(x)).filter((x: number) => x >= 0 && x <= 6) : [];
+  return d.length ? d : [1, 2, 3, 4, 5];
+}
+/** null = dia permitido; senão devolve a mensagem de recusa com o próximo dia que atende */
+function recusaDia(agent: any, ymd: string): string | null {
+  const dias = diasDeReuniao(agent);
+  const d = new Date(`${ymd}T12:00:00-03:00`);
+  const dow = new Date(d.getTime() - 3 * 3600000).getUTCDay();
+  if (dias.includes(dow)) return null;
+  for (let i = 1; i <= 7; i++) {
+    const n = new Date(d.getTime() + i * 86400000); const nd = new Date(n.getTime() - 3 * 3600000);
+    if (dias.includes(nd.getUTCDay())) {
+      return `Erro: ${ymd} é ${DIAS_PT[dow]} e NÃO fazemos reunião nesse dia. Dias de reunião: ${dias.map((x) => DIAS_PT[x]).join(", ")}. O próximo dia possível é ${nd.toISOString().slice(0, 10)} (${DIAS_PT[nd.getUTCDay()]}): chame consultar_horarios pra essa data e ofereça de lá. Nunca ofereça ${DIAS_PT[dow]}.`;
+    }
+  }
+  return `Erro: ${ymd} não é dia de reunião.`;
+}
+
 async function runTool(supabase: any, agent: any, leadId: string | null, name: string, input: any): Promise<string> {
   try {
     // staff alvo da agenda: primeiro closer configurado
@@ -560,6 +581,7 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
     if (name === "consultar_horarios") {
       const date = String(input?.data || "").slice(0, 10);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "Erro: data inválida, use YYYY-MM-DD.";
+      { const rec = recusaDia(agent, date); if (rec) return rec; }
       const results: string[] = [];
       for (const staffId of staffIds.slice(0, 3)) {
         const { data: staff } = await supabase.from("onboarding_staff").select("id, name, user_id").eq("id", staffId).maybeSingle();
@@ -623,6 +645,7 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
       const title = String(input?.titulo || "Reunião");
       const m = dt.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/);
       if (!m) return "Erro: data_hora inválida, use YYYY-MM-DDTHH:MM.";
+      { const rec = recusaDia(agent, m[1]); if (rec) return rec; }
       const hour = parseInt(m[2], 10);
       const hs = agent.schedule_hour_start ?? 8, he = agent.schedule_hour_end ?? 19;
       if (hour < hs || hour >= he) return `Erro: fora da janela permitida (${hs}h às ${he}h). Ofereça outro horário.`;
@@ -1102,6 +1125,7 @@ Deno.serve(async (req) => {
             const fuSystem = [
               agent.instructions || "Você é um atendente comercial.",
               agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
+              `\n\nAGENDA: neste follow-up você NÃO tem acesso à agenda. É proibido citar dia ou horário específico de reunião (nada de "segunda às 10h"). Se for puxar reagendamento, pergunte qual dia e período funcionam melhor pra ele; os horários reais você oferece quando ele responder.`,
               `\n\nO lead parou de responder. Escreva UMA mensagem CURTA de follow-up (1-2 frases), humana, sem pressão e sem repetir perguntas já respondidas. Não use markdown. Nunca revele que é uma IA.`,
               ESTILO_HUMANO,
               `\n\nAgora é ${agoraFu} (Brasília). Cada linha do histórico traz [dia/mês hora] de quando foi enviada: "amanhã", "hoje" ou dia da semana escritos ali valem praquela data, não pra agora. Nunca repita "amanhã" de uma mensagem antiga — calcule a data real ou não cite data.`,
@@ -1776,6 +1800,7 @@ Deno.serve(async (req) => {
       agent.objective ? `\nOBJETIVO: ${agent.objective}` : "",
       agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
       knowledge ? `\n\nBASE DE CONHECIMENTO (use quando relevante, não invente):${knowledge}` : "",
+      `\n\nHoje é ${DIAS_PT[new Date(Date.now() - 3 * 3600000).getUTCDay()]}. Reunião só pode ser marcada em: ${diasDeReuniao(agent).map((x) => DIAS_PT[x]).join(", ")}. Se "amanhã" cair fora desses dias, ofereça o próximo dia permitido e diga o dia da semana (ex: "segunda"), nunca "amanhã".`,
       `\n\nData/hora atual (Brasília): ${nowBR}. A saudação (bom dia/boa tarde/boa noite) segue ESTA hora — nunca repita a saudação do lead se ela não bater com o horário.`,
       tools.length ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou; (5) ANTES de chamar agendar_reuniao, você precisa do NOME, do E-MAIL e do TELEFONE/WhatsApp do lead — peça numa única mensagem curta SOMENTE o que faltar e não estiver em DADOS JÁ CADASTRADOS (se nada faltar, agende direto, sem pedir confirmação de dados) e só chame a ferramenta quando tiver tudo; se você já sabe o nome dele pela conversa, não pergunte de novo — pergunte só o que falta; (6) passe email, telefone e nome_completo nos parâmetros de agendar_reuniao — eles vão pro cadastro do lead no CRM.` : "",
       tools.some((t: any) => t.name === "marcar_fora_do_perfil")
