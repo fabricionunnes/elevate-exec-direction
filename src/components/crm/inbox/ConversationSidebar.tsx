@@ -739,12 +739,12 @@ export function ConversationSidebar({
           <Avatar className="h-12 w-12">
             <AvatarImage src={conversation.contact?.profile_picture_url || undefined} />
             <AvatarFallback className="bg-primary/10 text-primary">
-              {(conversation.contact?.name || conversation.contact?.phone || "?").slice(0, 2).toUpperCase()}
+              {String((/[\p{L}\p{N}]/u.test(conversation.contact?.name || "") ? conversation.contact?.name : ((conversation as any).lead?.name || conversation.contact?.phone || "Sem nome"))).replace(/^\+?55(?=\d{10,})/, "").slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <p className="font-medium truncate">
-              {conversation.contact?.name || "Sem nome"}
+              {(/[\p{L}\p{N}]/u.test(conversation.contact?.name || "") ? conversation.contact?.name : ((conversation as any).lead?.name || conversation.contact?.phone || "Sem nome"))}
             </p>
             <p className="text-sm text-muted-foreground truncate">
               {conversation.contact?.phone}

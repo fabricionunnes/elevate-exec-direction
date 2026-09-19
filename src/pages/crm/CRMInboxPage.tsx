@@ -85,6 +85,24 @@ import { useCompanyIdentification } from "@/hooks/useCompanyIdentification";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 // Cor estável por remetente (estilo WhatsApp em grupos) — mesmo nome, mesma cor.
+// Nome sem nenhuma letra/número (".", "~", emoji solto) não identifica ninguém: usa o telefone.
+const nomeValido = (n?: string | null) => /[\p{L}\p{N}]/u.test(String(n || ""));
+const iniciais = (n: string) => {
+  const limpo = String(n || "").trim();
+  if (/^\+?\d[\d\s()-]*$/.test(limpo)) return limpo.replace(/\D/g, "").slice(-2);
+  const partes = limpo.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x));
+  return ((partes[0]?.[0] || "?") + (partes.length > 1 ? partes[partes.length - 1][0] : "")).toUpperCase();
+};
+const mesmoDia = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+const rotuloDia = (d: Date) => {
+  const hoje = new Date(); const ontem = new Date(); ontem.setDate(hoje.getDate() - 1);
+  if (mesmoDia(d, hoje)) return "Hoje";
+  if (mesmoDia(d, ontem)) return "Ontem";
+  return format(d, d.getFullYear() === hoje.getFullYear() ? "dd/MM" : "dd/MM/yyyy");
+};
+// Lista de conversas: hoje mostra a hora, ontem "Ontem", antes disso a data curta.
+const quandoCurto = (iso: string) => { const d = new Date(iso); return mesmoDia(d, new Date()) ? format(d, "HH:mm") : rotuloDia(d); };
+
 function senderColor(name: string): string {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
@@ -901,7 +919,7 @@ export const CRMInboxPage = () => {
           ) : (
             filteredConversations.map((conv) => {
               const rawName = (conv.contact?.name || "").trim();
-              const isGenericName = !rawName || ["sou eu", "eu", "me"].includes(rawName.toLowerCase());
+              const isGenericName = !nomeValido(rawName) || ["sou eu", "eu", "me"].includes(rawName.toLowerCase());
               const displayName = isGenericName ? conv.lead?.name || conv.contact?.phone || "Desconhecido" : rawName;
               // Destaque = nome do LEAD (quando vinculado); embaixo, a empresa. Sem lead, nome do contato.
               const leadName = (conv.lead?.name || "").trim();
@@ -919,16 +937,16 @@ export const CRMInboxPage = () => {
                   }
                 }}
                 className={cn(
-                  "relative w-full flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors text-left border-b border-border overflow-hidden",
+                  "relative w-full flex items-start gap-3 px-3 py-3.5 hover:bg-muted/50 transition-colors text-left border-b border-border/60 overflow-hidden",
                   conv.unread_count > 0 && "bg-primary/5",
-                  selectedConversation?.id === conv.id && "bg-muted"
+                  selectedConversation?.id === conv.id && "bg-muted shadow-[inset_3px_0_0_hsl(var(--primary))]"
                 )}
               >
                 {conv.unread_count > 0 && <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
                 <Avatar className="h-10 w-10 shrink-0">
                   <AvatarImage src={conv.contact?.profile_picture_url || undefined} />
-                  <AvatarFallback>
-                    {(titleName || "?").slice(0, 2).toUpperCase()}
+                  <AvatarFallback className="text-xs font-semibold text-white" style={{ backgroundColor: senderColor(titleName || "?") }}>
+                    {iniciais(titleName || "?")}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
@@ -937,9 +955,7 @@ export const CRMInboxPage = () => {
                       {titleName}
                     </span>
                     <span className={cn("text-[10px] shrink-0", conv.unread_count > 0 ? "text-primary font-semibold" : "text-muted-foreground")}>
-                      {conv.last_message_at 
-                        ? format(new Date(conv.last_message_at), "dd/MM/yyyy HH:mm") 
-                        : ""}
+                      {conv.last_message_at ? quandoCurto(conv.last_message_at) : ""}
                     </span>
                   </div>
                   {companyName && (
@@ -1004,19 +1020,19 @@ export const CRMInboxPage = () => {
               )}
               <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
                 <AvatarImage src={selectedConversation.contact?.profile_picture_url || undefined} />
-                <AvatarFallback>
+                <AvatarFallback className="text-xs font-semibold text-white" style={{ backgroundColor: senderColor(selectedConversation.lead?.name || selectedConversation.contact?.name || selectedConversation.contact?.phone || "?") }}>
                   {(((() => {
                     const rawName = (selectedConversation.contact?.name || "").trim();
-                    const isGenericName = !rawName || ["sou eu", "eu", "me"].includes(rawName.toLowerCase());
-                    return isGenericName ? selectedConversation.lead?.name || selectedConversation.contact?.phone || "?" : rawName;
-                  })()) || "?").slice(0, 2).toUpperCase()}
+                    const isGenericName = !nomeValido(rawName) || ["sou eu", "eu", "me"].includes(rawName.toLowerCase());
+                    return iniciais(isGenericName ? selectedConversation.lead?.name || selectedConversation.contact?.phone || "?" : rawName);
+                  })()) || "?")}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
                 <p className="font-medium text-sm truncate">
                   {(() => {
                     const rawName = (selectedConversation.contact?.name || "").trim();
-                    const isGenericName = !rawName || ["sou eu", "eu", "me"].includes(rawName.toLowerCase());
+                    const isGenericName = !nomeValido(rawName) || ["sou eu", "eu", "me"].includes(rawName.toLowerCase());
                     return isGenericName ? selectedConversation.lead?.name || selectedConversation.contact?.phone : rawName;
                   })()}
                 </p>
@@ -1091,8 +1107,8 @@ export const CRMInboxPage = () => {
           </div>
 
           {/* Messages */}
-          <ScrollArea ref={messagesScrollAreaRef} className="flex-1 min-h-0 p-4 bg-muted/30">
-            <div className="space-y-4 max-w-3xl mx-auto">
+          <ScrollArea ref={messagesScrollAreaRef} className="flex-1 min-h-0 px-3 sm:px-6 py-4 bg-muted/40">
+            <div className="space-y-1.5 max-w-4xl mx-auto">
               {loadingMessages ? (
                 <div className="flex items-center justify-center py-8">
                   <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -1105,9 +1121,21 @@ export const CRMInboxPage = () => {
               ) : (
                 messages
                   .filter((m: any) => !(m.type === "reaction" && m.quoted_message_id && loadedMessageIds.has(m.quoted_message_id)))
-                  .map((message) => (
+                  .map((message, idx, arr) => {
+                    const dia = new Date(message.created_at);
+                    const anterior = idx > 0 ? arr[idx - 1] : null;
+                    const novoDia = !anterior || !mesmoDia(new Date(anterior.created_at), dia);
+                    // troca de lado/autor ganha respiro; sequência do mesmo lado fica colada
+                    const trocouLado = !!anterior && (anterior.direction !== message.direction || !!(anterior as any).is_ai !== !!(message as any).is_ai);
+                    const falhou = message.direction === "outbound" && message.status === "failed";
+                    return (
+                  <div key={message.id} className={cn(trocouLado && !novoDia && "pt-2.5")}>
+                  {novoDia && (
+                    <div className="flex justify-center py-3">
+                      <span className="rounded-full bg-background border border-border px-3 py-0.5 text-[11px] font-medium text-muted-foreground shadow-sm">{rotuloDia(dia)}</span>
+                    </div>
+                  )}
                   <div
-                    key={message.id}
                     className={cn(
                       "flex",
                       message.direction === "outbound" ? "justify-end" : "justify-start"
@@ -1115,13 +1143,16 @@ export const CRMInboxPage = () => {
                   >
                     <div
                       className={cn(
-                        "max-w-[70%] rounded-lg p-3",
+                        "max-w-[85%] sm:max-w-[68%] rounded-2xl px-3.5 py-2 shadow-sm",
                         message.direction === "outbound"
-                          ? (message as any).is_ai
-                            // enviada pelo agente de IA: cor distinta da mensagem humana
-                            ? "bg-violet-500/10 text-foreground border border-violet-500/30"
-                            : "bg-primary/10 text-foreground"
-                          : "bg-card border border-border"
+                          ? falhou
+                            // só mensagem com erro fica vermelha — antes toda enviada parecia erro
+                            ? "rounded-br-md bg-destructive/10 text-foreground border border-destructive/30"
+                            : (message as any).is_ai
+                              // enviada pelo agente de IA: cor distinta da mensagem humana
+                              ? "rounded-br-md bg-violet-500/10 text-foreground border border-violet-500/25"
+                              : "rounded-br-md bg-emerald-500/10 text-foreground border border-emerald-500/20"
+                          : "rounded-bl-md bg-card border border-border"
                       )}
                     >
                       {message.direction === "outbound" && (message as any).is_ai && (
@@ -1132,8 +1163,8 @@ export const CRMInboxPage = () => {
                       )}
                       {/* Enviada pelo sistema: mostra quem enviou. Sem sent_by = enviada do celular, fica normal. */}
                       {message.direction === "outbound" && !(message as any).is_ai && (message as any).sender?.name && (
-                        <p className="text-[11px] font-semibold mb-1 text-primary/80">
-                          {(message as any).sender.name} · no sistema
+                        <p className="text-[11px] font-semibold mb-0.5 text-emerald-700 dark:text-emerald-400">
+                          {(message as any).sender.name}
                         </p>
                       )}
                       {/* Grupo de WhatsApp: mostra quem enviou a mensagem */}
@@ -1226,8 +1257,8 @@ export const CRMInboxPage = () => {
                         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                       )}
                       <div className="flex items-center justify-end gap-1 mt-1">
-                        <span className="text-[10px] text-muted-foreground">
-                          {format(new Date(message.created_at), "dd/MM/yyyy HH:mm")}
+                        <span className="text-[10px] text-muted-foreground" title={format(new Date(message.created_at), "dd/MM/yyyy HH:mm")}>
+                          {format(new Date(message.created_at), "HH:mm")}
                         </span>
                         {message.direction === "outbound" && getStatusIcon(message.status, waErrorPt((message as any).error_text))}
                       </div>
@@ -1248,7 +1279,9 @@ export const CRMInboxPage = () => {
                       ) : null}
                     </div>
                   </div>
-                ))
+                  </div>
+                    );
+                  })
               )}
               <div ref={messagesEndRef} />
             </div>
