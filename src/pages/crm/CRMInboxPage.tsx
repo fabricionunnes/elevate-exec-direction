@@ -481,11 +481,19 @@ export const CRMInboxPage = () => {
     const convId = selectedConversation?.id || null;
     if (st.conv !== convId) { st.conv = convId; st.pending = true; st.count = 0; }
     if (!messages.length || loadingMessages) return;
+    // ao trocar de conversa, as mensagens da ANTERIOR ainda estão na tela por um instante:
+    // só considera "aberta" quando as mensagens já são desta conversa (senão gastava a rolagem à toa)
+    const donoDasMsgs = (messages[0] as any)?.conversation_id;
+    if (st.pending && donoDasMsgs && convId && String(donoDasMsgs) !== String(convId)) return;
     const viewport = messagesScrollAreaRef.current?.querySelector("[data-radix-scroll-area-viewport]") as HTMLElement | null;
     const pertoDoFim = !viewport || viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 220;
     const cresceu = messages.length > st.count;
     const ultimaMinha = (messages[messages.length - 1] as any)?.direction === "outbound";
-    if (st.pending || (cresceu && (pertoDoFim || ultimaMinha))) scrollToBottom();
+    if (st.pending) {
+      // abriu a conversa: vai direto pro fim, sem animação, e repete enquanto imagens/áudios carregam
+      scrollToBottom(true);
+      [250, 700, 1500].forEach((ms) => setTimeout(() => { if (scrollState.current.conv === convId) scrollToBottom(true); }, ms));
+    } else if (cresceu && (pertoDoFim || ultimaMinha)) scrollToBottom();
     st.pending = false;
     st.count = messages.length;
   }, [messages, selectedConversation?.id, loadingMessages]);
@@ -565,7 +573,7 @@ export const CRMInboxPage = () => {
     }
   }, [selectedConversation?.id]);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = (instant = false) => {
     // IMPORTANT: avoid scrollIntoView() because it may scroll the whole page.
     // Instead, scroll the internal Radix ScrollArea viewport.
     setTimeout(() => {
@@ -575,7 +583,7 @@ export const CRMInboxPage = () => {
       ) as HTMLElement | null;
 
       if (viewport) {
-        viewport.scrollTo({ top: viewport.scrollHeight, behavior: "smooth" });
+        viewport.scrollTo({ top: viewport.scrollHeight, behavior: instant ? "auto" : "smooth" });
         return;
       }
 
