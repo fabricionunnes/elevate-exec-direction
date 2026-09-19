@@ -62,6 +62,9 @@ import {
   ShieldCheck,
   XCircle,
   EyeOff,
+  PanelRight,
+  Hourglass,
+  User as UserIcon,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -99,6 +102,15 @@ const rotuloDia = (d: Date) => {
   if (mesmoDia(d, hoje)) return "Hoje";
   if (mesmoDia(d, ontem)) return "Ontem";
   return format(d, d.getFullYear() === hoje.getFullYear() ? "dd/MM" : "dd/MM/yyyy");
+};
+// Esperando resposta = a última mensagem é do contato (no Instagram, usa o não lidas).
+const esperando = (c: any) => c.channel === "instagram" ? (c.unread_count || 0) > 0 : c.last_message_direction === "inbound";
+const haQuanto = (iso?: string | null) => {
+  if (!iso) return "";
+  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (min < 60) return `há ${min} min`;
+  if (min < 1440) return `há ${Math.round(min / 60)} h`;
+  return `há ${Math.round(min / 1440)} d`;
 };
 // Lista de conversas: hoje mostra a hora, ontem "Ontem", antes disso a data curta.
 const quandoCurto = (iso: string) => { const d = new Date(iso); return mesmoDia(d, new Date()) ? format(d, "HH:mm") : rotuloDia(d); };
@@ -173,6 +185,28 @@ export const CRMInboxPage = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingConversation, setDeletingConversation] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  // Redesenho 19/09/2026 (opção 2 + fila da 3): atalhos de filtro, fila por prioridade,
+  // negócio no topo da conversa e painel lateral recolhível.
+  const [quick, setQuick] = useState<"all" | "unread" | "waiting" | "mine">("all");
+  const [showDetails, setShowDetails] = useState<boolean>(() => { try { return localStorage.getItem("crm_inbox_details") === "1"; } catch { return false; } });
+  const toggleDetails = () => setShowDetails((v) => { try { localStorage.setItem("crm_inbox_details", v ? "0" : "1"); } catch { /* ok */ } return !v; });
+  const [stageMap, setStageMap] = useState<Record<string, { stage: string; pipeline: string }>>({});
+  const [staffNames, setStaffNames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    (async () => {
+      const [{ data: st }, { data: pp }, { data: sf }] = await Promise.all([
+        supabase.from("crm_stages").select("id, name, pipeline_id"),
+        supabase.from("crm_pipelines").select("id, name"),
+        supabase.from("onboarding_staff").select("id, name").eq("is_active", true),
+      ]);
+      const pm: Record<string, string> = {}; for (const x of (pp || []) as any[]) pm[x.id] = x.name;
+      const sm: Record<string, { stage: string; pipeline: string }> = {};
+      for (const x of (st || []) as any[]) sm[x.id] = { stage: x.name, pipeline: pm[x.pipeline_id] || "" };
+      setStageMap(sm);
+      const nm: Record<string, string> = {}; for (const x of (sf || []) as any[]) nm[x.id] = x.name;
+      setStaffNames(nm);
+    })();
+  }, []);
   const [filters, setFilters] = useState<ConversationFiltersData>(defaultFilters);
   // Filtro "Agente de IA": conversas em que o agente atuou ou está ligado (vem do banco, WhatsApp e Instagram)
   const [aiAgentConvIds, setAiAgentConvIds] = useState<Set<string> | null>(null);
@@ -701,6 +735,10 @@ export const CRMInboxPage = () => {
       if (!haystack.some((v) => v.includes(search))) return false;
     }
 
+    if (quick === "unread" && !(conv.unread_count > 0)) return false;
+    if (quick === "waiting" && !esperando(conv)) return false;
+    if (quick === "mine" && conv.assigned_to !== staffId) return false;
+
     // Conversation filters
     if (filters.assignedToMe && conv.assigned_to !== staffId) return false;
     if (filters.unassigned && conv.assigned_to !== null) return false;
@@ -733,6 +771,16 @@ export const CRMInboxPage = () => {
 
     return true;
   });
+
+  // contagens dos atalhos olham o que o usuário enxerga, sem o próprio atalho aplicado
+  const contagens = useMemo(() => ({
+    unread: conversations.filter((c: any) => (c.unread_count || 0) > 0).length,
+    waiting: conversations.filter((c: any) => esperando(c)).length,
+  }), [conversations]);
+  // Fila: quem está esperando resposta sobe, e dentro de cada grupo vale o mais recente.
+  const filaEsperando = filteredConversations.filter((c: any) => esperando(c));
+  const filaAndamento = filteredConversations.filter((c: any) => !esperando(c));
+  const listaOrdenada = [...filaEsperando, ...filaAndamento];
 
   const getStatusIcon = (status: string, errorText?: string | null) => {
     switch (status) {
@@ -789,95 +837,81 @@ export const CRMInboxPage = () => {
           </div>
         </div>
 
-        {/* Channel Filter + Connection Status */}
+        {/* Atalhos + filtros compactos */}
         <div className="px-2 sm:px-3 py-2 border-b border-border space-y-2">
-          <div className="flex gap-1">
-            {(["all", "whatsapp", "instagram"] as const).map((ch) => (
-              <Button
-                key={ch}
-                variant={channelFilter === ch ? "default" : "outline"}
-                size="sm"
-                className={cn("h-6 text-[10px] flex-1 gap-1 px-1.5",
-                  channelFilter === ch && ch === "instagram" && "bg-gradient-to-r from-purple-500 to-pink-500 border-none text-white"
+          <div className="flex gap-1 overflow-x-auto">
+            {([
+              ["all", "Todas", 0],
+              ["unread", "Não lidas", contagens.unread],
+              ["waiting", "Esperando", contagens.waiting],
+              ["mine", "Minhas", 0],
+            ] as const).map(([k, label, n]) => (
+              <button
+                key={k}
+                onClick={() => setQuick(k)}
+                className={cn(
+                  "h-7 px-2.5 rounded-full text-[11px] font-medium border whitespace-nowrap transition-colors flex items-center gap-1",
+                  quick === k ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:bg-muted"
                 )}
-                onClick={() => setChannelFilter(ch)}
               >
-                {ch === "all" ? "Todos" : ch === "whatsapp" ? (
-                  <><MessageSquare className="h-3 w-3" /> WhatsApp</>
-                ) : (
-                  <><Instagram className="h-3 w-3" /> Instagram</>
-                )}
-              </Button>
+                {label}
+                {n > 0 && <span className={cn("rounded-full px-1.5 text-[10px]", quick === k ? "bg-primary-foreground/20" : "bg-primary/10 text-primary")}>{n > 99 ? "99+" : n}</span>}
+              </button>
             ))}
           </div>
-          {/* Filtro rápido por número: só as contas que este usuário enxerga */}
-          <SearchableSelect
-            value={instanceFilter}
-            onValueChange={setInstanceFilter}
-            className="h-7 text-xs"
-            placeholder="Todos os números"
-            emptyMessage="Nenhum número encontrado."
-            options={[
-              { value: "all", label: "Todos os números" },
-              ...instanceNames
-                .filter((o) => {
-                  const [tipo, id] = o.value.split(":");
-                  return tipo === "evo" ? allowedInstanceIds.includes(id) : tipo === "off" ? allowedOfficialInstanceIds.includes(id) : allowedIgInstanceIds.includes(id);
-                })
-                .sort((a, b) => a.label.localeCompare(b.label)),
-            ]}
-          />
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {hasConnectedDevice ? (
-                <>
-                  <Wifi className="h-3.5 w-3.5 text-green-500" />
-                  <span className="text-[10px] text-green-600">Conectado</span>
-                </>
-              ) : (
-                <>
-                  <WifiOff className="h-3.5 w-3.5 text-destructive" />
-                  <span className="text-[10px] text-destructive">Sem dispositivo</span>
-                </>
-              )}
+          <div className="flex items-center gap-1">
+            <div className="flex-1 min-w-0">
+              {/* Filtro rápido por número: só as contas que este usuário enxerga */}
+              <SearchableSelect
+                value={instanceFilter}
+                onValueChange={setInstanceFilter}
+                className="h-7 text-xs"
+                placeholder="Todos os números"
+                emptyMessage="Nenhum número encontrado."
+                options={[
+                  { value: "all", label: "Todos os números" },
+                  ...instanceNames
+                    .filter((o) => {
+                      const [tipo, id] = o.value.split(":");
+                      return tipo === "evo" ? allowedInstanceIds.includes(id) : tipo === "off" ? allowedOfficialInstanceIds.includes(id) : allowedIgInstanceIds.includes(id);
+                    })
+                    .sort((a, b) => a.label.localeCompare(b.label)),
+                ]}
+              />
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6"
-              onClick={() => { refetchConversations(); refetchIgConversations(); }}
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Filter Tabs */}
-        <div className="flex items-center justify-between px-2 sm:px-3 py-2 border-b border-border">
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[100px] h-7 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="open">Abertos</SelectItem>
-              <SelectItem value="pending">Pendentes</SelectItem>
-              <SelectItem value="closed">Fechados</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <div className="flex gap-1">
-            <Button 
-              variant={showFilters ? "secondary" : "ghost"} 
-              size="icon" 
-              className="h-7 w-7"
-              onClick={() => setShowFilters(!showFilters)}
-            >
+            <div className="flex rounded-md border border-border overflow-hidden shrink-0">
+              {(["all", "whatsapp", "instagram"] as const).map((ch) => (
+                <button key={ch} onClick={() => setChannelFilter(ch)} title={ch === "all" ? "Todos os canais" : ch === "whatsapp" ? "Só WhatsApp" : "Só Instagram"}
+                  className={cn("h-7 w-7 flex items-center justify-center text-[10px] font-medium", channelFilter === ch ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50")}>
+                  {ch === "all" ? "Tudo" : ch === "whatsapp" ? <MessageSquare className="h-3.5 w-3.5" /> : <Instagram className="h-3.5 w-3.5" />}
+                </button>
+              ))}
+            </div>
+            <Button variant={showFilters ? "secondary" : "ghost"} size="icon" className="h-7 w-7 shrink-0" title="Mais filtros" onClick={() => setShowFilters(!showFilters)}>
               <Filter className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5" title={hasConnectedDevice ? "WhatsApp conectado" : "Nenhum dispositivo conectado"}>
+              {hasConnectedDevice ? <Wifi className="h-3 w-3 text-green-500" /> : <WifiOff className="h-3 w-3 text-destructive" />}
+              <span className={cn("text-[10px]", hasConnectedDevice ? "text-green-600" : "text-destructive")}>{hasConnectedDevice ? "Conectado" : "Sem dispositivo"}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-[104px] h-6 text-[11px] border-none shadow-none px-1.5">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os status</SelectItem>
+                  <SelectItem value="open">Abertos</SelectItem>
+                  <SelectItem value="pending">Pendentes</SelectItem>
+                  <SelectItem value="closed">Fechados</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="ghost" size="icon" className="h-6 w-6" title="Atualizar" onClick={() => { refetchConversations(); refetchIgConversations(); }}>
+                <RefreshCw className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -917,7 +951,7 @@ export const CRMInboxPage = () => {
               )}
             </div>
           ) : (
-            filteredConversations.map((conv) => {
+            listaOrdenada.map((conv, convIdx) => {
               const rawName = (conv.contact?.name || "").trim();
               const isGenericName = !nomeValido(rawName) || ["sou eu", "eu", "me"].includes(rawName.toLowerCase());
               const displayName = isGenericName ? conv.lead?.name || conv.contact?.phone || "Desconhecido" : rawName;
@@ -925,10 +959,20 @@ export const CRMInboxPage = () => {
               const leadName = (conv.lead?.name || "").trim();
               const titleName = leadName || displayName;
               const companyName = String((conv.lead as any)?.company || "").trim();
+              const etapa = stageMap[String((conv.lead as any)?.stage_id || "")];
+              const aguarda = esperando(conv);
+              const cabecalho = convIdx === 0 && filaEsperando.length > 0 ? `Esperando resposta · ${filaEsperando.length}`
+                : convIdx === filaEsperando.length && filaEsperando.length > 0 && filaAndamento.length > 0 ? `Em andamento · ${filaAndamento.length}` : "";
+              const esperaMin = aguarda && (conv as any).last_inbound_at ? (Date.now() - new Date((conv as any).last_inbound_at).getTime()) / 60000 : 0;
 
               return (
+              <div key={conv.id}>
+              {cabecalho && (
+                <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground bg-muted/40 border-b border-border/60 flex items-center gap-1">
+                  {convIdx === 0 && <Hourglass className="h-3 w-3" />}{cabecalho}
+                </div>
+              )}
               <button
-                key={conv.id}
                 onClick={() => {
                   setSelectedConversation(conv);
                   // Mark as read immediately on click
@@ -958,8 +1002,15 @@ export const CRMInboxPage = () => {
                       {conv.last_message_at ? quandoCurto(conv.last_message_at) : ""}
                     </span>
                   </div>
-                  {companyName && (
-                    <div className="text-[11px] text-muted-foreground truncate">{companyName}</div>
+                  {(companyName || etapa) && (
+                    <div className="text-[11px] text-muted-foreground truncate">
+                      {[companyName, etapa ? `${etapa.pipeline} · ${etapa.stage}` : ""].filter(Boolean).join(" — ")}
+                    </div>
+                  )}
+                  {aguarda && (conv as any).last_inbound_at && (
+                    <div className={cn("text-[10px] font-medium", esperaMin > 120 ? "text-destructive" : "text-amber-600 dark:text-amber-400")}>
+                      esperando {haQuanto((conv as any).last_inbound_at)}
+                    </div>
                   )}
                   <div className="flex items-center gap-1 mt-0.5">
                     {conv.status === "pending" && (
@@ -993,6 +1044,7 @@ export const CRMInboxPage = () => {
                   </div>
                 </div>
               </button>
+              </div>
             )})
           )}
         </ScrollArea>
@@ -1048,6 +1100,21 @@ export const CRMInboxPage = () => {
                       📱 {selectedConversation.official_instance.display_name || 'API Oficial'}
                     </Badge>
                   )}
+                  {(() => {
+                    const et = stageMap[String((selectedConversation.lead as any)?.stage_id || "")];
+                    return et ? (
+                      <a href={`#/crm/leads/${selectedConversation.lead_id}`} className="hidden md:inline-flex h-4 items-center px-1.5 rounded-full border border-border text-[10px] text-foreground hover:bg-muted shrink-0" title="Abrir o negócio">
+                        {et.pipeline} · {et.stage}
+                      </a>
+                    ) : (
+                      <span className="hidden md:inline-flex h-4 items-center px-1.5 rounded-full border border-dashed border-border text-[10px] shrink-0">sem negócio</span>
+                    );
+                  })()}
+                  {selectedConversation.assigned_to && staffNames[selectedConversation.assigned_to] && (
+                    <span className="hidden md:inline-flex h-4 items-center gap-1 px-1.5 rounded-full border border-border text-[10px] text-foreground shrink-0">
+                      <UserIcon className="h-2.5 w-2.5" />{staffNames[selectedConversation.assigned_to].split(" ")[0]}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1061,6 +1128,12 @@ export const CRMInboxPage = () => {
               <Button variant="ghost" size="icon" className="h-8 w-8 hidden sm:flex">
                 <Video className="h-4 w-4" />
               </Button>
+              {!isMobile && (
+                <Button variant={showDetails ? "secondary" : "ghost"} size="sm" className="h-8 gap-1.5 text-xs" onClick={toggleDetails} title="Mostrar ou esconder os detalhes do contato e do negócio">
+                  <PanelRight className="h-4 w-4" />
+                  <span className="hidden lg:inline">Detalhes</span>
+                </Button>
+              )}
               {/* Mobile info button */}
               {isMobile && (
                 <Button 
@@ -1372,7 +1445,7 @@ export const CRMInboxPage = () => {
       )}
 
       {/* Right Sidebar - Lead Info & Actions - Hidden on Mobile */}
-      {selectedConversation && !isMobile && (
+      {selectedConversation && !isMobile && showDetails && (
         <ConversationSidebar 
           conversation={selectedConversation}
           projectId={projectId || undefined}
