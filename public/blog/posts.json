@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-19T15:01:00",
+ "gerado_em": "2026-09-19T21:00:59",
  "posts": [
+  {
+   "slug": "dashboard-diario-nao-substitui-quem-cobra-numero",
+   "url": "/blog/dashboard-diario-nao-substitui-quem-cobra-numero/",
+   "titulo": "Dashboard diário não substitui quem cobra o número",
+   "resumo": "Ferramenta mostra o dado. Quem cobra o número todo dia faz a meta acontecer.",
+   "tags": [
+    "rotina de cobrança",
+    "estrutura comercial",
+    "acompanhamento",
+    "meta mensal",
+    "treino de vendedor"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-19",
+   "ts": 2105
+  },
   {
    "slug": "reuniao-diaria-numero-nao-acontece-sozinha",
    "url": "/blog/reuniao-diaria-numero-nao-acontece-sozinha/",
