@@ -813,6 +813,15 @@ export const CRMInboxPage = () => {
 
   const hasConnectedDevice = connectedInstances.length > 0;
 
+  // Apagar para todos: só mensagem nossa, em número conectado via Evolution.
+  const apagarParaTodos = async (message: any) => {
+    if (!window.confirm("Apagar esta mensagem para todos? Ela some também no WhatsApp do contato.")) return;
+    const { data, error } = await supabase.functions.invoke("evolution-api", { body: { action: "deleteMessage", messageId: message.id, staffId } });
+    if (error || !(data as any)?.ok) { toast.error((data as any)?.error || "Não consegui apagar a mensagem."); return; }
+    toast.success("Mensagem apagada para todos.");
+    refetchMessages();
+  };
+
   const handleLeadCreated = (leadId: string) => {
     setSelectedConversation((prev) => (prev ? { ...prev, lead_id: leadId } : prev));
     refetchConversations();
@@ -1232,7 +1241,7 @@ export const CRMInboxPage = () => {
                   >
                     <div
                       className={cn(
-                        "max-w-[85%] sm:max-w-[68%] rounded-2xl px-3.5 py-2 shadow-sm",
+                        "group/msg max-w-[85%] sm:max-w-[68%] rounded-2xl px-3.5 py-2 shadow-sm",
                         message.direction === "outbound"
                           ? falhou
                             // só mensagem com erro fica vermelha — antes toda enviada parecia erro
@@ -1263,7 +1272,9 @@ export const CRMInboxPage = () => {
                         </p>
                       )}
                       {/* Render media content based on message type */}
-                      {message.type === "image" && message.media_url ? (
+                      {(message as any).deleted_at ? (
+                        <p className="text-sm italic text-muted-foreground flex items-center gap-1.5"><Trash2 className="h-3.5 w-3.5" /> Mensagem apagada</p>
+                      ) : message.type === "image" && message.media_url ? (
                         <div className="space-y-2">
                           <img 
                             src={message.media_url} 
@@ -1350,6 +1361,14 @@ export const CRMInboxPage = () => {
                           {format(new Date(message.created_at), "HH:mm")}
                         </span>
                         {message.direction === "outbound" && getStatusIcon(message.status, waErrorPt((message as any).error_text))}
+                        {message.direction === "outbound" && !(message as any).deleted_at && message.status !== "failed" && (message as any).remote_id
+                          && selectedConversation.channel !== "instagram" && !!selectedConversation.instance_id
+                          && Date.now() - new Date(message.created_at).getTime() < 48 * 3600000 && (
+                          <button type="button" onClick={() => apagarParaTodos(message)} title="Apagar para todos"
+                            className="ml-1 opacity-0 group-hover/msg:opacity-100 focus:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
                       </div>
                       {message.direction === "outbound" && message.status === "failed" && (
                         <p className="text-[10px] text-destructive mt-0.5">Não entregue{(message as any).error_text ? `: ${waErrorPt((message as any).error_text)}` : ""}</p>

@@ -852,6 +852,41 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'deleteMessage': {
+        // Apagar para todos (pedido do Fabrício, 19/09/2026). Só mensagem NOSSA, enviada por número
+        // conectado via Evolution. A API oficial da Meta e o Instagram não permitem apagar.
+        const { messageId, staffId } = body;
+        const jr = (o: any) => new Response(JSON.stringify(o), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        try {
+          const { data: msg } = await supabaseService.from('crm_whatsapp_messages')
+            .select('id, remote_id, direction, conversation_id, deleted_at').eq('id', messageId).maybeSingle();
+          if (!msg) return jr({ ok: false, error: 'Mensagem não encontrada.' });
+          if (msg.deleted_at) return jr({ ok: true, already: true });
+          if (msg.direction !== 'outbound') return jr({ ok: false, error: 'Só dá para apagar mensagem enviada por nós.' });
+          if (!msg.remote_id) return jr({ ok: false, error: 'Esta mensagem não tem o identificador do WhatsApp, então não dá para apagar no aparelho do contato.' });
+          const { data: cv } = await supabaseService.from('crm_whatsapp_conversations')
+            .select('id, instance_id, official_instance_id, contact:crm_whatsapp_contacts(phone)').eq('id', msg.conversation_id).maybeSingle();
+          if (!cv?.instance_id) return jr({ ok: false, error: 'A API oficial do WhatsApp não permite apagar mensagem já enviada.' });
+          const instance = await loadInstanceById(cv.instance_id);
+          if (!instance || instance.providerType === 'manager_v2') return jr({ ok: false, error: 'Este número não permite apagar mensagem pelo sistema.' });
+          const rawPhone = String((cv as any)?.contact?.phone || '');
+          const dg = rawPhone.replace(/\D/g, '');
+          const remoteJid = rawPhone.includes('@') ? rawPhone : (dg.startsWith('120363') && dg.length > 15 ? `${dg}@g.us` : `${dg}@s.whatsapp.net`);
+          const response = await fetch(`${instance.apiBaseUrl}/chat/deleteMessageForEveryone/${instance.instance_name}`, {
+            method: 'DELETE', headers: instance.apiHeaders,
+            body: JSON.stringify({ id: msg.remote_id, remoteJid, fromMe: true }),
+          });
+          const txt = await response.text();
+          console.log(`[evolution-api] deleteMessage msg=${messageId} status=${response.status} ${txt.slice(0, 200)}`);
+          if (!response.ok) return jr({ ok: false, error: 'O WhatsApp não aceitou apagar. Mensagens antigas (mais de 2 dias) não podem mais ser apagadas para todos.' });
+          await supabaseService.from('crm_whatsapp_messages').update({ deleted_at: new Date().toISOString(), deleted_by: staffId || null }).eq('id', messageId);
+          return jr({ ok: true });
+        } catch (e) {
+          console.error('[evolution-api] deleteMessage erro:', e);
+          return jr({ ok: false, error: 'Não consegui apagar agora. Tente de novo.' });
+        }
+      }
+
       case 'markRead': {
         // Avisa o WhatsApp que a conversa foi lida no Atendimento (tiques azuis + some o
         // contador no celular). Falha aqui nunca pode atrapalhar a tela: responde 200.
