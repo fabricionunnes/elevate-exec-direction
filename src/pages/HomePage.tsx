@@ -231,18 +231,18 @@ export default function HomePage() {
             </ul>
 
              <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 opacity-0 animate-fade-up delay-400">
-              <Link to="/sessao-estrategica" className="w-full sm:w-auto">
+              <a href={`/sessao/${window.location.search}`} className="w-full sm:w-auto">
                 <Button variant="hero" size="lg" className="w-full sm:w-auto text-sm sm:text-base gap-2">
                   <Target className="h-4 w-4" />
                    Sessão Estratégica Comercial
                 </Button>
-              </Link>
-              <Link to="/trafego-pago" className="w-full sm:w-auto">
+              </a>
+              <a href={`/unvads/${window.location.search}`} className="w-full sm:w-auto">
                 <Button variant="outline" size="lg" className="w-full sm:w-auto text-sm sm:text-base gap-2 border-blue-500/30 text-blue-400 hover:bg-blue-500/10">
                   <Megaphone className="h-4 w-4" />
                   Tráfego Pago
                 </Button>
-              </Link>
+              </a>
               <Link to="/social-media" className="w-full sm:w-auto">
                 <Button variant="outline" size="lg" className="w-full sm:w-auto text-sm sm:text-base gap-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10">
                   <Share2 className="h-4 w-4" />
@@ -649,18 +649,18 @@ export default function HomePage() {
             Aplique agora para um diagnóstico gratuito e descubra como podemos acelerar suas vendas.
           </p>
           <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center">
-            <Link to="/sessao-estrategica">
+            <a href={`/sessao/${window.location.search}`}>
               <Button variant="hero" size="xl" className="w-full sm:w-auto text-sm sm:text-base gap-2">
                 <Target className="h-5 w-5" />
                 Sessão Estratégica Comercial
               </Button>
-            </Link>
-            <Link to="/trafego-pago">
+            </a>
+            <a href={`/unvads/${window.location.search}`}>
               <Button variant="outline" size="xl" className="w-full sm:w-auto text-sm sm:text-base gap-2 border-blue-500/30 text-blue-400 hover:bg-blue-500/10">
                 <Megaphone className="h-5 w-5" />
                 Tráfego Pago
               </Button>
-            </Link>
+            </a>
             <Link to="/social-media">
               <Button variant="outline" size="xl" className="w-full sm:w-auto text-sm sm:text-base gap-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10">
                 <Share2 className="h-5 w-5" />
