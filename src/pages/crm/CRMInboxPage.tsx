@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, Fragment } from "react";
 import { waErrorPt } from "@/lib/whatsapp/waErrorPt";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -117,6 +117,13 @@ const haQuanto = (iso?: string | null) => {
   if (min < 60) return `há ${min} min`;
   if (min < 1440) return `há ${Math.round(min / 60)} h`;
   return `há ${Math.round(min / 1440)} d`;
+};
+// Separador dentro da conversa: "Hoje", "Ontem" ou a data por extenso (sábado, 19 de setembro).
+const rotuloDiaLongo = (d: Date) => {
+  const r = rotuloDia(d);
+  if (r === "Hoje" || r === "Ontem") return `${r} · ${format(d, "dd/MM/yyyy")}`;
+  const txt = d.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", ...(d.getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) });
+  return txt.charAt(0).toUpperCase() + txt.slice(1);
 };
 // Lista de conversas: hoje mostra a hora, ontem "Ontem", antes disso a data curta.
 const quandoCurto = (iso: string) => { const d = new Date(iso); return mesmoDia(d, new Date()) ? format(d, "HH:mm") : rotuloDia(d); };
@@ -1187,7 +1194,7 @@ export const CRMInboxPage = () => {
           </div>
 
           {/* Messages */}
-          <ScrollArea ref={messagesScrollAreaRef} className="flex-1 min-h-0 px-3 sm:px-6 py-4 bg-muted/40">
+          <ScrollArea ref={messagesScrollAreaRef} className="flex-1 min-h-0 px-3 sm:px-6 py-4 bg-muted/40 [&>[data-radix-scroll-area-viewport]>div]:!block">
             <div className="space-y-1.5 max-w-4xl mx-auto">
               {loadingMessages ? (
                 <div className="flex items-center justify-center py-8">
@@ -1209,12 +1216,14 @@ export const CRMInboxPage = () => {
                     const trocouLado = !!anterior && (anterior.direction !== message.direction || !!(anterior as any).is_ai !== !!(message as any).is_ai);
                     const falhou = message.direction === "outbound" && message.status === "failed";
                     return (
-                  <div key={message.id} className={cn(trocouLado && !novoDia && "pt-2.5")}>
+                  <Fragment key={message.id}>
+                  {/* Data do dia: fica presa no topo enquanto rola, igual ao WhatsApp do celular */}
                   {novoDia && (
-                    <div className="flex justify-center py-3">
-                      <span className="rounded-full bg-background border border-border px-3 py-0.5 text-[11px] font-medium text-muted-foreground shadow-sm">{rotuloDia(dia)}</span>
+                    <div className="sticky top-0 z-10 flex justify-center py-2 pointer-events-none">
+                      <span className="rounded-full bg-background border border-border px-3 py-1 text-[11px] font-semibold text-foreground shadow-sm">{rotuloDiaLongo(dia)}</span>
                     </div>
                   )}
+                  <div className={cn(trocouLado && !novoDia && "pt-2.5")}>
                   <div
                     className={cn(
                       "flex",
@@ -1360,6 +1369,7 @@ export const CRMInboxPage = () => {
                     </div>
                   </div>
                   </div>
+                  </Fragment>
                     );
                   })
               )}

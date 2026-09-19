@@ -336,11 +336,15 @@ function buildTools(agent: any, hasLead: boolean): any[] {
   if (agent.can_move_stage && hasLead) {
     tools.push({
       name: "marcar_fora_do_perfil",
-      description: "Use quando ficar claro que o lead NÃO é do perfil que atendemos (fora do ICP): outro segmento, sem operação comercial, pessoa física buscando emprego, curioso, concorrente, ou qualquer caso que não faz sentido seguir. Move o negócio para a etapa Fora do ICP e registra o motivo. Não use por falta de orçamento momentâneo ou por 'quero pensar' — isso é objeção, não fora de perfil.",
+      description: "Use quando ficar claro que o lead NÃO é do perfil que atendemos (fora do ICP): outro segmento, sem operação comercial, pessoa física buscando emprego, curioso, concorrente, ou qualquer caso que não faz sentido seguir. Move o negócio para a etapa Fora do ICP e registra o motivo. Não use por falta de orçamento momentâneo ou por 'quero pensar' — isso é objeção, não fora de perfil. IMPORTANTE: lead que está começando, sem faturamento ou com faturamento abaixo do ideal NÃO é dispensado direto — antes você SONDA se ele tem disposição e condição de investir agora. Só use esta ferramenta por esse motivo depois de ter perguntado e ele ter dito que não.",
       input_schema: {
         type: "object",
-        properties: { motivo: { type: "string", description: "Em uma frase, por que o lead está fora do perfil" } },
-        required: ["motivo"],
+        properties: {
+          motivo: { type: "string", description: "Em uma frase, por que o lead está fora do perfil" },
+          tipo: { type: "string", enum: ["iniciante_ou_faturamento_baixo", "sem_poder_de_decisao", "outro_segmento", "busca_emprego", "curioso_ou_concorrente", "outro"], description: "Categoria do motivo" },
+          disposto_a_investir: { type: "string", enum: ["nao_perguntei", "sim", "nao", "nao_respondeu"], description: "Obrigatório quando o tipo é iniciante_ou_faturamento_baixo: o que o lead respondeu quando você sondou se ele investiria agora mesmo sem faturamento" },
+        },
+        required: ["motivo", "tipo"],
       },
     });
     tools.push({
@@ -794,6 +798,16 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
     if (name === "marcar_fora_do_perfil") {
       if (!leadId) return "Erro: conversa sem negócio vinculado.";
       const motivo = String(input?.motivo || "").trim() || "fora do perfil identificado pelo agente";
+      // SONDAGEM (19/09/2026, Fabrício): "se o cliente fala que está começando, ele dispensa e
+      // desaparece — quero que dê uma sondada, se a pessoa está disposta a investir mesmo sem
+      // faturamento". A trava fica no código: prompt sozinho o modelo contorna.
+      const ehIniciante = String(input?.tipo || "") === "iniciante_ou_faturamento_baixo"
+        || /fatur|inici|come[cç]|ainda n[aã]o (tem|trabalha|vende|abriu)|sem (empresa|neg[oó]cio|opera[cç]|cliente|receita|time|equipe|vendedor)|n[aã]o tem (empresa|neg[oó]cio|cliente|time|equipe|vendedor)|pequen|mei\b|primeiros clientes/i.test(motivo);
+      if (ehIniciante) {
+        const disp = String(input?.disposto_a_investir || "nao_perguntei");
+        if (disp === "sim") return "RECUSADO: o lead disse que está disposto a investir, então ele NÃO é fora do perfil. Siga a conversa normalmente e conduza para o agendamento, deixando registrado na reunião que ele está em fase inicial.";
+        if (disp !== "nao") return "RECUSADO: antes de dispensar quem está começando ou fatura pouco, você precisa SONDAR. Nesta resposta, em vez de encerrar, valorize o momento dele em uma frase e pergunte de forma direta e natural se, mesmo no começo, ele tem disposição e condição de investir agora para estruturar isso (sem citar valores). Só marque fora do perfil se ele responder que não. Se ele não responder, deixe o follow-up agir — não dispense por silêncio.";
+      }
       const { data: lead } = await supabase.from("crm_leads").select("id, pipeline_id, notes, sdr_staff_id, owner_staff_id, closer_staff_id").eq("id", leadId).maybeSingle();
       if (!lead?.pipeline_id) return "Erro: lead sem funil.";
       const { data: stages } = await supabase.from("crm_stages").select("id, name").eq("pipeline_id", lead.pipeline_id);
@@ -1805,7 +1819,7 @@ Deno.serve(async (req) => {
       `\n\nData/hora atual (Brasília): ${nowBR}. A saudação (bom dia/boa tarde/boa noite) segue ESTA hora — nunca repita a saudação do lead se ela não bater com o horário.`,
       tools.length ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou; (5) ANTES de chamar agendar_reuniao, você precisa do NOME, do E-MAIL e do TELEFONE/WhatsApp do lead — peça numa única mensagem curta SOMENTE o que faltar e não estiver em DADOS JÁ CADASTRADOS (se nada faltar, agende direto, sem pedir confirmação de dados) e só chame a ferramenta quando tiver tudo; se você já sabe o nome dele pela conversa, não pergunte de novo — pergunte só o que falta; (6) passe email, telefone e nome_completo nos parâmetros de agendar_reuniao — eles vão pro cadastro do lead no CRM.` : "",
       tools.some((t: any) => t.name === "marcar_fora_do_perfil")
-        ? `\nFORA DO PERFIL: se durante a conversa ficar claro que o lead não é do nosso perfil (outro segmento, sem time comercial, pessoa procurando emprego, curioso, concorrente), chame marcar_fora_do_perfil com o motivo e encerre com educação — sem insistir e sem agendar. Falta de orçamento agora ou "vou pensar" NÃO é fora de perfil: isso você trabalha como objeção.`
+        ? `\nFORA DO PERFIL: se durante a conversa ficar claro que o lead não é do nosso perfil (outro segmento, sem time comercial, pessoa procurando emprego, curioso, concorrente), chame marcar_fora_do_perfil com o motivo e encerre com educação — sem insistir e sem agendar. Falta de orçamento agora ou "vou pensar" NÃO é fora de perfil: isso você trabalha como objeção.\nSONDAGEM ANTES DE DISPENSAR (esta regra vale ACIMA de qualquer corte de faturamento escrito nas suas instruções): quando o lead disser que está começando, que ainda não fatura, que fatura pouco, que ainda não tem time ou que está atrás dos primeiros clientes, NÃO encerre, NÃO diga que "não é o momento" e NÃO suma. Faça a sondagem: (1) reconheça o momento dele em uma frase, sem julgamento; (2) pergunte de forma direta e natural se, mesmo nessa fase, ele tem disposição e condição de investir agora para estruturar isso do jeito certo — sem citar valores; (3) se ele disser que SIM, trate como lead qualificado e conduza para o agendamento normalmente; (4) se disser que NÃO ou que agora não tem como, aí sim encerre com educação deixando a porta aberta e chame marcar_fora_do_perfil com tipo iniciante_ou_faturamento_baixo e disposto_a_investir "nao"; (5) se ele desconversar, pergunte uma segunda vez de outro jeito antes de decidir. Nunca dispense alguém por faturamento sem ter feito essa pergunta.`
         : "",
       tools.some((t: any) => t.name === "marcar_perdido")
         ? `\nRECUSA (regra obrigatória): se o lead disser que NÃO quer, não tem interesse, já tem outra solução ou pede pra parar, NÃO tente contornar, NÃO argumente e NÃO faça pergunta. Chame marcar_perdido com o motivo e o tipo e encerre com uma frase curta de agradecimento, sem pergunta. Depois disso você não fala mais com este lead. Silêncio não é recusa; dúvida ou "vou pensar" também não.`
