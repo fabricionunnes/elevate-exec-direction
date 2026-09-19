@@ -83,11 +83,20 @@ export function CRMMetaLeadFormsCard() {
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-center gap-3 flex-wrap">
-          <Input className="h-9 max-w-xs" placeholder="Buscar formulário ou página..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+          {/* autoComplete off + nome próprio: o Chrome estava preenchendo o e-mail salvo aqui e escondendo a lista inteira */}
+          <Input type="search" name="busca-formulario-meta" autoComplete="off" data-lpignore="true" data-1p-ignore className="h-9 max-w-xs"
+            placeholder="Buscar formulário ou página..." value={busca} onChange={(e) => setBusca(e.target.value)} />
           <label className="flex items-center gap-2 text-sm cursor-pointer"><Switch checked={soAtivos} onCheckedChange={setSoAtivos} />Só os ligados</label>
         </div>
         {loading ? <div className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Carregando...</div> : visiveis.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4">Nenhum formulário. Clique em "Buscar formulários no Meta".</p>
+          rows.length > 0 ? (
+            <div className="text-sm text-muted-foreground py-4">
+              Nenhum dos {rows.length} formulários bate com o filtro{busca.trim() ? ` "${busca.trim()}"` : ""}{soAtivos ? " (só os ligados)" : ""}.{" "}
+              <button type="button" className="text-primary hover:underline" onClick={() => { setBusca(""); setSoAtivos(false); }}>Limpar filtros</button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground py-4">Nenhum formulário. Clique em "Buscar formulários no Meta".</p>
+          )
         ) : (
           <div className="divide-y rounded-lg border">
             {visiveis.map((r) => (
