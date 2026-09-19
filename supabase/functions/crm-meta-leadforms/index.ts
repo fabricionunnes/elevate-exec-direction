@@ -53,8 +53,19 @@ Deno.serve(async (req) => {
       const { data: me } = u?.user ? await supabase.from("onboarding_staff").select("role").eq("user_id", u.user.id).eq("is_active", true).maybeSingle() : { data: null } as any;
       if (!me || !["master", "admin"].includes(String(me.role))) return json({ error: "sem permissão" }, 403);
       const pages = await pageTokens();
+      // Só as páginas escolhidas em Configurações (o token do Fabrício enxerga páginas de CLIENTES da UNV Ads:
+      // Be Gym, Infocus etc. não podem aparecer aqui). Sem nada escolhido = nenhuma página.
+      const { data: cfg } = await supabase.from("crm_settings").select("setting_value").eq("setting_key", "meta_lead_form_page_ids").maybeSingle();
+      const raw = cfg?.setting_value;
+      const permitidas = new Set<string>((Array.isArray(raw) ? raw : (() => { try { return JSON.parse(String(raw || "[]")); } catch { return []; } })()).map(String));
+      const disponiveis = [...pages].map(([id, pg]) => ({ id, name: pg.name, ativa: permitidas.has(id) })).sort((a, b) => a.name.localeCompare(b.name));
+      if (body.only_pages === true) return json({ ok: true, paginas_disponiveis: disponiveis });
+      // tira do catálogo o que é de página não escolhida (e não está ligado)
+      const { data: cat } = await supabase.from("crm_meta_lead_forms").select("form_id, page_id, is_active");
+      for (const c of cat || []) if (!permitidas.has(String(c.page_id)) && !c.is_active) await supabase.from("crm_meta_lead_forms").delete().eq("form_id", c.form_id);
       let total = 0; const erros: string[] = [];
       for (const [pid, pg] of pages) {
+        if (!permitidas.has(pid)) continue;
         try {
           const d = await graph(`${pid}/leadgen_forms?fields=id,name,status,leads_count&limit=100`, pg.token);
           for (const f of d.data || []) {
@@ -66,7 +77,7 @@ Deno.serve(async (req) => {
           }
         } catch (e) { erros.push(`${pg.name}: ${String((e as Error).message).slice(0, 100)}`); }
       }
-      return json({ ok: true, paginas: pages.size, formularios: total, erros });
+      return json({ ok: true, paginas: permitidas.size, formularios: total, erros, paginas_disponiveis: disponiveis });
     }
 
     // ── sync ──

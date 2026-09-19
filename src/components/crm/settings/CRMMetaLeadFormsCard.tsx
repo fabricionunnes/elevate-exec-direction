@@ -20,6 +20,9 @@ export function CRMMetaLeadFormsCard() {
   const [stages, setStages] = useState<{ id: string; name: string; pipeline_id: string }[]>([]);
   const [origins, setOrigins] = useState<{ id: string; name: string; pipeline_id: string | null }[]>([]);
   const [tags, setTags] = useState<{ id: string; name: string; color: string | null }[]>([]);
+  const [paginas, setPaginas] = useState<{ id: string; name: string; ativa: boolean }[]>([]);
+  const [mostrarPaginas, setMostrarPaginas] = useState(false);
+  const [tagAberta, setTagAberta] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [busca, setBusca] = useState("");
@@ -39,12 +42,28 @@ export function CRMMetaLeadFormsCard() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  const carregarPaginas = useCallback(async () => {
+    const { data } = await supabase.functions.invoke("crm-meta-leadforms", { body: { action: "forms", only_pages: true } });
+    if ((data as any)?.paginas_disponiveis) setPaginas((data as any).paginas_disponiveis);
+  }, []);
+  useEffect(() => { carregarPaginas(); }, [carregarPaginas]);
+
+  // Quais páginas do Facebook são SUAS. O token enxerga também páginas de clientes; só as marcadas aqui entram.
+  const alternarPagina = async (id: string) => {
+    const novas = paginas.map((p) => (p.id === id ? { ...p, ativa: !p.ativa } : p));
+    setPaginas(novas);
+    const { error } = await (supabase as any).from("crm_settings").upsert({ setting_key: "meta_lead_form_page_ids", setting_value: novas.filter((p) => p.ativa).map((p) => p.id) }, { onConflict: "setting_key" });
+    if (error) { toast.error("Não consegui salvar: " + error.message); carregarPaginas(); return; }
+    toast.success("Páginas atualizadas. Clique em Buscar formulários pra atualizar a lista.");
+  };
+
   const buscarFormularios = async () => {
     setRefreshing(true);
     const { data, error } = await supabase.functions.invoke("crm-meta-leadforms", { body: { action: "forms" } });
     setRefreshing(false);
     if (error || (data as any)?.error) { toast.error("Não consegui buscar os formulários: " + ((data as any)?.error || error?.message)); return; }
     toast.success(`${(data as any).formularios} formulário(s) encontrados em ${(data as any).paginas} página(s).`);
+    if ((data as any)?.paginas_disponiveis) setPaginas((data as any).paginas_disponiveis);
     load();
   };
 
@@ -82,6 +101,24 @@ export function CRMMetaLeadFormsCard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div className="rounded-lg border p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-sm"><span className="font-medium">Páginas usadas:</span>{" "}
+              <span className="text-muted-foreground">{paginas.filter((p) => p.ativa).map((p) => p.name).join(", ") || "nenhuma escolhida"}</span></p>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setMostrarPaginas((v) => !v)}>{mostrarPaginas ? "Fechar" : "Escolher páginas"}</Button>
+          </div>
+          {mostrarPaginas && (
+            <>
+              <div className="flex flex-wrap gap-1.5">
+                {paginas.map((p) => (
+                  <button type="button" key={p.id} onClick={() => alternarPagina(p.id)}
+                    className={`text-xs rounded-full border px-2.5 py-1 transition-colors ${p.ativa ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground hover:bg-muted"}`}>{p.name}</button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Sua conexão com o Meta também enxerga páginas de clientes. Só os formulários das páginas marcadas aparecem aqui.</p>
+            </>
+          )}
+        </div>
         <div className="flex items-center gap-3 flex-wrap">
           {/* autoComplete off + nome próprio: o Chrome estava preenchendo o e-mail salvo aqui e escondendo a lista inteira */}
           <Input type="search" name="busca-formulario-meta" autoComplete="off" data-lpignore="true" data-1p-ignore className="h-9 max-w-xs"
@@ -121,10 +158,18 @@ export function CRMMetaLeadFormsCard() {
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-xs text-muted-foreground mr-1">Etiquetas nos leads:</span>
-                  {tags.map((t) => { const on = (r.tag_ids || []).includes(t.id); return (
-                    <button type="button" key={t.id} onClick={() => salvar(r.form_id, { tag_ids: on ? (r.tag_ids || []).filter((x) => x !== t.id) : [...(r.tag_ids || []), t.id] })}
-                      className={`text-[11px] rounded-full border px-2 py-0.5 transition-colors ${on ? "text-white border-transparent" : "text-muted-foreground hover:bg-muted"}`} style={on ? { backgroundColor: t.color || "#64748b" } : undefined}>{t.name}</button>
+                  {(r.tag_ids || []).map((id) => { const t = tags.find((x) => x.id === id); if (!t) return null; return (
+                    <button type="button" key={id} title="Tirar etiqueta" onClick={() => salvar(r.form_id, { tag_ids: (r.tag_ids || []).filter((x) => x !== id) })}
+                      className="text-[11px] rounded-full px-2 py-0.5 text-white" style={{ backgroundColor: t.color || "#64748b" }}>{t.name} ×</button>
                   ); })}
+                  {tagAberta === r.form_id ? (
+                    <div className="w-56">
+                      <SearchableSelect value="" onValueChange={(v) => { if (v) salvar(r.form_id, { tag_ids: [...(r.tag_ids || []), v] }); setTagAberta(null); }}
+                        options={tags.filter((t) => !(r.tag_ids || []).includes(t.id)).map((t) => ({ value: t.id, label: t.name }))} placeholder="Digite a etiqueta" emptyMessage="Nenhuma etiqueta." />
+                    </div>
+                  ) : (
+                    <button type="button" className="text-[11px] text-primary hover:underline" onClick={() => setTagAberta(r.form_id)}>+ adicionar</button>
+                  )}
                 </div>
               </div>
             ))}
