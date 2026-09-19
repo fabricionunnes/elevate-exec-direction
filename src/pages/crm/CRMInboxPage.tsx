@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { waErrorPt } from "@/lib/whatsapp/waErrorPt";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -1226,10 +1227,10 @@ export const CRMInboxPage = () => {
                         <span className="text-[10px] text-muted-foreground">
                           {format(new Date(message.created_at), "dd/MM/yyyy HH:mm")}
                         </span>
-                        {message.direction === "outbound" && getStatusIcon(message.status, (message as any).error_text)}
+                        {message.direction === "outbound" && getStatusIcon(message.status, waErrorPt((message as any).error_text))}
                       </div>
                       {message.direction === "outbound" && message.status === "failed" && (
-                        <p className="text-[10px] text-destructive mt-0.5">Não entregue{(message as any).error_text ? `: ${(message as any).error_text}` : ""}</p>
+                        <p className="text-[10px] text-destructive mt-0.5">Não entregue{(message as any).error_text ? `: ${waErrorPt((message as any).error_text)}` : ""}</p>
                       )}
                       {reactionsByTarget.get(message.id)?.length ? (
                         <div className={cn("mt-1 -mb-1 flex", message.direction === "outbound" ? "justify-start" : "justify-end")}>
