@@ -181,7 +181,7 @@ const processSteps = [
 const stats = [
   { value: "20+", label: "Anos de experiência", icon: Award },
   { value: "R$ 1Bi+", label: "Em vendas realizadas", icon: TrendingUp },
-  { value: "500+", label: "Empresas atendidas", icon: Building2 },
+  { value: "600+", label: "Empresas atendidas", icon: Building2 },
   { value: "10+", label: "Anos como diretor comercial", icon: Trophy },
 ];
 
@@ -416,7 +416,7 @@ export default function HomePage() {
                     <p className="text-[10px] sm:text-xs text-muted-foreground">Anos de experiência</p>
                   </div>
                   <div className="text-center p-3 sm:p-4 bg-card rounded-xl border border-border/50">
-                    <p className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-primary">500+</p>
+                    <p className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-primary">600+</p>
                     <p className="text-[10px] sm:text-xs text-muted-foreground">Empresas atendidas</p>
                   </div>
                   <div className="text-center p-3 sm:p-4 bg-card rounded-xl border border-border/50">
