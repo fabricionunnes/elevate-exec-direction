@@ -104,7 +104,13 @@ const rotuloDia = (d: Date) => {
   return format(d, d.getFullYear() === hoje.getFullYear() ? "dd/MM" : "dd/MM/yyyy");
 };
 // Esperando resposta = a última mensagem é do contato (no Instagram, usa o não lidas).
-const esperando = (c: any) => c.channel === "instagram" ? (c.unread_count || 0) > 0 : c.last_message_direction === "inbound";
+// Só entra na fila o que é recente (7 dias) e ainda está aberto — senão vira depósito de "ok" e "obrigado".
+const SETE_DIAS = 7 * 24 * 60 * 60 * 1000;
+const esperando = (c: any) => {
+  if (c.status === "closed") return false;
+  if (!c.last_message_at || Date.now() - new Date(c.last_message_at).getTime() > SETE_DIAS) return false;
+  return c.channel === "instagram" ? (c.unread_count || 0) > 0 : c.last_message_direction === "inbound";
+};
 const haQuanto = (iso?: string | null) => {
   if (!iso) return "";
   const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
@@ -195,13 +201,13 @@ export const CRMInboxPage = () => {
   useEffect(() => {
     (async () => {
       const [{ data: st }, { data: pp }, { data: sf }] = await Promise.all([
-        supabase.from("crm_stages").select("id, name, pipeline_id"),
+        supabase.from("crm_stages").select("id, name, pipeline_id, final_type"),
         supabase.from("crm_pipelines").select("id, name"),
         supabase.from("onboarding_staff").select("id, name").eq("is_active", true),
       ]);
       const pm: Record<string, string> = {}; for (const x of (pp || []) as any[]) pm[x.id] = x.name;
       const sm: Record<string, { stage: string; pipeline: string }> = {};
-      for (const x of (st || []) as any[]) sm[x.id] = { stage: x.name, pipeline: pm[x.pipeline_id] || "" };
+      for (const x of (st || []) as any[]) sm[x.id] = { stage: x.name, pipeline: pm[x.pipeline_id] || "", lost: x.final_type === "lost" } as any;
       setStageMap(sm);
       const nm: Record<string, string> = {}; for (const x of (sf || []) as any[]) nm[x.id] = x.name;
       setStaffNames(nm);
@@ -736,7 +742,7 @@ export const CRMInboxPage = () => {
     }
 
     if (quick === "unread" && !(conv.unread_count > 0)) return false;
-    if (quick === "waiting" && !esperando(conv)) return false;
+    if (quick === "waiting" && !(esperando(conv) && !(stageMap[String((conv.lead as any)?.stage_id || "")] as any)?.lost)) return false;
     if (quick === "mine" && conv.assigned_to !== staffId) return false;
 
     // Conversation filters
@@ -773,13 +779,14 @@ export const CRMInboxPage = () => {
   });
 
   // contagens dos atalhos olham o que o usuário enxerga, sem o próprio atalho aplicado
+  const aguardando = (c: any) => esperando(c) && !(stageMap[String(c.lead?.stage_id || "")] as any)?.lost;
   const contagens = useMemo(() => ({
     unread: conversations.filter((c: any) => (c.unread_count || 0) > 0).length,
-    waiting: conversations.filter((c: any) => esperando(c)).length,
-  }), [conversations]);
+    waiting: conversations.filter((c: any) => aguardando(c)).length,
+  }), [conversations, stageMap]);
   // Fila: quem está esperando resposta sobe, e dentro de cada grupo vale o mais recente.
-  const filaEsperando = filteredConversations.filter((c: any) => esperando(c));
-  const filaAndamento = filteredConversations.filter((c: any) => !esperando(c));
+  const filaEsperando = filteredConversations.filter((c: any) => aguardando(c));
+  const filaAndamento = filteredConversations.filter((c: any) => !aguardando(c));
   const listaOrdenada = [...filaEsperando, ...filaAndamento];
 
   const getStatusIcon = (status: string, errorText?: string | null) => {
@@ -839,7 +846,7 @@ export const CRMInboxPage = () => {
 
         {/* Atalhos + filtros compactos */}
         <div className="px-2 sm:px-3 py-2 border-b border-border space-y-2">
-          <div className="flex gap-1 overflow-x-auto">
+          <div className="flex flex-wrap gap-1">
             {([
               ["all", "Todas", 0],
               ["unread", "Não lidas", contagens.unread],
@@ -850,12 +857,12 @@ export const CRMInboxPage = () => {
                 key={k}
                 onClick={() => setQuick(k)}
                 className={cn(
-                  "h-7 px-2.5 rounded-full text-[11px] font-medium border whitespace-nowrap transition-colors flex items-center gap-1",
+                  "h-7 px-2 rounded-full text-[11px] font-medium border whitespace-nowrap transition-colors flex items-center justify-center gap-1 flex-1",
                   quick === k ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:bg-muted"
                 )}
               >
                 {label}
-                {n > 0 && <span className={cn("rounded-full px-1.5 text-[10px]", quick === k ? "bg-primary-foreground/20" : "bg-primary/10 text-primary")}>{n > 99 ? "99+" : n}</span>}
+                {n > 0 && <span className={cn("rounded-full px-1 text-[10px]", quick === k ? "bg-primary-foreground/20" : "bg-primary/10 text-primary")}>{n > 99 ? "99+" : n}</span>}
               </button>
             ))}
           </div>
@@ -960,7 +967,7 @@ export const CRMInboxPage = () => {
               const titleName = leadName || displayName;
               const companyName = String((conv.lead as any)?.company || "").trim();
               const etapa = stageMap[String((conv.lead as any)?.stage_id || "")];
-              const aguarda = esperando(conv);
+              const aguarda = aguardando(conv);
               const cabecalho = convIdx === 0 && filaEsperando.length > 0 ? `Esperando resposta · ${filaEsperando.length}`
                 : convIdx === filaEsperando.length && filaEsperando.length > 0 && filaAndamento.length > 0 ? `Em andamento · ${filaAndamento.length}` : "";
               const esperaMin = aguarda && (conv as any).last_inbound_at ? (Date.now() - new Date((conv as any).last_inbound_at).getTime()) / 60000 : 0;
