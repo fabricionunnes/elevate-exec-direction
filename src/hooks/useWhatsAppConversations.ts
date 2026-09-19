@@ -191,8 +191,7 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
   };
 
   const markAsRead = async (id: string) => {
-    // waiting_seen_at: abrir a conversa também tira ela da fila "Esperando resposta"
-    await updateConversation(id, { unread_count: 0, waiting_seen_at: new Date(Date.now() + 5000).toISOString() } as any); // +5s cobre relógio do computador atrasado
+    await updateConversation(id, { unread_count: 0 });
     // Leu no Atendimento = lido no WhatsApp também (não bloqueia a tela se falhar).
     supabase.functions.invoke('evolution-api', { body: { action: 'markRead', conversationId: id } }).catch(() => {});
   };

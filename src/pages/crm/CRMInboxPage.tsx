@@ -540,6 +540,20 @@ export const CRMInboxPage = () => {
     }
   }, [conversationIdFromUrl, conversations, selectedConversation, loadingConversations]);
 
+  // Fila "Esperando resposta": a conversa só sai da fila quando o usuário SAI dela (abre outra,
+  // fecha ou troca de tela) — não no clique, senão ela some da lista na mão de quem está lendo.
+  useEffect(() => {
+    const conv: any = selectedConversation;
+    if (!conv || conv.channel === "instagram") return;
+    const id = conv.id;
+    return () => {
+      supabase.from("crm_whatsapp_conversations")
+        .update({ waiting_seen_at: new Date(Date.now() + 5000).toISOString() } as any)
+        .eq("id", id).eq("last_message_direction", "inbound")
+        .then(() => { refetchConversations(); }, () => {});
+    };
+  }, [selectedConversation?.id]);
+
   // Mark as read when selecting conversation
   useEffect(() => {
     if (selectedConversation && selectedConversation.unread_count > 0) {
@@ -1003,7 +1017,7 @@ export const CRMInboxPage = () => {
                 onClick={() => {
                   setSelectedConversation(conv);
                   // Mark as read immediately on click (e tira da fila "Esperando resposta")
-                  if (conv.unread_count > 0 || (conv.channel !== "instagram" && esperando(conv))) {
+                  if (conv.unread_count > 0) {
                     markAsRead(conv.id);
                   }
                 }}
