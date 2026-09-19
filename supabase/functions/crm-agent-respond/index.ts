@@ -929,6 +929,13 @@ Deno.serve(async (req) => {
     }
 
     if (body0.action === "test_tool") {
+      // só quem tem a chave de serviço pode rodar ferramenta direto (antes estava aberto, 19/09/2026)
+      {
+        const authz = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+        let roleClaim = "";
+        try { roleClaim = String(JSON.parse(atob(authz.split(".")[1] || "")).role || ""); } catch { /* não é JWT */ }
+        if (body0.secret !== SERVICE_ROLE && authz !== SERVICE_ROLE && roleClaim !== "service_role") return j({ ok: false, error: "não autorizado" }, 401);
+      }
       const { data: agent } = await supabase.from("crm_ai_agents").select("*").eq("id", body0.agent_id).maybeSingle();
       if (!agent) return j({ ok: false, error: "agente não encontrado" }, 400);
       const result = await runTool(supabase, agent, body0.lead_id || null, body0.tool, body0.tool_input || {});
