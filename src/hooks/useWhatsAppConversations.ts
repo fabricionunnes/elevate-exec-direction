@@ -192,6 +192,8 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
 
   const markAsRead = async (id: string) => {
     await updateConversation(id, { unread_count: 0 });
+    // Leu no Atendimento = lido no WhatsApp também (não bloqueia a tela se falhar).
+    supabase.functions.invoke('evolution-api', { body: { action: 'markRead', conversationId: id } }).catch(() => {});
   };
 
   const assignToStaff = async (id: string, staffId: string | null) => {

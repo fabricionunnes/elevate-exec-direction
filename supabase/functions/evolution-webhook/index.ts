@@ -357,6 +357,12 @@ Deno.serve(async (req) => {
       case 'messages.update':
         await handleMessageStatusUpdate(supabase, data);
         break;
+
+      // Conversa aberta/lida no celular: zera o "não lidas" do Atendimento.
+      case 'chats.update':
+      case 'chats.upsert':
+        await handleChatsRead(supabase, instance.id, data);
+        break;
       
       case 'connection.update':
         await handleConnectionUpdate(supabase, instance.id, instanceName, data);
@@ -675,6 +681,8 @@ async function handleIncomingMessage(
     updated_at: new Date().toISOString(),
   };
 
+  // Respondeu pelo celular (ou pelo próprio Nexus): a conversa foi lida.
+  if (fromMe && (conversation.unread_count || 0) > 0) updateData.unread_count = 0;
   if (!fromMe && type !== 'reaction') {
     updateData.unread_count = (conversation.unread_count || 0) + 1;
     if (conversation.status === 'closed') {
@@ -771,13 +779,44 @@ async function cancelPendingQueueOnReply(supabase: any, phone: string) {
   }
 }
 
-async function handleMessageStatusUpdate(supabase: any, data: any) {
-  console.log('Processing message status update:', JSON.stringify(data, null, 2));
+async function zeraNaoLidas(supabase: any, instanceId: string | null, jid: string) {
+  const digits = String(jid || '').split('@')[0].split(':')[0].replace(/\D/g, '');
+  if (!digits || digits.length < 8) return;
+  const { data: contacts } = await supabase.from('crm_whatsapp_contacts').select('id')
+    .or(`phone.eq.${digits},phone.eq.${jid}`).limit(5);
+  const ids = (contacts || []).map((c: any) => c.id);
+  if (!ids.length) return;
+  let q = supabase.from('crm_whatsapp_conversations').update({ unread_count: 0 }).in('contact_id', ids).gt('unread_count', 0);
+  if (instanceId) q = q.eq('instance_id', instanceId);
+  await q;
+}
 
-  const key = data.key;
-  const status = data.status;
+async function handleChatsRead(supabase: any, instanceId: string, data: any) {
+  const list = Array.isArray(data) ? data : [data];
+  for (const c of list) {
+    const jid = c?.remoteJid || c?.id || '';
+    if (typeof jid !== 'string' || !jid.includes('@')) continue;
+    if (Number(c?.unreadCount ?? c?.unreadMessages ?? -1) === 0) await zeraNaoLidas(supabase, instanceId, jid);
+  }
+}
 
-  if (!key || !status) return;
+async function handleMessageStatusUpdate(supabase: any, dataIn: any) {
+  // Evolution v1 manda { key, status: número }; a v2 manda { keyId, remoteJid, fromMe, status: "READ" }.
+  const data = Array.isArray(dataIn) ? dataIn[0] : dataIn;
+  if (!data) return;
+  const key = data.key || (data.keyId ? { id: data.keyId, remoteJid: data.remoteJid, fromMe: data.fromMe } : null);
+  const rawStatus = data.status ?? data.update?.status;
+  const textMap: Record<string, number> = { PENDING: 0, SERVER_ACK: 1, DELIVERY_ACK: 2, READ: 3, PLAYED: 4 };
+  const status = typeof rawStatus === 'string' ? (textMap[rawStatus.toUpperCase()] ?? Number(rawStatus)) : rawStatus;
+
+  if (!key || status === undefined || status === null || Number.isNaN(status)) return;
+
+  // Mensagem do CONTATO marcada como lida = alguém leu no celular. Zera o não lidas.
+  if (key.fromMe === false && Number(status) >= 3) {
+    const { data: m } = await supabase.from('crm_whatsapp_messages').select('conversation_id').eq('remote_id', key.id).maybeSingle();
+    if (m?.conversation_id) await supabase.from('crm_whatsapp_conversations').update({ unread_count: 0 }).eq('id', m.conversation_id).gt('unread_count', 0);
+    return;
+  }
 
   // Map Evolution API status to our status
   const statusMap: Record<number, string> = {

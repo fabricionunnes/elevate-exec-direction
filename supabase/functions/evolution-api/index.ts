@@ -852,6 +852,42 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'markRead': {
+        // Avisa o WhatsApp que a conversa foi lida no Atendimento (tiques azuis + some o
+        // contador no celular). Falha aqui nunca pode atrapalhar a tela: responde 200.
+        const { conversationId } = body;
+        try {
+          const { data: cv } = await supabaseService
+            .from('crm_whatsapp_conversations')
+            .select('id, instance_id, contact:crm_whatsapp_contacts(phone)')
+            .eq('id', conversationId).maybeSingle();
+          const rawPhone = String((cv as any)?.contact?.phone || '');
+          if (!cv?.instance_id || !rawPhone) return new Response(JSON.stringify({ ok: true, skip: 'sem instância' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          const instance = await loadInstanceById(cv.instance_id);
+          if (!instance || instance.providerType === 'manager_v2') return new Response(JSON.stringify({ ok: true, skip: 'provedor sem suporte' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          const { data: msgs } = await supabaseService
+            .from('crm_whatsapp_messages')
+            .select('remote_id')
+            .eq('conversation_id', conversationId).eq('direction', 'inbound')
+            .not('remote_id', 'is', null)
+            .order('created_at', { ascending: false }).limit(20);
+          const ids = (msgs || []).map((m: any) => m.remote_id).filter(Boolean);
+          if (!ids.length) return new Response(JSON.stringify({ ok: true, skip: 'sem mensagens' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          const remoteJid = rawPhone.includes('@') ? rawPhone
+            : (rawPhone.replace(/\D/g, '').startsWith('120363') && rawPhone.replace(/\D/g, '').length > 15
+              ? `${rawPhone.replace(/\D/g, '')}@g.us` : `${rawPhone.replace(/\D/g, '')}@s.whatsapp.net`);
+          const response = await fetch(`${instance.apiBaseUrl}/chat/markMessageAsRead/${instance.instance_name}`, {
+            method: 'POST', headers: instance.apiHeaders,
+            body: JSON.stringify({ readMessages: ids.map((id: string) => ({ remoteJid, fromMe: false, id })) }),
+          });
+          console.log(`[evolution-api] markRead conv=${conversationId} msgs=${ids.length} status=${response.status}`);
+          return new Response(JSON.stringify({ ok: response.ok, status: response.status }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        } catch (e) {
+          console.error('[evolution-api] markRead erro:', e);
+          return new Response(JSON.stringify({ ok: false }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+
       case 'sendText': {
         // Send text message (alias for send-text, used by frontend)
         const { instanceId, phone, message, mentioned } = body;

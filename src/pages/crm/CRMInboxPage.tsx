@@ -864,7 +864,7 @@ export const CRMInboxPage = () => {
         </div>
 
         {/* Conversations */}
-        <ScrollArea className="flex-1 min-h-0">
+        <ScrollArea className="flex-1 min-h-0 [&>[data-radix-scroll-area-viewport]>div]:!block">
           {loadingConversations || loadingAccess ? (
             <div className="flex items-center justify-center py-8">
               <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -919,22 +919,24 @@ export const CRMInboxPage = () => {
                   }
                 }}
                 className={cn(
-                  "w-full flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors text-left border-b border-border",
+                  "relative w-full flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors text-left border-b border-border overflow-hidden",
+                  conv.unread_count > 0 && "bg-primary/5",
                   selectedConversation?.id === conv.id && "bg-muted"
                 )}
               >
-                <Avatar className="h-10 w-10">
+                {conv.unread_count > 0 && <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
+                <Avatar className="h-10 w-10 shrink-0">
                   <AvatarImage src={conv.contact?.profile_picture_url || undefined} />
                   <AvatarFallback>
                     {(titleName || "?").slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-sm truncate">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={cn("text-sm truncate", conv.unread_count > 0 ? "font-bold" : "font-medium")}>
                       {titleName}
                     </span>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className={cn("text-[10px] shrink-0", conv.unread_count > 0 ? "text-primary font-semibold" : "text-muted-foreground")}>
                       {conv.last_message_at 
                         ? format(new Date(conv.last_message_at), "dd/MM/yyyy HH:mm") 
                         : ""}
@@ -964,16 +966,16 @@ export const CRMInboxPage = () => {
                         📱 {conv.official_instance.display_name || 'API Oficial'}
                       </Badge>
                     )}
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className={cn("text-xs truncate min-w-0 flex-1", conv.unread_count > 0 ? "text-foreground font-semibold" : "text-muted-foreground")}>
                       {conv.last_message || "Sem mensagens"}
                     </p>
+                    {conv.unread_count > 0 && (
+                      <Badge className="h-5 min-w-5 shrink-0 rounded-full px-1.5 flex items-center justify-center text-[10px]" title={`${conv.unread_count} não lidas`}>
+                        {conv.unread_count > 99 ? "99+" : conv.unread_count}
+                      </Badge>
+                    )}
                   </div>
                 </div>
-                {conv.unread_count > 0 && (
-                  <Badge className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px]">
-                    {conv.unread_count}
-                  </Badge>
-                )}
               </button>
             )})
           )}
