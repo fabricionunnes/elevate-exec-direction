@@ -109,7 +109,11 @@ const SETE_DIAS = 7 * 24 * 60 * 60 * 1000;
 const esperando = (c: any) => {
   if (c.status === "closed") return false;
   if (!c.last_message_at || Date.now() - new Date(c.last_message_at).getTime() > SETE_DIAS) return false;
-  return c.channel === "instagram" ? (c.unread_count || 0) > 0 : c.last_message_direction === "inbound";
+  if (c.channel === "instagram") return (c.unread_count || 0) > 0;
+  if (c.last_message_direction !== "inbound") return false;
+  // alguém já abriu depois da última mensagem do contato: sai da fila (volta se ele escrever de novo)
+  if (c.waiting_seen_at && c.last_inbound_at && new Date(c.waiting_seen_at).getTime() >= new Date(c.last_inbound_at).getTime()) return false;
+  return true;
 };
 const haQuanto = (iso?: string | null) => {
   if (!iso) return "";
@@ -998,8 +1002,8 @@ export const CRMInboxPage = () => {
               <button
                 onClick={() => {
                   setSelectedConversation(conv);
-                  // Mark as read immediately on click
-                  if (conv.unread_count > 0) {
+                  // Mark as read immediately on click (e tira da fila "Esperando resposta")
+                  if (conv.unread_count > 0 || (conv.channel !== "instagram" && esperando(conv))) {
                     markAsRead(conv.id);
                   }
                 }}
