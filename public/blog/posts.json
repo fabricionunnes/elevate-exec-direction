@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-19T21:00:59",
+ "gerado_em": "2026-09-20T10:01:21",
  "posts": [
+  {
+   "slug": "data-fixa-cobranca-cria-rotina-comercial",
+   "url": "/blog/data-fixa-cobranca-cria-rotina-comercial/",
+   "titulo": "Data fixa de cobrança cria a rotina comercial",
+   "resumo": "Você descobre por que definir dia 5, 10, 15 ou 20 do mês para cobrar o número muda completamente a previsibilidade do resultado. E o que acontece quando essa régua não existe.",
+   "tags": [
+    "rotina de cobrança",
+    "meta mensal",
+    "estrutura comercial",
+    "acompanhamento",
+    "previsibilidade"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-20",
+   "ts": 2106
+  },
   {
    "slug": "dashboard-diario-nao-substitui-quem-cobra-numero",
    "url": "/blog/dashboard-diario-nao-substitui-quem-cobra-numero/",
