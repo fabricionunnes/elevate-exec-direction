@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-20T10:01:21",
+ "gerado_em": "2026-09-20T15:01:06",
  "posts": [
+  {
+   "slug": "estrutura-comercial-entra-operacao-primeiro-dia",
+   "url": "/blog/estrutura-comercial-entra-operacao-primeiro-dia/",
+   "titulo": "Estrutura comercial entra em operação no primeiro dia",
+   "resumo": "A empresa que contrata direção comercial não espera semana de diagnóstico. O trabalho começa no mesmo dia porque a meta do mês não espera.",
+   "tags": [
+    "estrutura comercial",
+    "implementação",
+    "rotina de cobrança",
+    "acompanhamento",
+    "decisão"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-20",
+   "ts": 2107
+  },
   {
    "slug": "data-fixa-cobranca-cria-rotina-comercial",
    "url": "/blog/data-fixa-cobranca-cria-rotina-comercial/",
