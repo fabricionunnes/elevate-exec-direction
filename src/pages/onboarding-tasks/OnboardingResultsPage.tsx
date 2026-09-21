@@ -31,7 +31,9 @@ import {
   ThumbsUp,
   AlertTriangle,
   XCircle,
-  Calendar
+  Calendar,
+  Plug,
+  BadgePercent,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -79,6 +81,25 @@ const OnboardingResultsPage = () => {
   const [filterGoals, setFilterGoals] = useState<string>(() => searchParams.get("goals") || "all");
   const [filterResults, setFilterResults] = useState<string>(() => searchParams.get("results") || "all");
   const [filterProjection, setFilterProjection] = useState<string>(() => searchParams.get("projection") || "all");
+  // Filtro novo (21/09/2026): clientes com integração de CRM alimentando os KPIs e clientes em que a UNV
+  // recebe comissão por meta (regra ativa em company_commission_rules).
+  const [filterExtra, setFilterExtra] = useState<string>(() => searchParams.get("extra") || "all");
+  const [integrationByCompany, setIntegrationByCompany] = useState<Record<string, string[]>>({});
+  const [commissionCompanies, setCommissionCompanies] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    (async () => {
+      const [{ data: ints }, { data: rules }] = await Promise.all([
+        (supabase as any).from("company_kpi_integrations").select("company_id, source"),
+        (supabase as any).from("company_commission_rules").select("company_id, is_active").eq("is_active", true),
+      ]);
+      const im: Record<string, string[]> = {};
+      for (const r of (ints || []) as any[]) { if (!r.company_id) continue; (im[r.company_id] ||= []); if (r.source && !im[r.company_id].includes(r.source)) im[r.company_id].push(r.source); }
+      setIntegrationByCompany(im);
+      const cm: Record<string, boolean> = {};
+      for (const r of (rules || []) as any[]) if (r.company_id) cm[r.company_id] = true;
+      setCommissionCompanies(cm);
+    })();
+  }, []);
   const [excludedActive, setExcludedActive] = useState<{ name: string; motivo: string }[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   
@@ -164,11 +185,12 @@ const OnboardingResultsPage = () => {
     if (filterService !== "all") params.set("service", filterService);
     if (filterGoals !== "all") params.set("goals", filterGoals);
     if (filterResults !== "all") params.set("results", filterResults);
+    if (filterExtra !== "all") params.set("extra", filterExtra);
     if (filterProjection !== "all") params.set("projection", filterProjection);
     const currentMonthStr = format(new Date(), "yyyy-MM");
     if (selectedMonth !== currentMonthStr) params.set("month", selectedMonth);
     setSearchParams(params, { replace: true });
-  }, [selectedCompanyId, filterConsultant, filterService, filterGoals, filterResults, filterProjection, selectedMonth, setSearchParams]);
+  }, [selectedCompanyId, filterConsultant, filterService, filterGoals, filterResults, filterProjection, filterExtra, selectedMonth, setSearchParams]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -571,9 +593,18 @@ const OnboardingResultsPage = () => {
         matchesProjection = range === filterProjection;
       }
       
-      return matchesSearch && matchesConsultant && matchesService && matchesGoals && matchesResults && matchesProjection;
+      // Integração / comissão por meta
+      const temIntegracao = (integrationByCompany[company.id] || []).length > 0;
+      const temComissao = !!commissionCompanies[company.id];
+      const matchesExtra = filterExtra === "all"
+        || (filterExtra === "commission" && temComissao)
+        || (filterExtra === "no_commission" && !temComissao)
+        || (filterExtra === "integration" && temIntegracao)
+        || (filterExtra === "no_integration" && !temIntegracao);
+
+      return matchesSearch && matchesConsultant && matchesService && matchesGoals && matchesResults && matchesProjection && matchesExtra;
     });
-  }, [companies, searchTerm, filterConsultant, filterService, filterGoals, filterResults, filterProjection, projects, currentStaff, companiesWithGoals, companiesWithResults, companyProjections]);
+  }, [companies, searchTerm, filterConsultant, filterService, filterGoals, filterResults, filterProjection, filterExtra, integrationByCompany, commissionCompanies, projects, currentStaff, companiesWithGoals, companiesWithResults, companyProjections]);
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -585,10 +616,11 @@ const OnboardingResultsPage = () => {
     setFilterGoals("all");
     setFilterResults("all");
     setFilterProjection("all");
+    setFilterExtra("all");
   };
 
   // For consultants, don't consider consultant filter as active since they only see their own companies
-  const hasActiveFilters = (currentStaff?.role !== "consultant" && filterConsultant !== "all") || filterService !== "all" || filterGoals !== "all" || filterResults !== "all" || filterProjection !== "all" || searchTerm !== "";
+  const hasActiveFilters = (currentStaff?.role !== "consultant" && filterConsultant !== "all") || filterService !== "all" || filterGoals !== "all" || filterResults !== "all" || filterProjection !== "all" || filterExtra !== "all" || searchTerm !== "";
   
   // Count companies with/without results based on filtered list (excluding the results filter itself)
   const baseFilteredCompanies = useMemo(() => {
@@ -1057,6 +1089,23 @@ const OnboardingResultsPage = () => {
                     </Select>
                   </div>
 
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Integração e comissão</Label>
+                    <Select value={filterExtra} onValueChange={setFilterExtra}>
+                      <SelectTrigger className="w-[210px]">
+                        <BadgePercent className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Todos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="commission">Com comissão por meta ({Object.keys(commissionCompanies).length})</SelectItem>
+                        <SelectItem value="no_commission">Sem comissão por meta</SelectItem>
+                        <SelectItem value="integration">Com integração ({Object.keys(integrationByCompany).length})</SelectItem>
+                        <SelectItem value="no_integration">Sem integração</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   {hasActiveFilters && (
                     <Button variant="ghost" size="sm" onClick={clearFilters} className="h-10">
                       <X className="h-4 w-4 mr-1" />
@@ -1173,6 +1222,16 @@ const OnboardingResultsPage = () => {
                                 {project && (
                                   <Badge variant="outline" className="text-[10px]">
                                     {project.product_name}
+                                  </Badge>
+                                )}
+                                {commissionCompanies[company.id] && (
+                                  <Badge variant="outline" className="text-[10px] gap-1 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400" title="A UNV recebe comissão quando este cliente bate a meta">
+                                    <BadgePercent className="h-3 w-3" /> Comissão por meta
+                                  </Badge>
+                                )}
+                                {(integrationByCompany[company.id] || []).length > 0 && (
+                                  <Badge variant="outline" className="text-[10px] gap-1 border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-400" title="Os resultados entram sozinhos pela integração com o CRM do cliente">
+                                    <Plug className="h-3 w-3" /> {integrationByCompany[company.id].join(", ")}
                                   </Badge>
                                 )}
                                 {consultantName && (
