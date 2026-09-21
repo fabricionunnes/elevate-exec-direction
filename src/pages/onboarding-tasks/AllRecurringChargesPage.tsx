@@ -351,6 +351,20 @@ export default function AllRecurringChargesPage() {
   const [selectedRecurrence, setSelectedRecurrence] = useState("all");
   const [selectedConsultant, setSelectedConsultant] = useState("all");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+  /**
+   * Escolher uma categoria PAI no filtro precisa trazer as filhas junto: as faturas ficam
+   * gravadas na subcategoria ("Créditos UNV Sales"), então filtrar pelo pai ("UNV Sales")
+   * não mostrava nada.
+   */
+  const expandirCategorias = (escolhidas: string[]) => {
+    if (escolhidas.length === 0) return null;
+    const todas = new Set(escolhidas);
+    for (const c of ((staffCategories as any[]) ?? [])) {
+      if (c?.parent_id && todas.has(c.parent_id)) todas.add(c.id);
+    }
+    return todas;
+  };
   const [selectedCostCenters, setSelectedCostCenters] = useState<string[]>([]);
   const [selectedPayableCategories, setSelectedPayableCategories] = useState<string[]>([]);
   const [selectedPayableCostCenters, setSelectedPayableCostCenters] = useState<string[]>([]);
@@ -643,6 +657,9 @@ export default function AllRecurringChargesPage() {
   };
 
   // Filtered invoices
+  const categoriasComFilhas = useMemo(() => expandirCategorias(selectedCategories), [selectedCategories, staffCategories]);
+  const categoriasPagarComFilhas = useMemo(() => expandirCategorias(selectedPayableCategories), [selectedPayableCategories, staffCategories]);
+
   const filteredInvoices = useMemo(() => {
     return invoices.filter(inv => {
       if (searchTerm) {
@@ -662,11 +679,11 @@ export default function AllRecurringChargesPage() {
         if (!consultantIds || !consultantIds.has(selectedConsultant)) return false;
       }
       const invAny = inv as any;
-      if (selectedCategories.length > 0 && !selectedCategories.includes(invAny.category_id)) return false;
+      if (categoriasComFilhas && !categoriasComFilhas.has(invAny.category_id)) return false;
       if (selectedCostCenters.length > 0 && !selectedCostCenters.includes(invAny.cost_center_id)) return false;
       return true;
     });
-  }, [invoices, searchTerm, selectedCompany, selectedStatuses, dateFrom, dateTo, selectedConsultant, selectedCategories, selectedCostCenters, companyConsultantMap]);
+  }, [invoices, searchTerm, selectedCompany, selectedStatuses, dateFrom, dateTo, selectedConsultant, categoriasComFilhas, selectedCostCenters, companyConsultantMap]);
 
   // Reset page when filters change
   useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedCompany, selectedStatuses, dateFrom, dateTo, selectedConsultant, selectedCategories, selectedCostCenters]);
@@ -705,11 +722,11 @@ export default function AllRecurringChargesPage() {
       if (payableDateFrom && p.due_date) { if (p.due_date < format(payableDateFrom, "yyyy-MM-dd")) return false; }
       if (payableDateTo && p.due_date) { if (p.due_date > format(payableDateTo, "yyyy-MM-dd")) return false; }
       const pAny = p as any;
-      if (selectedPayableCategories.length > 0 && !selectedPayableCategories.includes(pAny.category_id)) return false;
+      if (categoriasPagarComFilhas && !categoriasPagarComFilhas.has(pAny.category_id)) return false;
       if (selectedPayableCostCenters.length > 0 && !selectedPayableCostCenters.includes(pAny.cost_center_id)) return false;
       return true;
     });
-  }, [payables, searchTerm, selectedStatuses, payableDateFrom, payableDateTo, selectedPayableCategories, selectedPayableCostCenters]);
+  }, [payables, searchTerm, selectedStatuses, payableDateFrom, payableDateTo, categoriasPagarComFilhas, selectedPayableCostCenters]);
 
   const sortedPayables = useMemo(() => {
     if (!paySortCol) return filteredPayables;
@@ -1278,7 +1295,7 @@ export default function AllRecurringChargesPage() {
         if (!cids || !cids.has(selectedConsultant)) return false;
       }
       const invAny = inv as any;
-      if (selectedCategories.length > 0 && !selectedCategories.includes(invAny.category_id)) return false;
+      if (categoriasComFilhas && !categoriasComFilhas.has(invAny.category_id)) return false;
       if (selectedCostCenters.length > 0 && !selectedCostCenters.includes(invAny.cost_center_id)) return false;
       return true;
     });
@@ -1289,7 +1306,7 @@ export default function AllRecurringChargesPage() {
       }, 0),
       count: rows.length,
     };
-  }, [invoices, dateFrom, dateTo, searchTerm, selectedCompany, selectedConsultant, selectedCategories, selectedCostCenters, companyConsultantMap]);
+  }, [invoices, dateFrom, dateTo, searchTerm, selectedCompany, selectedConsultant, categoriasComFilhas, selectedCostCenters, companyConsultantMap]);
 
   const caixaPago = useMemo(() => {
     const from = payableDateFrom ? format(payableDateFrom, "yyyy-MM-dd") : null;
@@ -1302,7 +1319,7 @@ export default function AllRecurringChargesPage() {
       if (to && pago > to) return false;
       if (searchTerm && !p.description?.toLowerCase().includes(searchTerm.toLowerCase()) && !p.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       const pAny = p as any;
-      if (selectedPayableCategories.length > 0 && !selectedPayableCategories.includes(pAny.category_id)) return false;
+      if (categoriasPagarComFilhas && !categoriasPagarComFilhas.has(pAny.category_id)) return false;
       if (selectedPayableCostCenters.length > 0 && !selectedPayableCostCenters.includes(pAny.cost_center_id)) return false;
       return true;
     });
