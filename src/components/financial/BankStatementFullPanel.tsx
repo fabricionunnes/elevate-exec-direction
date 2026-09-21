@@ -54,6 +54,7 @@ export function BankStatementFullPanel() {
   const [dateFrom, setDateFrom] = useState(() => format(startOfMonth(new Date()), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(() => format(endOfMonth(new Date()), "yyyy-MM-dd"));
   const [page, setPage] = useState(0);
+  const [periodo, setPeriodo] = useState("month");
   const PAGE_SIZE = 30;
 
   useEffect(() => { loadBankAccounts(); }, []);
@@ -79,9 +80,15 @@ export function BankStatementFullPanel() {
         params.p_bank_id = selectedBank;
       }
 
-      const { data, error } = await supabase.rpc("get_bank_statement_transactions", params as any);
-      if (error) throw error;
-      setTransactions((data || []) as Transaction[]);
+      // o servidor devolve no máximo 1000 linhas por chamada: em trimestre/ano/total precisa paginar
+      const todas: Transaction[] = [];
+      for (let ini = 0; ini < 50000; ini += 1000) {
+        const { data, error } = await (supabase.rpc("get_bank_statement_transactions", params as any) as any).range(ini, ini + 999);
+        if (error) throw error;
+        todas.push(...((data || []) as Transaction[]));
+        if (!data || data.length < 1000) break;
+      }
+      setTransactions(todas);
     } catch (err) {
       console.error("Error loading transactions:", err);
     } finally {
@@ -95,8 +102,12 @@ export function BankStatementFullPanel() {
     return map;
   }, [bankAccounts]);
 
+  // Busca (21/09/2026): antes só olhava a descrição, então "Eva" não achava o salário dela (o nome fica no
+  // fornecedor, não na descrição). Agora procura em descrição + cliente/fornecedor + valor, ignorando acento.
+  const semAcento = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const termo = semAcento(search.trim());
   const filteredTransactions = transactions.filter(t =>
-    !search || (t.description || "").toLowerCase().includes(search.toLowerCase())
+    !termo || semAcento(`${t.description || ""} ${t.client_name || ""} ${(t.amount_cents / 100).toFixed(2).replace(".", ",")}`).includes(termo)
   );
 
   const paginatedTransactions = filteredTransactions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -126,23 +137,42 @@ export function BankStatementFullPanel() {
   const formatCurrency = (cents: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
 
-  const prevMonth = () => {
-    const d = dataSegura(dateFrom);
-    const newStart = startOfMonth(new Date(d.getFullYear(), d.getMonth() - 1, 1));
-    const newEnd = endOfMonth(newStart);
-    setDateFrom(format(newStart, "yyyy-MM-dd"));
-    setDateTo(format(newEnd, "yyyy-MM-dd"));
+  // PERÍODO (21/09/2026): além de mês, trimestre, semestre, ano, últimos 12 meses, tudo e personalizado.
+  const intervalo = (tipo: string, ref: Date): [Date, Date] => {
+    const y = ref.getFullYear(), m = ref.getMonth();
+    if (tipo === "quarter") { const q = Math.floor(m / 3) * 3; return [new Date(y, q, 1), new Date(y, q + 3, 0)]; }
+    if (tipo === "semester") { const sm = m < 6 ? 0 : 6; return [new Date(y, sm, 1), new Date(y, sm + 6, 0)]; }
+    if (tipo === "year") return [new Date(y, 0, 1), new Date(y, 11, 31)];
+    if (tipo === "last12") { const hoje = new Date(); return [new Date(hoje.getFullYear(), hoje.getMonth() - 11, 1), endOfMonth(hoje)]; }
+    if (tipo === "all") return [new Date(2020, 0, 1), new Date(new Date().getFullYear() + 1, 11, 31)];
+    return [startOfMonth(ref), endOfMonth(ref)];
   };
-
-  const nextMonth = () => {
-    const d = dataSegura(dateFrom);
-    const newStart = startOfMonth(new Date(d.getFullYear(), d.getMonth() + 1, 1));
-    const newEnd = endOfMonth(newStart);
-    setDateFrom(format(newStart, "yyyy-MM-dd"));
-    setDateTo(format(newEnd, "yyyy-MM-dd"));
+  const aplicarPeriodo = (tipo: string, ref: Date = new Date()) => {
+    setPeriodo(tipo);
+    if (tipo === "custom") return;
+    const [a, b] = intervalo(tipo, ref);
+    setDateFrom(format(a, "yyyy-MM-dd")); setDateTo(format(b, "yyyy-MM-dd"));
   };
+  const mover = (dir: number) => {
+    const d = dataSegura(dateFrom);
+    const passo = periodo === "quarter" ? 3 : periodo === "semester" ? 6 : periodo === "year" ? 12 : 1;
+    aplicarPeriodo(["quarter", "semester", "year"].includes(periodo) ? periodo : "month", new Date(d.getFullYear(), d.getMonth() + dir * passo, 1));
+  };
+  const prevMonth = () => mover(-1);
+  const nextMonth = () => mover(1);
+  const podeNavegar = !["last12", "all", "custom"].includes(periodo);
 
-  const monthLabel = format(dataSegura(dateFrom), "MMMM yyyy", { locale: ptBR }).replace(/^./, c => c.toUpperCase());
+  const monthLabel = (() => {
+    const a = dataSegura(dateFrom);
+    const mes = (d: Date) => format(d, "MMM/yy", { locale: ptBR });
+    if (periodo === "quarter") return `${Math.floor(a.getMonth() / 3) + 1}º trimestre ${a.getFullYear()}`;
+    if (periodo === "semester") return `${a.getMonth() < 6 ? 1 : 2}º semestre ${a.getFullYear()}`;
+    if (periodo === "year") return `Ano ${a.getFullYear()}`;
+    if (periodo === "last12") return `${mes(a)} a ${mes(dataSegura(dateTo))}`;
+    if (periodo === "all") return "Todo o período";
+    if (periodo === "custom") return "Personalizado";
+    return format(a, "MMMM yyyy", { locale: ptBR }).replace(/^./, c => c.toUpperCase());
+  })();
 
   return (
     <div className="space-y-4">
@@ -177,11 +207,23 @@ export function BankStatementFullPanel() {
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Período</label>
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={prevMonth}>
+                  <Select value={periodo} onValueChange={(v) => aplicarPeriodo(v, periodo === "custom" || periodo === "all" || periodo === "last12" ? new Date() : dataSegura(dateFrom))}>
+                    <SelectTrigger className="h-9 w-[150px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="month">Mês</SelectItem>
+                      <SelectItem value="quarter">Trimestre</SelectItem>
+                      <SelectItem value="semester">Semestre</SelectItem>
+                      <SelectItem value="year">Ano</SelectItem>
+                      <SelectItem value="last12">Últimos 12 meses</SelectItem>
+                      <SelectItem value="all">Todo o período</SelectItem>
+                      <SelectItem value="custom">Personalizado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={prevMonth} disabled={!podeNavegar}>
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
                   <span className="text-sm font-medium min-w-[130px] text-center">{monthLabel}</span>
-                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={nextMonth}>
+                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={nextMonth} disabled={!podeNavegar}>
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -191,11 +233,11 @@ export function BankStatementFullPanel() {
             <div className="flex items-end gap-2">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">De</label>
-                <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-9 w-[140px]" />
+                <Input type="date" value={dateFrom} onChange={e => { setPeriodo("custom"); setDateFrom(e.target.value); }} className="h-9 w-[140px]" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Até</label>
-                <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-9 w-[140px]" />
+                <Input type="date" value={dateTo} onChange={e => { setPeriodo("custom"); setDateTo(e.target.value); }} className="h-9 w-[140px]" />
               </div>
             </div>
 
@@ -205,7 +247,7 @@ export function BankStatementFullPanel() {
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Buscar descrição..."
+                    placeholder="Fornecedor, cliente, descrição ou valor"
                     value={search}
                     onChange={(e) => { setSearch(e.target.value); setPage(0); }}
                     className="pl-9 h-9"
@@ -290,7 +332,12 @@ export function BankStatementFullPanel() {
       ) : filteredTransactions.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground text-sm">
-            Nenhum lançamento encontrado neste período.
+            <p>Nenhum lançamento encontrado neste período{termo ? ` para "${search.trim()}"` : ""}.</p>
+            {termo && periodo !== "all" && (
+              <Button variant="outline" size="sm" className="mt-3" onClick={() => aplicarPeriodo("all")}>
+                Procurar "{search.trim()}" em todo o período
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
