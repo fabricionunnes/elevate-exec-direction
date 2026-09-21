@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { isHoliday } from "@/lib/businessDays";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -2945,49 +2946,42 @@ const OnboardingTasksPage = () => {
               {currentUserRole !== "consultant" && (
                 <div className="flex flex-col gap-0.5 min-w-[120px] sm:min-w-[150px]">
                   <span className="text-[10px] sm:text-xs text-muted-foreground font-medium">Consultores</span>
-                  <Select value={filterConsultant} onValueChange={setFilterConsultant}>
-                    <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm">
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      {consultants.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={filterConsultant}
+                    onValueChange={setFilterConsultant}
+                    className="h-8 sm:h-10 text-xs sm:text-sm"
+                    placeholder="Todos"
+                    emptyMessage="Ninguém com esse nome."
+                    options={[{ value: "all", label: "Todos" }, ...consultants.map((c) => ({ value: c.id, label: c.name }))]}
+                  />
                 </div>
               )}
 
               <div className="flex flex-col gap-0.5 min-w-[120px] sm:min-w-[150px]">
                 <span className="text-[10px] sm:text-xs text-muted-foreground font-medium">Serviços</span>
-                <Select value={filterService} onValueChange={setFilterService}>
-                  <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {services.map((s) => (
-                      <SelectItem key={s.id} value={s.slug}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={filterService}
+                  onValueChange={setFilterService}
+                  className="h-8 sm:h-10 text-xs sm:text-sm"
+                  placeholder="Todos"
+                  emptyMessage="Nenhum serviço com esse nome."
+                  options={[{ value: "all", label: "Todos" }, ...services.map((sv) => ({ value: sv.slug, label: sv.name }))]}
+                />
               </div>
 
               <div className="flex flex-col gap-0.5 min-w-[120px] sm:min-w-[150px]">
                 <span className="text-[10px] sm:text-xs text-muted-foreground font-medium">Status</span>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="active">Ativo</SelectItem>
-                    <SelectItem value="cancellation_signaled">Sinalizou</SelectItem>
-                    <SelectItem value="notice_period">Aviso</SelectItem>
-                    <SelectItem value="closed">Encerrado</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={filterStatus}
+                  onValueChange={setFilterStatus}
+                  className="h-8 sm:h-10 text-xs sm:text-sm"
+                  placeholder="Todos"
+                  emptyMessage="Nenhum status com esse nome."
+                  options={[
+                    { value: "all", label: "Todos" }, { value: "active", label: "Ativo" }, { value: "cancellation_signaled", label: "Sinalizou" },
+                    { value: "notice_period", label: "Aviso" }, { value: "closed", label: "Encerrado" },
+                  ]}
+                />
               </div>
 
               <div className="flex flex-col gap-0.5">

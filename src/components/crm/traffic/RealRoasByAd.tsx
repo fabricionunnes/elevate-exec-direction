@@ -104,7 +104,10 @@ export function RealRoasByAd() {
                       <tr key={r.ad_name} className="border-b border-border/50 hover:bg-muted/30">
                         <td className="py-2 pr-3">
                           <div className="flex items-center gap-2 min-w-0">
-                            {r.thumb ? <img src={r.thumb} alt="" className="h-8 w-8 rounded object-cover shrink-0" /> : <div className="h-8 w-8 rounded bg-muted shrink-0" />}
+                            {r.thumb ? (
+                              <img src={r.thumb} alt="" loading="lazy" className="h-9 w-9 rounded object-cover shrink-0 bg-muted"
+                                onError={(e) => { const el = e.currentTarget; el.onerror = null; el.style.visibility = "hidden"; }} />
+                            ) : <div className="h-9 w-9 rounded bg-muted shrink-0" />}
                             <div className="min-w-0">
                               <p className="font-medium truncate max-w-[260px]" title={r.ad_name}>{r.ad_name}</p>
                               {r.campaign_name && <p className="text-[11px] text-muted-foreground truncate max-w-[260px]">{r.campaign_name}</p>}
