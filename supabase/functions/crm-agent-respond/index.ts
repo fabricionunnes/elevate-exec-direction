@@ -1037,8 +1037,13 @@ Deno.serve(async (req) => {
             const fone = String((o as any).contact?.phone || "");
             if (!fone || fone.includes("@g.us") || fone.includes("@newsletter") || fone.includes("-") || fone.replace(/\D/g, "").length > 15) continue;
             const { count } = await supabase.from("crm_ai_agent_runs").select("id", { count: "exact", head: true })
-              .eq("conversation_id", o.id).gte("created_at", o.last_inbound_at);
+              .eq("conversation_id", o.id).gte("created_at", o.last_inbound_at)
+              .not("outcome", "in", '("empty_reply","error","ai_error","send_failed")');
             if ((count || 0) > 0) continue;
+            // falhou sem responder: tenta de novo, mas no máximo 3 vezes por mensagem do lead
+            const { count: falhas } = await supabase.from("crm_ai_agent_runs").select("id", { count: "exact", head: true })
+              .eq("conversation_id", o.id).gte("created_at", o.last_inbound_at);
+            if ((falhas || 0) >= 3) continue;
             resgatadas++;
             if (body0.dry_run) { results.push(`resgate (simulado): ${o.id}`); continue; }
             const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/crm-agent-respond`, {
@@ -1941,6 +1946,7 @@ Deno.serve(async (req) => {
     let reply = "";
     let lastContentShape: string[] = [];
     let retriedForSlots = false;
+    let retriedEmpty = false;
     for (let iter = 0; iter < 5; iter++) {
       const body: any = {
         model: agent.model || "claude-sonnet-5",
@@ -2009,6 +2015,13 @@ Deno.serve(async (req) => {
         .map((b: any) => String(b.text));
       reply = humanizar([...new Set(texts)].join("").trim());
       reply = unhalve(reply);
+      // A IA às vezes devolve o turno sem texto nenhum (caso Ana Luísa, 20/09: lead contou que o
+      // filho se machucou e pediu terça; resposta veio vazia e a conversa ficou muda). Cobra UMA vez.
+      if (!reply && !retriedEmpty) {
+        retriedEmpty = true;
+        apiMessages.push({ role: "user", content: "[sistema] Você não escreveu nenhuma mensagem e o lead está esperando. Escreva AGORA a resposta para a última mensagem dele: curta, humana e, se ele contou um problema pessoal, acolha em uma frase antes de seguir. Se ele propôs outro dia, aceite e ofereça horários desse dia (consulte a agenda se precisar)." });
+        continue;
+      }
       // Pós-checagem anti-alucinação: se houve consulta de agenda e a resposta cita
       // horários fora da lista retornada, força UMA correção.
       const lastConsult = [...toolCalls].reverse().find((t) => t.startsWith("consultar_horarios"));
