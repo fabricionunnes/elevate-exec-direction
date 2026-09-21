@@ -305,30 +305,42 @@ const KickoffFormPage = () => {
 
   const handleSubmit = async () => {
     if (!companyId) return;
-    // Validate all steps
-    for (let step = 1; step <= STEPS.length; step++) {
-      if (!validateStep(step)) {
-        setCurrentStep(step);
-        return;
-      }
-    }
     setSaving(true);
+    let payloadEnviado: any = null;
     try {
+      // Validate all steps (dentro do try: erro aqui antes passava em silêncio e nada era enviado)
+      for (let step = 1; step <= STEPS.length; step++) {
+        if (!validateStep(step)) {
+          setCurrentStep(step);
+          return;
+        }
+      }
       // Grava pelos campos permitidos do formulário (função no banco), junto do histórico pré-UNV
       const salesEntries = salesHistory.filter(e => e.revenue > 0);
-      const { data: ok, error } = await (supabase as any).rpc("kickoff_form_save", {
+      payloadEnviado = {
         p_company_id: companyId,
         p_data: {
           ...formData,
-          quarterly_goals: JSON.parse(JSON.stringify(formData.quarterly_goals)),
-          company_units: JSON.parse(JSON.stringify(formData.company_units)),
+          north_star_metric_cents: Math.round(Number(formData.north_star_metric_cents) || 0),
+          quarterly_goals: JSON.parse(JSON.stringify(formData.quarterly_goals ?? initialFormData.quarterly_goals)),
+          company_units: JSON.parse(JSON.stringify(Array.isArray(formData.company_units) ? formData.company_units : [])),
         },
         p_sales: salesEntries.map(entry => ({
           month_year: entry.month_year,
-          revenue: entry.revenue,
-          sales_count: entry.sales_count,
+          revenue: Number(entry.revenue) || 0,
+          sales_count: Number.isFinite(Number(entry.sales_count)) && entry.sales_count !== null ? Math.round(Number(entry.sales_count)) : null,
         })),
-      });
+      };
+      // internet de celular oscila: tenta até 3 vezes antes de desistir
+      let ok: any = null; let error: any = null;
+      for (let tentativa = 1; tentativa <= 3; tentativa++) {
+        try {
+          const r = await (supabase as any).rpc("kickoff_form_save", payloadEnviado);
+          ok = r.data; error = r.error;
+        } catch (e) { error = e; }
+        if (!error) break;
+        if (tentativa < 3) await new Promise((res) => setTimeout(res, 1500 * tentativa));
+      }
 
       if (error) throw error;
       if (ok === false) throw new Error("Empresa não encontrada");
@@ -338,7 +350,15 @@ const KickoffFormPage = () => {
       toast.success("Formulário enviado com sucesso!");
     } catch (error) {
       console.error("Error saving kickoff:", error);
-      toast.error("Não conseguimos enviar agora. Suas respostas ficaram salvas neste aparelho: recarregue a página e toque em enviar de novo.", { duration: 12000 });
+      const detalhe = String((error as any)?.message || (error as any)?.details || error || "erro desconhecido").slice(0, 300);
+      // guarda o erro E as respostas no servidor: mesmo que o envio normal falhe, nada se perde
+      try {
+        await (supabase as any).rpc("public_form_log_error", {
+          p_form: "kickoff", p_ref: companyId, p_error: detalhe,
+          p_payload: payloadEnviado || { formData, salesHistory }, p_ua: navigator.userAgent,
+        });
+      } catch { /* sem internet: fica só o rascunho no aparelho */ }
+      toast.error(`Não conseguimos enviar agora (${detalhe}). Suas respostas ficaram salvas: recarregue a página e toque em enviar de novo. Se continuar, já recebemos uma cópia e o time da UNV conclui pra você.`, { duration: 15000 });
     } finally {
       setSaving(false);
     }
@@ -359,7 +379,7 @@ const KickoffFormPage = () => {
       const types = ['pessimista', 'realista', 'otimista'] as const;
       for (const q of quarters) {
         for (const t of types) {
-          if (!qg[q][t]?.trim()) {
+          if (!String((qg as any)?.[q]?.[t] ?? "").trim()) {
             toast.error("Preencha todas as metas trimestrais antes de avançar");
             return false;
           }
