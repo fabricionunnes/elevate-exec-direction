@@ -697,6 +697,50 @@ async function runTool(supabase: any, agent: any, leadId: string | null, name: s
           ].join("\n\n");
         }
       }
+      // REMARCAÇÃO (21/09/2026, Fabrício): "quando reagendar, tem que fazer isso no Google Agenda também".
+      // Antes o agente criava um evento NOVO e o antigo ficava na agenda (caso Virginia: 10h e 11h no mesmo dia).
+      // Agora, se o lead já tem reunião ativa, o evento antigo é MOVIDO (mesmo link do Meet). Se não der pra mover
+      // (outro closer, evento apagado), o antigo é removido da agenda e cancelado no CRM antes de criar o novo.
+      if (leadId) {
+        const { data: anterior } = await supabase.from("crm_activities")
+          .select("id, scheduled_at, status, meeting_link, google_calendar_event_id, google_calendar_user_id")
+          .eq("lead_id", leadId).eq("type", "meeting").not("google_calendar_event_id", "is", null)
+          .not("status", "in", "(cancelled,canceled,no_show,completed,done)")
+          .gte("scheduled_at", new Date(Date.now() - 12 * 3600000).toISOString())
+          .order("scheduled_at", { ascending: false }).limit(1).maybeSingle();
+        if (anterior && Date.parse(anterior.scheduled_at) !== Date.parse(startISO)) {
+          const quandoAntes = new Date(anterior.scheduled_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+          let movido: any = null;
+          if (anterior.google_calendar_user_id === staff.user_id) {
+            try {
+              const mv = await fetch(`${SUPABASE_URL}/functions/v1/google-calendar?action=move-event`, {
+                method: "POST", headers: { Authorization: `Bearer ${SERVICE_ROLE}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ eventId: anterior.google_calendar_event_id, startDateTime: startISO, durationMinutes: dur, target_user_id: staff.user_id }),
+              });
+              const mj = await mv.json().catch(() => ({}));
+              if (mv.ok && !mj.error) movido = mj;
+            } catch (_) { /* cai no apagar + criar */ }
+          }
+          if (movido) {
+            const linkMeet = movido.event?.meetingLink || anterior.meeting_link || null;
+            await supabase.from("crm_activities").update({
+              scheduled_at: startISO, status: "pending", meeting_link: linkMeet,
+              description: `Remarcada pelo agente IA "${agent.name}" (era ${quandoAntes})`,
+            }).eq("id", anterior.id);
+            await supabase.from("crm_lead_history").insert({ lead_id: leadId, action: "meeting_rescheduled", notes: `Reunião remarcada pelo agente de IA: de ${quandoAntes} para ${m[1].split("-").reverse().join("/")} ${m[2]}:${m[3]}. Evento movido no Google Agenda.` }).then(() => {}, () => {});
+            await salvarDadosLead(supabase, leadId, input);
+            return `Reunião REMARCADA com ${staff.name} para ${m[1]} às ${m[2]}:${m[3]} (era ${quandoAntes}). O evento foi movido na agenda e o link continua o MESMO${linkMeet ? `: ${linkMeet}` : ""}. Avise o lead do novo horário e, se for mandar link, mande este.`;
+          }
+          // não deu pra mover: tira o antigo da agenda e cancela no CRM, depois cria o novo
+          try {
+            await fetch(`${SUPABASE_URL}/functions/v1/google-calendar?action=delete-event`, {
+              method: "POST", headers: { Authorization: `Bearer ${SERVICE_ROLE}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ eventId: anterior.google_calendar_event_id, target_user_id: anterior.google_calendar_user_id }),
+            });
+          } catch (_) { /* segue */ }
+          await supabase.from("crm_activities").update({ status: "cancelled", description: `Substituída por remarcação do agente IA "${agent.name}"` }).eq("id", anterior.id);
+        }
+      }
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/google-calendar?action=create-event`, {
         method: "POST",
         headers: { Authorization: `Bearer ${SERVICE_ROLE}`, "Content-Type": "application/json" },
