@@ -1266,6 +1266,10 @@ export default function AllRecurringChargesPage() {
     return Array.from(set).sort().reverse();
   }, [payables]);
 
+  // Pagamento parcial: o que falta pagar é o valor menos o que já saiu do caixa.
+  const saldoAbertoPagar = (p: { amount: number; paid_amount: number | null; status: string }) =>
+    p.status === "partial" ? Math.max(0, Number(p.amount) - Number(p.paid_amount || 0)) : Number(p.amount);
+
   const invoiceSummary = useMemo(() => {
     const effectivelyOverdue = filteredInvoices.filter(i => isEffectivelyOverdue(i.status, i.due_date));
     const effectivelyPending = filteredInvoices.filter(i => (i.status === "pending" || i.status === "overdue") && !isEffectivelyOverdue(i.status, i.due_date));
@@ -2308,7 +2312,7 @@ export default function AllRecurringChargesPage() {
                 <Card onClick={() => applyStatusCard(["pending", "overdue"])} className={statusCardClass(["pending", "overdue"])}>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total a Pagar</CardTitle></CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-destructive">{formatCurrency(filteredPayables.filter(p => p.status !== "paid").reduce((s, p) => s + p.amount, 0))}</div>
+                    <div className="text-2xl font-bold text-destructive">{formatCurrency(filteredPayables.filter(p => p.status !== "paid" && p.status !== "cancelled").reduce((s, p) => s + saldoAbertoPagar(p), 0))}</div>
                   </CardContent>
                 </Card>
                 <Card onClick={() => applyStatusCard(["paid", "partial"])} className={statusCardClass(["paid", "partial"])}>
@@ -2321,7 +2325,7 @@ export default function AllRecurringChargesPage() {
                 <Card onClick={() => applyStatusCard(["overdue"])} className={statusCardClass(["overdue"])}>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Vencidos</CardTitle></CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-destructive">{formatCurrency(filteredPayables.filter(p => p.status !== "paid" && p.status !== "cancelled" && p.due_date && p.due_date < new Date().toISOString().split("T")[0]).reduce((s, p) => s + p.amount, 0))}</div>
+                    <div className="text-2xl font-bold text-destructive">{formatCurrency(filteredPayables.filter(p => p.status !== "paid" && p.status !== "cancelled" && p.due_date && p.due_date < new Date().toISOString().split("T")[0]).reduce((s, p) => s + saldoAbertoPagar(p), 0))}</div>
                   </CardContent>
                 </Card>
               </div>
