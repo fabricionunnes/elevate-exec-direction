@@ -615,7 +615,7 @@ Deno.serve(async (req) => {
 
     // Action: get invoices for a company (public by token or authenticated)
     if (action === "get_by_token") {
-      const { token } = await req.json();
+      const { token } = reqBody; // o corpo já foi lido lá em cima; ler de novo dava "Body already consumed"
       const { data: invoice } = await supabase
         .from("company_invoices")
         .select("*")
