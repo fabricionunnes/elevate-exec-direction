@@ -143,7 +143,7 @@ export function RealRoasByAd() {
                             ) : <div className="h-9 w-9 rounded bg-muted shrink-0" />}
                             <div className="min-w-0">
                               <p className="font-medium truncate max-w-[260px]" title={r.ad_name}>{r.ad_name}</p>
-                              {r.campaign_name && <p className="text-[11px] text-muted-foreground truncate max-w-[260px]">{r.campaign_name}</p>}
+                              {r.campaign_name && <p className="text-[11px] text-muted-foreground truncate max-w-[260px]" title={Number((r as any).campanhas) > 1 ? "Mesmo criativo somado em todas as campanhas em que rodou" : undefined}>{r.campaign_name}{Number((r as any).campanhas) > 1 ? ` + ${Number((r as any).campanhas) - 1} campanha${Number((r as any).campanhas) - 1 > 1 ? "s" : ""}` : ""}</p>}
                             </div>
                           </div>
                         </td>
