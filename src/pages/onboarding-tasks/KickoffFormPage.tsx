@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -172,8 +172,34 @@ const KickoffFormPage = () => {
     try { localStorage.setItem(`kickoff_rascunho_${companyId}`, JSON.stringify({ formData, salesHistory, em: new Date().toISOString() })); } catch { /* sem espaço: segue */ }
   }, [formData, salesHistory, companyId, rascunhoPronto]);
 
+  // Rascunho também no SERVIDOR (21/09/2026): se fechar a aba, trocar de aparelho ou limpar o navegador,
+  // as respostas voltam. Grava 2,5s depois da última digitação e sempre que a página vai pro fundo.
+  const rascunhoRef = useRef<{ formData: KickoffFormData; salesHistory: SalesHistoryEntry[]; step: number } | null>(null);
+  const temConteudo = (fd: KickoffFormData, sh: SalesHistoryEntry[]) =>
+    Object.values(fd).some((v) => typeof v === "string" && v.trim().length > 0) || (Number(fd.north_star_metric_cents) || 0) > 0 || sh.some((e) => (Number(e.revenue) || 0) > 0);
+  const salvarNoServidor = () => {
+    const r = rascunhoRef.current;
+    if (!companyId || !r || submitted || !temConteudo(r.formData, r.salesHistory)) return;
+    (supabase as any).rpc("public_form_draft_save", {
+      p_form: "kickoff", p_ref: companyId, p_step: r.step, p_ua: navigator.userAgent,
+      p_payload: { formData: r.formData, salesHistory: r.salesHistory, em: new Date().toISOString() },
+    }).then(() => {}, () => {});
+  };
   useEffect(() => {
-    if (rascunhoRestaurado) toast.info("Recuperamos as respostas que você já tinha digitado neste aparelho.");
+    if (!companyId || !rascunhoPronto) return;
+    rascunhoRef.current = { formData, salesHistory, step: currentStep };
+    const t = setTimeout(salvarNoServidor, 2500);
+    return () => clearTimeout(t);
+  }, [formData, salesHistory, currentStep, companyId, rascunhoPronto]);
+  useEffect(() => {
+    const aoSair = () => { if (document.visibilityState === "hidden") salvarNoServidor(); };
+    document.addEventListener("visibilitychange", aoSair);
+    window.addEventListener("pagehide", salvarNoServidor);
+    return () => { document.removeEventListener("visibilitychange", aoSair); window.removeEventListener("pagehide", salvarNoServidor); };
+  }, [companyId, submitted]);
+
+  useEffect(() => {
+    if (rascunhoRestaurado) toast.info("Recuperamos as respostas que você já tinha digitado. Pode continuar de onde parou.");
   }, [rascunhoRestaurado]);
 
   useEffect(() => {
@@ -253,11 +279,20 @@ const KickoffFormPage = () => {
       // Rascunho local: se a pessoa já tinha começado a responder neste aparelho e não enviou
       // (queda de internet, erro no envio, fechou a aba), devolve o que ela digitou.
       try {
-        const raw = localStorage.getItem(`kickoff_rascunho_${companyId}`);
-        if (raw) {
-          const d = JSON.parse(raw);
+        let local: any = null;
+        try { const raw = localStorage.getItem(`kickoff_rascunho_${companyId}`); if (raw) local = JSON.parse(raw); } catch { /* ignora */ }
+        let remoto: any = null; let passoRemoto: number | null = null;
+        try {
+          const { data: rd } = await (supabase as any).rpc("public_form_draft_get", { p_form: "kickoff", p_ref: companyId });
+          if (rd?.payload) { remoto = rd.payload; passoRemoto = Number(rd.step) || null; }
+        } catch { /* sem rascunho no servidor */ }
+        // vale o mais recente entre o aparelho e o servidor
+        const quando = (x: any) => (x?.em ? new Date(x.em).getTime() : 0);
+        const d = quando(remoto) > quando(local) ? remoto : (local || remoto);
+        if (d) {
           if (d?.formData) setFormData((prev) => ({ ...prev, ...d.formData }));
           if (Array.isArray(d?.salesHistory)) setSalesHistory(d.salesHistory);
+          if (d === remoto && passoRemoto && passoRemoto >= 1 && passoRemoto <= STEPS.length) setCurrentStep(passoRemoto);
           setRascunhoRestaurado(true);
         }
       } catch { /* rascunho inválido: ignora */ }
@@ -346,6 +381,7 @@ const KickoffFormPage = () => {
       if (ok === false) throw new Error("Empresa não encontrada");
 
       try { localStorage.removeItem(`kickoff_rascunho_${companyId}`); } catch { /* ok */ }
+      (supabase as any).rpc("public_form_draft_clear", { p_form: "kickoff", p_ref: companyId }).then(() => {}, () => {});
       setSubmitted(true);
       toast.success("Formulário enviado com sucesso!");
     } catch (error) {
