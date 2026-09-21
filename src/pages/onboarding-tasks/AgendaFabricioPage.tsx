@@ -50,6 +50,8 @@ interface AgendaMeeting {
   google_event_id: string | null;
   staff_id: string | null;
   duration_minutes?: number | null;
+  origem?: "projeto" | "crm";
+  lead_id?: string | null;
 }
 
 interface ProjectOption {
@@ -57,6 +59,10 @@ interface ProjectOption {
   companyName: string;
   productName: string;
 }
+
+// os dois cadastros de staff do Fabrício (reunião antiga pode estar no nome de qualquer um)
+const FABRICIO_STAFF_IDS = ["b1a918b1-8776-4962-898e-5d97c7cc80c1", "e5be1fb8-fce8-4a48-b993-bd03b09520a6"];
+const ROW_H = 30; // altura de cada meia hora na grade (px)
 
 // Janelas dedicadas a reunião de produto com cliente (10h Acceleration, 14h Partners)
 const PRODUCT_SLOTS = new Set(["10:00", "14:00"]);
@@ -190,11 +196,26 @@ const AgendaFabricioPage = () => {
       const { data: notes } = await supabase
         .from("onboarding_meeting_notes")
         .select("id, project_id, meeting_title, meeting_date, meeting_link, google_event_id, staff_id, duration_minutes")
-        .eq("calendar_owner_id", FABRICIO.userId)
+        // tudo que o sistema agendou na agenda dele: por esta tela, de dentro do projeto, e as antigas sem dono gravado
+        .or(`calendar_owner_id.eq.${FABRICIO.userId},and(calendar_owner_id.is.null,staff_id.in.(${FABRICIO_STAFF_IDS.join(",")}))`)
         .gte("meeting_date", weekStart.toISOString())
         .lt("meeting_date", weekEnd.toISOString())
         .order("meeting_date");
-      setMeetings((notes || []) as AgendaMeeting[]);
+      // reuniões com lead marcadas pelo CRM (tela do negócio, Atendimento ou agente de IA) na agenda dele
+      const { data: crmMeetings } = await (supabase as any)
+        .from("crm_activities")
+        .select("id, title, scheduled_at, meeting_link, google_calendar_event_id, lead_id, status, responsible_staff_id")
+        .eq("type", "meeting").eq("google_calendar_user_id", FABRICIO.userId)
+        .not("status", "in", "(cancelled,canceled)")
+        .gte("scheduled_at", weekStart.toISOString()).lt("scheduled_at", weekEnd.toISOString());
+      const doProjeto = ((notes || []) as AgendaMeeting[]).map((m) => ({ ...m, origem: "projeto" as const }));
+      const eventosProjeto = new Set(doProjeto.map((m) => m.google_event_id).filter(Boolean));
+      const doCrm: AgendaMeeting[] = ((crmMeetings || []) as any[])
+        .filter((a) => a.scheduled_at && !eventosProjeto.has(a.google_calendar_event_id))
+        .map((a) => ({ id: `crm-${a.id}`, project_id: "", meeting_title: a.title || "Reunião (CRM)", meeting_date: a.scheduled_at,
+          meeting_link: a.meeting_link || null, google_event_id: a.google_calendar_event_id || null, staff_id: a.responsible_staff_id || null,
+          duration_minutes: null, origem: "crm" as const, lead_id: a.lead_id || null }));
+      setMeetings([...doProjeto, ...doCrm].sort((a, b) => new Date(a.meeting_date).getTime() - new Date(b.meeting_date).getTime()));
     } catch (err) {
       console.error("Erro ao carregar agenda:", err);
     } finally {
@@ -581,90 +602,119 @@ const AgendaFabricioPage = () => {
                   </div>
                 ))}
               </div>
-              {/* Grade de horários */}
-              {slotTimes.map((time) => (
-                <div
-                  key={time}
-                  className="grid"
-                  style={{ gridTemplateColumns: "70px repeat(5, minmax(0, 1fr))" }}
-                >
-                  <div className={`border-b border-r px-2 py-1 text-[11px] text-right ${
-                    PRODUCT_SLOTS.has(time) ? "bg-emerald-100/70 text-emerald-700 font-semibold" : "bg-muted/30 text-muted-foreground"
-                  }`}>
-                    {time}
-                  </div>
-                  {weekDays.map((day) => {
-                    const meeting = meetingsForSlot(day, time);
-                    const busy = isSlotBusy(day, time);
-                    const key = `${dateKey(day)}-${time}`;
-                    if (meeting) {
-                      return (
-                        <button
-                          key={key}
-                          onClick={() => setSelectedMeeting(meeting)}
-                          className="border-b border-r last:border-r-0 min-h-[34px] min-w-0 overflow-hidden px-1.5 py-1 text-left bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                        >
-                          <div className="text-[11px] font-semibold truncate flex items-center gap-1">
-                            <Video className="h-3 w-3 shrink-0" />
-                            {meeting.meeting_title}
+              {/* Grade de horários — estilo Google Agenda: linhas de meia hora ao fundo e os compromissos como blocos
+                  por cima, com a altura real da duração. Clicar num espaço livre agenda naquele horário (:00 ou :30). */}
+              <div className="relative">
+                {slotTimes.map((time) => {
+                  const cheia = time.endsWith(":00");
+                  return (
+                    <div key={time} className="grid" style={{ gridTemplateColumns: "70px repeat(5, minmax(0, 1fr))", height: ROW_H }}>
+                      <div className={`border-r px-2 text-[11px] text-right leading-none pt-1 ${cheia ? "border-t" : ""} ${
+                        PRODUCT_SLOTS.has(time) ? "bg-emerald-100/70 text-emerald-700 font-semibold" : "bg-muted/30 text-muted-foreground"
+                      }`}>
+                        {cheia ? time : ""}
+                      </div>
+                      {weekDays.map((day) => {
+                        const key = `${dateKey(day)}-${time}`;
+                        const tomado = isSlotBusy(day, time) || !!meetingsForSlot(day, time) || !!meetingContinuing(day, time);
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => !tomado && openSchedule(day, time)}
+                            disabled={!canEdit || tomado}
+                            title={!tomado && canEdit ? `Agendar às ${time}` : undefined}
+                            className={`border-r last:border-r-0 group transition-colors ${cheia ? "border-t" : "border-t border-t-border/40 border-dashed"} ${
+                              PRODUCT_SLOTS.has(time) ? "bg-emerald-50" : ""
+                            } ${!tomado && canEdit ? "cursor-pointer hover:bg-primary/10" : "cursor-default"}`}
+                          >
+                            {!tomado && canEdit && (
+                              <span className="hidden group-hover:flex items-center justify-center gap-1 text-[10px] text-primary/80 font-medium">
+                                <Plus className="h-3 w-3" /> {time}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+
+                {/* blocos por cima */}
+                {weekDays.map((day, di) => {
+                  const inicioDia = new Date(day); inicioDia.setHours(DAY_START_HOUR, 0, 0, 0);
+                  const fimDia = new Date(day); fimDia.setHours(DAY_END_HOUR, 0, 0, 0);
+                  const pos = (ini: Date, fim: Date) => {
+                    const a = Math.max(ini.getTime(), inicioDia.getTime()), b = Math.min(fim.getTime(), fimDia.getTime());
+                    if (b <= a) return null;
+                    return { top: ((a - inicioDia.getTime()) / 1800000) * ROW_H, height: Math.max(((b - a) / 1800000) * ROW_H - 2, 14) };
+                  };
+                  const colStyle = (p: { top: number; height: number }) => ({
+                    top: p.top + 1, height: p.height,
+                    left: `calc(70px + (100% - 70px) * ${di} / 5 + 2px)`, width: `calc((100% - 70px) / 5 - 5px)`,
+                  });
+                  const doDia = meetings.filter((mt) => isSameDay(new Date(mt.meeting_date), day));
+                  const ocupados = (busyByDay[dateKey(day)] || [])
+                    .map((b) => ({ ini: new Date(b.start), fim: new Date(b.end) }))
+                    // o que já aparece como reunião não repete como "Ocupado"
+                    .flatMap((b) => {
+                      let partes = [b];
+                      for (const mt of doDia) {
+                        const mi = new Date(mt.meeting_date), mf = meetingEnd(mt);
+                        partes = partes.flatMap((x) => {
+                          if (mf <= x.ini || mi >= x.fim) return [x];
+                          const r: { ini: Date; fim: Date }[] = [];
+                          if (mi > x.ini) r.push({ ini: x.ini, fim: mi });
+                          if (mf < x.fim) r.push({ ini: mf, fim: x.fim });
+                          return r;
+                        });
+                      }
+                      return partes;
+                    })
+                    .filter((x) => x.fim.getTime() - x.ini.getTime() >= 5 * 60000);
+                  return (
+                    <div key={`ov-${dateKey(day)}`}>
+                      {ocupados.map((o, k) => {
+                        const p = pos(o.ini, o.fim); if (!p) return null;
+                        return (
+                          <div key={`b-${k}`} className="absolute rounded-md bg-muted border border-border/60 px-1.5 py-0.5 overflow-hidden pointer-events-none" style={colStyle(p)}>
+                            <span className="text-[10px] text-muted-foreground">Ocupado · {format(o.ini, "HH:mm")}–{format(o.fim, "HH:mm")}</span>
                           </div>
-                          <div className="text-[10px] opacity-80">
-                            {format(new Date(meeting.meeting_date), "HH:mm")}–{format(meetingEnd(meeting), "HH:mm")}
-                          </div>
-                        </button>
-                      );
-                    }
-                    const continuando = meetingContinuing(day, time);
-                    if (continuando) {
-                      const fim = meetingEnd(continuando);
-                      const [hh, mm] = time.split(":").map(Number);
-                      const fimDoSlot = new Date(day); fimDoSlot.setHours(hh, mm + 30, 0, 0);
-                      return (
-                        <button
-                          key={key}
-                          onClick={() => setSelectedMeeting(continuando)}
-                          title={continuando.meeting_title}
-                          className="border-b border-r last:border-r-0 min-h-[34px] min-w-0 overflow-hidden px-1.5 py-1 text-left bg-primary/90 text-primary-foreground hover:bg-primary/80 transition-colors"
-                        >
-                          <div className="text-[10px] opacity-80 truncate">
-                            {fim <= fimDoSlot ? `até ${format(fim, "HH:mm")}` : "continua"}
-                          </div>
-                        </button>
-                      );
-                    }
-                    if (busy) {
-                      return (
-                        <div
-                          key={key}
-                          className="border-b border-r last:border-r-0 min-h-[34px] bg-muted flex items-center justify-center"
-                        >
-                          <span className="text-[10px] text-muted-foreground">Ocupado</span>
-                        </div>
-                      );
-                    }
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => openSchedule(day, time)}
-                        disabled={!canEdit}
-                        className={`border-b border-r last:border-r-0 min-h-[34px] transition-colors group ${
-                          PRODUCT_SLOTS.has(time) ? "bg-emerald-50 hover:bg-emerald-100/80" : ""
-                        } ${canEdit ? (PRODUCT_SLOTS.has(time) ? "cursor-pointer" : "hover:bg-primary/5 cursor-pointer") : "cursor-default"}`}
-                      >
-                        {canEdit && (
-                          <Plus className="h-3.5 w-3.5 mx-auto text-transparent group-hover:text-primary/60" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              ))}
+                        );
+                      })}
+                      {doDia.map((mt) => {
+                        const ini = new Date(mt.meeting_date), fim = meetingEnd(mt);
+                        const p = pos(ini, fim); if (!p) return null;
+                        const crm = mt.origem === "crm";
+                        return (
+                          <button
+                            key={mt.id}
+                            onClick={() => (crm ? (mt.lead_id ? window.open(`#/crm/leads/${mt.lead_id}`, "_blank") : undefined) : setSelectedMeeting(mt))}
+                            title={`${mt.meeting_title} · ${format(ini, "HH:mm")}–${format(fim, "HH:mm")}${crm ? " · reunião do CRM (abre o negócio)" : ""}`}
+                            className={`absolute rounded-md px-1.5 py-1 text-left overflow-hidden shadow-sm transition-colors ${
+                              crm ? "bg-blue-600 hover:bg-blue-600/90 text-white" : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                            }`}
+                            style={colStyle(p)}
+                          >
+                            <div className="text-[11px] font-semibold leading-tight truncate flex items-center gap-1">
+                              <Video className="h-3 w-3 shrink-0" />
+                              {mt.meeting_title}
+                            </div>
+                            {p.height >= 26 && (
+                              <div className="text-[10px] opacity-85 leading-tight">{format(ini, "HH:mm")}–{format(fim, "HH:mm")}{crm ? " · CRM" : ""}</div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
 
         <p className="text-xs text-muted-foreground mt-3">
-          Faixas em verde (10h e 14h) são as janelas dedicadas a reuniões de produto com clientes. Horários ocupados vêm do Google Agenda do Fabrício. Ao agendar, o evento é criado no
+          Faixas em verde (10h e 14h) são as janelas dedicadas a reuniões de produto com clientes. Em vermelho, reuniões de cliente (agendadas aqui ou dentro do projeto); em azul, reuniões do CRM com leads. Clique num espaço livre para agendar naquele horário, inclusive nas meias horas. Horários ocupados vêm do Google Agenda do Fabrício. Ao agendar, o evento é criado no
           Google Agenda com link do Meet e a reunião entra automaticamente na aba Reuniões do
           projeto do cliente.
         </p>
