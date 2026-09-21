@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
 
     // === Pagamento gerado no CRM (lead) — marca pago + credita banco Asaas (já com taxa) ===
     try {
-      const ASAAS_BANK = "9f9de213-46bf-49bf-ba6b-a5a1837b3092"; // financial_banks: Asaas
+      const ASAAS_BANK = "6e9a3135-5826-4633-adf1-a63ef5b70e96"; // financial_banks: Asaas ATIVO (o 9f9de213… era um "Asaas" antigo e inativo — o dinheiro sumia do saldo, corrigido em 21/09/2026)
       const { data: lp } = await supabase.from("crm_lead_payments")
         .select("id, receivable_id, status, description, url, recurring, lead:crm_leads(name)").eq("provider", "asaas").eq("provider_ref", String(paymentId)).limit(1).maybeSingle();
       if (lp && newStatus === "paid" && lp.status !== "paid") {
