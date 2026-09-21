@@ -139,8 +139,23 @@ Deno.serve(async (req) => {
             meta_lead_id: String(L.id), meta_campaign_id: L.campaign_id || null, meta_adset_id: L.adset_id || null, meta_ad_id: L.ad_id || null,
             campaign_name: L.campaign_name || null, adset_name: L.adset_name || null, ad_name: L.ad_name || null,
           };
+          let jaExistia = false;
           if (leadId) {
+            jaExistia = true;
             await supabase.from("crm_leads").update(rastreio).eq("id", leadId).is("meta_lead_id", null);
+            // Lead RECÉM-criado por outro caminho (ex.: a pessoa preencheu o formulário e já chamou no
+            // WhatsApp, e a automação do número criou o negócio em outro funil — caso Patricia, 20/09):
+            // o formulário é a origem de verdade, então o negócio vai pro funil do formulário.
+            // Lead antigo (mais de 48h) fica onde está: pode ser cliente ou negociação em curso.
+            const { data: ex2 } = await supabase.from("crm_leads").select("pipeline_id, created_at, origin_id").eq("id", leadId).maybeSingle();
+            const recente = ex2?.created_at && Date.now() - new Date(ex2.created_at).getTime() < 48 * 3600000;
+            if (recente && ex2?.pipeline_id !== f.pipeline_id && stageId) {
+              await supabase.from("crm_leads").update({
+                pipeline_id: f.pipeline_id, stage_id: stageId, stage_entered_at: new Date().toISOString(),
+                origin_id: ex2?.origin_id || f.origin_id || null,
+                utm_source: plataforma, utm_medium: "lead_form", utm_campaign: L.campaign_name || null,
+              }).eq("id", leadId);
+            }
             vinculados++;
           } else {
             const { data: ins, error: ie } = await supabase.from("crm_leads").insert({
@@ -157,6 +172,7 @@ Deno.serve(async (req) => {
           if (leadId && respostas.length) {
             await supabase.from("crm_lead_form_answers").insert(respostas.map((r) => ({ lead_id: leadId, question_id: null, question_label: r.label, answer_text: r.valor, source: `meta_form:${f.form_id}` })));
           }
+          if (leadId) await avisarNoWhatsApp(supabase, leadId, nome, foneBR, f.form_name, f.pipeline_id, jaExistia).catch((e) => console.error("aviso WhatsApp falhou", e));
           if (leadId) await supabase.from("crm_lead_history").insert({ lead_id: leadId, action: "meta_lead_form", notes: `Preencheu o formulário "${f.form_name}" no ${plataforma === "instagram" ? "Instagram" : "Facebook"}${L.campaign_name ? ` (campanha ${L.campaign_name})` : ""}` }).then(() => {}, () => {});
         }
         if (!dry) await supabase.from("crm_meta_lead_forms").update({ last_synced_at: new Date().toISOString(), last_lead_time: maisRecente ? new Date(maisRecente).toISOString() : f.last_lead_time, imported_count: (f.imported_count || 0) + novos + vinculados, last_result: `ok: ${novos} novo(s), ${vinculados} já existente(s)` }).eq("form_id", f.form_id);
@@ -170,3 +186,51 @@ Deno.serve(async (req) => {
     return json({ ok: true, formularios: forms.length, detalhe: out });
   } catch (e) { return json({ ok: false, error: String((e as Error).message || e).slice(0, 300) }, 500); }
 });
+
+
+// Aviso no WhatsApp quando entra lead pelo formulário nativo (pedido do Fabrício, 21/09/2026):
+// mesmos destinatários e mesmo número de envio do aviso de formulário do site (submit-pipeline-form).
+async function avisarNoWhatsApp(supabase: any, leadId: string, nome: string, telefone: string, formName: string, pipelineId: string | null, jaExistia: boolean) {
+  const { data: instanceSetting } = await supabase.from("crm_settings").select("setting_value").eq("setting_key", "lead_notification_instance_name").maybeSingle();
+  const instanceName = (instanceSetting?.setting_value as string) || "fabricionunnes";
+  const { data: instance } = await supabase.from("whatsapp_instances").select("instance_name, api_url, api_key").eq("instance_name", instanceName).maybeSingle();
+  if (!instance?.api_url || !instance?.api_key) return;
+  const { data: pipe } = pipelineId ? await supabase.from("crm_pipelines").select("name").eq("id", pipelineId).maybeSingle() : { data: null };
+  const message = `📋 *${nome}* preencheu o formulário nativo do Meta *${formName}*` +
+    (pipe?.name ? ` no funil *${pipe.name}*.` : ".") +
+    (jaExistia ? `\n\nEsse contato já existia no CRM.` : "") +
+    (telefone ? `\n\n📱 ${telefone}` : "") +
+    `\n\n🔗 https://unvholdings.com.br/#/crm/leads/${leadId}`;
+
+  const { data: candidateStaff } = await supabase.from("onboarding_staff").select("id, role, phone")
+    .eq("is_active", true).in("role", ["master", "head_comercial", "sdr"]).not("phone", "is", null);
+  const nonMasterIds = (candidateStaff || []).filter((s: any) => s.role !== "master").map((s: any) => s.id);
+  let crmEnabled = new Set<string>();
+  if (nonMasterIds.length) {
+    const { data: perms } = await supabase.from("staff_menu_permissions").select("staff_id").eq("menu_key", "crm").in("staff_id", nonMasterIds);
+    crmEnabled = new Set((perms || []).map((p: any) => p.staff_id));
+  }
+  const norm = (p: string) => {
+    let c = String(p || "").replace(/\D/g, "");
+    if (c.length === 10 || c.length === 11) c = "55" + c;
+    if (c.length === 12 && c.startsWith("55")) c = c.slice(0, 4) + "9" + c.slice(4);
+    return c;
+  };
+  const numeros: string[] = [];
+  for (const st of (candidateStaff || [])) {
+    if (st.role !== "master" && !crmEnabled.has(st.id)) continue;
+    const c = norm(st.phone); if (c && !numeros.includes(c)) numeros.push(c);
+  }
+  const { data: extras } = await supabase.from("crm_lead_notification_numbers").select("phone").eq("is_active", true);
+  for (const n of (extras || [])) { const c = norm(n.phone); if (c && !numeros.includes(c)) numeros.push(c); }
+
+  let isV2 = false; try { isV2 = new URL(instance.api_url).hostname.toLowerCase().endsWith(".stevo.chat"); } catch { /* ok */ }
+  const sendUrl = isV2 ? `${instance.api_url}/send/text` : `${instance.api_url}/message/sendText/${instance.instance_name}`;
+  for (const phone of numeros) {
+    try {
+      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 10000);
+      await fetch(sendUrl, { method: "POST", headers: { "Content-Type": "application/json", apikey: instance.api_key }, body: JSON.stringify({ number: phone, text: message }), signal: ctl.signal });
+      clearTimeout(t);
+    } catch (e) { console.error("aviso lead form: falha pra", phone.slice(-4), e); }
+  }
+}
