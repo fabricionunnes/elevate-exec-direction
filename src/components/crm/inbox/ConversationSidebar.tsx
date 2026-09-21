@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ScheduleLeadMeetingDialog } from "@/components/crm/lead-detail/ScheduleLeadMeetingDialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -594,6 +595,18 @@ export function ConversationSidebar({
     }
   };
 
+  // Agendamento completo (Google Agenda + Meet). Precisa de negócio vinculado, que é onde a reunião fica registrada.
+  const [showFullSchedule, setShowFullSchedule] = useState(false);
+  const leadDaConversa: any = (linkedLeads as any[])?.find((l: any) => l.id === conversation.lead_id) || null;
+  const abrirAgendamento = () => {
+    if (!conversation.lead_id) {
+      toast.info("Esta conversa ainda não tem negócio. Crie o negócio primeiro e depois agende.");
+      setShowAddDealDialog(true);
+      return;
+    }
+    setShowFullSchedule(true);
+  };
+
   const handleScheduleMeeting = async () => {
     if (!scheduleData.title || !scheduleData.date || !scheduleData.time) {
       toast.error("Preencha todos os campos obrigatórios");
@@ -762,7 +775,7 @@ export function ConversationSidebar({
             size="icon" 
             className="h-8 w-8" 
             title="Agendar reunião"
-            onClick={() => setShowScheduleDialog(true)}
+            onClick={abrirAgendamento}
           >
             <Calendar className="h-4 w-4" />
           </Button>
@@ -776,6 +789,13 @@ export function ConversationSidebar({
             <ListTodo className="h-4 w-4" />
           </Button>
         </div>
+
+        {/* Agendar direto do Atendimento (pedido do Fabrício, 21/09/2026): mesmo agendamento completo da tela
+            do negócio — escolhe o closer, vê a agenda, cria o evento no Google com link do Meet. */}
+        <Button className="w-full mt-3 gap-2" size="sm" onClick={abrirAgendamento}>
+          <Calendar className="h-4 w-4" />
+          Agendar reunião
+        </Button>
       </div>
 
       {/* Agente IA: liga/desliga e troca de agente só nesta conversa */}
@@ -1224,6 +1244,17 @@ export function ConversationSidebar({
           </div>
         </DialogContent>
       </Dialog>
+
+      {conversation.lead_id && (
+        <ScheduleLeadMeetingDialog
+          open={showFullSchedule}
+          onOpenChange={setShowFullSchedule}
+          leadId={conversation.lead_id}
+          leadName={leadDaConversa?.name || conversation.contact?.name || conversation.contact?.phone || "Lead"}
+          leadEmail={leadDaConversa?.email || undefined}
+          onSuccess={() => { setShowFullSchedule(false); refetchLinkedLeads?.(); onAssignmentChanged?.(); }}
+        />
+      )}
 
       {/* Schedule Meeting Dialog */}
       <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
