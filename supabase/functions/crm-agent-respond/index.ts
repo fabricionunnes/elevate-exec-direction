@@ -1185,7 +1185,8 @@ Deno.serve(async (req) => {
             // histórico: precisa terminar em outbound (lead sumiu) e ter tido inbound antes
             const { data: hist } = await supabase.from(msgTable)
               .select(`direction, content, ${tsCol}`).eq("conversation_id", cv.id)
-              .order(tsCol, { ascending: true }).limit(40);
+              .order(tsCol, { ascending: false }).limit(60);   // as ÚLTIMAS mensagens (antes pegava as 40 primeiras)
+            (hist || []).reverse();
             const hm = (hist || []).filter((m: any) => (m.content || "").trim().length > 0);
             if (hm.length < 2) continue;
             if (hm[hm.length - 1].direction !== "outbound") continue;
@@ -1534,14 +1535,16 @@ Deno.serve(async (req) => {
       const { data: history } = await supabase.from("instagram_messages")
         .select("id, direction, content, timestamp, message_type, media_url, transcription, is_ai, sent_by")
         .eq("conversation_id", conversation_id)
-        .order("timestamp", { ascending: true }).limit(40);
-      rawHistory = (history || []).map((m: any) => ({ ...m, ts: m.timestamp }));
+        .order("timestamp", { ascending: false }).limit(60);
+      // BUG GRAVE (21/09/2026): com ordem crescente + limit, vinham as 40 PRIMEIRAS mensagens. Em conversa com
+      // mais de 40, o agente não via o que o lead acabou de escrever e ficava mudo ("última mensagem não é do lead").
+      rawHistory = (history || []).reverse().map((m: any) => ({ ...m, ts: m.timestamp }));
     } else {
       const { data: history } = await supabase.from("crm_whatsapp_messages")
         .select("id, direction, content, created_at, type, media_url, transcription, is_ai, sent_by")
         .eq("conversation_id", conversation_id)
-        .order("created_at", { ascending: true }).limit(40);
-      rawHistory = (history || []).map((m: any) => ({ ...m, message_type: m.type, ts: m.created_at }));
+        .order("created_at", { ascending: false }).limit(60);
+      rawHistory = (history || []).reverse().map((m: any) => ({ ...m, message_type: m.type, ts: m.created_at }));
     }
     // Áudio: o lead manda voz e a mensagem chega como "[audio]". Transcrevemos
     // (até 4 dos mais recentes) pra o agente responder o que foi dito, em texto.
