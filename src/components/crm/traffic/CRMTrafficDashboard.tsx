@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RealRoasByAd } from "./RealRoasByAd";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -382,8 +383,11 @@ export const CRMTrafficDashboard = ({
       />
 
       {/* Drill-down */}
-      <Tabs defaultValue="campaigns" className="w-full">
-        <TabsList className="bg-muted/40 backdrop-blur-sm">
+      <Tabs defaultValue="roasreal" className="w-full">
+        <TabsList className="bg-muted/40 backdrop-blur-sm flex-wrap h-auto">
+          <TabsTrigger value="roasreal" className="gap-1.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-amber-500 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-md">
+            ROAS real
+          </TabsTrigger>
           <TabsTrigger value="campaigns" className="gap-1.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-md">
             <Layers className="h-3.5 w-3.5" /> Campanhas
           </TabsTrigger>
@@ -397,6 +401,10 @@ export const CRMTrafficDashboard = ({
             <Megaphone className="h-3.5 w-3.5" /> Por Anúncio (Direto)
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="roasreal" className="mt-4">
+          <RealRoasByAd />
+        </TabsContent>
 
         <TabsContent value="campaigns" className="mt-4">
           <Card className="overflow-hidden border-border/40 shadow-md">
