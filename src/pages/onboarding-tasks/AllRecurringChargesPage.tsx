@@ -351,20 +351,6 @@ export default function AllRecurringChargesPage() {
   const [selectedRecurrence, setSelectedRecurrence] = useState("all");
   const [selectedConsultant, setSelectedConsultant] = useState("all");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-
-  /**
-   * Escolher uma categoria PAI no filtro precisa trazer as filhas junto: as faturas ficam
-   * gravadas na subcategoria ("Créditos UNV Sales"), então filtrar pelo pai ("UNV Sales")
-   * não mostrava nada.
-   */
-  const expandirCategorias = (escolhidas: string[]) => {
-    if (escolhidas.length === 0) return null;
-    const todas = new Set(escolhidas);
-    for (const c of ((staffCategories as any[]) ?? [])) {
-      if (c?.parent_id && todas.has(c.parent_id)) todas.add(c.id);
-    }
-    return todas;
-  };
   const [selectedCostCenters, setSelectedCostCenters] = useState<string[]>([]);
   const [selectedPayableCategories, setSelectedPayableCategories] = useState<string[]>([]);
   const [selectedPayableCostCenters, setSelectedPayableCostCenters] = useState<string[]>([]);
@@ -469,7 +455,46 @@ export default function AllRecurringChargesPage() {
     return { data: allData, error: null };
   };
 
+  // ATUALIZAÇÃO AUTOMÁTICA (21/09/2026, Fabrício): saldo, contas a pagar e a receber mudam sozinhos,
+  // sem recarregar a página. Três gatilhos: (1) evento em tempo real das tabelas centrais;
+  // (2) voltar pra aba do navegador depois de 1 min fora; (3) rede de segurança a cada 2 min.
+  // A recarga é silenciosa (sem tela de carregando) e nunca roda mais de uma vez a cada 8 segundos.
+  const loadDataRef = useRef<() => Promise<void>>(async () => {});
+  const ultimaCargaRef = useRef(0);
+  const recargaAgendadaRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
+  const recarregarSilencioso = useCallback((motivo: string) => {
+    if (recargaAgendadaRef.current) return;                       // já tem uma a caminho
+    const espera = Math.max(1500, 8000 - (Date.now() - ultimaCargaRef.current));
+    recargaAgendadaRef.current = setTimeout(async () => {
+      recargaAgendadaRef.current = null;
+      if (document.visibilityState !== "visible") return;         // aba escondida: recarrega quando voltar
+      ultimaCargaRef.current = Date.now();
+      try { await loadDataRef.current(); setAtualizadoEm(new Date()); } catch (e) { console.warn("financeiro: recarga automática falhou", motivo, e); }
+    }, espera);
+  }, []);
+  useEffect(() => {
+    if (!userRole) return;
+    const canal = supabase.channel("financeiro-ao-vivo");
+    for (const tabela of ["financial_payables", "company_invoices", "financial_receivables", "financial_banks", "company_recurring_charges"]) {
+      canal.on("postgres_changes" as any, { event: "*", schema: "public", table: tabela }, () => recarregarSilencioso(tabela));
+    }
+    canal.subscribe();
+    const aoVoltar = () => { if (document.visibilityState === "visible" && Date.now() - ultimaCargaRef.current > 60000) recarregarSilencioso("voltou pra aba"); };
+    document.addEventListener("visibilitychange", aoVoltar);
+    window.addEventListener("focus", aoVoltar);
+    const relogio = setInterval(() => { if (Date.now() - ultimaCargaRef.current > 120000) recarregarSilencioso("relógio"); }, 30000);
+    return () => {
+      supabase.removeChannel(canal);
+      document.removeEventListener("visibilitychange", aoVoltar);
+      window.removeEventListener("focus", aoVoltar);
+      clearInterval(relogio);
+      if (recargaAgendadaRef.current) { clearTimeout(recargaAgendadaRef.current); recargaAgendadaRef.current = null; }
+    };
+  }, [userRole, recarregarSilencioso]);
+
   const loadData = async () => {
+    ultimaCargaRef.current = Date.now();
     try {
       const [chargesRes, companiesRes, payablesRes, invoicesRes, financialReceivablesRes, banksRes, catRes, ccRes, staffRes, projectsRes] = await Promise.all([
         supabase.from("company_recurring_charges").select("*").order("created_at", { ascending: false }),
@@ -559,6 +584,7 @@ export default function AllRecurringChargesPage() {
       toast.error("Erro ao carregar dados");
     }
   };
+  loadDataRef.current = loadData;
 
   // ── Toggle juridico for a company ─────────────────────────────────────────
   const toggleJuridico = async (inv: Invoice) => {
@@ -657,9 +683,6 @@ export default function AllRecurringChargesPage() {
   };
 
   // Filtered invoices
-  const categoriasComFilhas = useMemo(() => expandirCategorias(selectedCategories), [selectedCategories, staffCategories]);
-  const categoriasPagarComFilhas = useMemo(() => expandirCategorias(selectedPayableCategories), [selectedPayableCategories, staffCategories]);
-
   const filteredInvoices = useMemo(() => {
     return invoices.filter(inv => {
       if (searchTerm) {
@@ -679,11 +702,11 @@ export default function AllRecurringChargesPage() {
         if (!consultantIds || !consultantIds.has(selectedConsultant)) return false;
       }
       const invAny = inv as any;
-      if (categoriasComFilhas && !categoriasComFilhas.has(invAny.category_id)) return false;
+      if (selectedCategories.length > 0 && !selectedCategories.includes(invAny.category_id)) return false;
       if (selectedCostCenters.length > 0 && !selectedCostCenters.includes(invAny.cost_center_id)) return false;
       return true;
     });
-  }, [invoices, searchTerm, selectedCompany, selectedStatuses, dateFrom, dateTo, selectedConsultant, categoriasComFilhas, selectedCostCenters, companyConsultantMap]);
+  }, [invoices, searchTerm, selectedCompany, selectedStatuses, dateFrom, dateTo, selectedConsultant, selectedCategories, selectedCostCenters, companyConsultantMap]);
 
   // Reset page when filters change
   useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedCompany, selectedStatuses, dateFrom, dateTo, selectedConsultant, selectedCategories, selectedCostCenters]);
@@ -722,11 +745,11 @@ export default function AllRecurringChargesPage() {
       if (payableDateFrom && p.due_date) { if (p.due_date < format(payableDateFrom, "yyyy-MM-dd")) return false; }
       if (payableDateTo && p.due_date) { if (p.due_date > format(payableDateTo, "yyyy-MM-dd")) return false; }
       const pAny = p as any;
-      if (categoriasPagarComFilhas && !categoriasPagarComFilhas.has(pAny.category_id)) return false;
+      if (selectedPayableCategories.length > 0 && !selectedPayableCategories.includes(pAny.category_id)) return false;
       if (selectedPayableCostCenters.length > 0 && !selectedPayableCostCenters.includes(pAny.cost_center_id)) return false;
       return true;
     });
-  }, [payables, searchTerm, selectedStatuses, payableDateFrom, payableDateTo, categoriasPagarComFilhas, selectedPayableCostCenters]);
+  }, [payables, searchTerm, selectedStatuses, payableDateFrom, payableDateTo, selectedPayableCategories, selectedPayableCostCenters]);
 
   const sortedPayables = useMemo(() => {
     if (!paySortCol) return filteredPayables;
@@ -1295,7 +1318,7 @@ export default function AllRecurringChargesPage() {
         if (!cids || !cids.has(selectedConsultant)) return false;
       }
       const invAny = inv as any;
-      if (categoriasComFilhas && !categoriasComFilhas.has(invAny.category_id)) return false;
+      if (selectedCategories.length > 0 && !selectedCategories.includes(invAny.category_id)) return false;
       if (selectedCostCenters.length > 0 && !selectedCostCenters.includes(invAny.cost_center_id)) return false;
       return true;
     });
@@ -1306,7 +1329,7 @@ export default function AllRecurringChargesPage() {
       }, 0),
       count: rows.length,
     };
-  }, [invoices, dateFrom, dateTo, searchTerm, selectedCompany, selectedConsultant, categoriasComFilhas, selectedCostCenters, companyConsultantMap]);
+  }, [invoices, dateFrom, dateTo, searchTerm, selectedCompany, selectedConsultant, selectedCategories, selectedCostCenters, companyConsultantMap]);
 
   const caixaPago = useMemo(() => {
     const from = payableDateFrom ? format(payableDateFrom, "yyyy-MM-dd") : null;
@@ -1319,7 +1342,7 @@ export default function AllRecurringChargesPage() {
       if (to && pago > to) return false;
       if (searchTerm && !p.description?.toLowerCase().includes(searchTerm.toLowerCase()) && !p.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       const pAny = p as any;
-      if (categoriasPagarComFilhas && !categoriasPagarComFilhas.has(pAny.category_id)) return false;
+      if (selectedPayableCategories.length > 0 && !selectedPayableCategories.includes(pAny.category_id)) return false;
       if (selectedPayableCostCenters.length > 0 && !selectedPayableCostCenters.includes(pAny.cost_center_id)) return false;
       return true;
     });
@@ -1610,6 +1633,10 @@ export default function AllRecurringChargesPage() {
             <RefreshCw className="h-3.5 w-3.5 mr-1" />
             Sync Asaas
           </Button>
+          <p className="mt-1.5 flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground" title="Os números desta tela se atualizam sozinhos quando algo muda">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+            Ao vivo{atualizadoEm ? ` · atualizado às ${atualizadoEm.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : ""}
+          </p>
         </div>
       </aside>
 
