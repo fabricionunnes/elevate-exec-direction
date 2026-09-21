@@ -55,6 +55,7 @@ export default function TranscricoesPage() {
   const [busca, setBusca] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [progresso, setProgresso] = useState(0);
+  const [detalheEnvio, setDetalheEnvio] = useState("");
   const [linkOpen, setLinkOpen] = useState(false);
   const [link, setLink] = useState("");
   const [linkTitulo, setLinkTitulo] = useState("");
@@ -112,6 +113,19 @@ export default function TranscricoesPage() {
           },
           uploadDataDuringCreation: true,
           removeFingerprintOnSuccess: true,
+          // O acesso (token) vale 1 hora e o envio de um vídeo grande passa disso: em 21/09/2026 um vídeo de 1,3 GB
+          // subiu por 27 min e morreu no último pedaço com "jwt expired". Agora cada pedaço sai com o token do momento
+          // (getSession renova sozinho quando está perto de vencer).
+          onBeforeRequest: async (req: any) => {
+            const { data: { session: atual } } = await supabase.auth.getSession();
+            if (atual?.access_token) req.setHeader("authorization", `Bearer ${atual.access_token}`);
+          },
+          // token vencido ou oscilação: renova e tenta de novo em vez de derrubar o envio inteiro
+          onShouldRetry: (err: any) => {
+            const st = err?.originalResponse?.getStatus?.() ?? 0;
+            if (st === 400 || st === 401 || st === 403) { supabase.auth.refreshSession().catch(() => {}); return true; }
+            return st === 0 || st === 409 || st === 423 || st >= 500;
+          },
           metadata: {
             bucketName: "transcricoes",
             objectName: caminho,
@@ -120,7 +134,7 @@ export default function TranscricoesPage() {
           },
           chunkSize: 6 * 1024 * 1024, // exigido pelo Supabase Storage
           onError: reject,
-          onProgress: (enviado, total) => setProgresso(Math.round((enviado / total) * 92)),
+          onProgress: (enviado, total) => { setProgresso(Math.round((enviado / total) * 92)); setDetalheEnvio(`${(enviado / 1048576).toFixed(0)} de ${(total / 1048576).toFixed(0)} MB`); },
           onSuccess: () => resolve(),
         });
         up.findPreviousUploads().then((anteriores) => {
@@ -143,9 +157,10 @@ export default function TranscricoesPage() {
       toast.success("Gravação enviada — a transcrição já começou");
       carregar();
     } catch (e: any) {
-      toast.error(e?.message || "Não consegui enviar o arquivo");
+      console.error("upload transcrição", e);
+      toast.error("O envio parou antes de terminar. Escolha o MESMO arquivo de novo: ele continua de onde parou, não recomeça do zero.", { duration: 15000 });
     } finally {
-      setEnviando(false); setProgresso(0);
+      setEnviando(false); setProgresso(0); setDetalheEnvio("");
       if (inputRef.current) inputRef.current.value = "";
     }
   };
@@ -231,7 +246,8 @@ export default function TranscricoesPage() {
             <div className="max-w-sm mx-auto space-y-3">
               <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
               <Progress value={progresso} />
-              <p className="text-sm text-muted-foreground">Enviando a gravação... {progresso}%</p>
+              <p className="text-sm text-muted-foreground">Enviando a gravação... {progresso}%{detalheEnvio ? ` · ${detalheEnvio}` : ""}</p>
+              <p className="text-xs text-muted-foreground">Pode demorar em vídeo grande. Deixe esta aba aberta; se a internet cair, escolha o mesmo arquivo de novo que ele continua de onde parou.</p>
               <p className="text-xs text-muted-foreground">Arquivo grande pode levar alguns minutos. Se a internet cair, o envio continua de onde parou.</p>
             </div>
           ) : (
