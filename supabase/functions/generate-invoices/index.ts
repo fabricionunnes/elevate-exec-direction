@@ -931,10 +931,13 @@ Deno.serve(async (req) => {
 
     // Action: backfill - re-fetch Asaas URLs for all pending/overdue invoices
     if (action === "backfill_payment_links") {
-      const { data: invoicesToFix } = await supabase
+      // com recurring_charge_id, refaz só as parcelas daquela recorrência (sem isso varre TODAS as faturas abertas)
+      let qFix = supabase
         .from("company_invoices")
         .select("id, description, amount_cents, company_id, payment_method, due_date, recurring_charge_id, payment_link_id, payment_link_url")
         .in("status", ["pending", "overdue"]);
+      if (recurring_charge_id) qFix = qFix.eq("recurring_charge_id", recurring_charge_id);
+      const { data: invoicesToFix } = await qFix;
 
       let fixed = 0;
       for (const inv of invoicesToFix || []) {

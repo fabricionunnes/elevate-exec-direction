@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, RefreshCw, Loader2, Trash2, Calendar, ExternalLink, Copy, FileText } from "lucide-react";
+import { Plus, RefreshCw, Loader2, Trash2, Calendar, ExternalLink, Copy, FileText, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 
 interface Props {
@@ -27,6 +27,25 @@ interface Props {
   customerEmail?: string;
   customerPhone?: string;
   customerDocument?: string;
+}
+
+// Valida CPF (11) ou CNPJ (14) pelos dígitos verificadores
+function documentoValido(doc: string): boolean {
+  const d = String(doc || "").replace(/\D/g, "");
+  if (/^(\d)\1+$/.test(d)) return false;
+  const calc = (base: number[], pesos: number[]) => { const r = base.reduce((a, n, i) => a + n * pesos[i], 0) % 11; return r < 2 ? 0 : 11 - r; };
+  const n = d.split("").map(Number);
+  if (d.length === 11) {
+    const d1 = calc(n.slice(0, 9), [10, 9, 8, 7, 6, 5, 4, 3, 2]);
+    const d2 = calc(n.slice(0, 10), [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]);
+    return d1 === n[9] && d2 === n[10];
+  }
+  if (d.length === 14) {
+    const d1 = calc(n.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+    const d2 = calc(n.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+    return d1 === n[12] && d2 === n[13];
+  }
+  return false;
 }
 
 interface RecurringCharge {
@@ -151,6 +170,12 @@ export function CompanyRecurringCharges({
       toast.error("CPF/CNPJ do cliente é obrigatório");
       return;
     }
+    // O Asaas recusa documento com dígito verificador errado e a cobrança fica sem link de pagamento
+    // (caso Light Brotherz, 21/09/2026: CNPJ terminava em 33 e o certo era 32). Barra aqui.
+    if (!documentoValido(form.customerDocument)) {
+      toast.error("CPF/CNPJ inválido: confira os números, o dígito verificador não bate. Sem documento válido o Asaas não gera o link de pagamento.");
+      return;
+    }
     // Validate date: must be YYYY-MM-DD and year >= 2024
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(form.nextChargeDate)) {
@@ -243,6 +268,37 @@ export function CompanyRecurringCharges({
     } finally {
       setSaving(false);
     }
+  };
+
+  // Recorrência salva mas sem assinatura no Asaas (erro na criação): tenta de novo e refaz os links das parcelas
+  const [retrying, setRetrying] = useState<string | null>(null);
+  const tentarAsaasDeNovo = async (charge: RecurringCharge) => {
+    if (!documentoValido(charge.customer_document || "")) {
+      toast.error("O CPF/CNPJ desta recorrência é inválido. Corrija o documento no cadastro da empresa e recrie a recorrência.");
+      return;
+    }
+    setRetrying(charge.id);
+    try {
+      toast.info("Criando assinatura no Asaas...");
+      const { data: subData, error: subError } = await supabase.functions.invoke("asaas-subscription", {
+        body: {
+          description: charge.description, amount_cents: charge.amount_cents, payment_method: charge.payment_method,
+          recurrence: charge.recurrence, customer_name: charge.customer_name, customer_email: charge.customer_email,
+          customer_document: charge.customer_document, customer_phone: charge.customer_phone, company_id: companyId,
+          recurring_charge_id: charge.id, next_charge_date: charge.next_charge_date, asaas_account_id: charge.asaas_account_id,
+        },
+      });
+      if (subError || subData?.error) throw new Error(subData?.error || subError?.message || "erro no Asaas");
+      toast.info("Gerando os links de pagamento das parcelas...");
+      const { data: bf, error: bfError } = await supabase.functions.invoke("generate-invoices", {
+        body: { action: "backfill_payment_links", recurring_charge_id: charge.id },
+      });
+      if (bfError || bf?.error) throw new Error(bf?.error || bfError?.message || "erro ao gerar links");
+      toast.success(`Assinatura criada no Asaas e ${bf?.fixed ?? 0} parcela(s) com link de pagamento.`);
+      fetchCharges();
+    } catch (e: any) {
+      toast.error("Não deu certo no Asaas: " + (e.message || "erro"));
+    } finally { setRetrying(null); }
   };
 
   const toggleActive = async (charge: RecurringCharge) => {
@@ -568,6 +624,15 @@ export function CompanyRecurringCharges({
                     <FileText className="h-3 w-3 mr-1" />
                     Gerar Parcelas
                   </Button>
+                  {charge.is_active && !charge.pagarme_plan_id && (
+                    <Button type="button" variant="outline" size="sm" disabled={retrying === charge.id}
+                      className="border-amber-500/50 text-amber-700 dark:text-amber-400"
+                      title="Esta recorrência não foi criada no Asaas, então as parcelas estão sem link de pagamento"
+                      onClick={() => tentarAsaasDeNovo(charge)}>
+                      {retrying === charge.id ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <AlertTriangle className="h-3 w-3 mr-1" />}
+                      Sem Asaas: tentar de novo
+                    </Button>
+                  )}
                   <Switch
                     checked={charge.is_active}
                     onCheckedChange={() => toggleActive(charge)}
