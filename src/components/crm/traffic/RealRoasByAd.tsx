@@ -2,11 +2,11 @@
 // A Meta só credita venda ao anúncio até 7 dias depois do clique; o ciclo de venda da UNV passa disso em mais
 // da metade dos casos. Aqui o gasto de cada anúncio (Meta) é cruzado com as vendas que o CRM atribui a ele,
 // sem limite de dias, e mostra lado a lado o que a Meta consegue enxergar.
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, TrendingUp, EyeOff } from "lucide-react";
+import { Loader2, TrendingUp, EyeOff, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 
 interface Row {
   ad_name: string; campaign_name: string | null; thumb: string | null; spend: number; meta_leads: number;
@@ -23,6 +23,10 @@ export function RealRoasByAd() {
   const [semAnuncio, setSemAnuncio] = useState<{ vendas: number; receita: number; de_trafego: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState("");
+  // Ordenação: clica no título da coluna — 1º clique do maior pro menor, 2º do menor pro maior
+  type Col = "ad_name" | "spend" | "leads" | "reunioes" | "vendas" | "receita" | "roas" | "meta" | "ciclo";
+  const [sort, setSort] = useState<{ col: Col; dir: "desc" | "asc" }>({ col: "receita", dir: "desc" });
+  const ordenar = (col: Col) => setSort((p) => (p.col === col ? { col, dir: p.dir === "desc" ? "asc" : "desc" } : { col, dir: col === "ad_name" ? "asc" : "desc" }));
 
   useEffect(() => {
     (async () => {
@@ -41,6 +45,35 @@ export function RealRoasByAd() {
     vendas: a.vendas + r.vendas, vendas7: a.vendas7 + r.vendas_7d, leads: a.leads + r.leads, reunioes: a.reunioes + r.reunioes,
   }), { spend: 0, receita: 0, receita7: 0, vendas: 0, vendas7: 0, leads: 0, reunioes: 0 }), [rows]);
   const invisivel = tot.receita - tot.receita7;
+  const ordenadas = useMemo(() => {
+    const val = (r: Row): number | string | null => {
+      switch (sort.col) {
+        case "ad_name": return r.ad_name.toLowerCase();
+        case "roas": return roas(r.receita, r.spend);
+        case "meta": return roas(r.receita_7d, r.spend);
+        case "ciclo": return r.ciclo_medio === null || r.ciclo_medio === undefined ? null : Number(r.ciclo_medio);
+        case "spend": return r.spend; case "leads": return r.leads; case "reunioes": return r.reunioes;
+        case "vendas": return r.vendas; default: return r.receita;
+      }
+    };
+    return [...rows].sort((a, b) => {
+      const va = val(a), vb = val(b);
+      if (va === null && vb === null) return 0;
+      if (va === null) return 1;            // sem valor sempre no fim
+      if (vb === null) return -1;
+      const c = typeof va === "string" ? va.localeCompare(String(vb), "pt-BR") : (va as number) - (vb as number);
+      return sort.dir === "asc" ? c : -c;
+    });
+  }, [rows, sort]);
+  const Th = ({ col, children, left }: { col: Col; children: React.ReactNode; left?: boolean }) => (
+    <th className={`py-2 ${left ? "pr-3 text-left" : "px-2 text-right"}`}>
+      <button type="button" onClick={() => ordenar(col)} title="Clique para ordenar"
+        className={`inline-flex items-center gap-1 uppercase tracking-wide hover:text-foreground ${sort.col === col ? "text-foreground font-semibold" : ""}`}>
+        {children}
+        {sort.col === col ? (sort.dir === "desc" ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+      </button>
+    </th>
+  );
 
   return (
     <Card className="overflow-hidden border-border/40 shadow-md">
@@ -92,13 +125,13 @@ export function RealRoasByAd() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground border-b">
-                    <th className="py-2 pr-3">Anúncio</th><th className="py-2 px-2 text-right">Investido</th><th className="py-2 px-2 text-right">Leads</th>
-                    <th className="py-2 px-2 text-right">Reuniões</th><th className="py-2 px-2 text-right">Vendas</th><th className="py-2 px-2 text-right">Vendido</th>
-                    <th className="py-2 px-2 text-right">ROAS real</th><th className="py-2 px-2 text-right">A Meta vê</th><th className="py-2 pl-2 text-right">Ciclo</th>
+                    <Th col="ad_name" left>Anúncio</Th><Th col="spend">Investido</Th><Th col="leads">Leads</Th>
+                    <Th col="reunioes">Reuniões</Th><Th col="vendas">Vendas</Th><Th col="receita">Vendido</Th>
+                    <Th col="roas">ROAS real</Th><Th col="meta">A Meta vê</Th><Th col="ciclo">Ciclo</Th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((r) => {
+                  {ordenadas.map((r) => {
                     const real = roas(r.receita, r.spend); const meta = roas(r.receita_7d, r.spend);
                     return (
                       <tr key={r.ad_name} className="border-b border-border/50 hover:bg-muted/30">
