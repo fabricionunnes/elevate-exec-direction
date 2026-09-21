@@ -65,6 +65,13 @@ export function RealRoasByAd() {
       return sort.dir === "asc" ? c : -c;
     });
   }, [rows, sort]);
+  // 10 anúncios por página; trocar período ou ordenação volta pra primeira
+  const POR_PAGINA = 10;
+  const [pagina, setPagina] = useState(1);
+  useEffect(() => { setPagina(1); }, [dias, sort]);
+  const totalPaginas = Math.max(1, Math.ceil(ordenadas.length / POR_PAGINA));
+  const paginaAtual = Math.min(pagina, totalPaginas);
+  const visiveis = ordenadas.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA);
   const Th = ({ col, children, left }: { col: Col; children: React.ReactNode; left?: boolean }) => (
     <th className={`py-2 ${left ? "pr-3 text-left" : "px-2 text-right"}`}>
       <button type="button" onClick={() => ordenar(col)} title="Clique para ordenar"
@@ -131,7 +138,7 @@ export function RealRoasByAd() {
                   </tr>
                 </thead>
                 <tbody>
-                  {ordenadas.map((r) => {
+                  {visiveis.map((r) => {
                     const real = roas(r.receita, r.spend); const meta = roas(r.receita_7d, r.spend);
                     return (
                       <tr key={r.ad_name} className="border-b border-border/50 hover:bg-muted/30">
@@ -162,6 +169,21 @@ export function RealRoasByAd() {
                 </tbody>
               </table>
             </div>
+            {ordenadas.length > POR_PAGINA && (
+              <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                <span>{(paginaAtual - 1) * POR_PAGINA + 1}–{Math.min(paginaAtual * POR_PAGINA, ordenadas.length)} de {ordenadas.length} anúncios</span>
+                <div className="flex items-center gap-1">
+                  <button type="button" disabled={paginaAtual === 1} onClick={() => setPagina(paginaAtual - 1)}
+                    className="h-7 px-2.5 rounded-md border border-border disabled:opacity-40 hover:bg-muted">Anterior</button>
+                  {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((n) => (
+                    <button key={n} type="button" onClick={() => setPagina(n)}
+                      className={`h-7 min-w-7 px-2 rounded-md border ${n === paginaAtual ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted"}`}>{n}</button>
+                  ))}
+                  <button type="button" disabled={paginaAtual === totalPaginas} onClick={() => setPagina(paginaAtual + 1)}
+                    className="h-7 px-2.5 rounded-md border border-border disabled:opacity-40 hover:bg-muted">Próxima</button>
+                </div>
+              </div>
+            )}
             {semAnuncio && semAnuncio.vendas > 0 && (
               <p className="mt-4 text-xs text-muted-foreground">
                 Fora desta tabela: <strong>{semAnuncio.vendas}</strong> venda{semAnuncio.vendas === 1 ? "" : "s"} ({brl(Number(semAnuncio.receita))}) fechadas no período sem anúncio identificado no lead
