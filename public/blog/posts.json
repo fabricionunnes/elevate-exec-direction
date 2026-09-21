@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-21T15:02:07",
+ "gerado_em": "2026-09-21T21:00:58",
  "posts": [
+  {
+   "slug": "ferramenta-disponivel-nao-substitui-estrutura-cobra-resultado",
+   "url": "/blog/ferramenta-disponivel-nao-substitui-estrutura-cobra-resultado/",
+   "titulo": "Ferramenta disponível não substitui quem cobra o número",
+   "resumo": "Automação corta custo, mas não bate meta sozinha. O que falta não é robô, é quem olha o resultado toda semana.",
+   "tags": [
+    "ferramenta",
+    "estrutura comercial",
+    "rotina de cobrança",
+    "meta mensal",
+    "acompanhamento"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-21",
+   "ts": 2111
+  },
   {
    "slug": "proposta-escrita-espera-decisao-reuniao-fechar",
    "url": "/blog/proposta-escrita-espera-decisao-reuniao-fechar/",
