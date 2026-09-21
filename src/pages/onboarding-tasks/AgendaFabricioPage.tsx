@@ -49,6 +49,7 @@ interface AgendaMeeting {
   meeting_link: string | null;
   google_event_id: string | null;
   staff_id: string | null;
+  duration_minutes?: number | null;
 }
 
 interface ProjectOption {
@@ -188,7 +189,7 @@ const AgendaFabricioPage = () => {
       const weekEnd = addDays(weekStart, 5);
       const { data: notes } = await supabase
         .from("onboarding_meeting_notes")
-        .select("id, project_id, meeting_title, meeting_date, meeting_link, google_event_id, staff_id")
+        .select("id, project_id, meeting_title, meeting_date, meeting_link, google_event_id, staff_id, duration_minutes")
         .eq("calendar_owner_id", FABRICIO.userId)
         .gte("meeting_date", weekStart.toISOString())
         .lt("meeting_date", weekEnd.toISOString())
@@ -205,6 +206,33 @@ const AgendaFabricioPage = () => {
   useEffect(() => {
     fetchWeek(true);
   }, [fetchWeek]);
+
+  // Fim REAL da reunião (21/09/2026): a grade pintava só os primeiros 30 min e o resto virava "Ocupado" cinza,
+  // parecendo que a reunião de 1h ocupava meia hora. Duração: a gravada; nas antigas, o bloco ocupado do Google
+  // que começa junto com ela (limitado ao início da próxima reunião e a 3h, porque o Google junta blocos colados).
+  const meetingEnd = (mt: AgendaMeeting): Date => {
+    const start = new Date(mt.meeting_date);
+    if (mt.duration_minutes && mt.duration_minutes > 0) return new Date(start.getTime() + mt.duration_minutes * 60000);
+    const busy = busyByDay[dateKey(start)] || [];
+    const own = busy.find((b) => Math.abs(new Date(b.start).getTime() - start.getTime()) < 60000);
+    let end = own ? new Date(own.end) : new Date(start.getTime() + 30 * 60000);
+    const proxima = meetings.map((o) => new Date(o.meeting_date)).filter((d) => d > start && isSameDay(d, start)).sort((a, b) => a.getTime() - b.getTime())[0];
+    if (proxima && end > proxima) end = proxima;
+    const teto = new Date(start.getTime() + 180 * 60000);
+    if (end > teto) end = teto;
+    if (end <= start) end = new Date(start.getTime() + 30 * 60000);
+    return end;
+  };
+  // reunião que começou antes e ainda está acontecendo neste horário
+  const meetingContinuing = (day: Date, time: string): AgendaMeeting | null => {
+    const [h, m] = time.split(":").map(Number);
+    const slotStart = new Date(day);
+    slotStart.setHours(h, m, 0, 0);
+    return meetings.find((mt) => {
+      const start = new Date(mt.meeting_date);
+      return isSameDay(start, day) && start < slotStart && meetingEnd(mt) > slotStart;
+    }) || null;
+  };
 
   const meetingsForSlot = (day: Date, time: string): AgendaMeeting | null => {
     const [h, m] = time.split(":").map(Number);
@@ -316,6 +344,7 @@ const AgendaFabricioPage = () => {
         google_event_id: eventId,
         meeting_title: formTitle,
         meeting_date: start.toISOString(),
+        duration_minutes: durationMin,
         subject: formTitle,
         notes: "",
         meeting_link: meetingLink,
@@ -446,7 +475,7 @@ const AgendaFabricioPage = () => {
 
       const { error: upError } = await supabase
         .from("onboarding_meeting_notes")
-        .update({ meeting_date: start.toISOString(), meeting_link: meetingLink })
+        .update({ meeting_date: start.toISOString(), meeting_link: meetingLink, duration_minutes: durationMin } as any)
         .eq("id", selectedMeeting.id);
       if (upError) {
         toast.warning("Movida no Google Agenda, mas não consegui atualizar no projeto");
@@ -580,7 +609,25 @@ const AgendaFabricioPage = () => {
                             {meeting.meeting_title}
                           </div>
                           <div className="text-[10px] opacity-80">
-                            {format(new Date(meeting.meeting_date), "HH:mm")}
+                            {format(new Date(meeting.meeting_date), "HH:mm")}–{format(meetingEnd(meeting), "HH:mm")}
+                          </div>
+                        </button>
+                      );
+                    }
+                    const continuando = meetingContinuing(day, time);
+                    if (continuando) {
+                      const fim = meetingEnd(continuando);
+                      const [hh, mm] = time.split(":").map(Number);
+                      const fimDoSlot = new Date(day); fimDoSlot.setHours(hh, mm + 30, 0, 0);
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => setSelectedMeeting(continuando)}
+                          title={continuando.meeting_title}
+                          className="border-b border-r last:border-r-0 min-h-[34px] min-w-0 overflow-hidden px-1.5 py-1 text-left bg-primary/90 text-primary-foreground hover:bg-primary/80 transition-colors"
+                        >
+                          <div className="text-[10px] opacity-80 truncate">
+                            {fim <= fimDoSlot ? `até ${format(fim, "HH:mm")}` : "continua"}
                           </div>
                         </button>
                       );
