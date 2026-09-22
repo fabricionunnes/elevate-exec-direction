@@ -173,18 +173,24 @@ export const CRMProspectPage = () => {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Porte</Label>
-              <div className="flex flex-wrap gap-4">
-                {PORTES.map((p) => (
-                  <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <Checkbox checked={portes.includes(p.id)}
-                      onCheckedChange={(v) => setPortes(v ? [...portes, p.id] : portes.filter((x) => x !== p.id))} />
-                    {p.label}
-                  </label>
-                ))}
+            {/* Porte: fora do ar temporariamente — depende de prospect.empresas
+                no UNV Sales, que só entra depois que a base da Receita terminar
+                de carregar (em andamento em 22/09/2026). Reativar: tirar o
+                `false &&` abaixo. */}
+            {false && (
+              <div className="space-y-1.5">
+                <Label>Porte</Label>
+                <div className="flex flex-wrap gap-4">
+                  {PORTES.map((p) => (
+                    <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox checked={portes.includes(p.id)}
+                        onCheckedChange={(v) => setPortes(v ? [...portes, p.id] : portes.filter((x) => x !== p.id))} />
+                      {p.label}
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
