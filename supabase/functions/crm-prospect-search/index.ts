@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
 
       const { error: lErr } = await admin.from("crm_leads").insert({
         name: socio ? socio.split(" ").slice(0, 2).join(" ") : e.nome,
-        company: e.nome, phone: e.telefone ? "+" + String(e.telefone).replace(/^\+/, "") : null,
+        company: e.nome, phone: e.telefone ? String(e.telefone).replace(/\D/g, "") : null, // 55DDD9XXXXXXXX sem "+", como o resto do CRM
         email: e.email || null, document: e.cnpj, city: e.cidade, state: e.uf, segment: e.cnae_descricao,
         origin: "Prospecção B2B", pipeline_id: pipelineId, stage_id: stageId,
         owner_staff_id: body.owner_staff_id || staff.id, notes: notas,
