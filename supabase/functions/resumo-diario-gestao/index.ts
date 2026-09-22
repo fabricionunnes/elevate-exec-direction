@@ -324,6 +324,15 @@ function brNowSlot(): string {
 function brDow(): number {
   return new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })).getDay();
 }
+// Horário livre (qualquer HH:MM): está "na hora" se já passou do horário e ainda está
+// dentro de 3h (tolera atraso do cron); o reenvio no dia é barrado por company_resumo_sent.
+function dueAgora(hhmm: string): boolean {
+  const br = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  const agora = br.getHours() * 60 + br.getMinutes();
+  const [h, m] = (hhmm || "19:30").split(":").map(Number);
+  const alvo = (h || 0) * 60 + (m || 0);
+  return agora >= alvo && agora < alvo + 180;
+}
 function hourNum(hhmm: string): number {
   const [h, m] = (hhmm || "19:30").split(":").map(Number);
   return h + (m || 0) / 60;
@@ -437,7 +446,7 @@ Deno.serve(async (req) => {
       for (const c of (companies || [])) {
         const s = cfg.get(c.id) || defCfg();
         if (!s.enabled) continue;
-        if (s.sendTime !== slot) continue;
+        if (!dueAgora(s.sendTime)) continue;
         const okDay = s.morning ? (dow >= 1 && dow <= 6) : (dow >= 1 && dow <= 5);
         if (!okDay) { results.push({ company: c.name, skipped: "fora do dia da semana", morning: s.morning, dow }); continue; }
         if (already.has(c.id)) { results.push({ company: c.name, skipped: "já enviado hoje" }); continue; }

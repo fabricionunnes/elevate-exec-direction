@@ -64,6 +64,23 @@ Deno.serve(async (req) => {
 
     let totalSent = 0;
 
+    // Cron de 10 em 10 min ({scheduled:true}): só as empresas cujo horário (painel
+    // Automações → send_time, padrão 09:00) chegou e que ainda não receberam hoje (22/09/2026).
+    if (body.scheduled === true) {
+      const due = async (key: string) => {
+        const { data, error } = await supabase.rpc("automation_due_companies", { p_key: key, p_default: "09:00" });
+        if (error) throw new Error(`automation_due_companies(${key}): ${error.message}`);
+        return new Set<string>((data || []).map((r: any) => r.company_id));
+      };
+      const mark = (key: string, ids: Set<string>) => ids.size ? supabase.rpc("automation_mark_sent", { p_key: key, p_ids: [...ids] }) : Promise.resolve();
+      const [dueNps, dueCsat] = await Promise.all([due("nps"), due("csat")]);
+      if (dueNps.size) { totalSent += await processNPS(supabase, false, false, null, dueNps); await mark("nps", dueNps); }
+      if (dueCsat.size) { totalSent += await processCSAT(supabase, false, false, null, dueCsat); await mark("csat", dueCsat); }
+      return new Response(JSON.stringify({ success: true, sent: totalSent, nps: dueNps.size, csat: dueCsat.size }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Process NPS
     if (surveyType === "nps" || surveyType === "all") {
       totalSent += await processNPS(supabase, isManual, isTest, testCompanyId);
@@ -86,7 +103,7 @@ Deno.serve(async (req) => {
   }
 });
 
-async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = false, testCompanyId: string | null = null): Promise<number> {
+async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = false, testCompanyId: string | null = null, only: Set<string> | null = null): Promise<number> {
   // Get NPS config
   const { data: config } = await supabase
     .from("survey_send_configs")
@@ -196,6 +213,7 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
 
   for (const entry of companyMap.values()) {
     const { companyId, companyName, phone, projectId } = entry;
+    if (only && !only.has(companyId)) continue; // fora do horário desta empresa
 
     // In test mode, skip all eligibility checks and always use the first rule
     let ruleToSend: any = null;
@@ -349,7 +367,7 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
   return sent;
 }
 
-async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = false, testCompanyId: string | null = null): Promise<number> {
+async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = false, testCompanyId: string | null = null, only: Set<string> | null = null): Promise<number> {
   // Get CSAT config
   const { data: config } = await supabase
     .from("survey_send_configs")
@@ -540,6 +558,7 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
     if (!project) continue;
     const company = (project as any).onboarding_companies;
     if (!company) continue;
+    if (only && !only.has(company.id)) continue; // fora do horário desta empresa
 
     if (csatOff.has(company.id)) {
       console.log(`CSAT: ${company.name} desligada no painel de automações — pulando`);
