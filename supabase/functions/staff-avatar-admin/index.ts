@@ -1,12 +1,19 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Admin/master define ou remove a foto de OUTRO membro do time.
-// O AvatarUpload de autoatendimento só grava a foto do próprio usuário (RLS +
-// staff_set_my_avatar), então editar a foto de alguém aqui precisa do service role.
+// O AvatarUpload de autoatendimento só grava a própria foto — o storage.objects
+// só deixa gravar na pasta do próprio auth.uid(), e a RPC self-service só
+// atualiza a linha de quem chamou. Editar a foto de alguém aqui precisa do
+// service role.
+//
+// Body em JSON (base64), não multipart/FormData: fetch+FormData pra uma edge
+// function não tem precedente comprovado neste app — todo upload/ação de admin
+// já usa supabase.functions.invoke com JSON, então seguimos o mesmo caminho.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 Deno.serve(async (req) => {
@@ -48,8 +55,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const form = await req.formData();
-    const staffId = String(form.get("staff_id") || "");
+    const body = await req.json().catch(() => ({}));
+    const staffId = String(body.staff_id || "");
     if (!staffId) {
       return new Response(JSON.stringify({ error: "Missing staff_id" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -69,41 +76,57 @@ Deno.serve(async (req) => {
       });
     }
 
-    const remove = form.get("remove") === "true";
     const oldPath = target.avatar_url?.split("/avatars/")[1]?.split("?")[0];
 
-    if (remove) {
+    if (body.remove === true) {
       if (oldPath) await supabaseAdmin.storage.from("avatars").remove([oldPath]);
-      await supabaseAdmin.from("onboarding_staff").update({ avatar_url: null }).eq("id", staffId);
+      const { error: clearErr } = await supabaseAdmin.from("onboarding_staff").update({ avatar_url: null }).eq("id", staffId);
+      if (clearErr) {
+        return new Response(JSON.stringify({ error: clearErr.message }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       return new Response(JSON.stringify({ success: true, avatar_url: null }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const file = form.get("file") as File | null;
-    if (!file) {
+    const fileBase64 = String(body.file_base64 || "");
+    const contentType = String(body.content_type || "");
+    const fileName = String(body.file_name || "avatar.jpg");
+    if (!fileBase64 || !contentType) {
       return new Response(JSON.stringify({ error: "Nenhum arquivo enviado" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (!file.type.startsWith("image/")) {
+    if (!contentType.startsWith("image/")) {
       return new Response(JSON.stringify({ error: "O arquivo precisa ser uma imagem" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (file.size > 5 * 1024 * 1024) {
+
+    let bytes: Uint8Array;
+    try {
+      const bin = atob(fileBase64);
+      bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    } catch {
+      return new Response(JSON.stringify({ error: "Arquivo inválido" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (bytes.byteLength > 5 * 1024 * 1024) {
       return new Response(JSON.stringify({ error: "A imagem deve ter no máximo 5MB" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const ext = (fileName.split(".").pop() || "jpg").toLowerCase();
     const path = `${target.user_id}/avatar.${ext}`;
     if (oldPath && oldPath !== path) await supabaseAdmin.storage.from("avatars").remove([oldPath]);
 
-    const bytes = new Uint8Array(await file.arrayBuffer());
     const { error: uploadErr } = await supabaseAdmin.storage
-      .from("avatars").upload(path, bytes, { upsert: true, contentType: file.type });
+      .from("avatars").upload(path, bytes, { upsert: true, contentType });
     if (uploadErr) {
       return new Response(JSON.stringify({ error: uploadErr.message }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -111,7 +134,12 @@ Deno.serve(async (req) => {
     }
 
     const { data: { publicUrl } } = supabaseAdmin.storage.from("avatars").getPublicUrl(path);
-    await supabaseAdmin.from("onboarding_staff").update({ avatar_url: publicUrl }).eq("id", staffId);
+    const { error: updateErr } = await supabaseAdmin.from("onboarding_staff").update({ avatar_url: publicUrl }).eq("id", staffId);
+    if (updateErr) {
+      return new Response(JSON.stringify({ error: updateErr.message }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     return new Response(JSON.stringify({ success: true, avatar_url: `${publicUrl}?t=${Date.now()}` }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

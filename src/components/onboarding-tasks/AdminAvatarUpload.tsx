@@ -5,6 +5,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Camera, Loader2, Trash2 } from "lucide-react";
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 interface AdminAvatarUploadProps {
   staffId: string;
   currentAvatarUrl: string | null;
@@ -22,16 +31,11 @@ export const AdminAvatarUpload = ({ staffId, currentAvatarUrl, userName, onAvata
   const getInitials = (name: string) =>
     name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
-  const call = async (form: FormData) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/staff-avatar-admin`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${session?.access_token}` },
-      body: form,
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok || j.error) throw new Error(j.error || "Erro ao salvar a foto");
-    return j;
+  const call = async (payload: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke("staff-avatar-admin", { body: payload });
+    if (error) throw new Error((data as any)?.error || error.message || "Erro ao salvar a foto");
+    if ((data as any)?.error) throw new Error((data as any).error);
+    return data as any;
   };
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,10 +46,8 @@ export const AdminAvatarUpload = ({ staffId, currentAvatarUrl, userName, onAvata
 
     setUploading(true);
     try {
-      const form = new FormData();
-      form.append("staff_id", staffId);
-      form.append("file", file);
-      const j = await call(form);
+      const file_base64 = await fileToBase64(file);
+      const j = await call({ staff_id: staffId, file_base64, file_name: file.name, content_type: file.type });
       onAvatarChange(j.avatar_url);
       toast.success("Foto atualizada com sucesso!");
     } catch (error: any) {
@@ -61,10 +63,7 @@ export const AdminAvatarUpload = ({ staffId, currentAvatarUrl, userName, onAvata
     if (!currentAvatarUrl) return;
     setUploading(true);
     try {
-      const form = new FormData();
-      form.append("staff_id", staffId);
-      form.append("remove", "true");
-      await call(form);
+      await call({ staff_id: staffId, remove: true });
       onAvatarChange(null);
       toast.success("Foto removida com sucesso!");
     } catch (error: any) {
