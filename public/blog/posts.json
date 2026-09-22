@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-22T10:01:23",
+ "gerado_em": "2026-09-22T15:02:01",
  "posts": [
+  {
+   "slug": "ferramenta-certa-nao-substitui-treino-vendedor",
+   "url": "/blog/ferramenta-certa-nao-substitui-treino-vendedor/",
+   "titulo": "Ferramenta certa não substitui quem treina o vendedor",
+   "resumo": "Ter a ferramenta disponível é fácil. O problema é que ninguém ensina o vendedor a usar ela do jeito que converte.",
+   "tags": [
+    "ferramenta",
+    "treino de vendedor",
+    "estrutura comercial",
+    "conversão",
+    "implementação"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-22",
+   "ts": 2113
+  },
   {
    "slug": "automacao-dispara-mensagem-nao-estrutura-conversao",
    "url": "/blog/automacao-dispara-mensagem-nao-estrutura-conversao/",
