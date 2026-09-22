@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, MessageSquare, CalendarClock, ClipboardCheck, Star, FileText, Trophy, Bell, Megaphone, BarChart3 } from "lucide-react";
@@ -19,6 +20,9 @@ const AUTOMATIONS: {
   icon: React.ComponentType<{ className?: string }>;
   /** só aparece pra empresa com projeto UNV Ads */
   onlyUnvAds?: boolean;
+  /** horário padrão (Brasília) — quando existe, a empresa pode escolher outro (22/09/2026) */
+  defaultTime?: string;
+  timeNote?: string;
 }[] = [
   {
     key: "resumo_diario",
@@ -27,46 +31,53 @@ const AUTOMATIONS: {
     schedule: "horário configurável · exceto feriados",
     sender: "Fabrício",
     icon: MessageSquare,
+    defaultTime: "19:30",
   },
   {
     key: "fechamento_dia",
     label: "Fechamento do dia",
     description: "Resumo do que foi tratado nas reuniões realizadas no dia, no grupo de gestão.",
-    schedule: "20h45 · diário",
+    schedule: "diário · horário configurável",
     sender: "Marcelo",
     icon: CalendarClock,
+    defaultTime: "20:45",
   },
   {
     key: "lembretes_reuniao",
     label: "Lembretes de reunião",
     description: "Aviso das reuniões do dia pela manhã e lembrete 30 minutos antes de cada uma.",
-    schedule: "8h + 30min antes",
+    schedule: "manhã (configurável) + 30min antes",
     sender: "Marcelo",
     icon: Bell,
+    defaultTime: "08:00",
+    timeNote: "hora do aviso da manhã; o lembrete de 30 min antes de cada reunião não muda",
   },
   {
     key: "csat",
     label: "Pesquisa CSAT pós-reunião",
     description: "Pesquisa de satisfação enviada no grupo após cada reunião realizada.",
-    schedule: "9h do dia seguinte",
+    schedule: "dia seguinte · horário configurável",
     sender: "Marcelo",
     icon: ClipboardCheck,
+    defaultTime: "09:00",
   },
   {
     key: "nps",
     label: "Pesquisa NPS",
     description: "Régua de NPS da parceria, enviada no grupo de gestão.",
-    schedule: "régua mensal",
+    schedule: "régua mensal · horário configurável",
     sender: "Marcelo",
     icon: Star,
+    defaultTime: "09:00",
   },
   {
     key: "relatorio_pdf",
     label: "Relatório de resultados (PDF)",
     description: "Relatório consolidado de todos os projetos da empresa: reuniões, ações e resultados.",
-    schedule: "semanal · mensal · trimestral",
+    schedule: "segunda · dia 1º · horário configurável",
     sender: "Marcelo",
     icon: FileText,
+    defaultTime: "08:00",
   },
   {
     key: "trafego_diario",
@@ -81,27 +92,30 @@ const AUTOMATIONS: {
     key: "trafego_semanal",
     label: "Resumo da semana de tráfego (PDF)",
     description: "Semana fechada (segunda a domingo) comparada com a anterior, por campanha, com vendas e CAC quando houver rastreamento, no grupo UNV ADS do cliente.",
-    schedule: "segunda · 8h",
+    schedule: "segunda · horário configurável",
     sender: "Marcelo",
     icon: BarChart3,
     onlyUnvAds: true,
+    defaultTime: "08:00",
   },
   {
     key: "trafego_resumo",
     label: "Resumo de tráfego em texto",
     description: "Mensagem com os últimos 7 dias (investido, conversas ou leads com custo, cliques, alcance, campanha que mais rodou) e o acumulado do mês, no grupo UNV ADS do cliente.",
-    schedule: "quarta · 8h",
+    schedule: "quarta · horário configurável",
     sender: "Marcelo",
     icon: Megaphone,
     onlyUnvAds: true,
+    defaultTime: "08:00",
   },
   {
     key: "ranking_vendas",
     label: "Ranking diário de vendas",
     description: "Ranking dos vendedores no grupo de vendas, com base nos lançamentos do dia.",
-    schedule: "20h30 · diário",
+    schedule: "seg–sáb · horário configurável",
     sender: "Marcelo",
     icon: Trophy,
+    defaultTime: "20:30",
   },
 ];
 
@@ -179,12 +193,28 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
     setSaving(null);
   };
 
-  // Slots de 30 em 30 min (06:00–21:30), alinhados ao cron que roda a cada 30 min.
-  const TIME_SLOTS = Array.from({ length: 32 }, (_, i) => {
-    const h = 6 + Math.floor(i / 2);
-    const m = i % 2 === 0 ? "00" : "30";
-    return `${String(h).padStart(2, "0")}:${m}`;
-  });
+  // Qualquer horário HH:MM: os crons rodam de 5 em 5 (ou 10 em 10) min e cada função
+  // manda pra empresa quando o horário dela chega (automation_due_companies).
+  const setSendTimeFor = async (key: string, time: string) => {
+    if (!/^\d{2}:\d{2}$/.test(time)) return;
+    if (key === "resumo_diario") return setSendTime(time);
+    setSaving(`${key}_time`);
+    const prev = sendTimes[key];
+    setSendTimes((v) => ({ ...v, [key]: time }));
+    const { error } = await (supabase as any)
+      .from("company_automation_settings")
+      .upsert(
+        { company_id: companyId, automation_key: key, enabled: isOn(key), variant: variants[key] ?? null, instance_name: instances[key] ?? null, send_time: time, updated_at: new Date().toISOString() },
+        { onConflict: "company_id,automation_key" },
+      );
+    if (error) {
+      setSendTimes((v) => ({ ...v, [key]: prev }));
+      toast.error("Não foi possível salvar o horário. Tente de novo.");
+    } else {
+      toast.success(`Passa a sair às ${time} (Brasília) a partir do próximo envio.`);
+    }
+    setSaving(null);
+  };
   // < 14h fala do dia anterior (seg–sáb); >= 14h fala do dia atual (seg–sex).
   const regimeOf = (t: string) => (Number(t.split(":")[0]) < 14
     ? "Fala do dia anterior · seg–sáb"
@@ -221,7 +251,7 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
     const { error } = await (supabase as any)
       .from("company_automation_settings")
       .upsert(
-        { company_id: companyId, automation_key: key, enabled: isOn(key), variant: variants[key] ?? null, instance_name: value, updated_at: new Date().toISOString() },
+        { company_id: companyId, automation_key: key, enabled: isOn(key), variant: variants[key] ?? null, instance_name: value, send_time: sendTimes[key] ?? null, updated_at: new Date().toISOString() },
         { onConflict: "company_id,automation_key" },
       );
     if (error) {
@@ -292,26 +322,25 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
                       </Select>
                     </div>
                   )}
-                  {a.key === "resumo_diario" && on && (() => {
-                    const t = sendTimes["resumo_diario"] || "19:30";
+                  {a.defaultTime && on && (() => {
+                    const t = sendTimes[a.key] || a.defaultTime;
                     return (
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <span className="text-xs text-muted-foreground">Horário (Brasília):</span>
-                        <Select
+                        <Input
+                          type="time"
                           value={t}
-                          onValueChange={(v) => setSendTime(v)}
-                          disabled={saving === "resumo_diario_time"}
-                        >
-                          <SelectTrigger className="h-8 w-auto min-w-[110px] text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-64">
-                            {TIME_SLOTS.map((slot) => (
-                              <SelectItem key={slot} value={slot}>{slot}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{regimeOf(t)}</Badge>
+                          onChange={(e) => setSendTimeFor(a.key, e.target.value)}
+                          disabled={saving === `${a.key}_time` || saving === "resumo_diario_time"}
+                          className="h-8 w-[110px] text-xs"
+                        />
+                        {sendTimes[a.key] && sendTimes[a.key] !== a.defaultTime && (
+                          <button type="button" className="text-xs text-muted-foreground underline" onClick={() => setSendTimeFor(a.key, a.defaultTime!)}>
+                            voltar ao padrão ({a.defaultTime})
+                          </button>
+                        )}
+                        {a.key === "resumo_diario" && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{regimeOf(t)}</Badge>}
+                        {a.timeNote && <span className="text-[11px] text-muted-foreground">{a.timeNote}</span>}
                       </div>
                     );
                   })()}
