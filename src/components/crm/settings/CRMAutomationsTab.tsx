@@ -17,6 +17,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ArrowDown, ArrowUp, Copy, History, Loader2, Pencil, Plus, Rewind, Trash2, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { CRMMeetingRemindersSection } from "@/components/crm/settings/CRMMeetingRemindersSection";
 
 interface Conditions { instance_ids: string[]; official_instance_ids: string[]; lead_state: "sem_lead" | "com_lead" | "qualquer"; keywords: string[]; only_new_conversations: boolean }
 interface Actions {
@@ -461,6 +462,8 @@ export function CRMAutomationsTab() {
           )}
         </DialogContent>
       </Dialog>
+
+      <CRMMeetingRemindersSection />
     </div>
   );
 }
