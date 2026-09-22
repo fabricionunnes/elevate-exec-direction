@@ -46,6 +46,7 @@ import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { StaffPermissionsDialog } from "@/components/onboarding-tasks/StaffPermissionsDialog";
 import { StaffRegistrationsDialog } from "@/components/onboarding-tasks/StaffRegistrationsDialog";
 import { StaffDetailsDialog } from "@/components/onboarding-tasks/StaffDetailsDialog";
+import { AdminAvatarUpload } from "@/components/onboarding-tasks/AdminAvatarUpload";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -60,6 +61,7 @@ interface Staff {
   is_active: boolean;
   created_at: string;
   user_id: string | null;
+  avatar_url: string | null;
 }
 
 const OnboardingStaffPage = () => {
@@ -637,6 +639,20 @@ const OnboardingStaffPage = () => {
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {editingStaff?.user_id && (
+              <div className="space-y-2">
+                <Label>Foto</Label>
+                <AdminAvatarUpload
+                  staffId={editingStaff.id}
+                  currentAvatarUrl={editingStaff.avatar_url}
+                  userName={editingStaff.name}
+                  onAvatarChange={(url) => {
+                    setEditingStaff({ ...editingStaff, avatar_url: url });
+                    setStaff((prev) => prev.map((s) => (s.id === editingStaff.id ? { ...s, avatar_url: url } : s)));
+                  }}
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="name">Nome *</Label>
               <Input

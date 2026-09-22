@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Eye, EyeOff, Key } from "lucide-react";
+import { Loader2, Eye, EyeOff, Key, Phone } from "lucide-react";
 import { AvatarUpload } from "@/components/AvatarUpload";
 import { NotificationPreferences } from "@/components/notifications/NotificationPreferences";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 interface StaffSettingsSheetProps {
   open: boolean;
@@ -21,6 +22,9 @@ export const StaffSettingsSheet = ({
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [staffId, setStaffId] = useState<string | null>(null);
+  const [phone, setPhone] = useState("");
+  const [savingPhone, setSavingPhone] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -44,13 +48,15 @@ export const StaffSettingsSheet = ({
       // Try to get staff data
       const { data: staff } = await supabase
         .from("onboarding_staff")
-        .select("name, avatar_url")
+        .select("id, name, avatar_url, phone")
         .eq("user_id", user.id)
         .maybeSingle();
 
       if (staff) {
         setUserName(staff.name);
         setAvatarUrl(staff.avatar_url);
+        setStaffId(staff.id);
+        setPhone(staff.phone || "");
         return;
       }
 
@@ -115,6 +121,28 @@ export const StaffSettingsSheet = ({
     setAvatarUrl(url);
   };
 
+  const handleSavePhone = async () => {
+    if (!staffId) return;
+    setSavingPhone(true);
+    try {
+      const { error } = await supabase
+        .from("onboarding_staff")
+        .update({ phone: phone || null })
+        .eq("id", staffId);
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Telefone atualizado. É pra esse número que suas notificações do WhatsApp vão.");
+    } catch (error) {
+      console.error("Phone update error:", error);
+      toast.error("Erro ao salvar o telefone");
+    } finally {
+      setSavingPhone(false);
+    }
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
@@ -143,6 +171,38 @@ export const StaffSettingsSheet = ({
               <p className="font-medium">{userName}</p>
               <p className="text-sm text-muted-foreground">{userEmail}</p>
             </div>
+
+            {/* Telefone (WhatsApp) */}
+            {staffId && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="font-medium">Telefone</h3>
+                </div>
+                <div className="space-y-2">
+                  <Label>Seu WhatsApp</Label>
+                  <PhoneInput value={phone} onChange={setPhone} />
+                  <p className="text-xs text-muted-foreground">
+                    É pra esse número que suas notificações do WhatsApp são enviadas.
+                  </p>
+                </div>
+                <Button
+                  onClick={handleSavePhone}
+                  variant="outline"
+                  className="w-full"
+                  disabled={savingPhone}
+                >
+                  {savingPhone ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    "Salvar telefone"
+                  )}
+                </Button>
+              </div>
+            )}
 
             <NotificationPreferences audience="staff" />
 
