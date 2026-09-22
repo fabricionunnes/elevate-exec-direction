@@ -253,8 +253,15 @@ async function processIncomingMessage(
       content = `[Localização: ${message.location?.latitude}, ${message.location?.longitude}]`;
       break;
     case 'contacts':
+      // Cartão de contato: guarda nome + telefones em texto, pra aparecer no
+      // Atendimento e a IA conseguir ler (antes ficava só "[Contato]" — e nem
+      // gravava, porque o CHECK de `type` não aceitava 'contact'; 22/09/2026).
       type = 'contact';
-      content = '[Contato]';
+      content = (message.contacts || []).map((c: any) => {
+        const nome = c?.name?.formatted_name || [c?.name?.first_name, c?.name?.last_name].filter(Boolean).join(' ') || 'Contato';
+        const fones = (c?.phones || []).map((f: any) => f?.phone || (f?.wa_id ? `+${f.wa_id}` : null)).filter(Boolean);
+        return [nome, ...fones].join('\n');
+      }).join('\n\n') || '[Contato]';
       break;
     case 'button':
       content = message.button?.text || '[Botão]';

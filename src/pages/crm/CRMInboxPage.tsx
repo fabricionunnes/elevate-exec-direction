@@ -1375,9 +1375,22 @@ export const CRMInboxPage = () => {
                           <span className="text-muted-foreground">Localização compartilhada</span>
                         </div>
                       ) : message.type === "contact" ? (
-                        <div className="flex items-center gap-2 text-sm">
+                        // Cartão de contato: nome em negrito e cada telefone clicável (copia só os dígitos)
+                        <div className="flex items-start gap-2 text-sm">
                           <span>👤</span>
-                          <span>{message.content || "Contato compartilhado"}</span>
+                          <div>
+                            {(message.content || "Contato compartilhado").split("\n").map((linha, i) => (
+                              /\d{8,}/.test(linha.replace(/\D/g, "")) ? (
+                                <button key={i} type="button" className="block underline decoration-dotted hover:text-primary"
+                                  title="Copiar número"
+                                  onClick={() => { navigator.clipboard?.writeText(linha.replace(/\D/g, "")); toast.success("Número copiado"); }}>
+                                  {linha}
+                                </button>
+                              ) : (
+                                <div key={i} className={i === 0 ? "font-medium" : ""}>{linha}</div>
+                              )
+                            ))}
+                          </div>
                         </div>
                       ) : (
                         <p className="text-sm whitespace-pre-wrap">{message.content}</p>

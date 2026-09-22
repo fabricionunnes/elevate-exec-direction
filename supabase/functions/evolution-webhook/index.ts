@@ -219,6 +219,18 @@ async function storeBase64Media(
   }
 }
 
+// vCard do WhatsApp -> "Nome\n+55 31 99999-9999" (usa o waid quando vem, que é o número certo)
+function vcardParaTexto(displayName: string | null | undefined, vcard: string | null | undefined): string {
+  const v = String(vcard || '');
+  const fn = v.match(/^FN:(.+)$/m)?.[1]?.trim();
+  const fones: string[] = [];
+  for (const m of v.matchAll(/^TEL[^:]*?(?:waid=(\d+))?[^:]*:(.+)$/gm)) {
+    const f = m[1] ? `+${m[1]}` : m[2].trim();
+    if (f && !fones.includes(f)) fones.push(f);
+  }
+  return [displayName || fn || 'Contato', ...fones].join('\n');
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -539,9 +551,12 @@ async function handleIncomingMessage(
       content = '[Sticker]';
       mediaMimetype = msg.stickerMessage.mimetype || 'image/webp';
       mediaUrl = msg.stickerMessage.url;
-    } else if (msg.contactMessage) {
+    } else if (msg.contactMessage || msg.contactsArrayMessage) {
+      // Cartão de contato: nome + telefones lidos do vCard, em texto, pra aparecer
+      // no Atendimento e a IA conseguir ler (22/09/2026).
       type = 'contact';
-      content = msg.contactMessage.displayName || '[Contato]';
+      const cards = msg.contactsArrayMessage?.contacts?.length ? msg.contactsArrayMessage.contacts : [msg.contactMessage];
+      content = cards.map((c: any) => vcardParaTexto(c?.displayName, c?.vcard)).filter(Boolean).join('\n\n') || '[Contato]';
     } else if (msg.locationMessage) {
       type = 'location';
       content = '[Localização]';
