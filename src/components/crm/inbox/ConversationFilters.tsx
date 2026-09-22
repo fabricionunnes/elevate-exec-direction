@@ -510,7 +510,7 @@ export function ConversationFilters({
                 <MultiSelectFilter
                   placeholder="Selecione um ou mais funis"
                   options={pipelines.map((o) => ({ id: o.id, name: o.name }))}
-                  selected={filters.dealPipeline}
+                  selected={filters.dealPipeline ?? []}
                   onChange={(next) => {
                     // ao mudar os funis, remove etapas que não pertencem mais a nenhum funil selecionado
                     const pids = new Set(next);
@@ -529,13 +529,13 @@ export function ConversationFilters({
               <div className="space-y-1">
                 <Label className="text-sm text-muted-foreground">Negócio nas etapas</Label>
                 {(() => {
-                  const pids = new Set(filters.dealPipeline);
-                  const visible = filters.dealPipeline.length
+                  const pids = new Set(filters.dealPipeline ?? []);
+                  const visible = (filters.dealPipeline ?? []).length
                     ? stages.filter((s) => pids.has(s.pipeline_id))
                     : stages;
                   return (
                     <MultiSelectFilter
-                      placeholder={filters.dealPipeline.length ? "Selecione uma ou mais etapas" : "Todas as etapas (ou escolha funis)"}
+                      placeholder={(filters.dealPipeline ?? []).length ? "Selecione uma ou mais etapas" : "Todas as etapas (ou escolha funis)"}
                       options={visible.map((s) => ({ id: s.id, name: s.name }))}
                       selected={filters.dealStage}
                       onChange={(next) => updateFilter("dealStage", next)}
@@ -777,6 +777,7 @@ export const defaultFilters: ConversationFiltersData = {
   dealOwner: "",
   dealGroup: "",
   dealOrigin: [],
+  dealPipeline: [],
   dealStage: [],
   tags: [],
   instanceId: "",

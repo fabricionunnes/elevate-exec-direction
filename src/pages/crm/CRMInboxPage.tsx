@@ -803,11 +803,11 @@ export const CRMInboxPage = () => {
     if (filters.hasDeal === "with" && !conv.lead_id) return false;
     if (filters.hasDeal === "without" && conv.lead_id) return false;
     // Funil e etapa do negócio (antes o painel mostrava o filtro mas ninguém aplicava — 22/09/2026)
-    if (filters.dealPipeline.length) {
+    if ((filters.dealPipeline ?? []).length) {
       const pid = stageMap[String((conv.lead as any)?.stage_id || "")]?.pipelineId;
       if (!pid || !filters.dealPipeline.includes(pid)) return false;
     }
-    if (filters.dealStage.length && !filters.dealStage.includes(String((conv.lead as any)?.stage_id || ""))) return false;
+    if ((filters.dealStage ?? []).length && !filters.dealStage.includes(String((conv.lead as any)?.stage_id || ""))) return false;
 
     // Date filter
     if (filters.createdAt) {
@@ -950,14 +950,14 @@ export const CRMInboxPage = () => {
           </div>
           {/* Filtro rápido por funil (pedido do Fabrício 22/09/2026): mesma coisa que Filtros → Negócios → Funil */}
           <SearchableSelect
-            value={filters.dealPipeline.length === 1 ? filters.dealPipeline[0] : filters.dealPipeline.length > 1 ? "varios" : "all"}
-            onValueChange={(v) => setFilters((f) => ({ ...f, dealPipeline: v === "all" ? [] : v === "varios" ? f.dealPipeline : [v], dealStage: [] }))}
+            value={(filters.dealPipeline ?? []).length === 1 ? filters.dealPipeline[0] : (filters.dealPipeline ?? []).length > 1 ? "varios" : "all"}
+            onValueChange={(v) => setFilters((f) => ({ ...f, dealPipeline: v === "all" ? [] : v === "varios" ? (f.dealPipeline ?? []) : [v], dealStage: [] }))}
             className="h-7 text-xs"
             placeholder="Todos os funis"
             emptyMessage="Nenhum funil encontrado."
             options={[
               { value: "all", label: "Todos os funis" },
-              ...(filters.dealPipeline.length > 1 ? [{ value: "varios", label: `${filters.dealPipeline.length} funis (ver Filtros)` }] : []),
+              ...((filters.dealPipeline ?? []).length > 1 ? [{ value: "varios", label: `${filters.dealPipeline.length} funis (ver Filtros)` }] : []),
               ...pipelines.map((p) => ({ value: p.id, label: p.name })),
             ]}
           />
