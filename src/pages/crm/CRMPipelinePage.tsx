@@ -505,6 +505,14 @@ export const CRMPipelinePage = () => {
         if (!filters.stages.includes(lead.stage_id)) return false;
       }
 
+      // Status (Aberto / Ganho / Perdido) — vem do final_type da etapa. O filtro existia na
+      // barra mas ninguém aplicava aqui (22/09/2026).
+      if (filters.status?.length) {
+        const ft = stages.find((st) => st.id === lead.stage_id)?.final_type;
+        const status = ft === "won" ? "won" : ft === "lost" ? "lost" : "open";
+        if (!filters.status.includes(status)) return false;
+      }
+
       // Value filter
       if (filters.valueMin !== null && (lead.opportunity_value || 0) < filters.valueMin) return false;
       if (filters.valueMax !== null && (lead.opportunity_value || 0) > filters.valueMax) return false;
@@ -537,7 +545,7 @@ export const CRMPipelinePage = () => {
 
       return true;
     });
-  }, [leads, filters]);
+  }, [leads, filters, stages]);
 
   const handleDragStart = (e: React.DragEvent, lead: Lead) => {
     setDraggedLead(lead);
