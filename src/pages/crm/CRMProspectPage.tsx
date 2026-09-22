@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useCRMContext } from "./CRMLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +28,8 @@ const PORTES = [
 ];
 
 export const CRMProspectPage = () => {
+  const navigate = useNavigate();
+  const { setSelectedOrigin, setSelectedPipeline } = useCRMContext();
   const [cnaeBusca, setCnaeBusca] = useState("");
   const [cnaeOpcoes, setCnaeOpcoes] = useState<{ codigo: string; descricao: string }[]>([]);
   const [cnaes, setCnaes] = useState<{ codigo: string; descricao: string }[]>([]);
@@ -289,9 +293,21 @@ export const CRMProspectPage = () => {
             <DialogTitle>Pesquisa concluída</DialogTitle>
             <DialogDescription>
               <b>{resultado?.entregues}</b> empresa(s) entraram no funil <b>{resultado?.pipeline}</b>.
+              {resultado?.encontradas > resultado?.entregues && (
+                <> {resultado.encontradas - resultado.entregues} já estavam no CRM e não repetiram.</>
+              )}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter><Button onClick={() => setResultado(null)}>Fechar</Button></DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResultado(null)}>Fechar</Button>
+            <Button onClick={() => {
+              setSelectedOrigin(resultado.origin_id ?? null);
+              setSelectedPipeline(resultado.pipeline_id ?? null);
+              navigate("/crm/pipeline");
+            }}>
+              Ir para o funil
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
