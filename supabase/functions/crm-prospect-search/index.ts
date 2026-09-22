@@ -59,14 +59,16 @@ Deno.serve(async (req) => {
     const filtros = (body.filtros && typeof body.filtros === "object") ? body.filtros : {};
 
     if (action === "contar") {
-      const r = await chamarUnvSales({ action: "buscar_interno", filtros, quantidade: 1, modo: "lista" });
-      if (!r.ok) return erro("falha_busca", r.detail || "Não foi possível contar.");
       // "buscar_interno" já limita a 1000 (o teto de uma pesquisa); pra contar de
-      // verdade pedimos o teto e devolvemos o tamanho — suficiente pra decidir a busca
+      // verdade pedimos o teto e devolvemos o tamanho, descontando o que esse
+      // CRM já tem cadastrado — senão o número mostrado engana.
       const r2 = await chamarUnvSales({ action: "buscar_interno", filtros, quantidade: 1000, modo: "lista" });
       if (!r2.ok) return erro("falha_busca", r2.detail || "Não foi possível contar.");
-      const total = (r2.empresas ?? []).length;
-      return json({ ok: true, total, teto: total >= 1000 });
+      const brutos: any[] = r2.empresas ?? [];
+      const { data: existentes } = await admin.from("crm_leads").select("document").not("document", "is", null);
+      const jaTem = new Set((existentes ?? []).map((x: any) => String(x.document)));
+      const novas = brutos.filter((e) => !jaTem.has(String(e.cnpj))).length;
+      return json({ ok: true, total: novas, teto: brutos.length >= 1000 });
     }
 
     if (action === "cnaes") {
@@ -94,12 +96,28 @@ Deno.serve(async (req) => {
     }
     if (!stageId) return erro("funil_sem_etapas", "O funil escolhido não tem etapas.");
 
-    const r = await chamarUnvSales({ action: "buscar_interno", filtros, quantidade, modo });
+    // O UNV Sales não sabe o que o Nexus já usou (aqui não há tenant/carteira
+    // pra rastrear isso do lado dele), então pedimos uma folga e filtramos as
+    // já entregues por aqui — sem isso a mesma empresa repetia a cada busca.
+    let empresas: any[] = [];
+    let jaTem = new Set<string>();
+    {
+      const { data: existentes } = await admin.from("crm_leads").select("document").not("document", "is", null);
+      jaTem = new Set((existentes ?? []).map((x: any) => String(x.document)));
+    }
+    const alvoBusca = Math.min(3000, quantidade * 3);
+    const r = await chamarUnvSales({ action: "buscar_interno", filtros, quantidade: alvoBusca, modo });
     if (!r.ok) return erro("falha_busca", r.detail || "Não foi possível buscar.");
-    const empresas: any[] = r.empresas ?? [];
+    for (const e of (r.empresas ?? [])) {
+      if (jaTem.has(String(e.cnpj))) continue;
+      empresas.push(e);
+      if (empresas.length >= quantidade) break;
+    }
     if (empresas.length === 0) {
       return erro(modo === "whatsapp" ? "sem_whatsapp" : "nada_encontrado",
-        modo === "whatsapp" ? "Nenhuma empresa com esse filtro tem WhatsApp confirmado." : "Nenhuma empresa bate com esse filtro.");
+        modo === "whatsapp"
+          ? "Nenhuma empresa NOVA com esse filtro tem WhatsApp confirmado (as que bateram já estão no CRM)."
+          : "Nenhuma empresa NOVA bate com esse filtro (as que bateram já estão no CRM).");
     }
 
     const itens: any[] = []; const erros: string[] = [];
@@ -126,7 +144,10 @@ Deno.serve(async (req) => {
     }
 
     if (itens.length === 0) return erro("falha_gravar", "As empresas foram encontradas mas não deu para gravar: " + (erros[0] ?? ""), 500);
-    return json({ ok: true, pipeline: pipeline.name, encontradas: empresas.length, entregues: itens.length, modo });
+    const { data: origemDoFunil } = await admin.from("crm_origins").select("id")
+      .eq("pipeline_id", pipelineId).eq("is_active", true).order("sort_order", { ascending: true, nullsFirst: false }).limit(1).maybeSingle();
+    return json({ ok: true, pipeline: pipeline.name, pipeline_id: pipelineId, origin_id: origemDoFunil?.id ?? null,
+      encontradas: empresas.length, entregues: itens.length, modo });
   } catch (e) {
     return erro("unexpected", "Erro inesperado: " + String(e), 500);
   }
