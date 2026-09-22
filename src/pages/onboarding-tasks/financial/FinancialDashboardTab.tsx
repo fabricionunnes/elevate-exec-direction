@@ -187,12 +187,20 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
   // Só contratos recorrentes de verdade (avulsas de 1 fatura fora)
   const recurringCharges = useMemo(() => charges.filter(isRecurringCharge), [charges]);
 
-  const mrr = useMemo(() => {
-    const activeCharges = recurringCharges.filter(c => c.is_active);
-    return activeCharges.reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
-  }, [recurringCharges]);
+  // Cliente que pediu cancelamento ou está cumprindo aviso (projeto em
+  // cancellation_signaled / notice_period) já conta como MRR PERDIDO e sai do MRR
+  // atual; se reverter (projeto volta a ativo), volta sozinho (Fabrício, 22/09/2026).
+  // Só vale olhando o mês corrente: o status de hoje não diz nada sobre meses passados.
+  const [leavingIds, setLeavingIds] = useState<Set<string>>(new Set());
+  const ativaSemSaida = (c: { is_active: boolean; company_id?: string | null }) =>
+    c.is_active && !(isCurrentMonth && c.company_id && leavingIds.has(c.company_id));
 
-  const activeRecurringCount = useMemo(() => recurringCharges.filter(c => c.is_active).length, [recurringCharges]);
+  const mrr = useMemo(() => {
+    const activeCharges = recurringCharges.filter(ativaSemSaida);
+    return activeCharges.reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
+  }, [recurringCharges, leavingIds, isCurrentMonth]);
+
+  const activeRecurringCount = useMemo(() => recurringCharges.filter(ativaSemSaida).length, [recurringCharges, leavingIds, isCurrentMonth]);
 
   const ticketMedio = useMemo(() => {
     if (activeRecurringCount === 0) return 0;
@@ -232,6 +240,22 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
       const lostIds = Array.from(new Set((churned || [])
         .map((p: any) => p.onboarding_company_id || p.company_id).filter(Boolean)));
       const lostByCompany = new Map<string, number>();
+
+      // Saindo: pediu cancelamento ou cumprindo aviso → perda de MRR, fora do MRR atual
+      const leaving = new Set<string>();
+      if (isCurrentMonth) {
+        const { data: saindo } = await supabase
+          .from("onboarding_projects")
+          .select("onboarding_company_id, company_id, status")
+          .in("status", ["notice_period", "cancellation_signaled"]);
+        (saindo || []).forEach((p: any) => { const cid = p.onboarding_company_id || p.company_id; if (cid) leaving.add(cid); });
+        leaving.forEach(cid => {
+          const cents = currentByCompany.get(cid) || 0;
+          currentByCompany.delete(cid);
+          if (cents > 0 && !lostByCompany.has(cid)) lostByCompany.set(cid, cents);
+        });
+      }
+      setLeavingIds(leaving);
       if (lostIds.length) {
         const { data: chs } = await supabase
           .from("company_recurring_charges")
@@ -260,12 +284,12 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
       }
       const toList = (m: Map<string, number>) =>
         [...m.entries()]
-          .map(([id, cents]) => ({ name: names.get(id) || "Cliente sem cadastro", cents }))
+          .map(([id, cents]) => ({ name: (names.get(id) || "Cliente sem cadastro") + (leaving.has(id) ? " · em aviso / cancelamento" : ""), cents }))
           .sort((a, b) => b.cents - a.cents);
 
       setMrrDetails({ added: toList(addedByCompany), lost: toList(lostByCompany), current: toList(currentByCompany) });
     })();
-  }, [monthStr, selectedYear, selectedMonth, recurringCharges]);
+  }, [monthStr, selectedYear, selectedMonth, recurringCharges, isCurrentMonth]);
 
   const mrrMovement = useMemo(() => ({
     added: mrrDetails.added.reduce((s, x) => s + x.cents, 0),
@@ -634,7 +658,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
         <MetricCard
           label="MRR Perdido"
           value={`-${formatCurrencyCents(mrrLost.cents)}`}
-          sub={`${mrrLost.count} cliente(s) encerrado(s) no mês`}
+          sub={`${mrrLost.count} cliente(s) encerrado(s), em aviso ou com cancelamento pedido`}
           onClick={mrrLost.count > 0 ? () => setMrrDialog("lost") : undefined}
           icon={ArrowDownRight}
           valueClass="text-destructive"
