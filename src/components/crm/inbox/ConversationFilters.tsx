@@ -55,6 +55,7 @@ export interface ConversationFiltersData {
   dealOwner: string;
   dealGroup: string;
   dealOrigin: string[];
+  dealPipeline: string[]; // funis (crm_pipelines) — o filtro que o Fabrício usa; origens ficaram de fora (22/09/2026)
   dealStage: string[];
   // Contatos
   tags: string[];
@@ -122,6 +123,7 @@ export function ConversationFilters({
   const [aiAgents, setAiAgents] = useState<{ id: string; name: string; is_active: boolean }[]>([]);
   const [originGroups, setOriginGroups] = useState<OriginGroup[]>([]);
   const [origins, setOrigins] = useState<Origin[]>([]);
+  const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
   const [instances, setInstances] = useState<Instance[]>([]);
 
@@ -174,6 +176,10 @@ export function ConversationFilters({
     if (originsData) {
       setOrigins(originsData as Origin[]);
     }
+
+    // Funis de verdade (crm_pipelines) — é por eles que se filtra
+    const { data: pipelinesData } = await supabase.from("crm_pipelines").select("id, name").order("name");
+    if (pipelinesData) setPipelines(pipelinesData as { id: string; name: string }[]);
 
     // Etapas REAIS ficam em crm_stages (crm_pipelines guarda os funis).
     const { data: stagesData } = await supabase
@@ -243,6 +249,7 @@ export function ConversationFilters({
       dealOwner: "",
       dealGroup: "",
       dealOrigin: [],
+      dealPipeline: [],
       dealStage: [],
       tags: [],
       instanceId: "",
@@ -497,25 +504,23 @@ export function ConversationFilters({
                 </Select>
               </div>
 
-              {/* Negócio nas origens (funis) — múltipla seleção */}
+              {/* Funil — múltipla seleção */}
               <div className="space-y-1">
-                <Label className="text-sm text-muted-foreground">Negócio nas origens</Label>
+                <Label className="text-sm text-muted-foreground">Funil</Label>
                 <MultiSelectFilter
                   placeholder="Selecione um ou mais funis"
-                  options={origins.map((o) => ({ id: o.id, name: o.name }))}
-                  selected={filters.dealOrigin}
+                  options={pipelines.map((o) => ({ id: o.id, name: o.name }))}
+                  selected={filters.dealPipeline}
                   onChange={(next) => {
                     // ao mudar os funis, remove etapas que não pertencem mais a nenhum funil selecionado
-                    const pids = new Set(
-                      origins.filter((o) => next.includes(o.id)).map((o) => o.pipeline_id).filter(Boolean) as string[]
-                    );
+                    const pids = new Set(next);
                     const keptStages = next.length
                       ? filters.dealStage.filter((sid) => {
                           const st = stages.find((s) => s.id === sid);
                           return st && pids.has(st.pipeline_id);
                         })
                       : filters.dealStage;
-                    onFiltersChange({ ...filters, dealOrigin: next, dealStage: keptStages });
+                    onFiltersChange({ ...filters, dealPipeline: next, dealStage: keptStages });
                   }}
                 />
               </div>
@@ -524,15 +529,13 @@ export function ConversationFilters({
               <div className="space-y-1">
                 <Label className="text-sm text-muted-foreground">Negócio nas etapas</Label>
                 {(() => {
-                  const pids = new Set(
-                    origins.filter((o) => filters.dealOrigin.includes(o.id)).map((o) => o.pipeline_id).filter(Boolean) as string[]
-                  );
-                  const visible = filters.dealOrigin.length
+                  const pids = new Set(filters.dealPipeline);
+                  const visible = filters.dealPipeline.length
                     ? stages.filter((s) => pids.has(s.pipeline_id))
                     : stages;
                   return (
                     <MultiSelectFilter
-                      placeholder={filters.dealOrigin.length ? "Selecione uma ou mais etapas" : "Todas as etapas (ou escolha funis)"}
+                      placeholder={filters.dealPipeline.length ? "Selecione uma ou mais etapas" : "Todas as etapas (ou escolha funis)"}
                       options={visible.map((s) => ({ id: s.id, name: s.name }))}
                       selected={filters.dealStage}
                       onChange={(next) => updateFilter("dealStage", next)}

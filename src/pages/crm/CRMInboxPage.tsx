@@ -207,7 +207,8 @@ export const CRMInboxPage = () => {
   const [quick, setQuick] = useState<"all" | "unread" | "waiting" | "mine">("all");
   const [showDetails, setShowDetails] = useState<boolean>(() => { try { return localStorage.getItem("crm_inbox_details") === "1"; } catch { return false; } });
   const toggleDetails = () => setShowDetails((v) => { try { localStorage.setItem("crm_inbox_details", v ? "0" : "1"); } catch { /* ok */ } return !v; });
-  const [stageMap, setStageMap] = useState<Record<string, { stage: string; pipeline: string }>>({});
+  const [stageMap, setStageMap] = useState<Record<string, { stage: string; pipeline: string; pipelineId?: string }>>({});
+  const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [staffNames, setStaffNames] = useState<Record<string, string>>({});
   useEffect(() => {
     (async () => {
@@ -217,9 +218,10 @@ export const CRMInboxPage = () => {
         supabase.from("onboarding_staff").select("id, name").eq("is_active", true),
       ]);
       const pm: Record<string, string> = {}; for (const x of (pp || []) as any[]) pm[x.id] = x.name;
-      const sm: Record<string, { stage: string; pipeline: string }> = {};
-      for (const x of (st || []) as any[]) sm[x.id] = { stage: x.name, pipeline: pm[x.pipeline_id] || "", lost: x.final_type === "lost" } as any;
+      const sm: Record<string, { stage: string; pipeline: string; pipelineId?: string }> = {};
+      for (const x of (st || []) as any[]) sm[x.id] = { stage: x.name, pipeline: pm[x.pipeline_id] || "", pipelineId: x.pipeline_id, lost: x.final_type === "lost" } as any;
       setStageMap(sm);
+      setPipelines(((pp || []) as any[]).map((x) => ({ id: x.id, name: x.name })).sort((a, b) => a.name.localeCompare(b.name)));
       const nm: Record<string, string> = {}; for (const x of (sf || []) as any[]) nm[x.id] = x.name;
       setStaffNames(nm);
     })();
@@ -800,6 +802,12 @@ export const CRMInboxPage = () => {
     // Deal filters
     if (filters.hasDeal === "with" && !conv.lead_id) return false;
     if (filters.hasDeal === "without" && conv.lead_id) return false;
+    // Funil e etapa do negócio (antes o painel mostrava o filtro mas ninguém aplicava — 22/09/2026)
+    if (filters.dealPipeline.length) {
+      const pid = stageMap[String((conv.lead as any)?.stage_id || "")]?.pipelineId;
+      if (!pid || !filters.dealPipeline.includes(pid)) return false;
+    }
+    if (filters.dealStage.length && !filters.dealStage.includes(String((conv.lead as any)?.stage_id || ""))) return false;
 
     // Date filter
     if (filters.createdAt) {
@@ -940,6 +948,19 @@ export const CRMInboxPage = () => {
               <Filter className="h-4 w-4" />
             </Button>
           </div>
+          {/* Filtro rápido por funil (pedido do Fabrício 22/09/2026): mesma coisa que Filtros → Negócios → Funil */}
+          <SearchableSelect
+            value={filters.dealPipeline.length === 1 ? filters.dealPipeline[0] : filters.dealPipeline.length > 1 ? "varios" : "all"}
+            onValueChange={(v) => setFilters((f) => ({ ...f, dealPipeline: v === "all" ? [] : v === "varios" ? f.dealPipeline : [v], dealStage: [] }))}
+            className="h-7 text-xs"
+            placeholder="Todos os funis"
+            emptyMessage="Nenhum funil encontrado."
+            options={[
+              { value: "all", label: "Todos os funis" },
+              ...(filters.dealPipeline.length > 1 ? [{ value: "varios", label: `${filters.dealPipeline.length} funis (ver Filtros)` }] : []),
+              ...pipelines.map((p) => ({ value: p.id, label: p.name })),
+            ]}
+          />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5" title={hasConnectedDevice ? "WhatsApp conectado" : "Nenhum dispositivo conectado"}>
               {hasConnectedDevice ? <Wifi className="h-3 w-3 text-green-500" /> : <WifiOff className="h-3 w-3 text-destructive" />}
