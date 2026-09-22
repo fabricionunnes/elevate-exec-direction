@@ -18,6 +18,7 @@ import { ArrowDown, ArrowUp, Copy, History, Loader2, Pencil, Plus, Rewind, Trash
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { CRMMeetingRemindersSection } from "@/components/crm/settings/CRMMeetingRemindersSection";
+import { CRMVoiceSection } from "@/components/crm/settings/CRMVoiceSection";
 
 interface Conditions { instance_ids: string[]; official_instance_ids: string[]; lead_state: "sem_lead" | "com_lead" | "qualquer"; keywords: string[]; only_new_conversations: boolean }
 interface Actions {
@@ -464,6 +465,8 @@ export function CRMAutomationsTab() {
       </Dialog>
 
       <CRMMeetingRemindersSection />
+
+      <CRMVoiceSection />
     </div>
   );
 }

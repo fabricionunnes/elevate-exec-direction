@@ -30,6 +30,7 @@ import {
   Briefcase,
   Bot,
   Link2,
+  PhoneCall,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { WhatsAppConversation } from "@/hooks/useWhatsAppConversations";
@@ -77,6 +78,36 @@ export function ConversationSidebar({
   const [agentEnabled, setAgentEnabled] = useState(true);
   const [savingAgentToggle, setSavingAgentToggle] = useState(false);
   const [showAddDealDialog, setShowAddDealDialog] = useState(false);
+  // Assistente de voz por lead: null = segue a regra do funil, true = sempre liga, false = nunca liga (22/09/2026)
+  const [voiceFlag, setVoiceFlag] = useState<boolean | null>(null);
+  const [voiceCalls, setVoiceCalls] = useState<any[]>([]);
+  const [voiceReady, setVoiceReady] = useState(false);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  useEffect(() => {
+    if (!conversation.lead_id) { setVoiceFlag(null); setVoiceCalls([]); return; }
+    (async () => {
+      const { data } = await (supabase as any).from("crm_leads").select("voice_calls_enabled").eq("id", conversation.lead_id).maybeSingle();
+      setVoiceFlag(data?.voice_calls_enabled ?? null);
+      const { data: st } = await supabase.functions.invoke("voice-agent?action=status", { body: { lead_id: conversation.lead_id } });
+      setVoiceCalls((st as any)?.ligacoes || []);
+      const p = (st as any)?.pronto; setVoiceReady(!!(p?.retell_key && p?.agente && p?.numero));
+    })();
+  }, [conversation.lead_id]);
+  const setVoice = async (v: string) => {
+    const val = v === "sempre" ? true : v === "nunca" ? false : null;
+    setVoiceFlag(val);
+    const { error } = await (supabase as any).from("crm_leads").update({ voice_calls_enabled: val }).eq("id", conversation.lead_id);
+    if (error) toast.error("Não consegui salvar: " + error.message);
+    else toast.success(val === true ? "A assistente vai ligar pra este lead" : val === false ? "A assistente não liga pra este lead" : "Segue a regra do funil");
+  };
+  const ligarAgora = async () => {
+    if (!confirm("Ligar agora pra este lead com a assistente de voz?")) return;
+    setVoiceBusy(true);
+    const { data, error } = await supabase.functions.invoke("voice-agent?action=start_call", { body: { lead_id: conversation.lead_id } });
+    setVoiceBusy(false);
+    if (error || !(data as any)?.ok) { toast.error("Não foi possível ligar: " + ((data as any)?.error || error?.message || "erro")); return; }
+    toast.success("Ligando... o resultado aparece aqui e no histórico do lead.");
+  };
   const [showLinkExistingDialog, setShowLinkExistingDialog] = useState(false);
   const [showChangePipelineDialog, setShowChangePipelineDialog] = useState(false);
   const [selectedLeadForPipelineChange, setSelectedLeadForPipelineChange] = useState<any>(null);
@@ -827,6 +858,45 @@ export function ConversationSidebar({
                 ))}
               </SelectContent>
             </Select>
+          )}
+        </div>
+      )}
+
+      {/* Assistente de voz: por lead */}
+      {conversation.lead_id && (
+        <div className="p-4 border-b border-border space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <PhoneCall className={`h-4 w-4 shrink-0 ${voiceFlag === false ? "text-muted-foreground" : "text-primary"}`} />
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Ligação por IA</p>
+                <p className="text-[11px] text-muted-foreground">{voiceFlag === true ? "Sempre liga pra este lead" : voiceFlag === false ? "Nunca liga pra este lead" : "Segue a regra do funil"}</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" className="h-8" onClick={ligarAgora} disabled={voiceBusy || !voiceReady} title={voiceReady ? "Ligar agora com a assistente" : "Assistente de voz ainda não configurada"}>
+              {voiceBusy ? "Ligando..." : "Ligar agora"}
+            </Button>
+          </div>
+          <Select value={voiceFlag === true ? "sempre" : voiceFlag === false ? "nunca" : "funil"} onValueChange={setVoice}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="funil">Segue a regra do funil</SelectItem>
+              <SelectItem value="sempre">Sempre ligar pra este lead</SelectItem>
+              <SelectItem value="nunca">Nunca ligar pra este lead</SelectItem>
+            </SelectContent>
+          </Select>
+          {voiceCalls.length > 0 && (
+            <div className="space-y-1">
+              {voiceCalls.slice(0, 3).map((c: any) => (
+                <div key={c.id} className="text-[11px] text-muted-foreground border rounded p-1.5">
+                  <span className="font-medium text-foreground">{c.status === "ended" ? "Ligação feita" : c.status === "failed" ? "Falhou" : c.status === "skipped" ? "Pulada" : "Em andamento"}</span>
+                  {c.duration_seconds ? ` · ${Math.round(c.duration_seconds / 60)} min` : ""}{c.created_at ? ` · ${new Date(c.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}` : ""}
+                  {c.summary && <div className="mt-0.5">{c.summary}</div>}
+                  {c.error && <div className="mt-0.5 text-destructive">{c.error}</div>}
+                  {c.recording_url && <a className="text-primary hover:underline" href={c.recording_url} target="_blank" rel="noreferrer">ouvir gravação</a>}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}
