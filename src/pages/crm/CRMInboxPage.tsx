@@ -64,6 +64,7 @@ import {
   EyeOff,
   PanelRight,
   Hourglass,
+  PenLine,
   User as UserIcon,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -144,6 +145,30 @@ export const CRMInboxPage = () => {
   const { staffId, staffName, isAdmin, staffRole } = useCRMContext();
   const [selectedConversation, setSelectedConversation] = useState<WhatsAppConversation | null>(null);
   const [newMessage, setNewMessage] = useState("");
+  // Assinatura (Conta → Meu Perfil): primeira linha da mensagem; liga/desliga por conversa
+  // em crm_whatsapp_conversations.signature_enabled (null = padrão do usuário). 22/09/2026.
+  const [mySignature, setMySignature] = useState<{ text: string; byDefault: boolean }>({ text: "", byDefault: true });
+  useEffect(() => {
+    if (!staffId) return;
+    (supabase as any).from("onboarding_staff").select("wa_signature, wa_signature_default").eq("id", staffId).maybeSingle()
+      .then(({ data }: any) => setMySignature({ text: data?.wa_signature || "", byDefault: data?.wa_signature_default !== false }));
+  }, [staffId]);
+  const [signatureOverride, setSignatureOverride] = useState<Record<string, boolean>>({});
+  const signatureOnFor = (conv: any) => {
+    if (!mySignature.text) return false;
+    const v = signatureOverride[conv?.id] ?? conv?.signature_enabled;
+    return v === null || v === undefined ? mySignature.byDefault : !!v;
+  };
+  const toggleSignature = async () => {
+    if (!selectedConversation) return;
+    if (!mySignature.text) { toast.info("Configure sua assinatura em Conta → Meu Perfil."); return; }
+    const next = !signatureOnFor(selectedConversation);
+    setSignatureOverride((m) => ({ ...m, [selectedConversation.id]: next }));
+    const { error } = await (supabase as any).from("crm_whatsapp_conversations").update({ signature_enabled: next }).eq("id", selectedConversation.id);
+    if (error) toast.error("Não consegui salvar a preferência desta conversa.");
+    else toast.success(next ? "Assinatura ligada nesta conversa" : "Assinatura desligada nesta conversa");
+  };
+  const comAssinatura = (texto: string) => (selectedConversation && signatureOnFor(selectedConversation) ? `${mySignature.text.trim()}\n${texto}` : texto);
   const [officialTemplateOpen, setOfficialTemplateOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -601,7 +626,8 @@ export const CRMInboxPage = () => {
     // Conversa de Instagram não tem dispositivo de WhatsApp — envia pela
     // instagram-send (mesmo caminho da aba Conversas do lead).
     if (isInstagramConversation) {
-      const messageToSend = newMessage.trim();
+      const rawMessage = newMessage.trim();
+      const messageToSend = comAssinatura(rawMessage);
       setNewMessage("");
       setIgSending(true);
       try {
@@ -613,7 +639,7 @@ export const CRMInboxPage = () => {
         refetchMessages();
       } catch (error: any) {
         console.error("Error sending IG message:", error);
-        setNewMessage(messageToSend);
+        setNewMessage(rawMessage);
         toast.error(error.message || "Erro ao enviar mensagem no Instagram");
       } finally {
         setIgSending(false);
@@ -629,7 +655,8 @@ export const CRMInboxPage = () => {
       return;
     }
 
-    const messageToSend = newMessage.trim();
+    const rawMessage = newMessage.trim();
+    const messageToSend = comAssinatura(rawMessage);
     setNewMessage(""); // Clear immediately for better UX
 
     try {
@@ -685,7 +712,7 @@ export const CRMInboxPage = () => {
       }
     } catch (error: any) {
       console.error("Error sending message:", error);
-      setNewMessage(messageToSend); // Restore message on error
+      setNewMessage(rawMessage); // Restore message on error
       toast.error(error.message || "Erro ao enviar mensagem");
     }
   };
@@ -1476,6 +1503,15 @@ export const CRMInboxPage = () => {
                 onUpload={handleSendMedia}
                 disabled={sending}
               />
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn("h-9 w-9", signatureOnFor(selectedConversation) ? "text-primary bg-primary/10" : "text-muted-foreground")}
+                title={mySignature.text ? (signatureOnFor(selectedConversation) ? `Assinatura ligada nesta conversa: ${mySignature.text}` : "Assinatura desligada nesta conversa") : "Configure sua assinatura em Conta → Meu Perfil"}
+                onClick={toggleSignature}
+              >
+                <PenLine className="h-5 w-5" />
+              </Button>
               {selectedConversation.official_instance_id && !selectedConversation.instance_id && (
                 <Button
                   variant="ghost"

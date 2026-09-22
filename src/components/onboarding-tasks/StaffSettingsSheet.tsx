@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Eye, EyeOff, Key, Phone } from "lucide-react";
+import { Loader2, Eye, EyeOff, Key, Phone, PenLine } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { AvatarUpload } from "@/components/AvatarUpload";
 import { NotificationPreferences } from "@/components/notifications/NotificationPreferences";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -25,6 +27,10 @@ export const StaffSettingsSheet = ({
   const [staffId, setStaffId] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
   const [savingPhone, setSavingPhone] = useState(false);
+  // Assinatura das mensagens no Atendimento (pedido do Fabrício 22/09/2026)
+  const [signature, setSignature] = useState("");
+  const [signatureDefault, setSignatureDefault] = useState(true);
+  const [savingSignature, setSavingSignature] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -48,7 +54,7 @@ export const StaffSettingsSheet = ({
       // Try to get staff data
       const { data: staff } = await supabase
         .from("onboarding_staff")
-        .select("id, name, avatar_url, phone")
+        .select("id, name, avatar_url, phone, wa_signature, wa_signature_default")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -57,6 +63,8 @@ export const StaffSettingsSheet = ({
         setAvatarUrl(staff.avatar_url);
         setStaffId(staff.id);
         setPhone(staff.phone || "");
+        setSignature((staff as any).wa_signature || "");
+        setSignatureDefault((staff as any).wa_signature_default !== false);
         return;
       }
 
@@ -119,6 +127,20 @@ export const StaffSettingsSheet = ({
 
   const handleAvatarChange = (url: string | null) => {
     setAvatarUrl(url);
+  };
+
+  const handleSaveSignature = async () => {
+    setSavingSignature(true);
+    try {
+      const { error } = await (supabase as any).rpc("staff_set_my_signature", { p_signature: signature, p_default: signatureDefault });
+      if (error) { toast.error(error.message); return; }
+      toast.success(signature.trim() ? "Assinatura salva. No Atendimento, o ícone de caneta liga e desliga por conversa." : "Assinatura removida.");
+    } catch (error) {
+      console.error("Signature update error:", error);
+      toast.error("Erro ao salvar a assinatura");
+    } finally {
+      setSavingSignature(false);
+    }
   };
 
   const handleSavePhone = async () => {
@@ -200,6 +222,27 @@ export const StaffSettingsSheet = ({
                   ) : (
                     "Salvar telefone"
                   )}
+                </Button>
+              </div>
+            )}
+
+            {/* Assinatura no Atendimento */}
+            {staffId && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <PenLine className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="font-medium">Assinatura no Atendimento</h3>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Entra na primeira linha de cada mensagem que você manda pelo Atendimento. Ex.: *Ricardo · UNV* (asteriscos deixam em negrito no WhatsApp).
+                </p>
+                <Textarea rows={2} value={signature} onChange={(e) => setSignature(e.target.value)} placeholder="*Seu nome · UNV*" />
+                <label className="flex items-center justify-between gap-3 text-sm cursor-pointer">
+                  <span>Assinar por padrão nas conversas</span>
+                  <Switch checked={signatureDefault} onCheckedChange={setSignatureDefault} />
+                </label>
+                <Button onClick={handleSaveSignature} className="w-full" variant="outline" disabled={savingSignature}>
+                  {savingSignature ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</>) : "Salvar assinatura"}
                 </Button>
               </div>
             )}
