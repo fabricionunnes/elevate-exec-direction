@@ -46,7 +46,7 @@ import {
   Contact,
   Mail as MailIcon,
   Download,
-  BookOpen, ShieldCheck } from "lucide-react";
+  BookOpen, ShieldCheck, Radar } from "lucide-react";
 import logoUnv from "@/assets/logo-unv-nexus.png";
 import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
 import { CRMNotificationsBell } from "@/components/crm/CRMNotificationsBell";
@@ -82,6 +82,7 @@ const baseNavTabs = [
   { title: "Dashboard", href: "/crm/reports", icon: LayoutDashboard },
   { title: "Negócios", href: "/crm/pipeline", icon: Kanban },
   { title: "Contatos", href: "/crm/leads", icon: Users },
+  { title: "Prospecção B2B", href: "/crm/prospeccao", icon: Radar },
   { title: "Atividades", href: "/crm/activities", icon: ListTodo },
   { title: "Discador", href: "/crm/dialer", icon: Phone },
   { title: "Atendimento", href: "/crm/inbox", icon: MessageSquare, badge: true },
