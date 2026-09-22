@@ -484,7 +484,9 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
       return [];
     }
 
-    const normalizedCompanyName = nameToUse.toLowerCase().trim();
+    // sem acento: "ESTÉTICA" e "estetica" têm que ser a mesma palavra
+    const semAcento = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const normalizedCompanyName = semAcento(nameToUse.toLowerCase().trim());
     
     // Extract meaningful keywords from company name (ignore common words)
     const stopWords = new Set([
@@ -495,19 +497,35 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
       'industrial', 'producao', 'marketing', 'negocios', 'projetos', 'global',
       'prime', 'premium', 'plus', 'pro', 'master', 'total', 'nova', 'novo',
       'clinica', 'medica', 'saude', 'farma', 'beleza', 'espaco',
+      // palavras de setor: aparecem em vários clientes e casavam o evento de um com o outro
+      // (22/09/2026: "DAILY ROBERTA" da Dermalaser foi parar na Vitale por "estética")
+      'estetica', 'odontologia', 'odontologica', 'odonto', 'advocacia', 'advogados', 'contabilidade',
+      'transporte', 'transportes', 'distribuidora', 'imoveis', 'imobiliaria', 'seguros', 'engenharia',
+      'construtora', 'educacao', 'escola', 'academia', 'fitness', 'moveis', 'pecas', 'autopecas',
+      'cosmeticos', 'treinamentos', 'treinamento', 'promotora', 'financeira', 'tintas', 'alimentos',
+      'restaurante', 'veiculos', 'motos', 'importados', 'imports', 'corretora', 'assessoria',
+      'consorcios', 'medicina', 'dermatologia', 'laser', 'hair', 'beauty', 'store', 'shop', 'loja',
+      'company', 'holding', 'participacoes', 'servico', 'servicos', 'sistemas', 'brindes',
     ]);
     const companyKeywords = normalizedCompanyName
       .split(/[\s\-_,.|]+/)
       .filter(word => word.length >= 4 && !stopWords.has(word));
     
     return events.filter(event => {
-      const title = (event.title || "").toLowerCase();
-      const description = (event.description || "").toLowerCase();
+      const title = semAcento((event.title || "").toLowerCase());
+      const description = semAcento((event.description || "").toLowerCase());
       const combined = `${title} ${description}`;
       
       // Check if the event contains the full company name
       if (combined.includes(normalizedCompanyName)) {
         return true;
+      }
+
+      // Evento já carimbado com o link de OUTRO projeto é de outro cliente: só entra
+      // aqui pelo nome completo (acima), nunca por palavra solta.
+      const carimbos = Array.from(description.matchAll(/onboarding-tasks\/([0-9a-f-]{36})/g)).map(m => m[1]);
+      if (carimbos.length && (!projectId || !carimbos.includes(projectId.toLowerCase()))) {
+        return false;
       }
       
       // Check if any significant keyword from the company name appears as a whole word in the event
