@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
 import { Loader2, MessageSquare, CalendarClock, ClipboardCheck, Star, FileText, Trophy, Bell, Megaphone, BarChart3 } from "lucide-react";
 
@@ -303,23 +303,17 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
                   {on && (
                     <div className="mt-2 flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">Número:</span>
-                      <Select
+                      <SearchableSelect
                         value={instances[a.key] || "__default__"}
                         onValueChange={(v) => setInstance(a.key, v)}
-                        disabled={saving === `${a.key}_inst`}
-                      >
-                        <SelectTrigger className="h-8 w-auto min-w-[220px] text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__default__">Padrão ({a.sender})</SelectItem>
-                          {availableInstances.map((i) => (
-                            <SelectItem key={i.name} value={i.name} disabled={!i.connected}>
-                              {i.name}{i.connected ? "" : " (desconectada)"}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        className="h-8 w-auto min-w-[220px] text-xs"
+                        placeholder={`Padrão (${a.sender})`}
+                        emptyMessage="Nenhum número encontrado."
+                        options={[
+                          { value: "__default__", label: `Padrão (${a.sender})` },
+                          ...availableInstances.map((i) => ({ value: i.name, label: `${i.name}${i.connected ? "" : " (desconectada)"}` })),
+                        ]}
+                      />
                     </div>
                   )}
                   {a.defaultTime && on && (() => {

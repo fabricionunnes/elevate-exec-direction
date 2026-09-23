@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { CalendarClock, History, Loader2, Pencil, Plus, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -207,19 +208,22 @@ export function CRMMeetingRemindersSection() {
 
               <div>
                 <Label>Manda por qual número</Label>
-                <Select value={editing.instance_mode === "auto" ? "auto" : editing.instance_mode === "evolution" ? `e:${editing.instance_id}` : `o:${editing.official_instance_id}`}
+                <SearchableSelect
+                  className="mt-1"
+                  value={editing.instance_mode === "auto" ? "auto" : editing.instance_mode === "evolution" ? `e:${editing.instance_id}` : `o:${editing.official_instance_id}`}
                   onValueChange={(v) => upd((d) => {
                     if (v === "auto") { d.instance_mode = "auto"; d.instance_id = null; d.official_instance_id = null; }
                     else if (v.startsWith("e:")) { d.instance_mode = "evolution"; d.instance_id = v.slice(2); d.official_instance_id = null; }
                     else { d.instance_mode = "official"; d.official_instance_id = v.slice(2); d.instance_id = null; }
-                  })}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="auto">Automático: o número da conversa do lead</SelectItem>
-                    {instances.map((i) => <SelectItem key={i.id} value={`e:${i.id}`}>{i.display_name || i.instance_name}{i.status !== "connected" ? " (desconectada)" : ""}</SelectItem>)}
-                    {officials.map((o) => <SelectItem key={o.id} value={`o:${o.id}`}>{o.display_name} (API oficial{o.phone_number ? ` · ${o.phone_number}` : ""})</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                  })}
+                  placeholder="Escolha o número"
+                  emptyMessage="Nenhum número encontrado."
+                  options={[
+                    { value: "auto", label: "Automático: o número da conversa do lead" },
+                    ...instances.map((i) => ({ value: `e:${i.id}`, label: `${i.display_name || i.instance_name}${i.status !== "connected" ? " (desconectada)" : ""}` })),
+                    ...officials.map((o) => ({ value: `o:${o.id}`, label: `${o.display_name} (API oficial${o.phone_number ? ` · ${o.phone_number}` : ""})` })),
+                  ]}
+                />
                 <p className="text-xs text-muted-foreground mt-1">No automático, o lembrete sai pelo mesmo número em que o lead conversou por último. Lead sem conversa fica sem lembrete. Pela API oficial, fora da janela de 24h a Meta só entrega template.</p>
               </div>
 
