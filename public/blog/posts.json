@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-22T15:02:01",
+ "gerado_em": "2026-09-23T10:01:00",
  "posts": [
+  {
+   "slug": "tarefa-repetitiva-manual-trava-tempo-vendedor",
+   "url": "/blog/tarefa-repetitiva-manual-trava-tempo-vendedor/",
+   "titulo": "Tarefa repetitiva manual trava o tempo do vendedor",
+   "resumo": "Vendedor parado fazendo tarefa repetitiva não está vendendo. Toda função que pode ser automatizada libera capacidade para o que realmente converte.",
+   "tags": [
+    "automação",
+    "estrutura comercial",
+    "ociosidade",
+    "treino de vendedor",
+    "conversão"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-23",
+   "ts": 2114
+  },
   {
    "slug": "ferramenta-certa-nao-substitui-treino-vendedor",
    "url": "/blog/ferramenta-certa-nao-substitui-treino-vendedor/",
