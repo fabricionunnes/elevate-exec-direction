@@ -21,8 +21,8 @@ import { toast } from "sonner";
 
 const UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"];
 const PORTES = [
-  { id: "01", label: "Microempresa" },
-  { id: "03", label: "Pequena empresa" },
+  { id: "01", label: "Microempresa (ME)" },
+  { id: "03", label: "Pequena empresa (EPP)" },
   { id: "05", label: "Média e grande" },
   { id: "00", label: "Não informado" },
 ];
@@ -38,6 +38,9 @@ export const CRMProspectPage = () => {
   const [cidadeOpcoes, setCidadeOpcoes] = useState<{ codigo: string; nome: string }[]>([]);
   const [cidades, setCidades] = useState<{ codigo: string; nome: string }[]>([]);
   const [portes, setPortes] = useState<string[]>([]);
+  // MEI não existe como porte na Receita (porte 01 cobre ME e MEI): o que separa é a
+  // natureza jurídica "Empresário (Individual)". Ligado por padrão (22/09/2026).
+  const [semMei, setSemMei] = useState(true);
   const [aberturaDe, setAberturaDe] = useState("");
   const [aberturaAte, setAberturaAte] = useState("");
   const [soMatriz, setSoMatriz] = useState(true);
@@ -61,12 +64,13 @@ export const CRMProspectPage = () => {
     uf: uf || null,
     municipios: cidades.map((c) => c.codigo),
     portes,
+    sem_mei: semMei,
     abertura_de: aberturaDe || null,
     abertura_ate: aberturaAte || null,
     so_matriz: soMatriz,
     so_com_telefone: soTelefone,
     texto: texto.trim() || null,
-  }), [cnaes, uf, cidades, portes, aberturaDe, aberturaAte, soMatriz, soTelefone, texto]);
+  }), [cnaes, uf, cidades, portes, semMei, aberturaDe, aberturaAte, soMatriz, soTelefone, texto]);
 
   useEffect(() => {
     (supabase as any).from("crm_pipelines").select("id, name").eq("is_active", true).order("sort_order")
@@ -177,24 +181,29 @@ export const CRMProspectPage = () => {
               </div>
             </div>
 
-            {/* Porte: fora do ar temporariamente — depende de prospect.empresas
-                no UNV Sales, que só entra depois que a base da Receita terminar
-                de carregar (em andamento em 22/09/2026). Reativar: tirar o
-                `false &&` abaixo. */}
-            {false && (
-              <div className="space-y-1.5">
-                <Label>Porte</Label>
-                <div className="flex flex-wrap gap-4">
-                  {PORTES.map((p) => (
-                    <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox checked={portes.includes(p.id)}
-                        onCheckedChange={(v) => setPortes(v ? [...portes, p.id] : portes.filter((x) => x !== p.id))} />
-                      {p.label}
-                    </label>
-                  ))}
-                </div>
+            <div className="space-y-1.5">
+              <Label>Porte da empresa</Label>
+              <div className="flex flex-wrap gap-4">
+                {PORTES.map((p) => (
+                  <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox checked={portes.includes(p.id)}
+                      onCheckedChange={(v) => setPortes(v ? [...portes, p.id] : portes.filter((x) => x !== p.id))} />
+                    {p.label}
+                  </label>
+                ))}
               </div>
-            )}
+              <p className="text-xs text-muted-foreground">Nenhum marcado = todos os portes.</p>
+            </div>
+
+            <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border p-3">
+              <Checkbox checked={semMei} onCheckedChange={(v) => setSemMei(v === true)} className="mt-0.5" />
+              <span>
+                <span className="font-medium">Sem MEI e empresário individual</span>
+                <span className="block text-xs text-muted-foreground">
+                  Traz só empresa constituída (LTDA, SA e afins). O MEI não aparece como porte na base da Receita, ele entra como microempresa, então é esta chave que tira ele da lista.
+                </span>
+              </span>
+            </label>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
