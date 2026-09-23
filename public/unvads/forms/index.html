@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Diagnóstico de Tráfego | UNV Ads</title>
+<meta name="description" content="Responda 5 perguntas rápidas e descubra em 1 minuto por que seu tráfego pago não está virando venda." />
+<meta name="robots" content="noindex,nofollow" />
+<meta name="theme-color" content="#071A36" />
+<link rel="icon" href="/unvads/forms/favicon-32.png" sizes="32x32" />
+<link rel="apple-touch-icon" href="/unvads/forms/favicon-180.png" />
+<link rel="preload" as="image" href="/unvads/forms/logo.webp" />
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --navy:#0D2B5E; --navy-deep:#071A36; --navy-soft:#16386F;
+  --red:#CC1B1B; --red-soft:#E23A3A;
+  --ink:#0E1726; --muted:#63728C; --line:#E3E8F0;
+  --ok:#10A56A; --bg:#F5F7FB;
+  --pad:20px;
+}
+html,body{margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--navy-deep);
+  color:var(--ink);
+  min-height:100svh;
+  display:flex;flex-direction:column;
+  overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(900px 500px at 15% -5%, rgba(35,88,175,.45), transparent 60%),
+    radial-gradient(700px 420px at 100% 0%, rgba(204,27,27,.20), transparent 55%);
+}
+
+/* ── topo ── */
+header{position:relative;z-index:2;padding:16px var(--pad) 0;display:flex;align-items:center;gap:12px}
+header picture{display:block;line-height:0}
+header img{height:42px;width:auto;display:block}
+.badge{
+  margin-left:auto;font-size:11px;font-weight:800;letter-spacing:.12em;color:#9FC0FF;
+  border:1px solid rgba(159,192,255,.32);border-radius:999px;padding:6px 11px;white-space:nowrap;
+}
+
+/* ── progresso ── */
+.pwrap{position:relative;z-index:2;padding:16px var(--pad) 0}
+.pbar{height:7px;border-radius:999px;background:rgba(255,255,255,.14);overflow:hidden}
+.pfill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#3B7BE8,#CC1B1B);transition:width .45s cubic-bezier(.22,1,.36,1)}
+.pmeta{display:flex;justify-content:space-between;align-items:center;margin-top:9px;font-size:12px;color:#9FB2D4;font-weight:600}
+.pmeta b{color:#fff}
+
+/* ── palco ── */
+main{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;justify-content:center;padding:18px var(--pad) 26px;max-width:560px;width:100%;margin:0 auto}
+.step{display:none;animation:in .42s cubic-bezier(.22,1,.36,1) both}
+.step.on{display:block}
+@keyframes in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.step{animation:none}.pfill{transition:none}}
+
+.kicker{font-size:12px;font-weight:800;letter-spacing:.14em;color:var(--red-soft);text-transform:uppercase;margin:0 0 10px}
+h1,h2{color:#fff;font-weight:800;letter-spacing:-.02em;margin:0 0 8px;line-height:1.18}
+h1{font-size:clamp(26px,7vw,36px)}
+h2{font-size:clamp(21px,5.6vw,27px)}
+.sub{color:#A9BBD8;font-size:15px;line-height:1.5;margin:0 0 22px}
+.sub strong{color:#fff}
+
+/* ── campos ── */
+label.f{display:block;margin-bottom:14px}
+input{
+  width:100%;font-size:16px;font-family:inherit;color:#fff;
+  background:rgba(255,255,255,.07);
+  border:1.5px solid rgba(255,255,255,.18);border-radius:14px;
+  padding:17px 16px;outline:none;transition:border-color .18s,background .18s;
+}
+input::placeholder{color:#7C90B2}
+input:focus{border-color:#4E8BF0;background:rgba(255,255,255,.11)}
+input.bad{border-color:var(--red-soft)}
+
+/* ── opções (cards) ── */
+.opts{display:grid;gap:10px;margin-bottom:6px}
+.opt{
+  display:flex;align-items:center;gap:13px;width:100%;text-align:left;cursor:pointer;
+  background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.16);
+  border-radius:14px;padding:16px;min-height:60px;
+  color:#fff;font-size:15.5px;font-weight:600;font-family:inherit;line-height:1.35;
+  transition:transform .14s,border-color .18s,background .18s;
+}
+.opt:active{transform:scale(.982)}
+.opt .dot{
+  flex:0 0 22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,.4);
+  display:grid;place-items:center;transition:border-color .18s,background .18s;
+}
+.opt .dot svg{width:12px;height:12px;opacity:0;transform:scale(.5);transition:opacity .18s,transform .18s}
+.opt.sel{border-color:#4E8BF0;background:rgba(78,139,240,.20)}
+.opt.sel .dot{background:#4E8BF0;border-color:#4E8BF0}
+.opt.sel .dot svg{opacity:1;transform:none}
+@media (hover:hover){.opt:hover{border-color:rgba(255,255,255,.4)}}
+
+/* ── botões ── */
+.btn{
+  width:100%;border:0;border-radius:14px;cursor:pointer;font-family:inherit;
+  font-size:17px;font-weight:800;letter-spacing:.01em;padding:18px;min-height:58px;
+  background:linear-gradient(180deg,var(--red-soft),var(--red));color:#fff;
+  box-shadow:0 10px 24px rgba(204,27,27,.32);
+  transition:transform .14s,opacity .18s;margin-top:6px;
+}
+.btn:active{transform:translateY(1px) scale(.995)}
+.btn:disabled{opacity:.6;cursor:default}
+.btn.wa{background:linear-gradient(180deg,#2ACB5C,#18A94A);box-shadow:0 10px 24px rgba(24,169,74,.34);display:block;text-align:center;text-decoration:none;line-height:1.3}
+.back{
+  background:none;border:0;color:#8CA3C8;font-family:inherit;font-size:14px;font-weight:600;
+  padding:14px 4px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+}
+.err{color:#FF9B9B;font-size:13.5px;font-weight:600;margin:10px 0 0;min-height:18px}
+.hint{color:#7C90B2;font-size:12.5px;margin:12px 0 0;text-align:center;line-height:1.5}
+
+/* ── resultado ── */
+.card{background:#fff;border-radius:18px;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.34)}
+.card h3{margin:0 0 6px;font-size:19px;color:var(--navy);font-weight:800;letter-spacing:-.01em}
+.card p{margin:0;color:#41506B;font-size:14.5px;line-height:1.58}
+.diag{margin:16px 0 0;padding:15px;border-radius:13px;background:#F3F6FC;border-left:4px solid var(--red)}
+.diag b{color:var(--navy)}
+.rows{list-style:none;margin:16px 0 0;padding:0;border-top:1px solid var(--line)}
+.rows li{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+.rows span{color:var(--muted);flex:0 0 108px;font-weight:600}
+.rows b{color:var(--ink);font-weight:700;word-break:break-word}
+.chk{width:56px;height:56px;border-radius:50%;background:rgba(16,165,106,.16);display:grid;place-items:center;margin:0 auto 16px}
+.chk svg{width:28px;height:28px}
+
+.ftr{position:relative;z-index:2;text-align:center;color:#5E738F;padding:0 0 18px}
+.ftr small{color:#5E738F;font-size:11.5px}
+</style>
+</head>
+<body>
+
+<header>
+  <picture>
+    <source srcset="/unvads/forms/logo.webp" type="image/webp" />
+    <img src="/unvads/forms/logo.png" alt="UNV Ads" width="260" height="145" />
+  </picture>
+  <span class="badge" id="badge">DIAGNÓSTICO · 1 MIN</span>
+</header>
+
+<div class="pwrap" id="pwrap" hidden>
+  <div class="pbar"><div class="pfill" id="pfill"></div></div>
+  <div class="pmeta"><span id="pstep">Pergunta 1 de 6</span><span><b id="ppct">0%</b> concluído</span></div>
+</div>
+
+<main>
+
+  <!-- 0 — abertura -->
+  <section class="step on" id="s0">
+    <p class="kicker">Antes de falar de proposta</p>
+    <h1>Descubra em 1 minuto por que seu tráfego não vira venda.</h1>
+    <p class="sub">São <strong>6 perguntas rápidas</strong>. No final você recebe um diagnóstico do seu cenário e fala direto comigo no WhatsApp.</p>
+    <button class="btn" id="go">Começar o diagnóstico</button>
+    <p class="hint">Leva menos de 1 minuto. Seus dados não vão pra lista nenhuma.</p>
+  </section>
+
+  <!-- 1 — nome -->
+  <section class="step" id="s1">
+    <p class="kicker">Pergunta 1 de 6</p>
+    <h2>Como você se chama?</h2>
+    <p class="sub">Pra eu te chamar pelo nome, e não de "olá, tudo bem?".</p>
+    <label class="f"><input id="nome" type="text" name="name" autocomplete="name" autocapitalize="words" placeholder="Seu nome completo" maxlength="80" enterkeyhint="next" /></label>
+    <button class="btn" data-next="1">Continuar</button>
+    <p class="err" id="e1"></p>
+    <button class="back" data-back="1">← Voltar</button>
+  </section>
+
+  <!-- 2 — whatsapp -->
+  <section class="step" id="s2">
+    <p class="kicker">Pergunta 2 de 6</p>
+    <h2>Qual seu WhatsApp?</h2>
+    <p class="sub">É por ali que eu te mando o diagnóstico completo.</p>
+    <label class="f"><input id="tel" type="tel" name="tel" inputmode="numeric" autocomplete="tel" placeholder="(31) 99999-9999" maxlength="24" enterkeyhint="next" /></label>
+    <button class="btn" data-next="2">Continuar</button>
+    <p class="err" id="e2"></p>
+    <button class="back" data-back="2">← Voltar</button>
+  </section>
+
+  <!-- 3 — email -->
+  <section class="step" id="s3">
+    <p class="kicker">Pergunta 3 de 6</p>
+    <h2>E seu melhor e-mail?</h2>
+    <p class="sub">Só pra registrar no sistema. Nada de spam.</p>
+    <label class="f"><input id="email" type="email" name="email" inputmode="email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="voce@suaempresa.com.br" maxlength="120" enterkeyhint="next" /></label>
+    <button class="btn" data-next="3">Continuar</button>
+    <p class="err" id="e3"></p>
+    <button class="back" data-back="3">← Voltar</button>
+  </section>
+
+  <!-- 4 — instagram -->
+  <section class="step" id="s4">
+    <p class="kicker">Pergunta 4 de 6</p>
+    <h2>Qual o Instagram da sua empresa?</h2>
+    <p class="sub">Eu dou uma olhada antes de falar com você. Se não tiver, é só pular.</p>
+    <label class="f"><input id="insta" type="text" inputmode="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="@suaempresa" maxlength="60" enterkeyhint="next" /></label>
+    <button class="btn" data-next="4">Continuar</button>
+    <p class="err" id="e4"></p>
+    <button class="back" data-back="4">← Voltar</button>
+  </section>
+
+  <!-- 5 — investimento -->
+  <section class="step" id="s5">
+    <p class="kicker">Pergunta 5 de 6</p>
+    <h2>Quanto você investe em tráfego hoje?</h2>
+    <p class="sub">Por mês, somando todas as plataformas.</p>
+    <div class="opts" id="optInvest"></div>
+    <p class="err" id="e5"></p>
+    <button class="back" data-back="5">← Voltar</button>
+  </section>
+
+  <!-- 6 — dificuldade (só pra quem investe) -->
+  <section class="step" id="s6">
+    <p class="kicker">Última pergunta</p>
+    <h2>Qual sua maior dificuldade hoje no tráfego?</h2>
+    <p class="sub">Escolhe a que mais te incomoda.</p>
+    <div class="opts" id="optDor"></div>
+    <p class="err" id="e6"></p>
+    <button class="back" data-back="6">← Voltar</button>
+  </section>
+
+  <!-- 7 — enviando -->
+  <section class="step" id="s7">
+    <h2>Montando seu diagnóstico…</h2>
+    <p class="sub">Um segundo. Estou cruzando suas respostas.</p>
+  </section>
+
+  <!-- 8 — resultado -->
+  <section class="step" id="s8">
+    <div class="card">
+      <div class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="#10A56A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+      <h3 id="rTitle">Diagnóstico pronto</h3>
+      <p id="rSub">Recebi suas respostas. Agora é comigo.</p>
+      <div class="diag" id="rDiag"></div>
+      <a class="btn wa" id="waBtn" href="#" rel="noopener">Falar com o Fabrício no WhatsApp</a>
+      <p class="hint" style="color:#7A8AA6;margin-top:10px">A mensagem já vai preenchida com suas respostas. É só apertar enviar.</p>
+      <ul class="rows" id="rRows"></ul>
+    </div>
+  </section>
+
+</main>
+
+<div class="ftr"><small>UNV Ads · Universidade Nacional de Vendas</small></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ── config ── */
+var FORM_TOKEN = "fb1b3d1493801e71251af772d921b74b";              // funil Tráfego Pago
+var SUPA = "https://xrncvhzxjmddqluxoosu.supabase.co";
+var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
+var PIXEL = "247392077001023";
+var WA_NUMBER = "5511927008490";
+
+var INVEST = [
+  {v:"Não invisto em tráfego hoje",      s:"nao"},
+  {v:"Até R$ 500 por mês",               s:"ate500"},
+  {v:"Entre R$ 500 e R$ 1.000",          s:"500a1k"},
+  {v:"Entre R$ 1.000 e R$ 3.000",        s:"1a3k"},
+  {v:"Entre R$ 3.000 e R$ 7.000",        s:"3a7k"},
+  {v:"Acima de R$ 7.000 por mês",        s:"7k+"}
+];
+var DOR = [
+  "Chega lead, mas é lead desqualificado",
+  "O lead não responde no WhatsApp",
+  "O custo por lead só sobe",
+  "Tenho lead, mas meu time não converte",
+  "Não consigo medir se o tráfego dá retorno",
+  "Já troquei de agência e não resolveu"
+];
+
+/* ── util ── */
+function $(id){ return document.getElementById(id); }
+function qp(n){ try { return new URLSearchParams(location.search).get(n) || undefined; } catch(e){ return undefined; } }
+function buzz(ms){ try { if(navigator.vibrate) navigator.vibrate(ms||12); } catch(e){} }
+var MINUS = ["de","da","do","das","dos","e"];
+function capitalize(s){
+  return s.toLowerCase().split(" ").map(function(w,i){
+    if(i > 0 && MINUS.indexOf(w) !== -1) return w;
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }).join(" ");
+}
+function fb(){ try { fbq.apply(null, arguments); } catch(e){} }
+
+/* ── Meta Pixel ── */
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");
+fb("init", PIXEL);
+fb("track","PageView");
+
+/* ── estado ── */
+var A = { nome:"", tel:"", email:"", insta:"", invest:null, dor:"" };
+var cur = 0, maxSeen = 0;
+var STEP_NAMES = ["abertura","nome","whatsapp","email","instagram","investimento","dificuldade"];
+
+function totalSteps(){ return (A.invest && A.invest.s === "nao") ? 5 : 6; }
+
+function paint(){
+  var n = totalSteps();
+  var done = Math.max(0, Math.min(cur, n));
+  var pct = Math.round(done / n * 100);
+  $("pfill").style.width = pct + "%";
+  $("ppct").textContent = pct + "%";
+  $("pstep").textContent = cur >= 1 && cur <= 6 ? ("Pergunta " + Math.min(cur, n) + " de " + n) : "Quase lá";
+  $("pwrap").hidden = (cur === 0 || cur >= 7);
+}
+
+function show(i){
+  var el = document.querySelector(".step.on");
+  if(el) el.classList.remove("on");
+  $("s" + i).classList.add("on");
+  cur = i;
+  paint();
+  if(i > maxSeen && i >= 1 && i <= 6){
+    maxSeen = i;
+    fb("trackCustom","FormStep",{ step:i, step_name:STEP_NAMES[i], form:"unvads-diagnostico" });
+  }
+  var inp = $("s" + i).querySelector("input");
+  if(inp && window.matchMedia("(min-width:768px)").matches) setTimeout(function(){ inp.focus(); }, 260);
+  try { window.scrollTo(0,0); } catch(e){}
+}
+
+function err(i, msg){
+  var e = $("e" + i); if(e) e.textContent = msg || "";
+  var inp = $("s" + i).querySelector("input");
+  if(inp){ inp.classList.toggle("bad", !!msg); if(msg) inp.focus(); }
+  if(msg) buzz(40);
+}
+
+/* ── máscara de telefone (tolera DDI colado pelo autofill) ── */
+function maskPhone(v){
+  var d = v.replace(/\D/g,"");
+  if(d.length > 11 && d.slice(0,2) === "55") d = d.slice(2);
+  d = d.slice(0,11);
+  if(d.length <= 2) return d.length ? "(" + d : d;
+  if(d.length <= 6) return "(" + d.slice(0,2) + ") " + d.slice(2);
+  if(d.length <= 10) return "(" + d.slice(0,2) + ") " + d.slice(2,6) + "-" + d.slice(6);
+  return "(" + d.slice(0,2) + ") " + d.slice(2,7) + "-" + d.slice(7);
+}
+$("tel").addEventListener("input", function(){ this.value = maskPhone(this.value); });
+
+/* ── cards de opção ── */
+function buildOpts(box, items, onPick){
+  box.innerHTML = "";
+  items.forEach(function(it){
+    var label = typeof it === "string" ? it : it.v;
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "opt";
+    b.innerHTML = '<span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><span>' + label + '</span>';
+    b.addEventListener("click", function(){
+      Array.prototype.forEach.call(box.children, function(c){ c.classList.remove("sel"); });
+      b.classList.add("sel"); buzz(14);
+      setTimeout(function(){ onPick(it); }, 190);
+    });
+    box.appendChild(b);
+  });
+}
+
+buildOpts($("optInvest"), INVEST, function(it){
+  A.invest = it;
+  err(5,"");
+  fb("trackCustom","FormAnswer",{ field:"investimento", value:it.s });
+  paint();
+  if(it.s === "nao") finish();     // quem não investe não responde a dificuldade
+  else show(6);
+});
+
+buildOpts($("optDor"), DOR, function(it){
+  A.dor = it;
+  err(6,"");
+  fb("trackCustom","FormAnswer",{ field:"dificuldade" });
+  finish();
+});
+
+/* ── navegação ── */
+$("go").addEventListener("click", function(){
+  fb("trackCustom","FormStart",{ form:"unvads-diagnostico" });
+  show(1);
+});
+
+function validate(i){
+  if(i === 1){
+    var v = $("nome").value.trim().replace(/\s+/g," ");
+    if(v.length < 2){ err(1,"Escreve seu nome pra eu te chamar direito."); return false; }
+    A.nome = capitalize(v); err(1,""); return true;
+  }
+  if(i === 2){
+    var d = $("tel").value.replace(/\D/g,"");
+    if(d.length < 10){ err(2,"Coloca seu WhatsApp com DDD."); return false; }
+    A.tel = d; err(2,""); return true;
+  }
+  if(i === 3){
+    var e = $("email").value.trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)){ err(3,"Confere o e-mail, parece que faltou algo."); return false; }
+    A.email = e; err(3,""); return true;
+  }
+  if(i === 4){
+    A.insta = $("insta").value.trim().replace(/^@+/,"");
+    err(4,""); return true;   // opcional
+  }
+  return true;
+}
+
+Array.prototype.forEach.call(document.querySelectorAll("[data-next]"), function(b){
+  b.addEventListener("click", function(){
+    var i = +b.getAttribute("data-next");
+    if(validate(i)) show(i + 1);
+  });
+});
+Array.prototype.forEach.call(document.querySelectorAll("[data-back]"), function(b){
+  b.addEventListener("click", function(){ show(+b.getAttribute("data-back") - 1); });
+});
+Array.prototype.forEach.call(document.querySelectorAll("input"), function(inp){
+  inp.addEventListener("keydown", function(ev){
+    if(ev.key === "Enter"){ ev.preventDefault(); var b = $("s" + cur).querySelector("[data-next]"); if(b) b.click(); }
+  });
+});
+
+/* ── diagnóstico curto por perfil ── */
+function diagnose(){
+  var s = A.invest ? A.invest.s : "nao";
+  if(s === "nao")     return "Você ainda não tem máquina de aquisição. Hoje sua venda depende de indicação e do humor do mercado. O primeiro passo não é gastar mais, é montar a estrutura certa pra o primeiro real investido já voltar rastreado.";
+  if(s === "ate500")  return "Com até R$ 500 por mês o algoritmo não tem volume pra aprender quem é seu cliente. O problema quase nunca é o criativo, é a verba estar abaixo do mínimo de aprendizado.";
+  if(s === "500a1k")  return "Nessa faixa dá pra ter resultado, mas só com segmentação e oferta muito bem feitas. Qualquer desperdício aqui come a sua margem inteira.";
+  if(s === "1a3k")    return "Você já tem verba suficiente pra o algoritmo aprender. Se o resultado não vem, o furo está na oferta, no lead que chega ou no que acontece depois que ele chega, não no valor investido.";
+  if(s === "3a7k")    return "Com essa verba o tráfego já tem que se pagar. Se não está pagando, é quase certo que o problema está na ponte entre o anúncio e o comercial, não no anúncio.";
+  return "Nesse volume o risco não é gastar pouco, é gastar errado. Cada ponto de conversão perdido custa milhares por mês. Aqui o ganho vem de estrutura e medição, não de mais verba.";
+}
+
+/* ── envio ── */
+function payloadDesafio(){
+  var parts = ["Investimento em tráfego: " + (A.invest ? A.invest.v : "não informado")];
+  if(A.dor) parts.push("Maior dificuldade: " + A.dor);
+  return parts.join(" | ");
+}
+
+function waText(leadId){
+  var t = "Oi Fabrício, acabei de preencher o diagnóstico de tráfego da UNV Ads.\n\n";
+  t += "Nome: " + A.nome + "\n";
+  t += "WhatsApp: " + $("tel").value + "\n";
+  t += "E-mail: " + A.email + "\n";
+  if(A.insta) t += "Instagram: @" + A.insta + "\n";
+  t += "Invisto hoje: " + (A.invest ? A.invest.v : "-") + "\n";
+  if(A.dor) t += "Maior dificuldade: " + A.dor + "\n";
+  t += "\nQuero entender como a UNV Ads pode resolver isso pra mim.";
+  return t;
+}
+
+function render(leadId){
+  $("rTitle").textContent = A.nome.split(" ")[0] + ", seu diagnóstico está pronto.";
+  $("rSub").textContent = "Já recebi suas respostas aqui do lado. Olha o que elas dizem sobre o seu cenário:";
+  $("rDiag").innerHTML = "<b>O que eu já consigo ver:</b><br>" + diagnose();
+  var rows = [["Nome", A.nome], ["WhatsApp", $("tel").value], ["E-mail", A.email]];
+  if(A.insta) rows.push(["Instagram", "@" + A.insta]);
+  rows.push(["Investimento", A.invest ? A.invest.v : "-"]);
+  if(A.dor) rows.push(["Dificuldade", A.dor]);
+  $("rRows").innerHTML = rows.map(function(r){ return "<li><span>" + r[0] + "</span><b>" + r[1] + "</b></li>"; }).join("");
+
+  var wa = $("waBtn");
+  wa.href = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(waText(leadId));
+  wa.addEventListener("click", function(){ fb("trackCustom","WhatsAppClick",{ form:"unvads-diagnostico" }); });
+  show(8);
+}
+
+var sending = false;
+function finish(){
+  if(sending) return;
+  sending = true;
+  show(7);
+
+  var payload = {
+    form_token: FORM_TOKEN,
+    nome: A.nome,
+    telefone: A.tel,
+    email: A.email,
+    instagram: A.insta || undefined,
+    desafio: payloadDesafio(),
+    utm_source: qp("utm_source"), utm_medium: qp("utm_medium"),
+    utm_campaign: qp("utm_campaign"), utm_content: qp("utm_content"), utm_term: qp("utm_term"),
+    fbclid: qp("fbclid"),
+    ad_name: qp("ad_name"), adset_name: qp("adset_name"), campaign_name: qp("campaign_name"),
+    meta_campaign_id: qp("meta_campaign_id") || qp("campaign_id"),
+    meta_adset_id: qp("meta_adset_id") || qp("adset_id"),
+    meta_ad_id: qp("meta_ad_id") || qp("ad_id")
+  };
+
+  fetch(SUPA + "/functions/v1/submit-pipeline-form", {
+    method: "POST",
+    headers: { "Content-Type":"application/json", "Authorization":"Bearer " + ANON, "apikey": ANON },
+    body: JSON.stringify(payload)
+  }).then(function(r){
+    return r.json().then(function(d){ return { ok:r.ok, data:d }; });
+  }).then(function(res){
+    if(!res.ok) throw new Error((res.data && res.data.error) || "Erro ao enviar");
+    var leadId = res.data && res.data.lead_id;
+
+    // Conversão. O event_id casa com o que a trigger do banco manda pela CAPI,
+    // então o Meta conta UM Lead só (browser + servidor deduplicados).
+    fb("track","Lead", {
+      content_name: "Diagnóstico UNV Ads",
+      content_category: A.invest ? A.invest.s : "nao",
+      value: 1, currency: "BRL"
+    }, leadId ? { eventID: leadId + ":Lead" } : undefined);
+
+    render(leadId);
+  }).catch(function(e){
+    sending = false;
+    // Não perde o lead: mostra o resultado e joga pro WhatsApp do mesmo jeito.
+    fb("trackCustom","FormError",{ msg: String(e && e.message || e).slice(0,100) });
+    render(null);
+  });
+}
+
+paint();
+})();
+</script>
+</body>
+</html>
