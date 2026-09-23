@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, Search, Radar, MessageCircle, ListChecks, X, Building2 } from "lucide-react";
 import { toast } from "sonner";
@@ -167,13 +168,13 @@ export const CRMProspectPage = () => {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Estado</Label>
-                <Select value={uf || "__todos__"} onValueChange={(v) => setUf(v === "__todos__" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Todo o Brasil" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__todos__">Todo o Brasil</SelectItem>
-                    {UFS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={uf || "__todos__"}
+                  onValueChange={(v) => setUf(v === "__todos__" ? "" : v)}
+                  placeholder="Todo o Brasil"
+                  emptyMessage="Nenhum estado."
+                  options={[{ value: "__todos__", label: "Todo o Brasil" }, ...UFS.map((u) => ({ value: u, label: u }))]}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Nome contém (opcional)</Label>
@@ -262,12 +263,13 @@ export const CRMProspectPage = () => {
 
             <div className="space-y-1.5">
               <Label>Funil de destino</Label>
-              <Select value={pipelineId} onValueChange={setPipelineId}>
-                <SelectTrigger><SelectValue placeholder="Escolha o funil" /></SelectTrigger>
-                <SelectContent>
-                  {pipelines.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={pipelineId}
+                onValueChange={setPipelineId}
+                placeholder="Escolha o funil"
+                emptyMessage="Nenhum funil encontrado."
+                options={pipelines.map((p) => ({ value: p.id, label: p.name }))}
+              />
             </div>
 
             <Button className="w-full" disabled={!podeExecutar || executando} onClick={() => setConfirmar(true)}>
