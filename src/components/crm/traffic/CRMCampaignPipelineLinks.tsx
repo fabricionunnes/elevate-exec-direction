@@ -41,9 +41,19 @@ export const CRMCampaignPipelineLinks = ({
     linksByCampaign.set(l.campaign_id, arr);
   }
 
+  // Uma linha por campanha (a tabela guarda um registro por dia de veiculação)
+  const unicas = Array.from(
+    campaigns.reduce((m, c) => {
+      const atual = m.get(c.campaign_id);
+      if (!atual) m.set(c.campaign_id, { ...c, dias: 1, spend: Number(c.spend || 0) });
+      else { atual.dias += 1; atual.spend += Number(c.spend || 0); }
+      return m;
+    }, new Map<string, CRMMetaCampaign & { dias: number }>()).values(),
+  ).sort((a, b) => Number(b.spend || 0) - Number(a.spend || 0));
+
   const semFunil = (c: CRMMetaCampaign) => (linksByCampaign.get(c.campaign_id) || []).length === 0;
-  const totalSemFunil = campaigns.filter(semFunil).length;
-  const filtered = campaigns.filter(c =>
+  const totalSemFunil = unicas.filter(semFunil).length;
+  const filtered = unicas.filter(c =>
     (!search || (c.campaign_name || "").toLowerCase().includes(search.toLowerCase())) &&
     (!soSemFunil || semFunil(c)),
   );
@@ -113,7 +123,7 @@ export const CRMCampaignPipelineLinks = ({
         <div className="space-y-2 max-h-[420px] overflow-auto">
           {filtered.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-6">
-              Nenhuma campanha encontrada. Sincronize a conta primeiro.
+              {soSemFunil ? "Todas as campanhas já têm funil vinculado." : "Nenhuma campanha encontrada. Sincronize a conta primeiro."}
             </p>
           )}
           {filtered.map((c) => {
@@ -125,6 +135,9 @@ export const CRMCampaignPipelineLinks = ({
               >
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm truncate">{c.campaign_name || c.campaign_id}</p>
+                  {(c as any).dias > 1 && (
+                    <p className="text-[10px] text-muted-foreground">{(c as any).dias} dias no período</p>
+                  )}
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     {linked.length === 0 && (
                       <span className="text-[10px] text-muted-foreground">Sem funil vinculado</span>
