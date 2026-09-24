@@ -18,12 +18,13 @@ type Dados = {
   por_dia: { dia: string; custo: number; chamadas: number }[];
   por_fn: { nome: string; custo: number; chamadas: number; entrada: number; saida: number; cache_lido: number }[];
   por_modelo: { nome: string; custo: number; chamadas: number }[];
-  config: { teto_usd: number; telefone: string } | null;
+  config: { teto_usd: number; telefone: string; dolar: number; dolar_em: string | null } | null;
   precos: { familia: string; preco_entrada: number; preco_saida: number; observacao: string | null }[];
 };
 
 const CORES = ["#2a78d6", "#1baf7a", "#4a3aa7", "#eda100", "#eb6834", "#d4321c"];
 const usd = (n: number) => `US$ ${(Number(n) || 0).toFixed(2)}`;
+const brl = (n: number) => `R$ ${(Number(n) || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const num = (n: number) => (Number(n) || 0).toLocaleString("pt-BR");
 const diaBR = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 
@@ -33,6 +34,7 @@ export default function CustoIAPage() {
   const [dados, setDados] = useState<Dados | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [teto, setTeto] = useState("");
+  const [cotacao, setCotacao] = useState("");
   const [salvando, setSalvando] = useState(false);
 
   const buscar = useCallback(async () => {
@@ -44,19 +46,42 @@ export default function CustoIAPage() {
     if (error) { toast.error("Não consegui carregar o custo de IA"); setCarregando(false); return; }
     setDados(data as Dados);
     setTeto(String((data as Dados)?.config?.teto_usd ?? ""));
+    setCotacao(String((data as Dados)?.config?.dolar ?? ""));
     setCarregando(false);
   }, [dias]);
 
   useEffect(() => { buscar(); }, [buscar]);
 
-  const salvarTeto = async () => {
+  // cotação do dia pelo navegador: a edge function não consegue sair pra internet aqui,
+  // então quem atualiza é a tela, e o valor fica salvo pro alerta do WhatsApp usar.
+  useEffect(() => {
+    if (!dados?.config) return;
+    const salvoEm = dados.config.dolar_em ? new Date(dados.config.dolar_em).getTime() : 0;
+    if (Date.now() - salvoEm < 12 * 3600 * 1000) return;
+    (async () => {
+      try {
+        const r = await fetch("https://economia.awesomeapi.com.br/last/USD-BRL");
+        const j = await r.json();
+        const v = Number(j?.USDBRL?.bid);
+        if (!v || v <= 0) return;
+        await (supabase as any).from("ai_usage_config").update({ dolar: v, dolar_em: new Date().toISOString() }).eq("id", true);
+        setCotacao(String(v));
+        setDados((d) => (d ? { ...d, config: { ...d.config!, dolar: v, dolar_em: new Date().toISOString() } } : d));
+      } catch { /* fica a cotação salva */ }
+    })();
+  }, [dados?.config?.dolar_em]);
+
+  const salvarConfig = async () => {
     const v = Number(String(teto).replace(",", "."));
-    if (!v || v <= 0) { toast.error("Põe um valor maior que zero"); return; }
+    const c = Number(String(cotacao).replace(",", "."));
+    if (!v || v <= 0) { toast.error("Põe um teto maior que zero"); return; }
+    if (!c || c <= 0) { toast.error("Põe uma cotação maior que zero"); return; }
     setSalvando(true);
-    const { error } = await (supabase as any).from("ai_usage_config").update({ teto_usd: v, updated_at: new Date().toISOString() }).eq("id", true);
+    const { error } = await (supabase as any).from("ai_usage_config")
+      .update({ teto_usd: v, dolar: c, dolar_em: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", true);
     setSalvando(false);
-    if (error) { toast.error("Não consegui salvar o teto"); return; }
-    toast.success(`Teto ajustado para ${usd(v)} por dia`);
+    if (error) { toast.error("Não consegui salvar"); return; }
+    toast.success(`Teto em ${usd(v)} por dia, dólar a ${brl(c)}`);
     buscar();
   };
 
@@ -67,6 +92,8 @@ export default function CustoIAPage() {
   }, [dados]);
 
   const tetoNum = Number(dados?.config?.teto_usd || 0);
+  const dolar = Number(dados?.config?.dolar || 0) || 5.4;
+  const emReal = (v: number) => brl((Number(v) || 0) * dolar);
   const opusAtivo = (dados?.por_modelo || []).some((m) => /opus/i.test(m.nome) && Number(m.custo) > 0);
 
   return (
@@ -85,12 +112,13 @@ export default function CustoIAPage() {
           </Button>
         </div>
 
-        <div className="flex gap-2">
-          {[7, 30, 90].map((d) => (
-            <Button key={d} size="sm" variant={dias === d ? "default" : "outline"} onClick={() => setDias(d)}>
-              {d} dias
+        <div className="flex flex-wrap gap-2">
+          {[{ d: 1, r: "Hoje" }, { d: 7, r: "7 dias" }, { d: 30, r: "30 dias" }, { d: 90, r: "90 dias" }].map((o) => (
+            <Button key={o.d} size="sm" variant={dias === o.d ? "default" : "outline"} onClick={() => setDias(o.d)}>
+              {o.r}
             </Button>
           ))}
+          <span className="text-xs text-muted-foreground self-center ml-1">Dólar a {brl(dolar)}</span>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -98,13 +126,14 @@ export default function CustoIAPage() {
             { rot: "Hoje", v: dados?.hoje ?? 0, destaque: (dados?.hoje ?? 0) >= tetoNum && tetoNum > 0 },
             { rot: "Ontem", v: dados?.ontem ?? 0 },
             { rot: "Mês", v: dados?.mes ?? 0 },
-            { rot: `Período (${dias}d)`, v: dados?.total ?? 0 },
+            { rot: dias === 1 ? "Período (hoje)" : `Período (${dias}d)`, v: dados?.total ?? 0 },
             { rot: "Média por dia", v: media },
           ].map((c) => (
             <Card key={c.rot}>
               <CardContent className="p-4">
                 <p className="text-xs text-muted-foreground">{c.rot}</p>
                 <p className={`text-xl font-bold ${c.destaque ? "text-destructive" : ""}`}>{usd(c.v)}</p>
+                <p className="text-xs text-muted-foreground">{emReal(c.v)}</p>
               </CardContent>
             </Card>
           ))}
@@ -124,7 +153,7 @@ export default function CustoIAPage() {
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip
-                    formatter={(v: any, n: any) => (n === "custo" ? [usd(Number(v)), "Custo"] : [num(Number(v)), "Chamadas"])}
+                    formatter={(v: any, n: any) => (n === "custo" ? [`${usd(Number(v))} · ${emReal(Number(v))}`, "Custo"] : [num(Number(v)), "Chamadas"])}
                     labelFormatter={(l) => `Dia ${l}`}
                     contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
                   />
@@ -137,7 +166,7 @@ export default function CustoIAPage() {
               </ResponsiveContainer>
             )}
             {tetoNum > 0 && (
-              <p className="text-xs text-muted-foreground mt-2">Barra vermelha é dia que passou do teto de {usd(tetoNum)}.</p>
+              <p className="text-xs text-muted-foreground mt-2">Barra vermelha é dia que passou do teto de {usd(tetoNum)} ({emReal(tetoNum)}).</p>
             )}
           </CardContent>
         </Card>
@@ -153,7 +182,10 @@ export default function CustoIAPage() {
                   <div key={f.nome} className="space-y-1">
                     <div className="flex items-center justify-between gap-2 text-sm">
                       <span className="font-medium truncate">{f.nome}</span>
-                      <span className="font-semibold shrink-0">{usd(f.custo)}</span>
+                      <span className="font-semibold shrink-0 text-right">
+                        {usd(f.custo)}
+                        <span className="block text-[11px] font-normal text-muted-foreground">{emReal(f.custo)}</span>
+                      </span>
                     </div>
                     <div className="h-1.5 rounded bg-muted overflow-hidden">
                       <div className="h-full rounded" style={{ width: `${Math.max(2, pct)}%`, background: CORES[i % CORES.length] }} />
@@ -177,16 +209,18 @@ export default function CustoIAPage() {
                     <span className="h-2 w-2 rounded-full shrink-0" style={{ background: CORES[i % CORES.length] }} />
                     <span className="truncate">{m.nome}</span>
                   </span>
-                  <span className="shrink-0">
+                  <span className="shrink-0 text-right">
                     <span className="font-semibold">{usd(m.custo)}</span>
                     <span className="text-muted-foreground text-xs ml-2">{num(m.chamadas)}x</span>
+                    <span className="block text-[11px] text-muted-foreground">{emReal(m.custo)}</span>
                   </span>
                 </div>
               ))}
               {opusAtivo && (
                 <p className="text-xs text-amber-600 flex items-start gap-1 pt-2">
                   <TriangleAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                  Tem Opus rodando. É o modelo mais caro, use só onde faz diferença.
+                  Teve Opus no período. É o modelo mais caro. O modelo de cada agente se troca em
+                  CRM, Configurações, Agentes de IA; se aparecer só nos dias antigos, já foi trocado.
                 </p>
               )}
             </CardContent>
@@ -201,11 +235,15 @@ export default function CustoIAPage() {
                 <p className="text-xs text-muted-foreground mb-1">Teto por dia, em dólar</p>
                 <Input value={teto} onChange={(e) => setTeto(e.target.value)} className="w-32" inputMode="decimal" />
               </div>
-              <Button size="sm" onClick={salvarTeto} disabled={salvando}>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Dólar hoje, em real</p>
+                <Input value={cotacao} onChange={(e) => setCotacao(e.target.value)} className="w-28" inputMode="decimal" />
+              </div>
+              <Button size="sm" onClick={salvarConfig} disabled={salvando}>
                 <Save className="h-4 w-4 mr-1" /> Salvar
               </Button>
               <p className="text-xs text-muted-foreground">
-                Passou do teto, chega aviso no WhatsApp {dados?.config?.telefone ? `(${dados.config.telefone})` : ""}. Todo dia às 20h vai o fechamento.
+                Teto em {usd(Number(String(teto).replace(",", ".")) || 0)} é {emReal(Number(String(teto).replace(",", ".")) || 0)} por dia. Passou disso, chega aviso no WhatsApp {dados?.config?.telefone ? `(${dados.config.telefone})` : ""}. Todo dia às 20h vai o fechamento.
               </p>
             </div>
             <div className="pt-2 border-t border-border/40">
