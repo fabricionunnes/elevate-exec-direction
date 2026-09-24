@@ -29,6 +29,8 @@ export const CRMCampaignPipelineLinks = ({
   const [search, setSearch] = useState("");
   // "Só sem funil": com dezenas de campanhas, achar as que faltam vincular na mão era inviável (24/09/2026)
   const [soSemFunil, setSoSemFunil] = useState(false);
+  // busca dentro do diálogo de funis (regra: todo filtro é pesquisável)
+  const [buscaFunil, setBuscaFunil] = useState("");
   const [openCampaign, setOpenCampaign] = useState<CRMMetaCampaign | null>(null);
 
   // Agrupa: para cada campanha, lista de funis vinculados
@@ -142,7 +144,7 @@ export const CRMCampaignPipelineLinks = ({
                 </div>
                 <Dialog
                   open={openCampaign?.id === c.id}
-                  onOpenChange={(o) => setOpenCampaign(o ? c : null)}
+                  onOpenChange={(o) => { setOpenCampaign(o ? c : null); setBuscaFunil(""); }}
                 >
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-1 h-8">
@@ -153,9 +155,21 @@ export const CRMCampaignPipelineLinks = ({
                     <DialogHeader>
                       <DialogTitle className="text-base">Funis para "{c.campaign_name}"</DialogTitle>
                     </DialogHeader>
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        autoFocus
+                        placeholder="Digite o nome do funil..."
+                        value={buscaFunil}
+                        onChange={(e) => setBuscaFunil(e.target.value)}
+                        className="pl-8 h-9"
+                      />
+                    </div>
                     <ScrollArea className="max-h-[400px]">
                       <div className="space-y-2 pr-2">
-                        {pipelines.map((p) => {
+                        {pipelines
+                          .filter((p) => !buscaFunil || (p.name || "").toLowerCase().includes(buscaFunil.toLowerCase()))
+                          .map((p) => {
                           const isLinked = linked.some((l) => l.pipeline_id === p.id);
                           return (
                             <label
@@ -170,9 +184,9 @@ export const CRMCampaignPipelineLinks = ({
                             </label>
                           );
                         })}
-                        {pipelines.length === 0 && (
+                        {pipelines.filter((p) => !buscaFunil || (p.name || "").toLowerCase().includes(buscaFunil.toLowerCase())).length === 0 && (
                           <p className="text-xs text-muted-foreground text-center py-4">
-                            Nenhum funil ativo encontrado.
+                            {buscaFunil ? "Nenhum funil com esse nome." : "Nenhum funil ativo encontrado."}
                           </p>
                         )}
                       </div>
