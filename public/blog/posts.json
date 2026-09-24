@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-24T10:01:03",
+ "gerado_em": "2026-09-24T15:01:26",
  "posts": [
+  {
+   "slug": "treino-parcelado-nao-acelera-vendedor-novo",
+   "url": "/blog/treino-parcelado-nao-acelera-vendedor-novo/",
+   "titulo": "Treino parcelado não acelera o vendedor novo",
+   "resumo": "Dividir o treino em etapas soa organizado mas deixa o vendedor incompleto durante semanas. A primeira venda dele depende de ter o pacote inteiro desde o dia um.",
+   "tags": [
+    "treino de vendedor",
+    "estrutura comercial",
+    "implementação",
+    "conversão",
+    "onboarding"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-24",
+   "ts": 2118
+  },
   {
    "slug": "treino-gravado-nao-substitui-acompanhamento-ao-vivo",
    "url": "/blog/treino-gravado-nao-substitui-acompanhamento-ao-vivo/",
