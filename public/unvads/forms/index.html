@@ -153,9 +153,20 @@ input.bad{border-color:var(--red-soft)}
   <section class="step on" id="s0">
     <p class="kicker">Antes de falar de proposta</p>
     <h1>Descubra em 1 minuto por que seu tráfego não vira venda.</h1>
-    <p class="sub">São <strong>7 perguntas rápidas</strong>. No final você recebe um diagnóstico do seu cenário e fala direto comigo no WhatsApp.</p>
+    <p class="sub">São <strong>8 perguntas rápidas</strong>. No final você recebe um diagnóstico do seu cenário e fala direto comigo no WhatsApp.</p>
     <button class="btn" id="go">Começar o diagnóstico</button>
     <p class="hint">Leva menos de 1 minuto. Seus dados não vão pra lista nenhuma.</p>
+  </section>
+
+  <!-- 10 — triagem. Numerada fora da sequência de propósito, assim as telas
+       antigas mantêm o índice que já tinham e nada se desloca. -->
+  <section class="step" id="s10">
+    <p class="kicker">Pergunta 1 de 8</p>
+    <h2>Você é empresário?</h2>
+    <p class="sub">Esse diagnóstico parte de faturamento, verba e time comercial. Só faz sentido pra quem decide isso.</p>
+    <div class="opts" id="optEmp"></div>
+    <p class="err" id="e10"></p>
+    <button class="back" data-back="10" data-back-to="0">← Voltar</button>
   </section>
 
   <!-- 1 — nome -->
@@ -166,7 +177,7 @@ input.bad{border-color:var(--red-soft)}
     <label class="f"><input id="nome" type="text" name="name" autocomplete="name" autocapitalize="words" placeholder="Seu nome completo" maxlength="80" enterkeyhint="next" /></label>
     <button class="btn" data-next="1">Continuar</button>
     <p class="err" id="e1"></p>
-    <button class="back" data-back="1">← Voltar</button>
+    <button class="back" data-back="1" data-back-to="10">← Voltar</button>
   </section>
 
   <!-- 2 — whatsapp -->
@@ -251,6 +262,17 @@ input.bad{border-color:var(--red-soft)}
     </div>
   </section>
 
+  <!-- 11 — não é empresário. O fluxo termina aqui: nada vai pro CRM e
+       nenhum evento sai pro Meta. -->
+  <section class="step" id="s11">
+    <div class="card">
+      <h3>Esse diagnóstico é pra dono de empresa.</h3>
+      <p>Ele parte de faturamento, verba de mídia e time comercial, coisas que só quem decide o rumo do negócio consegue responder. Não vou te fazer preencher sete perguntas pra entregar um diagnóstico que não serve pro seu caso.</p>
+      <a class="btn" href="https://instagram.com/unvholdings" target="_blank" rel="noopener" style="margin-top:18px;display:block;text-align:center;text-decoration:none;line-height:1.3">Acompanhar no Instagram</a>
+      <p class="hint" style="color:#7A8AA6">Se você trabalha numa empresa e acha que isso serve pro seu dono, manda esse link pra ele.</p>
+    </div>
+  </section>
+
 </main>
 
 <div class="ftr"><small>UNV Ads · Universidade Nacional de Vendas</small></div>
@@ -280,6 +302,11 @@ var FAT = [
   {v:"Entre R$ 100 mil e R$ 300 mil",     s:"100a300k"},
   {v:"Acima de R$ 300 mil por mês",       s:"300k+"}
 ];
+var EMP = [
+  {v:"Sim, a empresa é minha",  s:"dono"},
+  {v:"Sou sócio da empresa",    s:"socio"},
+  {v:"Não",                     s:"nao"}
+];
 var DOR = [
   "Chega lead, mas é lead desqualificado",
   "O lead não responde no WhatsApp",
@@ -308,20 +335,29 @@ fb("init", PIXEL);
 fb("track","PageView");
 
 /* ── estado ── */
-var A = { nome:"", tel:"", email:"", insta:"", invest:null, dor:"", fat:null };
+var A = { nome:"", tel:"", email:"", insta:"", invest:null, dor:"", fat:null, emp:null };
 var cur = 0, maxSeen = 0;
-var STEP_NAMES = ["abertura","nome","whatsapp","email","instagram","investimento","dificuldade","faturamento"];
+var STEP_NAMES = { 10:"empresario", 1:"nome", 2:"whatsapp", 3:"email", 4:"instagram",
+                   5:"investimento", 6:"dificuldade", 7:"faturamento" };
 
-function totalSteps(){ return (A.invest && A.invest.s === "nao") ? 6 : 7; }
+// A ordem em que as perguntas aparecem. É daqui que sai o "Pergunta X de Y",
+// então mudar a sequência é mexer só nesta linha.
+var ORDEM = [10, 1, 2, 3, 4, 5, 6, 7];
+function numPergunta(i){
+  var k = ORDEM.indexOf(i === undefined ? cur : i);
+  return k < 0 ? 0 : k + 1;          // 0 = não é pergunta (abertura, envio, resultado, saída)
+}
+
+function totalSteps(){ return (A.invest && A.invest.s === "nao") ? 7 : 8; }
 
 function paint(){
-  var n = totalSteps();
-  var done = Math.max(0, Math.min(cur, n));
+  var n = totalSteps(), q = numPergunta();
+  var done = Math.max(0, Math.min(q, n));
   var pct = Math.round(done / n * 100);
   $("pfill").style.width = pct + "%";
   $("ppct").textContent = pct + "%";
-  $("pstep").textContent = cur >= 1 && cur <= 7 ? ("Pergunta " + Math.min(cur, n) + " de " + n) : "Quase lá";
-  $("pwrap").hidden = (cur === 0 || cur >= 8);
+  $("pstep").textContent = q ? ("Pergunta " + Math.min(q, n) + " de " + n) : "Quase lá";
+  $("pwrap").hidden = !q;
 }
 
 function show(i){
@@ -330,9 +366,16 @@ function show(i){
   $("s" + i).classList.add("on");
   cur = i;
   paint();
-  if(i > maxSeen && i >= 1 && i <= 7){
-    maxSeen = i;
-    fb("trackCustom","FormStep",{ step:i, step_name:STEP_NAMES[i], form:"unvads-diagnostico" });
+  var q = numPergunta();
+  if(q){
+    // o texto da tela acompanha a barra, inclusive quando o total cai pra 7
+    var k = $("s" + i).querySelector(".kicker");
+    if(k) k.textContent = (i === 7) ? "Última pergunta"
+                                    : ("Pergunta " + Math.min(q, totalSteps()) + " de " + totalSteps());
+    if(q > maxSeen){
+      maxSeen = q;
+      fb("trackCustom","FormStep",{ step:q, step_name:STEP_NAMES[i], form:"unvads-diagnostico" });
+    }
   }
   var inp = $("s" + i).querySelector("input");
   if(inp && window.matchMedia("(min-width:768px)").matches) setTimeout(function(){ inp.focus(); }, 260);
@@ -436,6 +479,21 @@ function buildOpts(box, items, onPick){
   });
 }
 
+buildOpts($("optEmp"), EMP, function(it){
+  A.emp = it;
+  err(10,"");
+  if(it.s === "nao"){
+    // Fim de linha. Não chama finish(), então nada chega no CRM, e nenhum
+    // evento sai pro pixel: esse visitante não entra como lead em lugar nenhum.
+    show(11);
+    return;
+  }
+  // Só conta como início de formulário depois que sabemos que é dono ou sócio.
+  fb("trackCustom","FormStart",{ form:"unvads-diagnostico" });
+  fb("trackCustom","FormAnswer",{ field:"empresario", value:it.s });
+  show(1);
+});
+
 buildOpts($("optInvest"), INVEST, function(it){
   A.invest = it;
   err(5,"");
@@ -460,10 +518,7 @@ buildOpts($("optFat"), FAT, function(it){
 });
 
 /* ── navegação ── */
-$("go").addEventListener("click", function(){
-  fb("trackCustom","FormStart",{ form:"unvads-diagnostico" });
-  show(1);
-});
+$("go").addEventListener("click", function(){ show(10); });
 
 function validate(i){
   if(i === 1){
@@ -496,7 +551,14 @@ Array.prototype.forEach.call(document.querySelectorAll("[data-next]"), function(
   });
 });
 Array.prototype.forEach.call(document.querySelectorAll("[data-back]"), function(b){
-  b.addEventListener("click", function(){ show(+b.getAttribute("data-back") - 1); });
+  b.addEventListener("click", function(){
+    var to = b.getAttribute("data-back-to");
+    var i = +b.getAttribute("data-back");
+    if(to !== null) return show(+to);
+    // quem não investe nunca viu a tela de dificuldade, então não volta pra ela
+    if(i === 7 && A.invest && A.invest.s === "nao") return show(5);
+    show(i - 1);
+  });
 });
 Array.prototype.forEach.call(document.querySelectorAll("input"), function(inp){
   inp.addEventListener("keydown", function(ev){
