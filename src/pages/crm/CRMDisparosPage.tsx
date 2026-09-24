@@ -307,6 +307,8 @@ function DisparosLista() {
   const [savingRate, setSavingRate] = useState(false);
   const [periodo, setPeriodo] = useState<Periodo>("30");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [pagina, setPagina] = useState(1);   // 10 disparos por página (24/09/2026)
+  const POR_PAGINA = 10;
   const [de, setDe] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 29); return ymd(d); });
   const [ate, setAte] = useState(() => ymd(new Date()));
 
@@ -329,6 +331,7 @@ function DisparosLista() {
     setLoading(false);
   }, [periodo, de, ate]);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { setPagina(1); }, [periodo, de, ate]);
 
   const periodoTexto = periodo === "custom"
     ? `${de ? inicioDoDia(de).toLocaleDateString("pt-BR") : "início"} a ${ate ? inicioDoDia(ate).toLocaleDateString("pt-BR") : "hoje"}`
@@ -482,7 +485,7 @@ function DisparosLista() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((r) => (
+                  {rows.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA).map((r) => (
                     <tr key={r.id} className="border-t hover:bg-muted/40 cursor-pointer" onClick={() => navigate(`/crm/disparos/${r.id}`)}>
                       <td className="px-3 py-2 whitespace-nowrap">
                         {dt(r.created_at)}
@@ -513,6 +516,26 @@ function DisparosLista() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {rows.length > POR_PAGINA && (
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="text-muted-foreground">
+                {(pagina - 1) * POR_PAGINA + 1}–{Math.min(pagina * POR_PAGINA, rows.length)} de {rows.length} disparos
+              </span>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" className="h-8" disabled={pagina === 1} onClick={() => setPagina((p) => p - 1)}>Anterior</Button>
+                {Array.from({ length: Math.ceil(rows.length / POR_PAGINA) }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === Math.ceil(rows.length / POR_PAGINA) || Math.abs(p - pagina) <= 1)
+                  .map((p, i, arr) => (
+                    <span key={p} className="flex items-center gap-1">
+                      {i > 0 && arr[i - 1] !== p - 1 && <span className="text-muted-foreground px-1">…</span>}
+                      <Button variant={p === pagina ? "default" : "outline"} size="sm" className="h-8 w-8 p-0" onClick={() => setPagina(p)}>{p}</Button>
+                    </span>
+                  ))}
+                <Button variant="outline" size="sm" className="h-8" disabled={pagina >= Math.ceil(rows.length / POR_PAGINA)} onClick={() => setPagina((p) => p + 1)}>Próxima</Button>
+              </div>
             </div>
           )}
 
