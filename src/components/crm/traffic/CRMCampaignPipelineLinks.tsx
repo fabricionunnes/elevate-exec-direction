@@ -10,7 +10,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Link2, Plus, Trash2, Search } from "lucide-react";
+import { Filter, Link2, Plus, Search, Trash2 } from "lucide-react";
 import type {
   CRMMetaAccount, CRMMetaCampaign, CampaignPipelineLink,
 } from "./useCRMTrafficData";
@@ -27,6 +27,8 @@ export const CRMCampaignPipelineLinks = ({
   account, campaigns, links, pipelines, onChanged,
 }: Props) => {
   const [search, setSearch] = useState("");
+  // "Só sem funil": com dezenas de campanhas, achar as que faltam vincular na mão era inviável (24/09/2026)
+  const [soSemFunil, setSoSemFunil] = useState(false);
   const [openCampaign, setOpenCampaign] = useState<CRMMetaCampaign | null>(null);
 
   // Agrupa: para cada campanha, lista de funis vinculados
@@ -37,8 +39,11 @@ export const CRMCampaignPipelineLinks = ({
     linksByCampaign.set(l.campaign_id, arr);
   }
 
+  const semFunil = (c: CRMMetaCampaign) => (linksByCampaign.get(c.campaign_id) || []).length === 0;
+  const totalSemFunil = campaigns.filter(semFunil).length;
   const filtered = campaigns.filter(c =>
-    !search || (c.campaign_name || "").toLowerCase().includes(search.toLowerCase()),
+    (!search || (c.campaign_name || "").toLowerCase().includes(search.toLowerCase())) &&
+    (!soSemFunil || semFunil(c)),
   );
 
   const handleToggle = async (campaign: CRMMetaCampaign, pipelineId: string, checked: boolean) => {
@@ -77,14 +82,30 @@ export const CRMCampaignPipelineLinks = ({
         </p>
       </CardHeader>
       <CardContent>
-        <div className="relative mb-3">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar campanha..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 h-9"
-          />
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar campanha..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 h-9"
+            />
+          </div>
+          <Button
+            type="button"
+            variant={soSemFunil ? "default" : "outline"}
+            size="sm"
+            className="h-9 gap-1.5"
+            onClick={() => setSoSemFunil((v) => !v)}
+            title="Mostrar só as campanhas que ainda não têm funil"
+          >
+            <Filter className="h-3.5 w-3.5" />
+            Sem funil
+            {totalSemFunil > 0 && (
+              <Badge variant={soSemFunil ? "secondary" : "outline"} className="ml-1 px-1.5 text-[10px]">{totalSemFunil}</Badge>
+            )}
+          </Button>
         </div>
 
         <div className="space-y-2 max-h-[420px] overflow-auto">
