@@ -1984,7 +1984,12 @@ const OnboardingTasksPage = () => {
                     <Video className="h-4 w-4 mr-2" />
                     Escritório UNV
                   </DropdownMenuItem>
-                  {/* Escritório 3D dos agentes IA — somente master */}
+                  {isMaster && (
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/custo-ia")}>
+                    <DollarSign className="h-4 w-4 mr-2" /> Custo de IA
+                  </DropdownMenuItem>
+                )}
+                {/* Escritório 3D dos agentes IA — somente master */}
                   {isMaster && (
                     <DropdownMenuItem onClick={() => navigate("/office")}>
                       <Gamepad2 className="h-4 w-4 mr-2" />

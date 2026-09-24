@@ -40,6 +40,7 @@ const UNVStartCheckoutPage = lazy(() => import("./pages/UNVStartCheckoutPage"));
 const UNVStartObrigadoPage = lazy(() => import("./pages/UNVStartObrigadoPage"));
 const UNVStartClientsPage = lazy(() => import("./pages/onboarding-tasks/UNVStartClientsPage"));
 const ProcessosPage = lazy(() => import("./pages/onboarding-tasks/ProcessosPage"));
+const CustoIAPage = lazy(() => import("./pages/onboarding-tasks/CustoIAPage"));
 const AgendaFabricioPage = lazy(() => import("./pages/onboarding-tasks/AgendaFabricioPage"));
 const CertificateVerifyPage = lazy(() => import("./pages/CertificateVerifyPage"));
 const GlobalGraphPage = lazy(() => import("./pages/onboarding-tasks/GlobalGraphPage"));
@@ -552,6 +553,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/mapas" element={<MindMapsPage />} />
               <Route path="/onboarding-tasks/mapas/:id" element={<MindMapEditorPage />} />
               <Route path="/processos" element={<ProcessosPage />} />
+              <Route path="/onboarding-tasks/custo-ia" element={<CustoIAPage />} />
               <Route path="/onboarding-tasks/processos" element={<ProcessosPage />} />
               <Route path="/onboarding-tasks/agenda-fabricio" element={<AgendaFabricioPage />} />
               <Route path="/onboarding-tasks/automations" element={<AutomationsPage />} />
