@@ -1984,11 +1984,6 @@ const OnboardingTasksPage = () => {
                     <Video className="h-4 w-4 mr-2" />
                     Escritório UNV
                   </DropdownMenuItem>
-                  {isMaster && (
-                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/custo-ia")}>
-                    <DollarSign className="h-4 w-4 mr-2" /> Custo de IA
-                  </DropdownMenuItem>
-                )}
                 {/* Escritório 3D dos agentes IA — somente master */}
                   {isMaster && (
                     <DropdownMenuItem onClick={() => navigate("/office")}>
@@ -2388,6 +2383,11 @@ const OnboardingTasksPage = () => {
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/transcricoes")}>
                   <AudioLines className="h-4 w-4 mr-2" /> Transcrições
                 </DropdownMenuItem>
+                {isMaster && (
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/custo-ia")}>
+                    <DollarSign className="h-4 w-4 mr-2" /> Custo de IA
+                  </DropdownMenuItem>
+                )}
                 {/* Escritório 3D dos agentes IA — somente master */}
                 {isMaster && (
                   <DropdownMenuItem onClick={() => navigate("/office")}>
