@@ -23,6 +23,7 @@ const PageLoader = () => (
 );
 
 // ── Lazy page imports ──────────────────────────────────────────────
+const LeadRequestDecisionPage = lazy(() => import("./pages/LeadRequestDecisionPage"));
 const HowItWorksPage = lazy(() => import("./pages/HowItWorksPage"));
 const ProductsPage = lazy(() => import("./pages/ProductsPage"));
 const SalesAccelerationPage = lazy(() => import("./pages/SalesAccelerationPage"));
@@ -399,6 +400,7 @@ const AppShell = () => {
             <Route path="/" element={<HomePage />} />
             <Route path="/discador" element={<CRMDialerStandalonePage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/pedido-lead" element={<LeadRequestDecisionPage />} />
             <Route path="/onboarding-tasks/reset-password" element={<ResetPasswordPage />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route path="/products" element={<ProductsPage />} />
