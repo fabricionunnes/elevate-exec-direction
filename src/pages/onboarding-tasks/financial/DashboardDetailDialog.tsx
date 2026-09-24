@@ -4,7 +4,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
 
@@ -26,6 +25,20 @@ const statusLabels: Record<string, { label: string; variant: "default" | "destru
   cancelled: { label: "Cancelado", variant: "outline" },
 };
 
+const cents = (v: any) => Math.round((Number(v) || 0) * 100);
+
+// Recebível guarda centavos; pagável guarda reais. Em item já pago (inteiro ou parcial)
+// o número que vale é o que entrou/saiu de fato; no que está em aberto, o saldo.
+function valores(item: any, isReceivable: boolean) {
+  const status = item.status || "pending";
+  const total = isReceivable ? (item.amount_cents || 0) : cents(item.amount);
+  const pago = isReceivable ? (item.paid_amount_cents || 0) : cents(item.paid_amount);
+  const quitado = status === "paid";
+  const parcial = status === "partial";
+  const principal = quitado || parcial ? (pago || total) : Math.max(0, total - pago);
+  return { status, total, pago, principal, quitado, parcial };
+}
+
 export function DashboardDetailDialog({
   open,
   onOpenChange,
@@ -33,17 +46,9 @@ export function DashboardDetailDialog({
   items,
   type,
   formatCurrencyCents,
-  formatCurrency,
 }: Props) {
-  const totalValue = items.reduce((s, item) => {
-    if (type === "receivable") {
-      if (item.status === "partial" && item.paid_amount_cents) {
-        return s + Math.max(0, (item.amount_cents || 0) - item.paid_amount_cents);
-      }
-      return s + (item.amount_cents || 0);
-    }
-    return s + ((item.amount || 0) * 100);
-  }, 0);
+  const isReceivable = type === "receivable";
+  const totalValue = items.reduce((s, item) => s + valores(item, isReceivable).principal, 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -68,17 +73,20 @@ export function DashboardDetailDialog({
           ) : (
             <div className="space-y-2 mt-4">
               {items.map((item, idx) => {
-                const isReceivable = type === "receivable";
-                const name = isReceivable
-                  ? (item.company_name || item.company?.name || item.custom_receiver_name || "Sem nome")
-                  : (item.description || item.supplier_name || "Sem descrição");
-                const dueDate = item.due_date;
-                const status = item.status || "pending";
+                const titulo = isReceivable
+                  ? (item.company_name || item.company?.name || item.custom_receiver_name || item.description || "Sem nome")
+                  : (item.supplier_name || item.description || "Sem fornecedor");
+                const sub = isReceivable
+                  ? (item.description || "")
+                  : (item.supplier_name ? (item.description || "") : "");
+                const { status, total, pago, principal, quitado, parcial } = valores(item, isReceivable);
                 const sl = statusLabels[status] || { label: status, variant: "secondary" as const };
-                const amount = isReceivable ? (item.amount_cents || 0) : ((item.amount || 0) * 100);
-                const remaining = isReceivable && status === "partial" && item.paid_amount_cents
-                  ? Math.max(0, amount - item.paid_amount_cents)
-                  : amount;
+                const pagoEm = item.paid_date || item.paid_at;
+                const dataTexto = (quitado || parcial) && pagoEm
+                  ? `Pago em ${format(parseISO(String(pagoEm).slice(0, 10)), "dd/MM/yyyy")}`
+                  : item.due_date
+                    ? `Venc: ${format(parseISO(item.due_date), "dd/MM/yyyy")}`
+                    : "";
 
                 return (
                   <div
@@ -86,12 +94,11 @@ export function DashboardDetailDialog({
                     className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/30 transition-colors"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{name}</p>
+                      <p className="text-sm font-medium truncate">{titulo}</p>
+                      {sub && <p className="text-xs text-muted-foreground truncate">{sub}</p>}
                       <div className="flex items-center gap-2 mt-0.5">
-                        {dueDate && (
-                          <span className="text-xs text-muted-foreground">
-                            Venc: {format(parseISO(dueDate), "dd/MM/yyyy")}
-                          </span>
+                        {dataTexto && (
+                          <span className="text-xs text-muted-foreground">{dataTexto}</span>
                         )}
                         <Badge variant={sl.variant} className="text-[10px] h-5">
                           {sl.label}
@@ -99,10 +106,15 @@ export function DashboardDetailDialog({
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-sm font-bold">{formatCurrencyCents(remaining)}</p>
-                      {status === "partial" && isReceivable && item.paid_amount_cents > 0 && (
-                        <p className="text-[10px] text-emerald-600">
-                          Pago: {formatCurrencyCents(item.paid_amount_cents)}
+                      <p className="text-sm font-bold">{formatCurrencyCents(principal)}</p>
+                      {parcial && pago > 0 && total > pago && (
+                        <p className="text-[10px] text-muted-foreground">
+                          de {formatCurrencyCents(total)}, falta {formatCurrencyCents(total - pago)}
+                        </p>
+                      )}
+                      {quitado && pago > 0 && total > pago && (
+                        <p className="text-[10px] text-muted-foreground">
+                          valor original {formatCurrencyCents(total)}
                         </p>
                       )}
                     </div>

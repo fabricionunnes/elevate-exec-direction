@@ -151,7 +151,9 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     // Despesa Paga: filtra por paid_date no mês (não por due_date)
     const paidPayablesInMonth = payables.filter((p: any) => (p.status === "paid" || p.status === "partial") && p.paid_date?.startsWith(monthStr));
     const despesaPaga = paidPayablesInMonth.reduce((s: number, p: any) => s + (p.paid_amount || p.amount || 0) * 100, 0);
-    const despesaPendente = monthPayables.filter((p: any) => p.status !== "paid" && p.status !== "cancelled").reduce((s: number, p: any) => s + (p.amount || 0) * 100, 0);
+    // parcial entra pelo saldo, não pelo valor cheio (ex: pró-labore de 30k com 7,3k pago)
+    const despesaPendente = monthPayables.filter((p: any) => p.status !== "paid" && p.status !== "cancelled")
+      .reduce((s: number, p: any) => s + Math.max(0, ((p.amount || 0) - (p.paid_amount || 0)) * 100), 0);
     const totalBancos = banks.reduce((s: number, b: any) => s + (b.current_balance_cents || 0), 0);
     const resultado = receitaRecebida - despesaPaga;
     return { receitaRecebida, receitaPendente, despesaPaga, despesaPendente, totalBancos, resultado, paidInMonth, paidPayablesInMonth };
