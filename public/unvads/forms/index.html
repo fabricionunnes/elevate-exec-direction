@@ -336,7 +336,7 @@ fb("init", PIXEL);
 fb("track","PageView");
 
 /* ── estado ── */
-var A = { nome:"", tel:"", email:"", insta:"", invest:null, dor:"", fat:null, emp:null };
+var A = { nome:"", tel:"", email:"", insta:"", invest:null, dor:"", fat:null, emp:null, prefill:"" };
 var cur = 0, maxSeen = 0;
 var STEP_NAMES = { 10:"empresario", 1:"nome", 2:"whatsapp", 3:"email", 4:"instagram",
                    5:"investimento", 6:"dificuldade", 7:"faturamento" };
@@ -460,7 +460,7 @@ function prefill(){
     }
   } catch(e){}
 
-  if(achou.length) fb("trackCustom","FormPrefill",{ campos: achou.join(","), form:"unvads-diagnostico" });
+  A.prefill = achou.join(",");   // só vira evento depois da triagem
 }
 
 /* ── cards de opção ── */
@@ -492,6 +492,7 @@ buildOpts($("optEmp"), EMP, function(it){
   // Só conta como início de formulário depois que sabemos que é dono ou sócio.
   fb("trackCustom","FormStart",{ form:"unvads-diagnostico" });
   fb("trackCustom","FormAnswer",{ field:"empresario", value:it.s });
+  if(A.prefill) fb("trackCustom","FormPrefill",{ campos:A.prefill, form:"unvads-diagnostico" });
   show(1);
 });
 
