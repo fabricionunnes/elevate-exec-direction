@@ -18,6 +18,7 @@ type Dados = {
   ja_respondido?: boolean;
   respondido_por?: string | null;
   feito_agora?: boolean;
+  avisado?: boolean;
   erro?: string;
   detalhe?: string;
 };
@@ -110,10 +111,17 @@ export default function LeadRequestDecisionPage() {
                 <p className="text-xs text-muted-foreground mt-3">Respondido por {dados.respondido_por || "alguém do time"}.</p>
               )}
               {dados?.feito_agora && aceito && (
-                <p className="text-sm text-muted-foreground mt-3">Agora o lead está com {dados.quem_pediu}, e ele já foi avisado no WhatsApp.</p>
+                <p className="text-sm text-muted-foreground mt-3">
+                  Agora o lead está com {dados.quem_pediu}
+                  {dados.avisado
+                    ? ", e ele já recebeu no WhatsApp o aviso com o link do lead."
+                    : ". Não consegui avisar no WhatsApp, fale com ele."}
+                </p>
               )}
               {dados?.feito_agora && recusado && (
-                <p className="text-sm text-muted-foreground mt-3">O lead continua com quem estava. {dados.quem_pediu} foi avisado.</p>
+                <p className="text-sm text-muted-foreground mt-3">
+                  O lead continua com quem estava.{dados.avisado ? ` ${dados.quem_pediu} foi avisado no WhatsApp.` : ""}
+                </p>
               )}
 
               {!dados?.ja_respondido && !dados?.feito_agora ? (
