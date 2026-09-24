@@ -331,6 +331,7 @@ function fb(){ try { fbq.apply(null, arguments); } catch(e){} }
 
 /* ── Meta Pixel ── */
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");
+fb("set", "autoConfig", false, PIXEL);   // corta os eventos automáticos de clique do pixel
 fb("init", PIXEL);
 fb("track","PageView");
 
@@ -372,7 +373,7 @@ function show(i){
     var k = $("s" + i).querySelector(".kicker");
     if(k) k.textContent = (i === 7) ? "Última pergunta"
                                     : ("Pergunta " + Math.min(q, totalSteps()) + " de " + totalSteps());
-    if(q > maxSeen){
+    if(q > maxSeen && i !== 10){
       maxSeen = q;
       fb("trackCustom","FormStep",{ step:q, step_name:STEP_NAMES[i], form:"unvads-diagnostico" });
     }
