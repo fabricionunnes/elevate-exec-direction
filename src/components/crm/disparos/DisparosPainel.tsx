@@ -147,6 +147,7 @@ export function DisparosPainel({ from, to, periodoTexto, custoPorMensagem = 0 }:
   const agendadas = n(k.agendadas), realizadas = n(k.realizadas), vendas = n(k.vendas);
   // custo estimado: cobráveis × valor por mensagem entregue (a Meta não devolve custo por API)
   const custo = n(k.cobraveis) * custoPorMensagem;
+  const receita = Number(k.valor_vendas || 0);
 
   const porDia = useMemo(() => (dados?.por_dia || []).map((d: any) => ({
     dia: diaCurto(d.dia), enviados: n(d.enviados), entregues: n(d.entregues), lidos: n(d.lidos), responderam: n(d.responderam), falhas: n(d.falhas),
@@ -233,7 +234,13 @@ export function DisparosPainel({ from, to, periodoTexto, custoPorMensagem = 0 }:
             <Kpi label="Reuniões agendadas" valor={agendadas.toLocaleString("pt-BR")} sub={`${pct(agendadas, responderam)} de quem respondeu`} cor={C.enviados} destaque />
             <Kpi label="Reuniões realizadas" valor={realizadas.toLocaleString("pt-BR")} sub={agendadas ? `${pct(realizadas, agendadas)} das agendadas` : undefined} cor={C.entregues} destaque />
             <Kpi label="No-show" valor={n(k.no_show).toLocaleString("pt-BR")} sub={realizadas + n(k.no_show) ? `${pct(n(k.no_show), realizadas + n(k.no_show))} das reuniões` : undefined} cor={C.responderam} />
-            <Kpi label="Vendas" valor={vendas.toLocaleString("pt-BR")} sub={brl(Number(k.valor_vendas || 0))} cor="#008300" destaque />
+            <Kpi label="Vendas" valor={vendas.toLocaleString("pt-BR")} sub={vendas ? `${pct(vendas, realizadas)} das realizadas` : undefined} cor="#008300" destaque />
+          </div>
+
+          {/* quanto entrou */}
+          <div className="grid grid-cols-2 md:grid-cols-2 gap-2">
+            <Kpi label="Receita total" valor={brl(receita)} sub={`${vendas} venda(s) atribuída(s) aos disparos`} cor="#008300" destaque />
+            <Kpi label="Ticket médio" valor={vendas ? brl(receita / vendas) : "—"} sub={vendas ? "receita ÷ vendas" : "ainda sem venda"} cor="#008300" destaque />
           </div>
 
           {/* quanto custou */}
@@ -242,7 +249,7 @@ export function DisparosPainel({ from, to, periodoTexto, custoPorMensagem = 0 }:
             <Kpi label="Custo por reunião agendada" valor={agendadas ? brl(custo / agendadas) : "—"} sub="custo ÷ agendadas" cor={C.vendas} />
             <Kpi label="Custo por reunião realizada" valor={realizadas ? brl(custo / realizadas) : "—"} sub="custo ÷ realizadas" cor={C.vendas} />
             <Kpi label="CAC" valor={vendas ? brl(custo / vendas) : "—"}
-              sub={vendas && custo > 0 ? `retorno de ${(Number(k.valor_vendas || 0) / custo).toFixed(1).replace(".", ",")}x` : "ainda sem venda"}
+              sub={vendas && custo > 0 ? `retorno de ${(receita / custo).toFixed(1).replace(".", ",")}x` : "ainda sem venda"}
               cor="#008300" destaque />
           </div>
 
