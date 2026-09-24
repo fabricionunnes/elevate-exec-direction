@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DisparosPainel } from "@/components/crm/disparos/DisparosPainel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { OfficialTemplatesTab } from "@/components/crm/settings/OfficialTemplatesTab";
 import { cancelarDisparo, retomarDisparo, pausadoPorPagamento, linkPagamentoMeta } from "@/components/crm/OfficialDispatchProgress";
@@ -440,14 +441,19 @@ function DisparosLista() {
         Reuniões e vendas contam pro último disparo que chegou no lead antes delas, em até 30 dias.
       </p>
 
-      <Tabs defaultValue="disparos">
+      <Tabs defaultValue="painel">
         <TabsList>
+          <TabsTrigger value="painel">Painel</TabsTrigger>
           <TabsTrigger value="disparos">Disparos</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="erros" className="gap-1.5">
             Histórico de erros {errors.length > 0 && <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">{errors.length}</Badge>}
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="painel" className="mt-4">
+          <DisparosPainel from={intervaloDo(periodo, de, ate).from} to={intervaloDo(periodo, de, ate).to} periodoTexto={periodoTexto} />
+        </TabsContent>
 
         <TabsContent value="disparos" className="mt-4 space-y-3">
           {loading ? (
