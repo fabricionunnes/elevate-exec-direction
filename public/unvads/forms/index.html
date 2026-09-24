@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>Diagnóstico de Tráfego | UNV Ads</title>
-<meta name="description" content="Responda 5 perguntas rápidas e descubra em 1 minuto por que seu tráfego pago não está virando venda." />
+<meta name="description" content="Responda 7 perguntas rápidas e descubra em 1 minuto por que seu tráfego pago não está virando venda." />
 <meta name="robots" content="noindex,nofollow" />
 <meta name="theme-color" content="#071A36" />
 <link rel="icon" href="/unvads/forms/favicon-32.png" sizes="32x32" />
@@ -144,7 +144,7 @@ input.bad{border-color:var(--red-soft)}
 
 <div class="pwrap" id="pwrap" hidden>
   <div class="pbar"><div class="pfill" id="pfill"></div></div>
-  <div class="pmeta"><span id="pstep">Pergunta 1 de 6</span><span><b id="ppct">0%</b> concluído</span></div>
+  <div class="pmeta"><span id="pstep">Pergunta 1 de 7</span><span><b id="ppct">0%</b> concluído</span></div>
 </div>
 
 <main>
@@ -153,14 +153,14 @@ input.bad{border-color:var(--red-soft)}
   <section class="step on" id="s0">
     <p class="kicker">Antes de falar de proposta</p>
     <h1>Descubra em 1 minuto por que seu tráfego não vira venda.</h1>
-    <p class="sub">São <strong>6 perguntas rápidas</strong>. No final você recebe um diagnóstico do seu cenário e fala direto comigo no WhatsApp.</p>
+    <p class="sub">São <strong>7 perguntas rápidas</strong>. No final você recebe um diagnóstico do seu cenário e fala direto comigo no WhatsApp.</p>
     <button class="btn" id="go">Começar o diagnóstico</button>
     <p class="hint">Leva menos de 1 minuto. Seus dados não vão pra lista nenhuma.</p>
   </section>
 
   <!-- 1 — nome -->
   <section class="step" id="s1">
-    <p class="kicker">Pergunta 1 de 6</p>
+    <p class="kicker">Pergunta 1 de 7</p>
     <h2>Como você se chama?</h2>
     <p class="sub">Pra eu te chamar pelo nome, e não de "olá, tudo bem?".</p>
     <label class="f"><input id="nome" type="text" name="name" autocomplete="name" autocapitalize="words" placeholder="Seu nome completo" maxlength="80" enterkeyhint="next" /></label>
@@ -171,7 +171,7 @@ input.bad{border-color:var(--red-soft)}
 
   <!-- 2 — whatsapp -->
   <section class="step" id="s2">
-    <p class="kicker">Pergunta 2 de 6</p>
+    <p class="kicker">Pergunta 2 de 7</p>
     <h2>Qual seu WhatsApp?</h2>
     <p class="sub">É por ali que eu te mando o diagnóstico completo.</p>
     <label class="f"><input id="tel" type="tel" name="tel" inputmode="numeric" autocomplete="tel" placeholder="(31) 99999-9999" maxlength="24" enterkeyhint="next" /></label>
@@ -182,7 +182,7 @@ input.bad{border-color:var(--red-soft)}
 
   <!-- 3 — email -->
   <section class="step" id="s3">
-    <p class="kicker">Pergunta 3 de 6</p>
+    <p class="kicker">Pergunta 3 de 7</p>
     <h2>E seu melhor e-mail?</h2>
     <p class="sub">Só pra registrar no sistema. Nada de spam.</p>
     <label class="f"><input id="email" type="email" name="email" inputmode="email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="voce@suaempresa.com.br" maxlength="120" enterkeyhint="next" /></label>
@@ -193,7 +193,7 @@ input.bad{border-color:var(--red-soft)}
 
   <!-- 4 — instagram -->
   <section class="step" id="s4">
-    <p class="kicker">Pergunta 4 de 6</p>
+    <p class="kicker">Pergunta 4 de 7</p>
     <h2>Qual o Instagram da sua empresa?</h2>
     <p class="sub">Eu dou uma olhada antes de falar com você. Se não tiver, é só pular.</p>
     <label class="f"><input id="insta" type="text" inputmode="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="@suaempresa" maxlength="60" enterkeyhint="next" /></label>
@@ -204,7 +204,7 @@ input.bad{border-color:var(--red-soft)}
 
   <!-- 5 — investimento -->
   <section class="step" id="s5">
-    <p class="kicker">Pergunta 5 de 6</p>
+    <p class="kicker">Pergunta 5 de 7</p>
     <h2>Quanto você investe em tráfego hoje?</h2>
     <p class="sub">Por mês, somando todas as plataformas.</p>
     <div class="opts" id="optInvest"></div>
@@ -214,7 +214,7 @@ input.bad{border-color:var(--red-soft)}
 
   <!-- 6 — dificuldade (só pra quem investe) -->
   <section class="step" id="s6">
-    <p class="kicker">Última pergunta</p>
+    <p class="kicker">Pergunta 6 de 7</p>
     <h2>Qual sua maior dificuldade hoje no tráfego?</h2>
     <p class="sub">Escolhe a que mais te incomoda.</p>
     <div class="opts" id="optDor"></div>
@@ -222,14 +222,24 @@ input.bad{border-color:var(--red-soft)}
     <button class="back" data-back="6">← Voltar</button>
   </section>
 
-  <!-- 7 — enviando -->
+  <!-- 7 — faturamento -->
   <section class="step" id="s7">
+    <p class="kicker">Última pergunta</p>
+    <h2>Quanto sua empresa fatura por mês?</h2>
+    <p class="sub">É o que me diz qual estratégia faz sentido pro seu caso.</p>
+    <div class="opts" id="optFat"></div>
+    <p class="err" id="e7"></p>
+    <button class="back" data-back="7">← Voltar</button>
+  </section>
+
+  <!-- 8 — enviando -->
+  <section class="step" id="s8">
     <h2>Montando seu diagnóstico…</h2>
     <p class="sub">Um segundo. Estou cruzando suas respostas.</p>
   </section>
 
-  <!-- 8 — resultado -->
-  <section class="step" id="s8">
+  <!-- 9 — resultado -->
+  <section class="step" id="s9">
     <div class="card">
       <div class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="#10A56A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
       <h3 id="rTitle">Diagnóstico pronto</h3>
@@ -264,6 +274,12 @@ var INVEST = [
   {v:"Entre R$ 3.000 e R$ 7.000",        s:"3a7k"},
   {v:"Acima de R$ 7.000 por mês",        s:"7k+"}
 ];
+var FAT = [
+  {v:"Até R$ 30 mil por mês",             s:"ate30k"},
+  {v:"Entre R$ 30 mil e R$ 100 mil",      s:"30a100k"},
+  {v:"Entre R$ 100 mil e R$ 300 mil",     s:"100a300k"},
+  {v:"Acima de R$ 300 mil por mês",       s:"300k+"}
+];
 var DOR = [
   "Chega lead, mas é lead desqualificado",
   "O lead não responde no WhatsApp",
@@ -292,11 +308,11 @@ fb("init", PIXEL);
 fb("track","PageView");
 
 /* ── estado ── */
-var A = { nome:"", tel:"", email:"", insta:"", invest:null, dor:"" };
+var A = { nome:"", tel:"", email:"", insta:"", invest:null, dor:"", fat:null };
 var cur = 0, maxSeen = 0;
-var STEP_NAMES = ["abertura","nome","whatsapp","email","instagram","investimento","dificuldade"];
+var STEP_NAMES = ["abertura","nome","whatsapp","email","instagram","investimento","dificuldade","faturamento"];
 
-function totalSteps(){ return (A.invest && A.invest.s === "nao") ? 5 : 6; }
+function totalSteps(){ return (A.invest && A.invest.s === "nao") ? 6 : 7; }
 
 function paint(){
   var n = totalSteps();
@@ -304,8 +320,8 @@ function paint(){
   var pct = Math.round(done / n * 100);
   $("pfill").style.width = pct + "%";
   $("ppct").textContent = pct + "%";
-  $("pstep").textContent = cur >= 1 && cur <= 6 ? ("Pergunta " + Math.min(cur, n) + " de " + n) : "Quase lá";
-  $("pwrap").hidden = (cur === 0 || cur >= 7);
+  $("pstep").textContent = cur >= 1 && cur <= 7 ? ("Pergunta " + Math.min(cur, n) + " de " + n) : "Quase lá";
+  $("pwrap").hidden = (cur === 0 || cur >= 8);
 }
 
 function show(i){
@@ -314,7 +330,7 @@ function show(i){
   $("s" + i).classList.add("on");
   cur = i;
   paint();
-  if(i > maxSeen && i >= 1 && i <= 6){
+  if(i > maxSeen && i >= 1 && i <= 7){
     maxSeen = i;
     fb("trackCustom","FormStep",{ step:i, step_name:STEP_NAMES[i], form:"unvads-diagnostico" });
   }
@@ -364,7 +380,7 @@ buildOpts($("optInvest"), INVEST, function(it){
   err(5,"");
   fb("trackCustom","FormAnswer",{ field:"investimento", value:it.s });
   paint();
-  if(it.s === "nao") finish();     // quem não investe não responde a dificuldade
+  if(it.s === "nao") show(7);      // quem não investe pula a dificuldade, mas responde o faturamento
   else show(6);
 });
 
@@ -372,6 +388,13 @@ buildOpts($("optDor"), DOR, function(it){
   A.dor = it;
   err(6,"");
   fb("trackCustom","FormAnswer",{ field:"dificuldade" });
+  show(7);
+});
+
+buildOpts($("optFat"), FAT, function(it){
+  A.fat = it;
+  err(7,"");
+  fb("trackCustom","FormAnswer",{ field:"faturamento", value:it.s });
   finish();
 });
 
@@ -420,6 +443,17 @@ Array.prototype.forEach.call(document.querySelectorAll("input"), function(inp){
 });
 
 /* ── diagnóstico curto por perfil ── */
+function proporcao(){
+  // quanto da receita vai pra midia diz mais que o valor absoluto
+  var f = A.fat ? A.fat.s : null, i = A.invest ? A.invest.s : null;
+  if(!f || !i || i === "nao") return "";
+  if((f === "100a300k" || f === "300k+") && (i === "ate500" || i === "500a1k"))
+    return " Pro tamanho da sua operação, essa verba é pequena demais. Você está deixando volume na mesa todo mês.";
+  if(f === "ate30k" && (i === "3a7k" || i === "7k+"))
+    return " Você está investindo uma fatia grande do seu faturamento em mídia. Isso só se sustenta se cada real voltar rastreado, e é exatamente aí que a maioria não tem controle.";
+  return "";
+}
+
 function diagnose(){
   var s = A.invest ? A.invest.s : "nao";
   if(s === "nao")     return "Você ainda não tem máquina de aquisição. Hoje sua venda depende de indicação e do humor do mercado. O primeiro passo não é gastar mais, é montar a estrutura certa pra o primeiro real investido já voltar rastreado.";
@@ -432,7 +466,9 @@ function diagnose(){
 
 /* ── envio ── */
 function payloadDesafio(){
-  var parts = ["Investimento em tráfego: " + (A.invest ? A.invest.v : "não informado")];
+  var parts = [];
+  if(A.fat) parts.push("Faturamento: " + A.fat.v);
+  parts.push("Investimento em tráfego: " + (A.invest ? A.invest.v : "não informado"));
   if(A.dor) parts.push("Maior dificuldade: " + A.dor);
   return parts.join(" | ");
 }
@@ -443,6 +479,7 @@ function waText(leadId){
   t += "WhatsApp: " + $("tel").value + "\n";
   t += "E-mail: " + A.email + "\n";
   if(A.insta) t += "Instagram: @" + A.insta + "\n";
+  if(A.fat) t += "Faturamento: " + A.fat.v + "\n";
   t += "Invisto hoje: " + (A.invest ? A.invest.v : "-") + "\n";
   if(A.dor) t += "Maior dificuldade: " + A.dor + "\n";
   t += "\nQuero entender como a UNV Ads pode resolver isso pra mim.";
@@ -452,9 +489,10 @@ function waText(leadId){
 function render(leadId){
   $("rTitle").textContent = A.nome.split(" ")[0] + ", seu diagnóstico está pronto.";
   $("rSub").textContent = "Já recebi suas respostas aqui do lado. Olha o que elas dizem sobre o seu cenário:";
-  $("rDiag").innerHTML = "<b>O que eu já consigo ver:</b><br>" + diagnose();
+  $("rDiag").innerHTML = "<b>O que eu já consigo ver:</b><br>" + diagnose() + proporcao();
   var rows = [["Nome", A.nome], ["WhatsApp", $("tel").value], ["E-mail", A.email]];
   if(A.insta) rows.push(["Instagram", "@" + A.insta]);
+  if(A.fat) rows.push(["Faturamento", A.fat.v]);
   rows.push(["Investimento", A.invest ? A.invest.v : "-"]);
   if(A.dor) rows.push(["Dificuldade", A.dor]);
   $("rRows").innerHTML = rows.map(function(r){ return "<li><span>" + r[0] + "</span><b>" + r[1] + "</b></li>"; }).join("");
@@ -462,14 +500,14 @@ function render(leadId){
   var wa = $("waBtn");
   wa.href = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(waText(leadId));
   wa.addEventListener("click", function(){ fb("trackCustom","WhatsAppClick",{ form:"unvads-diagnostico" }); });
-  show(8);
+  show(9);
 }
 
 var sending = false;
 function finish(){
   if(sending) return;
   sending = true;
-  show(7);
+  show(8);
 
   var payload = {
     form_token: FORM_TOKEN,
