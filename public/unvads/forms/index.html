@@ -358,6 +358,67 @@ function maskPhone(v){
 }
 $("tel").addEventListener("input", function(){ this.value = maskPhone(this.value); });
 
+/* ── pré-preenchimento ──────────────────────────────────────────────
+   Duas fontes: o que veio no link (e-mail, WhatsApp, remarketing) e o que
+   a pessoa já digitou aqui antes, no mesmo aparelho. O link manda, porque
+   e o dado mais novo. Nada disso pula etapa: ela ve o campo cheio e so
+   confirma, entao um dado velho ou errado ainda da pra corrigir. */
+var LS = "unvads_lead", LS_TTL = 90 * 24 * 3600 * 1000;
+
+function lsGet(){
+  try {
+    var o = JSON.parse(localStorage.getItem(LS) || "{}");
+    if(!o.t || Date.now() - o.t > LS_TTL) return {};   // dado velho nao serve
+    return o;
+  } catch(e){ return {}; }
+}
+function lsSet(k, v){
+  try { var o = lsGet(); o[k] = v; o.t = Date.now(); localStorage.setItem(LS, JSON.stringify(o)); } catch(e){}
+}
+
+function firstQp(){
+  for(var i = 0; i < arguments.length; i++){ var v = qp(arguments[i]); if(v) return v; }
+}
+
+var PESSOAIS = ["nome","name","full_name","tel","telefone","phone","whatsapp",
+                "email","e_mail","insta","instagram"];
+
+function prefill(){
+  var saved = lsGet(), achou = [];
+
+  var nome = firstQp("nome","name","full_name") || saved.nome;
+  if(nome && nome.trim().length >= 2){
+    $("nome").value = capitalize(nome.trim().replace(/\s+/g," ")); achou.push("nome");
+  }
+
+  var tel = firstQp("tel","telefone","phone","whatsapp") || saved.tel;
+  if(tel && String(tel).replace(/\D/g,"").length >= 10){
+    $("tel").value = maskPhone(String(tel)); achou.push("tel");
+  }
+
+  var mail = firstQp("email","e_mail") || saved.email;
+  if(mail && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(mail).trim())){
+    $("email").value = String(mail).trim(); achou.push("email");
+  }
+
+  var insta = firstQp("insta","instagram") || saved.insta;
+  if(insta) $("insta").value = "@" + String(insta).trim().replace(/^@+/,"");
+
+  // Tira os dados pessoais da barra de endereco depois de ler. Nao ficam no
+  // print, no referrer nem no historico do navegador. As UTMs seguem intactas,
+  // o payload le elas la na hora do envio.
+  try {
+    var u = new URL(location.href), mexeu = false;
+    PESSOAIS.forEach(function(k){ if(u.searchParams.has(k)){ u.searchParams.delete(k); mexeu = true; } });
+    if(mexeu){
+      var q = u.searchParams.toString();
+      history.replaceState(null, "", u.pathname + (q ? "?" + q : "") + u.hash);
+    }
+  } catch(e){}
+
+  if(achou.length) fb("trackCustom","FormPrefill",{ campos: achou.join(","), form:"unvads-diagnostico" });
+}
+
 /* ── cards de opção ── */
 function buildOpts(box, items, onPick){
   box.innerHTML = "";
@@ -408,20 +469,21 @@ function validate(i){
   if(i === 1){
     var v = $("nome").value.trim().replace(/\s+/g," ");
     if(v.length < 2){ err(1,"Escreve seu nome pra eu te chamar direito."); return false; }
-    A.nome = capitalize(v); err(1,""); return true;
+    A.nome = capitalize(v); lsSet("nome", A.nome); err(1,""); return true;
   }
   if(i === 2){
     var d = $("tel").value.replace(/\D/g,"");
     if(d.length < 10){ err(2,"Coloca seu WhatsApp com DDD."); return false; }
-    A.tel = d; err(2,""); return true;
+    A.tel = d; lsSet("tel", d); err(2,""); return true;
   }
   if(i === 3){
     var e = $("email").value.trim();
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)){ err(3,"Confere o e-mail, parece que faltou algo."); return false; }
-    A.email = e; err(3,""); return true;
+    A.email = e; lsSet("email", e); err(3,""); return true;
   }
   if(i === 4){
     A.insta = $("insta").value.trim().replace(/^@+/,"");
+    if(A.insta) lsSet("insta", A.insta);
     err(4,""); return true;   // opcional
   }
   return true;
@@ -552,6 +614,7 @@ function finish(){
   });
 }
 
+prefill();
 paint();
 })();
 </script>
