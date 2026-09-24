@@ -458,7 +458,7 @@ function DisparosLista() {
         </TabsContent>
 
         <TabsContent value="painel" className="mt-4">
-          <DisparosPainel from={intervaloDo(periodo, de, ate).from} to={intervaloDo(periodo, de, ate).to} periodoTexto={periodoTexto} />
+          <DisparosPainel from={intervaloDo(periodo, de, ate).from} to={intervaloDo(periodo, de, ate).to} periodoTexto={periodoTexto} custoPorMensagem={rateFor(instances[0]?.id || null, "MARKETING")} />
         </TabsContent>
 
         <TabsContent value="disparos" className="mt-4 space-y-3">

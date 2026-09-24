@@ -114,7 +114,7 @@ function Grafico({ titulo, subtitulo, children, altura = 260 }: { titulo: string
 
 const tipStyle = { fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--popover))", color: "hsl(var(--popover-foreground))" };
 
-export function DisparosPainel({ from, to, periodoTexto }: { from: Date; to: Date; periodoTexto: string }) {
+export function DisparosPainel({ from, to, periodoTexto, custoPorMensagem = 0 }: { from: Date; to: Date; periodoTexto: string; custoPorMensagem?: number }) {
   const [dados, setDados] = useState<any>(null);
   const [filtros, setFiltros] = useState<any>({ templates: [], senders: [], agentes: [], funis: [] });
   const [carregando, setCarregando] = useState(true);
@@ -144,6 +144,9 @@ export function DisparosPainel({ from, to, periodoTexto }: { from: Date; to: Dat
 
   const k = dados?.kpis || {};
   const enviados = n(k.enviados), entregues = n(k.entregues), lidos = n(k.lidos), responderam = n(k.responderam);
+  const agendadas = n(k.agendadas), realizadas = n(k.realizadas), vendas = n(k.vendas);
+  // custo estimado: cobráveis × valor por mensagem entregue (a Meta não devolve custo por API)
+  const custo = n(k.cobraveis) * custoPorMensagem;
 
   const porDia = useMemo(() => (dados?.por_dia || []).map((d: any) => ({
     dia: diaCurto(d.dia), enviados: n(d.enviados), entregues: n(d.entregues), lidos: n(d.lidos), responderam: n(d.responderam), falhas: n(d.falhas),
@@ -215,14 +218,32 @@ export function DisparosPainel({ from, to, periodoTexto }: { from: Date; to: Dat
         <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Nenhum disparo com esses filtros.</CardContent></Card>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-            <Kpi label="Enviados" valor={enviados.toLocaleString("pt-BR")} sub={`${n(k.disparos)} disparo(s)`} cor={C.enviados} destaque />
+          {/* o que saiu */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+            <Kpi label="Disparos" valor={n(k.disparos).toLocaleString("pt-BR")} sub={`${n(k.pulados)} lead(s) pulados`} cor="#666" />
+            <Kpi label="Enviados" valor={enviados.toLocaleString("pt-BR")} cor={C.enviados} destaque />
             <Kpi label="Entregues" valor={entregues.toLocaleString("pt-BR")} sub={pct(entregues, enviados)} cor={C.entregues} />
             <Kpi label="Lidos" valor={lidos.toLocaleString("pt-BR")} sub={pct(lidos, entregues)} cor={C.lidos} />
             <Kpi label="Responderam" valor={responderam.toLocaleString("pt-BR")} sub={pct(responderam, entregues)} cor={C.responderam} destaque />
-            <Kpi label="Reuniões" valor={`${n(k.agendadas)}`} sub={`${n(k.realizadas)} realizadas · ${n(k.no_show)} no-show`} cor={C.vendas} />
-            <Kpi label="Vendas" valor={`${n(k.vendas)}`} sub={brl(Number(k.valor_vendas || 0))} cor="#008300" destaque />
             <Kpi label="Falhas" valor={n(k.falhas).toLocaleString("pt-BR")} sub={`${pct(n(k.falhas), enviados)} do enviado`} cor={C.falhas} />
+          </div>
+
+          {/* o que voltou */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <Kpi label="Reuniões agendadas" valor={agendadas.toLocaleString("pt-BR")} sub={`${pct(agendadas, responderam)} de quem respondeu`} cor={C.enviados} destaque />
+            <Kpi label="Reuniões realizadas" valor={realizadas.toLocaleString("pt-BR")} sub={agendadas ? `${pct(realizadas, agendadas)} das agendadas` : undefined} cor={C.entregues} destaque />
+            <Kpi label="No-show" valor={n(k.no_show).toLocaleString("pt-BR")} sub={realizadas + n(k.no_show) ? `${pct(n(k.no_show), realizadas + n(k.no_show))} das reuniões` : undefined} cor={C.responderam} />
+            <Kpi label="Vendas" valor={vendas.toLocaleString("pt-BR")} sub={brl(Number(k.valor_vendas || 0))} cor="#008300" destaque />
+          </div>
+
+          {/* quanto custou */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <Kpi label="Custo total" valor={brl(custo)} sub={`${n(k.cobraveis).toLocaleString("pt-BR")} mensagem(ns) cobrada(s)`} cor={C.vendas} destaque />
+            <Kpi label="Custo por reunião agendada" valor={agendadas ? brl(custo / agendadas) : "—"} sub="custo ÷ agendadas" cor={C.vendas} />
+            <Kpi label="Custo por reunião realizada" valor={realizadas ? brl(custo / realizadas) : "—"} sub="custo ÷ realizadas" cor={C.vendas} />
+            <Kpi label="CAC" valor={vendas ? brl(custo / vendas) : "—"}
+              sub={vendas && custo > 0 ? `retorno de ${(Number(k.valor_vendas || 0) / custo).toFixed(1).replace(".", ",")}x` : "ainda sem venda"}
+              cor="#008300" destaque />
           </div>
 
           <div className="grid gap-3 lg:grid-cols-3">
