@@ -33,16 +33,23 @@ export function useWhatsAppMessages(conversationId: string | null) {
   const [error, setError] = useState<Error | null>(null);
   const [sending, setSending] = useState(false);
 
+  // Conversa de grupo antiga chega a 20 mil mensagens: puxar tudo de uma vez travava a
+  // tela por dezenas de segundos. Abre com as últimas e busca as antigas sob demanda.
+  const LOTE_MSGS = 200;
+  const [temMaisAntigas, setTemMaisAntigas] = useState(false);
+  const [carregandoAntigas, setCarregandoAntigas] = useState(false);
+
   const fetchMessages = useCallback(async () => {
     if (!conversationId) {
       setMessages([]);
+      setTemMaisAntigas(false);
       setLoading(false);
       return;
     }
 
     try {
       if (loadedFor.current !== (conversationId || null)) setLoading(true);
-      
+
       const { data, error: fetchError } = await supabase
         .from('crm_whatsapp_messages')
         .select(`
@@ -50,17 +57,19 @@ export function useWhatsAppMessages(conversationId: string | null) {
           sender:onboarding_staff(id, name, avatar_url)
         `)
         .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(LOTE_MSGS);
 
       if (fetchError) throw fetchError;
 
-      // Cast direction to the expected type
+      // veio do mais novo pro mais antigo; a tela mostra na ordem do tempo
       const typedData = (data || []).map(msg => ({
         ...msg,
         direction: msg.direction as 'inbound' | 'outbound',
-      }));
+      })).reverse();
 
       setMessages(typedData);
+      setTemMaisAntigas((data || []).length >= LOTE_MSGS);
 
       loadedFor.current = conversationId || null;
     } catch (err) {
@@ -70,6 +79,41 @@ export function useWhatsAppMessages(conversationId: string | null) {
       setLoading(false);
     }
   }, [conversationId]);
+
+  const carregarAntigas = useCallback(async () => {
+    if (!conversationId || carregandoAntigas) return;
+    setCarregandoAntigas(true);
+    try {
+      const maisAntiga = messages[0]?.created_at;
+      let q = supabase
+        .from('crm_whatsapp_messages')
+        .select(`
+          *,
+          sender:onboarding_staff(id, name, avatar_url)
+        `)
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: false })
+        .limit(LOTE_MSGS);
+      if (maisAntiga) q = q.lt('created_at', maisAntiga);
+      const { data, error: fetchError } = await q;
+      if (fetchError) throw fetchError;
+
+      const antigas = (data || []).map(msg => ({
+        ...msg,
+        direction: msg.direction as 'inbound' | 'outbound',
+      })).reverse();
+
+      setMessages((prev) => {
+        const vistos = new Set(prev.map((m) => m.id));
+        return [...antigas.filter((m: any) => !vistos.has(m.id)), ...prev] as any;
+      });
+      setTemMaisAntigas((data || []).length >= LOTE_MSGS);
+    } catch (err) {
+      console.error('Error fetching older messages:', err);
+    } finally {
+      setCarregandoAntigas(false);
+    }
+  }, [conversationId, messages, carregandoAntigas]);
 
   useEffect(() => {
     fetchMessages();
@@ -404,5 +448,8 @@ export function useWhatsAppMessages(conversationId: string | null) {
     sendMessage,
     sendMedia,
     refetch: fetchMessages,
+    temMaisAntigas,
+    carregandoAntigas,
+    carregarAntigas,
   };
 }

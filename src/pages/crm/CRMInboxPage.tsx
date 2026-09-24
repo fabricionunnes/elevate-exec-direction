@@ -359,6 +359,9 @@ export const CRMInboxPage = () => {
     sendMessage,
     sendMedia,
     refetch: refetchWhatsAppMessages,
+    temMaisAntigas,
+    carregandoAntigas,
+    carregarAntigas,
   } = useWhatsAppMessages(isInstagramConversation ? null : (selectedConversation?.id || null));
 
   const {
@@ -502,6 +505,12 @@ export const CRMInboxPage = () => {
   // Scroll to bottom when messages change or conversation is selected
   // Só rola sozinho ao abrir/trocar de conversa, quando a última mensagem é minha, ou quando
   // chega mensagem nova e eu já estava perto do fim. Lendo mensagens antigas, fica onde está.
+  // carregar mensagens antigas não pode jogar a tela pro fim
+  const segurarRolagem = useRef(false);
+  const handleCarregarAntigas = async () => {
+    segurarRolagem.current = true;
+    await carregarAntigas();
+  };
   const scrollState = useRef<{ conv: string | null; count: number; pending: boolean }>({ conv: null, count: 0, pending: false });
   useEffect(() => {
     const st = scrollState.current;
@@ -520,6 +529,8 @@ export const CRMInboxPage = () => {
       // abriu a conversa: vai direto pro fim, sem animação, e repete enquanto imagens/áudios carregam
       scrollToBottom(true);
       [250, 700, 1500].forEach((ms) => setTimeout(() => { if (scrollState.current.conv === convId) scrollToBottom(true); }, ms));
+    } else if (segurarRolagem.current) {
+      segurarRolagem.current = false;
     } else if (cresceu && (pertoDoFim || ultimaMinha)) scrollToBottom();
     st.pending = false;
     st.count = messages.length;
@@ -1279,6 +1290,14 @@ export const CRMInboxPage = () => {
           {/* Messages */}
           <ScrollArea ref={messagesScrollAreaRef} className="flex-1 min-h-0 px-3 sm:px-6 py-4 bg-muted/40 [&>[data-radix-scroll-area-viewport]>div]:!block">
             <div className="space-y-1.5 max-w-4xl mx-auto">
+              {!loadingMessages && !isInstagramConversation && temMaisAntigas && (
+                <div className="flex justify-center pb-2">
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCarregarAntigas} disabled={carregandoAntigas}>
+                    {carregandoAntigas && <RefreshCw className="h-3 w-3 mr-1 animate-spin" />}
+                    Carregar mensagens antigas
+                  </Button>
+                </div>
+              )}
               {loadingMessages ? (
                 <div className="flex items-center justify-center py-8">
                   <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />

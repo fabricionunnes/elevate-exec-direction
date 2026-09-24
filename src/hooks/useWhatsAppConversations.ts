@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "@/lib/fetchAllRows";
 import { RealtimeChannel } from "@supabase/supabase-js";
 
 export interface WhatsAppContact {
@@ -68,13 +67,15 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
   const loadedOnce = useRef(false);
   const [error, setError] = useState<Error | null>(null);
 
+  // corrida: só a carga mais nova pode escrever na lista
+  const cargaAtual = useRef(0);
+
   const fetchConversations = async () => {
+    const minhaCarga = ++cargaAtual.current;
     try {
       if (!loadedOnce.current) setLoading(true);
-      
-      // PostgREST corta em 1000 linhas por resposta: sem paginar, as conversas mais
-      // antigas sumiam do Atendimento (o atendente via só parte da carteira dele).
-      const data = await fetchAllRows<any>((from, to) => {
+
+      const pagina = (from: number, to: number) => {
         let query = supabase
           .from('crm_whatsapp_conversations')
           .select(`
@@ -93,16 +94,37 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
         if (options.status) query = query.eq('status', options.status);
         if (options.assignedTo) query = query.eq('assigned_to', options.assignedTo);
         return query;
-      });
+      };
 
-      setConversations(data || []);
+      // As conversas recentes são as que o atendente precisa ver agora: essas aparecem
+      // na hora e o resto da carteira entra em segundo plano, sem travar a tela.
+      const PRIMEIRA = 300;
+      const LOTE = 1000;
+      const { data: inicio, error: erroInicio } = await pagina(0, PRIMEIRA - 1);
+      if (erroInicio) throw erroInicio;
+      if (minhaCarga !== cargaAtual.current) return;
 
+      const acc: any[] = [...(inicio || [])];
+      setConversations(acc as any);
       loadedOnce.current = true;
+      setLoading(false);
+
+      let from = acc.length;
+      while (acc.length >= PRIMEIRA) {
+        const { data: lote, error: erroLote } = await pagina(from, from + LOTE - 1);
+        if (erroLote) throw erroLote;
+        if (minhaCarga !== cargaAtual.current) return;
+        if (!lote || lote.length === 0) break;
+        acc.push(...lote);
+        setConversations([...acc] as any);
+        if (lote.length < LOTE) break;
+        from += LOTE;
+      }
     } catch (err) {
       console.error('Error fetching conversations:', err);
-      setError(err as Error);
+      if (minhaCarga === cargaAtual.current) setError(err as Error);
     } finally {
-      setLoading(false);
+      if (minhaCarga === cargaAtual.current) setLoading(false);
     }
   };
 
