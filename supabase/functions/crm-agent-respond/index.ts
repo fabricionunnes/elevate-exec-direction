@@ -1773,6 +1773,36 @@ Deno.serve(async (req) => {
     }
     if (knowledge.length > 18000) knowledge = knowledge.slice(0, 18000);
 
+    // EQUIPE DA UNV: a IA precisa saber quem é do time. Em 24/09/2026 ela disse pro lead
+    // que "não tem ninguém com esse nome no meu time" sobre o Ricardo, que é closer.
+    let equipeTexto = "";
+    try {
+      const { data: time } = await supabase.from("onboarding_staff")
+        .select("id, name, role, is_crm_closer").eq("is_active", true).order("name");
+      const papel = (r: string | null, closer: boolean) =>
+        closer ? "closer (faz as reuniões)"
+        : r === "master" ? "direção"
+        : r === "head_comercial" ? "head comercial"
+        : r === "admin" ? "gestão"
+        : r === "consultor" ? "consultor"
+        : "time UNV";
+      const lista = (time || []).map((t: any) => `${t.name} — ${papel(t.role, t.is_crm_closer === true)}`);
+      let donoId: string | null = null;
+      if (conv.lead_id) {
+        const { data: ld } = await supabase.from("crm_leads").select("closer_staff_id, owner_staff_id").eq("id", conv.lead_id).maybeSingle();
+        donoId = (ld as any)?.closer_staff_id || (ld as any)?.owner_staff_id || null;
+      }
+      const dono = (time || []).find((t: any) => t.id === donoId);
+      if (lista.length) {
+        equipeTexto = `\n\nEQUIPE DA UNV (pessoas de verdade, todas trabalham aqui):\n- ${lista.join("\n- ")}`
+          + (dono ? `\nQuem cuida DESTE lead junto com você: ${dono.name}.` : "")
+          + `\nREGRA: se o lead citar o nome de alguém dessa lista, CONFIRME que a pessoa é do time da UNV e siga a conversa com naturalidade `
+          + `(ex.: "é sim, o Ricardo é o nosso especialista, ele que vai te atender na reunião"). NUNCA diga que uma pessoa dessa lista não trabalha aqui, `
+          + `não é do seu time ou que você não conhece. Se o nome NÃO estiver na lista, não negue de forma seca: diga que vai confirmar com o time e volte pro assunto. `
+          + `Você é colega dessas pessoas, mesmo sem falar com todas no dia a dia.`;
+      }
+    } catch { /* sem a lista, segue sem o bloco */ }
+
     const leadName = conv.contact?.name || conv.contact?.username || conv.contact?.phone || "o lead";
     const nowBR = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 16).replace("T", " ");
     const mtgCtxMain = await reunioesDoLead(supabase, conv.lead_id);
@@ -1936,6 +1966,7 @@ Deno.serve(async (req) => {
       agent.objective ? `\nOBJETIVO: ${agent.objective}` : "",
       agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
       knowledge ? `\n\nBASE DE CONHECIMENTO (use quando relevante, não invente):${knowledge}` : "",
+      equipeTexto,
       `\n\nHoje é ${DIAS_PT[new Date(Date.now() - 3 * 3600000).getUTCDay()]}. Reunião só pode ser marcada em: ${diasDeReuniao(agent).map((x) => DIAS_PT[x]).join(", ")}. Se "amanhã" cair fora desses dias, ofereça o próximo dia permitido e diga o dia da semana (ex: "segunda"), nunca "amanhã".`,
       `\n\nData/hora atual (Brasília): ${nowBR}. A saudação (bom dia/boa tarde/boa noite) segue ESTA hora — nunca repita a saudação do lead se ela não bater com o horário.`,
       tools.length ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou; (5) ANTES de chamar agendar_reuniao, você precisa do NOME, do E-MAIL e do TELEFONE/WhatsApp do lead — peça numa única mensagem curta SOMENTE o que faltar e não estiver em DADOS JÁ CADASTRADOS (se nada faltar, agende direto, sem pedir confirmação de dados) e só chame a ferramenta quando tiver tudo; se você já sabe o nome dele pela conversa, não pergunte de novo — pergunte só o que falta; (6) passe email, telefone e nome_completo nos parâmetros de agendar_reuniao — eles vão pro cadastro do lead no CRM.` : "",
