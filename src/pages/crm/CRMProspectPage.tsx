@@ -118,7 +118,7 @@ export const CRMProspectPage = () => {
     }
   };
 
-  const podeExecutar = !!pipelineId && (total ?? 0) > 0;
+  const podeExecutar = !!pipelineId && ((total ?? 0) > 0 || total === -1);
 
   return (
     <div className="p-4 sm:p-6 space-y-4 max-w-6xl mx-auto">
@@ -237,7 +237,7 @@ export const CRMProspectPage = () => {
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Mandar pro funil</CardTitle>
             <CardDescription>
-              {total === null ? "Conte as empresas primeiro." : teto ? "1.000+ empresas encontradas." : `${total.toLocaleString("pt-BR")} empresas encontradas.`}
+              {total === null ? "Conte as empresas primeiro." : total < 0 ? "Muitas empresas (a base é grande demais pra contar agora)." : teto ? `Mais de ${total.toLocaleString("pt-BR")} empresas encontradas.` : `${total.toLocaleString("pt-BR")} empresas encontradas.`}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
