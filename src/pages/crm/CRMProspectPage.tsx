@@ -226,10 +226,27 @@ export const CRMProspectPage = () => {
               </label>
             </div>
 
-            <Button onClick={contar} disabled={contando} className="w-full sm:w-auto">
-              {contando ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
-              Contar empresas
-            </Button>
+            <div className="space-y-2">
+              <Button onClick={contar} disabled={contando} className="w-full sm:w-auto">
+                {contando ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+                {contando ? "Contando..." : "Contar empresas"}
+              </Button>
+              {/* O resultado ficava só numa linha pequena do outro card e passava
+                  despercebido depois de esperar alguns segundos (23/09/2026). */}
+              {contando && <p className="text-xs text-muted-foreground">Procurando na base da Receita. Em segmento grande isso leva alguns segundos.</p>}
+              {!contando && total !== null && (
+                <div className="rounded-lg border bg-muted/40 p-3">
+                  <p className="text-2xl font-semibold">
+                    {total < 0 ? "Muitas empresas" : teto ? `${total.toLocaleString("pt-BR")}+` : total.toLocaleString("pt-BR")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {total === 0 ? "Nenhuma empresa com esses filtros. Tente tirar algum." :
+                     total < 0 ? "A base é grande demais pra contar com esses filtros, mas dá pra mandar pro funil." :
+                     teto ? "Paramos de contar aqui. Tem mais empresas do que isso." : "empresas encontradas"}
+                  </p>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
