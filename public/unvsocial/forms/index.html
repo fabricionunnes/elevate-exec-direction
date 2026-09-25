@@ -178,7 +178,7 @@ input.bad{border-color:var(--rosa)}
     <label class="f"><input id="nome" type="text" name="name" autocomplete="name" autocapitalize="words" placeholder="Seu nome completo" maxlength="80" enterkeyhint="next" /></label>
     <button class="btn" data-next="1">Continuar</button>
     <p class="err" id="e1"></p>
-    <button class="back" data-back="1" data-back-to="10">← Voltar</button>
+    <button class="back" data-back="1" data-back-to="7">← Voltar</button>
   </section>
 
   <!-- 2 — whatsapp -->
@@ -245,7 +245,7 @@ input.bad{border-color:var(--rosa)}
     <p class="sub">É o que me diz qual nível de operação faz sentido pro seu caso.</p>
     <div class="opts" id="optFat"></div>
     <p class="err" id="e7"></p>
-    <button class="back" data-back="7">← Voltar</button>
+    <button class="back" data-back="7" data-back-to="10">← Voltar</button>
   </section>
 
   <!-- 8 — enviando -->
@@ -275,6 +275,17 @@ input.bad{border-color:var(--rosa)}
       <p>Ele parte de faturamento, time e gestão de perfil, coisas que só quem toca o negócio consegue responder. Não vou tomar seu tempo pra te entregar no final uma leitura que não serve pro seu caso.</p>
       <a class="btn" href="https://instagram.com/unvholdings" target="_blank" rel="noopener" style="margin-top:18px;display:block;text-align:center;text-decoration:none;line-height:1.3">Acompanhar no Instagram</a>
       <p class="hint" style="color:#6D5B85">Se você trabalha numa empresa e acha que isso serve pro seu dono, manda esse link pra ele.</p>
+    </div>
+  </section>
+
+  <!-- 12 — faturamento abaixo do corte. Igual a 11: termina aqui, sem CRM
+       e sem nenhum evento pro pixel. -->
+  <section class="step" id="s12">
+    <div class="card">
+      <h3>Hoje a conta ainda não fecha pra você.</h3>
+      <p>No seu momento, o que a UNV Social cobra por mês pesaria demais no seu caixa, e eu não vou te vender uma coisa dessas. Antes de terceirizar a gestão do perfil, o que muda seu jogo é vender mais com o que você já tem na mão.</p>
+      <a class="btn" href="https://instagram.com/unvholdings" target="_blank" rel="noopener" style="margin-top:18px;display:block;text-align:center;text-decoration:none;line-height:1.3">Acompanhar no Instagram</a>
+      <p class="hint" style="color:#6D5B85">Quando sua operação passar desse patamar, volta aqui. Eu te atendo na hora.</p>
     </div>
   </section>
 
@@ -349,7 +360,10 @@ var STEP_NAMES = { 10:"perfil", 1:"nome", 2:"whatsapp", 3:"email", 4:"instagram"
 
 // A ordem em que as perguntas aparecem. É daqui que sai o "Pergunta X de Y",
 // então mudar a sequência é mexer só nesta linha.
-var ORDEM = [10, 1, 2, 3, 4, 5, 6, 7];
+var ORDEM = [10, 7, 1, 2, 3, 4, 5, 6];
+// Telas que existem pra cortar quem não qualifica. Não disparam FormStep:
+// anunciar a etapa antes da resposta já registraria no Meta quem vai sair.
+var FILTROS = [10, 7];
 function numPergunta(i){
   var k = ORDEM.indexOf(i === undefined ? cur : i);
   return k < 0 ? 0 : k + 1;          // 0 = não é pergunta (abertura, envio, resultado, saída)
@@ -374,8 +388,9 @@ function show(i){
   var q = numPergunta();
   if(q){
     var k = $("s" + i).querySelector(".kicker");
-    if(k) k.textContent = (i === 7) ? "Última pergunta" : ("Pergunta " + q + " de " + totalSteps());
-    if(q > maxSeen && i !== 10){
+    if(k) k.textContent = (i === ORDEM[ORDEM.length - 1]) ? "Última pergunta"
+                                                          : ("Pergunta " + q + " de " + totalSteps());
+    if(q > maxSeen && FILTROS.indexOf(i) < 0){
       maxSeen = q;
       fb("trackCustom","FormStep",{ step:q, step_name:STEP_NAMES[i], form:"unvsocial-diagnostico" });
     }
@@ -490,11 +505,9 @@ buildOpts($("optPerfil"), PERFIL, function(it){
     show(11);
     return;
   }
-  // Só conta como início de formulário depois que sabemos que tem negócio.
-  fb("trackCustom","FormStart",{ form:"unvsocial-diagnostico" });
-  fb("trackCustom","FormAnswer",{ field:"perfil", value:it.s });
-  if(A.prefill) fb("trackCustom","FormPrefill",{ campos:A.prefill, form:"unvsocial-diagnostico" });
-  show(1);
+  // Nada é disparado aqui: falta o corte de faturamento. Quem passa nos
+  // dois filtros é registrado de uma vez só, no passo seguinte.
+  show(7);
 });
 
 buildOpts($("optGestao"), GESTAO, function(it){
@@ -515,7 +528,7 @@ buildOpts($("optMotivo"), MOTIVO, function(it){
   $("outroWrap").hidden = true;
   A.motivo = it;
   fb("trackCustom","FormAnswer",{ field:"motivo", value:it.s });
-  show(7);
+  finish();
 });
 
 $("outroGo").addEventListener("click", function(){
@@ -524,14 +537,24 @@ $("outroGo").addEventListener("click", function(){
   A.motivo = { v:t, s:"outro" };
   err(6,"");
   fb("trackCustom","FormAnswer",{ field:"motivo", value:"outro" });
-  show(7);
+  finish();
 });
 
 buildOpts($("optFat"), FAT, function(it){
   A.fat = it;
   err(7,"");
+  if(it.s === "ate20k"){
+    // Segundo corte. Como o perfil não disparou nada, quem para aqui sai
+    // sem CRM e sem um único evento pro pixel.
+    show(12);
+    return;
+  }
+  // Passou nos dois filtros: só agora isso vira início de formulário.
+  fb("trackCustom","FormStart",{ form:"unvsocial-diagnostico" });
+  fb("trackCustom","FormAnswer",{ field:"perfil", value:A.perfil ? A.perfil.s : "-" });
   fb("trackCustom","FormAnswer",{ field:"faturamento", value:it.s });
-  finish();
+  if(A.prefill) fb("trackCustom","FormPrefill",{ campos:A.prefill, form:"unvsocial-diagnostico" });
+  show(1);
 });
 
 /* ── navegação ── */
