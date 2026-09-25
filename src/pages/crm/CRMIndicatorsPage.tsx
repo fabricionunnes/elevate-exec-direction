@@ -6,8 +6,9 @@ import { SalesIndicatorsTab } from "@/components/crm/indicators/SalesIndicatorsT
 import { PreSalesIndicatorsTab } from "@/components/crm/indicators/PreSalesIndicatorsTab";
 import { FunnelsOverviewTab } from "@/components/crm/indicators/FunnelsOverviewTab";
 import { CRMTrafficTab } from "@/components/crm/traffic/CRMTrafficTab";
+import { LeadRevenueTab } from "@/components/crm/indicators/LeadRevenueTab";
 import { CRMCommissionCard, CommissionSummary } from "@/components/crm/CRMCommissionCard";
-import { DollarSign, ChevronDown, TrendingUp, Wallet, Megaphone, Filter } from "lucide-react";
+import { DollarSign, ChevronDown, TrendingUp, Wallet, Megaphone, Filter, Banknote } from "lucide-react";
 
 export const CRMIndicatorsPage = () => {
   const { staffRole, staffId } = useOutletContext<{ staffRole: string; isAdmin: boolean; staffId: string | null }>();
@@ -104,6 +105,15 @@ export const CRMIndicatorsPage = () => {
                 <Megaphone className="h-3.5 w-3.5" /> Tráfego Pago
               </TabsTrigger>
             )}
+            {/* Faturamento dos leads: leitura de carteira, só gestão */}
+            {isAdmin && (
+              <TabsTrigger
+                value="leadrevenue"
+                className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-6 gap-1.5"
+              >
+                <Banknote className="h-3.5 w-3.5" /> Faturamento dos leads
+              </TabsTrigger>
+            )}
           </TabsList>
         </div>
 
@@ -126,6 +136,11 @@ export const CRMIndicatorsPage = () => {
           {isAdmin && (
             <TabsContent value="traffic" className="m-0 h-full p-4">
               <CRMTrafficTab isAdmin={isAdmin} />
+            </TabsContent>
+          )}
+          {isAdmin && (
+            <TabsContent value="leadrevenue" className="m-0 h-full">
+              <LeadRevenueTab />
             </TabsContent>
           )}
         </div>
