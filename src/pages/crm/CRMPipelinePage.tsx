@@ -59,6 +59,7 @@ interface Lead {
   origin_id: string | null;
   owner_staff_id: string | null;
   opportunity_value: number | null;
+  estimated_revenue?: string | null;
   probability: number | null;
   last_activity_at: string | null;
   next_activity_at: string | null;
@@ -73,6 +74,28 @@ interface Lead {
   meeting_events?: { event_type: string }[];
 }
 
+/** Mesma leitura que a função crm_faturamento_num faz no banco: "600000", "R$ 0 a R$ 50 mil",
+ *  "9 mil por mês (30 alunos a 300)". Vários números próximos viram o ponto médio; distantes,
+ *  fica o maior, porque aí o texto misturou ticket com faturamento. */
+function lerFaturamento(txt?: string | null): number | null {
+  if (!txt || !txt.trim()) return null;
+  let t = txt.toLowerCase().replace(/r\$/g, " ");
+  t = t.replace(/(\d)\.(\d{3})(?=\D|$)/g, "$1$2").replace(/(\d)\.(\d{3})(?=\D|$)/g, "$1$2").replace(/,/g, ".");
+  const achados: number[] = [];
+  for (const m of t.matchAll(/(\d+(?:\.\d+)?)\s*(milh[oõ]es|milhao|milhão|mil|kk|k)?/g)) {
+    let v = Number(m[1]);
+    if (!isFinite(v)) continue;
+    const suf = m[2] || "";
+    if (["milhoes", "milhões", "milhao", "milhão", "kk"].includes(suf)) v *= 1000000;
+    else if (suf === "mil" || suf === "k") v *= 1000;
+    if (v >= 100) achados.push(v);
+  }
+  if (!achados.length) return null;
+  if (achados.length === 1) return achados[0];
+  const mn = Math.min(...achados), mx = Math.max(...achados);
+  return mx <= mn * 5 ? (mn + mx) / 2 : mx;
+}
+
 const defaultFilters: CRMFilters = {
   search: "",
   dateRange: undefined,
@@ -85,6 +108,8 @@ const defaultFilters: CRMFilters = {
   origins: [],
   valueMin: null,
   valueMax: null,
+  revenueMin: null,
+  revenueMax: null,
   phoneFilter: "all",
 };
 
@@ -251,7 +276,7 @@ export const CRMPipelinePage = () => {
           .from("crm_leads")
           .select(`
             id, name, company, phone, email, document, stage_id, origin_id, owner_staff_id, closer_staff_id,
-            opportunity_value, probability, last_activity_at, next_activity_at, urgency, notes, created_at, stage_entered_at,
+            opportunity_value, estimated_revenue, probability, last_activity_at, next_activity_at, urgency, notes, created_at, stage_entered_at,
             utm_source, utm_campaign, utm_content, utm_term, meta_campaign_id, meta_adset_id, meta_ad_id,
             campaign_name, adset_name, ad_name,
             origin:crm_origins(name),
@@ -516,6 +541,14 @@ export const CRMPipelinePage = () => {
       // Value filter
       if (filters.valueMin !== null && (lead.opportunity_value || 0) < filters.valueMin) return false;
       if (filters.valueMax !== null && (lead.opportunity_value || 0) > filters.valueMax) return false;
+
+      // Faturamento que o lead informou: o campo é texto livre, então lê por aproximação
+      if (filters.revenueMin != null || filters.revenueMax != null) {
+        const fat = lerFaturamento(lead.estimated_revenue);
+        if (fat == null) return false;   // sem informação não entra quando o filtro está ligado
+        if (filters.revenueMin != null && fat < filters.revenueMin) return false;
+        if (filters.revenueMax != null && fat > filters.revenueMax) return false;
+      }
 
       // Date filter
       if (filters.dateRange?.from) {

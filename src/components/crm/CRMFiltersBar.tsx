@@ -20,6 +20,7 @@ import { Calendar } from "@/components/ui/calendar";
 import {
   Search,
   Calendar as CalendarIcon,
+  Banknote,
   ChevronDown,
   X,
   Filter,
@@ -48,6 +49,9 @@ export interface CRMFilters {
   origins: string[];
   valueMin: number | null;
   valueMax: number | null;
+  /** faturamento que o lead informou na qualificação (texto livre, lido por aproximação) */
+  revenueMin?: number | null;
+  revenueMax?: number | null;
   phoneFilter: "all" | "with_phone" | "without_phone";
   // filtros por nome do anúncio (Meta) — opcionais pra não quebrar quem não usa
   campaigns?: string[];
@@ -150,6 +154,8 @@ export const CRMFiltersBar = ({
       origins: [],
       valueMin: null,
       valueMax: null,
+      revenueMin: null,
+      revenueMax: null,
       phoneFilter: "all",
       campaigns: [],
       adsets: [],
@@ -167,6 +173,7 @@ export const CRMFiltersBar = ({
     filters.stages.length,
     filters.origins.length,
     filters.valueMin || filters.valueMax ? 1 : 0,
+    filters.revenueMin || filters.revenueMax ? 1 : 0,
     filters.phoneFilter !== "all" ? 1 : 0,
     (filters.campaigns?.length || 0),
     (filters.adsets?.length || 0),
@@ -545,13 +552,63 @@ export const CRMFiltersBar = ({
           </SelectContent>
         </Select>
 
+        {/* Valor do negócio e faturamento do lead: fora do "Mais filtros" porque é
+            consulta do dia a dia de quem prioriza carteira */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "h-8 gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground",
+                (filters.valueMin || filters.valueMax || filters.revenueMin || filters.revenueMax) && "bg-primary/10 text-foreground font-medium"
+              )}
+            >
+              <Banknote className="h-3.5 w-3.5" />
+              Valor
+              <ChevronDown className="h-3 w-3 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72" align="start">
+            <div className="space-y-4">
+              <div>
+                <Label className="text-xs text-muted-foreground uppercase">Valor do negócio</Label>
+                <div className="flex items-center gap-2 mt-2">
+                  <Input type="number" placeholder="Min" className="h-8"
+                    value={filters.valueMin || ""}
+                    onChange={(e) => updateFilter("valueMin", e.target.value ? Number(e.target.value) : null)} />
+                  <span className="text-muted-foreground">até</span>
+                  <Input type="number" placeholder="Max" className="h-8"
+                    value={filters.valueMax || ""}
+                    onChange={(e) => updateFilter("valueMax", e.target.value ? Number(e.target.value) : null)} />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground uppercase">Faturamento do lead</Label>
+                <div className="flex items-center gap-2 mt-2">
+                  <Input type="number" placeholder="Min" className="h-8"
+                    value={filters.revenueMin || ""}
+                    onChange={(e) => updateFilter("revenueMin" as any, e.target.value ? Number(e.target.value) : null)} />
+                  <span className="text-muted-foreground">até</span>
+                  <Input type="number" placeholder="Max" className="h-8"
+                    value={filters.revenueMax || ""}
+                    onChange={(e) => updateFilter("revenueMax" as any, e.target.value ? Number(e.target.value) : null)} />
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  É o que o lead informou que fatura por mês. Quem não informou fica de fora quando esse filtro está ligado.
+                </p>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
         {/* More Filters */}
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground">
               <Filter className="h-3.5 w-3.5" />
               Mais filtros
-              {(filters.stages.length > 0 || filters.valueMin || filters.valueMax) && (
+              {filters.stages.length > 0 && (
                 <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
                   +
                 </Badge>
@@ -583,32 +640,6 @@ export const CRMFiltersBar = ({
                       </Label>
                     </div>
                   ))}
-                </div>
-              </div>
-
-              {/* Value Range */}
-              <div>
-                <Label className="text-xs text-muted-foreground uppercase">Valor</Label>
-                <div className="flex items-center gap-2 mt-2">
-                  <Input
-                    type="number"
-                    placeholder="Min"
-                    value={filters.valueMin || ""}
-                    onChange={(e) =>
-                      updateFilter("valueMin", e.target.value ? Number(e.target.value) : null)
-                    }
-                    className="h-8"
-                  />
-                  <span className="text-muted-foreground">-</span>
-                  <Input
-                    type="number"
-                    placeholder="Max"
-                    value={filters.valueMax || ""}
-                    onChange={(e) =>
-                      updateFilter("valueMax", e.target.value ? Number(e.target.value) : null)
-                    }
-                    className="h-8"
-                  />
                 </div>
               </div>
 
