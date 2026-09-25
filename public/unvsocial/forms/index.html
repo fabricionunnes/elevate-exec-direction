@@ -303,7 +303,7 @@ var SUPA = "https://xrncvhzxjmddqluxoosu.supabase.co";
 var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
 var PIXEL = "1747516463051359";
 var WA_NUMBER = "5511927008490";
-var ORIGEM = "Veio do diagnóstico de redes (8 perguntas)";   // separa da landing /unvsocial
+var ORIGEM = "Via: diagnóstico UNV Social";   // separa o lead daquele que vem da landing /unvsocial
 
 var PERFIL = [
   {v:"Dono(a) de uma empresa",                s:"dono"},
@@ -642,6 +642,7 @@ function payloadDesafio(){
   if(A.perfil) parts.push("Perfil: " + A.perfil.v);
   if(A.gestao) parts.push("Gestão hoje: " + A.gestao.v);
   if(A.motivo) parts.push("Motivo: " + A.motivo.v);
+  parts.push(ORIGEM);
   return parts.join(" | ");
 }
 
@@ -690,7 +691,6 @@ function finish(){
     email: A.email,
     instagram: A.insta || undefined,
     desafio: payloadDesafio(),
-    observacao: ORIGEM,
     utm_source: qp("utm_source"), utm_medium: qp("utm_medium"),
     utm_campaign: qp("utm_campaign"), utm_content: qp("utm_content"), utm_term: qp("utm_term"),
     fbclid: qp("fbclid"),
