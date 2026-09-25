@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
-import { RefreshCw, TrendingUp } from "lucide-react";
+import { ExternalLink, RefreshCw, TrendingUp } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 type Dados = {
@@ -20,6 +20,7 @@ type Dados = {
   total: number | null; maior: number | null;
   faixas: { faixa: string; n: number; ordem: number }[];
   por_funil: { nome: string; leads: number; informaram: number; media: number | null; mediana: number | null }[];
+  por_etapa: { nome: string; leads: number; informaram: number; mediana: number | null }[];
   por_origem: { nome: string; leads: number; informaram: number; media: number | null }[];
   por_segmento: { nome: string; leads: number; media: number | null }[];
   por_mes: { mes: string; leads: number; informaram: number; media: number | null }[];
@@ -48,21 +49,25 @@ export function LeadRevenueTab() {
   const [ate, setAte] = useState("");
   const [funil, setFunil] = useState("");
   const [origem, setOrigem] = useState("");
+  const [etapa, setEtapa] = useState("");
   const [min, setMin] = useState("");
   const [max, setMax] = useState("");
   const [funis, setFunis] = useState<{ value: string; label: string }[]>([]);
   const [origens, setOrigens] = useState<{ value: string; label: string }[]>([]);
+  const [etapas, setEtapas] = useState<{ value: string; label: string; pipeline_id: string | null }[]>([]);
   const [dados, setDados] = useState<Dados | null>(null);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [{ data: p }, { data: o }] = await Promise.all([
+      const [{ data: p }, { data: o }, { data: st }] = await Promise.all([
         supabase.from("crm_pipelines").select("id, name").order("name"),
         supabase.from("crm_origins").select("id, name").order("name"),
+        supabase.from("crm_stages").select("id, name, pipeline_id").order("position"),
       ]);
       setFunis((p || []).map((x: any) => ({ value: x.id, label: x.name })));
       setOrigens((o || []).map((x: any) => ({ value: x.id, label: x.name })));
+      setEtapas((st || []).map((x: any) => ({ value: x.id, label: x.name, pipeline_id: x.pipeline_id })));
     })();
   }, []);
 
@@ -77,12 +82,13 @@ export function LeadRevenueTab() {
       p_de: inicio, p_ate: fim,
       p_pipelines: funil && funil !== "none" ? [funil] : null,
       p_origens: origem && origem !== "none" ? [origem] : null,
+      p_stages: etapa && etapa !== "none" ? [etapa] : null,
       p_min: num(min), p_max: num(max),
     });
     if (error) { toast.error("Não consegui carregar o faturamento dos leads"); setCarregando(false); return; }
     setDados(data as Dados);
     setCarregando(false);
-  }, [dias, de, ate, funil, origem, min, max]);
+  }, [dias, de, ate, funil, origem, etapa, min, max]);
 
   useEffect(() => { buscar(); }, [buscar]);
 
@@ -91,7 +97,13 @@ export function LeadRevenueTab() {
     return Math.round((dados.informaram / dados.leads) * 100);
   }, [dados]);
 
-  const limpar = () => { setFunil(""); setOrigem(""); setMin(""); setMax(""); setDe(""); setAte(""); };
+  const limpar = () => { setFunil(""); setOrigem(""); setEtapa(""); setMin(""); setMax(""); setDe(""); setAte(""); };
+  // etapa só faz sentido dentro do funil escolhido; sem funil, mostra todas com o nome do funil junto
+  const etapasVisiveis = useMemo(() => {
+    if (funil && funil !== "none") return etapas.filter((e) => e.pipeline_id === funil);
+    const nomeFunil = new Map(funis.map((f) => [f.value, f.label]));
+    return etapas.map((e) => ({ ...e, label: `${e.label} · ${nomeFunil.get(e.pipeline_id || "") || "sem funil"}` }));
+  }, [etapas, funil, funis]);
   const periodoLivre = !!(de || ate);
 
   return (
@@ -118,6 +130,10 @@ export function LeadRevenueTab() {
         <div className="w-52">
           <SearchableSelect value={origem} onValueChange={setOrigem} options={origens}
             placeholder="Todas as origens" allowNone noneLabel="Todas as origens" />
+        </div>
+        <div className="w-56">
+          <SearchableSelect value={etapa} onValueChange={setEtapa} options={etapasVisiveis}
+            placeholder="Todas as etapas" allowNone noneLabel="Todas as etapas" />
         </div>
         <div>
           <p className="text-[11px] text-muted-foreground mb-1">Fatura de</p>
@@ -211,6 +227,19 @@ export function LeadRevenueTab() {
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-base">Por etapa</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {!dados?.por_etapa?.length && <p className="text-sm text-muted-foreground">Sem dados.</p>}
+            {(dados?.por_etapa || []).map((e, i) => (
+              <div key={e.nome + i} className="flex items-center justify-between gap-3 text-sm border-b border-border/40 last:border-0 py-1.5">
+                <span className="truncate">{e.nome} <span className="text-[11px] text-muted-foreground">({e.informaram} de {e.leads})</span></span>
+                <span className="font-semibold shrink-0">{curto(e.mediana)}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
           <CardHeader className="pb-2"><CardTitle className="text-base">Por origem</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {!dados?.por_origem?.length && <p className="text-sm text-muted-foreground">Sem dados.</p>}
@@ -256,9 +285,15 @@ export function LeadRevenueTab() {
         <CardContent className="space-y-2">
           {!dados?.top?.length && <p className="text-sm text-muted-foreground">Nenhum lead com faturamento informado.</p>}
           {(dados?.top || []).map((l) => (
-            <div key={l.id} className="flex items-start justify-between gap-3 border-b border-border/40 last:border-0 py-2">
+            <a
+              key={l.id}
+              href={`${window.location.origin}/#/crm/leads/${l.id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-start justify-between gap-3 border-b border-border/40 last:border-0 py-2 hover:bg-muted/40 rounded-md px-2 -mx-2 transition-colors"
+            >
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate">
+                <p className="text-sm font-medium truncate group-hover:underline">
                   {l.nome}
                   {l.empresa ? <span className="font-normal text-muted-foreground"> · {l.empresa}</span> : null}
                 </p>
@@ -267,9 +302,15 @@ export function LeadRevenueTab() {
                 </p>
                 <p className="text-[11px] text-muted-foreground/80 truncate italic">"{l.texto}"</p>
               </div>
-              <span className="text-sm font-bold shrink-0">{real(l.valor)}</span>
-            </div>
+              <span className="text-sm font-bold shrink-0 flex items-center gap-1">
+                {real(l.valor)}
+                <ExternalLink className="h-3 w-3 text-muted-foreground" />
+              </span>
+            </a>
           ))}
+          {!!dados?.top?.length && (
+            <p className="text-[11px] text-muted-foreground pt-1">Clique em um lead para abrir o card dele em outra aba.</p>
+          )}
         </CardContent>
       </Card>
     </div>
