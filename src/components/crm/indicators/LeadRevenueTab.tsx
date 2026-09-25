@@ -10,9 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { SearchableSelect } from "@/components/ui/searchable-select";
+import { MultiSearchableSelect } from "@/components/ui/multi-searchable-select";
 import { toast } from "sonner";
-import { ExternalLink, RefreshCw, Target, TrendingUp } from "lucide-react";
+import { CalendarDays, ExternalLink, RefreshCw, Target, TrendingUp } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -26,6 +26,7 @@ type Dados = {
   por_segmento: { nome: string; leads: number; media: number | null }[];
   por_mes: { mes: string; leads: number; informaram: number; media: number | null }[];
   top: { id: string; nome: string; empresa: string | null; valor: number; texto: string; funil: string | null; etapa: string | null; dono: string | null; quando: string }[];
+  agenda: { id: string; nome: string; empresa: string | null; valor: number | null; texto: string | null; funil: string | null; etapa: string | null; dono: string | null; reuniao: string; realizada: boolean }[];
 };
 
 type Icp = {
@@ -58,9 +59,9 @@ export function LeadRevenueTab() {
   const [dias, setDias] = useState(90);
   const [de, setDe] = useState("");
   const [ate, setAte] = useState("");
-  const [funil, setFunil] = useState("");
-  const [origem, setOrigem] = useState("");
-  const [etapa, setEtapa] = useState("");
+  const [funis_sel, setFunisSel] = useState<string[]>([]);
+  const [origens_sel, setOrigensSel] = useState<string[]>([]);
+  const [etapas_sel, setEtapasSel] = useState<string[]>([]);
   const [min, setMin] = useState("");
   const [max, setMax] = useState("");
   const [funis, setFunis] = useState<{ value: string; label: string }[]>([]);
@@ -70,6 +71,7 @@ export function LeadRevenueTab() {
   const [icp, setIcp] = useState<Icp | null>(null);
   const [corte, setCorte] = useState("50000");
   const [visao, setVisao] = useState<"faturamento" | "icp">("faturamento");
+  const [base, setBase] = useState<"criacao" | "reuniao">("criacao");
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
@@ -94,10 +96,11 @@ export function LeadRevenueTab() {
     const num = (s: string) => { const v = Number(String(s).replace(/\./g, "").replace(",", ".")); return v > 0 ? v : null; };
     const { data, error } = await (supabase as any).rpc("crm_leads_faturamento", {
       p_de: inicio, p_ate: fim,
-      p_pipelines: funil && funil !== "none" ? [funil] : null,
-      p_origens: origem && origem !== "none" ? [origem] : null,
-      p_stages: etapa && etapa !== "none" ? [etapa] : null,
+      p_pipelines: funis_sel.length ? funis_sel : null,
+      p_origens: origens_sel.length ? origens_sel : null,
+      p_stages: etapas_sel.length ? etapas_sel : null,
       p_min: num(min), p_max: num(max),
+      p_base: base,
     });
     if (error) { toast.error("Não consegui carregar o faturamento dos leads"); setCarregando(false); return; }
     setDados(data as Dados);
@@ -105,13 +108,13 @@ export function LeadRevenueTab() {
     const { data: dataIcp, error: erroIcp } = await (supabase as any).rpc("crm_leads_icp", {
       p_de: inicio, p_ate: fim,
       p_corte: num(corte) ?? 50000,
-      p_pipelines: funil && funil !== "none" ? [funil] : null,
-      p_origens: origem && origem !== "none" ? [origem] : null,
-      p_stages: etapa && etapa !== "none" ? [etapa] : null,
+      p_pipelines: funis_sel.length ? funis_sel : null,
+      p_origens: origens_sel.length ? origens_sel : null,
+      p_stages: etapas_sel.length ? etapas_sel : null,
     });
     if (!erroIcp) setIcp(dataIcp as Icp);
     setCarregando(false);
-  }, [dias, de, ate, funil, origem, etapa, min, max, corte]);
+  }, [dias, de, ate, funis_sel, origens_sel, etapas_sel, min, max, corte, base]);
 
   useEffect(() => { buscar(); }, [buscar]);
 
@@ -120,18 +123,40 @@ export function LeadRevenueTab() {
     return Math.round((dados.informaram / dados.leads) * 100);
   }, [dados]);
 
-  const limpar = () => { setFunil(""); setOrigem(""); setEtapa(""); setMin(""); setMax(""); setDe(""); setAte(""); };
+  const limpar = () => { setFunisSel([]); setOrigensSel([]); setEtapasSel([]); setMin(""); setMax(""); setDe(""); setAte(""); };
   // etapa só faz sentido dentro do funil escolhido; sem funil, mostra todas com o nome do funil junto
   const etapasVisiveis = useMemo(() => {
-    if (funil && funil !== "none") return etapas.filter((e) => e.pipeline_id === funil);
     const nomeFunil = new Map(funis.map((f) => [f.value, f.label]));
-    return etapas.map((e) => ({ ...e, label: `${e.label} · ${nomeFunil.get(e.pipeline_id || "") || "sem funil"}` }));
-  }, [etapas, funil, funis]);
+    const lista = funis_sel.length ? etapas.filter((e) => funis_sel.includes(e.pipeline_id || "")) : etapas;
+    return lista.map((e) => ({ value: e.value, label: `${e.label} · ${nomeFunil.get(e.pipeline_id || "") || "sem funil"}` }));
+  }, [etapas, funis_sel, funis]);
   const periodoLivre = !!(de || ate);
 
   return (
     <div className="p-4 space-y-4">
       <div className="flex flex-wrap items-end gap-2">
+        <div className="flex rounded-lg border border-border overflow-hidden h-9">
+          <button
+            className={`px-3 text-xs ${base === "criacao" ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}
+            onClick={() => setBase("criacao")}
+          >
+            Pela entrada do lead
+          </button>
+          <button
+            className={`px-3 text-xs ${base === "reuniao" ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}
+            onClick={() => setBase("reuniao")}
+          >
+            Pela data da reunião
+          </button>
+        </div>
+        {base === "reuniao" && (
+          <Button size="sm" variant="outline" onClick={() => {
+            const hoje = new Date().toISOString().slice(0, 10);
+            setDe(hoje); setAte(hoje);
+          }}>
+            Reuniões de hoje
+          </Button>
+        )}
         {PERIODOS.map((p) => (
           <Button key={p.d} size="sm" variant={dias === p.d && !periodoLivre ? "default" : "outline"}
             onClick={() => { setDias(p.d); setDe(""); setAte(""); }}>
@@ -147,16 +172,13 @@ export function LeadRevenueTab() {
           <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className="w-[150px] h-9" />
         </div>
         <div className="w-52">
-          <SearchableSelect value={funil} onValueChange={setFunil} options={funis}
-            placeholder="Todos os funis" allowNone noneLabel="Todos os funis" />
+          <MultiSearchableSelect values={funis_sel} onChange={setFunisSel} options={funis} placeholder="Todos os funis" />
         </div>
         <div className="w-52">
-          <SearchableSelect value={origem} onValueChange={setOrigem} options={origens}
-            placeholder="Todas as origens" allowNone noneLabel="Todas as origens" />
+          <MultiSearchableSelect values={origens_sel} onChange={setOrigensSel} options={origens} placeholder="Todas as origens" />
         </div>
         <div className="w-56">
-          <SearchableSelect value={etapa} onValueChange={setEtapa} options={etapasVisiveis}
-            placeholder="Todas as etapas" allowNone noneLabel="Todas as etapas" />
+          <MultiSearchableSelect values={etapas_sel} onChange={setEtapasSel} options={etapasVisiveis} placeholder="Todas as etapas" />
         </div>
         <div>
           <p className="text-[11px] text-muted-foreground mb-1">Fatura de</p>
@@ -195,9 +217,48 @@ export function LeadRevenueTab() {
 
       {visao === "faturamento" && (
       <>
+      {base === "reuniao" && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" /> Reuniões do período, com o faturamento de cada um
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {!dados?.agenda?.length && <p className="text-sm text-muted-foreground">Nenhuma reunião marcada nesse intervalo.</p>}
+            {(dados?.agenda || []).map((l) => (
+              <a
+                key={l.id + l.reuniao}
+                href={`${window.location.origin}/#/crm/leads/${l.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-start justify-between gap-3 border-b border-border/40 last:border-0 py-2 hover:bg-muted/40 rounded-md px-2 -mx-2 transition-colors"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">
+                    <span className="text-muted-foreground mr-2">{l.reuniao}</span>
+                    {l.nome}
+                    {l.empresa ? <span className="font-normal text-muted-foreground"> · {l.empresa}</span> : null}
+                    {l.realizada && <Badge variant="secondary" className="ml-2 text-[10px]">realizada</Badge>}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {l.funil || "Sem funil"}{l.etapa ? ` · ${l.etapa}` : ""}{l.dono ? ` · ${l.dono}` : ""}
+                  </p>
+                  {l.texto && <p className="text-[11px] text-muted-foreground/80 truncate italic">"{l.texto}"</p>}
+                </div>
+                <span className="text-sm font-bold shrink-0 flex items-center gap-1">
+                  {l.valor == null ? <span className="text-muted-foreground font-normal text-xs">não informou</span> : real(l.valor)}
+                  <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                </span>
+              </a>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
-          { rot: periodoLivre ? "Leads no intervalo" : "Leads no período", v: dados?.leads ?? 0, texto: `${pctInformou}% informaram o faturamento` },
+          { rot: base === "reuniao" ? "Leads com reunião" : (periodoLivre ? "Leads no intervalo" : "Leads no período"), v: dados?.leads ?? 0, texto: `${pctInformou}% informaram o faturamento` },
           { rot: "Faturamento mediano", v: dados?.mediana, moeda: true, texto: "metade fatura mais, metade menos" },
           { rot: "Faturamento médio", v: dados?.media, moeda: true, texto: "sobe com um cliente grande no meio" },
           { rot: "Maior faturamento", v: dados?.maior, moeda: true, texto: "o maior lead do período" },
