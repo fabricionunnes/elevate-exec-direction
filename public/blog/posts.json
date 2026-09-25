@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-25T15:01:38",
+ "gerado_em": "2026-09-25T21:01:08",
  "posts": [
+  {
+   "slug": "cliente-prova-pouco-nao-volta-comprar",
+   "url": "/blog/cliente-prova-pouco-nao-volta-comprar/",
+   "titulo": "Cliente que prova pouco não volta para comprar",
+   "resumo": "Primeiro contato com produto ou serviço define se cliente volta ou desiste. Decisão sobre como entregar essa primeira experiência muda taxa de retorno.",
+   "tags": [
+    "conversão",
+    "primeira venda",
+    "estrutura comercial",
+    "oferta",
+    "cliente ideal"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-25",
+   "ts": 2122
+  },
   {
    "slug": "vendedor-terceiro-nao-responde-meta-mensal",
    "url": "/blog/vendedor-terceiro-nao-responde-meta-mensal/",
