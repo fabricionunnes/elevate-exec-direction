@@ -44,6 +44,8 @@ const PERIODOS = [
 
 export function LeadRevenueTab() {
   const [dias, setDias] = useState(90);
+  const [de, setDe] = useState("");
+  const [ate, setAte] = useState("");
   const [funil, setFunil] = useState("");
   const [origem, setOrigem] = useState("");
   const [min, setMin] = useState("");
@@ -66,12 +68,13 @@ export function LeadRevenueTab() {
 
   const buscar = useCallback(async () => {
     setCarregando(true);
-    const ate = new Date();
-    const de = new Date(ate.getTime() - (dias - 1) * 86400000);
     const iso = (d: Date) => d.toISOString().slice(0, 10);
+    // data escolhida na mão manda; senão vale o período dos botões
+    const fim = ate || iso(new Date());
+    const inicio = de || iso(new Date(new Date(fim).getTime() - (dias - 1) * 86400000));
     const num = (s: string) => { const v = Number(String(s).replace(/\./g, "").replace(",", ".")); return v > 0 ? v : null; };
     const { data, error } = await (supabase as any).rpc("crm_leads_faturamento", {
-      p_de: iso(de), p_ate: iso(ate),
+      p_de: inicio, p_ate: fim,
       p_pipelines: funil && funil !== "none" ? [funil] : null,
       p_origens: origem && origem !== "none" ? [origem] : null,
       p_min: num(min), p_max: num(max),
@@ -79,7 +82,7 @@ export function LeadRevenueTab() {
     if (error) { toast.error("Não consegui carregar o faturamento dos leads"); setCarregando(false); return; }
     setDados(data as Dados);
     setCarregando(false);
-  }, [dias, funil, origem, min, max]);
+  }, [dias, de, ate, funil, origem, min, max]);
 
   useEffect(() => { buscar(); }, [buscar]);
 
@@ -88,16 +91,26 @@ export function LeadRevenueTab() {
     return Math.round((dados.informaram / dados.leads) * 100);
   }, [dados]);
 
-  const limpar = () => { setFunil(""); setOrigem(""); setMin(""); setMax(""); };
+  const limpar = () => { setFunil(""); setOrigem(""); setMin(""); setMax(""); setDe(""); setAte(""); };
+  const periodoLivre = !!(de || ate);
 
   return (
     <div className="p-4 space-y-4">
       <div className="flex flex-wrap items-end gap-2">
         {PERIODOS.map((p) => (
-          <Button key={p.d} size="sm" variant={dias === p.d ? "default" : "outline"} onClick={() => setDias(p.d)}>
+          <Button key={p.d} size="sm" variant={dias === p.d && !periodoLivre ? "default" : "outline"}
+            onClick={() => { setDias(p.d); setDe(""); setAte(""); }}>
             {p.r}
           </Button>
         ))}
+        <div>
+          <p className="text-[11px] text-muted-foreground mb-1">De</p>
+          <Input type="date" value={de} onChange={(e) => setDe(e.target.value)} className="w-[150px] h-9" />
+        </div>
+        <div>
+          <p className="text-[11px] text-muted-foreground mb-1">Até</p>
+          <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className="w-[150px] h-9" />
+        </div>
         <div className="w-52">
           <SearchableSelect value={funil} onValueChange={setFunil} options={funis}
             placeholder="Todos os funis" allowNone noneLabel="Todos os funis" />
@@ -122,7 +135,7 @@ export function LeadRevenueTab() {
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
-          { rot: "Leads no período", v: dados?.leads ?? 0, texto: `${pctInformou}% informaram o faturamento` },
+          { rot: periodoLivre ? "Leads no intervalo" : "Leads no período", v: dados?.leads ?? 0, texto: `${pctInformou}% informaram o faturamento` },
           { rot: "Faturamento mediano", v: dados?.mediana, moeda: true, texto: "metade fatura mais, metade menos" },
           { rot: "Faturamento médio", v: dados?.media, moeda: true, texto: "sobe com um cliente grande no meio" },
           { rot: "Maior faturamento", v: dados?.maior, moeda: true, texto: "o maior lead do período" },
