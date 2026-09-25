@@ -12,8 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
-import { ExternalLink, RefreshCw, TrendingUp } from "lucide-react";
+import { ExternalLink, RefreshCw, Target, TrendingUp } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Dados = {
   leads: number; informaram: number; media: number | null; mediana: number | null;
@@ -25,6 +26,16 @@ type Dados = {
   por_segmento: { nome: string; leads: number; media: number | null }[];
   por_mes: { mes: string; leads: number; informaram: number; media: number | null }[];
   top: { id: string; nome: string; empresa: string | null; valor: number; texto: string; funil: string | null; etapa: string | null; dono: string | null; quando: string }[];
+};
+
+type Icp = {
+  corte: number; total: number; dentro: number; fora: number; sem_info: number;
+  icp_ganho: number; icp_perdido: number; icp_aberto: number; icp_valor_perdido: number | null;
+  motivos: { motivo: string; n: number; valor: number | null }[];
+  motivos_fora: { motivo: string; n: number }[];
+  por_funil: { nome: string; total: number; dentro: number; fora: number; sem_info: number; icp_perdido: number }[];
+  por_dono: { nome: string; icp: number; ganho: number; perdido: number; aberto: number }[];
+  perdidos: { id: string; nome: string; empresa: string | null; valor: number; texto: string; motivo: string; funil: string | null; etapa: string | null; dono: string | null; quando: string }[];
 };
 
 const CORES = ["#2a78d6", "#1baf7a", "#4a3aa7", "#eda100", "#eb6834", "#d4321c"];
@@ -56,6 +67,9 @@ export function LeadRevenueTab() {
   const [origens, setOrigens] = useState<{ value: string; label: string }[]>([]);
   const [etapas, setEtapas] = useState<{ value: string; label: string; pipeline_id: string | null }[]>([]);
   const [dados, setDados] = useState<Dados | null>(null);
+  const [icp, setIcp] = useState<Icp | null>(null);
+  const [corte, setCorte] = useState("50000");
+  const [visao, setVisao] = useState<"faturamento" | "icp">("faturamento");
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
@@ -87,8 +101,17 @@ export function LeadRevenueTab() {
     });
     if (error) { toast.error("Não consegui carregar o faturamento dos leads"); setCarregando(false); return; }
     setDados(data as Dados);
+
+    const { data: dataIcp, error: erroIcp } = await (supabase as any).rpc("crm_leads_icp", {
+      p_de: inicio, p_ate: fim,
+      p_corte: num(corte) ?? 50000,
+      p_pipelines: funil && funil !== "none" ? [funil] : null,
+      p_origens: origem && origem !== "none" ? [origem] : null,
+      p_stages: etapa && etapa !== "none" ? [etapa] : null,
+    });
+    if (!erroIcp) setIcp(dataIcp as Icp);
     setCarregando(false);
-  }, [dias, de, ate, funil, origem, etapa, min, max]);
+  }, [dias, de, ate, funil, origem, etapa, min, max, corte]);
 
   useEffect(() => { buscar(); }, [buscar]);
 
@@ -149,6 +172,29 @@ export function LeadRevenueTab() {
         </Button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3">
+        <Tabs value={visao} onValueChange={(v) => setVisao(v as any)}>
+          <TabsList>
+            <TabsTrigger value="faturamento" className="gap-1.5">
+              <TrendingUp className="h-3.5 w-3.5" /> Faturamento
+            </TabsTrigger>
+            <TabsTrigger value="icp" className="gap-1.5">
+              <Target className="h-3.5 w-3.5" /> Dentro do ICP
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        {visao === "icp" && (
+          <div className="flex items-end gap-2">
+            <div>
+              <p className="text-[11px] text-muted-foreground mb-1">Está no ICP quem fatura a partir de</p>
+              <Input value={corte} onChange={(e) => setCorte(e.target.value)} className="w-32 h-9" inputMode="numeric" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {visao === "faturamento" && (
+      <>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
           { rot: periodoLivre ? "Leads no intervalo" : "Leads no período", v: dados?.leads ?? 0, texto: `${pctInformou}% informaram o faturamento` },
@@ -313,6 +359,146 @@ export function LeadRevenueTab() {
           )}
         </CardContent>
       </Card>
+      </>
+      )}
+
+      {visao === "icp" && (
+      <>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { rot: "Dentro do ICP", v: icp?.dentro ?? 0, sub: `fatura ${real(icp?.corte ?? 50000)} ou mais`, cor: "text-emerald-600" },
+          { rot: "Fora do ICP", v: icp?.fora ?? 0, sub: "fatura menos que o corte", cor: "text-destructive" },
+          { rot: "Sem informação", v: icp?.sem_info ?? 0, sub: "ninguém perguntou o faturamento" },
+          { rot: "ICP que não fechou", v: icp?.icp_perdido ?? 0, sub: `${real(icp?.icp_valor_perdido)} de faturamento`, cor: "text-amber-600" },
+        ].map((c) => (
+          <Card key={c.rot}>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">{c.rot}</p>
+              <p className={`text-xl font-bold ${c.cor || ""}`}>{Number(c.v).toLocaleString("pt-BR")}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{c.sub}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-base">O que aconteceu com quem estava no ICP</CardTitle></CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { rot: "Ganhos", v: icp?.icp_ganho ?? 0, cor: "#1baf7a" },
+              { rot: "Perdidos", v: icp?.icp_perdido ?? 0, cor: "#d4321c" },
+              { rot: "Em aberto", v: icp?.icp_aberto ?? 0, cor: "#2a78d6" },
+            ].map((x) => (
+              <div key={x.rot} className="rounded-lg border border-border/50 p-3">
+                <p className="text-xs text-muted-foreground">{x.rot}</p>
+                <p className="text-lg font-bold" style={{ color: x.cor }}>{x.v}</p>
+              </div>
+            ))}
+          </div>
+          {!!(icp && (icp.icp_ganho + icp.icp_perdido) > 0) && (
+            <p className="text-xs text-muted-foreground mt-3">
+              Entre os que já decidiram, {Math.round((icp.icp_ganho / (icp.icp_ganho + icp.icp_perdido)) * 100)}% fecharam.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-base">Por que o ICP não fechou</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {!icp?.motivos?.length && <p className="text-sm text-muted-foreground">Nenhum lead do ICP perdido no período.</p>}
+            {(icp?.motivos || []).map((m, i) => {
+              const pct = icp?.icp_perdido ? (m.n / icp.icp_perdido) * 100 : 0;
+              return (
+                <div key={m.motivo + i} className="space-y-1">
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span className="truncate">{m.motivo}</span>
+                    <span className="shrink-0">
+                      <span className="font-semibold">{m.n}</span>
+                      <span className="text-[11px] text-muted-foreground ml-2">{curto(m.valor)}</span>
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded bg-muted overflow-hidden">
+                    <div className="h-full rounded" style={{ width: `${Math.max(3, pct)}%`, background: CORES[i % CORES.length] }} />
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-base">ICP por responsável</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {!icp?.por_dono?.length && <p className="text-sm text-muted-foreground">Sem dados.</p>}
+            {(icp?.por_dono || []).map((d, i) => (
+              <div key={d.nome + i} className="flex items-center justify-between gap-3 text-sm border-b border-border/40 last:border-0 py-1.5">
+                <span className="truncate">{d.nome}</span>
+                <span className="shrink-0 text-[11px] flex gap-3">
+                  <span className="text-emerald-600 font-semibold">{d.ganho} ganhos</span>
+                  <span className="text-destructive font-semibold">{d.perdido} perdidos</span>
+                  <span className="text-muted-foreground">{d.aberto} em aberto</span>
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-base">ICP por funil</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {!icp?.por_funil?.length && <p className="text-sm text-muted-foreground">Sem dados.</p>}
+          {(icp?.por_funil || []).map((f, i) => (
+            <div key={f.nome + i} className="flex items-center justify-between gap-3 text-sm border-b border-border/40 last:border-0 py-1.5">
+              <span className="truncate">{f.nome} <span className="text-[11px] text-muted-foreground">({f.total} leads)</span></span>
+              <span className="shrink-0 text-[11px] flex gap-3">
+                <span className="text-emerald-600 font-semibold">{f.dentro} no ICP</span>
+                <span className="text-destructive">{f.fora} fora</span>
+                <span className="text-muted-foreground">{f.sem_info} sem informação</span>
+              </span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Target className="h-4 w-4" /> Leads do ICP que não fecharam
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {!icp?.perdidos?.length && <p className="text-sm text-muted-foreground">Nenhum no período.</p>}
+          {(icp?.perdidos || []).map((l) => (
+            <a
+              key={l.id}
+              href={`${window.location.origin}/#/crm/leads/${l.id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-start justify-between gap-3 border-b border-border/40 last:border-0 py-2 hover:bg-muted/40 rounded-md px-2 -mx-2 transition-colors"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">
+                  {l.nome}
+                  {l.empresa ? <span className="font-normal text-muted-foreground"> · {l.empresa}</span> : null}
+                </p>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {l.motivo} · {l.funil || "Sem funil"}{l.etapa ? ` · ${l.etapa}` : ""}{l.dono ? ` · ${l.dono}` : ""} · {l.quando}
+                </p>
+              </div>
+              <span className="text-sm font-bold shrink-0 flex items-center gap-1">
+                {real(l.valor)}
+                <ExternalLink className="h-3 w-3 text-muted-foreground" />
+              </span>
+            </a>
+          ))}
+        </CardContent>
+      </Card>
+      </>
+      )}
     </div>
   );
 }
