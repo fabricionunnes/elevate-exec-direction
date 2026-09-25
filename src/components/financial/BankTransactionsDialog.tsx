@@ -71,6 +71,20 @@ interface Props {
   formatCurrencyCents: (cents: number) => string;
 }
 
+// Origem do lançamento em português. Sem isso a coluna Tipo mostra o nome da
+// coluna no banco ("statement_entry") e ninguém entende de onde veio o dinheiro.
+const ORIGEM: Record<string, string> = {
+  invoice: "Fatura",
+  receivable: "A receber",
+  payable: "A pagar",
+  transfer: "Transferência",
+  statement_entry: "Extrato Asaas",
+  crm_lead_payment: "Pagamento de lead",
+  asaas_balance_reconciliation: "Ajuste de saldo",
+  asaas_saldo_residuo: "Resíduo da conciliação",
+};
+const origem = (r: string | null) => (r ? ORIGEM[r] || r : "-");
+
 export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrencyCents }: Props) {
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -329,7 +343,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
                         <TableCell className="text-sm">{t.description || "-"}</TableCell>
                         <TableCell className="text-sm font-medium">{t.company_name || "-"}</TableCell>
                         <TableCell className="text-sm">
-                          {t.reference_type === "invoice" ? "Fatura" : t.reference_type || "-"}
+                          {origem(t.reference_type)}
                         </TableCell>
                         <TableCell className={`text-right text-sm font-medium whitespace-nowrap ${t.type === "credit" ? "text-emerald-600" : "text-destructive"}`}>
                           {t.type === "credit" ? "+" : "-"}{formatCurrencyCents(t.amount_cents)}

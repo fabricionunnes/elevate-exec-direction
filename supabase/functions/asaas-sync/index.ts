@@ -31,13 +31,16 @@ async function reconcileAsaasBankBalance(supabase: any, apiKey: string) {
   // saber de onde vinham.
   const balanceData = await asaasGet("/finance/balance", apiKey);
   const actualBalanceCents = toCents(balanceData?.balance);
+
   const { data: bank } = await supabase
     .from("financial_banks")
     .select("id, name, current_balance_cents")
     .eq("name", "Asaas")
     .eq("is_active", true)
     .maybeSingle();
+
   if (!bank) return { adjusted: false, reason: "bank_not_found", diff_cents: 0 };
+
   const diffCents = actualBalanceCents - Number(bank.current_balance_cents || 0);
   return { adjusted: false, check_only: true, diff_cents: diffCents, actual_balance_cents: actualBalanceCents };
 }
